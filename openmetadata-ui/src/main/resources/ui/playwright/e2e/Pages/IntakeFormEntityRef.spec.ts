@@ -29,7 +29,7 @@
  *     index (e.g. "glossaryTerm,table").
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -177,6 +177,34 @@ const entityRefCombobox = (page: Page, testId: string) =>
     .locator(`[data-testid="${testId}"] input[role="combobox"]`)
     .first();
 
+/**
+ * Type a query into the entity-ref combobox and wait for the matching option.
+ * Retries the whole search because fixtures created in beforeAll are indexed
+ * into Elasticsearch asynchronously — the first few searches may return no
+ * hits. Clearing the input before each attempt forces a fresh onSearchChange
+ * even when re-filling the same query. Returns the visible option locator
+ * (not yet clicked).
+ */
+const searchEntityRefOption = async (
+  page: Page,
+  combobox: Locator,
+  query: string,
+  optionText: RegExp
+): Promise<Locator> => {
+  const option = page
+    .getByRole('option')
+    .filter({ hasText: optionText })
+    .first();
+  await expect(async () => {
+    await combobox.click();
+    await combobox.fill('');
+    await combobox.fill(query);
+    await expect(option).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 90000 });
+
+  return option;
+};
+
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
@@ -293,13 +321,18 @@ test.describe(
       await combobox.click();
       await wildcardSearch;
 
-      // Dropdown should open and show at least one option (the glossary terms
-      // created in beforeAll are indexed and should be returned).
-      const listbox = page.getByRole('listbox');
-      await expect(listbox).toBeVisible({ timeout: 15000 });
-      await expect(listbox.getByRole('option').first()).toBeVisible({
-        timeout: 15000,
-      });
+      // Dropdown should show at least one option WITHOUT the user typing.
+      // The fixture terms are indexed into Elasticsearch asynchronously, so
+      // the first wildcard search may return no hits. The component re-fires
+      // the wildcard search on every open with an empty input, so close and
+      // reopen until options appear.
+      await expect(async () => {
+        await page.keyboard.press('Escape');
+        await combobox.click();
+        await expect(
+          page.getByRole('listbox').getByRole('option').first()
+        ).toBeVisible({ timeout: 5000 });
+      }).toPass({ timeout: 90000 });
     });
 
     // -----------------------------------------------------------------------
@@ -333,7 +366,8 @@ test.describe(
         (r) => r.url().includes(SEARCH_QUERY_API) && r.status() === 200
       );
 
-      // Now type a portion of term1's name to filter.
+      // Now type a portion of term1's name to filter. The scoped search must
+      // fire with the typed term in `q`; the matching option must appear.
       const searchTerm = term1.randomName.slice(0, 6);
       const typedSearch = page.waitForResponse(
         (r) =>
@@ -343,15 +377,14 @@ test.describe(
           ) &&
           r.status() === 200
       );
-      await combobox.fill(searchTerm);
+      const option = await searchEntityRefOption(
+        page,
+        combobox,
+        searchTerm,
+        new RegExp(term1.randomName, 'i')
+      );
       await typedSearch;
-
-      // The option matching term1 should be visible.
-      const listbox = page.getByRole('listbox');
-      await expect(listbox).toBeVisible({ timeout: 15000 });
-      await expect(
-        listbox.getByRole('option').filter({ hasText: new RegExp(term1.randomName, 'i') }).first()
-      ).toBeVisible({ timeout: 15000 });
+      await expect(option).toBeVisible();
     });
 
     // -----------------------------------------------------------------------
@@ -387,21 +420,12 @@ test.describe(
       const combobox = entityRefCombobox(page, `extension-${singleRefProp}`);
       await expect(combobox).toBeVisible({ timeout: 15000 });
 
-      const searchResponse = page.waitForResponse(
-        (r) =>
-          r.url().includes(SEARCH_QUERY_API) &&
-          new URL(r.url()).searchParams.get('index')?.includes('glossaryTerm') === true &&
-          r.status() === 200
+      const option = await searchEntityRefOption(
+        page,
+        combobox,
+        term1.randomName,
+        new RegExp(term1.data.displayName ?? term1.randomName, 'i')
       );
-      await combobox.click();
-      await combobox.fill(term1.randomName);
-      await searchResponse;
-
-      const option = page
-        .getByRole('option')
-        .filter({ hasText: new RegExp(term1.data.displayName ?? term1.randomName, 'i') })
-        .first();
-      await expect(option).toBeVisible({ timeout: 15000 });
       await option.click();
 
       // Submit and validate payload.
@@ -472,37 +496,21 @@ test.describe(
       const combobox = entityRefCombobox(page, `extension-${listRefProp}`);
       await expect(combobox).toBeVisible({ timeout: 15000 });
 
-      const search1 = page.waitForResponse(
-        (r) =>
-          r.url().includes(SEARCH_QUERY_API) &&
-          new URL(r.url()).searchParams.get('index')?.includes('glossaryTerm') === true &&
-          r.status() === 200
+      const option1 = await searchEntityRefOption(
+        page,
+        combobox,
+        term1.randomName,
+        new RegExp(term1.data.displayName ?? term1.randomName, 'i')
       );
-      await combobox.click();
-      await combobox.fill(term1.randomName);
-      await search1;
-
-      const option1 = page
-        .getByRole('option')
-        .filter({ hasText: new RegExp(term1.data.displayName ?? term1.randomName, 'i') })
-        .first();
-      await expect(option1).toBeVisible({ timeout: 15000 });
       await option1.click();
 
       // Select term2 — the picker stays open (chip-multi mode).
-      await combobox.fill(term2.randomName);
-      const search2 = page.waitForResponse(
-        (r) =>
-          r.url().includes(SEARCH_QUERY_API) &&
-          (new URL(r.url()).searchParams.get('q') ?? '').includes(term2.randomName) &&
-          r.status() === 200
+      const option2 = await searchEntityRefOption(
+        page,
+        combobox,
+        term2.randomName,
+        new RegExp(term2.data.displayName ?? term2.randomName, 'i')
       );
-      await search2;
-      const option2 = page
-        .getByRole('option')
-        .filter({ hasText: new RegExp(term2.data.displayName ?? term2.randomName, 'i') })
-        .first();
-      await expect(option2).toBeVisible({ timeout: 15000 });
       await option2.click();
       await page.keyboard.press('Escape');
 
@@ -615,21 +623,12 @@ test.describe(
       await expect(combobox).toBeVisible({ timeout: 15000 });
 
       // Select term1.
-      const search = page.waitForResponse(
-        (r) =>
-          r.url().includes(SEARCH_QUERY_API) &&
-          new URL(r.url()).searchParams.get('index')?.includes('glossaryTerm') === true &&
-          r.status() === 200
+      const option = await searchEntityRefOption(
+        page,
+        combobox,
+        term1.randomName,
+        new RegExp(term1.data.displayName ?? term1.randomName, 'i')
       );
-      await combobox.click();
-      await combobox.fill(term1.randomName);
-      await search;
-
-      const option = page
-        .getByRole('option')
-        .filter({ hasText: new RegExp(term1.data.displayName ?? term1.randomName, 'i') })
-        .first();
-      await expect(option).toBeVisible({ timeout: 15000 });
       await option.click();
       await page.keyboard.press('Escape');
 
@@ -651,15 +650,16 @@ test.describe(
 
       if (await removeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await removeBtn.click();
-        // After clearing, the chip label should no longer be visible.
-        await expect(chip).not.toBeVisible({ timeout: 5000 });
       } else {
         // If no explicit remove button, clear via keyboard (Backspace in combobox).
         await combobox.click();
         await page.keyboard.press('Backspace');
-        // Combobox should be empty and no chip visible.
         await expect(combobox).toHaveValue('', { timeout: 5000 });
       }
+
+      // Regardless of how the value was cleared, the selected chip must be
+      // gone — this is the actual proof that clearing removed the selection.
+      await expect(chip).not.toBeVisible({ timeout: 5000 });
     });
   }
 );

@@ -219,9 +219,11 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
 }) => {
   const [searchItems, setSearchItems] = useState<SelectItemType[]>([]);
   const optionMapRef = useRef<Map<string, Record<string, unknown>>>(new Map());
-  // Track whether the initial wildcard fetch has been fired so we only call
-  // it once per mount (subsequent opens reuse the already-loaded items).
-  const initialFetchRef = useRef(false);
+  // Track the last query so opening the dropdown with an empty input always
+  // re-fires the wildcard search. A once-per-mount guard is not enough: if
+  // the first fetch fails or races search indexing, the dropdown would stay
+  // empty on every subsequent open until the user types.
+  const lastQueryRef = useRef<string | null>(null);
   // Join all configured types with a comma so the API performs a targeted
   // multi-index search (e.g. "user,team,glossaryTerm") rather than the
   // catch-all "all" index. Mirrors main's getCustomPropertyReferenceSearchIndex.
@@ -230,6 +232,7 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
 
   const handleSearch = useCallback(
     async (query: string) => {
+      lastQueryRef.current = query;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = await (searchQuery as any)({
@@ -322,11 +325,12 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
           }
         }}
         onOpenChange={(isOpen) => {
-          // On first open (click/keyboard), fire a wildcard search to
-          // pre-populate the dropdown. onSearchChange only fires on typing
-          // (menuTrigger="input"), so this handles the initial-open case.
-          if (isOpen && !initialFetchRef.current) {
-            initialFetchRef.current = true;
+          // On open (click/keyboard), fire a wildcard search to pre-populate
+          // the dropdown. onSearchChange only fires on typing
+          // (menuTrigger="input"), so this covers the open-with-empty-input
+          // case. Skipped while the user has an active typed query so their
+          // filtered results are not clobbered by the wildcard fetch.
+          if (isOpen && !lastQueryRef.current) {
             handleSearch('');
           }
         }}
