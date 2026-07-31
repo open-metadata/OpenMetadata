@@ -18,8 +18,8 @@
   position: relative;
 
   &:fullscreen {
-    background: #fff;
-    padding: 16px;
+    background: var(--om-color-white);
+    padding: var(--om-space-16);
   }
 
   .term-relation-graph-card {
@@ -29,7 +29,7 @@
       height: calc(100% - 56px);
       display: flex;
       flex-direction: column;
-      padding: 16px;
+      padding: var(--om-space-16);
     }
   }
 
@@ -37,20 +37,20 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f0f0f0;
+    gap: var(--om-space-16);
+    margin-bottom: var(--om-space-16);
+    padding-bottom: var(--om-space-16);
+    border-bottom: 1px solid var(--om-legacy-color-f0f0f0);
 
     .depth-control {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
       min-width: 200px;
 
       .control-label {
         white-space: nowrap;
-        font-weight: 500;
+        font-weight: var(--om-font-weight-medium);
       }
 
       .depth-slider {
@@ -62,18 +62,18 @@
     .relation-type-filter {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
       flex-wrap: wrap;
 
       .control-label {
         white-space: nowrap;
-        font-weight: 500;
+        font-weight: var(--om-font-weight-medium);
       }
 
       .ant-checkbox-group {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px;
+        gap: var(--om-space-4);
 
         .ant-checkbox-wrapper {
           margin-right: 0;
@@ -84,7 +84,7 @@
     .layout-controls {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
       margin-left: auto;
 
       .ant-select {
@@ -96,9 +96,9 @@
   .term-relation-graph-canvas {
     flex: 1;
     min-height: 400px;
-    border: 1px solid #f0f0f0;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    border: 1px solid var(--om-legacy-color-f0f0f0);
+    border-radius: var(--om-radius-lg);
+    background: linear-gradient(135deg, var(--om-color-gray-50) 0%, var(--om-color-gray-100) 100%);
   }
 
   .term-relation-graph-loading,
@@ -108,8 +108,8 @@
     justify-content: center;
     flex: 1;
     min-height: 400px;
-    background: #fafafa;
-    border-radius: 8px;
+    background: var(--om-color-gray-50);
+    border-radius: var(--om-radius-lg);
   }
 
   .term-relation-node-details {
@@ -117,21 +117,21 @@
     bottom: 80px;
     right: 32px;
     width: 280px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-15);
 
     .ant-typography {
       display: block;
 
       &.ant-typography-secondary {
-        margin-bottom: 12px;
-        font-size: 12px;
+        margin-bottom: var(--om-space-12);
+        font-size: var(--om-font-size-xs);
       }
     }
 
     .node-actions {
-      margin-top: 8px;
+      margin-top: var(--om-space-8);
       display: flex;
-      gap: 8px;
+      gap: var(--om-space-8);
     }
   }
 
@@ -139,30 +139,30 @@
     position: absolute;
     bottom: 32px;
     left: 32px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 12px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: var(--om-legacy-color-255-255-255-0-95);
+    padding: var(--om-space-12);
+    border-radius: var(--om-radius-lg);
+    box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-1);
 
     .legend-items {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 8px;
+      gap: var(--om-space-12);
+      margin-top: var(--om-space-8);
 
       .legend-item {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--om-space-6);
 
         .legend-color {
           width: 20px;
           height: 3px;
-          border-radius: 2px;
+          border-radius: var(--om-radius-xs);
         }
 
         .ant-typography {
-          font-size: 12px;
+          font-size: var(--om-font-size-xs);
           text-transform: capitalize;
         }
       }

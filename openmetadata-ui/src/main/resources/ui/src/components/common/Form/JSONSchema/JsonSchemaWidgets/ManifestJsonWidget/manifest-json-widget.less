@@ -23,7 +23,7 @@
     // Give the user a tall ceiling so they can read large manifests.
     max-height: 80vh;
     border: 1px solid @grey-22;
-    border-radius: 4px;
+    border-radius: var(--om-radius-sm);
 
     // Flex-fill the wrapper so the editor container keeps its full height even
     // when empty. `.manifest-json-widget-editor` (schema-editor-container) is
@@ -55,8 +55,8 @@
   // Hint so users notice the draggable corner.
   .manifest-json-widget-resize-hint {
     color: @grey-28;
-    font-size: 12px;
-    margin-top: 4px;
+    font-size: var(--om-font-size-xs);
+    margin-top: var(--om-space-4);
     display: block;
   }
 }
