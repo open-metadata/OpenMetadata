@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEqual } from 'lodash';
 import { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,9 +53,9 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="border border-main p-xs rounded-4 m-y-xss m-b-sm">
-          <Typography.Text className="text-grey-muted">
+          <Typography className="text-grey-muted">
             {t('label.no-entity', { entity: t('label.description') })}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else {
@@ -77,9 +77,9 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     const oldDescription = task?.oldValue;
 
     return !newDescription && !oldDescription ? (
-      <Typography.Text className="text-grey-muted p-xs">
+      <Typography className="text-grey-muted p-xs">
         {t('label.no-entity', { entity: t('label.suggestion') })}
-      </Typography.Text>
+      </Typography>
     ) : (
       <DiffView
         className="p-xs"

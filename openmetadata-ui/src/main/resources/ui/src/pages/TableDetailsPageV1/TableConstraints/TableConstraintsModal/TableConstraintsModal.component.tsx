@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Empty, Form, Modal, Select, Space, Typography } from 'antd';
+import { Button, Empty, Form, Modal, Select, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -169,24 +170,24 @@ const TableConstraintsModal = ({
             <Space wrap align="start" className="w-full" size={4}>
               {breadcrumbs.slice(0, 4).map((breadcrumb, index) => (
                 <Fragment key={breadcrumb.name}>
-                  <Typography.Text
-                    className="constraint-breadcrumb-item"
-                    ellipsis={{ tooltip: true }}>
+                  <Typography
+                    ellipsis={{ tooltip: true }}
+                    className="constraint-breadcrumb-item">
                     {breadcrumb.name}
-                  </Typography.Text>
+                  </Typography>
                   {index !== breadcrumbs.length - 2 && (
-                    <Typography.Text className="text-xss">
+                    <Typography className="text-xss">
                       {t('label.slash-symbol')}
-                    </Typography.Text>
+                    </Typography>
                   )}
                 </Fragment>
               ))}
             </Space>
-            <Typography.Text
-              className="constraint-breadcrumb-item constraint-column-name"
-              ellipsis={{ tooltip: true }}>
+            <Typography
+              ellipsis={{ tooltip: true }}
+              className="constraint-breadcrumb-item constraint-column-name">
               {breadcrumbs[4].name}
-            </Typography.Text>
+            </Typography>
           </div>
         ),
         value: node.value,

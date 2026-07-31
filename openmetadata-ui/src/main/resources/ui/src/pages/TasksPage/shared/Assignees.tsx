@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Select, SelectProps, Typography } from 'antd';
+import { Select, SelectProps } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { DefaultOptionType } from 'antd/lib/select';
 
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
@@ -84,7 +85,7 @@ const Assignees: FC<Props> = ({
                 height={16}
                 width={16}
               />
-              <Typography.Text>{team.label}</Typography.Text>
+              <Typography>{team.label}</Typography>
             </div>
           ),
         })),

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, map } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -103,9 +104,9 @@ const TableConstraints = ({
                 key={ConstraintType.ForeignKey}>
                 <ForeignKeyConstraint />
                 <div className="d-flex flex-column gap-2">
-                  <Typography.Text data-testid="constraint-column-name">
+                  <Typography data-testid="constraint-column-name">
                     {columns?.join(', ')}
-                  </Typography.Text>
+                  </Typography>
                   <div data-testid="referred-column-name-fqn">
                     {map(referredColumns, (referredColumn) => (
                       <Tooltip
@@ -127,9 +128,9 @@ const TableConstraints = ({
                               FQN_SEPARATOR_CHAR
                             )
                           )}>
-                          <Typography.Text className="truncate referred-column-name">
+                          <Typography className="truncate referred-column-name">
                             {referredColumn}
-                          </Typography.Text>
+                          </Typography>
                         </Link>
                       </Tooltip>
                     ))}

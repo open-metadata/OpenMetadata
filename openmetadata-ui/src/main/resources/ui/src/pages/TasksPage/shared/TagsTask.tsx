@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { diffArrays } from 'diff';
 import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,9 +54,9 @@ const TagsTask: FC<TagsTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div>
-          <Typography.Text className="text-grey-muted border border-main p-sm rounded-4 m-y-xss m-b-xs">
+          <Typography className="text-grey-muted border border-main p-sm rounded-4 m-y-xss m-b-xs">
             {t('label.no-entity', { entity: t('label.tag-plural') })}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else {
@@ -78,11 +78,11 @@ const TagsTask: FC<TagsTaskProps> = ({
   const suggestedTagsDiff = useMemo(() => {
     if (!suggestion && !oldValue) {
       return (
-        <Typography.Text
-          className="text-grey-muted p-xs"
-          data-testid="no-suggestion">
+        <Typography
+          data-testid="no-suggestion"
+          className="text-grey-muted p-xs">
           {t('label.no-entity', { entity: t('label.suggestion') })}
-        </Typography.Text>
+        </Typography>
       );
     } else {
       return (

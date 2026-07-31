@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Alert, Card, Space, Typography } from 'antd';
+import { Alert, Card, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
@@ -64,9 +65,9 @@ const AccountActivationConfirmation = () => {
               type="success"
             />
             <div className="mt-12" onClick={handleBackToLogin}>
-              <Typography.Link underline>
+              <Typography as='a' className='tw:underline'>
                 {t('label.back-to-login-lowercase')}
-              </Typography.Link>
+              </Typography>
             </div>
           </Space>
         </div>
@@ -75,9 +76,9 @@ const AccountActivationConfirmation = () => {
           <Space align="center" direction="vertical">
             <Alert showIcon message={t('label.token-expired')} type="error" />
             <div className="mt-12">
-              <Typography.Link underline>
+              <Typography as='a' className='tw:underline'>
                 {t('label.regenerate-registration-token')}
-              </Typography.Link>
+              </Typography>
             </div>
           </Space>
         </div>
