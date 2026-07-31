@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Typography } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { isNil, round } from 'lodash';
 import { useTranslation } from 'react-i18next';
 
@@ -33,16 +34,16 @@ const CustomStatistic = ({
   return (
     <Row justify="space-between">
       <Col>
-        <Typography.Paragraph className="font-medium m-b-0">
+        <CoreTypography as='p' className="font-medium m-b-0">
           {label}
-        </Typography.Paragraph>
-        <Typography.Paragraph className="font-bold text-2xl m-b-0">
+        </CoreTypography>
+        <CoreTypography as='p' className="font-bold text-2xl m-b-0">
           {value}
-        </Typography.Paragraph>
+        </CoreTypography>
       </Col>
       <Col className="text-right">
         {!isNil(changeInValue) && (
-          <Typography.Paragraph className="m-b-0">
+          <CoreTypography as='p' className="m-b-0">
             <Typography.Text
               className="d-block"
               type={changeInValue >= 0 ? 'success' : 'danger'}>
@@ -51,13 +52,13 @@ const CustomStatistic = ({
                 2
               )}%`}
             </Typography.Text>
-            <Typography.Text className="d-block">
+            <CoreTypography className="d-block">
               {!isNil(duration) &&
                 t('label.days-change-lowercase', {
                   days: duration,
                 })}
-            </Typography.Text>
-          </Typography.Paragraph>
+            </CoreTypography>
+          </CoreTypography>
         )}
       </Col>
     </Row>

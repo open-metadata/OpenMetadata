@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select, Slider, Typography } from 'antd';
+import { Form, Input, Modal, Select, Slider } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,11 +106,11 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
       okText={t('label.save')}
       open={open}
       title={
-        <Typography.Text strong>
+        <Typography weight='bold'>
           {selectedBoost
             ? t('label.edit-entity', { entity: t('label.field-value-boost') })
             : t('label.add-entity', { entity: t('label.field-value-boost') })}
-        </Typography.Text>
+        </Typography>
       }
       width={600}
       onCancel={onCancel}
@@ -146,12 +147,12 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
 
         <Form.Item>
           <div className="d-flex items-center justify-between m-b-md">
-            <Typography.Text>{t('label.impact')}</Typography.Text>
-            <Typography.Text
-              className="font-semibold boost-value"
-              data-testid="field-boost-value">
+            <Typography>{t('label.impact')}</Typography>
+            <Typography
+              data-testid="field-boost-value"
+              className="font-semibold boost-value">
               {factor}
-            </Typography.Text>
+            </Typography>
           </div>
           <div className="m-b-lg" data-testid="field-boost-slider">
             <Slider
@@ -179,11 +180,11 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
           <Input data-testid="missing-value-input" min={1} type="number" />
         </Form.Item>
 
-        <Typography.Text
-          className="m-b-sm d-block"
-          data-testid="range-condition">
+        <Typography
+          data-testid="range-condition"
+          className="m-b-sm d-block">
           {t('label.range-condition')}
-        </Typography.Text>
+        </Typography>
         <div className="range-inputs d-flex flex-col gap-1">
           <div className="d-flex gap-2">
             <Form.Item className="flex-1" name={['condition', 'range', 'gte']}>

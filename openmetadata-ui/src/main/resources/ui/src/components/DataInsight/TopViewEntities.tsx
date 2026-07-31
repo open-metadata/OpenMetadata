@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -87,7 +88,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'entityType',
         key: 'entityType',
         render: (entityType: string) => (
-          <Typography.Text>{entityType}</Typography.Text>
+          <Typography>{entityType}</Typography>
         ),
       },
       {
@@ -98,7 +99,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           owner ? (
             <UserPopOverCard showUserName profileWidth={24} userName={owner} />
           ) : (
-            <Typography.Text>--</Typography.Text>
+            <Typography>--</Typography>
           ),
       },
       {
@@ -108,7 +109,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         dataIndex: 'pageViews',
         key: 'totalViews',
         render: (pageViews: number) => (
-          <Typography.Text>{pageViews}</Typography.Text>
+          <Typography>{pageViews}</Typography>
         ),
       },
     ],

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Skeleton, Typography } from 'antd';
+import { Card, Skeleton } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -57,9 +58,9 @@ function TotalDataAssetsWidget({
           <PieChartIcon height={16} width={16} />
         </div>
 
-        <Typography.Text className="font-semibold text-md">
+        <Typography className="font-semibold text-md">
           {t('label.total-entity', { entity: t('label.data-asset-plural') })}
-        </Typography.Text>
+        </Typography>
       </div>
       <Skeleton loading={isLoading}>
         {showPlaceholder ? (
@@ -73,14 +74,14 @@ function TotalDataAssetsWidget({
                 <div className="flex items-center gap-3">
                   <div className="p-0 icon-container">{entity.icon}</div>
 
-                  <Typography.Text>{entity.name}</Typography.Text>
+                  <Typography>{entity.name}</Typography>
                 </div>
 
-                <Typography.Text
-                  className="font-bold"
-                  data-testid={`${entity.name}-count`}>
+                <Typography
+                  data-testid={`${entity.name}-count`}
+                  className="font-bold">
                   {getReadableCountString(entity.value)}
-                </Typography.Text>
+                </Typography>
               </div>
             ))}
           </div>

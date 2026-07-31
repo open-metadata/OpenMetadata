@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Collapse, Row, Skeleton, Typography } from 'antd';
+import { Card, Col, Collapse, Row, Skeleton } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -61,9 +62,9 @@ function PlatformInsightsWidget({
       defaultActiveKey={['1']}
       expandIcon={() => (
         <div className="expand-icon-container">
-          <Typography.Text className="text-primary">
+          <Typography className="text-primary">
             {t('label.view-more')}
-          </Typography.Text>
+          </Typography>
           <ArrowSvg className="text-primary" height={14} width={14} />
         </div>
       )}
@@ -71,14 +72,14 @@ function PlatformInsightsWidget({
       <Collapse.Panel
         header={
           <div className="flex flex-col gap-1">
-            <Typography.Text className="font-medium text-lg">
+            <Typography className="font-medium text-lg">
               {t('label.entity-insight-plural', {
                 entity: t('label.platform'),
               })}
-            </Typography.Text>
-            <Typography.Text className="text-grey-muted text-sm">
+            </Typography>
+            <Typography className="text-grey-muted text-sm">
               {t('message.platform-insight-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         }
         key="1">
@@ -117,16 +118,16 @@ function PlatformInsightsWidget({
                     <Card
                       className="widget-info-card other-charts-card"
                       key={chart.chartType}>
-                      <Typography.Text className="font-semibold text-sm">
+                      <Typography className="font-semibold text-sm">
                         {getTitleByChartType(chart.chartType)}
-                      </Typography.Text>
+                      </Typography>
                       <Row align="top" className="m-t-xs" gutter={8}>
                         <Col span={12}>
-                          <Typography.Text className="current-percentage">
+                          <Typography className="current-percentage">
                             {`${getReadableCountString(
                               chart.currentPercentage
                             )}%`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         {!isUndefined(chart.percentageChange) && (
                           <Col
@@ -134,23 +135,23 @@ function PlatformInsightsWidget({
                             span={12}>
                             <div className="percent-change-tag">
                               {showIcon && icon}
-                              <Typography.Text
-                                className="font-medium text-xs"
+                              <Typography
                                 style={{
                                   color: chart.isIncreased ? GREEN_1 : RED_1,
-                                }}>
+                                }}
+                                className="font-medium text-xs">
                                 {`${getReadableCountString(
                                   chart.percentageChange
                                 )}%`}
-                              </Typography.Text>
+                              </Typography>
                             </div>
-                            <Typography.Text className="font-small text-grey-muted text-xs text-no-wrap">
+                            <Typography className="font-small text-grey-muted text-xs text-no-wrap">
                               {chart.numberOfDays === 1
                                 ? t('label.in-the-last-day')
                                 : t('label.in-last-number-of-days', {
                                     numberOfDays: chart.numberOfDays,
                                   })}
-                            </Typography.Text>
+                            </Typography>
                           </Col>
                         )}
                       </Row>

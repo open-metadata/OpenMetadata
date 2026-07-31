@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
@@ -28,12 +28,12 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
       icon={icon}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography.Paragraph style={{ marginBottom: '0' }}>
+      <Typography as='p' style={{ marginBottom: '0' }}>
         {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.data-insight'),
         })}
-      </Typography.Paragraph>
-      <Typography.Paragraph>
+      </Typography>
+      <Typography as='p'>
         <Transi18next
           i18nKey="message.refer-to-our-doc"
           renderElement={
@@ -48,7 +48,7 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
             doc: t('label.doc-plural-lowercase'),
           }}
         />
-      </Typography.Paragraph>
+      </Typography>
     </ErrorPlaceHolder>
   );
 };

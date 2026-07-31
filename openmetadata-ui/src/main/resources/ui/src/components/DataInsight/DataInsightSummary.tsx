@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -178,12 +179,12 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   return (
     <div data-testid="summary-card">
-      <Typography.Paragraph className="font-medium">
+      <Typography as='p' className="font-medium">
         {t('label.data-insight-summary', {
           organization:
             getEntityName(OrganizationDetails) ?? t('label.brand-name'),
         })}
-      </Typography.Paragraph>
+      </Typography>
       <Row data-testid="summary-card-content" gutter={[16, 16]}>
         {tab === DataInsightTabs.DATA_ASSETS && (
           <>

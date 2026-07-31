@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  MenuProps,
-  Row,
-  Skeleton,
-  Space,
-  Typography,
-} from 'antd';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -539,13 +530,13 @@ const KnowledgePageListComponent = forwardRef<
               direction="vertical"
               size={10}>
               <div className="text-center text-sm font-normal">
-                <Typography.Paragraph>
+                <Typography as='p'>
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                     entity: t('label.article'),
                   })}
-                </Typography.Paragraph>
+                </Typography>
 
-                <Typography.Paragraph>
+                <Typography as='p'>
                   <Transi18next
                     i18nKey="message.refer-to-our-doc"
                     renderElement={
@@ -560,7 +551,7 @@ const KnowledgePageListComponent = forwardRef<
                       doc: t('label.doc-plural-lowercase'),
                     }}
                   />
-                </Typography.Paragraph>
+                </Typography>
 
                 {permissions.Create && !hideAddButton && (
                   <LimitWrapper resource="knowledgeCenter">

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { diffWordsWithSpace } from 'diff';
 import { isEmpty, map, toString } from 'lodash';
@@ -144,11 +145,11 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
         <Row gutter={[16, 16]} justify="space-between" wrap={false}>
           <Col className="m-r-md knowledge-version-title-col" flex="auto">
             <Space className="w-full" direction="vertical" size={32}>
-              <Typography.Text
-                className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
-                data-testid="entity-header-display-name">
+              <Typography
+                data-testid="entity-header-display-name"
+                className="m-b-0 d-block entity-header-display-name text-lg font-semibold">
                 {stringToHTML(displayName || knowledgePage.name)}
-              </Typography.Text>
+              </Typography>
               <Row align="middle" gutter={[16, 16]}>
                 <Col>
                   <Space size={4}>
@@ -176,12 +177,12 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
               data-testid="version-button"
               icon={<Icon component={VersionIcon} />}
               onClick={handleVersionClick}>
-              <Typography.Text
+              <Typography
                 className={classNames('', {
                   'text-primary': version,
                 })}>
                 {toString(version)}
-              </Typography.Text>
+              </Typography>
             </Button>
           </Col>
         </Row>
@@ -190,9 +191,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
         <Row gutter={[0, 16]}>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography.Text className="text-grey-muted">
+              <Typography className="text-grey-muted">
                 {`${t('label.tag-plural')}:`}
-              </Typography.Text>
+              </Typography>
               <TagsContainerV2
                 layoutType={LayoutType.HORIZONTAL}
                 permission={false}
@@ -204,9 +205,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
           </Col>
           <Col span={24}>
             <Space align="center" className="w-full knowledge-page-tags">
-              <Typography.Text className="text-grey-muted">
+              <Typography className="text-grey-muted">
                 {`${t('label.glossary-term-plural')}:`}
-              </Typography.Text>
+              </Typography>
               <TagsContainerV2
                 layoutType={LayoutType.HORIZONTAL}
                 permission={false}

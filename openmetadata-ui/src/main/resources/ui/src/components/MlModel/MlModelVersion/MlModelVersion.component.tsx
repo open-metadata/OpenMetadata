@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Card,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tabs,
-  TabsProps,
-  Typography,
-} from 'antd';
+import { Card, Col, Divider, Row, Space, Tabs, TabsProps } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -172,9 +164,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                         <Divider className="m-y-md" />
                       </Col>
                       <Col span={24}>
-                        <Typography.Title level={5}>
+                        <Typography as='h5' size='text-md'>
                           {t('label.feature-plural-used')}
-                        </Typography.Title>
+                        </Typography>
                       </Col>
 
                       {mlFeaturesData?.map((feature: MlFeature) => (
@@ -186,40 +178,40 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                             key={feature.fullyQualifiedName}>
                             <Row>
                               <Col className="m-b-xs" span={24}>
-                                <Typography.Text className="font-semibold">
+                                <Typography className="font-semibold">
                                   {feature.name}
-                                </Typography.Text>
+                                </Typography>
                               </Col>
                               <Col className="m-b-xs" span={24}>
                                 <Space align="start">
                                   <Space>
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography className="text-grey-muted">
                                       {`${t('label.type')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
+                                    </Typography>{' '}
+                                    <Typography>
                                       {feature.dataType || '--'}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Space>
                                   <Divider
                                     className="border-gray"
                                     type="vertical"
                                   />
                                   <Space>
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography className="text-grey-muted">
                                       {`${t('label.algorithm')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
+                                    </Typography>{' '}
+                                    <Typography>
                                       {feature.featureAlgorithm || '--'}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Space>
                                 </Space>
                               </Col>
                               <Col className="m-b-xs" span={24}>
                                 <Row gutter={8} wrap={false}>
                                   <Col flex="130px">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography className="text-grey-muted">
                                       {`${t('label.glossary-term-plural')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Col>
 
                                   <Col flex="auto">
@@ -237,9 +229,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <Col className="m-b-xs" span={24}>
                                 <Row gutter={8} wrap={false}>
                                   <Col flex="130px">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography className="text-grey-muted">
                                       {`${t('label.tag-plural')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Col>
                                   <Col flex="auto">
                                     <TagsViewer
@@ -256,9 +248,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <Col className="m-b-xs" span={24}>
                                 <Row gutter={8} wrap={false}>
                                   <Col flex="120px">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography className="text-grey-muted">
                                       {`${t('label.description')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Col>
                                   <Col flex="auto">
                                     <Space align="start">
@@ -268,11 +260,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                                           markdown={feature.description}
                                         />
                                       ) : (
-                                        <Typography.Text className="text-grey-muted">
+                                        <Typography className="text-grey-muted">
                                           {t('label.no-entity', {
                                             entity: t('label.description'),
                                           })}
-                                        </Typography.Text>
+                                        </Typography>
                                       )}
                                     </Space>
                                   </Col>

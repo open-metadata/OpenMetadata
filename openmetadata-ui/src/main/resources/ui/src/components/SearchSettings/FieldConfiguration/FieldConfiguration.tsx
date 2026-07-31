@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Badge,
-  Button,
-  Collapse,
-  Divider,
-  Select,
-  Slider,
-  Switch,
-  Typography,
-} from 'antd';
+import { Badge, Button, Collapse, Divider, Select, Slider, Switch } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -108,9 +100,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             }}>
             <div className="d-flex items-center justify-between">
               <div className="d-flex items-center gap-2">
-                <Typography.Text data-testid="field-name">
+                <Typography data-testid="field-name">
                   {field.fieldName}
-                </Typography.Text>
+                </Typography>
                 {field.fieldName.startsWith('extension.') && (
                   <Badge
                     className="custom-property-badge"
@@ -150,9 +142,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         <div className="m-y-sm" style={{ padding: '10px' }}>
           {/* Highlight Fields Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography.Text>
+            <Typography>
               {t('label.highlight-field-plural')}
-            </Typography.Text>
+            </Typography>
             <Switch
               checked={
                 searchSettings?.highlightFields?.includes(field.fieldName) ??
@@ -167,12 +159,12 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
 
           {/* Weight Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography.Text>{t('label.weight')}</Typography.Text>
-            <Typography.Text
-              className="font-semibold field-weightage-text"
-              data-testid="field-weight-value">
+            <Typography>{t('label.weight')}</Typography>
+            <Typography
+              data-testid="field-weight-value"
+              className="font-semibold field-weightage-text">
               {fieldWeight}
-            </Typography.Text>
+            </Typography>
           </div>
           <div data-testid="field-weight-slider">
             <Slider
@@ -188,7 +180,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
 
           {/* Match Type Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography.Text>{t('label.match-type')}</Typography.Text>
+            <Typography>{t('label.match-type')}</Typography>
             <Select
               className="m-l-xlg"
               data-testid="match-type-select"

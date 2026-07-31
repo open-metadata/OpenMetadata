@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
+import { Button, List, Popover, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -162,7 +163,7 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
               e.stopPropagation();
               handleUpdate(item.value);
             }}>
-            <Typography.Text>{item.label}</Typography.Text>
+            <Typography>{item.label}</Typography>
           </List.Item>
         );
       }}
@@ -175,9 +176,9 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
       className="d-flex metric-header-info-container align-start"
       data-testid={modiFiedLabel}>
       <div className="d-flex extra-info-container align-start ">
-        <Typography.Text
-          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
-          data-testid={modiFiedLabel}>
+        <Typography
+          data-testid={modiFiedLabel}
+          className="whitespace-nowrap text-sm d-flex flex-col gap-2">
           <div className="d-flex items-center gap-1">
             <span className="extra-info-label-heading">{label}</span>
             {hasPermission && !metricDetails.deleted && (
@@ -209,7 +210,7 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
           <div className={classNames('font-medium extra-info-value')}>
             {currentValue ?? NO_DATA_PLACEHOLDER}
           </div>
-        </Typography.Text>
+        </Typography>
       </div>
     </Space>
   );

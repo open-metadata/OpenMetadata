@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Progress, Row, Typography } from 'antd';
+import { Col, Progress, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactNode } from 'react';
@@ -47,17 +48,16 @@ const EntitySummaryProgressBar = ({
         className="d-flex justify-between items-center text-xs"
         md={12}
         sm={24}>
-        <Typography.Paragraph
-          className="m-b-0 entity-summary-name break-all"
-          data-testid="entity-name">
+        <Typography
+          as='p'
+          data-testid="entity-name"
+          className="m-b-0 entity-summary-name break-all">
           {pluralize ? pluralizeName(entity) : entity}
-        </Typography.Paragraph>
+        </Typography>
 
-        <Typography.Paragraph
-          className="m-b-0 entity-summary-value"
-          data-testid="entity-value">
+        <Typography as='p' data-testid="entity-value" className="m-b-0 entity-summary-value">
           {label ?? round(progress || 0, 2)}
-        </Typography.Paragraph>
+        </Typography>
       </Col>
       <Col md={12} sm={24}>
         <Progress

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Collapse, Row, Skeleton, Space, Typography } from 'antd';
+import { Card, Col, Collapse, Row, Skeleton, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -66,19 +67,19 @@ function AgentsStatusWidget({
                   data-testid={`agent-status-summary-item-${key}`}
                   key={key}>
                   {getIconFromStatus(key)}
-                  <Typography.Text data-testid="pipeline-count">
+                  <Typography data-testid="pipeline-count">
                     {value}
-                  </Typography.Text>
-                  <Typography.Text>{key}</Typography.Text>
+                  </Typography>
+                  <Typography>{key}</Typography>
                 </div>
               ))}
             </div>
           )}
-          <Typography.Text
-            className="text-primary"
-            data-testid="agent-status-widget-view-more">
+          <Typography
+            data-testid="agent-status-widget-view-more"
+            className="text-primary">
             {t('label.view-more')}
-          </Typography.Text>
+          </Typography>
           <ArrowSvg className="text-primary" height={14} width={14} />
         </div>
       )}
@@ -87,11 +88,11 @@ function AgentsStatusWidget({
         header={
           <div className="flex justify-between items-center">
             <div className="flex flex-col gap-1">
-              <Typography.Text className="font-medium text-lg">
+              <Typography className="font-medium text-lg">
                 {t('label.entity-status', {
                   entity: t('label.agent-plural'),
                 })}
-              </Typography.Text>
+              </Typography>
 
               {agentsRunningStatusMessage}
             </div>
@@ -128,7 +129,7 @@ function AgentsStatusWidget({
                     data-testid={`agent-status-card-${agent.label}`}>
                     <Space align="center" size={8}>
                       {agent.agentIcon}
-                      <Typography.Text>{agent.label}</Typography.Text>
+                      <Typography>{agent.label}</Typography>
                     </Space>
                     {getIconFromStatus(agent.status)}
                   </Card>

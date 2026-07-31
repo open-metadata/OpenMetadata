@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table, Tabs, Typography } from 'antd';
+import { Col, Row, Table, Tabs } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -283,9 +284,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlHyperParameters = useMemo(() => {
     return (
       <>
-        <Typography.Title level={5}>
+        <Typography as='h5' size='text-md'>
           {t('label.hyper-parameter-plural')}{' '}
-        </Typography.Title>
+        </Typography>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
           <ErrorPlaceHolder size={SIZE.MEDIUM} />
         ) : (
@@ -305,7 +306,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const getMlModelStore = useMemo(() => {
     return (
       <>
-        <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
+        <Typography as='h5' size='text-md'>{t('label.model-store')}</Typography>
         {mlModelDetail.mlStore ? (
           <Table
             columns={mlModelStoreColumn}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
+import { Button, Col, Divider, Row, Slider } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
@@ -76,16 +77,16 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         return {
           label: (
             <div className="d-flex flex-column">
-              <Typography.Text
-                className="text-sm"
-                data-testid="tag-option-label">
+              <Typography
+                data-testid="tag-option-label"
+                className="text-sm">
                 {item.data.displayName ?? item.data.name}
-              </Typography.Text>
-              <Typography.Text
-                className="text-grey-muted text-sm"
-                data-testid="tag-option-fully-qualified-name">
+              </Typography>
+              <Typography
+                data-testid="tag-option-fully-qualified-name"
+                className="text-grey-muted text-sm">
                 {fqn}
-              </Typography.Text>
+              </Typography>
             </div>
           ),
           value: fqn,
@@ -149,14 +150,14 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         </Col>
         <Col className="d-flex flex-column gap-1">
           <div className="d-flex items-center justify-between p-x-xss">
-            <Typography.Text data-testid="term-boost-impact-label">
+            <Typography data-testid="term-boost-impact-label">
               {t('label.boost')}
-            </Typography.Text>
-            <Typography.Text
-              className="font-semibold boost-value"
-              data-testid="term-boost-value">
+            </Typography>
+            <Typography
+              data-testid="term-boost-value"
+              className="font-semibold boost-value">
               {termBoostData.boost}
-            </Typography.Text>
+            </Typography>
           </div>
           <div data-testid="term-boost-slider">
             <Slider
