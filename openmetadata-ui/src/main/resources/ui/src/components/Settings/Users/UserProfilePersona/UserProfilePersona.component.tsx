@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from 'antd';
+import { Divider } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
@@ -88,11 +89,11 @@ const UserProfilePersonas = ({
             <PersonaIcon height={16} />
           </div>
           <div className="d-flex justify-between w-full">
-            <Typography.Text
-              className="text-sm font-medium"
-              data-testid="persona-list">
+            <Typography
+              data-testid="persona-list"
+              className="text-sm font-medium">
               {t('label.default-persona')}
-            </Typography.Text>
+            </Typography>
             <PersonaSelectableList
               isDefaultPersona
               hasPermission={hasEditPermission}
@@ -136,11 +137,11 @@ const UserProfilePersonas = ({
           <PersonaIcon height={16} style={{ paddingLeft: '2px' }} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text
-            className="text-sm font-medium"
-            data-testid="persona-list">
+          <Typography
+            data-testid="persona-list"
+            className="text-sm font-medium">
             {t('label.persona')}
-          </Typography.Text>
+          </Typography>
           <PersonaSelectableList
             multiSelect
             hasPermission={Boolean(isAdminUser) && !userData.deleted}
@@ -169,7 +170,6 @@ const UserProfilePersonas = ({
           noDataPlaceholder={t('message.no-persona-assigned')}
         />
       </div>
-
       {/** Default persona**/}
       {defaultPersonaRender}
     </div>

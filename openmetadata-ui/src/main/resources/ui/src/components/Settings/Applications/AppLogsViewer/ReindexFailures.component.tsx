@@ -12,6 +12,7 @@
  */
 
 import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -95,7 +96,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         key: 'entityType',
         width: 120,
         render: (text: string) => (
-          <Typography.Text className="font-medium">{text}</Typography.Text>
+          <CoreTypography className="font-medium">{text}</CoreTypography>
         ),
       },
       {
@@ -116,7 +117,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         key: 'failureStage',
         width: 100,
         render: (text: string) => (
-          <Typography.Text>{text || '-'}</Typography.Text>
+          <CoreTypography>{text || '-'}</CoreTypography>
         ),
       },
       {
@@ -162,7 +163,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
       onClose={onClose}>
       <Space className="w-full m-b-md" direction="vertical" size="small">
         <Space>
-          <Typography.Text>{t('label.filter-by-entity-type')}:</Typography.Text>
+          <CoreTypography>{t('label.filter-by-entity-type')}:</CoreTypography>
           <Select
             allowClear
             placeholder={t('label.all')}
@@ -177,7 +178,6 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
           </Select>
         </Space>
       </Space>
-
       <Table
         columns={columns}
         dataSource={data}

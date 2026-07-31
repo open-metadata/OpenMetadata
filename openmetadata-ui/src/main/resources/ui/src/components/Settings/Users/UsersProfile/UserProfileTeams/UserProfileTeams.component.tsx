@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
+import { Button, Divider, Popover, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -119,9 +120,9 @@ const UserProfileTeams = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.team-plural')}
-          </Typography.Text>
+          </Typography>
 
           <Popover
             content={
@@ -136,9 +137,9 @@ const UserProfileTeams = ({
                     <IconTeamsGrey height={16} />
                   </div>
 
-                  <Typography.Text className="user-profile-edit-popover-card-title">
+                  <Typography className="user-profile-edit-popover-card-title">
                     {t('label.team-plural')}
-                  </Typography.Text>
+                  </Typography>
                 </div>
 
                 <div

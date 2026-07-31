@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tooltip } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -455,12 +455,12 @@ const Services = ({ serviceName }: ServicesProps) => {
                     service.fullyQualifiedName ?? service.name,
                     serviceName
                   )}>
-                  <Typography.Text
-                    className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
+                  <Typography
                     data-testid={`service-name-${service.name}`}
-                    title={getEntityName(service)}>
+                    title={getEntityName(service)}
+                    className="text-base text-grey-body font-medium truncate w-48 d-inline-block">
                     {getEntityName(service)}
-                  </Typography.Text>
+                  </Typography>
                 </Link>
                 <div
                   className="p-t-xs text-grey-body break-all description-text"

@@ -12,6 +12,7 @@
  */
 
 import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,20 +82,20 @@ export const AlertDetailsComponent = ({
       <Col span={24}>
         <Card>
           <Space direction="vertical" size={8}>
-            <Typography.Title className="m-0" level={5}>
+            <CoreTypography as='h5' size='text-md' className="m-0">
               {t('label.trigger')}
-            </Typography.Title>
-            <Typography.Text data-testid="display-name-entities">
+            </CoreTypography>
+            <CoreTypography data-testid="display-name-entities">
               {alerts?.filteringRules?.resources
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
-            </Typography.Text>
+            </CoreTypography>
           </Space>
           <Divider />
-          <Typography.Title level={5}>
+          <CoreTypography as='h5' size='text-md'>
             {t('label.filter-plural')}
-          </Typography.Title>
-          <Typography.Paragraph>
+          </CoreTypography>
+          <CoreTypography as='p'>
             {alerts?.filteringRules?.rules?.map((filter) => {
               const conditions = isArray(filter.condition)
                 ? filter.condition.join(', ')
@@ -113,11 +114,11 @@ export const AlertDetailsComponent = ({
                 </Fragment>
               );
             })}
-          </Typography.Paragraph>
+          </CoreTypography>
           <Divider />
-          <Typography.Title level={5}>
+          <CoreTypography as='h5' size='text-md'>
             {t('label.destination')}
-          </Typography.Title>
+          </CoreTypography>
           <Row gutter={[16, 16]} />
         </Card>
       </Col>

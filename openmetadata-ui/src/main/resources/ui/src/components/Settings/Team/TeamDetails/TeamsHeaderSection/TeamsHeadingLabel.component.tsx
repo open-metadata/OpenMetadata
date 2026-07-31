@@ -15,7 +15,8 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Button, Input, Space, Tooltip, Typography } from 'antd';
+import { Button, Input, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -91,7 +92,7 @@ const TeamsHeadingLabel = ({
       isHeadingEditing ? (
         // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel
-        <div
+        (<div
           className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
           onClick={(e) => e.stopPropagation()}>
           <Input
@@ -122,26 +123,27 @@ const TeamsHeadingLabel = ({
               <CheckOutlined />
             </Button>
           </Space>
-        </div>
+        </div>)
       ) : (
         <>
           <>
             {heading ? (
-              <Typography.Title
-                className="m-b-0 flex-1 w-min-0"
+              <Typography
+                as='h5'
+                size='text-md'
                 data-testid="team-heading"
                 ellipsis={{ tooltip: true }}
-                level={5}>
+                className="m-b-0 flex-1 w-min-0">
                 {heading}
-              </Typography.Title>
+              </Typography>
             ) : (
-              <Typography.Text
-                className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
-                data-testid="team-heading">
+              <Typography
+                data-testid="team-heading"
+                className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm">
                 {t('label.no-entity', {
                   entity: t('label.display-name'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
             {(hasAccess || isCurrentTeamOwner) && !currentTeam.deleted && (
               <Tooltip

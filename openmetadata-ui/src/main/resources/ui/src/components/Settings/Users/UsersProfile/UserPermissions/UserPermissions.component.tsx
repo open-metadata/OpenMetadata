@@ -22,6 +22,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -50,7 +51,9 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import './UserPermissions.style.less';
 
 const { Panel } = Collapse;
-const { Title, Text } = Typography;
+const {
+  Text
+} = Typography;
 
 interface UserPermissionsProps {
   username: string;
@@ -100,14 +103,14 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     <div className="rule-item m-b-sm" key={index}>
       <Space className="w-full" direction="vertical">
         <Space>
-          <Text strong>{rule.name}</Text>
+          <CoreTypography weight='bold'>{rule.name}</CoreTypography>
           <Tag color={rule.effect === 'ALLOW' ? 'success' : 'error'}>
             {rule.effect}
           </Tag>
         </Space>
         {!isEmpty(rule.operations) && (
           <div>
-            <Text type="secondary">{t('label.operation-plural')}: </Text>
+            <CoreTypography color='secondary'>{t('label.operation-plural')}: </CoreTypography>
             {rule.operations.map((op, idx) => (
               <Tag className="m-r-xs" key={idx}>
                 {op}
@@ -117,7 +120,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         )}
         {!isEmpty(rule.resources) && (
           <div>
-            <Text type="secondary">{t('label.resource-plural')}: </Text>
+            <CoreTypography color='secondary'>{t('label.resource-plural')}: </CoreTypography>
             {rule.resources.map((res, idx) => (
               <Tag className="m-r-xs" key={idx}>
                 {res}
@@ -127,7 +130,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         )}
         {rule.condition && (
           <div>
-            <Text type="secondary">{t('label.condition')}: </Text>
+            <CoreTypography color='secondary'>{t('label.condition')}: </CoreTypography>
             <Text code>{rule.condition}</Text>
           </div>
         )}
@@ -157,10 +160,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               }>
               {policy.effect}
             </Tag>
-            <Text type="secondary">
+            <CoreTypography color='secondary'>
               <span>{policy.rules.length}</span>
               {t('label.rule-lowercase-plural')}
-            </Text>
+            </CoreTypography>
           </Space>
         }
         key={index}>
@@ -182,7 +185,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
           (rolePermission: DirectRolePermission, index: number) => (
             <div className="m-b-md" key={index}>
               <Space className="m-b-sm">
-                <Text strong>{t('label.role')}: </Text>
+                <CoreTypography weight='bold'>{t('label.role')}: </CoreTypography>
                 <Link
                   to={getEntityLink(
                     'role',
@@ -208,7 +211,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     <div className="m-b-md" key={index}>
       <Space className="w-full" direction="vertical">
         <Space>
-          <Text strong>{t('label.role') + ': '}</Text>
+          <CoreTypography weight='bold'>{t('label.role') + ': '}</CoreTypography>
           <Link
             to={getEntityLink(
               'role',
@@ -220,10 +223,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <Tag color="blue">{t('label.default-role')}</Tag>
           )}
         </Space>
-        <Text type="secondary">
+        <CoreTypography color='secondary'>
           {t('label.inherited-from')}:{' '}
           <span>{rolePermission.inheritedFrom}</span>
-        </Text>
+        </CoreTypography>
         {rolePermission.policies.map((policy, policyIndex) =>
           renderPolicy(policy, policyIndex)
         )}
@@ -243,7 +246,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <div className="team-permission m-b-lg" key={index}>
               <Space className="w-full" direction="vertical">
                 <Space>
-                  <Text strong>{t('label.team')}: </Text>
+                  <CoreTypography weight='bold'>{t('label.team')}: </CoreTypography>
                   <Link
                     to={getEntityLink(
                       'team',
@@ -266,9 +269,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                 {!isEmpty(teamPermission.teamHierarchy) &&
                   teamPermission.teamHierarchy.length > 1 && (
                     <div>
-                      <Text type="secondary">
+                      <CoreTypography color='secondary'>
                         {t('label.hierarchy') + ': '}
-                      </Text>
+                      </CoreTypography>
                       {teamPermission.teamHierarchy.map((team, idx) => (
                         <React.Fragment key={idx}>
                           <Link
@@ -287,9 +290,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
                 {!isEmpty(teamPermission.rolePermissions) && (
                   <div className="m-t-sm">
-                    <Text strong className="m-b-sm">
+                    <CoreTypography weight='bold' className="m-b-sm">
                       {t('label.team-role-plural')}:{' '}
-                    </Text>
+                    </CoreTypography>
                     {teamPermission.rolePermissions.map(
                       (rolePermission, roleIndex) =>
                         renderRolePermission(rolePermission, roleIndex)
@@ -299,9 +302,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
                 {!isEmpty(teamPermission.directPolicies) && (
                   <div className="m-t-sm">
-                    <Text strong className="m-b-sm">
+                    <CoreTypography weight='bold' className="m-b-sm">
                       {t('label.direct-team-policy-plural')}:{' '}
-                    </Text>
+                    </CoreTypography>
                     {teamPermission.directPolicies.map((policy, policyIndex) =>
                       renderPolicy(policy, policyIndex)
                     )}
@@ -330,16 +333,16 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <div className="m-b-md" key={index}>
               <Space className="w-full" direction="vertical">
                 <Space>
-                  <Text strong>{t('label.type') + ': '}</Text>
+                  <CoreTypography weight='bold'>{t('label.type') + ': '}</CoreTypography>
                   <Tag color="purple">
                     {t(`label.${inherited.permissionType.toLowerCase()}`) ||
                       inherited.permissionType}
                   </Tag>
                 </Space>
-                <Text>{inherited.description}</Text>
+                <CoreTypography>{inherited.description}</CoreTypography>
                 {inherited.source && (
                   <div>
-                    <Text type="secondary">{t('label.source') + ': '}</Text>
+                    <CoreTypography color='secondary'>{t('label.source') + ': '}</CoreTypography>
                     <Link
                       to={getEntityLink(
                         inherited.source.type || '',
@@ -372,39 +375,38 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <Space direction="vertical">
-              <Text type="secondary">{t('label.total-role-plural')}</Text>
-              <Title level={4}>{summary.totalRoles}</Title>
-              <Text type="secondary">
+              <CoreTypography color='secondary'>{t('label.total-role-plural')}</CoreTypography>
+              <CoreTypography as='h4' size='text-lg'>{summary.totalRoles}</CoreTypography>
+              <CoreTypography color='secondary'>
                 <span>{summary.directRoles}</span> {t('label.direct-lowercase')}
                 {', '}
                 <span>{summary.inheritedRoles}</span> {t('label.inherited')}
-              </Text>
+              </CoreTypography>
             </Space>
           </Col>
           <Col span={8}>
             <Space direction="vertical">
-              <Text type="secondary">{t('label.policy-plural')}</Text>
-              <Title level={4}>{summary.totalPolicies}</Title>
-              <Text type="secondary">
+              <CoreTypography color='secondary'>{t('label.policy-plural')}</CoreTypography>
+              <CoreTypography as='h4' size='text-lg'>{summary.totalPolicies}</CoreTypography>
+              <CoreTypography color='secondary'>
                 {summary.totalRules} {t('label.rule-lowercase-plural')}
-              </Text>
+              </CoreTypography>
             </Space>
           </Col>
           <Col span={8}>
             <Space direction="vertical">
-              <Text type="secondary">{t('label.team-plural')}</Text>
-              <Title level={4}>{summary.teamCount}</Title>
-              <Text type="secondary">
+              <CoreTypography color='secondary'>{t('label.team-plural')}</CoreTypography>
+              <CoreTypography as='h4' size='text-lg'>{summary.teamCount}</CoreTypography>
+              <CoreTypography color='secondary'>
                 {t('label.max-hierarchy-depth')}:{' '}
                 <span>{summary.maxHierarchyDepth}</span>
-              </Text>
+              </CoreTypography>
             </Space>
           </Col>
         </Row>
-
         {!isEmpty(summary.effectiveOperations) && (
           <div className="m-t-md">
-            <Text strong>{t('label.allowed-operation-plural') + ': '}</Text>
+            <CoreTypography weight='bold'>{t('label.allowed-operation-plural') + ': '}</CoreTypography>
             <div className="m-t-xs">
               {summary.effectiveOperations.map((op, idx) => (
                 <Tag className="m-r-xs m-b-xs" color="success" key={idx}>
@@ -414,10 +416,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             </div>
           </div>
         )}
-
         {!isEmpty(summary.deniedOperations) && (
           <div className="m-t-md">
-            <Text strong>{t('label.denied-operation-plural') + ': '}</Text>
+            <CoreTypography weight='bold'>{t('label.denied-operation-plural') + ': '}</CoreTypography>
             <div className="m-t-xs">
               {summary.deniedOperations.map((op, idx) => (
                 <Tag className="m-r-xs m-b-xs" color="error" key={idx}>

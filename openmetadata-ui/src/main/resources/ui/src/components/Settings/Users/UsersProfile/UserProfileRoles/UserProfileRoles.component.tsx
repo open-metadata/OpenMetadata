@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
+import { Button, Divider, Popover, Select, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -241,9 +242,9 @@ const UserProfileRoles = ({
           <RoleIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium">
+          <Typography className="text-sm font-medium">
             {t('label.role-plural')}
-          </Typography.Text>
+          </Typography>
           <Popover
             destroyTooltipOnHide
             content={
@@ -257,9 +258,9 @@ const UserProfileRoles = ({
                   <div className="d-flex flex-start items-center">
                     <RoleIcon height={16} />
                   </div>
-                  <Typography.Text className="user-profile-edit-popover-card-title">
+                  <Typography className="user-profile-edit-popover-card-title">
                     {t('label.role-plural')}
-                  </Typography.Text>
+                  </Typography>
                 </div>
 
                 <div

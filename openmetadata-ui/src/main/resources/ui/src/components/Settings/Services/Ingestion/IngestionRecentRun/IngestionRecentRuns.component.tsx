@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
+import { Popover, Skeleton, Space, Tag } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -110,9 +111,9 @@ export const IngestionRecentRuns = <
   return (
     <Space className={classNames} size={5}>
       {isEmpty(recentRunStatus) ? (
-        <Typography.Text data-testid="pipeline-status">
+        <Typography data-testid="pipeline-status">
           {NO_DATA_PLACEHOLDER}
-        </Typography.Text>
+        </Typography>
       ) : (
         recentRunStatus.map((r, i) => {
           const pipelineState =
@@ -176,7 +177,6 @@ export const IngestionRecentRuns = <
           );
         })
       )}
-
       {!isUndefined(selectedStatus) && (
         <IngestionRunDetailsModal
           handleCancel={handleModalCancel}

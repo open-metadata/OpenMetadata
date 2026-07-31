@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Select, Space, Typography } from 'antd';
+import { Button, Form, FormProps, Select, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
@@ -122,14 +123,14 @@ const AuthMechanismForm: FC<Props> = ({
   return isSCIMBot ? (
     <div className="flex  justify-between items-center">
       <div className="flex flex-col gap-2">
-        <Typography.Text className="card-title m-t-0 m-b-2 text-md">
+        <Typography className="card-title m-t-0 m-b-2 text-md">
           {t('message.automate-provisioning-with-scim')}
-        </Typography.Text>
-        <Typography.Paragraph className="m-b-0 card-description">
+        </Typography>
+        <Typography as='p' className="m-b-0 card-description">
           {t(
             'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
           )}
-        </Typography.Paragraph>
+        </Typography>
       </div>
       <Button
         className="text-sm generate-scim-token-btn"

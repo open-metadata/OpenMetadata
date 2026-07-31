@@ -19,16 +19,8 @@ import {
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Dropdown, Row, Space, Tabs, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -541,9 +533,9 @@ const AppDetails = () => {
             size="small"
             type="text"
             onClick={onBrowseAppsClick}>
-            <Typography.Text className="font-medium">
+            <Typography className="font-medium">
               {t('label.browse-app-plural')}
-            </Typography.Text>
+            </Typography>
           </Button>
         </Col>
         <Col flex="360px">
@@ -584,9 +576,9 @@ const AppDetails = () => {
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
-              <Typography.Title level={4}>
+              <Typography as='h4' size='text-lg'>
                 {getEntityName(appData)}
-              </Typography.Title>
+              </Typography>
               {isRuntimeDisabled && (
                 <Tooltip title={runtimeDisabledReason}>
                   <div
@@ -601,31 +593,28 @@ const AppDetails = () => {
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>
                   <ClockCircleOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs text-grey-muted">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
 
                 <Space size={8}>
                   <UserOutlined />
-                  <Typography.Text className="text-xs text-grey-muted">
+                  <Typography className="text-xs text-grey-muted">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
 
                 {appData?.developerUrl && (
                   <div className="flex-center gap-2">
                     <Icon component={IconExternalLink} style={ICON_DIMENSION} />
-                    <Typography.Link
-                      className="text-xs"
-                      href={appData?.developerUrl}
-                      target="_blank">
+                    <Typography as='a' href={appData?.developerUrl} target="_blank" className="text-xs">
                       <Space>{t('label.visit-developer-website')}</Space>
-                    </Typography.Link>
+                    </Typography>
                   </div>
                 )}
               </div>
@@ -635,19 +624,18 @@ const AppDetails = () => {
         <Col className="app-details-page-tabs" span={24}>
           {pluginAppDetailsComponent ? (
             // Render plugin's custom app details component
-            React.createElement(pluginAppDetailsComponent)
+            (React.createElement(pluginAppDetailsComponent))
           ) : (
             // Render default tabs interface
-            <Tabs
+            (<Tabs
               destroyInactiveTabPane
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
-            />
+            />)
           )}
         </Col>
       </Row>
-
       <ConfirmationModal
         bodyText={t('message.are-you-sure-action-property', {
           action: actionText,

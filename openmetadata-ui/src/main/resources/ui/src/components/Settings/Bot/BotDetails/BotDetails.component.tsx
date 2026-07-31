@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Input, Row, Tag, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -166,15 +167,15 @@ const BotDetails: FC<BotsDetailProps> = ({
                   ) : (
                     <>
                       {displayName ? (
-                        <Typography.Title ellipsis className="m-0" level={5}>
+                        <Typography as='h5' size='text-md' ellipsis className="m-0">
                           {displayName}
-                        </Typography.Title>
+                        </Typography>
                       ) : (
-                        <Typography.Text className="text-grey-muted">
+                        <Typography className="text-grey-muted">
                           {t('label.add-entity', {
                             entity: t('label.display-name'),
                           })}
-                        </Typography.Text>
+                        </Typography>
                       )}
                       {(displayNamePermission || editAllPermission) && (
                         <div>
@@ -273,12 +274,12 @@ const BotDetails: FC<BotsDetailProps> = ({
       rightPanel={
         <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">
-            <Typography.Text className="mb-2 text-lg">
+            <Typography className="mb-2 text-lg">
               {t('label.token-security')}
-            </Typography.Text>
-            <Typography.Text className="mb-2">
+            </Typography>
+            <Typography className="mb-2">
               {t('message.token-security-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         </Card>
       }

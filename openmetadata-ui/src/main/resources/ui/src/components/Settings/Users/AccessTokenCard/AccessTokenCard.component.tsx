@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip, Typography } from 'antd';
+import { Card, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -280,12 +281,12 @@ const AccessTokenCard: FC<MockProps> = ({
                 </span>
               </div>
               <div className="flex flex-col gap-2">
-                <Typography.Text className="scim-modal-delete-title text-md">
+                <Typography className="scim-modal-delete-title text-md">
                   {t('message.delete-scim-token')}
-                </Typography.Text>
-                <Typography.Text className="scim-modal-delete-desc text-sm">
+                </Typography>
+                <Typography className="scim-modal-delete-desc text-sm">
                   {t('message.are-you-sure-to-delete-scim-token')}
-                </Typography.Text>
+                </Typography>
               </div>
             </div>
           ) : (

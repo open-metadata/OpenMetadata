@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal, Space, Typography } from 'antd';
+import { Button, Modal, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -260,11 +261,11 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'runType',
           key: 'runType',
           render: (runType, record) => (
-            <Typography.Text>
+            <Typography>
               {record.isSynthetic
                 ? NO_DATA_PLACEHOLDER
                 : runType ?? NO_DATA_PLACEHOLDER}
-            </Typography.Text>
+            </Typography>
           ),
         },
         {
@@ -489,7 +490,6 @@ const AppRunsHistory = forwardRef(
           rowKey="id"
           size="small"
         />
-
         {isStopModalOpen && (
           <StopScheduleModal
             appName={fqn}
@@ -505,7 +505,6 @@ const AppRunsHistory = forwardRef(
             }}
           />
         )}
-
         <LogViewerModal
           logs={logsModalRecord ? getAppRunFailureLogs(logsModalRecord) : ''}
           open={Boolean(logsModalRecord)}
@@ -536,11 +535,11 @@ const AppRunsHistory = forwardRef(
           maskClosable={false}
           open={showConfigModal}
           title={
-            <Typography.Text>
+            <Typography>
               {t('label.entity-configuration', {
                 entity: getEntityName(appData) ?? t('label.application'),
               })}
-            </Typography.Text>
+            </Typography>
           }
           width={800}>
           {jsonSchema && (

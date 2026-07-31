@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -205,17 +206,16 @@ function MetadataAgentsWidget({
             <MetadataAgentIcon height={16} width={16} />
           </div>
           <div className="flex flex-col gap-1">
-            <Typography.Text className="font-medium text-md">
+            <Typography className="font-medium text-md">
               {t('label.metadata-agent-plural')}
-            </Typography.Text>
-            <Typography.Text className="text-grey-muted text-sm">
+            </Typography>
+            <Typography className="text-grey-muted text-sm">
               {t('message.metadata-agents-table-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
         <div className="flex-center">{renderAddIngestionButton}</div>
       </div>
-
       <IngestionListTable
         airflowInformation={airflowInformation}
         deployIngestion={deployIngestion}
