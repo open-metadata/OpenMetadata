@@ -27,7 +27,12 @@
       "import": "./dist/utils/index.es.js",
       "require": "./dist/utils/index.cjs.js"
     },
-    "./globals.css": "./src/styles/globals.css"
+    "./globals.css": "./src/styles/globals.css",
+    "./icons": {
+      "types": "./dist/types/src/icons/index.d.ts",
+      "import": "./dist/icons/index.es.js",
+      "require": "./dist/icons/index.cjs.js"
+    }
   },
   "files": [
     "dist",
@@ -63,7 +68,8 @@
     "pretty": "prettier --write src/",
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",
     "pretty:check": "prettier --check src/",
-    "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh"
+    "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh",
+    "icons:generate": "node scripts/generate-icons.mjs"
   },
   "author": "OpenMetadata",
   "license": "Apache-2.0",
@@ -90,6 +96,9 @@
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
+    "svgo": "^3.3.2",
     "@internationalized/date": "^3.11.0",
     "@react-aria/utils": "^3.33.0",
     "@react-stately/utils": "^3.11.0",
