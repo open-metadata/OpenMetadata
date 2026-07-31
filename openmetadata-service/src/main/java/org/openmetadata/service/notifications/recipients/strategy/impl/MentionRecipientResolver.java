@@ -151,7 +151,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
                 Entity.getEntityByName(
                     Entity.USER, post.getFrom(), "id,profile,email", Include.NON_DELETED);
             if (postAuthor != null) {
-              recipients.add(Recipient.fromUser(postAuthor, notificationType));
+              addIfResolved(recipients, Recipient.fromUser(postAuthor, notificationType));
             }
           }
         } catch (Exception e) {
@@ -202,12 +202,12 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
         if (Entity.USER.equalsIgnoreCase(link.getEntityType())) {
           User user = Entity.getEntity(link, "id,profile,email", Include.NON_DELETED);
           if (user != null) {
-            recipients.add(Recipient.fromUser(user, notificationType));
+            addIfResolved(recipients, Recipient.fromUser(user, notificationType));
           }
         } else if (Entity.TEAM.equalsIgnoreCase(link.getEntityType())) {
           Team team = Entity.getEntity(link, "id,profile,email", Include.NON_DELETED);
           if (team != null) {
-            recipients.add(Recipient.fromTeam(team, notificationType));
+            addIfResolved(recipients, Recipient.fromTeam(team, notificationType));
           }
         }
       } catch (Exception e) {
