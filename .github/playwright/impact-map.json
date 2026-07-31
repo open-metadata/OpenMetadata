@@ -4,10 +4,12 @@
     "playwright/e2e/Auth/**",
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
-    "playwright/e2e/Pages/DataInsight*.spec.ts",
+    "playwright/e2e/Pages/DataInsight.spec.ts",
+    "playwright/e2e/Pages/DataInsightSettings.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
-    "playwright/e2e/Features/OntologyImportRdf.spec.ts"
+    "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
     {
@@ -116,6 +118,7 @@
         "chromium",
         "Basic",
         "Ingestion",
+        "ImportExport",
         "search-nightly",
         "Reindex",
         "GlobalSettings"
@@ -133,12 +136,40 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/TestSuite/**",
-        "openmetadata-service/src/main/java/org/openmetadata/service/resources/tests/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Alerts/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DataQuality/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TestSuiteDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/TestSuiteIngestionPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ProfilerConfigurationPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ObservabilityAlertsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AddObservabilityPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AlertDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/testAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/incidentManagerAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityDashboardAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/observabilityAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/alertsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataQuality/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Alerts/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Observability*",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/incidentManager.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/events/subscription/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuiteRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinitionRepository.java",
+        "openmetadata-spec/src/main/resources/json/schema/tests/**"
       ],
-      "projects": ["chromium", "Basic", "Ingestion", "Reindex"],
+      "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
+        "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Pages/TestSuite*.spec.ts"
       ]
     },
@@ -179,7 +210,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": ["chromium", "Basic", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/Glossary/**/*.spec.ts",
         "playwright/e2e/Pages/*Glossary*.spec.ts",
@@ -225,7 +256,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC"],
+      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",

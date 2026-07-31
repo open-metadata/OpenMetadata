@@ -883,7 +883,7 @@ describe('testAPI tests', () => {
     });
 
     describe('getTestSuiteByName', () => {
-      it('should fetch test suite by name with params', async () => {
+      it('should default owners/experts to non-deleted so soft-deleted owners stay hidden (issue #30117)', async () => {
         const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
         jest.mock('./index', () => ({
           __esModule: true,
@@ -894,15 +894,40 @@ describe('testAPI tests', () => {
 
         const { getTestSuiteByName } = require('./testAPI');
 
-        const params = { fields: ['owners', 'tests'] };
-
-        const result = await getTestSuiteByName('test.suite.name', params);
+        const result = await getTestSuiteByName('test.suite.name', {
+          fields: ['owners', 'tests'],
+        });
 
         expect(mockGet).toHaveBeenCalledWith(
           expect.stringContaining('/dataQuality/testSuites/name/'),
-          { params }
+          {
+            params: {
+              fields: ['owners', 'tests'],
+              includeRelations: 'owners:non-deleted,experts:non-deleted',
+            },
+          }
         );
         expect(result).toEqual(mockTestSuite);
+      });
+
+      it('should respect a caller-provided includeRelations', async () => {
+        const mockGet = jest.fn().mockResolvedValue({ data: mockTestSuite });
+        jest.mock('./index', () => ({
+          __esModule: true,
+          default: {
+            get: mockGet,
+          },
+        }));
+
+        const { getTestSuiteByName } = require('./testAPI');
+
+        await getTestSuiteByName('test.suite.name', {
+          includeRelations: 'owners:all',
+        });
+
+        expect(mockGet).toHaveBeenCalledWith(expect.any(String), {
+          params: { includeRelations: 'owners:all' },
+        });
       });
 
       it('should encode FQN with special characters', async () => {
