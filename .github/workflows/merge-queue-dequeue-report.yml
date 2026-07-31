@@ -45,7 +45,6 @@ jobs:
       OWNER: ${{ github.repository_owner }}
       REPO: ${{ github.event.repository.name }}
       PR: ${{ github.event.number || inputs.pr }}
-      IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
       DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DRY_RUN == 'true' }}
     steps:
       - name: Resolve the dequeue event
@@ -54,17 +53,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          # A PR dequeued before still has an older event, so "an event exists"
-          # cannot mean "this dequeue's event". Require a recent one, wide
-          # enough to absorb runner queueing. A manual dispatch names the PR
-          # outright, so there is no webhook to match an event against.
-          if [ "$IS_DISPATCH" = "true" ]; then
-            CUTOFF=0
-          else
-            CUTOFF=$(date -u -d '30 minutes ago' +%s)
-          fi
-
-          # The timeline entry may not be readable the instant the webhook fires.
+          # Only a first-ever dequeue can return an empty list; a repeat dequeue
+          # matches at once, and its createdAt in the comment exposes a stale read.
           # shellcheck disable=SC2016  # the GraphQL query and jq filter must not expand
           for _ in 1 2 3; do
             gh api graphql -f owner="$OWNER" -f repo="$REPO" -F pr="$PR" -f query='
@@ -87,21 +77,17 @@ jobs:
                        | "\(.reason)\t\(.beforeCommit.oid)\t\(.createdAt)"' > event.tsv || true
 
             if [ -s event.tsv ]; then
-              CREATED=$(cut -f3 event.tsv)
-              if [ "$(date -u -d "$CREATED" +%s)" -ge "$CUTOFF" ]; then
-                {
-                  echo "reason=$(cut -f1 event.tsv)"
-                  echo "sha=$(cut -f2 event.tsv)"
-                  echo "created=$CREATED"
-                } >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-              echo "Newest dequeue event for PR #$PR is from $CREATED — stale, not this dequeue."
+              {
+                echo "reason=$(cut -f1 event.tsv)"
+                echo "sha=$(cut -f2 event.tsv)"
+                echo "created=$(cut -f3 event.tsv)"
+              } >> "$GITHUB_OUTPUT"
+              exit 0
             fi
             sleep 5
           done
 
-          echo "No fresh RemovedFromMergeQueueEvent found for PR #$PR — nothing to report."
+          echo "No RemovedFromMergeQueueEvent found for PR #$PR — nothing to report."
 
       - name: Comment the checks that caused the dequeue
         if: ${{ steps.event.outputs.sha != '' }}
