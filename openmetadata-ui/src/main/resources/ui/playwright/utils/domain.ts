@@ -411,18 +411,44 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
   const searchBox = page
     .getByTestId('page-layout-v1')
     .getByPlaceholder('Search');
+  const domainRow = page.getByTestId(domain.name);
 
   await waitForAllLoadersToDisappear(page);
 
-  await Promise.all([
-    searchBox.fill(domain.name),
-    page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-  ]);
+  // The domain listing is search-backed, and search indexing is eventually
+  // consistent — a domain created moments ago can legitimately be missing from
+  // the first query. Retry the search, reloading between attempts, so the row
+  // is only clicked once it is actually there; otherwise the click auto-waits
+  // against a list that will never contain it and burns the test timeout.
+  let hasSearched = false;
+  await expect
+    .poll(
+      async () => {
+        if (hasSearched) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+        }
+        hasSearched = true;
 
-  await waitForSearchDebounce(page);
+        await Promise.all([
+          searchBox.fill(domain.name),
+          page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
+        ]);
+
+        await waitForSearchDebounce(page);
+
+        return domainRow.isVisible();
+      },
+      {
+        message: `Wait for domain "${domain.name}" to appear in the domain listing`,
+        timeout: 60_000,
+        intervals: [2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(true);
 
   await Promise.all([
-    page.getByTestId(domain.name).click(),
+    domainRow.click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
@@ -658,6 +684,44 @@ export const checkDataProductCount = async (page: Page, count: number) => {
         return text?.trim();
       },
       { timeout: 30_000, intervals: [500, 1_000, 2_000] }
+    )
+    .toBe(count.toString());
+};
+
+/**
+ * Asserts the sub-domain tab count, alongside checkAssetsCount and
+ * checkDataProductCount.
+ *
+ * Unlike those two this reloads between attempts. The sub-domain count is
+ * rendered from a search query the domain page issues once, on mount, and
+ * search indexing is eventually consistent — so a render that raced indexing
+ * never refreshes itself and polling the label alone would just re-read a
+ * frozen DOM until the timeout. Reloading re-issues the query.
+ */
+export const checkSubDomainCount = async (page: Page, count: number) => {
+  let shouldReload = false;
+
+  await expect
+    .poll(
+      async () => {
+        if (shouldReload) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+        }
+        shouldReload = true;
+
+        const text = await page
+          .getByTestId('subdomains')
+          .getByTestId('count')
+          .textContent();
+
+        return text?.trim();
+      },
+      {
+        message: `Wait for the sub-domain tab count to reach ${count}`,
+        timeout: 120_000,
+        intervals: [2_000, 3_000, 5_000],
+      }
     )
     .toBe(count.toString());
 };
