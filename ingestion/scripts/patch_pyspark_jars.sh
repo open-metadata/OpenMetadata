@@ -71,12 +71,32 @@ PY
 # black, which image scanners misreport as an installed package (CVE-2026-31900). The file
 # is test-only and never imported at runtime. spaCy (from the pii-processor / sample-data
 # extras) installs independently of pyspark (from deltalake), so this must run on every
-# path — including builds that ship spaCy but not pyspark. Best-effort: never fails the build.
+# path — including builds that ship spaCy but not pyspark.
+#
+# Deterministic, not best-effort: locate spacy via find_spec (without importing it, so an
+# installed-but-broken spacy is still found), delete the fixture, then assert it is gone.
+# The image scanner reads the file on disk regardless of whether spacy imports, so a broken
+# spacy must not let the fixture survive while the build succeeds.
 strip_spacy_scanner_fixture() {
   local spacy_dir
-  spacy_dir="$(python -c 'import os,spacy;print(os.path.dirname(spacy.__file__))' 2>/dev/null || true)"
-  if [ -n "${spacy_dir}" ] && [ -d "${spacy_dir}/tests" ]; then
-    find "${spacy_dir}/tests" -name 'requirements.txt' -delete 2>/dev/null || true
+  spacy_dir="$(python - <<'PY'
+import importlib.util, os, sys
+spec = importlib.util.find_spec("spacy")
+if spec is None or not spec.submodule_search_locations:
+    sys.exit(0)
+print(spec.submodule_search_locations[0])
+PY
+)"
+  if [ -z "${spacy_dir}" ] || [ ! -d "${spacy_dir}/tests" ]; then
+    return 0
+  fi
+  find "${spacy_dir}/tests" -name 'requirements.txt' -delete
+  local leftover
+  leftover="$(find "${spacy_dir}/tests" -name 'requirements.txt')"
+  if [ -n "${leftover}" ]; then
+    echo "ERROR: spaCy scanner fixture still present after delete:" >&2
+    echo "${leftover}" >&2
+    exit 1
   fi
 }
 
