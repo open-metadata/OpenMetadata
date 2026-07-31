@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  getTableFieldsFromTableDetails,
-  getUsageData,
-} from './DataAssetSummaryPanelPureUtils';
-export type { ColumnSearchResult } from './DataAssetSummaryPanelPureUtils';
-
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
 import { lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';

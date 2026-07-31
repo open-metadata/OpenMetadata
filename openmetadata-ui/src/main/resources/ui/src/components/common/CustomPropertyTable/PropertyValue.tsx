@@ -96,7 +96,6 @@ import {
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
-
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );

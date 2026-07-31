@@ -87,7 +87,6 @@ import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
-
 const DomainSelectableList = withSuspenseFallback(
   lazy(
     () =>

@@ -37,8 +37,8 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
-  getWidgetFromKey,
-} from '../../../../utils/CustomizableLandingPageUtils';
+} from '../../../../utils/CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
@@ -49,7 +49,6 @@ import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseL
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { styled } from '@mui/material/styles';
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import {
@@ -51,31 +50,47 @@ export const pageContainerStyles: CSSProperties = {
   overflow: 'hidden',
 };
 
-const FullHeightWrapper = styled('div')<{ $wrapperClassName?: string }>(
-  ({ $wrapperClassName }) => ({
-    [`& .page-layout-v1-vertical-scroll.${$wrapperClassName}`]: {
-      overflow: 'hidden',
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} > .ant-row`]: {
-      flex: 1,
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col`]: {
-      flex: 'none',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col:last-child`]: {
-      minHeight: 0,
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-  })
-);
+const FullHeightWrapper: FC<{
+  $wrapperClassName?: string;
+  children: ReactNode;
+}> = ({ $wrapperClassName, children }) => {
+  const scopedStyles = useMemo(() => {
+    if (!$wrapperClassName) {
+      return '';
+    }
+
+    return `
+      .full-height-wrapper .page-layout-v1-vertical-scroll.${$wrapperClassName} {
+        overflow: hidden;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .full-height-wrapper .${$wrapperClassName} > .ant-row {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col {
+        flex: none;
+      }
+      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col:last-child {
+        min-height: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+    `;
+  }, [$wrapperClassName]);
+
+  return (
+    <div className="full-height-wrapper">
+      {scopedStyles && <style>{scopedStyles}</style>}
+      {children}
+    </div>
+  );
+};
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,

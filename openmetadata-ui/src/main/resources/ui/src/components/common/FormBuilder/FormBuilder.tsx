@@ -20,7 +20,7 @@ import { LoadingState } from 'Models';
 import { forwardRef, useMemo, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
-import { transformErrors } from '../../../utils/formUtils';
+import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import { ArrayFieldTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/ArrayFieldTemplate';
 import DescriptionFieldTemplate from '../Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';

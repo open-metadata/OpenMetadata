@@ -36,7 +36,7 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
-import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductUtils';
+import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';

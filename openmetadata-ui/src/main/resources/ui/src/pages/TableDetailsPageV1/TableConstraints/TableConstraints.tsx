@@ -44,7 +44,7 @@ const TableConstraints = ({
   const { deleted } = data ?? {};
 
   const hasPermission = useMemo(
-    () => permissions.EditAll && !deleted,
+    () => permissions?.EditAll && !deleted,
     [permissions, deleted]
   );
 
