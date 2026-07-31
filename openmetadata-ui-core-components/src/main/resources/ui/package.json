@@ -54,8 +54,8 @@
     "component-library"
   ],
   "scripts": {
-    "build": "vite build",
-    "build:watch": "vite build --watch",
+    "build": "node scripts/generate-icons.mjs && vite build",
+    "build:watch": "node scripts/generate-icons.mjs && vite build --watch",
     "dev": "vite build --watch",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",

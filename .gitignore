@@ -208,3 +208,10 @@ ingestion/.claude/agents
 test-results/
 
 docs/superpowers/*
+
+# Generated icon components — produced by `yarn icons:generate` at build time, not committed
+openmetadata-ui-core-components/src/main/resources/ui/src/icons/*.tsx
+!openmetadata-ui-core-components/src/main/resources/ui/src/icons/Gold.tsx
+!openmetadata-ui-core-components/src/main/resources/ui/src/icons/Silver.tsx
+!openmetadata-ui-core-components/src/main/resources/ui/src/icons/Bronze.tsx
+!openmetadata-ui-core-components/src/main/resources/ui/src/icons/None.tsx
