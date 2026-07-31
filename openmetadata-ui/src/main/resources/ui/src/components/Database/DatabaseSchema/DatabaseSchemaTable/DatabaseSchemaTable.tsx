@@ -73,7 +73,7 @@ import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 

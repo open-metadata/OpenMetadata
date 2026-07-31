@@ -12,7 +12,8 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Box, Typography as MuiTypography, useTheme } from '@mui/material';
-import { Button, Dropdown, Form, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Space, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -39,6 +40,7 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ERROR_MESSAGE, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -57,6 +59,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
+import { FeedCounts } from '../../../interface/feed.interface';
 import {
   addDataProducts,
   patchDataProduct,
@@ -64,7 +67,7 @@ import {
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -76,12 +79,13 @@ import {
   getQueryFilterForDataProducts,
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
-} from '../../../utils/DomainUtils';
+} from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
+import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -92,21 +96,12 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
   getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringUtils';
-import { useFormDrawerWithRef } from '../../common/atoms/drawer';
-import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
-import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
-
-import { Avatar } from '@openmetadata/ui-core-components';
-import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { FeedCounts } from '../../../interface/feed.interface';
-import { getIsErrorMatch } from '../../../utils/APIUtils';
-import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';

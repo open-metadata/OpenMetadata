@@ -41,7 +41,7 @@ import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { referenceURLValidator } from '../../../utils/GlossaryUtils';
+import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
