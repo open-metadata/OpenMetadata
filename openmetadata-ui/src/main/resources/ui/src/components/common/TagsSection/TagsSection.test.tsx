@@ -86,13 +86,6 @@ jest.mock('antd', () => ({
         </button>
       )
     ),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-  },
 }));
 
 // Mock SVG components
@@ -369,7 +362,6 @@ describe('TagsSection', () => {
     it('should render without crashing', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
 

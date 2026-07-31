@@ -32,18 +32,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-  },
-}));
-
 // Mock SVG components
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon">EditIcon</div>,
@@ -176,7 +164,6 @@ describe('OwnersSection', () => {
     it('should render without crashing', () => {
       render(<OwnersSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
     });
 
@@ -737,7 +724,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Verify component renders without errors
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(container.querySelector('.owners-title')).toBeInTheDocument();
 
       const editIcon = container.querySelector('.edit-icon');
       fireEvent.click(editIcon!);
@@ -764,7 +751,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Verify component renders without errors
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(container.querySelector('.owners-title')).toBeInTheDocument();
 
       const editIcon = container.querySelector('.edit-icon');
       fireEvent.click(editIcon!);
@@ -789,7 +776,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Verify component renders without errors
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(container.querySelector('.owners-title')).toBeInTheDocument();
 
       const editIcon = container.querySelector('.edit-icon');
       fireEvent.click(editIcon!);
@@ -829,7 +816,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Component should still render even when rules are loading
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(container.querySelector('.owners-title')).toBeInTheDocument();
       expect(container.querySelector('.owners-section')).toBeInTheDocument();
     });
 

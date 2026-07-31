@@ -121,6 +121,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </nav>
   )),
   Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ as: Component = 'span', children, ...props }) => (
+      <Component {...props}>{children}</Component>
+    )),
 }));
 
 const baseSource: ExploreSearchCardProps['source'] = {

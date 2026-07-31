@@ -26,25 +26,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Partial mock antd (only Typography.Text)
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
-
 // Mock SectionWithEdit to expose props and render children
 interface SectionWithEditProps {
   title: React.ReactNode;
@@ -91,11 +72,7 @@ describe('DataQualitySection', () => {
       screen.getByText('label.data-quality-test-plural')
     ).toBeInTheDocument();
     // total badge text
-    expect(
-      screen
-        .getAllByTestId('typography-text')
-        .some((el) => el.textContent === '6')
-    ).toBe(true);
+    expect(screen.getByText('6')).toBeInTheDocument();
   });
 
   it('renders progress segments for non-zero categories', () => {

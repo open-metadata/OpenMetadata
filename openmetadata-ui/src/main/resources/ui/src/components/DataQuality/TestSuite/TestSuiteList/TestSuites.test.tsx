@@ -262,12 +262,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </div>
   );
 
+  const MockTypography = ({
+    as: Component = 'span',
+    children,
+    ...props
+  }: {
+    as?: React.ElementType;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => <Component {...props}>{children}</Component>;
+
   return {
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
     Tabs: MockTabs,
     Table: MockTable,
+    Typography: MockTypography,
   };
 });
 
