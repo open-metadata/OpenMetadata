@@ -18,7 +18,7 @@ import pytest
 
 # Loose on purpose: catch a step change, such as a new eagerly imported dependency
 # subtree, rather than run-to-run variation. Lower them as lazy-import work lands.
-MAX_IMPORT_RSS_MB = 480
+MAX_IMPORT_RSS_MB = 400
 MAX_TOTAL_MODULES = 5000
 
 # Linux carries ru_maxrss across fork+exec, so under pytest it reports the runner's peak
@@ -59,8 +59,12 @@ def import_cost() -> dict:
     return json.loads(result.stdout.strip().splitlines()[-1])
 
 
-def test_import_metadata_peak_rss_under_ceiling(import_cost):
+def test_import_metadata_peak_rss_under_ceiling(import_cost, record_property):
     rss_mb = import_cost["rss_mb"]
+    # Recorded in the JUnit report so the ceilings can be tightened from real CI numbers
+    # rather than guessed, since a passing assertion reveals nothing.
+    record_property("import_rss_mb", round(rss_mb))
+    record_property("import_modules", import_cost["modules"])
     assert rss_mb < MAX_IMPORT_RSS_MB, (
         f"`import metadata` peaked at {rss_mb:.0f} MB, ceiling {MAX_IMPORT_RSS_MB} MB. "
         "Make the new import lazy, or check whether defer_build is still enabled on the "
