@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
@@ -261,9 +261,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     return (
       <div className="tags-section">
         <div className="tags-header">
-          <Typography.Text className="tags-title">
+          <Typography className="tags-title">
             {t('label.tag-plural')}
-          </Typography.Text>
+          </Typography>
           {canShowEditButton && (
             <EditIconButton
               newLook
@@ -286,9 +286,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
   return (
     <div className="tags-section">
       <div className="tags-header">
-        <Typography.Text className="tags-title">
+        <Typography className="tags-title">
           {t('label.tag-plural')}
-        </Typography.Text>
+        </Typography>
         {canShowEditButton && (
           <EditIconButton
             newLook

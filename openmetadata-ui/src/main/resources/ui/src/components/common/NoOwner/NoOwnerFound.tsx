@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,21 +70,21 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
             </div>
           )}
           {showLabel && (
-            <Typography.Text
+            <Typography
+              data-testid="owner-link"
               className={classNames(
                 isCompactView
                   ? 'text-xs no-owner'
                   : ' no-owner-heading font-medium text-sm',
                 className
-              )}
-              data-testid="owner-link">
+              )}>
               {placeHolder ??
                 (!isCompactView
                   ? t('label.owner-plural')
                   : t('label.no-entity', {
                       entity: t('label.owner-plural'),
                     }))}
-            </Typography.Text>
+            </Typography>
           )}
           {onUpdate && (
             <UserTeamSelectableList
@@ -101,7 +101,6 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
           )}
         </div>
       )}
-
       {!isCompactView && (
         <div className="no-owner-text text-sm font-medium">
           {ownerPlaceholder}

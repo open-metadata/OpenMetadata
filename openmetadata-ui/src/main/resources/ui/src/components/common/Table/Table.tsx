@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  SpinProps,
-  Table as AntdTable,
-  Typography,
-} from 'antd';
+import { Button, Col, Dropdown, Row, SpinProps, Table as AntdTable } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -157,11 +150,11 @@ const Table = <T extends object>(
           key: 'header',
           label: (
             <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-              <Typography.Text
-                className="text-sm text-grey-muted font-medium"
-                data-testid="column-dropdown-title">
+              <Typography
+                data-testid="column-dropdown-title"
+                className="text-sm text-grey-muted font-medium">
                 {t('label.column')}
-              </Typography.Text>
+              </Typography>
               <Button
                 className="text-primary text-sm p-0"
                 data-testid="column-dropdown-action-button"

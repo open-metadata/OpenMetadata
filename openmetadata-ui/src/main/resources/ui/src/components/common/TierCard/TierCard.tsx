@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Collapse,
-  Popover,
-  Radio,
-  RadioChangeEvent,
-  Space,
-  Spin,
-  Typography,
-} from 'antd';
+import { Button, Card, Collapse, Popover, Radio, RadioChangeEvent, Space, Spin } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
@@ -133,11 +124,10 @@ const TierCard = ({
               data-testid="cards"
               title={
                 <Space className="w-full p-xs justify-between">
-                  <Typography.Text className="m-b-0 font-medium text-md">
+                  <Typography className="m-b-0 font-medium text-md">
                     {t('label.edit-entity', { entity: t('label.tier') })}
-                  </Typography.Text>
-                  <Typography.Text
-                    className="m-b-0 font-normal text-primary cursor-pointer"
+                  </Typography>
+                  <Typography
                     data-testid="clear-tier"
                     tabIndex={0}
                     // we need to pass undefined to clear the tier
@@ -147,9 +137,10 @@ const TierCard = ({
                         e.preventDefault();
                         updateTierData();
                       }
-                    }}>
+                    }}
+                    className="m-b-0 font-normal text-primary cursor-pointer">
                     {t('label.clear')}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
               }>
               <Spin
@@ -173,14 +164,15 @@ const TierCard = ({
                             data-testid={`radio-btn-${card.title}`}
                             value={card.id}>
                             <Space direction="vertical" size={0}>
-                              <Typography.Paragraph
-                                className="m-b-0 font-regular text-grey-body"
-                                style={{ color: card.style?.color }}>
+                              <Typography
+                                as='p'
+                                style={{ color: card.style?.color }}
+                                className="m-b-0 font-regular text-grey-body">
                                 {card.title}
-                              </Typography.Paragraph>
-                              <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                              </Typography>
+                              <Typography as='p' className="m-b-0 font-regular text-xs text-grey-muted">
                                 {card.description.replace(/\*/g, '')}
-                              </Typography.Paragraph>
+                              </Typography>
                             </Space>
                           </Radio>
                         }

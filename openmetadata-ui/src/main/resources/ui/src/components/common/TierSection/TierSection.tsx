@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -204,9 +204,9 @@ const TierSection: React.FC<TierSectionProps> = ({
   return (
     <div className="tier-section">
       <div className="tier-header">
-        <Typography.Text className="tier-title">
+        <Typography className="tier-title">
           {t('label.tier')}
-        </Typography.Text>
+        </Typography>
         {canShowEditButton && (
           <EditIconButton
             newLook

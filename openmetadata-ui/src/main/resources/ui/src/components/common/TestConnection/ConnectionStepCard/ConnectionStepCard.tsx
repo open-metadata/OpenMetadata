@@ -13,7 +13,8 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Button, Collapse, Divider, Space, Tooltip, Typography } from 'antd';
+import { Button, Collapse, Divider, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -80,11 +81,11 @@ const ConnectionStepCard = ({
         })}>
         <Space className="w-full justify-between">
           <Space>
-            <Typography.Text className="text-body text-600">
+            <Typography className="text-body text-600">
               {testConnectionStep.mandatory
                 ? requiredField(testConnectionStep.name, true)
                 : testConnectionStep.name}
-            </Typography.Text>
+            </Typography>
             <Tooltip
               placement="bottom"
               showArrow={false}
@@ -93,15 +94,15 @@ const ConnectionStepCard = ({
             </Tooltip>
           </Space>
           {isTestingConnection && (
-            <Typography.Text className="awaiting-status">
+            <Typography className="awaiting-status">
               {`${t('label.awaiting-status')}...`}
-            </Typography.Text>
+            </Typography>
           )}
           {success && (
             <div className="d-flex gap-2 align-center">
-              <Typography.Text className="success-status">
+              <Typography className="success-status">
                 {`${t('label.success')}`}
-              </Typography.Text>
+              </Typography>
               <Icon
                 component={SuccessIcon}
                 data-testid="success-badge"
@@ -111,9 +112,9 @@ const ConnectionStepCard = ({
           )}
           {isMandatoryStepsFailing && (
             <div className="d-flex gap-2 align-center">
-              <Typography.Text className="failure-status">
+              <Typography className="failure-status">
                 {`${t('label.failed')}`}
-              </Typography.Text>
+              </Typography>
               <Icon
                 component={FailIcon}
                 data-testid="fail-badge"
@@ -123,9 +124,9 @@ const ConnectionStepCard = ({
           )}
           {isNonMandatoryStepsFailing && (
             <div className="d-flex gap-2 align-center">
-              <Typography.Text className="warning-status">
+              <Typography className="warning-status">
                 {`${t('label.attention')}`}
-              </Typography.Text>
+              </Typography>
               <Icon
                 component={AttentionIcon}
                 data-testid="warning-badge"
@@ -134,9 +135,9 @@ const ConnectionStepCard = ({
             </div>
           )}
           {isSkipped && (
-            <Typography.Text className="skipped-status">
+            <Typography className="skipped-status">
               {t('label.skipped')}
-            </Typography.Text>
+            </Typography>
           )}
         </Space>
       </div>
@@ -144,9 +145,9 @@ const ConnectionStepCard = ({
         isNonMandatoryStepsFailing ||
         testConnectionStepResult?.message) && (
         <div className="connection-step-card-content">
-          <Typography.Text className="text-body">
+          <Typography className="text-body">
             {testConnectionStepResult?.message}
-          </Typography.Text>
+          </Typography>
           {testConnectionStepResult?.errorLog && (
             <>
               <Divider className="connection-step-card-content-divider" />

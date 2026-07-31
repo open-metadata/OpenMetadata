@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -207,9 +207,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     return (
       <div className="owners-section">
         <div className="owners-header">
-          <Typography.Text className="owners-title">
+          <Typography className="owners-title">
             {t('label.owner-plural')}
-          </Typography.Text>
+          </Typography>
           {canShowEditButton && (
             <EditIconButton
               newLook
@@ -232,9 +232,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   return (
     <div className="owners-section">
       <div className="owners-header">
-        <Typography.Text className="owners-title">
+        <Typography className="owners-title">
           {t('label.owner-plural')}
-        </Typography.Text>
+        </Typography>
         {canShowEditButton && (
           <EditIconButton
             newLook

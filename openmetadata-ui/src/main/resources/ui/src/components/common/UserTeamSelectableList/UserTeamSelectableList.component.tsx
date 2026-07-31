@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Popover, Space, Tabs, Typography } from 'antd';
+import { Popover, Space, Tabs } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -47,7 +48,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
   return (
     <Space>
       <Icon component={IconTeamsGrey} style={{ fontSize: '16px' }} />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
+      <Typography>{getEntityName(props)}</Typography>
     </Space>
   );
 };
@@ -293,11 +294,11 @@ export const UserTeamSelectableList = ({
                 className="user-team-popover-header w-full p-x-sm p-y-md"
                 direction="vertical"
                 size={8}>
-                <Typography.Text className="text-grey-muted">
+                <Typography className="text-grey-muted">
                   {t('label.selected-entity', {
                     entity: label ?? t('label.owner-plural'),
                   })}
-                </Typography.Text>
+                </Typography>
                 <div className="user-team-popover-header-content">
                   {selectedUsers.map((user) => {
                     return (

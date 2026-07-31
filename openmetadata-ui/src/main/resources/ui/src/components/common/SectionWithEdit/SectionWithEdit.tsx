@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -32,7 +32,7 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
     <div className={`section-with-edit ${className}`}>
       <div className={`section-header ${titleClassName}`}>
         {typeof title === 'string' ? (
-          <Typography.Text className="section-title">{title}</Typography.Text>
+          <Typography className="section-title">{title}</Typography>
         ) : (
           title
         )}

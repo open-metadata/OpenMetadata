@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Typography } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
@@ -36,11 +37,11 @@ const SummaryTagsDescription = ({
         className="p-md border-radius-card summary-panel-card"
         gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text
-            className="summary-panel-section-title"
-            data-testid="tags-header">
+          <CoreTypography
+            data-testid="tags-header"
+            className="summary-panel-section-title">
             {t('label.tag-plural')}
-          </Typography.Text>
+          </CoreTypography>
         </Col>
         <Col className="d-flex flex-wrap gap-2" span={24}>
           {tags.length > 0 ? (
@@ -50,22 +51,21 @@ const SummaryTagsDescription = ({
               tags={tags}
             />
           ) : (
-            <Typography.Text className="text-sm no-data-chip-placeholder">
+            <CoreTypography className="text-sm no-data-chip-placeholder">
               {t('label.no-tags-added')}
-            </Typography.Text>
+            </CoreTypography>
           )}
         </Col>
       </Row>
-
       <Row
         className="p-md border-radius-card summary-panel-card"
         gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text
-            className="summary-panel-section-title"
-            data-testid="description-header">
+          <CoreTypography
+            data-testid="description-header"
+            className="summary-panel-section-title">
             {t('label.description')}
-          </Typography.Text>
+          </CoreTypography>
         </Col>
         <Col span={24}>
           <div>

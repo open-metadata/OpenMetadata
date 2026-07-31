@@ -24,16 +24,8 @@ import {
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
 import '@react-awesome-query-builder/antd/css/styles.css';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Skeleton,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Col, Divider, Row, Skeleton } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isEqual, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -302,9 +294,9 @@ const QueryBuilderWidgetV1: FC<{
             span={24}>
             {outputType === SearchOutputType.JSONLogic && props.label && (
               <>
-                <Typography.Text className="query-filter-label text-grey-muted">
+                <Typography className="query-filter-label text-grey-muted">
                   {props.label}
-                </Typography.Text>
+                </Typography>
                 <Divider className="m-y-sm" />
               </>
             )}
@@ -340,15 +332,15 @@ const QueryBuilderWidgetV1: FC<{
                     icon={<InfoCircleOutlined height={16} />}
                     message={
                       <div className="d-flex flex-wrap items-center gap-1">
-                        <Typography.Text>
+                        <Typography>
                           {t('message.search-entity-count', {
                             count: searchResults,
                           })}
-                        </Typography.Text>
+                        </Typography>
 
-                        <Typography.Text className="text-xs text-grey-muted">
+                        <Typography className="text-xs text-grey-muted">
                           {t('message.click-here-to-view-assets-on-explore')}
-                        </Typography.Text>
+                        </Typography>
                       </div>
                     }
                     type="info"

@@ -12,6 +12,7 @@
  */
 
 import { Button, Card, Space, Typography } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -101,7 +102,7 @@ const SuccessScreen = ({
       <Card>
         <Space>
           <IconSuccessBadge data-testid="success-icon" width="20px" />
-          <Typography.Paragraph className="m-b-0" data-testid="success-line">
+          <CoreTypography as='p' data-testid="success-line" className="m-b-0">
             {isUndefined(successMessage) ? (
               <span>
                 <span className="m-r-xss font-semibold">
@@ -113,7 +114,7 @@ const SuccessScreen = ({
             ) : (
               successMessage
             )}
-          </Typography.Paragraph>
+          </CoreTypography>
         </Space>
       </Card>
       <div className="m-t-sm">
@@ -130,7 +131,6 @@ const SuccessScreen = ({
           </>
         )}
       </div>
-
       <div className="mt-7 text-center">
         <Button
           ghost

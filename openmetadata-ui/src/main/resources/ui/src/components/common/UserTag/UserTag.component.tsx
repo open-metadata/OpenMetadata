@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
@@ -64,7 +64,7 @@ export const UserTag = ({
         name={id}
         width={toString(width[size])}
       />
-      <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
+      <Typography className={fontSizes[size]}>{name}</Typography>
       {closable && (
         <Icon
           component={CloseOutlined}

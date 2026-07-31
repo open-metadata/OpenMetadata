@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Typography } from 'antd';
+import { Popover } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import {
   FC,
@@ -112,7 +113,7 @@ export const PopoverContent: React.FC<{
   }
 
   if (isUndefined(entityData)) {
-    return <Typography.Text>{t('label.no-data-found')}</Typography.Text>;
+    return <Typography>{t('label.no-data-found')}</Typography>;
   }
 
   return (

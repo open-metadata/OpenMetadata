@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Tooltip, Typography } from 'antd';
+import { Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { omit, startCase } from 'lodash';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -51,9 +52,9 @@ const TestCaseStatusSummaryIndicator = ({
       ))}
     </Space>
   ) : (
-    <Typography.Text data-testid="no-data-placeholder">
+    <Typography data-testid="no-data-placeholder">
       {NO_DATA_PLACEHOLDER}
-    </Typography.Text>
+    </Typography>
   );
 };
 
