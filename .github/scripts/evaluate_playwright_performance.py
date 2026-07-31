@@ -241,7 +241,11 @@ def main() -> None:
     }
     targets = {
         "environmentAtMostFiveMinutes": metrics["maxEnvironmentSeconds"] <= 300,
-        "executionAtMostTwentyOneMinutes": metrics["maxExecutionSeconds"] <= 1260,
+        # Must track the `timeout ... 25m` wrapper the shard step runs under
+        # (playwright-postgresql-e2e.yml). #30689 raised that wrapper 21m -> 25m
+        # without moving this target, leaving a band where a shard finishes well
+        # inside its timeout and still fails the gate.
+        "executionAtMostTwentyFiveMinutes": metrics["maxExecutionSeconds"] <= 1500,
         "shardsAtMostThirtyMinutesBeforeUpload": metrics[
             "maxElapsedBeforeUploadSeconds"
         ]

@@ -449,8 +449,8 @@ async function renderPlaywrightSummary({ github, context, core }) {
         classification: 'Blocking',
         metric: 'Maximum shard execution',
         observed: `${displayMetric(performanceMetrics.maxExecutionSeconds)} s`,
-        target: '≤ 1,260 s',
-        passed: performanceTargets.executionAtMostTwentyOneMinutes,
+        target: '≤ 1,500 s',
+        passed: performanceTargets.executionAtMostTwentyFiveMinutes,
       },
       {
         classification: 'Blocking',
