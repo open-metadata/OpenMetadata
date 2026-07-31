@@ -55,9 +55,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
   const wordsCount = words.length;
 
   if (wordsCount === 1) {
-    // In case of only one word (possibly too long URL)
-    // return the whole word instead of trimming
-    return content.split(' ')[0];
+    return slicedContent;
   }
 
   // Eliminate word at the end to avoid using broken words
