@@ -52,8 +52,8 @@ class FailureDiagnostics(BaseModel):
         has_diagnostics: True if any diagnostic information was successfully gathered
     """
 
-    pod_logs: Optional[str] = None
-    pod_description: Optional[str] = None
+    pod_logs: Optional[str] = None  # noqa: UP045
+    pod_description: Optional[str] = None  # noqa: UP045
 
     @property
     def has_diagnostics(self) -> bool:
@@ -84,7 +84,7 @@ TERMINAL_PIPELINE_STATES = {
 logger = ometa_logger()
 
 
-def get_kubernetes_client() -> Optional[client.CoreV1Api]:
+def get_kubernetes_client() -> Optional[client.CoreV1Api]:  # noqa: UP045
     """
     Initialize and return Kubernetes client.
     First tries in-cluster config, then falls back to local kubeconfig.
@@ -104,7 +104,7 @@ def get_kubernetes_client() -> Optional[client.CoreV1Api]:
                 f"Failed to initialize Kubernetes client - in-cluster: {in_cluster_error}, kubeconfig: {kubeconfig_error}"
             )
             return None
-    except Exception as unexpected_error:
+    except Exception as unexpected_error:  # noqa: B025
         logger.error(f"Unexpected error initializing Kubernetes client: {unexpected_error}")
         return None
 
@@ -118,10 +118,10 @@ POD_TYPE_MAIN = "main"
 
 def find_main_pod(
     k8s_client: client.CoreV1Api,
-    job_name: Optional[str],
+    job_name: Optional[str],  # noqa: UP045
     namespace: str,
-    pipeline_run_id: Optional[str] = None,
-) -> Optional[V1Pod]:
+    pipeline_run_id: Optional[str] = None,  # noqa: UP045
+) -> Optional[V1Pod]:  # noqa: UP045
     """
     Find the main ingestion pod for the given Kubernetes job.
     This function is fault-tolerant and will not raise exceptions.
@@ -175,14 +175,14 @@ def find_main_pod(
                     continue
 
         logger.warning(f"No main pod found for job {job_name}")
-        return None
+        return None  # noqa: TRY300
 
     except Exception as e:
         logger.error(f"Failed to find main pod for job {job_name}: {e}")
         return None
 
 
-def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> Optional[str]:
+def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> Optional[str]:  # noqa: UP045
     """
     Fetch logs from the main ingestion pod.
     This function is fault-tolerant and will not raise exceptions.
@@ -208,7 +208,7 @@ def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: 
         if logs:
             logger.info(f"Successfully fetched {len(logs.splitlines())} lines of logs")
             return logs
-        else:
+        else:  # noqa: RET505
             logger.info("No logs found for pod")
             return None
 
@@ -219,7 +219,7 @@ def get_main_pod_logs(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: 
         return None
 
 
-def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> Optional[str]:
+def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, namespace: str) -> Optional[str]:  # noqa: C901, UP045
     """
     Get detailed pod description for the main ingestion pod.
     This function is fault-tolerant and will not raise exceptions.
@@ -311,14 +311,14 @@ def get_main_pod_description(k8s_client: client.CoreV1Api, main_pod: V1Pod, name
 
         description = "\n".join(description_parts)
         logger.info("Pod description created successfully")
-        return description if description_parts else None
+        return description if description_parts else None  # noqa: TRY300
 
     except Exception as e:
         logger.error(f"Failed to get pod description: {e}")
         return None
 
 
-def create_pod_diagnostics(main_pod_logs: Optional[str], pod_description: Optional[str]) -> StepSummary:
+def create_pod_diagnostics(main_pod_logs: Optional[str], pod_description: Optional[str]) -> StepSummary:  # noqa: UP045
     """
     Create a StepSummary with pod diagnostics for failed workflows.
     """
@@ -362,7 +362,7 @@ def create_workflow_config(config: str, pipeline_run_id: str):
     if raw_workflow_config.get("sourcePythonClass"):
         logger.info("Creating OpenMetadataApplicationConfig")
         return OpenMetadataApplicationConfig.model_validate(raw_workflow_config)
-    else:
+    else:  # noqa: RET505
         logger.info("Creating OpenMetadataWorkflowConfig")
         return OpenMetadataWorkflowConfig.model_validate(raw_workflow_config)
 
@@ -399,7 +399,9 @@ def get_or_create_pipeline_status(metadata: OpenMetadata, workflow_config) -> Pi
 
 
 def gather_failure_diagnostics(
-    job_name: Optional[str], namespace: str, pipeline_run_id: Optional[str] = None
+    job_name: str | None,
+    namespace: str,
+    pipeline_run_id: Optional[str] = None,  # noqa: UP045
 ) -> FailureDiagnostics:
     """
     Gather diagnostic information from failed Kubernetes job pods.
@@ -457,7 +459,7 @@ def gather_failure_diagnostics(
         diagnostics = FailureDiagnostics(pod_logs=pod_logs, pod_description=pod_description)
 
         logger.info(diagnostics.summary)
-        return diagnostics
+        return diagnostics  # noqa: TRY300
 
     except Exception as e:
         # Catch-all for any unexpected errors - diagnostics should never break the exit handler
@@ -518,15 +520,15 @@ def main():
     - if exists, update with `Failed` status
     """
     # Parse environment variables (adapted for K8s Job environment)
-    config = os.getenv("config")
+    config = os.getenv("config")  # noqa: SIM112
     if not config:
         error_msg = "Missing environment variable `config`. This is needed to configure the Workflow."
         raise RuntimeError(error_msg)
 
-    pipeline_run_id = os.getenv("pipelineRunId")
-    raw_pipeline_status = os.getenv("pipelineStatus")
-    job_name = os.getenv("jobName")  # Changed from workflowName to jobName
-    namespace = os.getenv("namespace")  # Changed from workflowNamespace to namespace
+    pipeline_run_id = os.getenv("pipelineRunId")  # noqa: SIM112
+    raw_pipeline_status = os.getenv("pipelineStatus")  # noqa: SIM112
+    job_name = os.getenv("jobName")  # Changed from workflowName to jobName  # noqa: SIM112
+    namespace = os.getenv("namespace")  # Changed from workflowNamespace to namespace  # noqa: SIM112
 
     logger.info(
         f"Environment variables - pipelineRunId: {pipeline_run_id}, pipelineStatus: {raw_pipeline_status}, jobName: {job_name}, namespace: {namespace}"
@@ -541,7 +543,7 @@ def main():
     # Update pipeline status if all required fields are present
     if workflow_config.ingestionPipelineFQN and pipeline_run_id and raw_pipeline_status:
         logger.info(
-            f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN} for run ID {str(workflow_config.pipelineRunId.root)}"
+            f"Sending status to Ingestion Pipeline {workflow_config.ingestionPipelineFQN} for run ID {str(workflow_config.pipelineRunId.root)}"  # noqa: RUF010
         )
 
         # Get or create pipeline status

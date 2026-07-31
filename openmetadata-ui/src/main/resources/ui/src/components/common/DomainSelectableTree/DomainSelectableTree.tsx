@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button as MUIButton, useTheme } from '@mui/material';
-import { Plus } from '@untitledui/icons';
-import { Button, Empty, Space, Spin, Tree, Typography } from 'antd';
-import Search from 'antd/lib/input/Search';
+import {
+  Box,
+  Button,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus, SearchLg } from '@untitledui/icons';
+import { Tree } from 'antd';
 import { AntTreeNodeProps } from 'antd/lib/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -41,15 +45,14 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
-import {
-  convertDomainsToTreeOptions,
-  isDomainExist,
-} from '../../../utils/DomainUtils';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { isDomainExist } from '../../../utils/DomainFilterUtils';
+import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import './domain-selectable.less';
@@ -70,9 +73,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   isMultiple = false,
   initialDomains,
   showAllDomains = false,
+  restrictedDomains,
   isClearable = true,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -241,30 +244,19 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           disabled: true,
           className: 'load-more-node',
           title: (
-            <MUIButton
-              startIcon={isLoadingMore ? null : <Plus />}
-              sx={{
-                p: 0,
-                ml: 7,
-                cursor: 'pointer',
-                fontSize: '14px',
-                color: theme.palette.primary.main,
-                fontWeight: theme.typography.fontWeightMedium,
-                textTransform: 'none',
-                '&:hover': {
-                  color: theme.palette.primary.dark,
-                  backgroundColor: 'transparent',
-                },
-              }}
-              variant="text"
-              onClick={(e) => {
+            <Button
+              className="tw:ml-7"
+              color="link-color"
+              iconLeading={isLoadingMore ? undefined : Plus}
+              size="sm"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 handleLoadMore?.(parentFqn);
               }}>
               {isLoadingMore ? <Loader size="small" /> : t('label.load-more')}
-            </MUIButton>
+            </Button>
           ),
-        } as TreeListItem);
+        });
       }
 
       return processedItems;
@@ -378,7 +370,10 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           currentOffset
         );
 
-        const fetchedData = data.data ?? [];
+        const rawData = data.data ?? [];
+        const fetchedData = restrictedDomains?.length
+          ? filterDomainsToAllowed(rawData, restrictedDomains)
+          : rawData;
         const total = data.paging.total ?? 0;
 
         let combinedData: Domain[];
@@ -404,7 +399,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         setLoadingState(false);
       }
     },
-    [domains, isMultiple, initialDomains]
+    [domains, isMultiple, initialDomains, restrictedDomains]
   );
 
   const onSelect = (selectedKeys: React.Key[]) => {
@@ -449,16 +444,18 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   };
 
   const onSearch = useCallback(
-    debounce(async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const value = event.target.value;
+    debounce(async (value: string) => {
       setSearchTerm(value);
       if (value) {
         try {
           setIsLoading(true);
           const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
           const results: Domain[] = await searchDomains(encodedValue);
+          const filteredResults = restrictedDomains?.length
+            ? filterDomainsToAllowed(results, restrictedDomains)
+            : results;
 
-          const combinedData = [...results];
+          const combinedData = [...filteredResults];
 
           // Ensure initialDomains are included
           initialDomains?.forEach((selectedDomain) => {
@@ -485,7 +482,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         fetchAPI();
       }
     }, 300),
-    [fetchAPI, initialDomains, isMultiple]
+    [fetchAPI, initialDomains, isMultiple, restrictedDomains]
   );
 
   const switcherIcon = useCallback(
@@ -536,20 +533,32 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       return <Loader />;
     } else if (treeData.length === 0) {
       return (
-        <Empty
-          description={t('label.no-entity-available', {
-            entity: t('label.domain-plural'),
-          })}
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        <Box
+          align="center"
+          className="tw:py-6 tw:text-text-tertiary"
+          direction="col"
+          gap={2}
+          justify="center">
+          <DomainIcon height={24} name="domain" width={24} />
+          <Typography className="tw:text-text-tertiary" size="text-sm">
+            {t('label.no-entity-available', {
+              entity: t('label.domain-plural'),
+            })}
+          </Typography>
+        </Box>
       );
     } else {
       return (
         <>
-          <Spin indicator={<Loader size="small" />} spinning={isSubmitLoading}>
+          <div className="tw:relative">
+            {isSubmitLoading && (
+              <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60">
+                <Loader size="small" />
+              </div>
+            )}
             <div
+              className="tw:max-h-75 tw:overflow-y-auto"
               ref={scrollContainerRef}
-              style={{ maxHeight: 300, overflowY: 'auto' }}
               onScroll={handleScroll}>
               <Tree
                 blockNode
@@ -570,9 +579,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
                 onSelect={onSelect}
               />
             </div>
-          </Spin>
+          </div>
           {isLoadingMore && (
-            <div style={{ textAlign: 'center', padding: '8px' }}>
+            <div className="tw:p-2 tw:text-center">
               <Loader size="small" />
             </div>
           )}
@@ -636,18 +645,20 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
   return (
     <div className="p-sm" data-testid="domain-selectable-tree">
-      <Search
+      <Input
         autoFocus
-        data-testid="searchbar"
+        className="tw:mb-2"
+        icon={SearchLg}
+        inputDataTestId="searchbar"
         placeholder={t('label.search')}
-        style={{ marginBottom: 8 }}
         onChange={onSearch}
       />
 
       {showAllDomains && (
-        <Button
+        <Box
+          align="center"
           className={classNames(
-            'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer w-full',
+            'all-domain-container p-xs border-bottom gap-2 cursor-pointer w-full',
             {
               'selected-node':
                 activeDomain === DEFAULT_DOMAIN_VALUE &&
@@ -655,42 +666,43 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
             }
           )}
           data-testid="all-domains-selector"
+          direction="row"
+          role="button"
           tabIndex={0}
-          type="text"
           onClick={handleMyDomainsClick}
           onKeyDown={handleAllDomainKeyPress}>
           <DomainIcon height={20} name="domain" width={20} />
-          <Typography.Text
+          <Typography
             className={classNames({
               'font-semibold':
                 activeDomain === DEFAULT_DOMAIN_VALUE &&
                 selectedDomains.length === 0,
             })}>
             {t('label.all-domain-plural')}
-          </Typography.Text>
-        </Button>
+          </Typography>
+        </Box>
       )}
 
       {treeContent}
 
       {isMultiple ? (
-        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+        <Box className="tw:mt-3 tw:justify-end" direction="row" gap={2}>
           <Button
             className="update-btn"
+            color="primary"
             data-testid="saveAssociatedTag"
-            htmlType="submit"
-            loading={isSubmitLoading}
-            type="default"
+            isLoading={isSubmitLoading}
+            type="submit"
             onClick={handleMultiDomainSave}>
             {t('label.update')}
           </Button>
           <Button
+            color="secondary"
             data-testid="cancelAssociatedTag"
-            type="default"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>
-        </Space>
+        </Box>
       ) : null}
     </div>
   );

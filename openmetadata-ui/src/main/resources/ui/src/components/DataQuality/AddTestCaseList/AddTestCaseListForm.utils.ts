@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCase } from '../../../generated/tests/testCase';
+import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { AddTestCaseListChangePayload } from './AddTestCaseList.interface';
 
 /**
@@ -41,4 +41,22 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
   }
 
   return [];
+}
+
+/**
+ * Seeds the modal's `selectedItems` map from `existingTest` (tests already in
+ * the parent suite), keyed by id. Entries start as partial TestCases and are
+ * upgraded with the full payload when the matching record loads.
+ */
+export function seedSelectedFromExistingTest(
+  existingTest?: EntityReference[]
+): Map<string, TestCase> {
+  const seed = new Map<string, TestCase>();
+  (existingTest ?? []).forEach((ref) => {
+    if (ref.id) {
+      seed.set(ref.id, { id: ref.id, name: ref.name ?? '' } as TestCase);
+    }
+  });
+
+  return seed;
 }

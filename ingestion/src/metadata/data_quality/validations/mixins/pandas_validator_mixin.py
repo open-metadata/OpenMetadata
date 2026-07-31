@@ -13,7 +13,7 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import (
+from typing import (  # noqa: UP035
     TYPE_CHECKING,
     Any,
     Callable,
@@ -54,7 +54,7 @@ class PandasValidatorMixin:
 
     runner: "PandasRunner"
 
-    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> SQALikeColumn:
+    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> SQALikeColumn:  # noqa: UP045
         """Get column object for the given column name
 
         If column_name is None, returns the main column being validated.
@@ -69,12 +69,12 @@ class PandasValidatorMixin:
         if column_name is None:
             return PandasValidatorMixin.get_column_from_list(
                 self.test_case.entityLink.root,
-                cast(List[pd.DataFrame], self.runner),
+                cast(List[pd.DataFrame], self.runner),  # noqa: TC006, UP006
             )
-        else:
+        else:  # noqa: RET505
             return PandasValidatorMixin.get_column_from_list(
                 column_name,
-                cast(List[pd.DataFrame], self.runner),
+                cast(List[pd.DataFrame], self.runner),  # noqa: TC006, UP006
             )
 
     @staticmethod
@@ -95,15 +95,15 @@ class PandasValidatorMixin:
             name=column.name,
             type=_type,
         )
-        return sqa_like_column
+        return sqa_like_column  # noqa: RET504
 
     def run_dataframe_results(
         self,
         runner: "PandasRunner",
         metric: Metrics,
-        column: Optional[SQALikeColumn] = None,
+        column: Optional[SQALikeColumn] = None,  # noqa: UP045
         **kwargs,
-    ) -> Optional[int]:
+    ) -> Optional[int]:  # noqa: UP045
         """Run the test case on a dataframe
 
         Args:
@@ -118,7 +118,7 @@ class PandasValidatorMixin:
         try:
             return metric_fn(runner)
         except Exception as exc:
-            raise RuntimeError(exc)
+            raise RuntimeError(exc)  # noqa: B904
 
     def _compute_row_count(self, runner: "PandasRunner", column: SQALikeColumn, **kwargs):
         """compute row count
@@ -229,17 +229,17 @@ def aggregate_others_pandas(
     return df_aggregated
 
 
-def aggregate_others_statistical_pandas(
+def aggregate_others_statistical_pandas(  # noqa: C901
     df,
     dimension_column: str,
-    final_metric_calculators: Optional[Dict[str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]]] = None,
+    final_metric_calculators: Optional[Dict[str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]]] = None,  # noqa: UP006, UP045
     top_n: int = DEFAULT_TOP_DIMENSIONS,
     impact_column: str = "impact_score",
     others_label: str = DIMENSION_OTHERS_LABEL,
-    exclude_from_final: Optional[List[str]] = None,
-    agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,
-    violation_metrics: Optional[List[str]] = None,
-    violation_predicate: Optional[Callable[[Mapping[str, Any]], bool]] = None,
+    exclude_from_final: Optional[List[str]] = None,  # noqa: UP006, UP045
+    agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,  # noqa: UP006, UP007, UP045
+    violation_metrics: Optional[List[str]] = None,  # noqa: UP006, UP045
+    violation_predicate: Optional[Callable[[Mapping[str, Any]], bool]] = None,  # noqa: UP045
 ):
     """
     Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.
@@ -303,7 +303,7 @@ def aggregate_others_statistical_pandas(
     # For top dimensions, preserve their original metric values
     # NOTE: While top dimensions are single-row groups (aggregation doesn't change them),
     # we explicitly restore original values for clarity and defensive programming
-    for metric_name, calculator in final_metric_calculators.items():
+    for metric_name, calculator in final_metric_calculators.items():  # noqa: B007
         if metric_name in df.columns:
             # For top dimensions, keep original values
             for top_dim in top_dimensions:

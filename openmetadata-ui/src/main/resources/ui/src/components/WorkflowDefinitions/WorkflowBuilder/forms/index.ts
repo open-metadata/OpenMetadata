@@ -28,6 +28,7 @@ export { FormActionButtons } from './FormActionButtons';
 export { MetadataFormSection } from './MetadataFormSection';
 export { QueryBuilderSection } from './QueryBuilderSection';
 export { RevertBackForm } from './RevertBackForm';
+export { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
 export { SetActionForm } from './SetActionForm';
 export { SinkTaskForm } from './SinkTaskForm';
 export { TaskNodeFormRenderer } from './TaskNodeFormRenderer';

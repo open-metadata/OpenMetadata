@@ -10,6 +10,7 @@ public class DashboardServiceMapper
   public DashboardService createToEntity(CreateDashboardService create, String user) {
     return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
+        .withStyle(create.getStyle())
         .withConnection(create.getConnection())
         .withIngestionRunner(create.getIngestionRunner());
   }

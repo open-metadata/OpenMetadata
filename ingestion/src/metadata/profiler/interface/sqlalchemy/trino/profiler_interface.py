@@ -14,7 +14,7 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 
 from sqlalchemy import func
 from sqlalchemy.exc import ProgrammingError
@@ -44,7 +44,7 @@ class TrinoProfilerInterface(ProfilerWithStatistics, TrinoStoredStatisticsSource
 
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,

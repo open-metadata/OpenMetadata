@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { INVALID_NAMES } from '../constant/common';
 import {
+  CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   ENTITY_REFERENCE_PROPERTIES,
+  NAME_SUFFIX,
 } from '../constant/customProperty';
 import { SidebarItem } from '../constant/sidebar';
 import {
@@ -94,6 +95,22 @@ export const fillTableColumnInputDetails = async (
     .locator(`div.rdg-cell-${columnName}`)
     .last()
     .press('Enter', { delay: 100 });
+};
+
+const addTablePropertyRow = async (page: Page) => {
+  const modal = page.getByTestId('edit-table-type-property-modal');
+  const addRowButton = modal.getByTestId('add-new-row');
+  const firstColumnCell = modal.locator('div.rdg-cell-pw-column1').last();
+  const secondColumnCell = modal.locator('div.rdg-cell-pw-column2').last();
+
+  await expect(async () => {
+    if (!(await firstColumnCell.isVisible())) {
+      await expect(addRowButton).toBeEnabled();
+      await addRowButton.click();
+    }
+    await expect(firstColumnCell).toBeVisible({ timeout: 5_000 });
+    await expect(secondColumnCell).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
 };
 
 export const setValueForProperty = async (data: {
@@ -251,10 +268,7 @@ export const setValueForProperty = async (data: {
 
     case 'table-cp': {
       const values = value.split(',');
-      await page.locator('[data-testid="add-new-row"]').click();
-
-      // Editor grid to be visible
-      await page.locator('.om-rdg').waitFor({ state: 'visible' });
+      await addTablePropertyRow(page);
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
@@ -481,7 +495,10 @@ export const getPropertyValues = (
 
 export const createCustomPropertyForEntity = async (
   apiContext: APIRequestContext,
-  endpoint: EntityTypeEndpoint
+  endpoint: EntityTypeEndpoint,
+  propertyTypes: readonly CustomPropertyTypeByName[] = Object.values(
+    CustomPropertyTypeByName
+  )
 ) => {
   const propertiesResponse = await apiContext.get(
     '/api/v1/metadata/types?category=field&limit=20'
@@ -489,7 +506,7 @@ export const createCustomPropertyForEntity = async (
   const properties = await propertiesResponse.json();
   const propertyList = properties.data.filter(
     (item: { name: CustomPropertyTypeByName }) =>
-      Object.values(CustomPropertyTypeByName).includes(item.name)
+      propertyTypes.includes(item.name)
   );
 
   const entitySchemaResponse = await apiContext.get(
@@ -508,11 +525,18 @@ export const createCustomPropertyForEntity = async (
     }
   >;
   const users: UserClass[] = [];
-  // Loop to create and add 4 new users to the users array
-  for (let i = 0; i < 4; i++) {
-    const user = new UserClass();
-    await user.create(apiContext);
-    users.push(user);
+  const needsReferenceUsers = propertyTypes.some(
+    (propertyType) =>
+      propertyType === CustomPropertyTypeByName.ENTITY_REFERENCE ||
+      propertyType === CustomPropertyTypeByName.ENTITY_REFERENCE_LIST
+  );
+
+  if (needsReferenceUsers) {
+    for (let i = 0; i < 4; i++) {
+      const user = new UserClass();
+      await user.create(apiContext);
+      users.push(user);
+    }
   }
 
   // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names
@@ -530,7 +554,7 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
-    const customPropertyName = `cp-${item.name}-${uuid()}`;
+    const customPropertyName = `cp-${item.name}-${uuid()}${NAME_SUFFIX}`;
     const payload = {
       name: customPropertyName,
       description: customPropertyName,
@@ -657,10 +681,10 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation check — only '::' is blocked
+  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
   await page.fill(
-    '[data-testid="name"] input',
-    INVALID_NAMES.WITH_SPECIAL_CHARS
+    '[data-testid="name"]',
+    CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
   );
 
   await expect(page.locator('#name_help')).toContainText(
@@ -668,14 +692,14 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   // Correct name
-  await page.fill('[data-testid="name"] input', propertyName);
+  await page.fill('[data-testid="name"]', propertyName);
 
   // displayName
-  await page.fill('[data-testid="display-name"] input', propertyName);
+  await page.fill('[data-testid="display-name"]', propertyName);
 
   // Select custom type
   await page.locator('[data-testid="propertyType"]').click();
-  await page.getByTitle(`${customType}`, { exact: true }).click();
+  await page.getByRole('option', { name: customType, exact: true }).click();
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
@@ -749,7 +773,7 @@ export const addCustomPropertiesForEntity = async ({
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
   // Click on name field to blur description and trigger validation without closing modal
-  await page.click('[data-testid="name"] input');
+  await page.click('[data-testid="name"]');
 
   await expect(page.locator('#propertyType_help')).not.toBeVisible();
   await expect(page.locator('#description_help')).not.toBeVisible();
@@ -772,12 +796,7 @@ export const addCustomPropertiesForEntity = async ({
 
   expect(response.status()).toBe(200);
   await expect(
-    page.getByRole('row', {
-      name: new RegExp(
-        propertyName.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-        'i'
-      ),
-    })
+    page.locator('tr').filter({ hasText: propertyName })
   ).toBeVisible();
 };
 
@@ -890,7 +909,19 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
+  const patchResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/') &&
+      res.request().method() === 'PATCH' &&
+      res.status() === 200
+  );
+
   await page.locator('[data-testid="save-button"]').click();
+  await patchResponse;
+
+  // ConfirmationModal is destroyOnClose: assert the body text unmounts so
+  // the modal mask is gone before the next sidebar click in callers' loops.
+  await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
 };
 
 export const verifyCustomPropertyInAdvancedSearch = async (
@@ -1008,14 +1039,7 @@ export const editColumnCustomProperty = async (
       .getByText(testValue, { exact: true })
       .click();
   } else if (propertyType === 'table-cp') {
-    await page
-      .getByTestId('edit-table-type-property-modal')
-      .getByTestId('add-new-row')
-      .waitFor({
-        state: 'visible',
-      });
-    await page.getByTestId('add-new-row').click();
-    await page.locator('.om-rdg').waitFor({ state: 'visible' });
+    await addTablePropertyRow(page);
 
     // Fill Row
     await page.locator('div.rdg-cell-pw-column1').last().dblclick();
@@ -1050,6 +1074,9 @@ export const editColumnCustomProperty = async (
     // Verify selection is applied before saving
     // The selection usually appears as a tag or text in the container
     await expect(page.getByTestId('asset-select-list')).toContainText(value);
+    if (propertyType === 'entityReferenceList') {
+      await page.keyboard.press('Escape');
+    }
   } else if (['date-cp', 'time-cp', 'dateTime-cp'].includes(propertyType)) {
     // Ant Design Pickers
     const picker = page.getByTestId(
@@ -1145,7 +1172,7 @@ export const verifyTableColumnCustomPropertyPersistence = async ({
           .includes(
             `/api/v1/tables/name/${encodeURIComponent(tableFqn)}/columns`
           ) &&
-        response.url().includes('profile') &&
+        response.url().includes('fields') &&
         response.request().method() === 'GET',
       // TODO: Reduce timeout once the latency issue is fixed
       { timeout: 150_000 }

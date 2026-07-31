@@ -44,11 +44,11 @@ from metadata.ingestion.source.pipeline.nifi.metadata import (
 from metadata.utils.constants import UTF_8
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/nifi_process_group.json"
-with open(mock_file_path, encoding=UTF_8) as file:
+with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 resources_mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/nifi_resources.json"
-with open(mock_file_path, encoding=UTF_8) as file:
+with open(mock_file_path, encoding=UTF_8) as file:  # noqa: PTH123
     resources_mock_data: dict = json.load(file)
 
 mock_nifi_config = {
@@ -263,7 +263,7 @@ class NifiUnitTest(TestCase):
         "metadata.ingestion.source.pipeline.nifi.client.NifiClient.token",
         new_callable=PropertyMock,
     )
-    def __init__(self, methodName, nifi_token_prop, test_connection) -> None:
+    def __init__(self, methodName, nifi_token_prop, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
 
@@ -308,7 +308,7 @@ class NifiUnitTest(TestCase):
         )
 
     def test_pipelines(self):
-        pipline = list(self.nifi.yield_pipeline(EXPECTED_NIFI_DETAILS))[0].right
+        pipline = list(self.nifi.yield_pipeline(EXPECTED_NIFI_DETAILS))[0].right  # noqa: RUF015
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_bulk_lineage_details(self):

@@ -40,9 +40,9 @@ class PatternFactory(factory.Factory):
 
 
 class RegexFlagsFactory(factory.Factory):
-    dotAll = True
+    dotAll = True  # noqa: N815
     multiline = True
-    ignoreCase = True
+    ignoreCase = True  # noqa: N815
 
     class Meta:
         model = RegexFlags
@@ -51,9 +51,9 @@ class RegexFlagsFactory(factory.Factory):
 class PatternRecognizerFactory(factory.Factory):
     type = "pattern"
     patterns = factory.List([factory.SubFactory(PatternFactory)])
-    regexFlags = factory.SubFactory(RegexFlagsFactory)
+    regexFlags = factory.SubFactory(RegexFlagsFactory)  # noqa: N815
     context = factory.LazyFunction(lambda: ["email", "contact"])
-    supportedLanguage = ClassificationLanguage.en
+    supportedLanguage = ClassificationLanguage.en  # noqa: N815
 
     class Meta:
         model = PatternRecognizer
@@ -61,9 +61,9 @@ class PatternRecognizerFactory(factory.Factory):
 
 class ExactTermsRecognizerFactory(factory.Factory):
     type = "exact_terms"
-    exactTerms = factory.LazyFunction(lambda: ["sensitive", "confidential"])
-    supportedLanguage = ClassificationLanguage.en
-    regexFlags = factory.SubFactory(RegexFlagsFactory)
+    exactTerms = factory.LazyFunction(lambda: ["sensitive", "confidential"])  # noqa: N815
+    supportedLanguage = ClassificationLanguage.en  # noqa: N815
+    regexFlags = factory.SubFactory(RegexFlagsFactory)  # noqa: N815
 
     class Meta:
         model = ExactTermsRecognizer
@@ -71,11 +71,11 @@ class ExactTermsRecognizerFactory(factory.Factory):
 
 class ContextRecognizerFactory(factory.Factory):
     type = "context"
-    contextWords = factory.LazyFunction(lambda: ["ssn", "social security"])
-    supportedLanguage = ClassificationLanguage.en
-    minScore = 0.4
-    maxScore = 0.8
-    increaseFactorByCharLength = 0.05
+    contextWords = factory.LazyFunction(lambda: ["ssn", "social security"])  # noqa: N815
+    supportedLanguage = ClassificationLanguage.en  # noqa: N815
+    minScore = 0.4  # noqa: N815
+    maxScore = 0.8  # noqa: N815
+    increaseFactorByCharLength = 0.05  # noqa: N815
 
     class Meta:
         model = ContextRecognizer
@@ -84,9 +84,9 @@ class ContextRecognizerFactory(factory.Factory):
 class PredefinedRecognizerFactory(factory.Factory):
     type = "predefined"
     name = PredefinedName.EmailRecognizer
-    supportedLanguage = ClassificationLanguage.en
-    context = factory.LazyFunction(lambda: [])
-    supportedEntities = None
+    supportedLanguage = ClassificationLanguage.en  # noqa: N815
+    context = factory.LazyFunction(lambda: [])  # noqa: PIE807
+    supportedEntities = None  # noqa: N815
 
     class Meta:
         model = PredefinedRecognizer
@@ -94,8 +94,8 @@ class PredefinedRecognizerFactory(factory.Factory):
 
 class CustomRecognizerFactory(factory.Factory):
     type = "custom"
-    validatorFunction = factory.fuzzy.FuzzyText()
-    supportedLanguage = ClassificationLanguage.en
+    validatorFunction = factory.fuzzy.FuzzyText()  # noqa: N815
+    supportedLanguage = ClassificationLanguage.en  # noqa: N815
 
     class Meta:
         model = CustomRecognizer
@@ -123,10 +123,10 @@ class RecognizerFactory(factory.Factory):
     name = RootSubFactory(EntityNameFactory)
     description = RootSubFactory(MarkdownFactory)
     enabled = True
-    isSystemDefault = False
-    recognizerConfig = RootSubFactory(RecognizerConfigFactory)
-    confidenceThreshold = 0.6
-    exceptionList = factory.LazyFunction(lambda: [])
+    isSystemDefault = False  # noqa: N815
+    recognizerConfig = RootSubFactory(RecognizerConfigFactory)  # noqa: N815
+    confidenceThreshold = 0.6  # noqa: N815
+    exceptionList = factory.LazyFunction(lambda: [])  # noqa: N815, PIE807
     target = Target.content
 
     class Meta:

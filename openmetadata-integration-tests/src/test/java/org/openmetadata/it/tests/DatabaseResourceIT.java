@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -1197,6 +1198,73 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     }
   }
 
+  /**
+   * Test: Recursive database CSV export preserves table-level AND column-level tags.
+   *
+   * <p>Guards against the redundant per-table tag re-scan removal in
+   * {@code DatabaseRepository.DatabaseCsv.exportAllCsv}. The recursive export bulk-populates table
+   * and column tags via {@code listAllForCSV(... columns ...)}, so the per-table
+   * {@code setFieldsInternal} re-scan is redundant. After removing it, both the table-level tag and
+   * the column-level tag must still appear in the exported CSV.
+   */
+  @Test
+  void test_recursiveCsvExportPreservesTableAndColumnTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("tagdb"))
+                    .withService(service.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("tagschema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+
+    TagLabel tableTag =
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel columnTag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    Table table =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("tagtable"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withTags(List.of(tableTag))
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("ssn")
+                                .withDataType(ColumnDataType.VARCHAR)
+                                .withDataLength(64)
+                                .withTags(List.of(columnTag)))));
+    assertNotNull(table);
+
+    String exportedCsv = client.databases().exportCsv(database.getFullyQualifiedName(), true);
+    assertNotNull(exportedCsv, "Recursive CSV export should succeed");
+    assertFalse(exportedCsv.isEmpty(), "Exported CSV should not be empty");
+
+    assertTrue(
+        exportedCsv.contains("PII.Sensitive"),
+        "Exported CSV should retain the table-level tag PII.Sensitive. Result: " + exportedCsv);
+    assertTrue(
+        exportedCsv.contains("PersonalData.Personal"),
+        "Exported CSV should retain the column-level tag PersonalData.Personal. Result: "
+            + exportedCsv);
+  }
+
   // ===================================================================
   // RDF TESTS - Run only with -Ppostgres-rdf-tests profile
   // ===================================================================
@@ -1355,17 +1423,6 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().databases().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().databases().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().databases().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

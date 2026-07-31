@@ -23,7 +23,7 @@ import {
   TestCaseStatus,
 } from '../../generated/tests/testCase';
 import { axisTickFormatter } from '../ChartUtils';
-import { getRandomHexColor } from '../DataInsightUtils';
+import { getRandomHexColor } from '../DataInsightPureUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
 
 const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);

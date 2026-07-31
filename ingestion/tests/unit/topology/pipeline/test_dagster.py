@@ -57,7 +57,7 @@ from metadata.ingestion.source.pipeline.dagster.models import (
 )
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 mock_dagster_config = {
@@ -264,7 +264,7 @@ class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("dagster_graphql.DagsterGraphQLClient")
     # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
-    def __init__(self, methodName, graphql_client, test_connection) -> None:
+    def __init__(self, methodName, graphql_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         graphql_client.return_value = False
@@ -294,9 +294,9 @@ class DagsterUnitTest(TestCase):
         )
         pipelines_list = []
         for result in results:
-            pipelines_list.append(result.right)
+            pipelines_list.append(result.right)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPECTED_CREATED_PIPELINES, pipelines_list)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_CREATED_PIPELINES, pipelines_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
 
@@ -429,7 +429,7 @@ class TestDagsterAssetModels(TestCase):
 
     def test_metadata_entry_with_alias(self):
         """Test MetadataEntry with __typename alias"""
-        entry = MetadataEntry(**{"__typename": "TextMetadataEntry", "label": "database", "text": "my_db"})
+        entry = MetadataEntry(**{"__typename": "TextMetadataEntry", "label": "database", "text": "my_db"})  # noqa: PIE804
         self.assertEqual(entry.typename, "TextMetadataEntry")
         self.assertEqual(entry.label, "database")
         self.assertEqual(entry.text, "my_db")
@@ -441,14 +441,14 @@ class TestDagsterAssetModels(TestCase):
             timestamp=1699999999.0,
             metadataEntries=[
                 MetadataEntry(
-                    **{
+                    **{  # noqa: PIE804
                         "__typename": "TextMetadataEntry",
                         "label": "database",
                         "text": "prod_db",
                     }
                 ),
                 MetadataEntry(
-                    **{
+                    **{  # noqa: PIE804
                         "__typename": "TextMetadataEntry",
                         "label": "schema",
                         "text": "public",
@@ -518,21 +518,21 @@ class TestDagsterLineageHelpers(TestCase):
                     runId="run-1",
                     metadataEntries=[
                         MetadataEntry(
-                            **{
+                            **{  # noqa: PIE804
                                 "__typename": "TextMetadataEntry",
                                 "label": "database",
                                 "text": "prod_db",
                             }
                         ),
                         MetadataEntry(
-                            **{
+                            **{  # noqa: PIE804
                                 "__typename": "TextMetadataEntry",
                                 "label": "schema",
                                 "text": "public",
                             }
                         ),
                         MetadataEntry(
-                            **{
+                            **{  # noqa: PIE804
                                 "__typename": "TextMetadataEntry",
                                 "label": "table",
                                 "text": "users",
@@ -568,7 +568,7 @@ class TestDagsterLineageHelpers(TestCase):
                     runId="run-1",
                     metadataEntries=[
                         MetadataEntry(
-                            **{
+                            **{  # noqa: PIE804
                                 "__typename": "TextMetadataEntry",
                                 "label": "database",
                                 "text": "prod_db",
@@ -591,21 +591,21 @@ class TestDagsterLineageHelpers(TestCase):
                     runId="run-1",
                     metadataEntries=[
                         MetadataEntry(
-                            **{
+                            **{  # noqa: PIE804
                                 "__typename": "TextMetadataEntry",
                                 "label": "db",
                                 "text": "my_database",
                             }
                         ),
                         MetadataEntry(
-                            **{
+                            **{  # noqa: PIE804
                                 "__typename": "TextMetadataEntry",
                                 "label": "schema_name",
                                 "text": "my_schema",
                             }
                         ),
                         MetadataEntry(
-                            **{
+                            **{  # noqa: PIE804
                                 "__typename": "TextMetadataEntry",
                                 "label": "table_name",
                                 "text": "my_table",

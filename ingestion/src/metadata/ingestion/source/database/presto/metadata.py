@@ -15,7 +15,7 @@ Presto source module
 import re
 import traceback
 from copy import deepcopy
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
 from sqlalchemy import text, types, util
@@ -99,7 +99,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
     return result
 
 
-@reflection.cache
+@reflection.cache  # noqa: RET503
 # pylint: disable=unused-argument
 def get_table_comment(self, connection, table_name, schema=None, **kw):
     fmt_query = PRESTO_SHOW_CREATE_TABLE.format(schema_table_name=".".join(filter(None, [schema, table_name])))
@@ -121,7 +121,7 @@ class PrestoSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: PrestoConnection = config.serviceConnection.root.config
         if not isinstance(connection, PrestoConnection):

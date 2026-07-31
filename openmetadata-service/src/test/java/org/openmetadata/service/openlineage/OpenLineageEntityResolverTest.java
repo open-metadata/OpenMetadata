@@ -1495,6 +1495,497 @@ class OpenLineageEntityResolverTest {
     }
   }
 
+  @Test
+  void resolveTable_glueSymlinkForm_resolvesTable() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    SymlinkIdentifier glueSymlink =
+        new SymlinkIdentifier()
+            .withNamespace("arn:aws:glue:us-west-2:181882839756")
+            .withName("table/db_refined_55586/dr_564_pdudrik_3829")
+            .withType("TABLE");
+    DatasetFacets facets =
+        new DatasetFacets().withSymlinks(new SymlinksFacet().withIdentifiers(List.of(glueSymlink)));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://experian-bucket")
+            .withName("refined_zone/cloud_city/db_refined_55586.db/dr_564_pdudrik_3829")
+            .withFacets(facets);
+
+    String expectedFqn = "athena_svc.awsdatacatalog.db_refined_55586.dr_564_pdudrik_3829";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table foundTable = new Table();
+    foundTable.setId(UUID.randomUUID());
+    foundTable.setName("dr_564_pdudrik_3829");
+    foundTable.setFullyQualifiedName(expectedFqn);
+
+    EntityReference expectedRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(expectedFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String suffix = filter.getQueryParam("fqnSuffix");
+                if (suffix != null && suffix.endsWith("db_refined_55586.dr_564_pdudrik_3829")) {
+                  return List.of(foundTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(expectedFqn), eq(Include.NON_DELETED)))
+          .thenReturn(expectedRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(result, "Glue-form symlink (table/db/table) should resolve to a table");
+      assertEquals(expectedFqn, result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveTable_multipleSymlinks_usesFirstResolvableIdentifier() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    SymlinkIdentifier unparsable =
+        new SymlinkIdentifier().withNamespace("ns").withName("unparsable_token").withType("TABLE");
+    SymlinkIdentifier hiveSymlink =
+        new SymlinkIdentifier()
+            .withNamespace("hive://metastore:9083")
+            .withName("public.users")
+            .withType("TABLE");
+    DatasetFacets facets =
+        new DatasetFacets()
+            .withSymlinks(new SymlinksFacet().withIdentifiers(List.of(unparsable, hiveSymlink)));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://bucket")
+            .withName("some/opaque/path")
+            .withFacets(facets);
+
+    String expectedFqn = "svc.db.public.users";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table foundTable = new Table();
+    foundTable.setId(UUID.randomUUID());
+    foundTable.setName("users");
+    foundTable.setFullyQualifiedName(expectedFqn);
+
+    EntityReference expectedRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(expectedFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String suffix = filter.getQueryParam("fqnSuffix");
+                if (suffix != null && suffix.endsWith("public.users")) {
+                  return List.of(foundTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(expectedFqn), eq(Include.NON_DELETED)))
+          .thenReturn(expectedRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(result, "Second symlink identifier should be tried when first is unparsable");
+      assertEquals(expectedFqn, result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveTable_threePartSymlink_prefersDatabaseQualifiedMatch() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    SymlinkIdentifier ucSymlink =
+        new SymlinkIdentifier()
+            .withNamespace("databricks://adb-1234.azuredatabricks.net")
+            .withName("catalog_b.sales.orders")
+            .withType("TABLE");
+    DatasetFacets facets =
+        new DatasetFacets().withSymlinks(new SymlinksFacet().withIdentifiers(List.of(ucSymlink)));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("dbfs")
+            .withName("catalog_b.sales.orders")
+            .withFacets(facets);
+
+    String wrongCatalogFqn = "databricks_svc.catalog_a.sales.orders";
+    String rightCatalogFqn = "databricks_svc.catalog_b.sales.orders";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table wrongTable = new Table();
+    wrongTable.setId(UUID.randomUUID());
+    wrongTable.setName("orders");
+    wrongTable.setFullyQualifiedName(wrongCatalogFqn);
+
+    Table rightTable = new Table();
+    rightTable.setId(UUID.randomUUID());
+    rightTable.setName("orders");
+    rightTable.setFullyQualifiedName(rightCatalogFqn);
+
+    EntityReference rightRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(rightCatalogFqn);
+    EntityReference wrongRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(wrongCatalogFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String suffix = filter.getQueryParam("fqnSuffix");
+                if (suffix != null && suffix.endsWith("catalog_b.sales.orders")) {
+                  return List.of(rightTable);
+                }
+                if (suffix != null && suffix.endsWith("sales.orders")) {
+                  // A bare schema.table suffix search matches catalog_a first (wrong catalog)
+                  return List.of(wrongTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(rightCatalogFqn), eq(Include.NON_DELETED)))
+          .thenReturn(rightRef);
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(wrongCatalogFqn), eq(Include.NON_DELETED)))
+          .thenReturn(wrongRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(result);
+      assertEquals(
+          rightCatalogFqn,
+          result.getFullyQualifiedName(),
+          "3-part identifier should match its own catalog, not another catalog with the same schema.table");
+    }
+  }
+
+  @Test
+  void resolveTable_threePartWithDatasourceFacet_keepsCatalogSegment() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    SymlinkIdentifier ucSymlink =
+        new SymlinkIdentifier()
+            .withNamespace("databricks://adb-1234.azuredatabricks.net")
+            .withName("catalog_b.sales.orders")
+            .withType("TABLE");
+    DatasetFacets facets =
+        new DatasetFacets()
+            .withSymlinks(new SymlinksFacet().withIdentifiers(List.of(ucSymlink)))
+            .withDatasource(new DatasourceFacet().withName("databricks_svc"));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("dbfs")
+            .withName("catalog_b.sales.orders")
+            .withFacets(facets);
+
+    String wrongCatalogFqn = "databricks_svc.catalog_a.sales.orders";
+    String rightCatalogFqn = "databricks_svc.catalog_b.sales.orders";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table rightTable = new Table();
+    rightTable.setId(UUID.randomUUID());
+    rightTable.setName("orders");
+    rightTable.setFullyQualifiedName(rightCatalogFqn);
+
+    Table wrongTable = new Table();
+    wrongTable.setId(UUID.randomUUID());
+    wrongTable.setName("orders");
+    wrongTable.setFullyQualifiedName(wrongCatalogFqn);
+
+    EntityReference rightRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(rightCatalogFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String pattern = filter.getQueryParam("fqnPattern");
+                if (pattern != null && pattern.equals("databricks_svc.catalog_b.sales.orders")) {
+                  return List.of(rightTable);
+                }
+                if (pattern != null && pattern.equals("databricks_svc.%.sales.orders")) {
+                  // The catalog-blind datasource pattern matches the wrong catalog first
+                  return List.of(wrongTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(rightCatalogFqn), eq(Include.NON_DELETED)))
+          .thenReturn(rightRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(result);
+      assertEquals(
+          rightCatalogFqn,
+          result.getFullyQualifiedName(),
+          "Datasource-facet lookup must keep the catalog segment, not drop it and match the wrong catalog");
+    }
+  }
+
+  @Test
+  void resolveTable_glueSymlinkNamespace_drivesNamespaceToServiceMapping() {
+    OpenLineageEntityResolver resolver =
+        new OpenLineageEntityResolver(
+            false, "openlineage", Map.of("arn:aws:glue:us-west-2:181882839756", "athena_svc"));
+
+    SymlinkIdentifier glueSymlink =
+        new SymlinkIdentifier()
+            .withNamespace("arn:aws:glue:us-west-2:181882839756")
+            .withName("table/db_refined/orders")
+            .withType("TABLE");
+    DatasetFacets facets =
+        new DatasetFacets().withSymlinks(new SymlinksFacet().withIdentifiers(List.of(glueSymlink)));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://experian-bucket")
+            .withName("refined_zone/db_refined.db/orders")
+            .withFacets(facets);
+
+    String expectedFqn = "athena_svc.awsdatacatalog.db_refined.orders";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table foundTable = new Table();
+    foundTable.setId(UUID.randomUUID());
+    foundTable.setName("orders");
+    foundTable.setFullyQualifiedName(expectedFqn);
+
+    EntityReference expectedRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(expectedFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String pattern = filter.getQueryParam("fqnPattern");
+                if (pattern != null && pattern.startsWith("athena_svc")) {
+                  return List.of(foundTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(expectedFqn), eq(Include.NON_DELETED)))
+          .thenReturn(expectedRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(
+          result,
+          "Glue ARN symlink namespace (not the s3:// dataset namespace) must drive namespaceToServiceMapping");
+      assertEquals(expectedFqn, result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveTable_hiveWarehousePathName_resolvesTable() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://experian-bucket")
+            .withName("refined_zone/cloud_city/db_refined_55586.db/dr_564_pdudrik_3829");
+
+    String expectedFqn = "athena_svc.awsdatacatalog.db_refined_55586.dr_564_pdudrik_3829";
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table foundTable = new Table();
+    foundTable.setId(UUID.randomUUID());
+    foundTable.setName("dr_564_pdudrik_3829");
+    foundTable.setFullyQualifiedName(expectedFqn);
+
+    EntityReference expectedRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(expectedFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockTableRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String suffix = filter.getQueryParam("fqnSuffix");
+                if (suffix != null && suffix.endsWith("db_refined_55586.dr_564_pdudrik_3829")) {
+                  return List.of(foundTable);
+                }
+                return List.of();
+              });
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(expectedFqn), eq(Include.NON_DELETED)))
+          .thenReturn(expectedRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(
+          result,
+          "Hive warehouse path (.../<db>.db/<table>) should resolve when symlinks are absent");
+      assertEquals(expectedFqn, result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveOrCreateTable_threePartName_prefersDatabaseQualifiedSchema() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(true, "openlineage");
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("databricks://adb-1234.azuredatabricks.net")
+            .withName("catalog_b.sales.new_orders");
+
+    @SuppressWarnings("unchecked")
+    EntityRepository<Table> mockTableRepo = mock(EntityRepository.class);
+    @SuppressWarnings("unchecked")
+    EntityRepository<DatabaseSchema> mockSchemaRepo = mock(EntityRepository.class);
+    Fields mockFields = mock(Fields.class);
+
+    DatabaseSchema wrongSchema = new DatabaseSchema();
+    wrongSchema.setId(UUID.randomUUID());
+    wrongSchema.setName("sales");
+    wrongSchema.setFullyQualifiedName("databricks_svc.catalog_a.sales");
+
+    DatabaseSchema rightSchema = new DatabaseSchema();
+    rightSchema.setId(UUID.randomUUID());
+    rightSchema.setName("sales");
+    rightSchema.setFullyQualifiedName("databricks_svc.catalog_b.sales");
+
+    Table createdTable = new Table();
+    createdTable.setId(UUID.randomUUID());
+    createdTable.setName("new_orders");
+    createdTable.setFullyQualifiedName("databricks_svc.catalog_b.sales.new_orders");
+
+    EntityReference schemaRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("databaseSchema")
+            .withFullyQualifiedName("databricks_svc.catalog_b.sales");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SCHEMA))
+          .thenReturn(mockSchemaRepo);
+      when(mockTableRepo.getFields(anyString())).thenReturn(mockFields);
+      when(mockSchemaRepo.getFields(anyString())).thenReturn(mockFields);
+
+      when(mockTableRepo.listAll(any(Fields.class), any())).thenReturn(List.of());
+      when(mockSchemaRepo.listAll(any(Fields.class), any()))
+          .thenAnswer(
+              invocation -> {
+                org.openmetadata.service.jdbi3.ListFilter filter = invocation.getArgument(1);
+                String suffix = filter.getQueryParam("fqnSuffix");
+                if (suffix != null && suffix.endsWith("catalog_b.sales")) {
+                  return List.of(rightSchema);
+                }
+                if (suffix != null && suffix.endsWith("sales")) {
+                  return List.of(wrongSchema);
+                }
+                return List.of();
+              });
+
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.DATABASE_SCHEMA),
+                      eq("databricks_svc.catalog_b.sales"),
+                      eq(Include.NON_DELETED)))
+          .thenReturn(schemaRef);
+
+      when(mockTableRepo.create(any(), any(Table.class))).thenReturn(createdTable);
+
+      EntityReference result = resolver.resolveOrCreateTable(dataset, "test_user");
+
+      assertNotNull(result);
+      assertEquals(
+          "databricks_svc.catalog_b.sales.new_orders",
+          result.getFullyQualifiedName(),
+          "Auto-create should place the table under the catalog-qualified schema");
+    }
+  }
+
   // Helper method to test data type mapping
   // This replicates the logic in OpenLineageEntityResolver.mapDataType
   private ColumnDataType mapTestDataType(String olType) {

@@ -16,7 +16,7 @@
 import classNames from 'classnames';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
-  formatContent,
+  formatServerContent,
   formatValueBasedOnContent,
   setEditorContent,
 } from '../../../utils/BlockEditorUtils';
@@ -53,7 +53,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     useImperativeHandle(ref, () => ({
       getEditorContent() {
         const htmlContent = editorRef.current?.editor?.getHTML() ?? '';
-        const backendFormat = formatContent(htmlContent, 'server');
+        const backendFormat = formatServerContent(htmlContent);
 
         return formatValueBasedOnContent(backendFormat);
       },

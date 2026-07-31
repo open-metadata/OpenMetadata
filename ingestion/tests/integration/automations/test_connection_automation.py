@@ -72,8 +72,13 @@ def test_connection_workflow(metadata, mysql_container):
 
     assert final_workflow.status == WorkflowStatus.Successful
     assert len(final_workflow.response.steps) == 5
-    # Get queries is not passing since we're not enabling the logs in the container
-    assert final_workflow.response.status.value == StatusType.Failed.value
+    # GetQueries fails (general_log is not enabled in the container) but it is a
+    # non-mandatory step, so it is reported as a Warning and the overall test
+    # connection still succeeds.
+    assert final_workflow.response.status.value == StatusType.Successful.value
+    get_queries = next(step for step in final_workflow.response.steps if step.name == "GetQueries")
+    assert get_queries.passed is False
+    assert get_queries.status.value == "Warning"
     steps = [step for step in final_workflow.response.steps if step.name != "GetQueries"]
     assert all(step.passed for step in steps)
 

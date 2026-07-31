@@ -15,7 +15,7 @@ Unit tests for GCS Object store source
 import datetime
 import uuid
 from collections import namedtuple
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -115,7 +115,7 @@ MOCK_METADATA_FILE_RESPONSE = {
         }
     ]
 }
-EXPECTED_BUCKETS: List[GCSBucketResponse] = [
+EXPECTED_BUCKETS: List[GCSBucketResponse] = [  # noqa: UP006
     GCSBucketResponse(
         name="test_transactions",
         project_id="my-gcp-project",
@@ -216,7 +216,7 @@ class StorageUnitTest(TestCase):
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_BUCKETS)
 
     def test_load_metadata_file_gcs(self):
-        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()
+        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()  # noqa: UP006
 
         self.assertEqual(1, len(metadata_entry))
         self.assertEqual(
@@ -263,7 +263,7 @@ class StorageUnitTest(TestCase):
     def test_generate_structured_container(self):
         self.object_store_source._get_sample_file_path = lambda bucket, metadata_entry: "transactions/file_1.csv"
         self.object_store_source._fetch_metric = lambda bucket, metric: 100.0
-        columns: List[Column] = [
+        columns: List[Column] = [  # noqa: UP006
             Column(
                 name=ColumnName("transaction_id"),
                 dataType=DataType.INT,

@@ -60,6 +60,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
     );
     await this.rightPanel.navigateToTab(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES);
     await typeResponse;
+    await this.customPropertiesContainer.waitFor({ state: 'visible' });
     await this.waitForLoadersToDisappear();
     return this;
   }

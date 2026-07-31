@@ -157,13 +157,15 @@ def install_clidriver(clidriver_version: str) -> None:
     Install the CLI Driver for DB2
     """
     # pylint: disable=import-outside-toplevel
-    import os
-    import platform
-    import subprocess
-    import sys
-    from urllib.request import URLError, urlopen
-
-    import pkg_resources
+    import os  # noqa: PLC0415
+    import platform  # noqa: PLC0415
+    import subprocess  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+    from importlib.metadata import (  # noqa: PLC0415
+        PackageNotFoundError,
+        distribution,
+    )
+    from urllib.request import URLError, urlopen  # noqa: PLC0415
 
     clidriver_version = f"v{clidriver_version}"
     system = platform.system().lower()
@@ -186,24 +188,24 @@ def install_clidriver(clidriver_version: str) -> None:
             clidriver_url = f"{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
         elif machine == "x86_64":  # Intel
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/macos64_odbc_cli.tar.gz"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"  # noqa: RUF010
     elif system == "linux":
         if is_64bits:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/linuxx64_odbc_cli.tar.gz"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxx64_odbc_cli.tar.gz"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxx64_odbc_cli.tar.gz"  # noqa: RUF010
         else:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/linuxia32_odbc_cli.tar.gz"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxia32_odbc_cli.tar.gz"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxia32_odbc_cli.tar.gz"  # noqa: RUF010
     elif system == "windows":
         if is_64bits:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/ntx64_odbc_cli.zip"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"  # noqa: RUF010
         else:
             default_clidriver_url = f"{BASE_CLIDRIVER_URL}/nt32_odbc_cli.zip"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"
+            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"  # noqa: RUF010
     else:
         logger.error(f"Unsupported operating system for db2 driver installation: {system}")
-        return None
+        return None  # noqa: RET501
 
     # set env variables for CLIDRIVER_VERSION and IBM_DB_INSTALLER_URL
     os.environ["CLIDRIVER_VERSION"] = clidriver_version
@@ -215,10 +217,10 @@ def install_clidriver(clidriver_version: str) -> None:
     logger.info(f"Set CLIDRIVER_VERSION to {os.environ['CLIDRIVER_VERSION']}")
     # Uninstall ibm_db if it is already installed
     try:
-        pkg_resources.get_distribution("ibm_db")
+        distribution("ibm_db")
         # If we get here, ibm_db is installed, so uninstall it first
         subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "ibm_db"])
-    except pkg_resources.DistributionNotFound:
+    except PackageNotFoundError:
         # ibm_db is not installed, proceed with installation
         pass
     # Install ibm_db with specific flags
@@ -234,4 +236,4 @@ def install_clidriver(clidriver_version: str) -> None:
             "--no-cache-dir",
         ]
     )
-    return None
+    return None  # noqa: RET501

@@ -283,6 +283,76 @@ class TestContainerEntity(unittest.TestCase):
 
         self.assertIn("Container not found", str(context.exception))
 
+    def test_set_parent_calls_patch_with_new_parent(self):
+        """Issue #24294 — re-parent via PATCH builds a source/destination diff."""
+        new_parent_id = UUID("750e8400-e29b-41d4-a716-446655440003")
+        new_parent_ref = EntityReference(
+            id=new_parent_id,
+            type="container",
+            name="new-bucket",
+            fullyQualifiedName="s3-prod.new-bucket",
+        )
+
+        current = MagicMock(spec=ContainerEntity)
+        current.id = UUID(self.container_id)
+        current.parent = EntityReference(
+            id=UUID("550e8400-e29b-41d4-a716-446655440000"),
+            type="container",
+            name="old-bucket",
+        )
+        working = MagicMock(spec=ContainerEntity)
+        working.id = current.id
+        working.parent = current.parent
+        current.model_copy = MagicMock(return_value=working)
+        self.mock_ometa.get_by_id.return_value = current
+
+        moved = MagicMock(spec=ContainerEntity)
+        moved.id = current.id
+        moved.parent = new_parent_ref
+        self.mock_ometa.patch.return_value = moved
+
+        result = Containers.set_parent(self.container_id, new_parent_ref)
+
+        self.assertIsNotNone(result.parent)
+        self.assertEqual(result.parent.id.root, new_parent_id)
+        self.mock_ometa.get_by_id.assert_called_once()
+        self.mock_ometa.patch.assert_called_once()
+
+        _, patch_kwargs = self.mock_ometa.patch.call_args
+        self.assertIs(patch_kwargs["entity"], ContainerEntity)
+        self.assertIs(patch_kwargs["source"], current)
+        destination = patch_kwargs["destination"]
+        self.assertEqual(destination.parent.id.root, new_parent_id)
+
+    def test_clear_parent_removes_parent(self):
+        """clear_parent promotes the container to be a direct child of its service."""
+        current = MagicMock(spec=ContainerEntity)
+        current.id = UUID(self.container_id)
+        current.parent = EntityReference(
+            id=UUID("550e8400-e29b-41d4-a716-446655440000"),
+            type="container",
+            name="old-bucket",
+        )
+        working = MagicMock(spec=ContainerEntity)
+        working.id = current.id
+        working.parent = current.parent
+        current.model_copy = MagicMock(return_value=working)
+        self.mock_ometa.get_by_id.return_value = current
+
+        promoted = MagicMock(spec=ContainerEntity)
+        promoted.id = current.id
+        promoted.parent = None
+        self.mock_ometa.patch.return_value = promoted
+
+        result = Containers.clear_parent(self.container_id)
+
+        self.assertIsNone(result.parent)
+        self.mock_ometa.patch.assert_called_once()
+
+        _, patch_kwargs = self.mock_ometa.patch.call_args
+        destination = patch_kwargs["destination"]
+        self.assertIsNone(destination.parent)
+
 
 if __name__ == "__main__":
     unittest.main()

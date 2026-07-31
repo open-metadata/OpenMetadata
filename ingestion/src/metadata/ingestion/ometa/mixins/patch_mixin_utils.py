@@ -16,7 +16,7 @@ To be used be OpenMetadata
 """
 
 from enum import Enum
-from typing import Generic, List, Optional, Type, TypeVar, Union
+from typing import Generic, List, Optional, Type, TypeVar, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -119,10 +119,10 @@ class OMetaPatchMixinBase(Generic[T]):
 
     def _fetch_entity_if_exists(
         self,
-        entity: Type[T],
-        entity_id: Union[str, basic.Uuid],
-        fields: Optional[List[str]] = None,
-    ) -> Optional[T]:
+        entity: Type[T],  # noqa: UP006
+        entity_id: Union[str, basic.Uuid],  # noqa: UP007
+        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
+    ) -> Optional[T]:  # noqa: UP045
         """
         Validates if we can update a description or not. Will return
         the instance if it can be updated. None otherwise.

@@ -34,12 +34,13 @@ from sqlalchemy.dialects.mssql.base import (
 from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
-from sqlalchemy.util import compat
 
+from metadata.ingestion.source.database.mssql.models import QueryStoreState
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_QUERY_STORE_STATE,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -92,6 +93,21 @@ def db_plus_owner(fn):
     return update_wrapper(wrap, fn)
 
 
+def get_identity_values(coltype, identity_start, identity_increment):
+    """Build the reflected identity dict for an MSSQL column.
+
+    seed_value / increment_value come back from MSSQL as Decimal (or None).
+    Integer and BigInteger identities are normalised to ``int``; other numeric
+    identity types keep their original value. BigInteger previously used
+    ``sqlalchemy.util.compat.long_type``, which was removed in SQLAlchemy 2.0.
+    """
+    if identity_start is None or identity_increment is None:
+        return {}
+    if isinstance(coltype, sqltypes.Integer):
+        return {"start": int(identity_start), "increment": int(identity_increment)}
+    return {"start": identity_start, "increment": identity_increment}
+
+
 @reflection.cache
 @db_plus_owner
 def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
@@ -131,6 +147,7 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             Column("object_id", Integer, primary_key=True),
             Column("name", String, primary_key=True),
             Column("column_id", Integer, primary_key=True),
+            Column("generated_always_type", Integer),
             schema="sys",
         )
     )
@@ -199,6 +216,7 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
             sql.cast(extended_properties.c.value, NVARCHAR(4000)).label("comment"),
+            sys_columns.c.generated_always_type,
         )
         .where(whereclause)
         .select_from(join)
@@ -210,6 +228,9 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
     cols = []
     for row in cursr.mappings():
         name = row[columns.c.column_name]
+        generated_always_type = row[sys_columns.c.generated_always_type]
+        if generated_always_type in (1, 2):
+            continue
         type_ = row[columns.c.data_type]
         nullable = row[columns.c.is_nullable] == "YES"
         charlen = row[columns.c.character_maximum_length]
@@ -277,24 +298,7 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             }
 
         if is_identity is not None:
-            # identity_start and identity_increment are Decimal or None
-            if identity_start is None or identity_increment is None:
-                cdict["identity"] = {}
-            else:
-                if isinstance(coltype, sqltypes.BigInteger):
-                    start = compat.long_type(identity_start)
-                    increment = compat.long_type(identity_increment)
-                elif isinstance(coltype, sqltypes.Integer):
-                    start = int(identity_start)
-                    increment = int(identity_increment)
-                else:
-                    start = identity_start
-                    increment = identity_increment
-
-                cdict["identity"] = {
-                    "start": start,
-                    "increment": increment,
-                }
+            cdict["identity"] = get_identity_values(coltype, identity_start, identity_increment)
 
         cols.append(cdict)
     return cols
@@ -452,7 +456,7 @@ def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: d
         .order_by(tables.c.table_name)
     )
     table_names = [r[0] for r in connection.execute(query_)]
-    return table_names
+    return table_names  # noqa: RET504
 
 
 @reflection.cache
@@ -470,10 +474,10 @@ def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: di
         .order_by(tables.c.table_name)
     )
     view_names = [r[0] for r in connection.execute(query_)]
-    return view_names
+    return view_names  # noqa: RET504
 
 
-def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
+def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: UP045
     """
     returns sqlaclhemdy engine date format by running config query
     """
@@ -483,4 +487,17 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
         row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
-    return
+    return  # noqa: RET502
+
+
+def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
+    """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
+    enabled = False
+    if engine is not None:
+        try:
+            with engine.connect() as conn:
+                actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
+            enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+        except Exception as exc:
+            logger.debug("Query Store availability probe failed, using plan-cache DMVs: %s", exc, exc_info=True)
+    return enabled

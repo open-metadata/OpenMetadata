@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import re
 import traceback
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union  # noqa: UP035
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -69,7 +69,7 @@ FQN_SEPARATOR: str = "."
 fqn_build_registry = class_register()
 
 
-class FQNBuildingException(Exception):
+class FQNBuildingException(Exception):  # noqa: N818
     """
     Raise for inconsistencies when building the FQN
     """
@@ -80,11 +80,11 @@ class SplitTestCaseFqn(BaseModel):
     database: str
     schema_: str = Field(alias="schema")
     table: str
-    column: Optional[str] = None
-    test_case: Optional[str] = None
+    column: Optional[str] = None  # noqa: UP045
+    test_case: Optional[str] = None  # noqa: UP045
 
 
-def split(str_: str) -> List[str]:
+def split(str_: str) -> List[str]:  # noqa: UP006
     """
     Equivalent of Java's FullyQualifiedName#split
     """
@@ -136,7 +136,7 @@ def quote_name(name: str) -> str:
     raise ValueError("Invalid name " + name)
 
 
-def build(metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs) -> Optional[str]:
+def build(metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs) -> Optional[str]:  # noqa: UP006, UP045
     """
     Given an Entity T, build the FQN of that Entity
     based on its required pieces. For example,
@@ -153,7 +153,7 @@ def build(metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs) -> O
     """
     # Transform table_name and column_name if they exist and contain special characters
     if kwargs.get("table_name") or kwargs.get("column_name"):
-        from metadata.ingestion.models.custom_basemodel_validation import (  # pylint: disable=import-outside-toplevel
+        from metadata.ingestion.models.custom_basemodel_validation import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
             replace_separators,
         )
 
@@ -168,24 +168,24 @@ def build(metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs) -> O
     func = fqn_build_registry.registry.get(entity_type.__name__)
     try:
         if not func:
-            raise FQNBuildingException(f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented.")
+            raise FQNBuildingException(f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented.")  # noqa: TRY301
         return func(metadata, **kwargs)
     except Exception as e:
         logger.debug(traceback.format_exc())
-        raise FQNBuildingException(f"Error building FQN for {entity_type.__name__}: {e}")
+        raise FQNBuildingException(f"Error building FQN for {entity_type.__name__}: {e}")  # noqa: B904
 
 
 @fqn_build_registry.add(Table)
 def _(
-    metadata: Optional[OpenMetadata],
+    metadata: Optional[OpenMetadata],  # noqa: UP045
     *,
-    service_name: Optional[str],
-    database_name: Optional[str],
-    schema_name: Optional[str],
+    service_name: Optional[str],  # noqa: UP045
+    database_name: Optional[str],  # noqa: UP045
+    schema_name: Optional[str],  # noqa: UP045
     table_name: str,
     fetch_multiple_entities: bool = False,
     skip_es_search: bool = False,
-) -> Union[Optional[str], Optional[List[str]]]:
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
     """
     Building logic for tables
     :param metadata: OMeta client
@@ -196,7 +196,7 @@ def _(
     :return:
     """
 
-    entity: Optional[Union[Table, List[Table]]] = None
+    entity: Optional[Union[Table, List[Table]]] = None  # noqa: UP006, UP007, UP045
 
     if not skip_es_search:
         entity = search_table_from_es(
@@ -221,15 +221,15 @@ def _(
 
 @fqn_build_registry.add(DatabaseSchema)
 def _(
-    metadata: Optional[OpenMetadata],  # ES Search not enabled for Schemas
+    metadata: Optional[OpenMetadata],  # ES Search not enabled for Schemas  # noqa: UP045
     *,
     service_name: str,
-    database_name: Optional[str],
+    database_name: Optional[str],  # noqa: UP045
     schema_name: str,
     skip_es_search: bool = True,
     fetch_multiple_entities: bool = False,
-) -> Union[Optional[str], Optional[List[str]]]:
-    entity: Optional[Union[DatabaseSchema, List[DatabaseSchema]]] = None
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    entity: Optional[Union[DatabaseSchema, List[DatabaseSchema]]] = None  # noqa: UP006, UP007, UP045
 
     if not skip_es_search:
         entity = search_database_schema_from_es(
@@ -253,13 +253,13 @@ def _(
 
 @fqn_build_registry.add(Database)
 def _(
-    metadata: Optional[OpenMetadata],
+    metadata: Optional[OpenMetadata],  # noqa: UP045
     *,
     service_name: str,
     database_name: str,
     skip_es_search: bool = True,
     fetch_multiple_entities: bool = False,
-) -> Union[Optional[str], Optional[List[str]]]:
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
     if not skip_es_search:
         entity = search_database_from_es(
             metadata,
@@ -281,7 +281,7 @@ def _(
 
 @fqn_build_registry.add(Dashboard)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
     dashboard_name: str,
@@ -295,7 +295,7 @@ def _(
 
 @fqn_build_registry.add(APICollection)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
     api_collection_name: str,
@@ -309,7 +309,7 @@ def _(
 
 @fqn_build_registry.add(Chart)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
     chart_name: str,
@@ -321,7 +321,7 @@ def _(
 
 @fqn_build_registry.add(MlModel)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for MlModel FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for MlModel FQN building  # noqa: UP045
     *,
     service_name: str,
     mlmodel_name: str,
@@ -334,7 +334,7 @@ def _(
 
 
 @fqn_build_registry.add(TestSuite)
-def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:
+def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:  # noqa: UP045
     """
     We don't need to quote since this comes from a table FQN.
     We're replicating the backend logic of the FQN generation in the TestSuiteRepository
@@ -345,13 +345,13 @@ def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:
 
 @fqn_build_registry.add(Topic)
 def _(
-    metadata: Optional[OpenMetadata],
+    metadata: Optional[OpenMetadata],  # noqa: UP045
     *,
     service_name: str,
     topic_name: str,
     skip_es_search: bool = True,
-) -> Optional[str]:
-    entity: Optional[Topic] = None
+) -> Optional[str]:  # noqa: UP045
+    entity: Optional[Topic] = None  # noqa: UP045
 
     if not skip_es_search:
         entity = search_topic_from_es(metadata=metadata, service_name=service_name, topic_name=topic_name)
@@ -359,7 +359,7 @@ def _(
     # if entity not found in ES proceed to build FQN with database_name and schema_name
     if not entity and service_name and topic_name:
         fqn = _build(service_name, topic_name)
-        return fqn
+        return fqn  # noqa: RET504
 
     if entity:
         return str(entity.fullyQualifiedName.root)
@@ -372,15 +372,15 @@ def _(
 
 @fqn_build_registry.add(Container)
 def _(
-    metadata: Optional[OpenMetadata],
+    metadata: Optional[OpenMetadata],  # noqa: UP045
     *,
     service_name: str,
-    parent_container: Optional[str] = None,
+    parent_container: Optional[str] = None,  # noqa: UP045
     container_name: str,
     skip_es_search: bool = False,
     fetch_multiple_entities: bool = False,
-) -> Union[Optional[str], Optional[List[str]]]:
-    entity: Optional[Union[Container, List[Container]]] = None
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
+    entity: Optional[Union[Container, List[Container]]] = None  # noqa: UP006, UP007, UP045
 
     if not skip_es_search and metadata is not None:
         entity = search_container_from_es(
@@ -410,7 +410,7 @@ def _(
 
 @fqn_build_registry.add(SearchIndex)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for Search Index FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for Search Index FQN building  # noqa: UP045
     *,
     service_name: str,
     search_index_name: str,
@@ -424,7 +424,7 @@ def _(
 
 @fqn_build_registry.add(Tag)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for Tag FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for Tag FQN building  # noqa: UP045
     *,
     classification_name: str,
     tag_name: str,
@@ -438,7 +438,7 @@ def _(
 
 @fqn_build_registry.add(DataModel)
 def _(
-    _: Optional[OpenMetadata],
+    _: Optional[OpenMetadata],  # noqa: UP045
     *,
     service_name: str,
     database_name: str,
@@ -450,7 +450,7 @@ def _(
 
 @fqn_build_registry.add(StoredProcedure)
 def _(
-    _: Optional[OpenMetadata],
+    _: Optional[OpenMetadata],  # noqa: UP045
     *,
     service_name: str,
     database_name: str,
@@ -462,7 +462,7 @@ def _(
 
 @fqn_build_registry.add(Pipeline)
 def _(
-    _: Optional[OpenMetadata],
+    _: Optional[OpenMetadata],  # noqa: UP045
     *,
     service_name: str,
     pipeline_name: str,
@@ -472,7 +472,7 @@ def _(
 
 @fqn_build_registry.add(Column)
 def _(
-    _: Optional[OpenMetadata],  # ES Search not enabled for Columns
+    _: Optional[OpenMetadata],  # ES Search not enabled for Columns  # noqa: UP045
     *,
     service_name: str,
     database_name: str,
@@ -489,7 +489,7 @@ def _(
     *,
     user_name: str,
     fetch_multiple_entities: bool = False,
-) -> Union[Optional[str], Optional[List[str]]]:
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
     """
     Building logic for User
     :param metadata: OMeta client
@@ -503,7 +503,7 @@ def _(
         entity_type=User,
         fqn_search_string=fqn_search_string,
     )
-    entity: Optional[Union[User, List[User]]] = get_entity_from_es_result(
+    entity: Optional[Union[User, List[User]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
     if not entity:
@@ -519,7 +519,7 @@ def _(
     *,
     team_name: str,
     fetch_multiple_entities: bool = False,
-) -> Union[Optional[str], Optional[List[str]]]:
+) -> Union[Optional[str], Optional[List[str]]]:  # noqa: UP006, UP007, UP045
     """
     Building logic for Team
     :param metadata: OMeta client
@@ -533,7 +533,7 @@ def _(
         entity_type=Team,
         fqn_search_string=fqn_search_string,
     )
-    entity: Optional[Union[Team, List[Team]]] = get_entity_from_es_result(
+    entity: Optional[Union[Team, List[Team]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
     if not entity:
@@ -545,13 +545,13 @@ def _(
 
 @fqn_build_registry.add(TestCase)
 def _(
-    _: Optional[OpenMetadata],  # ES Search not enabled for TestCase
+    _: Optional[OpenMetadata],  # ES Search not enabled for TestCase  # noqa: UP045
     *,
     service_name: str,
     database_name: str,
     schema_name: str,
     table_name: str,
-    column_name: Optional[str],
+    column_name: Optional[str],  # noqa: UP045
     test_case_name: str,
 ) -> str:
     if column_name:
@@ -574,7 +574,7 @@ def _(
 
 @fqn_build_registry.add(DashboardDataModel)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
     data_model_name: str,
@@ -588,7 +588,7 @@ def _(
 
 @fqn_build_registry.add(Query)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
     query_checksum: str,
@@ -602,7 +602,7 @@ def _(
 
 @fqn_build_registry.add(DriveService)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
 ) -> str:
@@ -611,10 +611,10 @@ def _(
 
 @fqn_build_registry.add(Directory)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for directory FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for directory FQN building  # noqa: UP045
     *,
     service_name: str,
-    directory_path: List[str],
+    directory_path: List[str],  # noqa: UP006
 ) -> str:
     if not service_name:
         raise FQNBuildingException(f"Service name should be informed, but got service=`{service_name}`")
@@ -627,10 +627,10 @@ def _(
 
 @fqn_build_registry.add(File)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for file FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for file FQN building  # noqa: UP045
     *,
     service_name: str,
-    directory_path: List[str],
+    directory_path: List[str],  # noqa: UP006
     file_name: str,
 ) -> str:
     if not service_name or not file_name:
@@ -642,7 +642,7 @@ def _(
 
 @fqn_build_registry.add(Worksheet)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
     spreadsheet_name: str,
@@ -658,7 +658,7 @@ def _(
 
 @fqn_build_registry.add(Spreadsheet)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building  # noqa: UP045
     *,
     service_name: str,
     spreadsheet_name: str,
@@ -670,7 +670,7 @@ def _(
     return _build(service_name, spreadsheet_name)
 
 
-def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
+def split_table_name(table_name: str) -> Dict[str, Optional[str]]:  # noqa: UP006, UP045
     """
     Given a table name, try to extract database, schema and
     table info
@@ -679,11 +679,11 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     """
     # Revisit: Check the antlr grammer for issue when string has double quotes
     # Issue Link: https://github.com/open-metadata/OpenMetadata/issues/8874
-    details: List[str] = split(table_name.replace('"', ""))
+    details: List[str] = split(table_name.replace('"', ""))  # noqa: UP006
     # Handles table names with 4+ parts (e.g., BigQuery INFORMATION_SCHEMA:
     # `project-name.region-name.INFORMATION_SCHEMA.table_name`) by taking only
     # the last 3 segments (database, schema, table). Pads with None if fewer than 3.
-    full_details: List[Optional[str]] = ([None] * max(0, 3 - len(details))) + details[-3:]
+    full_details: List[Optional[str]] = ([None] * max(0, 3 - len(details))) + details[-3:]  # noqa: UP006, UP045
 
     database, database_schema, table = full_details
     return {"database": database, "database_schema": database_schema, "table": table}
@@ -739,7 +739,7 @@ def build_es_fqn_search_string(database_name: str, schema_name, service_name, ta
     if not table_name:
         raise FQNBuildingException(f"Table Name should be informed, but got table=`{table_name}`")
     fqn_search_string = _build(service_name or "*", database_name or "*", schema_name or "*", table_name)
-    return fqn_search_string
+    return fqn_search_string  # noqa: RET504
 
 
 def search_database_schema_from_es(
@@ -748,7 +748,7 @@ def search_database_schema_from_es(
     schema_name: str,
     service_name: str,
     fetch_multiple_entities: bool = False,
-    fields: Optional[str] = None,
+    fields: Optional[str] = None,  # noqa: UP045
 ):
     """
     Find database schema entity in elasticsearch index.
@@ -782,7 +782,7 @@ def search_table_from_es(
     service_name: str,
     table_name: str,
     fetch_multiple_entities: bool = False,
-    fields: Optional[str] = None,
+    fields: Optional[str] = None,  # noqa: UP045
 ):
     fqn_search_string = build_es_fqn_search_string(database_name, schema_name, service_name, table_name)
 
@@ -798,9 +798,9 @@ def search_table_from_es(
 def search_database_from_es(
     metadata: OpenMetadata,
     database_name: str,
-    service_name: Optional[str],
-    fetch_multiple_entities: Optional[bool] = False,
-    fields: Optional[str] = None,
+    service_name: Optional[str],  # noqa: UP045
+    fetch_multiple_entities: Optional[bool] = False,  # noqa: UP045
+    fields: Optional[str] = None,  # noqa: UP045
 ):
     """
     Search Database entity from ES
@@ -823,8 +823,8 @@ def search_database_from_es(
 def search_topic_from_es(
     metadata: OpenMetadata,
     topic_name: str,
-    service_name: Optional[str],
-    fields: Optional[str] = None,
+    service_name: Optional[str],  # noqa: UP045
+    fields: Optional[str] = None,  # noqa: UP045
 ):
     """
     Search Topic entity from ES
@@ -847,10 +847,10 @@ def search_topic_from_es(
 def search_container_from_es(
     metadata: OpenMetadata,
     container_name: str,
-    service_name: Optional[str],
-    parent_container: Optional[str] = None,
-    fetch_multiple_entities: Optional[bool] = False,
-    fields: Optional[str] = None,
+    service_name: Optional[str],  # noqa: UP045
+    parent_container: Optional[str] = None,  # noqa: UP045
+    fetch_multiple_entities: Optional[bool] = False,  # noqa: UP045
+    fields: Optional[str] = None,  # noqa: UP045
 ):
     """
     Search Container entity from ES
@@ -903,7 +903,7 @@ FQN_ENTITY_SLOTS = {
 }
 
 
-def prefix_entity_for_wildcard_search(entity_type: Type[T], fqn: str) -> str:
+def prefix_entity_for_wildcard_search(entity_type: Type[T], fqn: str) -> str:  # noqa: UP006
     """
     Given an entity type and an FQN, return the FQN prefixed with wildcards
     to match any parent hierarchy leading to that entity.

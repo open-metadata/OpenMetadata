@@ -32,7 +32,7 @@ class TestClassificationRunManager:
     def metadata(self) -> Mock:
         mock = create_autospec(OpenMetadata, instance=True, spec_set=True)
 
-        return mock
+        return mock  # noqa: RET504
 
     def test_get_enabled_classifications(
         self,
@@ -139,7 +139,7 @@ class TestClassificationRunManager:
         def list_entities_side_effect(entity, fields, params):
             if params.get("parent") == "PII":
                 return [email_tag_pii]
-            elif params.get("parent") == "General":
+            elif params.get("parent") == "General":  # noqa: RET505
                 return [credit_card_tag_general]
             return []
 

@@ -14,7 +14,7 @@ Test Tableau connector with CLI - Enhanced with comprehensive lineage and metada
 """
 
 from pathlib import Path
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -23,8 +23,8 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.ingestion.api.status import Status
 
-from .base.test_cli import PATH_TO_RESOURCES
-from .common.test_cli_dashboard import CliCommonDashboard
+from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
+from .common.test_cli_dashboard import CliCommonDashboard  # noqa: TID252
 
 
 class TableauExpectedValues:
@@ -44,21 +44,21 @@ class TableauExpectedValues:
     SERVICE_NAME = "local_tableau"
 
     # Expected entity names
-    EXPECTED_DASHBOARD_NAMES = ["Analytics Workbook"]
+    EXPECTED_DASHBOARD_NAMES = ["Analytics Workbook"]  # noqa: RUF012
 
-    EXPECTED_CHART_NAMES = [
+    EXPECTED_CHART_NAMES = [  # noqa: RUF012
         "Product Measure Sheet",
         "Sales Story",
         "Product vs Category Dashboard",
         "Category Measure Sheet",
     ]
 
-    EXPECTED_DATAMODEL_NAMES = [
+    EXPECTED_DATAMODEL_NAMES = [  # noqa: RUF012
         "Sales Summary"  # Appears in both TableauEmbeddedDatasource and TableauPublishedDatasource
     ]
 
     # Expected data model columns/fields
-    EXPECTED_DATAMODEL_FIELDS = [
+    EXPECTED_DATAMODEL_FIELDS = [  # noqa: RUF012
         "state",
         "category_name",
         "order_date",
@@ -75,7 +75,7 @@ class TableauExpectedValues:
     ]
 
     # Expected tags
-    EXPECTED_TAGS = ["Analytics", "workbook"]
+    EXPECTED_TAGS = ["Analytics", "workbook"]  # noqa: RUF012
 
     # Expected chart type
     EXPECTED_CHART_TYPE = "ChartType.Other"
@@ -84,7 +84,7 @@ class TableauExpectedValues:
     EXPECTED_FIELD_TYPE = "tableau field"
 
     # Expected data model types
-    EXPECTED_DATAMODEL_TYPES = [
+    EXPECTED_DATAMODEL_TYPES = [  # noqa: RUF012
         "DataModelType.TableauEmbeddedDatasource",
         "DataModelType.TableauPublishedDatasource",
     ]
@@ -115,7 +115,7 @@ class TableauExpectedValues:
         inventory.categories AS cat ON p.category_id = cat.category_id"""
 
     # Lineage expectations: Tables -> TableauPublishedDatasource -> TableauEmbeddedDatasource -> Dashboard
-    EXPECTED_SOURCE_TABLES = [
+    EXPECTED_SOURCE_TABLES = [  # noqa: RUF012
         "categories",
         "customers",
         "order_items",
@@ -124,12 +124,12 @@ class TableauExpectedValues:
     ]
 
     # Filter patterns
-    INCLUDE_DASHBOARDS = [".*Analytics.*"]
-    EXCLUDE_DASHBOARDS = ["Sample.*"]
-    INCLUDE_CHARTS = [".*Sheet.*", ".*Product.*", ".*Sales.*"]
-    EXCLUDE_CHARTS = ["Obesity"]
-    INCLUDE_DATAMODELS = [".*Sales.*", ".*Summary.*"]
-    EXCLUDE_DATAMODELS = ["Random.*"]
+    INCLUDE_DASHBOARDS = [".*Analytics.*"]  # noqa: RUF012
+    EXCLUDE_DASHBOARDS = ["Sample.*"]  # noqa: RUF012
+    INCLUDE_CHARTS = [".*Sheet.*", ".*Product.*", ".*Sales.*"]  # noqa: RUF012
+    EXCLUDE_CHARTS = ["Obesity"]  # noqa: RUF012
+    INCLUDE_DATAMODELS = [".*Sales.*", ".*Summary.*"]  # noqa: RUF012
+    EXCLUDE_DATAMODELS = ["Random.*"]  # noqa: RUF012
 
 
 class TableauCliTest(CliCommonDashboard.TestSuite):
@@ -150,22 +150,22 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
     # FILTER CONFIGURATION METHODS
     # ================================
 
-    def get_includes_dashboards(self) -> List[str]:
+    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.INCLUDE_DASHBOARDS
 
-    def get_excludes_dashboards(self) -> List[str]:
+    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.EXCLUDE_DASHBOARDS
 
-    def get_includes_charts(self) -> List[str]:
+    def get_includes_charts(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.INCLUDE_CHARTS
 
-    def get_excludes_charts(self) -> List[str]:
+    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.EXCLUDE_CHARTS
 
-    def get_includes_datamodels(self) -> List[str]:
+    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.INCLUDE_DATAMODELS
 
-    def get_excludes_datamodels(self) -> List[str]:
+    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
         return TableauExpectedValues.EXCLUDE_DATAMODELS
 
     # ================================
@@ -296,7 +296,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         datamodel_types = []
         for dm in datamodels:
             if hasattr(dm, "dataModelType") and dm.dataModelType:
-                datamodel_types.append(str(dm.dataModelType))
+                datamodel_types.append(str(dm.dataModelType))  # noqa: PERF401
 
         for expected_type in TableauExpectedValues.EXPECTED_DATAMODEL_TYPES:
             self.assertIn(
@@ -560,7 +560,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         entity_type,
         name: str,
         service: str = TableauExpectedValues.SERVICE_NAME,
-        fields: List = ["tags", "charts"],
+        fields: List = ["tags", "charts"],  # noqa: B006, UP006
     ):
         """Helper to get entity by name or displayName"""
         entities = self.openmetadata.list_entities(
@@ -576,7 +576,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
                 else (str(entity.displayName) if hasattr(entity, "displayName") and entity.displayName else None)
             )
 
-            if entity_name == name or entity_display_name == name:
+            if entity_name == name or entity_display_name == name:  # noqa: PLR1714
                 return entity
         return None
 

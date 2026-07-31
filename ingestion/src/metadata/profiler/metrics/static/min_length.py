@@ -82,17 +82,17 @@ class MinLength(StaticMetric):
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[int], Optional[int]](
+        return PandasComputation[Optional[int], Optional[int]](  # noqa: UP045
             create_accumulator=lambda: None,
             update_accumulator=lambda acc, df: MinLength.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_min: Optional[int], df: "pd.DataFrame", column) -> Optional[int]:
+    def update_accumulator(current_min: Optional[int], df: "pd.DataFrame", column) -> Optional[int]:  # noqa: UP045
         """Computes one DataFrame chunk and updates the running minimum"""
-        import pandas as pd
-        from numpy import vectorize
+        import pandas as pd  # noqa: PLC0415
+        from numpy import vectorize  # noqa: PLC0415
 
         length_vectorize_func = vectorize(len)
         chunk_min = None

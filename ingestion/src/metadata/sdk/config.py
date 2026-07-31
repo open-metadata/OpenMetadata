@@ -18,19 +18,19 @@ class OpenMetadataConfig:
     """Configuration for OpenMetadata SDK."""
 
     server_url: str
-    jwt_token: Optional[str]
-    api_key: Optional[str]
+    jwt_token: Optional[str]  # noqa: UP045
+    api_key: Optional[str]  # noqa: UP045
     verify_ssl: bool
-    ca_bundle: Optional[str]
+    ca_bundle: Optional[str]  # noqa: UP045
     client_timeout: int
 
     def __init__(
         self,
         server_url: str,
-        jwt_token: Optional[str] = None,
-        api_key: Optional[str] = None,
+        jwt_token: Optional[str] = None,  # noqa: UP045
+        api_key: Optional[str] = None,  # noqa: UP045
         verify_ssl: bool = False,
-        ca_bundle: Optional[str] = None,
+        ca_bundle: Optional[str] = None,  # noqa: UP045
         client_timeout: int = 30,
     ):
         self.server_url = server_url.rstrip("/")
@@ -41,12 +41,12 @@ class OpenMetadataConfig:
         self.client_timeout = client_timeout
 
     @classmethod
-    def builder(cls) -> "OpenMetadataConfigBuilder":
+    def builder(cls) -> "OpenMetadataConfigBuilder":  # noqa: UP037
         """Create a configuration builder."""
         return OpenMetadataConfigBuilder()
 
     @classmethod
-    def from_env(cls) -> "OpenMetadataConfig":
+    def from_env(cls) -> "OpenMetadataConfig":  # noqa: UP037
         """Create configuration from environment variables.
 
         Reads from:
@@ -102,39 +102,39 @@ class OpenMetadataConfigBuilder:
     """Builder for :class:`OpenMetadataConfig`."""
 
     def __init__(self) -> None:
-        self._server_url: Optional[str] = None
-        self._jwt_token: Optional[str] = None
-        self._api_key: Optional[str] = None
+        self._server_url: Optional[str] = None  # noqa: UP045
+        self._jwt_token: Optional[str] = None  # noqa: UP045
+        self._api_key: Optional[str] = None  # noqa: UP045
         self._verify_ssl: bool = False
-        self._ca_bundle: Optional[str] = None
+        self._ca_bundle: Optional[str] = None  # noqa: UP045
         self._client_timeout: int = 30
 
-    def server_url(self, url: str) -> "OpenMetadataConfigBuilder":
+    def server_url(self, url: str) -> "OpenMetadataConfigBuilder":  # noqa: UP037
         """Set server URL."""
         self._server_url = url
         return self
 
-    def jwt_token(self, token: str) -> "OpenMetadataConfigBuilder":
+    def jwt_token(self, token: str) -> "OpenMetadataConfigBuilder":  # noqa: UP037
         """Set JWT token."""
         self._jwt_token = token
         return self
 
-    def api_key(self, key: str) -> "OpenMetadataConfigBuilder":
+    def api_key(self, key: str) -> "OpenMetadataConfigBuilder":  # noqa: UP037
         """Set API key (alias for ``jwt_token``)."""
         self._api_key = key
         return self
 
-    def verify_ssl(self, verify: bool) -> "OpenMetadataConfigBuilder":
+    def verify_ssl(self, verify: bool) -> "OpenMetadataConfigBuilder":  # noqa: UP037
         """Configure SSL verification."""
         self._verify_ssl = verify
         return self
 
-    def ca_bundle(self, bundle: str) -> "OpenMetadataConfigBuilder":
+    def ca_bundle(self, bundle: str) -> "OpenMetadataConfigBuilder":  # noqa: UP037
         """Set CA bundle path."""
         self._ca_bundle = bundle
         return self
 
-    def client_timeout(self, timeout: int) -> "OpenMetadataConfigBuilder":
+    def client_timeout(self, timeout: int) -> "OpenMetadataConfigBuilder":  # noqa: UP037
         """Set client timeout in seconds."""
         self._client_timeout = timeout
         return self

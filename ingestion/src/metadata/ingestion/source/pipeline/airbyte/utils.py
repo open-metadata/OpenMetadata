@@ -18,13 +18,13 @@ from typing import Optional
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.utils.logger import ingestion_logger
 
-from .constants import AirbyteDestination, AirbyteSource
-from .models import AirbyteDestinationResponse, AirbyteSourceResponse, AirbyteStream
+from .constants import AirbyteDestination, AirbyteSource  # noqa: TID252
+from .models import AirbyteDestinationResponse, AirbyteSourceResponse, AirbyteStream  # noqa: TID252
 
 logger = ingestion_logger()
 
 
-def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSourceResponse) -> Optional[TableDetails]:
+def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSourceResponse) -> Optional[TableDetails]:  # noqa: UP045
     """
     Get the source table details
     """
@@ -57,7 +57,7 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
 
 def get_destination_table_details(
     stream: AirbyteStream, destination_connection: AirbyteDestinationResponse
-) -> Optional[TableDetails]:
+) -> Optional[TableDetails]:  # noqa: UP045
     """
     Get the destination table details
     """

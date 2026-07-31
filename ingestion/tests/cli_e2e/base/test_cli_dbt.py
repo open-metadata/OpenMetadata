@@ -14,7 +14,7 @@ Test DBT with CLI
 """
 
 from abc import abstractmethod
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase
 
 import pytest
@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.ingestion.api.status import Status
 
-from .test_cli import CliBase
+from .test_cli import CliBase  # noqa: TID252
 
 
 class CliDBTBase(TestCase):
@@ -100,7 +100,7 @@ class CliDBTBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def fqn_dbt_tables() -> List[str]:
+        def fqn_dbt_tables() -> List[str]:  # noqa: UP006
             raise NotImplementedError()
 
         @abstractmethod

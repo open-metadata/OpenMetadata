@@ -842,4 +842,19 @@ class OsUtilsTest {
               .asInt());
     }
   }
+
+  @Test
+  void transformsFlattenedToFlatObjectAndStripsEsOnlyParams() {
+    JsonNode mappings =
+        org.openmetadata.schema.utils.JsonUtils.readTree(
+            "{\"properties\":{\"extension\":{\"type\":\"flattened\",\"ignore_above\":8191,"
+                + "\"depth_limit\":20}}}");
+
+    JsonNode result = OsUtils.transformFieldTypesForOpenSearch(mappings);
+
+    JsonNode extension = result.path("properties").path("extension");
+    assertEquals("flat_object", extension.path("type").asText());
+    assertFalse(extension.has("ignore_above"), "flat_object must not carry ignore_above");
+    assertFalse(extension.has("depth_limit"), "flat_object must not carry depth_limit");
+  }
 }

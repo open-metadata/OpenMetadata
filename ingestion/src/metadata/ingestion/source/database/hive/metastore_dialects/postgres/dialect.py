@@ -94,7 +94,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
             SELECT * FROM regular_columns
             UNION ALL
             SELECT * FROM partition_columns
-        """
+        """  # noqa: W291
         return connection.execute(text(query)).fetchall()
 
     def _get_table_names_base_query(self, schema=None):
@@ -123,7 +123,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                 JOIN "DBS" dbs on tbls."DB_ID" = dbs."DB_ID" 
             where 
                 tbls."VIEW_ORIGINAL_TEXT" is not null;
-        """
+        """  # noqa: W291
         return get_view_definition_wrapper(
             self,
             connection,
@@ -145,7 +145,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                 "TBLS" ON "DBS"."DB_ID" = "TBLS"."DB_ID" 
                 LEFT JOIN "TABLE_PARAMS" ON "TBLS"."TBL_ID" = "TABLE_PARAMS"."TBL_ID" 
                 and "TABLE_PARAMS"."PARAM_KEY" = 'comment'
-        """
+        """  # noqa: W291
         return get_table_comment_wrapper(
             self,
             connection,

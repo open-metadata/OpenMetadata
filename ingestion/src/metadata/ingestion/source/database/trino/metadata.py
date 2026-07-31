@@ -15,7 +15,7 @@ Trino source implementation.
 import re  # noqa: I001
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import exc, sql, util
 from sqlalchemy.engine.base import Connection
@@ -56,7 +56,7 @@ ROW_DATA_TYPE = "row"
 ARRAY_DATA_TYPE = "array"
 
 
-def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:
+def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
     match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", type_str)
     if not match:
         util.warn(f"Could not parse type name '{type_str}'")
@@ -106,7 +106,7 @@ def parse_row_data_type(type_str: str) -> str:
     return final[:-1] + ">"
 
 
-def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> List[Dict[str, Any]]:
+def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> List[Dict[str, Any]]:  # noqa: RUF013, UP006
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
     preparer = connection.dialect.identifier_preparer
@@ -136,8 +136,12 @@ def _get_columns(self, connection: Connection, table_name: str, schema: str = No
 
 
 def get_table_comment(  # pylint: disable=unused-argument
-    self, connection: Connection, table_name: str, schema: str = None, **kw
-) -> Dict[str, Any]:
+    self,
+    connection: Connection,
+    table_name: str,
+    schema: str = None,  # noqa: RUF013
+    **kw,
+) -> Dict[str, Any]:  # noqa: UP006
     """
     Override get table comment method to batch process comments
     """
@@ -171,7 +175,7 @@ def get_table_comment(  # pylint: disable=unused-argument
         raise
 
 
-def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> Optional[str]:
+def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> Optional[str]:  # noqa: RUF013, UP045
     """
     Get the view definition for Trino views.
 
@@ -220,7 +224,7 @@ def get_view_definition(self, connection: Connection, view_name: str, schema: st
         if not create_view_pattern.search(view_definition):
             view_definition = f"CREATE VIEW {full_view_name} AS {view_definition}"
 
-        return view_definition
+        return view_definition  # noqa: TRY300
     except Exception as err:
         logger.error(f"Could not get view definition for view [{full_view_name}]: {err}")
 
@@ -239,7 +243,7 @@ class TrinoSource(CommonDbSourceService):
     ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = "JSON"
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: TrinoConnection = config.serviceConnection.root.config
         if not isinstance(connection, TrinoConnection):

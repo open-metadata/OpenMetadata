@@ -371,7 +371,7 @@ UNION_EXAMPLE_4 = """
     }
   ]
 }
-"""
+"""  # noqa: W293
 
 UNION_OF_STR_AND_RECORD = """
 {

@@ -31,7 +31,7 @@
     background-color: @primary-1;
     color: @primary-color;
     border-color: @primary-1;
-    z-index: 0;
+    z-index: var(--om-z-0);
 
     &:hover {
       background-color: @primary-1;
@@ -43,13 +43,13 @@
 
 // Global styling for segment toggle classs
 .segment-toggle {
-  background: @white;
+  background: var(--tw-color-bg-primary);
   border-radius: @size-sm;
   border: 1px solid @grey-20;
 
   .ant-segmented-item {
     color: @text-color;
-    transition: all 0.3s ease;
+    transition: all var(--om-duration-300) ease;
 
     &-selected {
       background: @blue-23;
@@ -80,7 +80,7 @@
   }
 }
 .segment-toggle.ant-segmented {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   border-radius: @size-sm;
 }
 

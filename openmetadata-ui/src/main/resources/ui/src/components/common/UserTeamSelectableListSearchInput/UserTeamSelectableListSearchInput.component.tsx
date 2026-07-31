@@ -15,7 +15,7 @@ import { noop } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';

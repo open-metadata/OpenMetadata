@@ -93,7 +93,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the internal_view was filtered out
         self.assertEqual(len(self.status.filtered), 1)
-        self.assertIn("internal_view", [list(f.keys())[0] for f in self.status.filtered])
+        self.assertIn("internal_view", [list(f.keys())[0] for f in self.status.filtered])  # noqa: RUF015
 
     def test_view_filtering_by_table_pattern_exclude_only(self):
         """Test view filtering with exclude patterns only"""
@@ -146,7 +146,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the temp_view was filtered out
         self.assertEqual(len(self.status.filtered), 1)
-        self.assertIn("temp_view", [list(f.keys())[0] for f in self.status.filtered])
+        self.assertIn("temp_view", [list(f.keys())[0] for f in self.status.filtered])  # noqa: RUF015
 
     def test_view_filtering_by_table_pattern_include_exclude(self):
         """Test view filtering with both include and exclude patterns"""
@@ -198,7 +198,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that both internal_view and public_temp_view were filtered out
         self.assertEqual(len(self.status.filtered), 2)
-        filtered_names = [list(f.keys())[0] for f in self.status.filtered]
+        filtered_names = [list(f.keys())[0] for f in self.status.filtered]  # noqa: RUF015
         self.assertIn("internal_view", filtered_names)
         self.assertIn("public_temp_view", filtered_names)
 
@@ -310,7 +310,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the excluded views were filtered out
         self.assertEqual(len(self.status.filtered), 3)
-        filtered_names = [list(f.keys())[0] for f in self.status.filtered]
+        filtered_names = [list(f.keys())[0] for f in self.status.filtered]  # noqa: RUF015
         self.assertIn("public_view_temp", filtered_names)
         self.assertIn("internal_view", filtered_names)
         self.assertIn("customer_test", filtered_names)
@@ -370,7 +370,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the get_orders procedure was filtered out
         self.assertEqual(len(self.status.filtered), 1)
-        self.assertIn("get_orders", [list(f.keys())[0] for f in self.status.filtered])
+        self.assertIn("get_orders", [list(f.keys())[0] for f in self.status.filtered])  # noqa: RUF015
 
     def test_stored_procedure_filtering_by_procedure_pattern_exclude_only(self):
         """Test stored procedure filtering with exclude patterns only"""
@@ -423,7 +423,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the temp_procedure was filtered out
         self.assertEqual(len(self.status.filtered), 1)
-        self.assertIn("temp_procedure", [list(f.keys())[0] for f in self.status.filtered])
+        self.assertIn("temp_procedure", [list(f.keys())[0] for f in self.status.filtered])  # noqa: RUF015
 
     def test_stored_procedure_filtering_by_procedure_pattern_include_exclude(self):
         """Test stored procedure filtering with both include and exclude patterns"""
@@ -475,7 +475,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that both get_orders and sp_temp_procedure were filtered out
         self.assertEqual(len(self.status.filtered), 2)
-        filtered_names = [list(f.keys())[0] for f in self.status.filtered]
+        filtered_names = [list(f.keys())[0] for f in self.status.filtered]  # noqa: RUF015
         self.assertIn("get_orders", filtered_names)
         self.assertIn("sp_temp_procedure", filtered_names)
 
@@ -587,7 +587,7 @@ class LineageWorkflowFilterPatternTest(TestCase):
 
         # Check that the excluded procedures were filtered out
         self.assertEqual(len(self.status.filtered), 3)
-        filtered_names = [list(f.keys())[0] for f in self.status.filtered]
+        filtered_names = [list(f.keys())[0] for f in self.status.filtered]  # noqa: RUF015
         self.assertIn("sp_procedure_temp", filtered_names)
         self.assertIn("get_inventory", filtered_names)
         self.assertIn("usp_data_test", filtered_names)

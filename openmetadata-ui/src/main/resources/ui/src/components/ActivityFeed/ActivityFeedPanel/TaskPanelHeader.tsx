@@ -18,8 +18,8 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getTaskDisplayId } from '../../../utils/TasksUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getTaskDisplayId } from '../../../utils/TaskNavigationUtils';
 import './feed-panel-header.less';
 
 interface TaskPanelHeaderProps {
@@ -37,6 +37,7 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
 
   const taskTypeLabel = TASK_ENTITY_TYPES[task.type] ?? 'label.task';
   const isOpen = task.status === TaskEntityStatus.Open;
+  const isGranted = task.status === TaskEntityStatus.Granted;
 
   return (
     <div className={classNames('feed-panel-header', className)}>
@@ -56,7 +57,8 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
           <Typography.Text
             className={classNames('task-status-badge', {
               open: isOpen,
-              closed: !isOpen,
+              granted: isGranted,
+              closed: !isOpen && !isGranted,
             })}>
             {task.status}
           </Typography.Text>

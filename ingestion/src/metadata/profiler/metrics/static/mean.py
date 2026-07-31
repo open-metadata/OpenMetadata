@@ -14,7 +14,7 @@ AVG Metric definition
 """
 
 from functools import partial
-from typing import TYPE_CHECKING, Callable, NamedTuple, Optional
+from typing import TYPE_CHECKING, Callable, NamedTuple, Optional  # noqa: UP035
 
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
@@ -151,7 +151,7 @@ class Mean(StaticMetric):
         return mean
 
     def get_pandas_computation(self) -> PandasComputation:
-        return PandasComputation[SumAndCount, Optional[float]](
+        return PandasComputation[SumAndCount, Optional[float]](  # noqa: UP045
             create_accumulator=lambda: SumAndCount(0.0, 0),
             update_accumulator=lambda acc, df: Mean.update_accumulator(acc, df, self.col),
             aggregate_accumulator=Mean.aggregate_accumulator,
@@ -164,8 +164,8 @@ class Mean(StaticMetric):
         Instead of storing per-chunk means, directly accumulates sum and count.
         This reduces memory from O(chunks) to O(1).
         """
-        import pandas as pd
-        from numpy import vectorize
+        import pandas as pd  # noqa: PLC0415
+        from numpy import vectorize  # noqa: PLC0415
 
         length_vectorize_func = vectorize(len)
         clean_df = df[column.name].dropna()
@@ -192,13 +192,13 @@ class Mean(StaticMetric):
     @staticmethod
     def aggregate_accumulator(
         sum_and_count: SumAndCount,
-    ) -> Optional[float]:
+    ) -> Optional[float]:  # noqa: UP045
         """Compute final mean from running sum and count"""
         if sum_and_count.count_value == 0:
             return None
         return sum_and_count.sum_value / sum_and_count.count_value
 
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:  # noqa: UP045
         """nosql function"""
         if is_quantifiable(self.col.type):
             return partial(adaptor.mean, column=self.col)

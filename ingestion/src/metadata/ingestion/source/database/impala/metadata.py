@@ -62,7 +62,7 @@ def get_impala_table_or_view_names(connection, schema=None, target_type="table")
 
         for result in list(results):
             data = result
-            if data[0].strip() == "Table Type:":
+            if data[0].strip() == "Table Type:":  # noqa: SIM102
                 if target_type.lower() in data[1].lower():
                     retvalue.append(table_view)
     return retvalue
@@ -70,12 +70,12 @@ def get_impala_table_or_view_names(connection, schema=None, target_type="table")
 
 def get_view_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     results = get_impala_table_or_view_names(connection, schema, "view")
-    return results
+    return results  # noqa: RET504
 
 
 def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     results = get_impala_table_or_view_names(connection, schema, "table")
-    return results
+    return results  # noqa: RET504
 
 
 @reflection.cache
@@ -169,7 +169,7 @@ class ImpalaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: ImpalaConnection = config.serviceConnection.root.config
         if not isinstance(connection, ImpalaConnection):

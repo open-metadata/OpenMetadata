@@ -99,9 +99,12 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
   data,
   selected,
 }) => {
+  // Outline, not a ring: WebKit does not pixel-snap box-shadow. This ring had no
+  // `ring-inset`, so it drew outward from the border box — outline-offset 0 (the default)
+  // reproduces that exactly.
   const nodeClassName = classNames(
-    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:ring-2 tw:hover:ring-brand-solid',
-    { 'tw:ring-2 tw:ring-brand-solid': selected }
+    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
+    { 'tw:outline-2 tw:outline-brand-solid': selected }
   );
 
   return (
@@ -162,9 +165,12 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
   data,
   selected,
 }) => {
+  // Outline, not a ring: WebKit does not pixel-snap box-shadow. This ring had no
+  // `ring-inset`, so it drew outward from the border box — outline-offset 0 (the default)
+  // reproduces that exactly.
   const nodeClassName = classNames(
-    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:ring-2 tw:hover:ring-brand-solid',
-    { 'tw:ring-2 tw:ring-brand-solid': selected }
+    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
+    { 'tw:outline-2 tw:outline-brand-solid': selected }
   );
 
   return (

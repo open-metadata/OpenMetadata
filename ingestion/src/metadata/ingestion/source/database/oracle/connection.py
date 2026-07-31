@@ -21,7 +21,6 @@ from urllib.parse import quote_plus
 
 import oracledb
 from oracledb.exceptions import DatabaseError
-from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -46,6 +45,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.queries import (
     CHECK_ACCESS_TO_ALL,
@@ -90,8 +90,8 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -164,7 +164,7 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         if connection.username:
             url += f"{quote_plus(connection.username)}"
             if not connection.password:
-                connection.password = SecretStr("")
+                connection.password = _CustomSecretStr("")
             url += f":{quote_plus(connection.password.get_secret_value())}"
             url += "@"
 
@@ -204,6 +204,6 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
 
         if isinstance(connection.oracleConnectionType, OracleServiceName):
             url = f"{url}/?service_name={connection.oracleConnectionType.oracleServiceName}"
-            return url
+            return url  # noqa: RET504
 
         raise ValueError(f"Unknown connection type {connection.oracleConnectionType}")

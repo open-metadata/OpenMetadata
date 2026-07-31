@@ -263,7 +263,7 @@ class GluePipelineUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
 
@@ -279,7 +279,7 @@ class GluePipelineUnitTest(TestCase):
         assert self.gluepipeline.get_pipeline_name(EXPECTED_JOB_DETAILS) == EXPECTED_PIPELINE_NAME
 
     def test_pipelines(self):
-        pipeline = list(self.gluepipeline.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right
+        pipeline = list(self.gluepipeline.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right  # noqa: RUF015
         assert pipeline == EXPECTED_CREATED_PIPELINES
 
     def test_resolve_s3_entities_trailing_slash(self):

@@ -56,8 +56,7 @@ test.describe('Task Comments - Add Comment', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -90,7 +89,7 @@ test.describe('Task Comments - Add Comment', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -141,7 +140,7 @@ test.describe('Task Comments - Add Comment', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -182,7 +181,7 @@ test.describe('Task Comments - Add Comment', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -242,8 +241,7 @@ test.describe('Task Comments - @Mention', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -274,7 +272,7 @@ test.describe('Task Comments - @Mention', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -302,8 +300,10 @@ test.describe('Task Comments - @Mention', () => {
             '.mention-dropdown, .ql-mention-list-container, [data-testid="mention-suggestions"]'
           );
 
-          // Dropdown should appear (may or may not be visible depending on UI implementation)
-          await page.waitForTimeout(1000);
+          await mentionDropdown
+            .first()
+            .waitFor({ state: 'visible', timeout: 2000 })
+            .catch(() => undefined);
         }
       }
     }
@@ -318,7 +318,7 @@ test.describe('Task Comments - @Mention', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -341,12 +341,15 @@ test.describe('Task Comments - @Mention', () => {
 
           // Type @ and part of username
           await page.keyboard.type(`@${mentionedUser.responseData.name}`);
-          await page.waitForTimeout(500);
 
           // Select from dropdown if visible
           const mentionItem = page.locator(
             `.mention-item, .ql-mention-list-item:has-text("${mentionedUser.responseData.displayName}")`
           );
+          await mentionItem
+            .first()
+            .waitFor({ state: 'visible', timeout: 2000 })
+            .catch(() => undefined);
 
           if (await mentionItem.isVisible()) {
             await mentionItem.click();
@@ -429,7 +432,7 @@ test.describe('Task Comments - Edit/Delete', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -470,7 +473,7 @@ test.describe('Task Comments - Edit/Delete', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -524,7 +527,7 @@ test.describe('Task Comments - Edit/Delete', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -576,7 +579,7 @@ test.describe('Task Comments - Edit/Delete', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -626,8 +629,7 @@ test.describe('Task Comments - API Validation', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `API Validation Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           priority: 'Medium',

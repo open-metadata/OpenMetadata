@@ -24,8 +24,8 @@ import { PersonaDetailsPage } from './PersonaDetailsPage';
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock('../../../components/common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <div>DescriptionV1.component</div>);
+jest.mock('../../../components/common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
@@ -132,12 +132,8 @@ jest.mock(
   })
 );
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Persona'),
-}));
-
-jest.mock('../../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -172,7 +168,7 @@ describe('PersonaDetailsPage', () => {
       await screen.findByText('ManageButton.component')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('DescriptionV1.component')
+      await screen.findByText('Description.component')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('add-persona-button')).toBeInTheDocument();
   });

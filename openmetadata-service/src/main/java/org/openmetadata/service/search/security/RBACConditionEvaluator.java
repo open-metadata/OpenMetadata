@@ -350,18 +350,29 @@ public class RBACConditionEvaluator {
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
     if (user == null || nullOrEmpty(user.getDomains())) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery);
+      // No user domains: only domainless entities, and never any Domain entity itself.
+      collector.addMustNot(queryBuilderFactory.existsQuery("domains.id"));
+      collector.addMustNot(queryBuilderFactory.termQuery("entityType", Entity.DOMAIN));
     } else {
       List<OMQueryBuilder> domainQueries = new ArrayList<>();
+      List<String> userDomainIds = new ArrayList<>();
       for (EntityReference domain : user.getDomains()) {
         String domainId = domain.getId().toString();
         domainQueries.add(queryBuilderFactory.termQuery("domains.id", domainId));
+        userDomainIds.add(domainId);
       }
+      // A Domain entity is not itself domain-tagged, so the domains.id clauses never match a Domain
+      // document. Match the user's own domains by their id so the Domain index search does not leak
+      // other domains' names to a domain-restricted user.
+      domainQueries.add(queryBuilderFactory.termsQuery("id.keyword", userDomainIds));
+      // Domainless entities stay visible, but a Domain document must not slip through here.
       domainQueries.add(
           queryBuilderFactory
               .boolQuery()
-              .mustNot(List.of(queryBuilderFactory.existsQuery("domains.id"))));
+              .mustNot(
+                  List.of(
+                      queryBuilderFactory.existsQuery("domains.id"),
+                      queryBuilderFactory.termQuery("entityType", Entity.DOMAIN))));
       collector.addMust(queryBuilderFactory.boolQuery().should(domainQueries));
     }
   }

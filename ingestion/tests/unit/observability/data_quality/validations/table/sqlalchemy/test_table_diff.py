@@ -1,5 +1,5 @@
 import datetime
-from typing import Generator
+from typing import Generator  # noqa: UP035
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest

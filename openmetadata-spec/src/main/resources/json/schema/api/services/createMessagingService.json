@@ -34,6 +34,9 @@
       },
       "default": null
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "owners": {
       "description": "Owners of this messaging service.",
       "$ref": "../../type/entityReferenceList.json",

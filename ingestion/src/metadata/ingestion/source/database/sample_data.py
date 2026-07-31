@@ -20,7 +20,8 @@ import time
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Optional, Union
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -155,6 +156,7 @@ from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
     LineageDetails,
+    TempLineageTable,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -178,6 +180,9 @@ from metadata.ingestion.models.tests_data import (
 )
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.ai_governance_sample import (
+    AIGovernanceSampleData,
+)
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
@@ -208,13 +213,13 @@ COLUMNS = [Column(name=f"column_{i}", dataType=DataType.STRING) for i in range(C
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 
-class InvalidSampleDataException(Exception):
+class InvalidSampleDataException(Exception):  # noqa: N818
     """
     Sample data is not valid to be ingested
     """
 
 
-def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityReference]:
+def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityReference]:  # noqa: UP045
     edge_fqn = edge["fqn"]
     if edge["type"] == "table":
         table = metadata.get_by_name(entity=Table, fqn=edge_fqn)
@@ -235,13 +240,75 @@ def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityRefer
     return None
 
 
-def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
+def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:  # noqa: UP006, UP007
     """
     Table key consists of schema and table name
     :param row:
     :return:
     """
     return TableKey(schema=row["schema"], table_name=row["table_name"])
+
+
+def get_lineage_timestamp(
+    edge: dict[str, Any],
+    timestamp_key: str,
+    days_ago_key: str,
+    reference_time: datetime,
+) -> int | None:
+    if edge.get(timestamp_key) is not None:
+        return int(edge[timestamp_key])
+
+    days_ago = edge.get(days_ago_key)
+    if days_ago is None:
+        return None
+
+    return int((reference_time - timedelta(days=float(days_ago))).timestamp() * 1000)
+
+
+def get_lineage_details(
+    edge: dict[str, Any],
+    edge_entity_ref: EntityReference | None,
+    reference_time: datetime,
+) -> LineageDetails | None:
+    temp_tables = None
+    if edge.get("temp_lineage_tables"):
+        temp_tables = [TempLineageTable(**table) for table in edge["temp_lineage_tables"]]
+
+    created_at = get_lineage_timestamp(edge, "createdAt", "created_at_days_ago", reference_time)
+    updated_at = get_lineage_timestamp(edge, "updatedAt", "updated_at_days_ago", reference_time)
+
+    if not any(
+        [
+            edge_entity_ref,
+            edge.get("sql_query"),
+            temp_tables,
+            edge.get("source"),
+            created_at is not None,
+            edge.get("createdBy"),
+            updated_at is not None,
+            edge.get("updatedBy"),
+        ]
+    ):
+        return None
+
+    lineage_details = {
+        "pipeline": edge_entity_ref if edge_entity_ref else None,
+        "sqlQuery": edge.get("sql_query"),
+        "tempLineageTables": temp_tables,
+    }
+
+    if edge.get("source") is not None:
+        lineage_details["source"] = edge["source"]
+    if created_at is not None:
+        lineage_details["createdAt"] = created_at
+    if edge.get("createdBy") is not None:
+        lineage_details["createdBy"] = edge["createdBy"]
+    if updated_at is not None:
+        lineage_details["updatedAt"] = updated_at
+    if edge.get("updatedBy") is not None:
+        lineage_details["updatedBy"] = edge["updatedBy"]
+
+    return LineageDetails(**lineage_details)
 
 
 class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -261,28 +328,28 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         if not sample_data_folder:
             raise InvalidSampleDataException("Cannot get sampleDataFolder from connection options")
         self.glue_database_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/glue/database_service.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.glue_database = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/glue/database.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.glue_database_schema = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/glue/database_schema.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.glue_tables = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/glue/tables.json",
                 "r",
                 encoding=UTF_8,
@@ -295,28 +362,28 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
         # MYSQL service for er diagrams
         self.mysql_database_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/mysql/database_service.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.mysql_database = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/mysql/database.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.mysql_database_schema = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/mysql/database_schema.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.mysql_tables = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/mysql/tables.json",
                 "r",
                 encoding=UTF_8,
@@ -329,35 +396,35 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
         # Postgres service for dbt sample data (jaffle_shop)
         self.postgres_database_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/postgres/database_service.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.postgres_database = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/postgres/database.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.postgres_database_schema = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/postgres/database_schema.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.postgres_tables = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/postgres/tables.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.postgres_dbt_data_models = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/postgres/dbt_data_models.json",
                 "r",
                 encoding=UTF_8,
@@ -369,42 +436,42 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.database_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/service.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.database = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/database.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.database_schema = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/database_schema.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.tables = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/tables.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.stored_procedures = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/stored_procedures.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.database_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/service.json",
                 "r",
                 encoding=UTF_8,
@@ -420,14 +487,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.kafka_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/topics/service.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.topics = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/topics/topics.json",
                 "r",
                 encoding=UTF_8,
@@ -438,7 +505,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             entity=MessagingService, config=WorkflowSource(**self.kafka_service_json)
         )
 
-        with open(
+        with open(  # noqa: PTH123
             sample_data_folder + "/looker/service.json",
             "r",
             encoding=UTF_8,
@@ -448,21 +515,21 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 config=WorkflowSource(**json.load(file)),
             )
 
-        with open(
+        with open(  # noqa: PTH123
             sample_data_folder + "/looker/charts.json",
             "r",
             encoding=UTF_8,
         ) as file:
             self.looker_charts = json.load(file)
 
-        with open(
+        with open(  # noqa: PTH123
             sample_data_folder + "/looker/dashboards.json",
             "r",
             encoding=UTF_8,
         ) as file:
             self.looker_dashboards = json.load(file)
 
-        with open(
+        with open(  # noqa: PTH123
             sample_data_folder + "/looker/dashboardDataModels.json",
             "r",
             encoding=UTF_8,
@@ -470,28 +537,28 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             self.looker_models = json.load(file)
 
         self.dashboard_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/dashboards/service.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.charts = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/dashboards/charts.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.data_models = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/dashboards/dashboardDataModels.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.dashboards = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/dashboards/dashboards.json",
                 "r",
                 encoding=UTF_8,
@@ -503,14 +570,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.pipeline_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/pipelines/service.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.pipelines = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/pipelines/pipelines.json",
                 "r",
                 encoding=UTF_8,
@@ -522,7 +589,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
         # Load DBT Cloud service
         self.dbtcloud_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/pipelines/dbtcloud_service.json",
                 "r",
                 encoding=UTF_8,
@@ -532,28 +599,28 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             entity=PipelineService, config=WorkflowSource(**self.dbtcloud_service_json)
         )
         self.lineage = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/lineage/lineage.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.teams = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/teams/teams.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.users = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/users/users.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.model_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/models/service.json",
                 "r",
                 encoding=UTF_8,
@@ -565,7 +632,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.sagemaker_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/models_sagemaker/service.json",
                 "r",
                 encoding=UTF_8,
@@ -577,7 +644,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.storage_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/storage/service.json",
                 "r",
                 encoding=UTF_8,
@@ -590,7 +657,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.models = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/models/models.json",
                 "r",
                 encoding=UTF_8,
@@ -598,7 +665,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.sagemaker_models = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/models_sagemaker/models.json",
                 "r",
                 encoding=UTF_8,
@@ -606,7 +673,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.containers = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/storage/containers.json",
                 "r",
                 encoding=UTF_8,
@@ -615,42 +682,42 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
         self.user_entity = {}
         self.table_tests = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/datasets/tableTests.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.pipeline_status = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/pipelines/pipelineStatus.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.table_pipeline_observability = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/pipelines/tablePipelineObservability.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.profiles = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/profiler/tableProfile.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.tests_suites = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/tests/testSuites.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.tests_case_results = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/tests/testCaseResults.json",
                 "r",
                 encoding=UTF_8,
@@ -658,7 +725,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.logical_test_suites = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/tests/logicalTestSuites.json",
                 "r",
                 encoding=UTF_8,
@@ -666,7 +733,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.storage_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/storage/service.json",
                 "r",
                 encoding=UTF_8,
@@ -674,7 +741,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.search_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/searchIndexes/service.json",
                 "r",
                 encoding=UTF_8,
@@ -686,7 +753,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.search_indexes = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/searchIndexes/searchIndexes.json",
                 "r",
                 encoding=UTF_8,
@@ -694,7 +761,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.life_cycle_data = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/lifecycle/lifeCycle.json",
                 "r",
                 encoding=UTF_8,
@@ -702,14 +769,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         )
 
         self.data_insight_data = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/data_insights/data_insights.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.api_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/api_service/service.json",
                 "r",
                 encoding=UTF_8,
@@ -720,21 +787,21 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             config=WorkflowSource(**self.api_service_json),
         )
         self.api_collection = json.load(
-            open(
+            open(  # noqa: PTH123, SIM115
                 sample_data_folder + "/api_service/api_collection.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.api_endpoint = json.load(
-            open(
+            open(  # noqa: PTH123, SIM115
                 sample_data_folder + "/api_service/api_endpoint.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.ometa_api_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
+            open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                 sample_data_folder + "/ometa_api_service/service.json",
                 "r",
                 encoding=UTF_8,
@@ -745,26 +812,26 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             config=WorkflowSource(**self.ometa_api_service_json),
         )
         self.ometa_api_collection = json.load(
-            open(
+            open(  # noqa: PTH123, SIM115
                 sample_data_folder + "/ometa_api_service/ometa_api_collection.json",
                 "r",
                 encoding=UTF_8,
             )
         )
         self.ometa_api_endpoint = json.load(
-            open(
+            open(  # noqa: PTH123, SIM115
                 sample_data_folder + "/ometa_api_service/ometa_api_endpoint.json",
                 "r",
                 encoding=UTF_8,
             )
         )
-        with open(
+        with open(  # noqa: PTH123
             sample_data_folder + "/domains/domain.json",
             "r",
             encoding=UTF_8,
         ) as domain_file:
             self.domain = json.load(domain_file)
-        with open(
+        with open(  # noqa: PTH123
             sample_data_folder + "/domains/dataProduct.json",
             "r",
             encoding=UTF_8,
@@ -774,14 +841,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         # Load data contracts sample data
         try:
             self.data_contracts = json.load(
-                open(
+                open(  # noqa: PTH123, SIM115
                     sample_data_folder + "/dataContracts/dataContracts.json",
                     "r",
                     encoding=UTF_8,
                 )
             )
             self.data_contract_results = json.load(
-                open(
+                open(  # noqa: PTH123, SIM115
                     sample_data_folder + "/dataContracts/dataContractResults.json",
                     "r",
                     encoding=UTF_8,
@@ -796,7 +863,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         try:
             logger.info(f"Loading drive sample data from {sample_data_folder}/drives/")
             self.drive_service_json = json.load(
-                open(  # pylint: disable=consider-using-with
+                open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                     sample_data_folder + "/drives/service.json",
                     "r",
                     encoding=UTF_8,
@@ -822,28 +889,28 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 self.drive_service = DriveService(**resp)
                 logger.info(f"Created drive service: {self.drive_service.name}")
             self.directories = json.load(
-                open(  # pylint: disable=consider-using-with
+                open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                     sample_data_folder + "/drives/directories.json",
                     "r",
                     encoding=UTF_8,
                 )
             )
             self.files = json.load(
-                open(  # pylint: disable=consider-using-with
+                open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                     sample_data_folder + "/drives/files.json",
                     "r",
                     encoding=UTF_8,
                 )
             )
             self.spreadsheets = json.load(
-                open(  # pylint: disable=consider-using-with
+                open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                     sample_data_folder + "/drives/spreadsheets.json",
                     "r",
                     encoding=UTF_8,
                 )
             )
             self.worksheets = json.load(
-                open(  # pylint: disable=consider-using-with
+                open(  # pylint: disable=consider-using-with  # noqa: PTH123, SIM115
                     sample_data_folder + "/drives/worksheets.json",
                     "r",
                     encoding=UTF_8,
@@ -854,14 +921,21 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
             )
         except Exception as exc:
-            import traceback
+            import traceback  # noqa: PLC0415
 
             logger.warning(f"Drive sample data not found: {exc}")
             logger.debug(f"Traceback: {traceback.format_exc()}")
             self.has_drive_data = False
 
+        # Optional, like the drive bundle above: a sampleDataFolder that predates this
+        # fixture set should cost us the AI Governance showcase, not the whole catalog.
+        self.ai_governance = AIGovernanceSampleData.load_optional(
+            Path(sample_data_folder) / "ai_governance",
+            metadata,
+        )
+
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.root.config
@@ -872,7 +946,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
     def prepare(self):
         """Nothing to prepare"""
 
-    def _iter(self, *_, **__) -> Iterable[Entity]:
+    def _iter(self, *_, **__) -> Iterable[Either]:
         yield from self.ingest_domains()
         yield from self.ingest_data_products()
         yield from self.ingest_teams()
@@ -912,6 +986,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         yield from self.process_service_batch()
         yield from self.ingest_data_contracts()
         yield from self.ingest_sagemaker_models()
+        if self.ai_governance is not None:
+            for request in self.ai_governance.iter_requests():
+                yield Either(left=None, right=request)
 
     def ingest_domains(self) -> Iterable[Either[CreateDomainRequest]]:
         """Ingest sample domains"""
@@ -1561,7 +1638,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             # Patch certification if present in the sample data
             if table.get("certification"):
                 try:
-                    from metadata.generated.schema.type.assetCertification import (
+                    from metadata.generated.schema.type.assetCertification import (  # noqa: PLC0415
                         AssetCertification,
                     )
 
@@ -1614,7 +1691,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         self.user_entity = resp.entities
 
         for stored_procedure in self.stored_procedures["storedProcedures"]:
-            stored_procedure = CreateStoredProcedureRequest(
+            stored_procedure = CreateStoredProcedureRequest(  # noqa: PLW2901
                 name=stored_procedure["name"],
                 description=stored_procedure["description"],
                 storedProcedureCode=StoredProcedureCode(**stored_procedure["storedProcedureCode"]),
@@ -1872,6 +1949,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             yield Either(right=pipeline_ev)
 
     def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        reference_time = datetime.now(timezone.utc)
         for edge in self.lineage:
             try:
                 from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata)
@@ -1882,20 +1960,11 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
                     continue
                 edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
-                lineage_details = None
-                if edge_entity_ref or edge.get("sql_query") or edge.get("temp_lineage_tables"):
-                    temp_tables = None
-                    if edge.get("temp_lineage_tables"):
-                        from metadata.generated.schema.type.entityLineage import (
-                            TempLineageTable,
-                        )
-
-                        temp_tables = [TempLineageTable(**t) for t in edge["temp_lineage_tables"]]
-                    lineage_details = LineageDetails(
-                        pipeline=edge_entity_ref if edge_entity_ref else None,
-                        sqlQuery=edge.get("sql_query"),
-                        tempLineageTables=temp_tables,
-                    )
+                lineage_details = get_lineage_details(
+                    edge=edge,
+                    edge_entity_ref=edge_entity_ref,
+                    reference_time=reference_time,
+                )
                 lineage = AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=from_entity_ref,
@@ -1923,7 +1992,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         for status_data in self.pipeline_status:
             pipeline_fqn = status_data["pipeline"]
             for status in status_data["pipelineStatus"]:
-                all_statuses.append(
+                all_statuses.append(  # noqa: PERF401
                     {
                         "pipeline_fqn": pipeline_fqn,
                         "status": status,
@@ -2022,7 +2091,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     )
                 )
 
-    def get_ml_feature_sources(self, feature: dict) -> List[FeatureSource]:
+    def get_ml_feature_sources(self, feature: dict) -> List[FeatureSource]:  # noqa: UP006
         """Build FeatureSources from sample data"""
 
         return [
@@ -2034,7 +2103,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             for source in feature.get("featureSources", [])
         ]
 
-    def get_ml_features(self, model: dict) -> List[MlFeature]:
+    def get_ml_features(self, model: dict) -> List[MlFeature]:  # noqa: UP006
         """Build MlFeatures from sample data"""
 
         return [
@@ -2066,7 +2135,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=mlmodel_fqn)
 
                 if not dashboard:
-                    raise InvalidSampleDataException(f"Cannot find {mlmodel_fqn} in Sample Dashboards")
+                    raise InvalidSampleDataException(f"Cannot find {mlmodel_fqn} in Sample Dashboards")  # noqa: TRY301
 
                 model_ev = CreateMlModelRequest(
                     name=model["name"],
@@ -2115,7 +2184,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=mlmodel_fqn)
 
                 if not dashboard:
-                    raise InvalidSampleDataException(f"Cannot find {mlmodel_fqn} in Sample Dashboards")
+                    raise InvalidSampleDataException(f"Cannot find {mlmodel_fqn} in Sample Dashboards")  # noqa: TRY301
 
                 # SageMaker connector only extracts: name, algorithm, mlStore, service
                 model_ev = CreateMlModelRequest(
@@ -2151,7 +2220,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 if parent_container_fqn:
                     parent_container = self.metadata.get_by_name(entity=Container, fqn=parent_container_fqn)
                     if not parent_container:
-                        raise InvalidSampleDataException(f"Cannot find {parent_container_fqn} in Sample Containers")
+                        raise InvalidSampleDataException(f"Cannot find {parent_container_fqn} in Sample Containers")  # noqa: TRY301
 
                 container_request = CreateContainerRequest(
                     name=container["name"],
@@ -2252,7 +2321,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             )
             for days, profile in enumerate(table_profile["profile"]):
                 try:
-                    table_profile = OMetaTableProfileSampleData(
+                    table_profile = OMetaTableProfileSampleData(  # noqa: PLW2901
                         table=table,
                         profile=CreateTableProfileRequest(
                             tableProfile=TableProfile(
@@ -2319,9 +2388,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 name=logical_test_suite["testSuiteName"],
                 description=logical_test_suite["testSuiteDescription"],
             )  # type: ignore
-            test_cases: List[TestCase] = []
+            test_cases: List[TestCase] = []  # noqa: UP006
             for test_case in logical_test_suite["testCases"]:
-                test_case = self.metadata.get_by_name(
+                test_case = self.metadata.get_by_name(  # noqa: PLW2901
                     entity=TestCase,
                     fqn=test_case["fqn"],
                     fields=["testSuite", "testDefinition"],
@@ -2330,6 +2399,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                     test_cases.append(test_case)
 
             yield Either(right=OMetaLogicalTestSuiteSample(test_suite=test_suite, test_cases=test_cases))
+
+    def _get_test_case_owners(self, test_case: dict) -> EntityReferenceList | None:
+        owners = []
+        for owner_name in test_case.get("owners", []):
+            user: User | None = self.metadata.get_by_name(User, fqn=owner_name)
+            if user:
+                owners.append(EntityReference(id=user.id.root, type="user"))  # pyright: ignore[reportCallIssue]
+        return EntityReferenceList(owners) if owners else None
 
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
         """Ingest test cases"""
@@ -2348,6 +2425,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                             TestCaseParameterValue(**param_values) for param_values in test_case["parameterValues"]
                         ],
                         useDynamicAssertion=test_case.get("useDynamicAssertion", False),
+                        owners=self._get_test_case_owners(test_case),
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)
@@ -2363,7 +2441,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             for test_case in test_suite["testCases"]:
                 test_case_fqn = f"{entity_link.get_table_or_column_fqn(test_case['entityLink'])}.{test_case['name']}"
 
-                for _, resolutions in test_case["resolutions"].items():
+                for _, resolutions in test_case["resolutions"].items():  # noqa: PERF102
                     for resolution in resolutions:
                         create_test_case_resolution = CreateTestCaseResolutionStatus(
                             testCaseResolutionStatusType=resolution["testCaseResolutionStatusType"],
@@ -2402,27 +2480,30 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         """Iterate over all the testSuite and testCase and ingest them"""
         for test_case_results in self.tests_case_results["testCaseResults"]:
             table_fqn = test_case_results.get("tableFqn", "sample_data.ecommerce_db.shopify.dim_address")
+            test_case_fqn = f"{table_fqn}.{test_case_results['name']}"
             case = self.metadata.get_by_name(
                 TestCase,
-                f"{table_fqn}.{test_case_results['name']}",
+                test_case_fqn,
                 fields=["testSuite", "testDefinition"],
             )
-            if case:
-                for days, result in enumerate(test_case_results["results"]):
-                    test_case_result_req = OMetaTestCaseResultsSample(
-                        test_case_results=TestCaseResult(
-                            timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
-                            testCaseStatus=result["testCaseStatus"],
-                            result=result["result"],
-                            testResultValue=[
-                                TestResultValue.model_validate(res_value) for res_value in result["testResultValues"]
-                            ],
-                            minBound=result.get("minBound"),
-                            maxBound=result.get("maxBound"),
-                        ),
-                        test_case_name=case.fullyQualifiedName.root,
-                    )
-                    yield Either(right=test_case_result_req)
+            if not case:
+                logger.warning(f"Test case {test_case_fqn} not found. Skipping its sample results.")
+                continue
+            for days, result in enumerate(test_case_results["results"]):
+                test_case_result_req = OMetaTestCaseResultsSample(
+                    test_case_results=TestCaseResult(
+                        timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
+                        testCaseStatus=result["testCaseStatus"],
+                        result=result["result"],
+                        testResultValue=[
+                            TestResultValue.model_validate(res_value) for res_value in result["testResultValues"]
+                        ],
+                        minBound=result.get("minBound"),
+                        maxBound=result.get("maxBound"),
+                    ),  # pyright: ignore[reportCallIssue]
+                    test_case_name=case.fullyQualifiedName.root,
+                )
+                yield Either(right=test_case_result_req, left=None)
             if test_case_results.get("failedRowsSample"):
                 self.metadata.ingest_failed_rows_sample(
                     case,
@@ -2440,7 +2521,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
     def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
         """Iterate over all the data insights and ingest them"""
-        data: Dict[str, List] = self.data_insight_data["reports"]
+        data: Dict[str, List] = self.data_insight_data["reports"]  # noqa: UP006
 
         for report_type, report_data in data.items():
             i = 0
@@ -2458,7 +2539,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                         data=report_datum["data"],
                     )
                 )
-                i += 1
+                i += 1  # noqa: SIM113
                 yield Either(left=None, right=record)
 
     def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:

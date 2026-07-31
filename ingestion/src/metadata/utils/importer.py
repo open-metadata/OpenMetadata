@@ -15,8 +15,8 @@ Helpers to import python classes and modules dynamically
 import importlib
 import sys
 import traceback
-from enum import Enum
-from typing import Any, Callable, Optional, Type, TypeVar
+from enum import Enum  # noqa: TC003
+from typing import Any, Callable, Optional, Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -24,7 +24,7 @@ from metadata.data_quality.validations.base_test_handler import BaseTestValidato
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.entity.services.serviceType import ServiceType  # noqa: TC001
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
@@ -41,12 +41,12 @@ CLASS_SEPARATOR = "_"
 MODULE_SEPARATOR = "."
 
 
-class DynamicImportException(Exception):
+class DynamicImportException(Exception):  # noqa: N818
     """
     Raise it when having issues dynamically importing objects
     """
 
-    def __init__(self, module: str, key: str = None, cause: Exception = None):
+    def __init__(self, module: str, key: str = None, cause: Exception = None):  # noqa: RUF013
         self.module = module
         self.key = key
         self.cause = cause
@@ -58,9 +58,9 @@ class DynamicImportException(Exception):
         return f"Cannot import {import_path} due to {self.cause}"
 
 
-class MissingPluginException(Exception):
+class MissingPluginException(Exception):  # noqa: N818
     """
-    An excpetion that captures a missing openmetadata-ingestion plugin for a specific connector.
+    An exception that captures a missing openmetadata-ingestion plugin for a specific connector.
     """
 
     def __init__(self, plugin: str):
@@ -85,7 +85,7 @@ def get_module_dir(type_: str) -> str:
     from a source type, e.g., mysql or clickhouse-lineage
     -> clickhouse
     """
-    return type_.split(TYPE_SEPARATOR)[0]
+    return type_.split(TYPE_SEPARATOR)[0]  # noqa: PLC0207
 
 
 def get_module_name(type_: str) -> str:
@@ -104,7 +104,7 @@ def get_source_module_name(type_: str) -> str:
     mysql -> source
     clickhouse-lineage -> lineage
     """
-    raw_module = type_.split(TYPE_SEPARATOR)[-1]
+    raw_module = type_.split(TYPE_SEPARATOR)[-1]  # noqa: PLC0207
 
     if raw_module == type_:  # it is invariant, no TYPE_SEPARATOR in the string
         return "metadata"
@@ -121,7 +121,7 @@ def get_class_name_root(type_: str) -> str:
     return "".join([i.title() for i in type_.split(TYPE_SEPARATOR)]).replace(CLASS_SEPARATOR, "")
 
 
-def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:
+def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:  # noqa: UP006
     """
     Dynamically import an object from a module path
     """
@@ -129,16 +129,16 @@ def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:
     module_name, obj_name = key.rsplit(MODULE_SEPARATOR, 1)
     try:
         obj = getattr(importlib.import_module(module_name), obj_name)
-        return obj
+        return obj  # noqa: RET504, TRY300
     except (ModuleNotFoundError, ImportError) as err:
         if log_traceback:
             logger.debug(traceback.format_exc())
-        raise DynamicImportException(module=module_name, key=obj_name, cause=err)
+        raise DynamicImportException(module=module_name, key=obj_name, cause=err)  # noqa: B904
 
 
-def import_processor_class(processor_type: str, from_: str = "ingestion") -> Type[Processor]:
+def import_processor_class(processor_type: str, from_: str = "ingestion") -> Type[Processor]:  # noqa: UP006
     return import_from_module(
-        "metadata.{}.processor.{}.{}Processor".format(  # pylint: disable=consider-using-f-string
+        "metadata.{}.processor.{}.{}Processor".format(  # pylint: disable=consider-using-f-string  # noqa: UP032
             from_,
             get_module_name(processor_type),
             get_class_name_root(processor_type),
@@ -146,9 +146,9 @@ def import_processor_class(processor_type: str, from_: str = "ingestion") -> Typ
     )
 
 
-def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]:
+def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]:  # noqa: UP006
     return import_from_module(
-        "metadata.{}.stage.{}.{}Stage".format(  # pylint: disable=consider-using-f-string
+        "metadata.{}.stage.{}.{}Stage".format(  # pylint: disable=consider-using-f-string  # noqa: UP032
             from_,
             get_module_name(stage_type),
             get_class_name_root(stage_type),
@@ -156,9 +156,9 @@ def import_stage_class(stage_type: str, from_: str = "ingestion") -> Type[Stage]
     )
 
 
-def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
+def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:  # noqa: UP006
     return import_from_module(
-        "metadata.{}.sink.{}.{}Sink".format(  # pylint: disable=consider-using-f-string
+        "metadata.{}.sink.{}.{}Sink".format(  # pylint: disable=consider-using-f-string  # noqa: UP032
             from_,
             get_module_name(sink_type),
             get_class_name_root(sink_type),
@@ -166,9 +166,9 @@ def import_sink_class(sink_type: str, from_: str = "ingestion") -> Type[Sink]:
     )
 
 
-def import_bulk_sink_type(bulk_sink_type: str, from_: str = "ingestion") -> Type[BulkSink]:
+def import_bulk_sink_type(bulk_sink_type: str, from_: str = "ingestion") -> Type[BulkSink]:  # noqa: UP006
     return import_from_module(
-        "metadata.{}.bulksink.{}.{}BulkSink".format(  # pylint: disable=consider-using-f-string
+        "metadata.{}.bulksink.{}.{}BulkSink".format(  # pylint: disable=consider-using-f-string  # noqa: UP032
             from_,
             get_module_name(bulk_sink_type),
             get_class_name_root(bulk_sink_type),
@@ -199,9 +199,9 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     Import get_connection and test_connection from sources
     """
     if not isinstance(connection, BaseModel):
-        raise ValueError("The connection is not a pydantic object. Is it really a connection class?")
+        raise ValueError("The connection is not a pydantic object. Is it really a connection class?")  # noqa: TRY004
 
-    connection_type: Optional[Enum] = getattr(connection, "type")
+    connection_type: Optional[Enum] = getattr(connection, "type")  # noqa: B009, UP045
     if not connection_type:
         raise ValueError(f"Cannot get `type` property from connection {connection}. Check the JSON Schema.")
 
@@ -214,10 +214,10 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
         python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
         python_module_path = ".".join(python_class_parts[:-1])
 
-        _connection_fn = import_from_module("{}.{}".format(python_module_path, function_name))
+        _connection_fn = import_from_module("{}.{}".format(python_module_path, function_name))  # noqa: UP032
     else:
         _connection_fn = import_from_module(
-            "metadata.ingestion.source.{}.{}.connection.{}".format(
+            "metadata.ingestion.source.{}.{}.connection.{}".format(  # noqa: UP032
                 service_type.name.lower(),
                 connection_type.value.lower(),
                 function_name,
@@ -238,7 +238,7 @@ def import_test_case_class(
     runner_type: str,
     test_definition: str,
     validator_class: str,
-) -> Type[BaseTestValidator]:
+) -> Type[BaseTestValidator]:  # noqa: UP006
     """Import and return the test case validator class.
 
     Args:
@@ -252,7 +252,7 @@ def import_test_case_class(
     """
     module_name = RULE_LIBRARY_VALIDATOR_MODULE_MAP.get(validator_class, test_definition)
     return import_from_module(
-        "metadata.data_quality.validations.{}.{}.{}.{}".format(  # pylint: disable=consider-using-f-string
+        "metadata.data_quality.validations.{}.{}.{}.{}".format(  # pylint: disable=consider-using-f-string  # noqa: UP032
             test_type.lower(),
             runner_type,
             module_name,
@@ -262,7 +262,7 @@ def import_test_case_class(
 
 
 class SideEffectsLoader(metaclass=Singleton):
-    modules = set(sys.modules.keys())
+    modules = set(sys.modules.keys())  # noqa: RUF012
 
     def import_side_effects(self, *modules):
         """Handles loading of side effects and caches modules that have already been imported.
@@ -270,11 +270,11 @@ class SideEffectsLoader(metaclass=Singleton):
         for module in modules:
             if module not in self.modules:
                 try:
-                    module = importlib.import_module(module)
+                    module = importlib.import_module(module)  # noqa: PLW2901
                     SideEffectsLoader.modules.add(module.__name__)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    raise DynamicImportException(module=module, cause=err)
+                    raise DynamicImportException(module=module, cause=err)  # noqa: B904
             else:
                 logger.debug(f"Module {module} already imported")
 

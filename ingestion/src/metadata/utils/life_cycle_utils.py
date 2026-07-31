@@ -42,7 +42,7 @@ def init_empty_life_cycle_properties() -> LifeCycle:
     return LifeCycle(created=None, updated=None, accessed=None)
 
 
-def _get_query_type_from_name(create_query) -> Optional[Any]:
+def _get_query_type_from_name(create_query) -> Optional[Any]:  # noqa: UP045
     """
     Method to get the query type from query_type field
     """
@@ -52,7 +52,7 @@ def _get_query_type_from_name(create_query) -> Optional[Any]:
     return None
 
 
-def _get_query_type_from_regex(create_query) -> Optional[Any]:
+def _get_query_type_from_regex(create_query) -> Optional[Any]:  # noqa: UP045
     """
     Method to get the query type from regex
     """
@@ -65,7 +65,7 @@ def _get_query_type_from_regex(create_query) -> Optional[Any]:
     return None
 
 
-def get_query_type(create_query) -> Optional[str]:
+def get_query_type(create_query) -> Optional[str]:  # noqa: UP045
     """
     Method to the type of query
     """

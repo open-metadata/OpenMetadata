@@ -36,7 +36,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
             [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
         )
 
-    def compute_row_count(self) -> Optional[int]:
+    def compute_row_count(self) -> Optional[int]:  # noqa: UP045
         """Compute row count for the given column
 
         Returns:

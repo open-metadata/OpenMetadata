@@ -26,7 +26,7 @@ import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { searchRoles } from '../../../../../rest/rolesAPIV1';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
 import { TagRenderer } from '../../../../common/TagRenderer/TagRenderer';

@@ -3,15 +3,15 @@ FROM --platform=$BUILDPLATFORM alpine:latest AS downloader
 
 RUN apk add --no-cache wget tar
 
-ENV FUSEKI_VERSION=5.0.0
+ENV FUSEKI_VERSION=5.6.0
 WORKDIR /tmp
 
 RUN wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
     tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
     mv apache-jena-fuseki-${FUSEKI_VERSION} /fuseki-dist
 
-# Use OpenJDK base image for runtime
-FROM openjdk:17-slim
+# Runtime: eclipse-temurin replaces the deprecated openjdk Docker Hub images.
+FROM eclipse-temurin:17-jre-jammy
 
 ENV FUSEKI_HOME=/fuseki
 ENV FUSEKI_BASE=/fuseki

@@ -17,47 +17,47 @@
 }
 .tags-section {
   border-bottom: 0.6px solid @grey-15;
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
   .tags-header {
     display: flex;
-    gap: 8px;
+    gap: var(--om-space-8);
     align-items: center;
-    margin-bottom: 12px;
-    padding-left: 14px;
-    padding-right: 14px;
+    margin-bottom: var(--om-space-12);
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
 
     .tags-title {
-      font-weight: 600;
-      font-size: 13px;
+      font-weight: var(--om-font-weight-semibold);
+      font-size: var(--om-font-size-13);
       color: @grey-900;
     }
   }
 
   .tags-content {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
 
     .tag-selector-display {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: var(--om-space-8);
       cursor: pointer;
 
       .selected-tags-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: var(--om-space-8);
         width: 100%;
 
         .selected-tag-chip {
           background-color: @blue-29;
           border: 1px solid @blue-30;
-          border-radius: 8px;
-          padding: 5px 6px;
+          border-radius: var(--om-radius-lg);
+          padding: var(--om-space-5) var(--om-space-6);
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: var(--om-space-5);
           height: 26px;
           .tag-icon {
             height: 12px;
@@ -66,8 +66,8 @@
           }
 
           .tag-name {
-            font-weight: 400;
-            font-size: 12px;
+            font-weight: var(--om-font-weight-regular);
+            font-size: var(--om-font-size-xs);
             color: @tag-text;
           }
         }
@@ -79,15 +79,15 @@
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: var(--om-space-8);
 
         .tag-item {
           display: flex;
           align-items: center;
-          gap: 5px;
-          padding: 5px 6px;
+          gap: var(--om-space-5);
+          padding: var(--om-space-5) var(--om-space-6);
           height: 26px;
-          border-radius: 8px;
+          border-radius: var(--om-radius-lg);
           background-color: @blue-29;
           border: 1px solid @blue-30;
           min-width: 0;
@@ -99,8 +99,8 @@
           }
 
           .tag-name {
-            font-size: 12px;
-            font-weight: 400;
+            font-size: var(--om-font-size-xs);
+            font-weight: var(--om-font-weight-regular);
             color: @tag-text;
             text-overflow: ellipsis;
           }
@@ -116,10 +116,10 @@
           background-color: transparent;
           border: none;
           color: @primary-7;
-          font-size: 12px;
-          font-weight: 400;
+          font-size: var(--om-font-size-xs);
+          font-weight: var(--om-font-weight-regular);
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all var(--om-duration-200) ease;
 
           &:hover {
             text-decoration: underline;
@@ -134,7 +134,7 @@
 
     .no-data-placeholder {
       color: @grey-500;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
   }
 }
@@ -149,9 +149,9 @@
 }
 
 .dropdown-item {
-  padding: 8px 12px;
+  padding: var(--om-space-8) var(--om-space-12);
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color var(--om-duration-200) ease;
 
   &:hover {
     background-color: @grey-100;
@@ -160,10 +160,10 @@
   .dropdown-item-content {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--om-space-8);
 
     .dropdown-item-name {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       color: @grey-11;
     }
   }
@@ -172,14 +172,14 @@
   padding-bottom: 0;
   width: 285px;
   .ant-popover-inner {
-    border-radius: 16px;
+    border-radius: var(--om-radius-2xl);
   }
   .ant-list-sm .ant-list-item {
-    padding: 8px 12px;
+    padding: var(--om-space-8) var(--om-space-12);
     align-items: center;
   }
   .ant-popover-inner-content {
-    padding: 8px 12px;
+    padding: var(--om-space-8) var(--om-space-12);
     padding-bottom: 0;
   }
 }

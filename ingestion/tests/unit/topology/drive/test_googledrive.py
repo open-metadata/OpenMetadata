@@ -14,7 +14,7 @@ Real Integration Tests for Google Drive Source
 Tests actual method execution with mocked API responses
 """
 
-from typing import Dict, List
+from typing import Dict, List  # noqa: UP035
 from unittest.mock import MagicMock
 
 import pytest
@@ -102,10 +102,10 @@ class TestGoogleDriveRealMethods:
         source.connection_obj = mock_client
 
         # Initialize caches
-        source._directories_cache: Dict[str, GoogleDriveDirectoryInfo] = {}
+        source._directories_cache: Dict[str, GoogleDriveDirectoryInfo] = {}  # noqa: UP006
         source._current_directory_context: str = None
-        source._files_by_parent_cache: Dict[str, List[GoogleDriveFile]] = {}
-        source._directory_fqn_cache: Dict[str, str] = {}
+        source._files_by_parent_cache: Dict[str, List[GoogleDriveFile]] = {}  # noqa: UP006
+        source._directory_fqn_cache: Dict[str, str] = {}  # noqa: UP006
         source._root_files_processed: bool = False
 
         # Mock context
@@ -235,7 +235,7 @@ class TestGoogleDriveRealMethods:
 
     def test_get_directory_names_real_execution(self, googledrive_source):
         """Test get_directory_names method with hierarchical ordering"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Pre-populate directory cache
         source._directories_cache = {
@@ -277,7 +277,7 @@ class TestGoogleDriveRealMethods:
 
     def test_yield_directory_real_execution(self, googledrive_source):
         """Test yield_directory method execution"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Pre-populate directory cache
         directory_info = GoogleDriveDirectoryInfo(
@@ -307,7 +307,7 @@ class TestGoogleDriveRealMethods:
 
     def test_yield_file_real_execution(self, googledrive_source):
         """Test yield_file method execution"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Pre-populate files cache
         test_file = GoogleDriveFile(
@@ -437,7 +437,7 @@ class TestGoogleDriveRealMethods:
 
     def test_yield_spreadsheet_real_execution(self, googledrive_source):
         """Test yield_spreadsheet method execution"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Create test spreadsheet details
         spreadsheet_details = GoogleSheetsSpreadsheetDetails(
@@ -468,7 +468,7 @@ class TestGoogleDriveRealMethods:
 
     def test_yield_worksheet_real_execution(self, googledrive_source):
         """Test yield_worksheet method execution"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Create test spreadsheet details with sheets
         spreadsheet_details = GoogleSheetsSpreadsheetDetails(
@@ -591,7 +591,7 @@ class TestGoogleDriveRealMethods:
 
     def test_root_files_processing_real_execution(self, googledrive_source):
         """Test root files processing in yield_file"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Pre-populate root files in cache
         root_file = GoogleDriveFile(
@@ -635,7 +635,7 @@ class TestGoogleDriveRealMethods:
 
     def test_directory_hierarchy_sorting_real_execution(self, googledrive_source):
         """Test _sort_directories_by_hierarchy method"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Pre-populate directory cache with complex hierarchy
         source._directories_cache = {
@@ -705,7 +705,7 @@ class TestGoogleDriveRealMethods:
 
     def test_get_spreadsheet_name_real_execution(self, googledrive_source):
         """Test get_spreadsheet_name method"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         mock_spreadsheet = GoogleDriveFile(
             id="sheet_001",
@@ -721,7 +721,7 @@ class TestGoogleDriveRealMethods:
 
     def test_file_filtering_real_execution(self, googledrive_source):
         """Test file filtering in yield_file"""
-        source, mock_client = googledrive_source
+        source, mock_client = googledrive_source  # noqa: RUF059
 
         # Configure filter pattern to exclude .txt files
         from metadata.generated.schema.type.filterPattern import FilterPattern

@@ -11,7 +11,7 @@
 """A client for Google Cloud Bigtable that supports multiple projects."""
 
 from functools import partial
-from typing import List, Optional, Type
+from typing import List, Optional, Type  # noqa: UP035
 
 from google import auth
 from google.cloud.bigtable import Client
@@ -33,8 +33,8 @@ class MultiProjectClient:
 
     def __init__(
         self,
-        client_class: Type[Client],
-        project_ids: Optional[List[str]] = None,
+        client_class: Type[Client],  # noqa: UP006
+        project_ids: Optional[List[str]] = None,  # noqa: UP006, UP045
         **client_kwargs,
     ):
         if project_ids:

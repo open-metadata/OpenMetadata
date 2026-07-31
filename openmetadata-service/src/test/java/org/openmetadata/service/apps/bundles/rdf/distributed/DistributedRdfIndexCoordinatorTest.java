@@ -413,4 +413,57 @@ class DistributedRdfIndexCoordinatorTest {
 
     assertFalse(coordinator.hasClaimableWork(jobId));
   }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void getPartitionStartCursorReturnsCachedValue() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    java.lang.reflect.Field cacheField =
+        DistributedRdfIndexCoordinator.class.getDeclaredField("partitionStartCursors");
+    cacheField.setAccessible(true);
+    Map<UUID, Map<String, Map<Long, String>>> cache =
+        (Map<UUID, Map<String, Map<Long, String>>>) cacheField.get(coordinator);
+    Map<Long, String> cursors = new java.util.HashMap<>();
+    cursors.put(100L, "encoded-cursor-100");
+    cursors.put(200L, "encoded-cursor-200");
+    Map<String, Map<Long, String>> entityMap = new java.util.HashMap<>();
+    entityMap.put("table", cursors);
+    cache.put(jobId, entityMap);
+
+    assertEquals("encoded-cursor-100", coordinator.getPartitionStartCursor(jobId, "table", 100L));
+    assertEquals("encoded-cursor-200", coordinator.getPartitionStartCursor(jobId, "table", 200L));
+    assertNull(coordinator.getPartitionStartCursor(jobId, "table", 999L));
+    assertNull(coordinator.getPartitionStartCursor(jobId, "dashboard", 100L));
+    assertNull(coordinator.getPartitionStartCursor(UUID.randomUUID(), "table", 100L));
+    assertNull(coordinator.getPartitionStartCursor(jobId, "table", 0L));
+    assertNull(coordinator.getPartitionStartCursor(null, "table", 100L));
+  }
+
+  @Test
+  void cancelInFlightPartitionsDelegatesToDao() {
+    when(partitionDAO.cancelInFlightPartitions(anyString(), anyLong())).thenReturn(7);
+    int cancelled = coordinator.cancelInFlightPartitions(UUID.randomUUID());
+    assertEquals(7, cancelled);
+    verify(partitionDAO, times(1)).cancelInFlightPartitions(anyString(), anyLong());
+  }
+
+  @Test
+  void claimNextPartitionRespectsInFlightBackpressure() {
+    when(partitionDAO.countInFlightPartitionsForServer(anyString(), eq(TEST_SERVER_ID)))
+        .thenReturn(5);
+
+    assertNull(coordinator.claimNextPartition(UUID.randomUUID(), TEST_SERVER_ID));
+    verify(partitionDAO, never()).claimNextPartitionAtomic(anyString(), anyString(), anyLong());
+  }
+
+  @Test
+  void claimNextPartitionProceedsWhenUnderInFlightCap() {
+    when(partitionDAO.countInFlightPartitionsForServer(anyString(), eq(TEST_SERVER_ID)))
+        .thenReturn(2);
+    when(partitionDAO.claimNextPartitionAtomic(anyString(), anyString(), anyLong())).thenReturn(0);
+
+    coordinator.claimNextPartition(UUID.randomUUID(), TEST_SERVER_ID);
+    verify(partitionDAO, times(1))
+        .claimNextPartitionAtomic(anyString(), eq(TEST_SERVER_ID), anyLong());
+  }
 }

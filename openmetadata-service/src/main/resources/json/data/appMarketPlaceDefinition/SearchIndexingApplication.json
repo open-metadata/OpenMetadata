@@ -2,7 +2,7 @@
   "name": "SearchIndexingApplication",
   "displayName": "Search Indexing",
   "description": "OpenMetadata connects with Elastic/Open Search to provide search feature for Data Assets. This application provides additional features related to ES/OS.",
-  "features": "Sync OpenMetadata and Elastic Search and Recreate Indexes.",
+  "features": "Sync OpenMetadata and Elastic Search with staged index promotion.",
   "appType": "internal",
   "appScreenshots": ["SearchIndexPic1"],
   "developer": "Collate Inc.",
@@ -20,7 +20,6 @@
     "entities": [
       "all"
     ],
-    "recreateIndex": false,
     "batchSize": "100",
     "payLoadSize": 104857600,
     "producerThreads": 1,

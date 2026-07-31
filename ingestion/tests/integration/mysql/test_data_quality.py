@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -21,7 +21,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 @pytest.fixture()
 def get_test_suite_config(workflow_config, sink_config, db_service):
-    def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):
+    def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):  # noqa: UP006
         return {
             "source": {
                 "type": "mysql",

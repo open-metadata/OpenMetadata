@@ -101,7 +101,7 @@ export interface AuthenticationType {
  * SQLAlchemy driver scheme options.
  */
 export enum DatabricksScheme {
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
 }
 
 /**

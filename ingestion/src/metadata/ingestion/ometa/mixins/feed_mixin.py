@@ -15,19 +15,19 @@ Mixin class containing feed/thread specific methods.
 from __future__ import annotations
 
 from typing import Optional, Union
-from uuid import UUID
+from uuid import UUID  # noqa: TC003
 
-from metadata.generated.schema.api.feed.closeTask import CloseTaskRequest
-from metadata.generated.schema.api.feed.createPost import CreatePostRequest
-from metadata.generated.schema.api.feed.createThread import CreateThreadRequest
-from metadata.generated.schema.api.feed.resolveTask import ResolveTaskRequest
+from metadata.generated.schema.api.feed.closeTask import CloseTaskRequest  # noqa: TC001
+from metadata.generated.schema.api.feed.createPost import CreatePostRequest  # noqa: TC001
+from metadata.generated.schema.api.feed.createThread import CreateThreadRequest  # noqa: TC001
+from metadata.generated.schema.api.feed.resolveTask import ResolveTaskRequest  # noqa: TC001
 from metadata.generated.schema.entity.feed.thread import (
     Post,
     Thread,
     ThreadTaskStatus,
     ThreadType,
 )
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST  # noqa: TC001
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str
 
@@ -44,14 +44,14 @@ class OMetaFeedMixin:
         self,
         limit_posts: int = 3,
         limit: int = 10,
-        before: Optional[str] = None,
-        after: Optional[str] = None,
-        entity_link: Optional[str] = None,
-        user_id: Optional[Union[str, UUID]] = None,
-        filter_type: Optional[str] = None,
+        before: Optional[str] = None,  # noqa: UP045
+        after: Optional[str] = None,  # noqa: UP045
+        entity_link: Optional[str] = None,  # noqa: UP045
+        user_id: Optional[Union[str, UUID]] = None,  # noqa: UP007, UP045
+        filter_type: Optional[str] = None,  # noqa: UP045
         resolved: bool = False,
-        thread_type: Optional[ThreadType] = None,
-        task_status: Optional[ThreadTaskStatus] = None,
+        thread_type: Optional[ThreadType] = None,  # noqa: UP045
+        task_status: Optional[ThreadTaskStatus] = None,  # noqa: UP045
     ) -> EntityList[Thread]:
         params = {
             "limitPosts": str(limit_posts),
@@ -81,11 +81,11 @@ class OMetaFeedMixin:
             before=resp["paging"].get("before"),
         )
 
-    def get_thread(self, thread_id: Union[str, UUID]) -> Thread:
+    def get_thread(self, thread_id: Union[str, UUID]) -> Thread:  # noqa: UP007
         resp = self.client.get(f"{self._feed_path}/{model_str(thread_id)}")
         return Thread.model_validate(resp)
 
-    def get_task_thread(self, task_id: Union[str, int]) -> Thread:
+    def get_task_thread(self, task_id: Union[str, int]) -> Thread:  # noqa: UP007
         resp = self.client.get(f"{self._feed_path}/tasks/{model_str(task_id)}")
         return Thread.model_validate(resp)
 
@@ -96,7 +96,7 @@ class OMetaFeedMixin:
         )
         return Thread.model_validate(resp)
 
-    def create_post(self, thread_id: Union[str, UUID], create_request: CreatePostRequest) -> Post:
+    def create_post(self, thread_id: Union[str, UUID], create_request: CreatePostRequest) -> Post:  # noqa: UP007
         resp = self.client.post(
             f"{self._feed_path}/{model_str(thread_id)}/posts",
             create_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
@@ -105,9 +105,9 @@ class OMetaFeedMixin:
 
     def list_posts(
         self,
-        thread_id: Union[str, UUID],
-        after: Optional[str] = None,
-        before: Optional[str] = None,
+        thread_id: Union[str, UUID],  # noqa: UP007
+        after: Optional[str] = None,  # noqa: UP045
+        before: Optional[str] = None,  # noqa: UP045
     ) -> EntityList[Post]:
         params = {}
         if after:
@@ -122,14 +122,14 @@ class OMetaFeedMixin:
             before=resp["paging"].get("before"),
         )
 
-    def resolve_feed_task(self, task_id: Union[str, int], resolve_request: ResolveTaskRequest) -> Thread:
+    def resolve_feed_task(self, task_id: Union[str, int], resolve_request: ResolveTaskRequest) -> Thread:  # noqa: UP007
         resp = self.client.put(
             f"{self._feed_path}/tasks/{model_str(task_id)}/resolve",
             resolve_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         return Thread.model_validate(resp)
 
-    def close_feed_task(self, task_id: Union[str, int], close_request: CloseTaskRequest) -> Thread:
+    def close_feed_task(self, task_id: Union[str, int], close_request: CloseTaskRequest) -> Thread:  # noqa: UP007
         resp = self.client.put(
             f"{self._feed_path}/tasks/{model_str(task_id)}/close",
             close_request.model_dump_json(context={"mask_secrets": False}, by_alias=True),

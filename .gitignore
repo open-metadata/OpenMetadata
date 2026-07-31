@@ -206,3 +206,5 @@ ingestion/.claude/agents
 .serena/
 
 test-results/
+
+docs/superpowers/*

@@ -28,6 +28,8 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -36,10 +38,9 @@ from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
@@ -63,7 +64,7 @@ class SampleTest(TestCase):
     Run checks on different metrics
     """
 
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -111,10 +112,12 @@ class SampleTest(TestCase):
                 service_connection_config=cls.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(profileSample=50.0),
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(profileSample=50.0),
+                        )
                     )
                 ),
             )
@@ -150,7 +153,7 @@ class SampleTest(TestCase):
         User.__table__.create(bind=cls.engine)
 
         # Insert 30 rows
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 User(
                     name="John",
@@ -310,7 +313,7 @@ class SampleTest(TestCase):
 
         UserBinary.__table__.create(bind=self.engine)
 
-        for i in range(10):
+        for i in range(10):  # noqa: B007
             data = [
                 UserBinary(
                     name="John",
@@ -348,7 +351,7 @@ class SampleTest(TestCase):
             "password_hash",
         ]
 
-        assert type(sample_data.rows[0][6]) == str
+        assert type(sample_data.rows[0][6]) == str  # noqa: E721
 
         UserBinary.__table__.drop(bind=self.engine)
 
@@ -362,13 +365,15 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(profileSample=50.0),
-                    )
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(profileSample=50.0),
+                        )
+                    ),
+                    sample_query=stmt,
                 ),
-                sample_query=stmt,
             )
         sample_data = sampler.fetch_sample_data()
 
@@ -384,17 +389,19 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(
-                            profileSample=100,
-                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=100,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
                         ),
+                        randomizedSample=True,
                     ),
-                    randomizedSample=True,
+                    sample_data_count=5,
                 ),
-                sample_data_count=5,
             )
 
         with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
@@ -409,17 +416,19 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(
-                            profileSample=100,
-                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=100,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
                         ),
+                        randomizedSample=False,
                     ),
-                    randomizedSample=False,
+                    sample_data_count=5,
                 ),
-                sample_data_count=5,
             )
 
         with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
@@ -434,17 +443,19 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(
-                            profileSample=100,
-                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=100,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
                         ),
+                        randomizedSample=None,
                     ),
-                    randomizedSample=None,
+                    sample_data_count=5,
                 ),
-                sample_data_count=5,
             )
 
         with patch.object(sampler, "get_sample_query", wraps=sampler.get_sample_query) as mock_gsq:
@@ -459,17 +470,19 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(
-                            profileSample=100,
-                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=100,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
                         ),
+                        randomizedSample=True,
                     ),
-                    randomizedSample=True,
+                    sample_data_count=5,
                 ),
-                sample_data_count=5,
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(20)]
@@ -485,17 +498,19 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(
-                            profileSample=100,
-                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=100,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                            ),
                         ),
+                        randomizedSample=False,
                     ),
-                    randomizedSample=False,
+                    sample_data_count=5,
                 ),
-                sample_data_count=5,
             )
 
         results = [sampler.fetch_sample_data().rows for _ in range(5)]
@@ -505,5 +520,5 @@ class SampleTest(TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107
         return super().tearDownClass()

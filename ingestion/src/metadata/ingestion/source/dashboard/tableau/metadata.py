@@ -15,9 +15,9 @@ Tableau source module
 # pylint: disable=too-many-lines
 import traceback
 from datetime import datetime
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
 
-from requests.utils import urlparse
+from requests.utils import urlparse  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -70,6 +70,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
@@ -86,7 +87,11 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import (
+    filter_by_chart,
+    filter_by_datamodel,
+    filter_pattern_enabled,
+)
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     clean_uri,
@@ -109,6 +114,7 @@ class TableauSource(DashboardServiceSource):
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
     client: TableauClient
+    progress_mode = ProgressMode.MANUAL
 
     def __init__(
         self,
@@ -123,7 +129,7 @@ class TableauSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: TableauConnection = config.serviceConnection.root.config
@@ -134,7 +140,27 @@ class TableauSource(DashboardServiceSource):
     def get_dashboards_list(self) -> Iterable[TableauDashboard]:
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
+        self._declare_dashboard_progress_total()
         yield from self.client.get_workbooks(include_owners=self.source_config.includeOwners)
+
+    def _declare_dashboard_progress_total(self) -> None:
+        """Declare the Dashboard progress total. ``get_workbook_count`` is a
+        server-side pre-filter count, so when a dashboard or project filter is
+        active the tracked (post-filter) count can never reach it — fall back to
+        a reconcilable running count instead of a bar stuck below 100%."""
+        manual = self.progress_tracking.manual
+        patterns = (
+            self.source_config.dashboardFilterPattern,
+            self.source_config.projectFilterPattern,
+        )
+        if any(filter_pattern_enabled(pattern) for pattern in patterns):
+            manual.mark_reconcilable(Dashboard.__name__)
+        else:
+            try:
+                manual.set_total(Dashboard.__name__, self.client.get_workbook_count())
+            except Exception as exc:
+                logger.warning("Could not prefetch Tableau workbook count for progress: %s", exc)
+                manual.mark_reconcilable(Dashboard.__name__)
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -146,7 +172,7 @@ class TableauSource(DashboardServiceSource):
         dashboard.dataModels = self.client.get_datasources(dashboard.id)
         return dashboard
 
-    def get_owner_ref(self, dashboard_details: TableauDashboard) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: TableauDashboard) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Get dashboard owner from email
         """
@@ -161,7 +187,7 @@ class TableauSource(DashboardServiceSource):
         return None
 
     @staticmethod
-    def _get_data_models_tags(data_models: List[DataSource]) -> Set[str]:
+    def _get_data_models_tags(data_models: List[DataSource]) -> Set[str]:  # noqa: UP006
         """
         Get the tags from the data model in the upstreamDatasources
         """
@@ -183,7 +209,7 @@ class TableauSource(DashboardServiceSource):
         Method to yield tags related to specific dashboards
         """
         if self.source_config.includeTags:
-            tags: Set = set()
+            tags: Set = set()  # noqa: UP006
             for container in [[dashboard_details], dashboard_details.charts or []]:
                 for elem in container:
                     tags.update(elem.tags)
@@ -200,7 +226,7 @@ class TableauSource(DashboardServiceSource):
                 include_tags=self.source_config.includeTags,
             )
 
-    def _get_datamodel_sql_query(self, data_model: DataSource) -> Optional[str]:
+    def _get_datamodel_sql_query(self, data_model: DataSource) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the custom sql query from the tableau datamodels
         """
@@ -209,7 +235,7 @@ class TableauSource(DashboardServiceSource):
             for table in data_model.upstreamTables or []:
                 for referenced_query in table.referencedByQueries or []:
                     sql_queries.add(referenced_query.query)
-            if not sql_queries:
+            if not sql_queries:  # noqa: SIM102
                 if query := self.client.get_custom_sql_table_queries(data_model.id):
                     sql_queries.update(query)
             return "\n\n".join(sql_queries) or None
@@ -332,6 +358,7 @@ class TableauSource(DashboardServiceSource):
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
+            self.progress_tracking.manual.track(Dashboard.__name__)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
             yield Either(
@@ -343,7 +370,7 @@ class TableauSource(DashboardServiceSource):
             )
 
     @staticmethod
-    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[List[str]]:
+    def _get_data_model_column_fqn(data_model_entity: DashboardDataModel, column: str) -> Optional[List[str]]:  # noqa: UP006, UP045
         """
         Get fqn of column if exist in table entity
         """
@@ -353,7 +380,7 @@ class TableauSource(DashboardServiceSource):
         for tbl_column in data_model_entity.columns:
             for child_column in tbl_column.children or []:
                 if column.lower() == child_column.name.root.lower():
-                    columns.append(child_column.fullyQualifiedName.root)
+                    columns.append(child_column.fullyQualifiedName.root)  # noqa: PERF401
         return columns
 
     # pylint: disable=arguments-differ
@@ -362,8 +389,8 @@ class TableauSource(DashboardServiceSource):
         upstream_table: UpstreamTable,
         table_entity: Table,
         data_model_entity: DashboardDataModel,
-        upstream_col_set: Set[str],
-    ) -> List[ColumnLineage]:
+        upstream_col_set: Set[str],  # noqa: UP006
+    ) -> List[ColumnLineage]:  # noqa: UP006
         """
         Get the column lineage from the fields
         """
@@ -378,8 +405,8 @@ class TableauSource(DashboardServiceSource):
                     )
                     for to_column in to_columns:
                         if from_column and to_column:
-                            column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
-            return column_lineage
+                            column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))  # noqa: PERF401
+            return column_lineage  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
@@ -403,7 +430,7 @@ class TableauSource(DashboardServiceSource):
                     )
                     datamodel_entity = self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
                     if not datamodel_entity:
-                        logger.debug(f"Datamodel entity not found for lineage: {str(datamodel)}")
+                        logger.debug(f"Datamodel entity not found for lineage: {str(datamodel)}")  # noqa: RUF010
                         continue
                     # TableauPublishedDatasource will be skipped here and their lineage will be processed later
                     if datamodel_entity.dataModelType == DataModelType.TableauPublishedDatasource:
@@ -420,14 +447,14 @@ class TableauSource(DashboardServiceSource):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     )
 
     def _get_table_datamodel_lineage(
         self,
         upstream_data_model: DataSource,
         datamodel: DataSource,
-        db_service_prefix: Optional[str],
+        db_service_prefix: Optional[str],  # noqa: UP045
         upstream_data_model_entity: DashboardDataModel,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -460,7 +487,7 @@ class TableauSource(DashboardServiceSource):
                 left=StackTraceError(
                     name="Lineage",
                     error=(
-                        f"Error to yield table datamodel lineage details for data model name [{str(datamodel)}]: {err}"
+                        f"Error to yield table datamodel lineage details for data model name [{str(datamodel)}]: {err}"  # noqa: RUF010
                     ),
                     stackTrace=traceback.format_exc(),
                 )
@@ -470,7 +497,7 @@ class TableauSource(DashboardServiceSource):
         self,
         data_model_col: Column,
         upstream_data_model_col: Column,
-    ) -> Optional[List[ColumnLineage]]:
+    ) -> Optional[List[ColumnLineage]]:  # noqa: UP006, UP045
         """
         Get the lineage between children columns of the datamodels
         """
@@ -526,7 +553,7 @@ class TableauSource(DashboardServiceSource):
         self,
         datamodel: DataSource,
         data_model_entity: DashboardDataModel,
-        db_service_prefix: Optional[str],
+        db_service_prefix: Optional[str],  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """ "
         Method to create lineage between tables<->published datasource<->embedded datasource
@@ -658,7 +685,7 @@ class TableauSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: TableauDashboard,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         This method creates the lineage between tables and datamodels
@@ -752,17 +779,14 @@ class TableauSource(DashboardServiceSource):
         """
         Close the connection for tableau
         """
-        try:
-            self.client.sign_out()
-        except ConnectionError as err:
-            logger.debug(f"Error closing connection - {err}")
-
         self.metadata.compute_percentile(Dashboard, self.today)
-        self.metadata.close()
+        super().close()
 
     def _get_table_entities_from_api(
-        self, db_service_prefix: Optional[str], table: UpstreamTable
-    ) -> Optional[List[TableAndQuery]]:
+        self,
+        db_service_prefix: str | None,
+        table: UpstreamTable,
+    ) -> Optional[List[TableAndQuery]]:  # noqa: UP006, UP045
         """
         In case we get the table details from the Graphql APIs we process them
         """
@@ -851,8 +875,10 @@ class TableauSource(DashboardServiceSource):
         return None
 
     def _get_table_entities_from_query(
-        self, db_service_prefix: Optional[str], table: UpstreamTable
-    ) -> Optional[List[TableAndQuery]]:
+        self,
+        db_service_prefix: str | None,
+        table: UpstreamTable,
+    ) -> Optional[List[TableAndQuery]]:  # noqa: UP006, UP045
         """
         In case we get the table details from the Graphql APIs we process them
         """
@@ -932,8 +958,10 @@ class TableauSource(DashboardServiceSource):
         return tables_list or []
 
     def _get_database_tables(
-        self, db_service_prefix: Optional[str], table: UpstreamTable
-    ) -> Optional[List[TableAndQuery]]:
+        self,
+        db_service_prefix: str | None,
+        table: UpstreamTable,
+    ) -> Optional[List[TableAndQuery]]:  # noqa: UP006, UP045
         """
         Get the table entities for lineage
         """
@@ -945,7 +973,7 @@ class TableauSource(DashboardServiceSource):
             return self._get_table_entities_from_query(db_service_prefix=db_service_prefix, table=table)
         return None
 
-    def _get_datamodel(self, datamodel: DataSource) -> Optional[DashboardDataModel]:
+    def _get_datamodel(self, datamodel: DataSource) -> Optional[DashboardDataModel]:  # noqa: UP045
         """
         Get the datamodel entity for lineage
         """
@@ -962,7 +990,7 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
-    def get_child_columns(self, field: DatasourceField) -> List[Column]:
+    def get_child_columns(self, field: DatasourceField) -> List[Column]:  # noqa: UP006
         """
         Extract the child columns from the fields
         """
@@ -984,7 +1012,7 @@ class TableauSource(DashboardServiceSource):
                 logger.warning(f"Error to process datamodel nested column: {exc}")
         return columns
 
-    def get_column_info(self, data_source: DataSource) -> Optional[List[Column]]:
+    def get_column_info(self, data_source: DataSource) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """
         Args:
             data_source: DataSource
@@ -1014,7 +1042,7 @@ class TableauSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
         """
         Get the project / workspace / folder / collection name of the dashboard
         """
@@ -1026,7 +1054,7 @@ class TableauSource(DashboardServiceSource):
             logger.warning(f"Error fetching project name for {dashboard_details.id}: {exc}")
         return None
 
-    def get_project_names(self, dashboard_details: Any) -> Optional[str]:
+    def get_project_names(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
         """
         Get the project / workspace / folder / collection names of the dashboard
         """
@@ -1111,6 +1139,6 @@ class TableauSource(DashboardServiceSource):
         """
         Get the proxy url for the tableau server
         """
-        if self.config.serviceConnection.root.config.proxyURL:
-            return str(self.config.serviceConnection.root.config.proxyURL)
+        if self.config.serviceConnection.root.config.proxyURL:  # pyright: ignore[reportAttributeAccessIssue]
+            return str(self.config.serviceConnection.root.config.proxyURL)  # pyright: ignore[reportAttributeAccessIssue]
         return str(self.config.serviceConnection.root.config.hostPort)

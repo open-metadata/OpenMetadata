@@ -1,6 +1,14 @@
 """Base class for param setter logic for table data diff"""
 
-from typing import List, Optional, Set, Type, Union
+from typing import (  # noqa: UP035
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Type,
+    Union,
+    runtime_checkable,
+)
 
 from sqlalchemy.engine import make_url
 
@@ -47,13 +55,20 @@ class ServiceSpecPatch:
             )
         )
 
-    def get_data_diff_class(self) -> Type["BaseTableParameter"]:
+    def get_data_diff_class(self) -> Type["BaseTableParameter"]:  # noqa: UP006
         return import_from_module(self.service_spec.data_diff)
 
-    def get_connection_class(self) -> Optional[Type[BaseConnection]]:
+    def get_connection_class(self) -> Optional[Type[BaseConnection]]:  # noqa: UP006, UP045
         if self.service_spec.connection_class:
             return import_from_module(self.service_spec.connection_class)
         return None
+
+
+@runtime_checkable
+class SupportsConnectionDict(Protocol):
+    """A connection that can expose its config as a data-diff connection dict."""
+
+    def get_connection_dict(self) -> dict: ...
 
 
 class BaseTableParameter:
@@ -66,7 +81,7 @@ class BaseTableParameter:
         key_columns,
         extra_columns,
         case_sensitive_columns,
-        service_url: Optional[Union[str, dict]],
+        service_url: Optional[Union[str, dict]],  # noqa: UP007, UP045
     ) -> TableParameter:
         """Getter table parameter for the table diff test.
 
@@ -122,10 +137,8 @@ class BaseTableParameter:
     def _get_service_connection_config(
         cls,
         service_connection_config,
-    ) -> Optional[Union[str, dict]]:
-        """
-        Get the connection dictionary for the service.
-        """
+    ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
+        """Return the service connection for data diff, as a dict or URL string."""
         if not service_connection_config:
             return None
 
@@ -133,34 +146,31 @@ class BaseTableParameter:
 
         try:
             connection_class = service_spec_patch.get_connection_class()
-            if not connection_class:
-                return (
-                    get_connection(service_connection_config).url.render_as_string(hide_password=False)
-                    if service_connection_config
-                    else None
-                )
-            connection = connection_class(service_connection_config)
-            return connection.get_connection_dict()
+            if connection_class is not None:
+                connection = connection_class(service_connection_config)
+                if isinstance(connection, SupportsConnectionDict):
+                    return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
-            return (
-                get_connection(service_connection_config).url.render_as_string(hide_password=False)
-                if service_connection_config
-                else None
+            logger.debug(
+                f"[Data Diff]: Could not build a connection dict for "
+                f"{service_connection_config.type.value}; falling back to the connection URL",
+                exc_info=True,
             )
+        return get_connection(service_connection_config).url.render_as_string(hide_password=False)
 
     @classmethod
     def get_service_connection_config(
         cls,
         service: DatabaseService,
-    ) -> Optional[Union[str, dict]]:
+    ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
         return cls._get_service_connection_config(service.connection.config)
 
     def get_data_diff_url(
         self,
         db_service: DatabaseService,
         table_fqn,
-        override_url: Optional[Union[str, dict]] = None,
-    ) -> Union[str, dict]:
+        override_url: Optional[Union[str, dict]] = None,  # noqa: UP007, UP045
+    ) -> Union[str, dict]:  # noqa: UP007
         """Get the url for the data diff service.
 
         Args:
@@ -172,7 +182,7 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            self._get_service_connection_config(db_service.connection.config) if not override_url else override_url
+            self._get_service_connection_config(db_service.connection.config) if not override_url else override_url  # noqa: SIM212
         )
         if isinstance(source_url, dict):
             source_url["driver"] = source_url["driver"].split("+")[0]
@@ -197,11 +207,11 @@ class BaseTableParameter:
 
     @staticmethod
     def filter_relevant_columns(
-        columns: List[Column],
-        key_columns: Set[str],
-        extra_columns: Set[str],
+        columns: List[Column],  # noqa: UP006
+        key_columns: Set[str],  # noqa: UP006
+        extra_columns: Set[str],  # noqa: UP006
         case_sensitive: bool,
-    ) -> List[Column]:
+    ) -> List[Column]:  # noqa: UP006
         """Filter relevant columns.
 
         Args:

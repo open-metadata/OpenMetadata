@@ -34,14 +34,14 @@ class Base(DeclarativeBase):
 
 class MetricComputerTestTable(Base):
     __tablename__ = "metric_computer_test"
-    __table_args__ = {"schema": "dbo"}
+    __table_args__ = {"schema": "dbo"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
 
 
 class NonExistentModel(Base):
     __tablename__ = "nonexistent_table_xyz"
-    __table_args__ = {"schema": "dbo"}
+    __table_args__ = {"schema": "dbo"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
 
 

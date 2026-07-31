@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import List
+from typing import List  # noqa: UP035
 from unittest.mock import create_autospec
 
 import pytest
@@ -52,10 +52,10 @@ def metadata(service1: DatabaseService, table1: Table, service2: DatabaseService
     }
 
     def mock_get_by_id(entity, entity_id, **kwargs):
-        return objects_by_entity_and_id.get((entity, entity_id), None)
+        return objects_by_entity_and_id.get((entity, entity_id), None)  # noqa: SIM910
 
     def mock_get_by_name(entity, fqn, **kwargs):
-        return objects_by_entity_and_name.get((entity, fqn), None)
+        return objects_by_entity_and_name.get((entity, fqn), None)  # noqa: SIM910
 
     mock.get_by_id.side_effect = mock_get_by_id
     mock.get_by_name.side_effect = mock_get_by_name
@@ -158,12 +158,13 @@ def setter(
 
 
 @pytest.fixture
-def parameter_values() -> List[TestCaseParameterValue]:
+def parameter_values() -> List[TestCaseParameterValue]:  # noqa: UP006
     return [TestCaseParameterValue(name="table2", value="TestService2.test_db.test_schema.table2")]
 
 
 def test_setter_gets_default_key_columns(
-    setter: TableDiffParamsSetter, parameter_values: List[TestCaseParameterValue]
+    setter: TableDiffParamsSetter,
+    parameter_values: List[TestCaseParameterValue],  # noqa: UP006
 ) -> None:
     test_case = TestCase.model_construct(
         parameterValues=[
@@ -187,7 +188,8 @@ def test_setter_gets_default_key_columns(
 
 
 def test_setter_gets_per_table_key_columns(
-    setter: TableDiffParamsSetter, parameter_values: List[TestCaseParameterValue]
+    setter: TableDiffParamsSetter,
+    parameter_values: List[TestCaseParameterValue],  # noqa: UP006
 ) -> None:
     test_case = TestCase.model_construct(
         parameterValues=[
@@ -260,7 +262,7 @@ class TestForSnowflake:
     def test_setter_gets_parameters_for_snowflake(
         self,
         setter: TableDiffParamsSetter,
-        parameter_values: List[TestCaseParameterValue],
+        parameter_values: List[TestCaseParameterValue],  # noqa: UP006
     ) -> None:
         test_case = TestCase.model_construct(
             parameterValues=[

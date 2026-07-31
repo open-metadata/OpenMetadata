@@ -32,7 +32,7 @@ class TestDatalakeGcsClientColdStorage(unittest.TestCase):
 
     def _make_blob(self, name, storage_class=None, size=None):
         blob = SimpleNamespace(name=name, storage_class=storage_class, size=size)
-        return blob
+        return blob  # noqa: RET504
 
     def test_skip_cold_storage_filters_cold_classes(self):
         """

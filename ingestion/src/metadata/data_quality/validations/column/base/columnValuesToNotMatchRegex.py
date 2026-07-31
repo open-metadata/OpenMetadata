@@ -15,7 +15,7 @@ Validator for column values to not match regex test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -55,7 +55,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             not_match_count = self._run_results(
                 Metrics.notRegexCount,
                 column,
@@ -69,7 +69,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -126,7 +126,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
         """Evaluate the not regex match test condition
 
         For not regex match test, pass if NO values match the forbidden regex pattern
@@ -167,8 +167,8 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for not regex match test
 
@@ -187,10 +187,10 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found {not_match_count} value(s) matching the forbidden regex pattern."
             )
-        else:
+        else:  # noqa: RET505
             return f"Found {not_match_count} value(s) matching the forbidden regex pattern."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for not regex match test
 
         Args:
@@ -207,11 +207,11 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):  # noqa: UP007
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):
+    def compute_row_count(self, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         """Compute row count for the given column
 
         Args:

@@ -18,7 +18,7 @@ Metric Core definitions
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar  # noqa: UP035
 
 from sqlalchemy import Column
 from sqlalchemy.orm import Session
@@ -106,7 +106,7 @@ class Metric(ABC):
     If not specified, it is a Table metric.
     """
 
-    def __init__(self, col: Optional[Column] = None, **kwargs):
+    def __init__(self, col: Optional[Column] = None, **kwargs):  # noqa: UP045
         self.col = col
 
         # We allow to pass any metric specific kwarg
@@ -170,7 +170,7 @@ class Metric(ABC):
         """
         return self.col.type.python_type if self.col else None
 
-    def nosql_fn(self, client: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+    def nosql_fn(self, client: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:  # noqa: UP045
         """
         Return the function to be used for NoSQL clients to calculate the metric.
         By default, returns a "do nothing" function that returns None.
@@ -201,7 +201,7 @@ class QueryMetric(Metric, ABC):
     """
 
     @abstractmethod
-    def query(self, sample: Optional[type], session: Optional[Session] = None):
+    def query(self, sample: Optional[type], session: Optional[Session] = None):  # noqa: UP045
         """
         SQLAlchemy query to execute with .all()
 
@@ -221,9 +221,9 @@ class HybridMetric(Metric, ABC):
     @abstractmethod
     def fn(
         self,
-        sample: Optional[type],
-        res: Dict[str, Any],
-        session: Optional[Session] = None,
+        sample: Optional[type],  # noqa: UP045
+        res: Dict[str, Any],  # noqa: UP006
+        session: Optional[Session] = None,  # noqa: UP045
     ):
         """
         Function implementing the metric computation.
@@ -265,7 +265,7 @@ class ComposedMetric(Metric, ABC):
 
     @classmethod
     @abstractmethod
-    def required_metrics(cls) -> Tuple[str, ...]:
+    def required_metrics(cls) -> Tuple[str, ...]:  # noqa: UP006
         """
         Return a tuple of the required metrics' names
         necessary to compute the composed metric.
@@ -276,7 +276,7 @@ class ComposedMetric(Metric, ABC):
         """
 
     @abstractmethod
-    def fn(self, res: Dict[str, Any]):
+    def fn(self, res: Dict[str, Any]):  # noqa: UP006
         """
         This metric computes its value based on
         the results already present in the Profiler

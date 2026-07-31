@@ -8,6 +8,7 @@ import org.openmetadata.schema.api.services.CreateStorageService.StorageServiceT
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating StorageService entities in integration tests.
@@ -35,7 +36,8 @@ public class StorageServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test S3 service");
 
-    return SdkClients.adminClient().storageServices().create(request);
+    return ns.trackRoot(
+        Entity.STORAGE_SERVICE, SdkClients.adminClient().storageServices().create(request));
   }
 
   /** Get storage service by ID. */

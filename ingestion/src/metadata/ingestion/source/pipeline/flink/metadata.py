@@ -13,7 +13,7 @@ Airbyte source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -65,14 +65,14 @@ class FlinkSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: FlinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, FlinkConnection):
             raise InvalidSourceException(f"Expected FlinkConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_connections_jobs(self, pipeline_details: FlinkPipeline) -> Optional[List[Task]]:
+    def get_connections_jobs(self, pipeline_details: FlinkPipeline) -> Optional[List[Task]]:  # noqa: UP006, UP045
         """Returns the list of tasks linked to connection"""
         pipeline_info = self.client.get_pipeline_info(pipeline_details.id)
         return [
@@ -109,7 +109,7 @@ class FlinkSource(PipelineServiceSource):
 
     def get_pipelines_list(self) -> Iterable[FlinkPipeline]:
         """Get List of all pipelines"""
-        for pipeline in self.client.get_jobs().pipelines:
+        for pipeline in self.client.get_jobs().pipelines:  # noqa: UP028
             yield pipeline
 
     def get_pipeline_name(self, pipeline_details: FlinkPipeline) -> str:
@@ -125,7 +125,7 @@ class FlinkSource(PipelineServiceSource):
         try:
             task_status = []
             for task in self.client.get_pipeline_info(pipeline_details.id).tasks:
-                task_status.append(
+                task_status.append(  # noqa: PERF401
                     TaskStatus(
                         name=str(task.id),
                         executionStatus=TASK_STATUS_MAP.get(task.status),
@@ -161,18 +161,18 @@ class FlinkSource(PipelineServiceSource):
                 )
             )
 
-    def get_source_url(self, pipeline_details: FlinkPipeline) -> Optional[str]:
+    def get_source_url(self, pipeline_details: FlinkPipeline) -> Optional[str]:  # noqa: UP045
         try:
             pipeline_status = pipeline_details.state.lower()
             url_status = None
-            if pipeline_status == "finished" or pipeline_status == "failed":
+            if pipeline_status == "finished" or pipeline_status == "failed":  # noqa: PLR1714
                 url_status = "completed"
             elif pipeline_status == "running":
                 url_status = "running"
 
             if url_status:
                 return f"{self.client.config.hostPort}/#/job/{url_status}/{pipeline_details.id}/overview"
-            return f"{self.client.config.hostPort}/#/overview"
+            return f"{self.client.config.hostPort}/#/overview"  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url: {exc}")

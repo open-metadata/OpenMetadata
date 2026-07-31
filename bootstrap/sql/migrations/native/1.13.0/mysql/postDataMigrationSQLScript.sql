@@ -80,6 +80,9 @@ UPDATE glossary_term_entity
 SET json = JSON_REMOVE(json, '$.relatedTerms')
 WHERE JSON_EXTRACT(json, '$.relatedTerms') IS NOT NULL;
 
+-- entity_extension version snapshots: handled by Java migration
+-- migrateGlossaryTermVersionRelatedTermsToTermRelation (transforms in place to preserve history).
+
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
 SET json = JSON_SET(COALESCE(json, '{}'), '$.conceptMappings', JSON_ARRAY())
@@ -100,3 +103,44 @@ SET json = JSON_ARRAY_INSERT(
 )
 WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
   AND JSON_EXTRACT(json, '$.rules[1].name') != 'AutoClassificationBotRule-Allow-Container';
+
+-- Fix PII classification autoClassificationConfig (issue #27910)
+UPDATE classification
+SET json = JSON_SET(
+    json,
+    '$.autoClassificationConfig',
+    CAST('{"enabled": true, "conflictResolution": "highest_priority", "minimumConfidence": 0.6, "requireExplicitMatch": true}' AS JSON)
+)
+WHERE JSON_VALUE(json, '$.name' RETURNING CHAR) = 'PII'
+  AND JSON_EXTRACT(json, '$.autoClassificationConfig.enabled') IS NULL;
+
+-- Fix PII tags autoClassificationEnabled (issue #27910)
+UPDATE tag
+SET json = JSON_SET(json, '$.autoClassificationEnabled', CAST('true' AS JSON))
+WHERE JSON_VALUE(json, '$.classification.name' RETURNING CHAR) = 'PII'
+  AND JSON_VALUE(json, '$.name' RETURNING CHAR) IN ('NonSensitive', 'Sensitive')
+  AND (
+    JSON_EXTRACT(json, '$.autoClassificationEnabled') IS NULL
+    OR JSON_EXTRACT(json, '$.autoClassificationEnabled') = false
+  );
+
+-- Remove default column_name recognizers from PII tags (no longer used as boosters)
+UPDATE tag
+SET json = JSON_SET(
+    json,
+    '$.recognizers',
+    COALESCE(
+        (
+            SELECT JSON_ARRAYAGG(r)
+            FROM JSON_TABLE(
+                JSON_EXTRACT(json, '$.recognizers'),
+                '$[*]' COLUMNS (r JSON PATH '$')
+            ) AS jt
+            WHERE JSON_VALUE(r, '$.target') IS NULL OR JSON_VALUE(r, '$.target') != 'column_name'
+        ),
+        JSON_ARRAY()
+    )
+)
+WHERE JSON_VALUE(json, '$.classification.name' RETURNING CHAR) = 'PII'
+  AND JSON_VALUE(json, '$.name' RETURNING CHAR) IN ('NonSensitive', 'Sensitive')
+  AND JSON_SEARCH(json, 'one', 'column_name', NULL, '$.recognizers[*].target') IS NOT NULL;

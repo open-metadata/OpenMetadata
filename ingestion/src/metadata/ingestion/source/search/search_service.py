@@ -13,10 +13,10 @@ Base class for ingesting search index services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -51,7 +51,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_search_index
 from metadata.utils.helpers import retry_with_docker_host
@@ -77,7 +83,6 @@ class SearchServiceTopology(ServiceTopology):
                 processor="yield_create_request_search_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["search_index", "search_index_template"],
@@ -91,7 +96,6 @@ class SearchServiceTopology(ServiceTopology):
                 context="search_index",
                 processor="yield_search_index",
                 consumer=["search_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaIndexSampleData,
@@ -111,7 +115,6 @@ class SearchServiceTopology(ServiceTopology):
                     context="search_index_template",
                     processor="yield_search_index_template",
                     consumer=["search_service"],
-                    use_cache=True,
                 )
             ],
         )
@@ -131,7 +134,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = SearchServiceTopology()
     context = TopologyContextManager(topology)
-    index_source_state: Set = set()
+    index_source_state: Set = set()  # noqa: RUF012, UP006
 
     @retry_with_docker_host()
     def __init__(
@@ -144,11 +147,13 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.source_config: SearchServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def name(self) -> str:
@@ -162,7 +167,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         """Method to Get Sample Data of Search Index Entity"""
 
     @abstractmethod
-    def get_search_index_list(self) -> Optional[List[Any]]:
+    def get_search_index_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """Get List of all search index"""
 
     @abstractmethod
@@ -188,7 +193,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[CreateSearchIndexRequest]]:
         """Method to Get Search Index Templates"""
 
-    def get_search_index_template_list(self) -> Optional[List[Any]]:
+    def get_search_index_template_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """Get list of all search index templates"""
 
     def get_search_index_template_name(self, search_index_template_details: Any) -> str:
@@ -221,7 +226,10 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         """Nothing to prepare by default"""
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_search_indexes_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the search index as deleted"""
@@ -230,7 +238,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=SearchIndex,
                 entity_source_state=self.index_source_state,
-                mark_deleted_entity=self.source_config.markDeletedSearchIndexes,
+                recursive=self.source_config.markDeletedSearchIndexes,
                 params={"service": self.context.get().search_service},
             )
 
@@ -248,4 +256,5 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         self.index_source_state.add(index_fqn)
 
     def close(self):
-        """Nothing to close by default"""
+        if self._connection is not None:
+            self._connection.close()

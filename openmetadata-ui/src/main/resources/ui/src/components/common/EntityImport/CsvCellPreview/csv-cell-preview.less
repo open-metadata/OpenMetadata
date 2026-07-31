@@ -1,0 +1,130 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../../styles/variables.less';
+
+.csv-cell-chips {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--om-space-6);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.csv-cell-empty {
+  color: @grey-400;
+}
+
+// Chip pills for tags / glossary / domains / data products / related metrics.
+.csv-chip {
+  background: @grey-36;
+  border-radius: var(--om-radius-md);
+  color: @grey-700;
+  flex-shrink: 0;
+  font-size: var(--om-font-size-xs);
+  font-weight: @font-medium;
+  max-width: 160px;
+  overflow: hidden;
+  padding: var(--om-space-2) var(--om-space-8);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &-tag {
+    background: var(--om-color-purple-50);
+    color: var(--om-color-purple-700);
+  }
+
+  &-glossary {
+    background: @primary-50;
+    color: @primary-7;
+  }
+
+  &-tier {
+    background: @yellow-10;
+    color: @yellow-11;
+  }
+
+  &-domain {
+    background: @primary-50;
+    color: @primary-7;
+  }
+
+  &-prop {
+    background: @grey-36;
+    color: @grey-700;
+  }
+}
+
+.csv-cell-chips-custom-properties {
+  gap: var(--om-space-8);
+}
+
+.csv-chip-value {
+  color: @grey-900;
+  font-weight: @font-semibold;
+}
+
+// Owner / reviewer avatar chips.
+.csv-owner-chip {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--om-space-6);
+  max-width: 180px;
+}
+
+.csv-owner-name {
+  color: @grey-800;
+  font-size: var(--om-font-size-13);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-owner-avatar {
+  align-items: center;
+  border-radius: 50%;
+  color: @white;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: var(--om-font-size-11);
+  font-weight: @font-semibold;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+
+  &.avatar-0 {
+    background: var(--om-legacy-color-7f56d9);
+  }
+
+  &.avatar-1 {
+    background: var(--om-color-brand-600);
+  }
+
+  &.avatar-2 {
+    background: var(--om-color-green-500);
+  }
+
+  &.avatar-3 {
+    background: var(--om-legacy-color-ef6820);
+  }
+
+  &.avatar-4 {
+    background: var(--om-color-pink-500);
+  }
+
+  &.avatar-5 {
+    background: var(--om-color-blue-light-500);
+  }
+}

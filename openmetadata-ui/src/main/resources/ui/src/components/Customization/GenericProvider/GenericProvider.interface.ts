@@ -13,7 +13,6 @@
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider.interface';
-import { Column } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
@@ -32,9 +31,8 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   currentVersionData?: T;
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
-  muiTags?: boolean;
+  newTagsUI?: boolean;
   columnFqn?: string;
-  onColumnsUpdate?: (columns: Column[]) => void;
 }
 
 export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -50,7 +48,7 @@ export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   updateWidgetHeight: (widgetId: string, height: number) => void;
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
-  muiTags: boolean;
+  newTagsUI: boolean;
   entityRules: DataAssetRuleValidation;
   selectedColumn: ColumnOrTask | null;
   isColumnDetailOpen: boolean;

@@ -47,4 +47,5 @@ Uses Transport Layer Security (TLS) but disables the validation of the server ce
 #### disable-tls
 Does not use any Transport Layer Security (TLS). Data will be sent in plain text (no encryption).
 While this may be helpful in rare cases of debugging, make sure you do not use this in production.
+$$
 

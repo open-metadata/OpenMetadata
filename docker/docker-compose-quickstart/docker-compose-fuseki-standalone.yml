@@ -1,25 +1,29 @@
 # Standalone Apache Jena Fuseki for RDF/Knowledge Graph storage
 services:
   fuseki:
-    image: stain/jena-fuseki:5.0.0
+    # Build from the in-repo Dockerfile (Fuseki 5.6.0). See
+    # ../development/docker-compose-fuseki.yml for the full rationale.
+    build:
+      context: ../rdf-store
+      dockerfile: Dockerfile
+    image: openmetadata-fuseki:5.6.0
     container_name: fuseki-standalone
     hostname: fuseki
     ports:
       - "3030:3030"
     environment:
-      # Admin credentials
-      - ADMIN_PASSWORD=admin
-      # JVM memory settings - adjust based on your system
+      # Local-dev default — production deployments MUST override via
+      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars.
+      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
       - JVM_ARGS=-Xmx4g -Xms2g
-      # Fuseki configuration
-      - FUSEKI_BASE=/fuseki
     volumes:
-      # Mount directory for persistent storage (configurable via .env)
-      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki:/fuseki
+      # See docker-compose-fuseki-rosetta.yml — host bind path renamed so
+      # existing directories with the old stain layout aren't silently
+      # mounted at the new /fuseki-data path.
+      - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki-tdb2-data:/fuseki-data
     networks:
       - fuseki-net
-    # Create openmetadata dataset on startup
-    entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3030/$/ping"]
       interval: 15s

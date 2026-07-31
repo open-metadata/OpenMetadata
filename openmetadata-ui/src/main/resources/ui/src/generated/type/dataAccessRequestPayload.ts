@@ -15,9 +15,19 @@
  */
 export interface DataAccessRequestPayload {
     /**
+     * Scope of access being requested. FullAccess grants access to all columns, ColumnLevel
+     * restricts to the columns listed in 'columns', Masked grants access to masked or
+     * anonymized data.
+     */
+    accessType: AccessType;
+    /**
      * List of assets being requested access to.
      */
     assets?: EntityReference[];
+    /**
+     * Fully qualified column names included in the request when accessType is ColumnLevel.
+     */
+    columns?: string[];
     /**
      * Requested duration for access (ISO 8601).
      */
@@ -27,17 +37,37 @@ export interface DataAccessRequestPayload {
      */
     expirationDate?: number;
     /**
+     * System-generated summary of why this request was routed to manual approval instead of
+     * being granted automatically — for example a partial automatic grant, an enforcement
+     * failure, or a timeout during automated evaluation. Absent when access was granted
+     * automatically.
+     */
+    manualGrantReason?: string;
+    /**
      * Business justification for the request.
      */
     reason: string;
     /**
-     * Type of access requested.
+     * Permission level for the access (Read, Write, Admin). Defaults to Read.
      */
-    requestedAccess: RequestedAccess;
+    requestedAccess?: RequestedAccess;
     /**
      * External ticket ID (JIRA, ServiceNow) if required.
      */
     ticketId?: string;
+}
+
+/**
+ * Scope of access being requested. FullAccess grants access to all columns, ColumnLevel
+ * restricts to the columns listed in 'columns', Masked grants access to masked or
+ * anonymized data.
+ *
+ * Scope of access being requested against the target entity.
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
 }
 
 /**
@@ -97,7 +127,9 @@ export interface EntityReference {
 }
 
 /**
- * Type of access requested.
+ * Permission level for the access (Read, Write, Admin). Defaults to Read.
+ *
+ * Permission level for the requested access.
  */
 export enum RequestedAccess {
     Admin = "Admin",

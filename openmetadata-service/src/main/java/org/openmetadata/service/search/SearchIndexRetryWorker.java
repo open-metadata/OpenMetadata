@@ -1,7 +1,6 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_FAILED;
-import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_1;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_2;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.normalize;
@@ -25,7 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -33,11 +33,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
@@ -63,27 +65,21 @@ public class SearchIndexRetryWorker implements Managed {
   private static final int MAX_CASCADE_REINDEX = 5000;
   private static final int CASCADE_BATCH_SIZE = 200;
   private static final int MAX_BACKOFF_SECONDS = 60;
-  private static final int SUSPENSION_REFRESH_INTERVAL_MS = 5000;
+  private static final int FIRST_RETRY_BACKOFF_SECONDS = 10;
+  private static final int SECOND_RETRY_BACKOFF_SECONDS = 20;
+  private static final int MAX_PROCESSING_ATTEMPTS = 3;
   private static final int CANDIDATE_TYPES_REFRESH_INTERVAL_MS = 60000;
   private static final long STALE_RECOVERY_INTERVAL_MS = 60_000;
   private static final long STALE_THRESHOLD_MS = 10 * 60 * 1000;
-
-  private static final List<String> ACTIVE_REINDEX_JOB_STATUSES =
-      List.of("RUNNING", "READY", "STOPPING");
-  private static final List<String> PURGEABLE_QUEUE_STATUSES =
-      List.of(STATUS_PENDING, STATUS_PENDING_RETRY_1, STATUS_PENDING_RETRY_2, STATUS_FAILED);
 
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchRepository;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final List<Thread> workerThreads = new ArrayList<>();
-  private final Object scopeRefreshLock = new Object();
   private final Object candidateTypesLock = new Object();
   private final Object staleRecoveryLock = new Object();
 
-  private volatile long lastScopeRefreshAt;
   private volatile long lastStaleRecoveryAt;
-  private volatile String activeScopeSignature = "";
   private volatile long candidateTypesLastRefreshAt;
   private volatile List<String> cachedCandidateEntityTypes = Collections.emptyList();
   private final AtomicInteger consecutiveUnavailableCount = new AtomicInteger();
@@ -137,7 +133,6 @@ public class SearchIndexRetryWorker implements Managed {
       }
     }
     workerThreads.clear();
-    SearchIndexRetryQueue.clearSuspension();
     LOG.info("Stopped search index retry worker");
   }
 
@@ -148,7 +143,6 @@ public class SearchIndexRetryWorker implements Managed {
   private void runLoop(int workerId) {
     while (running.get()) {
       try {
-        refreshReindexSuspensionScopeIfNeeded();
         recoverStaleInProgressIfNeeded();
 
         if (!waitForClientAvailability(workerId)) {
@@ -156,7 +150,10 @@ public class SearchIndexRetryWorker implements Managed {
         }
 
         List<SearchIndexRetryRecord> claimed =
-            collectionDAO.searchIndexRetryQueueDAO().claimPending(CLAIM_BATCH_SIZE);
+            collectionDAO
+                .searchIndexRetryQueueDAO()
+                .claimPending(
+                    CLAIM_BATCH_SIZE, FIRST_RETRY_BACKOFF_SECONDS, SECOND_RETRY_BACKOFF_SECONDS);
         if (claimed.isEmpty()) {
           sleep(POLL_INTERVAL_SECONDS);
           continue;
@@ -181,37 +178,18 @@ public class SearchIndexRetryWorker implements Managed {
 
   private void processRecord(SearchIndexRetryRecord record) {
     try {
-      if (SearchIndexRetryQueue.isSuspendAllStreaming()) {
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        return;
-      }
-
       EntityReference root = resolveEntityReference(record);
       if (root != null) {
-        if (SearchIndexRetryQueue.isEntityTypeSuspended(root.getType())) {
-          collectionDAO
-              .searchIndexRetryQueueDAO()
-              .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-          return;
-        }
-
-        reindexEntityCascade(root);
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        Metrics.counter("search.retry.processed", "result", "success").increment();
+        EntityInterface rootEntity = reindexEntityCascade(root);
+        propagateAfterRetry(rootEntity, record.getFailureReason());
+        completeClaim(record);
         return;
       }
 
       String entityId = normalize(record.getEntityId());
       if (!entityId.isEmpty()) {
-        removeStaleEntityById(entityId);
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        Metrics.counter("search.retry.processed", "result", "success").increment();
+        removeStaleEntityById(entityId, record.getEntityType());
+        completeClaim(record);
         return;
       }
 
@@ -227,16 +205,31 @@ public class SearchIndexRetryWorker implements Managed {
   private void handleProcessingError(SearchIndexRetryRecord record, Exception e) {
     String reason = SearchIndexRetryQueue.failureReason("retryFailed", e);
     if (isRetryable(e)) {
-      String nextStatus = nextRetryStatus(record.getRetryCount());
-      recordRetryFailure(record, reason, nextStatus);
-      LOG.debug(
-          "Retry failed for entityId={} entityFqn={} nextStatus={}: {}",
-          record.getEntityId(),
-          record.getEntityFqn(),
-          nextStatus,
-          e.getMessage());
+      String nextStatus = retryableNextStatus(record.getRetryCount());
+      if (!recordRetryFailure(record, reason, nextStatus)) {
+        return;
+      }
+      if (STATUS_FAILED.equals(nextStatus)) {
+        Metrics.counter("search.retry.processed", "result", "exhausted").increment();
+        LOG.warn(
+            "Retryable failures hit the {}-attempt ceiling for entityId={} entityFqn={}; "
+                + "dead-lettering to FAILED: {}",
+            MAX_PROCESSING_ATTEMPTS,
+            record.getEntityId(),
+            record.getEntityFqn(),
+            e.getMessage());
+      } else {
+        LOG.debug(
+            "Retry failed for entityId={} entityFqn={} nextStatus={}: {}",
+            record.getEntityId(),
+            record.getEntityFqn(),
+            nextStatus,
+            e.getMessage());
+      }
     } else {
-      recordRetryFailure(record, reason, STATUS_FAILED);
+      if (!recordRetryFailure(record, reason, STATUS_FAILED)) {
+        return;
+      }
       Metrics.counter("search.retry.processed", "result", "non_retryable").increment();
       LOG.warn(
           "Non-retryable error for entityId={} entityFqn={}, marking as FAILED: {}",
@@ -246,11 +239,45 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private void recordRetryFailure(SearchIndexRetryRecord record, String reason, String status) {
-    collectionDAO
-        .searchIndexRetryQueueDAO()
-        .updateFailureAndRetryCount(record.getEntityId(), record.getEntityFqn(), reason, status);
+  boolean recordRetryFailure(SearchIndexRetryRecord record, String reason, String status) {
+    String retainedReason =
+        SearchIndexRetryQueue.preservePropagationContext(record.getFailureReason(), reason);
+    int updated =
+        collectionDAO
+            .searchIndexRetryQueueDAO()
+            .updateFailureAndRetryCount(
+                record.getEntityId(),
+                record.getEntityFqn(),
+                retainedReason,
+                status,
+                record.getClaimToken());
+    if (updated == 0) {
+      recordSuperseded(record);
+      return false;
+    }
     Metrics.counter("search.retry.processed", "result", "failure").increment();
+    return true;
+  }
+
+  boolean completeClaim(SearchIndexRetryRecord record) {
+    int deleted =
+        collectionDAO
+            .searchIndexRetryQueueDAO()
+            .deleteClaimed(record.getEntityId(), record.getEntityFqn(), record.getClaimToken());
+    if (deleted == 0) {
+      recordSuperseded(record);
+      return false;
+    }
+    Metrics.counter("search.retry.processed", "result", "success").increment();
+    return true;
+  }
+
+  private void recordSuperseded(SearchIndexRetryRecord record) {
+    Metrics.counter("search.retry.processed", "result", "superseded").increment();
+    LOG.debug(
+        "Search retry claim was superseded for entityId={} entityFqn={}",
+        record.getEntityId(),
+        record.getEntityFqn());
   }
 
   // ---------------------------------------------------------------------------
@@ -388,12 +415,14 @@ public class SearchIndexRetryWorker implements Managed {
   // Reindexing
   // ---------------------------------------------------------------------------
 
-  private void reindexEntityCascade(EntityReference root) throws Exception {
+  EntityInterface reindexEntityCascade(EntityReference root) throws Exception {
     ArrayDeque<EntityReference> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
     List<EntityInterface> entitiesToIndex = new ArrayList<>();
+    Map<UUID, Long> relationshipRevisions = new HashMap<>();
     queue.add(root);
     int processed = 0;
+    EntityInterface rootEntity = null;
 
     while (!queue.isEmpty() && processed < MAX_CASCADE_REINDEX) {
       EntityReference current = queue.poll();
@@ -410,23 +439,35 @@ public class SearchIndexRetryWorker implements Managed {
         continue;
       }
 
-      EntityInterface entity;
+      StableEntitySnapshot snapshot;
       try {
-        entity = Entity.getEntity(current, "*", Include.ALL);
-      } catch (Exception ex) {
+        snapshot = loadStableEntitySnapshot(current);
+      } catch (EntityNotFoundException ex) {
+        removeStaleEntityById(current.getId().toString(), current.getType());
         continue;
+      } catch (Exception ex) {
+        throw ex;
       }
 
+      EntityInterface entity = snapshot.entity();
       if (entity == null) {
-        continue;
+        throw new IllegalStateException(
+            "Loaded an empty entity while processing search retry for " + current.getId());
+      }
+      if (root.getId().equals(current.getId()) && root.getType().equals(current.getType())) {
+        rootEntity = entity;
       }
 
       entitiesToIndex.add(entity);
+      if (snapshot.relationshipRevision() != null) {
+        relationshipRevisions.put(entity.getId(), snapshot.relationshipRevision());
+      }
       processed++;
 
       if (entitiesToIndex.size() >= CASCADE_BATCH_SIZE) {
-        upsertEntitiesInBulk(entitiesToIndex);
+        upsertEntitiesInBulk(entitiesToIndex, relationshipRevisions);
         entitiesToIndex.clear();
+        relationshipRevisions.clear();
       }
 
       addChildrenByRelation(
@@ -453,12 +494,60 @@ public class SearchIndexRetryWorker implements Managed {
     }
 
     if (!entitiesToIndex.isEmpty()) {
-      upsertEntitiesInBulk(entitiesToIndex);
+      upsertEntitiesInBulk(entitiesToIndex, relationshipRevisions);
+    }
+    return rootEntity;
+  }
+
+  void propagateAfterRetry(EntityInterface rootEntity, String failureReason) throws IOException {
+    ChangeDescription propagationChangeDescription =
+        SearchIndexRetryQueue.getPropagationContext(failureReason);
+    if (rootEntity != null && propagationChangeDescription != null) {
+      searchRepository.propagateEntityAfterRetry(rootEntity, propagationChangeDescription);
     }
   }
 
-  private void upsertEntitiesInBulk(List<EntityInterface> entitiesToIndex) throws Exception {
-    if (entitiesToIndex.size() == 1) {
+  private StableEntitySnapshot loadStableEntitySnapshot(EntityReference reference) {
+    String fields = String.join(",", ReindexingUtil.getSearchIndexFields(reference.getType()));
+    if (!isRelationshipRevisionEntityType(reference.getType())) {
+      return new StableEntitySnapshot(Entity.getEntity(reference, fields, Include.ALL), null);
+    }
+
+    for (int attempt = 0; attempt < 3; attempt++) {
+      long revisionBefore = getRelationshipRevision(reference);
+      var cachedReadBundle = CacheBundle.getCachedReadBundle();
+      if (cachedReadBundle != null) {
+        cachedReadBundle.invalidate(reference.getType(), reference.getId());
+      }
+      EntityInterface entity = Entity.getEntity(reference, fields, Include.ALL);
+      if (entity instanceof TestSuite testSuite && !Boolean.FALSE.equals(testSuite.getBasic())) {
+        return new StableEntitySnapshot(entity, null);
+      }
+      long revisionAfter = getRelationshipRevision(reference);
+      if (revisionBefore == revisionAfter) {
+        return new StableEntitySnapshot(entity, revisionAfter);
+      }
+    }
+    throw new IllegalStateException(
+        "Relationships kept changing while preparing search retry for " + reference.getId());
+  }
+
+  private boolean isRelationshipRevisionEntityType(String entityType) {
+    return Entity.TEST_CASE.equals(entityType) || Entity.TEST_SUITE.equals(entityType);
+  }
+
+  private long getRelationshipRevision(EntityReference reference) {
+    Map<UUID, Long> revisions =
+        Entity.TEST_CASE.equals(reference.getType())
+            ? TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(reference.getId()))
+            : TestSuiteRepository.getTestsRelationshipRevisions(List.of(reference.getId()));
+    return revisions.getOrDefault(reference.getId(), 0L);
+  }
+
+  private void upsertEntitiesInBulk(
+      List<EntityInterface> entitiesToIndex, Map<UUID, Long> relationshipRevisions)
+      throws Exception {
+    if (entitiesToIndex.size() == 1 && relationshipRevisions.isEmpty()) {
       upsertEntityDirect(entitiesToIndex.getFirst());
       return;
     }
@@ -496,7 +585,35 @@ public class SearchIndexRetryWorker implements Managed {
       for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
         Map<String, Object> context = new HashMap<>();
         context.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+        Map<UUID, Long> typeRelationshipRevisions =
+            relationshipRevisionsFor(entry.getValue(), relationshipRevisions);
+        if (!typeRelationshipRevisions.isEmpty()) {
+          context.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, typeRelationshipRevisions);
+        }
+        ReindexingUtil.populateDocBuildContext(context, entry.getKey(), entry.getValue());
         bulkSink.write(entry.getValue(), context);
+      }
+
+      if (!relationshipRevisions.isEmpty()) {
+        for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+          List<EntityInterface> relationshipEntities =
+              entry.getValue().stream()
+                  .filter(entity -> relationshipRevisions.containsKey(entity.getId()))
+                  .toList();
+          if (relationshipEntities.isEmpty()) {
+            continue;
+          }
+          Map<UUID, Long> typeRelationshipRevisions =
+              relationshipRevisionsFor(relationshipEntities, relationshipRevisions);
+          Map<String, Object> relationshipContext = new HashMap<>();
+          relationshipContext.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+          relationshipContext.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
+          relationshipContext.put(
+              BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, typeRelationshipRevisions);
+          ReindexingUtil.populateDocBuildContext(
+              relationshipContext, entry.getKey(), relationshipEntities);
+          bulkSink.write(relationshipEntities, relationshipContext);
+        }
       }
 
       boolean flushComplete = bulkSink.flushAndAwait(60);
@@ -521,6 +638,18 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
+  private Map<UUID, Long> relationshipRevisionsFor(
+      List<EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (EntityInterface entity : entities) {
+      Long revision = relationshipRevisions.get(entity.getId());
+      if (revision != null) {
+        revisions.put(entity.getId(), revision);
+      }
+    }
+    return revisions;
+  }
+
   private void upsertEntityDirect(EntityInterface entity) throws Exception {
     if (entity == null || entity.getEntityReference() == null || entity.getId() == null) {
       return;
@@ -538,7 +667,7 @@ public class SearchIndexRetryWorker implements Managed {
     searchRepository
         .getSearchClient()
         .createEntity(
-            indexMapping.getIndexName(searchRepository.getClusterAlias()),
+            searchRepository.getWriteIndexName(indexMapping),
             entity.getId().toString(),
             JsonUtils.pojoToJson(doc));
   }
@@ -558,21 +687,36 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private void removeStaleEntityById(String entityId) {
-    for (String entityType : searchRepository.getSearchEntities()) {
+  void removeStaleEntityById(String entityId, String entityTypeHint) throws Exception {
+    String normalizedEntityType = normalize(entityTypeHint);
+    Set<String> entityTypes =
+        normalizedEntityType.isEmpty()
+                || searchRepository.getIndexMapping(normalizedEntityType) == null
+            ? searchRepository.getSearchEntities()
+            : Set.of(normalizedEntityType);
+    for (String entityType : entityTypes) {
       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
       if (indexMapping == null) {
         continue;
       }
-      try {
-        searchRepository
-            .getSearchClient()
-            .deleteEntity(indexMapping.getIndexName(searchRepository.getClusterAlias()), entityId);
-      } catch (Exception ignored) {
-        // Ignore not-found / index mismatch and continue best-effort cleanup.
+      String canonicalIndex = indexMapping.getIndexName(searchRepository.getClusterAlias());
+      for (String targetIndex : searchRepository.getWriteFanoutTargets(canonicalIndex)) {
+        try {
+          searchRepository.getSearchClient().deleteEntity(targetIndex, entityId);
+        } catch (ElasticsearchException e) {
+          if (e.status() != 404) {
+            throw e;
+          }
+        } catch (OpenSearchException e) {
+          if (e.status() != 404) {
+            throw e;
+          }
+        }
       }
     }
   }
+
+  private record StableEntitySnapshot(EntityInterface entity, Long relationshipRevision) {}
 
   // ---------------------------------------------------------------------------
   // Resilience: client availability, backoff, and error classification
@@ -612,7 +756,7 @@ public class SearchIndexRetryWorker implements Managed {
    *   <li>No status code found → defaults to retryable (conservative)
    * </ul>
    */
-  private boolean isRetryable(Throwable t) {
+  boolean isRetryable(Throwable t) {
     if (t instanceof IOException) {
       return true;
     }
@@ -642,81 +786,8 @@ public class SearchIndexRetryWorker implements Managed {
   }
 
   // ---------------------------------------------------------------------------
-  // Suspension and scheduling
+  // Scheduling
   // ---------------------------------------------------------------------------
-
-  private void refreshReindexSuspensionScopeIfNeeded() {
-    long now = System.currentTimeMillis();
-    if (now - lastScopeRefreshAt < SUSPENSION_REFRESH_INTERVAL_MS) {
-      return;
-    }
-
-    synchronized (scopeRefreshLock) {
-      long currentTime = System.currentTimeMillis();
-      if (currentTime - lastScopeRefreshAt < SUSPENSION_REFRESH_INTERVAL_MS) {
-        return;
-      }
-      lastScopeRefreshAt = currentTime;
-
-      List<SearchIndexJobRecord> activeJobs =
-          collectionDAO.searchIndexJobDAO().findByStatusesWithLimit(ACTIVE_REINDEX_JOB_STATUSES, 1);
-
-      if (activeJobs.isEmpty()) {
-        if (!activeScopeSignature.isEmpty() || SearchIndexRetryQueue.isStreamingSuspended()) {
-          SearchIndexRetryQueue.clearSuspension();
-          activeScopeSignature = "";
-          LOG.info("Cleared live search indexing suspension - no active reindex jobs");
-        }
-        return;
-      }
-
-      SearchIndexJobRecord activeJob = activeJobs.getFirst();
-      EventPublisherJob jobConfiguration = null;
-      try {
-        if (activeJob.jobConfiguration() != null) {
-          jobConfiguration =
-              JsonUtils.readValue(activeJob.jobConfiguration(), EventPublisherJob.class);
-        }
-      } catch (Exception e) {
-        LOG.warn("Failed to parse job configuration for active reindex job {}", activeJob.id(), e);
-      }
-
-      Set<String> requestedEntities =
-          normalizeReindexEntities(
-              jobConfiguration != null ? jobConfiguration.getEntities() : null);
-      Set<String> searchableEntities = searchRepository.getSearchEntities();
-
-      boolean containsAllToken = requestedEntities.stream().anyMatch("all"::equalsIgnoreCase);
-      Set<String> suspendedTypes =
-          containsAllToken ? new HashSet<>(searchableEntities) : new HashSet<>(requestedEntities);
-      suspendedTypes.retainAll(searchableEntities);
-
-      boolean suspendAll =
-          !searchableEntities.isEmpty() && suspendedTypes.containsAll(searchableEntities);
-      String newSignature = buildScopeSignature(activeJob.id(), suspendedTypes, suspendAll);
-
-      if (newSignature.equals(activeScopeSignature)) {
-        return;
-      }
-
-      activeScopeSignature = newSignature;
-      SearchIndexRetryQueue.updateSuspension(suspendedTypes, suspendAll);
-
-      if (suspendAll) {
-        int purged =
-            collectionDAO.searchIndexRetryQueueDAO().deleteByStatuses(PURGEABLE_QUEUE_STATUSES);
-        LOG.info(
-            "Activated live search indexing suspension for all entity types using reindex job {} and purged {} retry queue rows",
-            activeJob.id(),
-            purged);
-      } else {
-        LOG.info(
-            "Activated live search indexing suspension for {} entity types using reindex job {}",
-            suspendedTypes.size(),
-            activeJob.id());
-      }
-    }
-  }
 
   private void recoverStaleInProgressIfNeeded() {
     long now = System.currentTimeMillis();
@@ -744,26 +815,6 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private Set<String> normalizeReindexEntities(Set<String> rawEntities) {
-    Set<String> normalized = new HashSet<>();
-    if (rawEntities == null) {
-      return normalized;
-    }
-    for (String entityType : rawEntities) {
-      String value = SearchIndexRetryQueue.normalize(entityType);
-      if (!value.isEmpty()) {
-        normalized.add(value);
-      }
-    }
-    return normalized;
-  }
-
-  private String buildScopeSignature(String jobId, Set<String> suspendedTypes, boolean suspendAll) {
-    List<String> sorted = new ArrayList<>(suspendedTypes);
-    Collections.sort(sorted);
-    return jobId + "|" + suspendAll + "|" + String.join(",", sorted);
-  }
-
   // ---------------------------------------------------------------------------
   // Utilities
   // ---------------------------------------------------------------------------
@@ -782,5 +833,21 @@ public class SearchIndexRetryWorker implements Managed {
       case 1 -> STATUS_PENDING_RETRY_2;
       default -> STATUS_FAILED;
     };
+  }
+
+  /**
+   * Next status for a transient failure, capped at three processing attempts. Retry claims are
+   * delayed by the queue DAO before the second and third attempts.
+   */
+  String retryableNextStatus(int retryCount) {
+    String status;
+    if (retryCount == 0) {
+      status = STATUS_PENDING_RETRY_1;
+    } else if (retryCount < MAX_PROCESSING_ATTEMPTS - 1) {
+      status = STATUS_PENDING_RETRY_2;
+    } else {
+      status = STATUS_FAILED;
+    }
+    return status;
   }
 }

@@ -28,8 +28,9 @@ from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 
-from ..containers import MinioContainerConfigs, get_minio_container
-from ..integration_base import generate_name
+from ..conftest import _safe_delete  # noqa: TID252
+from ..containers import MinioContainerConfigs, get_minio_container  # noqa: TID252
+from ..integration_base import generate_name  # noqa: TID252
 
 BUCKET_NAME = "my-bucket"
 
@@ -170,10 +171,10 @@ def setup_s3(minio_container) -> None:
     if client.bucket_exists(BUCKET_NAME):
         return
     client.make_bucket(BUCKET_NAME)
-    current_dir = os.path.dirname(__file__)
-    resources_dir = os.path.join(current_dir, "resources")
+    current_dir = os.path.dirname(__file__)  # noqa: PTH120
+    resources_dir = os.path.join(current_dir, "resources")  # noqa: PTH118
 
-    resources_paths = [os.path.join(path, filename) for path, _, files in os.walk(resources_dir) for filename in files]
+    resources_paths = [os.path.join(path, filename) for path, _, files in os.walk(resources_dir) for filename in files]  # noqa: PTH118
     for path in resources_paths:
         key = os.path.relpath(path, resources_dir)
         client.fput_object(BUCKET_NAME, key, path)
@@ -207,7 +208,13 @@ def run_ingestion(metadata, ingestion_config, datalake_service_name):
     yield
     db_service = metadata.get_by_name(entity=DatabaseService, fqn=datalake_service_name)
     if db_service:
-        metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=db_service.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
 
 @pytest.fixture(scope="class")

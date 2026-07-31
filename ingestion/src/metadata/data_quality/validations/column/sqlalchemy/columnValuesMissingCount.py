@@ -13,7 +13,7 @@
 Validator for column value missing count to be equal test case
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column, func
 
@@ -38,7 +38,7 @@ logger = test_suite_logger()
 class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, SQAValidatorMixin):
     """Validator for column value missing count to be equal test case"""
 
-    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -60,7 +60,7 @@ class ColumnValuesMissingCountValidator(BaseColumnValuesMissingCountValidator, S
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for missing count with deviation recalculation
 
         Uses statistical aggregation to:

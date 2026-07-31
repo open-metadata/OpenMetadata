@@ -40,10 +40,6 @@ install_all:  ## Install the ingestion module with all dependencies
 install_apis:  ## Install the REST APIs module to the current environment
 	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
 
-.PHONY: lint
-lint:  ## Run pylint on the Python sources to analyze the codebase
-	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --rcfile=$(INGESTION_DIR)/pyproject.toml
-
 .PHONY: static-checks
 static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
 	cd $(INGESTION_DIR) && nox --no-venv -s static-checks
@@ -63,7 +59,10 @@ py_format:  ## Run ruff to lint-fix and format the Python codebase
 py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
-	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata || (echo "PyLint error code $$?"; exit 1)
+
+.PHONY: generate_settings_docs
+generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
+	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
@@ -107,7 +106,7 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 .PHONY: run_apis_tests
 run_apis_tests:  ## Run the openmetadata airflow apis tests
 	coverage erase
-	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
+	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
 	coverage report --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml
 
 .PHONY: coverage_apis

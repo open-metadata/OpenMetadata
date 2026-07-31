@@ -15,6 +15,7 @@ import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -25,11 +26,9 @@ import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
-import {
-  asyncNoop,
-  getDummyDataByPage,
-} from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { asyncNoop } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './customize-details-page.less';
 import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
@@ -77,37 +76,39 @@ export const CustomizeDetailsPage = ({
   }
 
   return (
-    <PageLayoutV1
-      className="bg-grey"
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.' + kebabCase(currentPageType)),
-      })}>
-      <Row className="customize-details-page" gutter={[0, 20]}>
-        <Col span={24}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        </Col>
-        <Col span={24}>
-          <DataAssetsHeader
-            isCustomizedView
-            dataAsset={entityDummyData as Table}
-            entityType={
-              PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
-            }
-            permissions={{} as OperationPermission}
-            onDisplayNameUpdate={asyncNoop}
-            onOwnerUpdate={asyncNoop}
-            onRestoreDataAsset={asyncNoop}
-            onTierUpdate={asyncNoop}
-          />
-        </Col>
-        {/* It will render cols inside the row */}
-        <CustomizeTabWidget />
-      </Row>
-    </PageLayoutV1>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.' + kebabCase(currentPageType)),
+        })}>
+        <Row className="customize-details-page" gutter={[0, 20]}>
+          <Col span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={getEntityName(personaDetails)}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Col>
+          <Col span={24}>
+            <DataAssetsHeader
+              isCustomizedView
+              dataAsset={entityDummyData as Table}
+              entityType={
+                PageTypeToEntityTypeMap[currentPageType] as EntityType.TABLE
+              }
+              permissions={{} as OperationPermission}
+              onDisplayNameUpdate={asyncNoop}
+              onOwnerUpdate={asyncNoop}
+              onRestoreDataAsset={asyncNoop}
+              onTierUpdate={asyncNoop}
+            />
+          </Col>
+          {/* It will render cols inside the row */}
+          <CustomizeTabWidget />
+        </Row>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };

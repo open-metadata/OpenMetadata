@@ -48,8 +48,8 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
-from ..conftest import _safe_delete
-from ..integration_base import generate_name
+from ..conftest import _safe_delete  # noqa: TID252
+from ..integration_base import generate_name  # noqa: TID252
 
 
 @pytest.fixture(scope="module")
@@ -377,7 +377,7 @@ class TestOMetaRestAPI:
         Validate generator utility to fetch all APICollections
         """
         fake_create = deepcopy(collection_request)
-        for i in range(0, 5):
+        for i in range(0, 5):  # noqa: PIE808
             fake_create.name = EntityName(collection_request.name.root + str(i))
             metadata.create_or_update(data=fake_create)
 

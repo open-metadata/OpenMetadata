@@ -12,7 +12,7 @@
 
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -91,21 +91,21 @@ class QuicksightSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
-        self.aws_region = self.config.serviceConnection.root.config.awsConfig.awsRegion
+        self.aws_region = self.config.serviceConnection.root.config.awsConfig.awsRegion  # pyright: ignore[reportAttributeAccessIssue]
         self.default_args = {
             "AwsAccountId": self.aws_account_id,
             "MaxResults": QUICKSIGHT_MAX_RESULTS,
         }
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: QuickSightConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(f"Expected QuickSightConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _check_pagination(self, listing_method, entity_key) -> Optional[List]:
+    def _check_pagination(self, listing_method, entity_key) -> Optional[List]:  # noqa: UP006, UP045
         entity_summary_list = []
         entity_response = listing_method(self.default_args)
         entity_summary_list.extend(entity_response[entity_key])
@@ -121,11 +121,11 @@ class QuicksightSource(DashboardServiceSource):
                 break
         return entity_summary_list
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:
+    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Get List of all dashboards
         """
-        list_dashboards_func = lambda kwargs: self.client.list_dashboards(  # pylint: disable=unnecessary-lambda-assignment
+        list_dashboards_func = lambda kwargs: self.client.list_dashboards(  # pylint: disable=unnecessary-lambda-assignment  # noqa: E731
             **kwargs
         )
 
@@ -140,7 +140,7 @@ class QuicksightSource(DashboardServiceSource):
             ).Dashboard
             for dashboard_id in dashboard_set
         ]
-        return dashboards
+        return dashboards  # noqa: RET504
 
     def get_dashboard_name(self, dashboard: DashboardDetail) -> str:
         """
@@ -228,7 +228,7 @@ class QuicksightSource(DashboardServiceSource):
             dataset = dataset_response["DataSet"]
             dataset_name = dataset.get("Name", dataset_id)
             physical_tables = list(dataset.get("PhysicalTableMap", {}).values())
-            return dataset_name, physical_tables
+            return dataset_name, physical_tables  # noqa: TRY300
         except Exception as err:
             logger.info(f"Cannot parse lineage from the dashboard: {dashboard_details.Name} to dataset due to: {err}")
             return dataset_id, []
@@ -238,7 +238,7 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str],
+        db_service_prefix: Optional[str],  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
         db_service_entity = None
@@ -256,7 +256,7 @@ class QuicksightSource(DashboardServiceSource):
             if data_source_resp.DataSourceParameters:
                 data_source_dict = data_source_resp.DataSourceParameters
                 for db in data_source_dict.keys() or []:
-                    source_database_names.append(data_source_dict[db].get("Database"))
+                    source_database_names.append(data_source_dict[db].get("Database"))  # noqa: PERF401
         except Exception as err:
             logger.info(f"Error to parse database names from source:{err}")
             return None
@@ -278,7 +278,7 @@ class QuicksightSource(DashboardServiceSource):
                     logger.debug(f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}")
                     continue
                 for table in lineage_parser.source_tables:
-                    database_schema_name, table = fqn.split(str(table))[-2:]
+                    database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
                     database_schema_name = self.check_database_schema_name(database_schema_name)
 
                     if (
@@ -381,7 +381,7 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str],
+        db_service_prefix: Optional[str],  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
         try:
@@ -454,7 +454,7 @@ class QuicksightSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -517,7 +517,7 @@ class QuicksightSource(DashboardServiceSource):
         data_models = []
         dataset_ids = []
         try:
-            list_data_set_func = lambda kwargs: self.client.list_data_sets(  # pylint: disable=unnecessary-lambda-assignment
+            list_data_set_func = lambda kwargs: self.client.list_data_sets(  # pylint: disable=unnecessary-lambda-assignment  # noqa: E731
                 **kwargs
             )
             data_set_summary_list = self._check_pagination(
@@ -544,14 +544,14 @@ class QuicksightSource(DashboardServiceSource):
                     elif data_source.get("S3Source"):
                         data_source_resp = DataSourceRespS3(**data_source["S3Source"])
                     else:
-                        raise KeyError(f"We currently don't support data sources: {list(data_source.keys())}")
+                        raise KeyError(f"We currently don't support data sources: {list(data_source.keys())}")  # noqa: TRY301
                 except (KeyError, ValidationError) as err:
                     data_source_resp = None
                     logger.info(f"Error while processing datamodels for dashboard {dashboard_details.Name}: {err}")
                     continue
                 if data_source_resp:
                     try:
-                        list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment
+                        list_data_source_func = lambda kwargs: self.client.list_data_sources(  # pylint: disable=unnecessary-lambda-assignment  # noqa: E731
                             **kwargs
                         )
                         data_source_summary_list = self._check_pagination(
@@ -586,8 +586,8 @@ class QuicksightSource(DashboardServiceSource):
         Each QuickSight dataset produces a separate DataModel entity,
         identified by dataset_id rather than datasource_id.
         """
-        self.data_models: List[DescribeDataSourceResponse] = self._get_dashboard_datamodels(dashboard_details)
-        dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)
+        self.data_models: List[DescribeDataSourceResponse] = self._get_dashboard_datamodels(dashboard_details)  # noqa: UP006
+        dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)  # noqa: UP006
         for data_model in self.data_models:
             key = data_model.dataset_id if data_model.dataset_id is not None else data_model.DataSource.DataSourceId
             dataset_groups[key].append(data_model)

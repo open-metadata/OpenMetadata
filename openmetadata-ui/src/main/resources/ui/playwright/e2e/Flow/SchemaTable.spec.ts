@@ -197,27 +197,24 @@ test('Copy column link should have valid URL format', async ({ page }) => {
   expect(validationResult.pathname).toContain('table');
 
   // Visit the copied link to verify it opens the side panel
-  const tableFqn = table.entityResponseData?.['fullyQualifiedName'] ?? '';
-  await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
-        response.url().includes('fields=') &&
-        response.request().method() === 'GET'
-    ),
-    page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/tables/name/${encodeURIComponent(tableFqn)}`) &&
-        response.url().includes('profile') &&
-        response.request().method() === 'GET',
-      { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
-    ),
-    page.goto(clipboardText),
-  ]);
+  const columnGetResponsePromise = page.waitForResponse((response) => {
+    if (
+      !response.url().includes('/api/v1/columns/name/') ||
+      response.request().method() !== 'GET'
+    ) {
+      return false;
+    }
+    const url = new URL(response.url());
+
+    return (
+      url.searchParams.get('entityType') === 'table' &&
+      url.searchParams.get('fields') === 'tags,customMetrics,extension,profile'
+    );
+  });
+  await page.goto(clipboardText);
+  const columnGetResponse = await columnGetResponsePromise;
+
+  expect(columnGetResponse.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   // Verify side panel is open
@@ -271,29 +268,11 @@ test('Copy nested column link should include full hierarchical path', async ({
       );
 
       // Visit the copied link to verify it opens the side panel
-      const nestedTableFqn =
-        table.entityResponseData?.['fullyQualifiedName'] ?? '';
       await Promise.all([
         page.waitForResponse(
           (response) =>
-            response
-              .url()
-              .includes(
-                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
-              ) &&
-            response.url().includes('fields=') &&
+            response.url().includes('/api/v1/columns/name/') &&
             response.request().method() === 'GET'
-        ),
-        page.waitForResponse(
-          (response) =>
-            response
-              .url()
-              .includes(
-                `/api/v1/tables/name/${encodeURIComponent(nestedTableFqn)}`
-              ) &&
-            response.url().includes('profile') &&
-            response.request().method() === 'GET',
-          { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
         ),
         page.goto(clipboardText),
       ]);

@@ -11,7 +11,7 @@
 
 """SQLAlchemy validator for rule library SQL expression tests"""
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple  # noqa: UP035
 
 from jinja2 import Template
 from sqlalchemy import text
@@ -31,7 +31,7 @@ logger = test_suite_logger()
 class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Column Rule Library SQL Expression validator."""
 
-    def compile_sql_expression(self, column_name: str, table_name: str) -> Tuple[str, Dict[str, str]]:
+    def compile_sql_expression(self, column_name: str, table_name: str) -> Tuple[str, Dict[str, str]]:  # noqa: UP006
         """Compile SQL expression with SQLAlchemy bind parameters using Jinja2.
 
         For SQLAlchemy, user parameters are converted to bind parameters (:paramName)
@@ -62,7 +62,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
 
         return compiled_sql, user_params
 
-    def _run_results(self, sql_expression: Tuple[str, Dict[str, str]]) -> int:
+    def _run_results(self, sql_expression: Tuple[str, Dict[str, str]]) -> int:  # noqa: UP006
         """Execute the compiled SQL and return the row count.
 
         Args:
@@ -81,5 +81,5 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
             return len(result.fetchall())
         except Exception as exc:
             self.runner._session.rollback()
-            logger.exception(f"Error executing SQL expression: {exc}")
-            raise exc
+            logger.exception(f"Error executing SQL expression: {exc}")  # noqa: TRY401
+            raise exc  # noqa: TRY201

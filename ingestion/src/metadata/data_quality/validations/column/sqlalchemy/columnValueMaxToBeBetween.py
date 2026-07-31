@@ -12,7 +12,7 @@
 Validator for column value max to be between test case
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -35,7 +35,7 @@ logger = test_suite_logger()
 class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator, SQAValidatorMixin):
     """Validator for column value max to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -57,7 +57,7 @@ class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator,
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for max with proper aggregation
 
         Uses the statistical aggregation helper to:
@@ -84,7 +84,7 @@ class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator,
                 Metrics.max.name: max_expr,
             }
 
-            failed_count_builder = lambda cte, row_count_expr: self._get_validation_checker(
+            failed_count_builder = lambda cte, row_count_expr: self._get_validation_checker(  # noqa: E731
                 test_params
             ).build_agg_level_violation_sqa([getattr(cte.c, Metrics.max.name)], row_count_expr)
 

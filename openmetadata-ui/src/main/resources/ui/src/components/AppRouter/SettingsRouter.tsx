@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
@@ -22,60 +23,300 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
-import AddNotificationPage from '../../pages/AddNotificationPage/AddNotificationPage';
-import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
-import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
-import ApplicationPage from '../../pages/Application/ApplicationPage';
-import AuditLogsPage from '../../pages/AuditLogsPage/AuditLogsPage';
-import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
-import ColumnBulkOperations from '../../pages/ColumnBulkOperations/ColumnBulkOperations.component';
-import DataAssetRulesPage from '../../pages/Configuration/DataAssetRules/DataAssetRulesPage';
-import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
-import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
-import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
-import UrlConfigurationPage from '../../pages/Configuration/UrlConfiguration/UrlConfigurationPage';
-import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
-import CustomPropertiesPageV1 from '../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1';
-import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfigPage.component';
-import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component';
-import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
-import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
-import GlossaryTermRelationSettingsPage from '../../pages/GlossaryTermRelationSettings/GlossaryTermRelationSettings';
-import { LearningResourcesPage } from '../../pages/LearningResourcesPage/LearningResourcesPage';
-import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
-import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
-import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
-import OnlineUsersPage from '../../pages/OnlineUsersPage/OnlineUsersPage';
-import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
-import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
-import AddPolicyPage from '../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage';
-import AddRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage';
-import EditRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage';
-import PoliciesDetailPage from '../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage';
-import PoliciesListPage from '../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage';
-import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage';
-import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
-import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
-import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
-import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
-import ServicesPage from '../../pages/ServicesPage/ServicesPage';
-import TaskFormSettingsPage from '../../pages/TaskFormSettingsPage/TaskFormSettingsPage';
-import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
-import TeamsPage from '../../pages/TeamsPage/TeamsPage';
-import UserListPageV1 from '../../pages/UserListPage/UserListPageV1';
-import WorkflowBuilderPage from '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder';
-import WorkflowsListPage from '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
   getSettingPathRelative,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
-import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
-import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
-import AdminPermissionDebugger from '../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component';
-import SettingsSso from '../SettingsSso/SettingsSso';
 import AdminProtectedRoute from './AdminProtectedRoute';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
+
+const AddNotificationPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/AddNotificationPage/AddNotificationPage')
+  )
+);
+
+const AlertDetailsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
+);
+
+const AppearanceConfigSettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage'
+      )
+  )
+);
+
+const ApplicationPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/Application/ApplicationPage'))
+);
+
+const AuditLogsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/AuditLogsPage/AuditLogsPage'))
+);
+
+const BotsPageV1 = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/BotsPageV1/BotsPageV1.component'))
+);
+
+const ColumnBulkOperations = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
+  )
+);
+
+const DataAssetRulesPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/Configuration/DataAssetRules/DataAssetRulesPage')
+  )
+);
+
+const EditLoginConfiguration = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage'
+      )
+  )
+);
+
+const EditUrlConfigurationPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage'
+      )
+  )
+);
+
+const LoginConfigurationPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage'
+      )
+  )
+);
+
+const UrlConfigurationPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/Configuration/UrlConfiguration/UrlConfigurationPage')
+  )
+);
+
+const CustomPropertiesPageV1 = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
+  )
+);
+
+const EditEmailConfigPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/EditEmailConfigPage/EditEmailConfigPage.component')
+  )
+);
+
+const EmailConfigSettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component'
+      )
+  )
+);
+
+const GlobalSettingCategoryPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage'
+      )
+  )
+);
+
+const GlobalSettingPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/GlobalSettingPage/GlobalSettingPage'))
+);
+
+const GlossaryTermRelationSettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/GlossaryTermRelationSettings/GlossaryTermRelationSettings'
+      )
+  )
+);
+
+const LearningResourcesPage = withPageSuspenseFallback(
+  React.lazy(() =>
+    import('../../pages/LearningResourcesPage/LearningResourcesPage').then(
+      (m) => ({ default: m.LearningResourcesPage })
+    )
+  )
+);
+
+const LineageConfigPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/LineageConfigPage/LineageConfigPage'))
+);
+
+const NotificationListPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/NotificationListPage/NotificationListPage')
+  )
+);
+
+const OmHealthPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/OmHealth/OmHealthPage'))
+);
+
+const OnlineUsersPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/OnlineUsersPage/OnlineUsersPage'))
+);
+
+const PersonaDetailsPage = withPageSuspenseFallback(
+  React.lazy(() =>
+    import('../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage').then(
+      (m) => ({ default: m.PersonaDetailsPage })
+    )
+  )
+);
+
+const PersonaPage = withPageSuspenseFallback(
+  React.lazy(() =>
+    import('../../pages/Persona/PersonaListPage/PersonaPage').then((m) => ({
+      default: m.PersonaPage,
+    }))
+  )
+);
+
+const AddPolicyPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage')
+  )
+);
+
+const AddRulePage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
+  )
+);
+
+const EditRulePage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
+  )
+);
+
+const PoliciesDetailPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
+  )
+);
+
+const PoliciesListPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
+  )
+);
+
+const ProfilerConfigurationPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage')
+  )
+);
+
+const AddRolePage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
+);
+
+const RolesDetailPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/RolesPage/RolesDetailPage/RolesDetailPage')
+  )
+);
+
+const RolesListPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
+);
+
+const SearchSettingsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/SearchSettingsPage/SearchSettingsPage'))
+);
+
+const ServicesPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/ServicesPage/ServicesPage'))
+);
+
+const TaskFormSettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/TaskFormSettingsPage/TaskFormSettingsPage')
+  )
+);
+
+const IntakeFormsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/IntakeForms/IntakeFormsPage'))
+);
+
+const ImportTeamsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
+  )
+);
+
+const TeamsPage = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/TeamsPage/TeamsPage'))
+);
+
+const UserListPageV1 = withPageSuspenseFallback(
+  React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
+);
+
+const WorkflowBuilderPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder')
+  )
+);
+
+const WorkflowsListPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
+  )
+);
+
+const EntitySearchSettings = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../SearchSettings/EntitySeachSettings/EntitySearchSettings')
+  )
+);
+
+const AppDetails = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../Settings/Applications/AppDetails/AppDetails.component')
+  )
+);
+
+const AdminPermissionDebugger = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component'
+      )
+  )
+);
+
+const SettingsSso = withPageSuspenseFallback(
+  React.lazy(() => import('../SettingsSso/SettingsSso'))
+);
 
 const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
@@ -607,22 +848,6 @@ const SettingsRouter = () => {
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={checkPermission(
-              Operation.EditAll,
-              ResourceEntity.PERSONA,
-              permissions
-            )}>
-            <CustomPageSettings />
-          </AdminProtectedRoute>
-        }
-        path={getSettingPathRelative(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
-        )}
-      />
 
       <Route
         element={<ServicesPage />}
@@ -707,6 +932,17 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.GOVERNANCE,
           GlobalSettingOptions.WORKFLOW_DEFINITIONS,
           true
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <IntakeFormsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.GOVERNANCE,
+          GlobalSettingOptions.INTAKE_FORMS
         )}
       />
       <Route

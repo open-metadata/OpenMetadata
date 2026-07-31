@@ -24,7 +24,7 @@ except ImportError:
     from importlib_metadata import version
 
 
-class VersionParsingException(Exception):
+class VersionParsingException(Exception):  # noqa: N818
     """
     Used when we cannot parse version information from a string
     """
@@ -40,7 +40,7 @@ def get_client_version_from_string(raw_version: str) -> str:
     try:
         return re.match(r"\d+.\d+.\d+.\d+", raw_version).group(0)
     except AttributeError as err:
-        raise VersionParsingException(f"Can't extract client version from {raw_version}: {err}")
+        raise VersionParsingException(f"Can't extract client version from {raw_version}: {err}")  # noqa: B904
 
 
 def get_server_version_from_string(raw_version: str) -> str:
@@ -53,7 +53,7 @@ def get_server_version_from_string(raw_version: str) -> str:
     try:
         return re.match(r"\d+.\d+.\d+", raw_version).group(0)
     except AttributeError as err:
-        raise VersionParsingException(f"Can't extract server version from {raw_version}: {err}")
+        raise VersionParsingException(f"Can't extract server version from {raw_version}: {err}")  # noqa: B904
 
 
 def get_client_version() -> str:
@@ -70,8 +70,8 @@ def get_metadata_version() -> str:
     Return the OpenMetadata version
     """
 
-    metadata_pkg_dir = os.path.join(os.path.dirname(__file__), "..", "..")
-    metadata_pkg_dir = os.path.abspath(metadata_pkg_dir)
+    metadata_pkg_dir = os.path.join(os.path.dirname(__file__), "..", "..")  # noqa: PTH118, PTH120
+    metadata_pkg_dir = os.path.abspath(metadata_pkg_dir)  # noqa: PTH100
 
     return f"metadata {get_client_version()} from {metadata_pkg_dir} (python {get_major_minor_version()})"
 

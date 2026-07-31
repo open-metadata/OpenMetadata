@@ -30,9 +30,8 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-
 const UserPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -164,7 +163,7 @@ const UserPage = () => {
           // Omit the undefined values from the User object
           setUserData(omitBy(newUserData, isUndefined) as User);
         } else {
-          throw t('message.unexpected-error');
+          throw t('server.unexpected-error');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);

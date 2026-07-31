@@ -67,7 +67,7 @@ Once an approach is approved, break it into ordered tasks:
 3. Java backend changes (openmetadata-service/)
 4. Run: mvn spotless:apply && mvn test-compile
 5. Python ingestion changes (ingestion/)
-6. Run: cd ingestion && make lint && make unit_ingestion_dev_env
+6. Run: cd ingestion && make py_format && make py_format_check && make unit_ingestion_dev_env
 7. Frontend changes (openmetadata-ui/.../ui/)
 8. Run: yarn lint && yarn test
 9. Database migrations if needed (bootstrap/sql/)

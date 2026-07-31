@@ -2,7 +2,7 @@
 Data quality validation utility functions.
 """
 
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Any, Callable, List, Optional, TypeVar, Union  # noqa: UP035
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 
@@ -11,12 +11,12 @@ R = TypeVar("R")
 
 
 def get_test_case_param_value(
-    test_case_param_vals: List[TestCaseParameterValue],
+    test_case_param_vals: List[TestCaseParameterValue],  # noqa: UP006
     name: str,
     type_: T,
-    default: Optional[R] = None,
-    pre_processor: Optional[Callable] = None,
-) -> Optional[Union[R, T]]:
+    default: Optional[R] = None,  # noqa: UP045
+    pre_processor: Optional[Callable] = None,  # noqa: UP045
+) -> Optional[Union[R, T]]:  # noqa: UP007, UP045
     """Return a test case parameter value with the appropriate type casting for the test case definition.
 
     Args:
@@ -39,9 +39,9 @@ def get_test_case_param_value(
 
 
 def get_bool_test_case_param(
-    test_case_param_vals: List[TestCaseParameterValue],
+    test_case_param_vals: List[TestCaseParameterValue],  # noqa: UP006
     name: str,
-) -> Optional[Union[R, T]]:
+) -> Optional[Union[R, T]]:  # noqa: UP007, UP045
     """Return a test case parameter value as a boolean. Boolean values are always False by default.
 
     Args:

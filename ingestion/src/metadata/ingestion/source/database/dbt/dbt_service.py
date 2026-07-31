@@ -8,17 +8,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 """
 DBT service Topology.
 """
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, List
+from typing import Iterable, List  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -82,6 +84,7 @@ class DbtServiceTopology(ServiceTopology):
             "process_dbt_entities",
             "process_dbt_tests",
             "process_dbt_exposures",
+            "process_dbt_metrics",
         ],
     )
     process_dbt_data_model: Annotated[TopologyNode, Field(description="Process dbt data models")] = TopologyNode(
@@ -167,6 +170,24 @@ class DbtServiceTopology(ServiceTopology):
             ),
         ],
     )
+    process_dbt_metrics: Annotated[TopologyNode, Field(description="Process dbt semantic layer metrics")] = (
+        TopologyNode(
+            producer="get_dbt_metrics",
+            stages=[
+                NodeStage(
+                    type_=CreateMetricRequest,
+                    processor="yield_dbt_metrics",
+                    consumer=["yield_data_models"],
+                    nullable=True,
+                ),
+                NodeStage(
+                    type_=AddLineageRequest,
+                    processor="create_dbt_metric_lineage",
+                    nullable=True,
+                ),
+            ],
+        )
+    )
 
 
 class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -192,7 +213,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # This step is necessary as the manifest file may not always adhere to the schema definition
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
-        required_manifest_keys = {"nodes", "sources", "metadata", "exposures"}
+        required_manifest_keys = {"nodes", "sources", "metadata", "exposures", "metrics", "semantic_models"}
         manifest_dict.update(
             {
                 key: [] if isinstance(manifest_dict[key], list) else {}
@@ -203,14 +224,14 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
 
         # pylint: disable=too-many-nested-blocks
         for field in ["nodes", "sources"]:
-            for node, value in manifest_dict.get(  # pylint: disable=unused-variable
+            for node, value in manifest_dict.get(  # pylint: disable=unused-variable  # noqa: B007, PERF102
                 field
             ).items():
                 keys_to_delete = [key for key in value if key.lower() not in REQUIRED_NODE_KEYS]
                 for key in keys_to_delete:
                     del value[key]
                 if value.get("columns"):
-                    for _, value in value["columns"].items():
+                    for _, value in value["columns"].items():  # noqa: B020, PERF102, PLW2901
                         if value.get("constraints"):
                             for constraint in value["constraints"]:
                                 keys_to_delete = [
@@ -221,7 +242,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                         else:
                             value["constraints"] = None
 
-    def remove_run_result_non_required_keys(self, run_results: List[dict]):
+    def remove_run_result_non_required_keys(self, run_results: List[dict]):  # noqa: UP006
         """
         Method to remove the non required keys from run results file
         """
@@ -254,7 +275,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Prepare the DBT objects
         """
         # pylint: disable=import-outside-toplevel
-        from collate_dbt_artifacts_parser.parser import (
+        from collate_dbt_artifacts_parser.parser import (  # noqa: PLC0415
             parse_catalog,
             parse_manifest,
             parse_run_results,
@@ -339,15 +360,21 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the DBT tests
         """
-        for _, dbt_test in self.context.get().dbt_tests.items():
+        for _, dbt_test in self.context.get().dbt_tests.items():  # noqa: PERF102
             yield dbt_test
 
     def get_dbt_exposures(self) -> Iterable[dict]:
         """
         Prepare the DBT exposures
         """
-        for _, exposure in self.context.get().exposures.items():
+        for _, exposure in self.context.get().exposures.items():  # noqa: PERF102
             yield exposure
+
+    def get_dbt_metrics(self) -> Iterable[dict]:
+        """
+        Prepare the DBT metrics
+        """
+        yield from self.context.get().dbt_metrics.values()
 
     @abstractmethod
     def create_dbt_tests_definition(self, dbt_test: dict) -> CreateTestDefinitionRequest:
@@ -377,6 +404,18 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
         Method to process DBT custom properties using patch APIs
+        """
+
+    @abstractmethod
+    def yield_dbt_metrics(self, metric_entry: dict) -> Iterable[Either[CreateMetricRequest]]:
+        """
+        Yield CreateMetric requests from dbt metric definitions
+        """
+
+    @abstractmethod
+    def create_dbt_metric_lineage(self, metric_entry: dict) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage from source tables to dbt metrics
         """
 
     def is_filtered(self, database_name: str, schema_name: str, table_name: str) -> DbtFilteredModel:

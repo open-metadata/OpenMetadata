@@ -50,9 +50,9 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..conftest import _safe_delete
-from ..containers import MySqlContainerConfigs, get_mysql_container
-from ..integration_base import (
+from ..conftest import _safe_delete  # noqa: TID252
+from ..containers import MySqlContainerConfigs, get_mysql_container  # noqa: TID252
+from ..integration_base import (  # noqa: TID252
     METADATA_INGESTION_CONFIG_TEMPLATE,
     generate_name,
     get_create_entity,
@@ -62,7 +62,7 @@ from ..integration_base import (
 logger = logging.getLogger(__name__)
 
 
-def _safe_create_or_update(metadata, data, retries=3):
+def _safe_create_or_update(metadata, data, retries=3):  # noqa: RET503
     """Create/update with retry logic to handle transient server errors under parallel load."""
     for attempt in range(retries):
         try:
@@ -226,7 +226,7 @@ def tables(database_service, metadata):
         for _ in range(10)
     ]
 
-    return tables
+    return tables  # noqa: RET504
 
 
 @pytest.fixture(scope="module")

@@ -14,7 +14,7 @@ Databricks Unity Catalog Lineage Source Module
 
 import traceback
 from collections import defaultdict
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional, cast  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -40,10 +40,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import test_connection_common
-from metadata.ingestion.source.database.unitycatalog.connection import (
-    get_connection,
-    get_sqlalchemy_connection,
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    run_test_connection,
+    test_connection_common,
 )
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_COLUMN_LINEAGE,
@@ -54,6 +55,12 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.unitycatalog.connection import (
+        UnityCatalogConnection as UnityCatalogConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 
@@ -74,17 +81,19 @@ class UnitycatalogLineageSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
-        self.connection_obj = get_connection(self.service_connection)
-        self.engine = get_sqlalchemy_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        connection = cast("UnityCatalogConnectionHandler", self._connection)
+        self.connection_obj = connection.client
+        self.engine = connection.sql.client
         self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
         self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
         self.external_location_map: dict[str, str] = {}
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     def close(self):
-        """
-        By default, there is nothing to close
-        """
+        if self._connection is not None:
+            self._connection.close()
 
     def prepare(self):
         """
@@ -92,7 +101,7 @@ class UnitycatalogLineageSource(Source):
         """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
@@ -104,7 +113,7 @@ class UnitycatalogLineageSource(Source):
         """
         Bulk-fetch all table and column lineage from system tables into memory.
         """
-        query_log_duration = self.source_config.queryLogDuration or 1
+        query_log_duration = self.source_config.queryLogDuration or 1  # pyright: ignore[reportAttributeAccessIssue]
         logger.info(f"Caching lineage from system tables (lookback: {query_log_duration} days)")
 
         try:
@@ -153,7 +162,7 @@ class UnitycatalogLineageSource(Source):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to cache external table locations: {exc}")
 
-    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:
+    def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045
         if not data_model_entity:
             logger.debug(f"No data model entity provided for column: {column}")
             return None
@@ -165,7 +174,7 @@ class UnitycatalogLineageSource(Source):
 
     def _get_container_column_lineage(
         self, data_model_entity: ContainerDataModel, table_entity: Table
-    ) -> Optional[LineageDetails]:
+    ) -> Optional[LineageDetails]:  # noqa: UP045
         try:
             column_lineage = []
             for column in table_entity.columns:
@@ -180,7 +189,7 @@ class UnitycatalogLineageSource(Source):
                     columnsLineage=column_lineage,
                     source=LineageSource.ExternalTableLineage,
                 )
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error computing container column lineage for {table_entity.fullyQualifiedName.root}: {exc}")
             logger.debug(traceback.format_exc())
@@ -192,7 +201,7 @@ class UnitycatalogLineageSource(Source):
         to_table: Table,
         source_table_fqn: str,
         target_table_fqn: str,
-    ) -> Optional[LineageDetails]:
+    ) -> Optional[LineageDetails]:  # noqa: UP045
         try:
             table_key = (source_table_fqn, target_table_fqn)
             column_pairs = self.column_lineage_map.get(table_key, [])
@@ -208,7 +217,7 @@ class UnitycatalogLineageSource(Source):
 
             if col_lineage:
                 return LineageDetails(columnsLineage=col_lineage, source=LineageSource.QueryLineage)
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Error computing column lineage: {exc}")
             logger.debug(traceback.format_exc())
@@ -307,7 +316,7 @@ class UnitycatalogLineageSource(Source):
         self._cache_external_locations()
 
         for database in self.metadata.list_all_entities(entity=Database, params={"service": self.config.serviceName}):
-            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):
+            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                 self.status.filter(
                     database.fullyQualifiedName.root,
                     "Catalog Filtered Out",
@@ -317,7 +326,7 @@ class UnitycatalogLineageSource(Source):
                 entity=DatabaseSchema,
                 params={"database": database.fullyQualifiedName.root},
             ):
-                if filter_by_schema(self.source_config.schemaFilterPattern, schema.name.root):
+                if filter_by_schema(self.source_config.schemaFilterPattern, schema.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                     self.status.filter(
                         schema.fullyQualifiedName.root,
                         "Schema Filtered Out",
@@ -327,7 +336,7 @@ class UnitycatalogLineageSource(Source):
                     entity=Table,
                     params={"databaseSchema": schema.fullyQualifiedName.root},
                 ):
-                    if filter_by_table(self.source_config.tableFilterPattern, table.name.root):
+                    if filter_by_table(self.source_config.tableFilterPattern, table.name.root):  # pyright: ignore[reportAttributeAccessIssue]
                         self.status.filter(
                             table.fullyQualifiedName.root,
                             "Table Filtered Out",
@@ -341,4 +350,7 @@ class UnitycatalogLineageSource(Source):
                     yield from self._process_external_location_lineage(table, databricks_table_fqn)
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

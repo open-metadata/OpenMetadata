@@ -22,7 +22,7 @@ def prepare_cockroach(cockroach_container):
         INSERT INTO test_table (name, age) VALUES 
             ('John Doe', 25),
             ('Jane Smith', 30);
-        """,
+        """,  # noqa: W291
     ]
     with engine.connect() as conn:
         for stmt in sql:

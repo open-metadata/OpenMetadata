@@ -61,7 +61,7 @@ const performIncidentAdminLogin = async (browser: Browser) => {
 
     return { page, apiContext, afterAction };
   } catch {
-    return performAdminLogin(browser);
+    return performAdminLogin(browser, { navigate: true });
   }
 };
 
@@ -145,7 +145,7 @@ const isVisible = async (locator: Locator) =>
 
 const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
   const rows = page.locator(
-    '.ant-table-tbody tr:not(.ant-table-measure-row):not(.ant-table-placeholder)'
+    '[data-testid="test-case-incident-manager-table"] tbody tr'
   );
   const rowCount = await rows.count();
 
@@ -182,7 +182,7 @@ const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
     .last();
   const incidentListRowAction = testCaseName
     ? page
-        .locator('.ant-table-tbody tr')
+        .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
         .filter({ hasText: testCaseName })
         .first()
         .locator('button')
@@ -493,9 +493,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performIncidentAdminLogin(
-      browser
-    );
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     for (const entity of [...users, table1].filter(Boolean)) {
       await entity.delete(apiContext);
     }
@@ -851,9 +849,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="status-badge-${testCaseName}"]`)
       ).toContainText('Failed');
 
-      await page.click(
-        `[data-testid="${testCaseName}"] >> text=${testCaseName}`
-      );
+      await page.getByTestId(testCaseName).getByText(testCaseName).click();
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(page);
       await page.click('[data-testid="closed-task"]');
@@ -1126,11 +1122,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       .click();
     await nonTestCaseFilterRes;
 
-    await page.click('[data-testid="mui-date-picker-menu"]');
+    await page.getByTestId('date-picker-menu').click();
     const timeSeriesFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
-    await page.getByTestId('date-range-option-yesterday').click();
+    await page.getByRole('menuitem', { name: 'Yesterday' }).click();
     await timeSeriesFilterRes;
 
     for (const testCase of table1.testCasesResponseData) {
@@ -1149,7 +1145,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     test.beforeAll(async ({ browser }) => {
       test.slow();
       const { afterAction, apiContext, page } = await performAdminLogin(
-        browser
+        browser,
+        { navigate: true }
       );
 
       if (!process.env.PLAYWRIGHT_IS_OSS) {

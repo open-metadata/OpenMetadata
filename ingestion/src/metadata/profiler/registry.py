@@ -69,7 +69,7 @@ class MetricRegistry(Enum):
         return self.value.name()
 
     @classmethod
-    def get(cls, key: str) -> Optional[Metric]:
+    def get(cls, key: str) -> Optional[Metric]:  # noqa: UP045
         """
         Safely retrieve an element
         from the Registry.

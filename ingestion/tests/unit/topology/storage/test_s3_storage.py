@@ -16,7 +16,7 @@ import datetime
 import io
 import json
 import uuid
-from typing import List
+from typing import List  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -112,7 +112,7 @@ MOCK_S3_METADATA_FILE_RESPONSE = {
         }
     ]
 }
-EXPECTED_S3_BUCKETS: List[S3BucketResponse] = [
+EXPECTED_S3_BUCKETS: List[S3BucketResponse] = [  # noqa: UP006
     S3BucketResponse(
         Name="test_transactions",
         CreationDate=datetime.datetime(2000, 1, 1),
@@ -220,7 +220,7 @@ class StorageUnitTest(TestCase):
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_S3_BUCKETS)
 
     def test_load_metadata_file_s3(self):
-        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()
+        metadata_entry: List[MetadataEntry] = self.return_metadata_entry()  # noqa: UP006
 
         self.assertEqual(1, len(metadata_entry))
         self.assertEqual(
@@ -263,7 +263,7 @@ class StorageUnitTest(TestCase):
     def test_generate_structured_container(self):
         self.object_store_source._get_sample_file_path = lambda bucket_name, metadata_entry: "transactions/file_1.csv"
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
-        columns: List[Column] = [
+        columns: List[Column] = [  # noqa: UP006
             Column(
                 name=ColumnName("transaction_id"),
                 dataType=DataType.INT,
@@ -422,8 +422,8 @@ class StorageUnitTest(TestCase):
 
     def test_get_sample_file_path_randomly(self):
         self.object_store_source._get_sample_file_prefix = lambda metadata_entry: "/transactions"
-        prefix_exits = lambda bucket_name, prefix: True  # noqa: F841
-        self.object_store_source.s3_client.list_objects_v2 = lambda Bucket, Prefix: MOCK_S3_OBJECT_FILE_PATHS
+        prefix_exits = lambda bucket_name, prefix: True  # noqa: E731, F841
+        self.object_store_source.s3_client.list_objects_v2 = lambda Bucket, Prefix: MOCK_S3_OBJECT_FILE_PATHS  # noqa: N803
 
         candidate = self.object_store_source._get_sample_file_path(
             bucket_name="test_bucket",
@@ -445,7 +445,7 @@ class StorageUnitTest(TestCase):
     def test_get_sample_file_path_filters_success_files(self):
         """Test that _SUCCESS files are filtered out when selecting sample files"""
         self.object_store_source._get_sample_file_prefix = lambda metadata_entry: "/transactions"
-        self.object_store_source.s3_client.list_objects_v2 = lambda Bucket, Prefix: (
+        self.object_store_source.s3_client.list_objects_v2 = lambda Bucket, Prefix: (  # noqa: N803
             MOCK_S3_OBJECT_FILE_PATHS_WITH_SUCCESS
         )
 
@@ -476,7 +476,7 @@ class StorageUnitTest(TestCase):
         return {"Body": body}
 
     def return_metadata_entry(self):
-        self.object_store_source.s3_client.get_object = lambda Bucket, Key: (
+        self.object_store_source.s3_client.get_object = lambda Bucket, Key: (  # noqa: N803
             self._compute_mocked_metadata_file_response()
         )
         metadata_config_response = self.s3_reader.read(

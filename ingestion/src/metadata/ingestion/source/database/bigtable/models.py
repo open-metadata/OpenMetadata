@@ -12,7 +12,7 @@
 Bigtable source models.
 """
 
-from typing import Dict, List
+from typing import Dict, List  # noqa: UP035
 
 from google.cloud.bigtable.row import PartialRowData
 from pydantic import BaseModel
@@ -28,13 +28,13 @@ class Value(BaseModel):
 class Cell(BaseModel):
     """A Bigtable cell."""
 
-    values: List[Value]
+    values: List[Value]  # noqa: UP006
 
 
 class Row(BaseModel):
     """A Bigtable row."""
 
-    cells: Dict[str, Dict[bytes, Cell]]
+    cells: Dict[str, Dict[bytes, Cell]]  # noqa: UP006
     row_key: bytes
 
     @classmethod
@@ -46,7 +46,7 @@ class Row(BaseModel):
                 cells[column_family][column] = Cell(values=[Value(timestamp=c.timestamp, value=c.value) for c in cell])
         return cls(cells=cells, row_key=row.row_key)
 
-    def to_record(self) -> Dict[str, bytes]:
+    def to_record(self) -> Dict[str, bytes]:  # noqa: UP006
         record = {}
         for column_family, cells in self.cells.items():
             for column, cell in cells.items():

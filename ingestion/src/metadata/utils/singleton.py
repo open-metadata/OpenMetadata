@@ -21,15 +21,15 @@ class Singleton(ABCMeta):
     Singleton class
     """
 
-    _instances = {}
+    _instances = {}  # noqa: RUF012
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)  # noqa: UP008
         return cls._instances[cls]
 
     @classmethod
-    def clear_all(mcs):
+    def clear_all(mcs):  # noqa: N804
         """
         Method to clear all singleton instances
         """

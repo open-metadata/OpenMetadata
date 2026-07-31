@@ -12,7 +12,7 @@
 Athena lineage module
 """
 
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
@@ -30,7 +30,7 @@ class AthenaLineageSource(AthenaQueryParserSource, LineageSource):
     Athena Lineage Source
     """
 
-    def yield_table_query(self) -> Optional[Iterable[TableQuery]]:
+    def yield_table_query(self) -> Optional[Iterable[TableQuery]]:  # noqa: UP045
         """
         Method to yield TableQueries
         """

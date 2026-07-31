@@ -16,7 +16,7 @@ Datalake GCS Client
 import os
 from copy import deepcopy
 from functools import partial
-from typing import Callable, Iterable, List, Optional, Set, Tuple
+from typing import Callable, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from google.cloud import storage
 
@@ -34,14 +34,14 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-GCS_COLD_STORAGE_CLASSES: Set[str] = {"COLDLINE", "ARCHIVE"}
+GCS_COLD_STORAGE_CLASSES: Set[str] = {"COLDLINE", "ARCHIVE"}  # noqa: UP006
 
 
 class DatalakeGcsClient(DatalakeBaseClient):
     def __init__(
         self,
         client: storage.Client,
-        temp_credentials_file_path_list: List[str],
+        temp_credentials_file_path_list: List[str],  # noqa: UP006
     ):
         super().__init__(client=client)
         self._temp_credentials_file_path_list = temp_credentials_file_path_list
@@ -88,7 +88,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         if not isinstance(project_id_list, list):
             project_id_list = [project_id_list]
 
-        for project_id in project_id_list:
+        for project_id in project_id_list:  # noqa: UP028
             yield project_id
 
     def update_client_database(self, config: GCSConfig, database_name: str):
@@ -100,7 +100,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
         self._client = self.get_gcs_client(gcs_config)
         self.update_temp_credentials_file_path_list()
 
-    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:
+    def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:  # noqa: UP045
         if bucket_name:
             yield bucket_name
         else:
@@ -110,9 +110,9 @@ class DatalakeGcsClient(DatalakeBaseClient):
     def get_table_names(
         self,
         bucket_name: str,
-        prefix: Optional[str],
+        prefix: Optional[str],  # noqa: UP045
         skip_cold_storage: bool = False,
-    ) -> Iterable[Tuple[str, Optional[int]]]:
+    ) -> Iterable[Tuple[str, Optional[int]]]:  # noqa: UP006, UP045
         bucket = self._client.get_bucket(bucket_name)
 
         for key in bucket.list_blobs(prefix=prefix):
@@ -129,10 +129,10 @@ class DatalakeGcsClient(DatalakeBaseClient):
         if isinstance(service_connection, GcpCredentialsValues) and GOOGLE_CREDENTIALS in os.environ:
             del os.environ[GOOGLE_CREDENTIALS]
             for temp_file_path in self._temp_credentials_file_path_list:
-                if os.path.exists(temp_file_path):
-                    os.remove(temp_file_path)
+                if os.path.exists(temp_file_path):  # noqa: PTH110
+                    os.remove(temp_file_path)  # noqa: PTH107
 
-    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:
+    def get_test_list_buckets_fn(self, bucket_name: Optional[str]) -> Callable:  # noqa: UP045
 
         if bucket_name:
             fn = partial(self._client.get_bucket, bucket_name)
@@ -141,7 +141,7 @@ class DatalakeGcsClient(DatalakeBaseClient):
 
         os.environ.pop("GOOGLE_CLOUD_PROJECT", "")
         if GOOGLE_CREDENTIALS in os.environ:
-            os.remove(os.environ[GOOGLE_CREDENTIALS])
+            os.remove(os.environ[GOOGLE_CREDENTIALS])  # noqa: PTH107
             del os.environ[GOOGLE_CREDENTIALS]
 
         return fn

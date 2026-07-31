@@ -32,7 +32,7 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { CustomTooltip } from '../../../utils/DataInsightChartUtils';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';

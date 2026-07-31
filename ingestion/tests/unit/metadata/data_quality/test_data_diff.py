@@ -47,7 +47,7 @@ def test_compile_and_clauses(elements, expected):
     [
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleConfig=ProfileSampleConfig(
@@ -59,7 +59,7 @@ def test_compile_and_clauses(elements, expected):
                         ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -69,7 +69,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -85,7 +85,7 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleConfig=ProfileSampleConfig(
@@ -97,7 +97,7 @@ def test_compile_and_clauses(elements, expected):
                         ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -107,7 +107,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -123,7 +123,7 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleConfig=ProfileSampleConfig(
@@ -135,7 +135,7 @@ def test_compile_and_clauses(elements, expected):
                         ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -145,7 +145,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -161,7 +161,7 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "database_service_type": "BigQuery",
                     "table_profile_config": TableProfilerConfig(
                         profileSampleConfig=ProfileSampleConfig(
@@ -173,7 +173,7 @@ def test_compile_and_clauses(elements, expected):
                         ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -183,7 +183,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -199,7 +199,7 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "table_profile_config": TableProfilerConfig(
                         profileSampleConfig=ProfileSampleConfig(
                             sampleConfigType="STATIC",
@@ -210,7 +210,7 @@ def test_compile_and_clauses(elements, expected):
                         ),
                     ),
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -220,7 +220,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="ID", dataType=DataType.STRING),
@@ -239,10 +239,10 @@ def test_compile_and_clauses(elements, expected):
         ),
         (
             TableDiffRuntimeParameters.model_construct(
-                **{
+                **{  # noqa: PIE804
                     "table_profile_config": None,
                     "table1": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),
@@ -252,7 +252,7 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{
+                        **{  # noqa: PIE804
                             "database_service_type": DatabaseServiceType.Postgres,
                             "columns": [
                                 Column(name="id", dataType=DataType.STRING),

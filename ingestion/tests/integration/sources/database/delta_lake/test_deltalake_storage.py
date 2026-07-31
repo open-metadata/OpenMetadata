@@ -47,7 +47,7 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ....integration_base import generate_name
+from ....integration_base import generate_name  # noqa: TID252
 
 TABLE_NAME = "TABLE"
 WRONG_TABLE_NAME = "WRONG_TABLE"

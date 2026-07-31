@@ -27,6 +27,7 @@ export function buildOntologySlideoutEntityDetails(
     if (ref?.id && ref.fullyQualifiedName && ref.type) {
       return {
         details: {
+          ...(node.searchSource ?? {}),
           id: ref.id,
           fullyQualifiedName: ref.fullyQualifiedName,
           entityType: ref.type as EntityType,

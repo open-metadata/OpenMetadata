@@ -221,7 +221,7 @@ class TestOwnerResolver(unittest.TestCase):
         def mock_get_reference(name, is_owner=False):
             if name == "john.doe":
                 return EntityReferenceList(root=[mock_john_owner])
-            elif name == "jane.smith":
+            elif name == "jane.smith":  # noqa: RET505
                 return EntityReferenceList(root=[mock_jane_owner])
             return None
 
@@ -255,7 +255,7 @@ class TestOwnerResolver(unittest.TestCase):
         def mock_get_reference(name, is_owner=False):
             if name == "john.doe":
                 return EntityReferenceList(root=[mock_john_owner])
-            elif name == "jane.smith":
+            elif name == "jane.smith":  # noqa: RET505
                 return EntityReferenceList(root=[mock_jane_owner])
             return None
 
@@ -310,7 +310,7 @@ class TestOwnerResolver(unittest.TestCase):
         def mock_get_reference(name, is_owner=False):
             if name == "john.doe":
                 return EntityReferenceList(root=[mock_john_owner])
-            elif name == "jane.smith":
+            elif name == "jane.smith":  # noqa: RET505
                 return EntityReferenceList(root=[mock_jane_owner])
             return None
 

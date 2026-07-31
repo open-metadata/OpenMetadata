@@ -16,7 +16,7 @@ OpenAPI schema parser for both JSON and YAML formats
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union  # noqa: UP035
 from urllib.parse import urlparse
 
 import yaml
@@ -33,7 +33,20 @@ class OpenAPIParseError(Exception):
     """
 
 
-def parse_openapi_schema(response: Response) -> Dict[str, Any]:
+def _ensure_mapping(parsed: Any, source: str) -> Dict[str, Any]:  # noqa: UP006
+    """
+    Reject parser output that isn't an object/mapping.
+
+    json.loads accepts arrays and scalars; yaml.safe_load returns a bare string
+    for non-YAML input (e.g. an HTML error page) and None for empty input. An
+    OpenAPI schema must be an object, so anything else is a parse error.
+    """
+    if not isinstance(parsed, dict):
+        raise OpenAPIParseError(f"{source} parsing produced {type(parsed).__name__}, expected an object/mapping")
+    return parsed
+
+
+def parse_openapi_schema(response: Response) -> Dict[str, Any]:  # noqa: UP006
     """
     Parse OpenAPI schema from HTTP response.
     Supports both JSON and YAML formats.
@@ -53,33 +66,31 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:
     # Try to determine format from content-type header
     if "json" in content_type:
         try:
-            return json.loads(content)
+            return _ensure_mapping(json.loads(content), "JSON")
         except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse as JSON despite content-type: {e}")
+            logger.error(f"Failed to parse as JSON despite content-type: {e}")
     elif "yaml" in content_type or "yml" in content_type:
         try:
-            return yaml.safe_load(content)
+            return _ensure_mapping(yaml.safe_load(content), "YAML")
         except yaml.YAMLError as e:
-            logger.warning(f"Failed to parse as YAML despite content-type: {e}")
+            logger.error(f"Failed to parse as YAML despite content-type: {e}")
 
     # If content-type is not definitive or parsing failed, try both formats
 
     # First try JSON (backward compatibility)
     try:
-        parsed = json.loads(content)
+        parsed = _ensure_mapping(json.loads(content), "JSON")
         logger.debug("Successfully parsed OpenAPI schema as JSON")
-        return parsed
-    except json.JSONDecodeError:
+        return parsed  # noqa: TRY300
+    except (json.JSONDecodeError, OpenAPIParseError):
         logger.debug("Content is not valid JSON, trying YAML")
 
     # Then try YAML
     try:
-        parsed = yaml.safe_load(content)
-        if parsed is None:
-            raise OpenAPIParseError("YAML parsing returned None")
+        parsed = _ensure_mapping(yaml.safe_load(content), "YAML")
         logger.debug("Successfully parsed OpenAPI schema as YAML")
-        return parsed
-    except yaml.YAMLError as e:
+        return parsed  # noqa: TRY300
+    except (yaml.YAMLError, OpenAPIParseError) as e:
         logger.error(f"Failed to parse as YAML: {e}")
 
     # If both formats fail, raise an error
@@ -89,7 +100,7 @@ def parse_openapi_schema(response: Response) -> Dict[str, Any]:
     )
 
 
-def validate_openapi_schema(schema: Dict[str, Any]) -> bool:
+def validate_openapi_schema(schema: Dict[str, Any]) -> bool:  # noqa: UP006
     """
     Validate that the parsed schema is a valid OpenAPI specification.
 
@@ -107,7 +118,7 @@ def validate_openapi_schema(schema: Dict[str, Any]) -> bool:
     return schema.get("openapi") is not None or schema.get("swagger") is not None
 
 
-def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any]:
+def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any]:  # noqa: UP006, UP007
     """
     Parse OpenAPI schema from a local file.
     Supports both JSON and YAML formats.
@@ -121,33 +132,27 @@ def parse_openapi_schema_from_file(file_path: Union[str, Path]) -> Dict[str, Any
     content = path.read_text(encoding="utf-8")
     suffix = path.suffix.lower()
 
-    if suffix in (".json",):
+    if suffix == ".json":
         try:
-            return json.loads(content)
-        except json.JSONDecodeError as e:
-            raise OpenAPIParseError(f"Failed to parse JSON file: {e}") from e
+            return _ensure_mapping(json.loads(content), "JSON")
+        except (json.JSONDecodeError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse JSON file '{file_path}': {e}") from e
 
     if suffix in (".yaml", ".yml"):
         try:
-            parsed = yaml.safe_load(content)
-            if parsed is None:
-                raise OpenAPIParseError("YAML parsing returned None")
-            return parsed
-        except yaml.YAMLError as e:
-            raise OpenAPIParseError(f"Failed to parse YAML file: {e}") from e
+            return _ensure_mapping(yaml.safe_load(content), "YAML")
+        except (yaml.YAMLError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse YAML file '{file_path}': {e}") from e
 
     # Unknown extension — try JSON first, then YAML
     try:
-        return json.loads(content)
-    except json.JSONDecodeError:
+        return _ensure_mapping(json.loads(content), "JSON")
+    except (json.JSONDecodeError, OpenAPIParseError):
         pass
 
     try:
-        parsed = yaml.safe_load(content)
-        if parsed is None:
-            raise OpenAPIParseError("YAML parsing returned None")
-        return parsed
-    except yaml.YAMLError:
+        return _ensure_mapping(yaml.safe_load(content), "YAML")
+    except (yaml.YAMLError, OpenAPIParseError):
         pass
 
     raise OpenAPIParseError(f"Failed to parse '{file_path}' as either JSON or YAML.")
@@ -196,12 +201,12 @@ def _parse_s3_url(s3_url: str) -> tuple:
 def parse_openapi_schema_from_s3(
     s3_url: str,
     aws_credentials: "AWSCredentials",  # noqa: F821
-) -> Dict[str, Any]:
+) -> Dict[str, Any]:  # noqa: UP006
     """
     Download and parse an OpenAPI schema file from S3.
     Supports both JSON and YAML formats.
     """
-    from metadata.clients.aws_client import AWSClient
+    from metadata.clients.aws_client import AWSClient  # noqa: PLC0415
 
     bucket, key = _parse_s3_url(s3_url)
 
@@ -216,33 +221,27 @@ def parse_openapi_schema_from_s3(
 
     suffix = Path(key).suffix.lower()
 
-    if suffix in (".json",):
+    if suffix == ".json":
         try:
-            return json.loads(content)
-        except json.JSONDecodeError as e:
-            raise OpenAPIParseError(f"Failed to parse S3 JSON file: {e}") from e
+            return _ensure_mapping(json.loads(content), "JSON")
+        except (json.JSONDecodeError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse S3 JSON file 's3://{bucket}/{key}': {e}") from e
 
     if suffix in (".yaml", ".yml"):
         try:
-            parsed = yaml.safe_load(content)
-            if parsed is None:
-                raise OpenAPIParseError("YAML parsing returned None")
-            return parsed
-        except yaml.YAMLError as e:
-            raise OpenAPIParseError(f"Failed to parse S3 YAML file: {e}") from e
+            return _ensure_mapping(yaml.safe_load(content), "YAML")
+        except (yaml.YAMLError, OpenAPIParseError) as e:
+            raise OpenAPIParseError(f"Failed to parse S3 YAML file 's3://{bucket}/{key}': {e}") from e
 
     # Unknown extension — try JSON first, then YAML
     try:
-        return json.loads(content)
-    except json.JSONDecodeError:
+        return _ensure_mapping(json.loads(content), "JSON")
+    except (json.JSONDecodeError, OpenAPIParseError):
         pass
 
     try:
-        parsed = yaml.safe_load(content)
-        if parsed is None:
-            raise OpenAPIParseError("YAML parsing returned None")
-        return parsed
-    except yaml.YAMLError:
+        return _ensure_mapping(yaml.safe_load(content), "YAML")
+    except (yaml.YAMLError, OpenAPIParseError):
         pass
 
-    raise OpenAPIParseError(f"Failed to parse S3 file '{key}' as either JSON or YAML.")
+    raise OpenAPIParseError(f"Failed to parse S3 file 's3://{bucket}/{key}' as either JSON or YAML.")

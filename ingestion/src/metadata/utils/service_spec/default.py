@@ -19,7 +19,7 @@ from metadata.utils.service_spec.service_spec import BaseSpec
 
 
 class DefaultDatabaseSpec(BaseSpec):
-    profiler_class: Optional[str] = get_class_path(SQAProfilerInterface)
-    sampler_class: Optional[str] = get_class_path(SQASampler)
-    test_suite_class: Optional[str] = get_class_path(SQATestSuiteInterface)
-    data_diff: Optional[str] = get_class_path(BaseTableParameter)
+    profiler_class: Optional[str] = get_class_path(SQAProfilerInterface)  # noqa: UP045
+    sampler_class: Optional[str] = get_class_path(SQASampler)  # noqa: UP045
+    test_suite_class: Optional[str] = get_class_path(SQATestSuiteInterface)  # noqa: UP045
+    data_diff: Optional[str] = get_class_path(BaseTableParameter)  # noqa: UP045

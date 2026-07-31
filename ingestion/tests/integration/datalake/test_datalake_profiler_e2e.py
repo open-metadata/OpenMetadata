@@ -28,7 +28,7 @@ from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
-from .conftest import BUCKET_NAME
+from .conftest import BUCKET_NAME  # noqa: TID252
 
 
 @pytest.fixture(scope="class", autouse=True)

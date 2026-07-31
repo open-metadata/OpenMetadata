@@ -12,12 +12,10 @@
 OpenSearch source to extract metadata
 """
 
-import shutil
 import traceback
-from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional  # noqa: UP035
 
-from opensearchpy import OpenSearch
+from opensearchpy import OpenSearch  # noqa: TC002
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -60,7 +58,7 @@ class OpensearchSource(SearchServiceSource):
         self.client: OpenSearch = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """
         Create an instance of OpensearchSource.
 
@@ -99,13 +97,13 @@ class OpensearchSource(SearchServiceSource):
             Iterable of dictionaries containing index details.
         """
         index_list = self.client.indices.get_alias(expand_wildcards="open") or {}
-        for index in index_list.keys():
+        for index in index_list.keys():  # noqa: SIM118
             if self._is_system_index(index):
                 logger.debug("Skipping system index: %s", index)
                 continue
             yield self.client.indices.get(index=str(index))
 
-    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:
+    def get_search_index_name(self, search_index_details: dict) -> Optional[str]:  # noqa: UP045
         """
         Get the search index name.
 
@@ -116,7 +114,7 @@ class OpensearchSource(SearchServiceSource):
             The index name if available, else None.
         """
         if search_index_details and len(search_index_details) == 1:
-            return list(search_index_details.keys())[0]
+            return list(search_index_details.keys())[0]  # noqa: RUF015
         return None
 
     def yield_search_index(self, search_index_details: Any) -> Iterable[Either[CreateSearchIndexRequest]]:
@@ -186,7 +184,7 @@ class OpensearchSource(SearchServiceSource):
         """
         yield from self.client.indices.get_index_template().get("index_templates", [])
 
-    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:
+    def get_search_index_template_name(self, search_index_template_details: dict) -> Optional[str]:  # noqa: UP045
         """
         Get the search index template name.
 
@@ -229,14 +227,3 @@ class OpensearchSource(SearchServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Could not include index templates due to {exc}")
-
-    def close(self):
-        """
-        Clean up any temporary files and close the connection.
-        """
-        try:
-            if Path(self.service_connection.sslConfig.certificates.stagingDir).exists():
-                shutil.rmtree(self.service_connection.sslConfig.certificates.stagingDir)
-        except AttributeError:
-            pass
-        return super().close()

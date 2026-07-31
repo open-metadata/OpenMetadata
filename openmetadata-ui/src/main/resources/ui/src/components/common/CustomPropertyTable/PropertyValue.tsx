@@ -35,7 +35,15 @@ import {
 } from 'lodash';
 import { DateTime } from 'luxon';
 import moment, { Moment } from 'moment';
-import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CSSProperties,
+  FC,
+  lazy,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
@@ -62,17 +70,20 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { Config } from '../../../generated/type/customProperty';
-import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
-import { getCustomPropertyLuxonFormat } from '../../../utils/CustomProperty.utils';
+import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
+import {
+  formatCustomPropertyDateTime,
+  getCustomPropertyLuxonFormat,
+  parseCustomPropertyDateTime,
+} from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import DatePicker from '../DatePicker/DatePicker';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -84,8 +95,22 @@ import {
 } from './CustomPropertyTable.interface';
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
-import EditTableTypePropertyModal from './TableTypeProperty/EditTableTypePropertyModal';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
+
+const EditTableTypePropertyModal = withSuspenseFallback(
+  lazy(() => import('./TableTypeProperty/EditTableTypePropertyModal'))
+);
 
 export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,
@@ -285,7 +310,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
 
         const initialValues = {
-          dateTimeValue: value ? DateTime.fromFormat(value, format) : undefined,
+          dateTimeValue: value
+            ? parseCustomPropertyDateTime(
+                value,
+                propertyType.name ?? '',
+                property.customPropertyConfig?.config
+              )
+            : undefined,
         };
 
         const formId = `dateTime-form-${propertyName}`;
@@ -308,7 +339,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { dateTimeValue: DateTime }) => {
                 onInputSave(
                   values.dateTimeValue
-                    ? values.dateTimeValue.toFormat(format)
+                    ? formatCustomPropertyDateTime(
+                        values.dateTimeValue,
+                        propertyType.name ?? '',
+                        property.customPropertyConfig?.config
+                      )
                     : values.dateTimeValue // If date is cleared and set undefined
                 );
               }}>

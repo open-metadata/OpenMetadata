@@ -7,7 +7,7 @@ configuration following the topology structure (service -> database -> schema ->
 """
 
 import traceback
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -37,7 +37,7 @@ class OwnerResolver:
     4. Default configuration
     """
 
-    def __init__(self, metadata: OpenMetadata, owner_config: Optional[Dict] = None):
+    def __init__(self, metadata: OpenMetadata, owner_config: Optional[Dict] = None):  # noqa: UP006, UP045
         """
         Initialize the owner resolver
 
@@ -51,7 +51,7 @@ class OwnerResolver:
 
     def _try_level_config_match(
         self, level_config, entity_name: str, entity_type: str
-    ) -> Optional[EntityReferenceList]:
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
         """Try to match owner from level configuration"""
         if isinstance(level_config, dict):
             return self._try_dict_config_match(level_config, entity_name)
@@ -59,7 +59,7 @@ class OwnerResolver:
             return self._try_string_config_match(level_config, entity_name, entity_type)
         return None
 
-    def _try_dict_config_match(self, level_config: dict, entity_name: str) -> Optional[EntityReferenceList]:
+    def _try_dict_config_match(self, level_config: dict, entity_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
         """Try to match owner from dict configuration"""
         # First try full name matching (FQN)
         if entity_name in level_config:
@@ -69,7 +69,7 @@ class OwnerResolver:
                 return owner_ref
 
         # Fallback to simple name matching
-        simple_name = entity_name.split(".")[-1]
+        simple_name = entity_name.split(".")[-1]  # noqa: PLC0207
         if simple_name != entity_name and simple_name in level_config:
             owner_ref = self._get_owner_refs(level_config[simple_name])
             if owner_ref:
@@ -82,7 +82,7 @@ class OwnerResolver:
 
     def _try_string_config_match(
         self, level_config: str, entity_name: str, entity_type: str
-    ) -> Optional[EntityReferenceList]:
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
         """Try to match owner from string configuration"""
         owner_ref = self._get_owner_refs(level_config)
         if owner_ref:
@@ -93,8 +93,8 @@ class OwnerResolver:
         self,
         entity_type: str,
         entity_name: str,
-        parent_owner: Optional[Union[str, List[str]]] = None,
-    ) -> Optional[EntityReferenceList]:
+        parent_owner: Optional[Union[str, List[str]]] = None,  # noqa: UP006, UP007, UP045
+    ) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Resolve owner for an entity based on configuration
 
@@ -143,7 +143,7 @@ class OwnerResolver:
 
         return None
 
-    def _find_single_owner(self, owner_name: str) -> Optional[tuple]:
+    def _find_single_owner(self, owner_name: str) -> Optional[tuple]:  # noqa: UP045
         """
         Find a single owner by name or email
 
@@ -173,14 +173,14 @@ class OwnerResolver:
                     return (owner_entity, owner_entity.type)
 
             logger.warning(f"Could not find owner: {owner_name}")
-            return None
+            return None  # noqa: TRY300
 
         except Exception as exc:
             logger.warning(f"Error getting owner reference for '{owner_name}': {exc}")
             logger.debug(traceback.format_exc())
             return None
 
-    def _validate_owners(self, all_owners: List, owner_types: set) -> Optional[EntityReferenceList]:
+    def _validate_owners(self, all_owners: List, owner_types: set) -> Optional[EntityReferenceList]:  # noqa: UP006, UP045
         """
         Validate owner list according to business rules
 
@@ -212,7 +212,7 @@ class OwnerResolver:
 
         return EntityReferenceList(root=all_owners)
 
-    def _get_owner_refs(self, owner_names: Union[str, List[str]]) -> Optional[EntityReferenceList]:
+    def _get_owner_refs(self, owner_names: Union[str, List[str]]) -> Optional[EntityReferenceList]:  # noqa: UP006, UP007, UP045
         """
         Get owner references from OpenMetadata (supports single or multiple owners)
 
@@ -248,11 +248,11 @@ class OwnerResolver:
 
 def get_owner_from_config(
     metadata: OpenMetadata,
-    owner_config: Optional[Union[str, Dict]],
+    owner_config: Optional[Union[str, Dict]],  # noqa: UP006, UP007, UP045
     entity_type: str,
     entity_name: str,
-    parent_owner: Optional[Union[str, List[str]]] = None,
-) -> Optional[EntityReferenceList]:
+    parent_owner: Optional[Union[str, List[str]]] = None,  # noqa: UP006, UP007, UP045
+) -> Optional[EntityReferenceList]:  # noqa: UP045
     """
     Convenience function to resolve owner from configuration
 

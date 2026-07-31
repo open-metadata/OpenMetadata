@@ -25,6 +25,7 @@ export const useDomainStore = create<DomainStore>()(
       userDomains: [],
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       activeDomainEntityRef: undefined,
+      isDomainRestricted: false,
       updateActiveDomain: (domain?: EntityReference) => {
         set({
           activeDomain: domain?.fullyQualifiedName ?? DEFAULT_DOMAIN_VALUE,
@@ -34,6 +35,11 @@ export const useDomainStore = create<DomainStore>()(
       setUserDomains: (userDomainsArr: EntityReference[]) => {
         set({
           userDomains: userDomainsArr,
+        });
+      },
+      setDomainRestriction: (restricted: boolean) => {
+        set({
+          isDomainRestricted: restricted,
         });
       },
     }),

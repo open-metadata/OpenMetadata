@@ -14,7 +14,7 @@ Amundsen source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional, cast  # noqa: UP035
 
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
@@ -59,7 +59,11 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    run_test_connection,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -72,12 +76,15 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
 logger = ingestion_logger()
 
 
 class AmundsenConfig(ConfigModel):
-    neo4j_username: Optional[str] = None
-    neo4j_password: Optional[SecretStr] = None
+    neo4j_username: Optional[str] = None  # noqa: UP045
+    neo4j_password: Optional[SecretStr] = None  # noqa: UP045
     neo4j_url: str
     neo4j_max_connection_life_time: int = 50
     neo4j_encrypted: bool = True
@@ -121,13 +128,15 @@ class AmundsenSource(Source):
         self.database_object = None
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.connection_obj = self.client
         self.database_service_map = {service.value.lower(): service.value for service in DatabaseServiceType}
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AmundsenConnection = config.serviceConnection.root.config
@@ -289,17 +298,17 @@ class AmundsenSource(Source):
         try:
             yield from self._yield_create_database(table)
             yield from self._yield_create_database_schema(table)
-            columns: List[Column] = []
+            columns: List[Column] = []  # noqa: UP006
             if len(table["column_names"]) == len(table["column_descriptions"]):
                 # zipping on column_descriptions can cause incorrect or no ingestion
                 # of column metadata as zip will zip on the smallest list len.
-                columns_meta = zip(
+                columns_meta = zip(  # noqa: B905
                     table["column_names"],
                     table["column_descriptions"],
                     table["column_types"],
                 )
             else:
-                columns_meta = zip(
+                columns_meta = zip(  # noqa: B905
                     table["column_names"],
                     [None] * len(table["column_names"]),
                     table["column_types"],
@@ -307,7 +316,7 @@ class AmundsenSource(Source):
             for name, description, data_type in columns_meta:
                 # Amundsen merges the length into type itself. Instead of making changes to our generic type builder
                 # we will do a type match and see if it matches any primitive types and return a type
-                data_type = self.get_type_primitive_type(data_type)
+                data_type = self.get_type_primitive_type(data_type)  # noqa: PLW2901
                 parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     data_type
                 )
@@ -388,7 +397,7 @@ class AmundsenSource(Source):
             )
 
     def create_chart_entity(self, dashboard) -> Iterable[Either[CreateChartRequest]]:
-        for name, chart_id, chart_type, url in zip(
+        for name, chart_id, chart_type, url in zip(  # noqa: B905
             dashboard["chart_names"],
             dashboard["chart_ids"],
             dashboard["chart_types"],
@@ -404,8 +413,8 @@ class AmundsenSource(Source):
             yield Either(right=chart)
 
     def close(self):
-        if self.client is not None:
-            self.client.close()
+        if self._connection is not None:
+            self._connection.close()
 
     def get_type_primitive_type(self, data_type):
         for p_type in PRIMITIVE_TYPES:
@@ -436,4 +445,4 @@ class AmundsenSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

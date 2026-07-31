@@ -110,7 +110,7 @@ def test_get_child_measures(test_case_name, test_case):
 
     assert result_columns
 
-    for expected_col, actual_col in zip(test_case["expected"], result_columns):
+    for expected_col, actual_col in zip(test_case["expected"], result_columns):  # noqa: B905
         assert actual_col.name == expected_col.name
         assert actual_col.dataType == expected_col.dataType
         assert actual_col.dataTypeDisplay == expected_col.dataTypeDisplay

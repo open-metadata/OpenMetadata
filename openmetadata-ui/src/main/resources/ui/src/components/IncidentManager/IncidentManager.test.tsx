@@ -12,10 +12,11 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import { act } from 'react';
+import React, { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
+import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
-import '../../test/unit/mocks/mui.mock';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
@@ -78,53 +79,40 @@ jest.mock('../DataQuality/IncidentManager/Severity/Severity.component', () => {
     </button>
   ));
 });
-jest.mock('../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
-  return jest.fn().mockImplementation(({ handleDateRangeChange }) => (
-    <div>
-      <p>DatePickerMenu.component</p>
-      <button
-        data-testid="time-filter"
-        onClick={() =>
-          handleDateRangeChange({
-            startTs: 1709556624254,
-            endTs: 1710161424255,
-            key: 'last7days',
-            title: 'Last 7 days',
-          })
-        }>
-        time filter
-      </button>
-    </div>
-  ));
-});
 jest.mock('@openmetadata/ui-core-components', () => {
   const DropdownRoot = ({
     children,
     isOpen,
     onOpenChange,
   }: {
-    children: { [key: number]: React.ReactNode };
+    children: React.ReactNode[];
     isOpen: boolean;
     onOpenChange: (v: boolean) => void;
   }) => (
     <div data-testid="date-field-dropdown-root">
-      {/* Trigger element */}
-      <button
+      <div
         data-testid="date-field-dropdown-trigger"
-        type="button"
+        role="button"
+        tabIndex={0}
         onClick={() => onOpenChange(!isOpen)}>
         {children[0]}
-      </button>
-      {/* Popover (only rendered when open) */}
+      </div>
       {isOpen && children[1]}
     </div>
   );
 
   const DropdownMenu = ({
     items,
+    children,
     onAction,
   }: {
-    items?: { name: string; value: string }[];
+    children?: (item: {
+      id?: string;
+      label?: string;
+      name?: string;
+      value?: string;
+    }) => React.ReactNode;
+    items?: { id?: string; label?: string; name?: string; value?: string }[];
     onAction?: (key: string) => void;
   }) => {
     if (!items) {
@@ -136,17 +124,92 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {items.map((item) => (
           <button
             data-testid={`date-field-option-${item.value}`}
-            key={item.value}
+            key={item.value ?? item.id}
             type="button"
-            onClick={() => onAction?.(item.value)}>
-            {item.name}
+            onClick={() => onAction?.((item.value ?? item.id) as string)}>
+            {children ? children(item) : item.name ?? item.label}
           </button>
         ))}
       </div>
     );
   };
 
+  const TableMock = Object.assign(
+    ({
+      children,
+      'data-testid': testId,
+      'aria-label': ariaLabel,
+    }: {
+      children?: React.ReactNode;
+      'data-testid'?: string;
+      'aria-label'?: string;
+    }) => (
+      <table aria-label={ariaLabel} data-testid={testId}>
+        {children}
+      </table>
+    ),
+    {
+      Header: ({
+        columns,
+        children,
+      }: {
+        columns?: { id: string; label: string }[];
+        children: (col: { id: string; label: string }) => React.ReactNode;
+      }) => (
+        <thead>
+          <tr>
+            {columns?.map((col) => (
+              <th key={col.id}>{children(col)}</th>
+            ))}
+          </tr>
+        </thead>
+      ),
+      Head: ({ label }: { label?: string }) => <span>{label}</span>,
+      Body: ({
+        items,
+        children,
+        renderEmptyState,
+      }: {
+        items?: unknown[];
+        children: (item: unknown) => React.ReactNode;
+        renderEmptyState?: () => React.ReactNode;
+        dependencies?: unknown[];
+      }) => (
+        <tbody>
+          {!items || items.length === 0 ? (
+            <tr>
+              <td>{renderEmptyState?.()}</td>
+            </tr>
+          ) : (
+            items.map((item) => children(item))
+          )}
+        </tbody>
+      ),
+      Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
+        <tr data-rowid={id}>{children}</tr>
+      ),
+      Cell: ({ children }: { children?: React.ReactNode }) => (
+        <td>{children}</td>
+      ),
+    }
+  );
+
   return {
+    Box: ({ children }: { children?: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    EmptyPlaceholder: ({
+      title,
+      description,
+    }: {
+      title?: React.ReactNode;
+      description?: React.ReactNode;
+    }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    ),
     Dropdown: {
       Root: DropdownRoot,
       Popover: jest
@@ -166,9 +229,103 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(() => <div data-testid="skeleton" />),
     Button: jest
       .fn()
-      .mockImplementation(({ children, className }) => (
-        <button className={className}>{children}</button>
-      )),
+      .mockImplementation(
+        ({ children, className, iconTrailing, noTextPadding, ...props }) => (
+          <button className={className} {...props}>
+            {children}
+            {iconTrailing}
+            {noTextPadding}
+          </button>
+        )
+      ),
+    Table: TableMock,
+  };
+});
+
+jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
+  return function MockDatePickerMenu({
+    allowClear,
+    defaultDateRange,
+    handleDateRangeChange,
+    onClear,
+    placeholder,
+  }: {
+    allowClear?: boolean;
+    defaultDateRange?: { key?: string; title?: string };
+    handleDateRangeChange?: (value: {
+      startTs: number;
+      endTs: number;
+      key: string;
+      title: string;
+    }) => void;
+    onClear?: () => void;
+    placeholder?: string;
+  }) {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const selectedLabel = defaultDateRange?.key
+      ? defaultDateRange.title ?? 'label.last-7-days'
+      : placeholder;
+
+    return (
+      <div
+        className="tw:relative tw:inline-flex tw:h-8 tw:max-w-80 tw:items-center"
+        data-testid="date-picker-container">
+        <button
+          className="tw:h-8 tw:max-w-72 tw:overflow-hidden"
+          data-testid="date-picker-menu"
+          type="button"
+          onClick={() => setIsOpen((open) => !open)}>
+          <span className={defaultDateRange?.key ? '' : 'tw:text-disabled'}>
+            {selectedLabel}
+          </span>
+        </button>
+        {allowClear && defaultDateRange?.key && (
+          <button
+            aria-label="label.clear"
+            className="tw:absolute tw:right-8 tw:size-4"
+            data-testid="clear-date-picker"
+            type="button"
+            onClick={onClear}>
+            clear
+          </button>
+        )}
+        {isOpen && (
+          <div>
+            <button
+              data-testid="date-range-option-last7days"
+              type="button"
+              onClick={() =>
+                handleDateRangeChange?.({
+                  startTs: 1709556624254,
+                  endTs: 1710161424255,
+                  key: 'last7days',
+                  title: 'label.last-7-days',
+                })
+              }>
+              Last 7 days
+            </button>
+            <button data-testid="date-range-option-last14days" type="button">
+              Last 14 days
+            </button>
+            <div data-testid="dropdown-separator" />
+            <p>CustomDateRangePicker.component</p>
+            <button
+              data-testid="custom-time-filter"
+              type="button"
+              onClick={() =>
+                handleDateRangeChange?.({
+                  startTs: 1709510400000,
+                  endTs: 1710115199999,
+                  key: 'customRange',
+                  title: '2024-03-04 -> 2024-03-11',
+                })
+              }>
+              time filter
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 });
 
@@ -204,7 +361,11 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
@@ -319,6 +480,12 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
       .mockImplementation(() => 1709556624254),
     formatDateTime: jest.fn().mockImplementation(() => 'formatted date'),
     getCurrentMillis: jest.fn().mockImplementation(() => 1710161424255),
+    getCurrentDayEndGMTinMillis: jest
+      .fn()
+      .mockImplementation(() => 1710161424255),
+    getDayAgoStartGMTinMillis: jest
+      .fn()
+      .mockImplementation(() => 1709556624254),
     getStartOfDayInMillis: jest
       .fn()
       .mockImplementation((timestamp) => timestamp),
@@ -326,11 +493,11 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
   };
 });
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('EntityName'),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('NameFromFQN'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('PartialName'),
 }));
@@ -362,9 +529,10 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByText('AsyncSelect.component')
     ).toBeInTheDocument();
+    expect(await screen.findByTestId('date-picker-menu')).toBeInTheDocument();
     expect(
-      await screen.findByText('DatePickerMenu.component')
-    ).toBeInTheDocument();
+      screen.queryByText('CustomDateRangePicker.component')
+    ).not.toBeInTheDocument();
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
@@ -609,6 +777,153 @@ describe('IncidentManagerPage', () => {
     expect(dropdownMenu).toBeInTheDocument();
   });
 
+  it('should render date range presets with custom range picker at the end', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(await screen.findByText('label.select-entity')).toHaveClass(
+      'tw:text-disabled'
+    );
+
+    const triggerDiv = await screen.findByTestId('date-picker-menu');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    expect(
+      await screen.findByTestId('date-range-option-last7days')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('date-range-option-last14days')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('dropdown-separator')).toBeInTheDocument();
+    expect(
+      screen.getByText('CustomDateRangePicker.component')
+    ).toBeInTheDocument();
+  });
+
+  it('should render selected date range without increasing trigger height', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: QueryString.stringify({
+        endTs: 1710161424255,
+        startTs: 1709556624254,
+        key: 'last7days',
+      }),
+    }));
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const dateRangeTrigger = await screen.findByTestId('date-picker-menu');
+    const datePickerContainer = await screen.findByTestId(
+      'date-picker-container'
+    );
+    const clearButton = await screen.findByTestId('clear-date-picker');
+
+    expect(dateRangeTrigger).toHaveClass('tw:h-8');
+    expect(dateRangeTrigger).toHaveClass('tw:max-w-72');
+    expect(dateRangeTrigger).toHaveTextContent('label.last-7-days');
+    expect(datePickerContainer).toHaveClass('tw:max-w-80');
+    expect(datePickerContainer).toHaveClass('tw:relative');
+    expect(clearButton).toHaveClass('tw:absolute');
+    expect(clearButton).toHaveClass('tw:right-8');
+    expect(clearButton).toHaveAccessibleName('label.clear');
+    expect(clearButton.tagName).toBe('BUTTON');
+    expect(dateRangeTrigger).not.toContainElement(clearButton);
+  });
+
+  it('should clear the selected date range from the trigger', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: 'endTs=1710161424255&startTs=1709556624254&key=last7days',
+    }));
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('clear-date-picker'));
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.not.stringContaining('key=last7days'),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should update URL when date range preset is selected', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: '',
+    }));
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const triggerDiv = await screen.findByTestId('date-picker-menu');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    const last7DaysOption = await screen.findByTestId(
+      'date-range-option-last7days'
+    );
+    await act(async () => {
+      fireEvent.click(last7DaysOption);
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.stringContaining('key=last7days'),
+      }),
+      expect.anything()
+    );
+  });
+
+  it('should update URL when custom date range is applied', async () => {
+    const mockUseCustomLocation = require('../../hooks/useCustomLocation/useCustomLocation');
+    mockUseCustomLocation.mockImplementation(() => ({
+      search: '',
+    }));
+    const mockUseNavigate = require('react-router-dom').useNavigate;
+    const navigate = jest.fn();
+    mockUseNavigate.mockReturnValue(navigate);
+
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    const triggerDiv = await screen.findByTestId('date-picker-menu');
+    await act(async () => {
+      fireEvent.click(triggerDiv);
+    });
+
+    const customRangeButton = await screen.findByTestId('custom-time-filter');
+    await act(async () => {
+      fireEvent.click(customRangeButton);
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        search: expect.stringContaining('key=customRange'),
+      }),
+      expect.anything()
+    );
+  });
+
   it('should update URL with dateField=updatedAt when Updated At option is selected', async () => {
     const mockUseNavigate = require('react-router-dom').useNavigate;
     const navigate = jest.fn();
@@ -828,6 +1143,46 @@ describe('IncidentManagerPage', () => {
       });
 
       expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+    });
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('test case name link should use observabilityRouterClassBase.getTestCaseDetailPagePath', async () => {
+      const fqn = 'svc.db.schema.table.test_case_1';
+      const { getTestCaseDetailPagePath } = require('../../utils/RouterUtils');
+      (getTestCaseDetailPagePath as jest.Mock).mockClear();
+
+      (getListTestCaseIncidentStatusFromSearch as jest.Mock).mockResolvedValue({
+        data: [
+          {
+            id: 'tcr-1',
+            testCaseReference: {
+              fullyQualifiedName: fqn,
+              name: 'test_case_1',
+            },
+            testCaseResolutionStatusType: 'New',
+          },
+        ],
+        paging: { total: 1 },
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      const link = await screen.findByTestId('test-case-test_case_1');
+
+      expect(link.tagName).toBe('A');
+      expect(link.getAttribute('data-to')).toBe(
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          fqn,
+          TestCasePageTabs.TEST_CASE_RESULTS
+        )
+      );
+      expect(getTestCaseDetailPagePath).toHaveBeenCalledWith(
+        fqn,
+        TestCasePageTabs.TEST_CASE_RESULTS
+      );
     });
   });
 });

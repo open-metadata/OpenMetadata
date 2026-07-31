@@ -14,10 +14,9 @@ Base class for the Auto Classification Processor.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Sequence, Type, TypeVar, cast, final
+from typing import Any, Optional, Sequence, Type, TypeVar, cast, final  # noqa: UP035
 
-from metadata.generated.schema.entity.data.container import Container
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -33,6 +32,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.sampler.entity_adapters import adapter_for
 from metadata.sampler.models import SamplerResponse
 
 C = TypeVar("C", bound="AutoClassificationProcessor")
@@ -60,7 +60,7 @@ class AutoClassificationProcessor(Processor, ABC):
 
         # Init and type the source config
         self.source_config: DatabaseServiceAutoClassificationPipeline = cast(
-            DatabaseServiceAutoClassificationPipeline,
+            DatabaseServiceAutoClassificationPipeline,  # noqa: TC006
             self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
 
@@ -80,21 +80,50 @@ class AutoClassificationProcessor(Processor, ABC):
     @classmethod
     @final
     def create(
-        cls: Type[C],
+        cls: Type[C],  # noqa: UP006
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> C:
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
     @staticmethod
-    def _get_entity_columns(entity) -> Optional[List[Column]]:
-        """Get columns from a classifiable entity"""
-        if isinstance(entity, Table):
-            return entity.columns
-        if isinstance(entity, Container):
-            return entity.dataModel.columns if entity.dataModel else None
+    def _get_entity_columns(entity) -> list[Column] | None:
+        adapter = adapter_for(entity)
+        return adapter.get_columns(entity) if adapter else None
+
+    @staticmethod
+    def _find_column_by_dotted_path(
+        columns: list[Column], dotted_path: str, depth: int = 0, max_depth: int = 10
+    ) -> Column | None:
+        """
+        Recursively search for a column using dotted path notation (e.g., 'parent.child.field').
+        Uniquely identifies columns in nested RECORD structures without collisions.
+        Compatible with the sampler's dotted-path column naming scheme.
+
+        An exact match on the full name is always preferred so leaf columns whose
+        own name contains literal dots (e.g. 'first.last') are not mis-split.
+        """
+        if depth > max_depth:
+            return None
+
+        exact_match = next((c for c in columns if c.name.root == dotted_path), None)
+        if exact_match:
+            return exact_match
+
+        parts = dotted_path.split(".", 1)
+        if len(parts) == 1:
+            return None
+
+        first_part, remainder = parts
+        for col in columns:
+            if col.name.root == first_part and col.children:
+                found = AutoClassificationProcessor._find_column_by_dotted_path(
+                    [c for c in col.children if c], remainder, depth=depth + 1, max_depth=max_depth
+                )
+                if found:
+                    return found
         return None
 
     @final
@@ -116,7 +145,8 @@ class AutoClassificationProcessor(Processor, ABC):
         column_tags = []
 
         for idx, column_name in enumerate(record.sample_data.data.columns):
-            column = next((c for c in columns if c.name == column_name), None)
+            col_lookup = column_name.root
+            column = self._find_column_by_dotted_path(columns, col_lookup)
             if not column:
                 continue
 

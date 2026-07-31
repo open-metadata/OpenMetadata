@@ -123,7 +123,7 @@ class TestPresidioRecognizerFactory:
         assert result.supported_entities == [tag_fqn]
         assert len(result.patterns) == 3
 
-        for value, pattern in zip(exact_terms, result.patterns):
+        for value, pattern in zip(exact_terms, result.patterns):  # noqa: B905
             assert pattern.name == f"exact_term_{value}"
             assert pattern.regex == re.escape(value)
             assert pattern.score == 0.9
@@ -153,7 +153,7 @@ class TestPresidioRecognizerFactory:
         assert result.supported_entities == [tag_fqn]
         assert len(result.patterns) == 3
 
-        for word, pattern in zip(context_words, result.patterns):
+        for word, pattern in zip(context_words, result.patterns):  # noqa: B905
             assert pattern.name == f"context_{word}"
             assert abs(pattern.score - 0.6) < 0.0001  # (0.4 + 0.8) / 2
 

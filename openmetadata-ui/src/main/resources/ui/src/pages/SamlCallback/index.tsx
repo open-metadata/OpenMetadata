@@ -23,14 +23,26 @@ import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
+export const getSamlCallbackParams = ({
+  hash,
+  search,
+}: {
+  hash: string;
+  search: string;
+}) => {
+  const fragmentParams = new URLSearchParams(hash.replace(/^#/, ''));
+  const queryParams = new URLSearchParams(search);
+
+  return fragmentParams.has('id_token') ? fragmentParams : queryParams;
+};
+
 const SamlCallback = () => {
   const { handleSuccessfulLogin } = useAuthProvider();
   const location = useCustomLocation();
   const { t } = useTranslation();
 
   const processLogin = useCallback(async () => {
-    // get #id_token from hash params in the URL
-    const params = new URLSearchParams(location.search);
+    const params = getSamlCallbackParams(location);
     const idToken = params.get('id_token');
     const name = params.get('name');
     const email = params.get('email');

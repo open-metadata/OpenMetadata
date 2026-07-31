@@ -83,14 +83,14 @@ JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
 WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
-"""
+"""  # noqa: W291
 
 POSTGRES_SCHEMA_COMMENTS = """
     SELECT n.nspname AS schema_name, 
             d.description AS comment
     FROM pg_catalog.pg_namespace n
     LEFT JOIN pg_catalog.pg_description d ON d.objoid = n.oid AND d.objsubid = 0;
-"""
+"""  # noqa: W291
 
 POSTGRES_TABLE_COMMENTS = """
     SELECT n.nspname as schema,
@@ -117,7 +117,7 @@ FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace 
 WHERE c.relkind IN ('v', 'm')
 AND n.nspname not in ('pg_catalog','information_schema')
-"""
+"""  # noqa: W291
 
 POSTGRES_GET_DATABASE = """
 select datname from pg_catalog.pg_database
@@ -131,7 +131,7 @@ JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
       LIMIT 1
-"""
+"""  # noqa: W291
 
 POSTGRES_TEST_GET_QUERIES = """
       SELECT
@@ -201,7 +201,7 @@ POSTGRES_GET_SCHEMA_NAMES = """
 SELECT nspname FROM pg_namespace
     WHERE nspname NOT LIKE 'pg\_%'
     ORDER BY nspname
-"""
+"""  # noqa: W605
 
 POSTGRES_FETCH_FK = """
     SELECT r.conname,

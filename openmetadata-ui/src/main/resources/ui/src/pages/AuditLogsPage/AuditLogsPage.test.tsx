@@ -29,6 +29,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <span data-testid={testId}>{children}</span>
     )),
+  Breadcrumbs: jest.fn().mockImplementation(({ items }) => (
+    <nav data-testid="breadcrumbs">
+      {items?.map((item: { id: string; label?: string }) => (
+        <span key={item.id}>{item.label}</span>
+      ))}
+    </nav>
+  )),
   Button: jest
     .fn()
     .mockImplementation(
@@ -52,6 +59,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .fn()
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <div data-testid={testId}>{children}</div>
+    )),
+  Input: jest
+    .fn()
+    .mockImplementation(({ value, onChange, inputDataTestId, placeholder }) => (
+      <input
+        data-testid={inputDataTestId}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
     )),
   Typography: jest
     .fn()
@@ -97,9 +114,6 @@ const mockExportResponse = {
   jobId: 'job-123',
   message: 'Export started',
 };
-
-// Track search callback from useSearch mock
-let _mockSearchCallback: ((query: string) => void) | null = null;
 
 // Mock socket
 const mockSocketOn = jest.fn();
@@ -250,35 +264,6 @@ jest.mock('../../components/common/Banner/Banner', () =>
   ))
 );
 
-// Mock the useSearch hook
-jest.mock('../../components/common/atoms/navigation/useSearch', () => ({
-  useSearch: jest.fn().mockImplementation(({ onSearchChange }) => {
-    _mockSearchCallback = onSearchChange;
-    const { useState } = require('react');
-    const [searchValue, setSearchValue] = useState('');
-
-    return {
-      search: (
-        <input
-          data-testid="audit-log-search"
-          placeholder="Search audit logs"
-          value={searchValue}
-          onChange={(e) => {
-            setSearchValue(e.target.value);
-            onSearchChange(e.target.value);
-          }}
-        />
-      ),
-      searchQuery: searchValue,
-      handleSearchChange: onSearchChange,
-      clearSearch: jest.fn().mockImplementation(() => {
-        setSearchValue('');
-        onSearchChange('');
-      }),
-    };
-  }),
-}));
-
 const mockGetAuditLogs = getAuditLogs as jest.Mock;
 const mockExportAuditLogs = exportAuditLogs as jest.Mock;
 const mockShowErrorToast = showErrorToast as jest.Mock;
@@ -286,7 +271,6 @@ const mockShowErrorToast = showErrorToast as jest.Mock;
 describe('AuditLogsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    _mockSearchCallback = null;
     mockGetAuditLogs.mockResolvedValue(mockAuditLogsResponse);
     mockExportAuditLogs.mockResolvedValue(mockExportResponse);
   });
@@ -383,7 +367,7 @@ describe('AuditLogsPage', () => {
   });
 
   describe('Search Functionality', () => {
-    it('renders MUI search component', async () => {
+    it('renders search input', async () => {
       render(
         <MemoryRouter>
           <AuditLogsPage />
@@ -397,7 +381,7 @@ describe('AuditLogsPage', () => {
       expect(screen.getByTestId('audit-log-search')).toBeInTheDocument();
     });
 
-    it('triggers search when input changes (debounced via useSearch)', async () => {
+    it('triggers search when input changes', async () => {
       render(
         <MemoryRouter>
           <AuditLogsPage />

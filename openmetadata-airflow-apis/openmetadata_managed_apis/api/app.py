@@ -12,6 +12,7 @@ from os.path import dirname
 from pathlib import Path
 
 from flask import Blueprint
+
 from openmetadata_managed_apis.api.config import REST_API_ENDPOINT
 from openmetadata_managed_apis.api.utils import import_path
 
@@ -24,7 +25,7 @@ def get_blueprint() -> Blueprint:
 
     blueprint = Blueprint("airflow_api", __name__, url_prefix=REST_API_ENDPOINT)
 
-    routes = Path(dirname(__file__)) / "routes"
+    routes = Path(dirname(__file__)) / "routes"  # noqa: PTH120
     modules = [str(elem.absolute()) for elem in routes.glob("*.py") if elem.is_file() and elem.stem != "__init__"]
 
     # Force import routes to load endpoints

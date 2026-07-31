@@ -16,7 +16,7 @@ import ast
 import traceback
 from abc import ABC
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
@@ -39,7 +39,7 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
@@ -59,7 +59,7 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
                 elif isinstance(data["schema_name"], list):
                     schema_list = data["schema_name"]
                 schema = schema_list[0] if len(schema_list) == 1 else None
-                return schema
+                return schema  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.debug(f"Failed to fetch the schema name due to: {exc}")
@@ -73,14 +73,14 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )
 
     def prepare(self):
         """
         Fetch queries only from DB that is ingested in OM
         """
-        databases: List[Database] = self.metadata.list_all_entities(
+        databases: List[Database] = self.metadata.list_all_entities(  # noqa: UP006
             Database, ["databaseSchemas"], params={"service": self.config.serviceName}
         )
         database_name_list = []
@@ -90,7 +90,7 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
             database_name_list.append(database.name.root)
             if self.schema_field and database.databaseSchemas:
                 for schema in database.databaseSchemas.root:
-                    schema_name_list.append(schema.name)
+                    schema_name_list.append(schema.name)  # noqa: PERF401
 
         if self.schema_field and schema_name_list:
             self.filters += (  # pylint: disable=no-member

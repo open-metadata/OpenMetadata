@@ -13,7 +13,7 @@
 Validator for table rule library SQL expression
 """
 
-from typing import Dict
+from typing import Dict  # noqa: UP035
 
 from jinja2 import StrictUndefined, Template, TemplateSyntaxError, UndefinedError
 
@@ -45,12 +45,12 @@ class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
-    def _get_user_params(self) -> Dict[str, str]:
+    def _get_user_params(self) -> Dict[str, str]:  # noqa: UP006
         """Extract user-defined parameters from test case parameterValues."""
         params = {}
         if self.test_case.parameterValues:
             for param in self.test_case.parameterValues:
-                if param.name and param.value and param.name not in RESERVED_PARAMS:
+                if param.name and param.value and param.name not in RESERVED_PARAMS:  # noqa: SIM102
                     if not param.name.endswith("RuntimeParameters"):
                         params[param.name] = param.value
         return params

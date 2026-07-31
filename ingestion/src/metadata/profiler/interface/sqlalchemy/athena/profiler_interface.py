@@ -20,7 +20,7 @@ so they can be profiled individually, and patches the Athena compiler
 to quote each dot-separated segment individually.
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pyathena.sqlalchemy.compiler import AthenaStatementCompiler
 from sqlalchemy import Column
@@ -66,7 +66,7 @@ class AthenaProfilerInterface(SQAProfilerInterface):
         super().__init__(service_connection_config=service_connection_config, **kwargs)
         AthenaStatementCompiler.visit_column = _visit_column_with_struct_quoting
 
-    def _get_struct_columns(self, columns: Optional[List[OMColumn]], parent: str) -> List[Column]:
+    def _get_struct_columns(self, columns: Optional[List[OMColumn]], parent: str) -> List[Column]:  # noqa: UP006, UP045
         """Recursively flatten struct children into leaf columns.
 
         Column names are set to plain dot notation (e.g. "address.street")
@@ -97,7 +97,7 @@ class AthenaProfilerInterface(SQAProfilerInterface):
                 columns_list.extend(cols)
         return columns_list
 
-    def get_columns(self) -> List[Column]:
+    def get_columns(self) -> List[Column]:  # noqa: UP006
         """Get columns from table, flattening STRUCT columns into leaf fields."""
         columns = []
         for idx, column_obj in enumerate(self.table_entity.columns):

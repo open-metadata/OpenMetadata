@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -60,30 +61,34 @@ test.describe('Soft Delete User Pagination', () => {
     await afterAction();
   });
 
-  test('Testing user API calls and pagination', async ({ page }) => {
-    const expectedUrl =
-      '**/api/v1/users?isBot=false&fields=profile%2Cteams%2Croles&limit=*&isAdmin=false&include=deleted';
+  test(
+    'Testing user API calls and pagination',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    async ({ page }) => {
+      const expectedUrl =
+        '**/api/v1/users?isBot=false&fields=profile%2Cteams%2Croles&limit=*&isAdmin=false&include=deleted';
 
-    const deletedUserResponsePromise = page.waitForResponse(expectedUrl);
+      const deletedUserResponsePromise = page.waitForResponse(expectedUrl);
 
-    await page.click('[data-testid="show-deleted"]');
+      await page.click('[data-testid="show-deleted"]');
 
-    const response = await deletedUserResponsePromise;
+      const response = await deletedUserResponsePromise;
 
-    expect(response.ok()).toBeTruthy();
+      expect(response.ok()).toBeTruthy();
 
-    const nextButton = page.locator('[data-testid="next"]');
-    const expectedUrlPattern =
-      /\/api\/v1\/users\?isBot=false&fields=profile%2Cteams%2Croles&limit=.*&isAdmin=false&include=deleted(&after=.*)?/;
+      const nextButton = page.locator('[data-testid="next"]');
+      const expectedUrlPattern =
+        /\/api\/v1\/users\?isBot=false&fields=profile%2Cteams%2Croles&limit=.*&isAdmin=false&include=deleted(&after=.*)?/;
 
-    const paginatedResponsePromise = page.waitForResponse((response) => {
-      const url = response.url();
+      const paginatedResponsePromise = page.waitForResponse((response) => {
+        const url = response.url();
 
-      return expectedUrlPattern.test(url);
-    });
-    await nextButton.click();
-    const paginatedResponse = await paginatedResponsePromise;
+        return expectedUrlPattern.test(url);
+      });
+      await nextButton.click();
+      const paginatedResponse = await paginatedResponsePromise;
 
-    expect(paginatedResponse.ok()).toBeTruthy();
-  });
+      expect(paginatedResponse.ok()).toBeTruthy();
+    }
+  );
 });

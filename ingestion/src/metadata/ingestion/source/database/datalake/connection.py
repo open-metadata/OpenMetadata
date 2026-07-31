@@ -49,38 +49,35 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
         connection = self.service_connection
 
         if isinstance(connection.configSource, S3Config):
-            from metadata.ingestion.source.database.datalake.clients.s3 import (
+            from metadata.ingestion.source.database.datalake.clients.s3 import (  # noqa: PLC0415
                 DatalakeS3Client,
             )
 
-            return DatalakeS3Client.from_config(connection.configSource)
+            client: DatalakeBaseClient = DatalakeS3Client.from_config(connection.configSource)
         elif isinstance(connection.configSource, GCSConfig):
-            from metadata.ingestion.source.database.datalake.clients.gcs import (
+            from metadata.ingestion.source.database.datalake.clients.gcs import (  # noqa: PLC0415
                 DatalakeGcsClient,
             )
 
-            return DatalakeGcsClient.from_config(connection.configSource)
+            client = DatalakeGcsClient.from_config(connection.configSource)
         elif isinstance(connection.configSource, AzureConfig):
-            from metadata.ingestion.source.database.datalake.clients.azure_blob import (
+            from metadata.ingestion.source.database.datalake.clients.azure_blob import (  # noqa: PLC0415
                 DatalakeAzureBlobClient,
             )
 
-            return DatalakeAzureBlobClient.from_config(connection.configSource)
+            client = DatalakeAzureBlobClient.from_config(connection.configSource)
         else:
             msg = f"Config not implemented for type {type(connection.configSource)}: {connection.configSource}"
             raise NotImplementedError(msg)
 
-    def get_connection_dict(self) -> dict:
-        """
-        Return the connection dictionary for this service.
-        """
-        raise NotImplementedError("get_connection_dict is not implemented for Datalake")
+        self._on_close(lambda: client.close(self.service_connection))
+        return client
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

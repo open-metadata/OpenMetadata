@@ -50,7 +50,7 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.put(
                 f"/services/ingestionPipelines/progress/{encoded_fqn}/{run_id}",
-                update.model_dump(mode="json", exclude_none=True),
+                update.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
             logger.debug(f"Failed to send progress update: {exc}")
@@ -68,12 +68,12 @@ class OMetaProgressMixin:
             encoded_fqn = pipeline_fqn.replace("/", "%2F")
             self.client.post(
                 f"/services/ingestionPipelines/metrics/{encoded_fqn}/{run_id}",
-                batch.model_dump(mode="json", exclude_none=True),
+                batch.model_dump_json(exclude_none=True),
             )
         except Exception as exc:
             logger.debug(f"Failed to send operation metrics batch: {exc}")
 
-    def get_progress_state(self, pipeline_fqn: str, run_id: str) -> Optional[ProgressUpdate]:
+    def get_progress_state(self, pipeline_fqn: str, run_id: str) -> Optional[ProgressUpdate]:  # noqa: UP045
         """
         Get the current progress state for a pipeline run.
 
@@ -92,7 +92,7 @@ class OMetaProgressMixin:
             )
             if response:
                 return ProgressUpdate.model_validate(response)
-            return None
+            return None  # noqa: TRY300
         except Exception as exc:
             logger.debug(f"Failed to get progress state: {exc}")
             return None

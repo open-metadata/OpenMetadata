@@ -15,7 +15,7 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from functools import reduce
-from typing import Optional, Tuple
+from typing import Optional, Tuple  # noqa: UP035
 
 import sqlparse
 from pydantic import BaseModel
@@ -43,9 +43,9 @@ class QueryResult(BaseModel):
     table_name: str
     query_type: str
     start_time: datetime
-    query_id: Optional[str] = None
-    query_text: Optional[str] = None
-    rows: Optional[int] = None
+    query_id: Optional[str] = None  # noqa: UP045
+    query_text: Optional[str] = None  # noqa: UP045
+    rows: Optional[int] = None  # noqa: UP045
 
 
 def clean_up_query(query: str) -> str:
@@ -55,7 +55,7 @@ def clean_up_query(query: str) -> str:
 
 def get_identifiers_from_string(
     identifier: str,
-) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
     """given a string identifier try to fetch the database, schema and table names.
     part of the identifier name as `"DATABASE.DOT"` will be returned on the left side of the tuple
     and the rest of the identifier name as `"SCHEMA.DOT.TABLE"` will be returned on the right side of the tuple
@@ -111,7 +111,7 @@ def set_cache(cache: defaultdict, key: str, value):
 
 
 @database_entities_cache.wrap(lambda id_, metadata: f"DatabaseSchema(id={id_.root!r})")
-def _get_schema_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[DatabaseSchema]:
+def _get_schema_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[DatabaseSchema]:  # noqa: UP045
     """Cache schema lookups by id"""
     return metadata.get_by_id(
         entity=DatabaseSchema,
@@ -121,7 +121,7 @@ def _get_schema_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Data
 
 
 @database_entities_cache.wrap(lambda id_, metadata: f"Database(id={id_.root!r})")
-def _get_database_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Database]:
+def _get_database_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Database]:  # noqa: UP045
     """Cache database lookups by id"""
     return metadata.get_by_id(
         entity=Database,
@@ -131,7 +131,7 @@ def _get_database_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Da
 
 
 @database_entities_cache.wrap(lambda id_, metadata: f"DatabaseService(id={id_.root!r})")
-def _get_service_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[DatabaseService]:
+def _get_service_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[DatabaseService]:  # noqa: UP045
     """Cache database service lookups by id"""
     return metadata.get_by_id(
         entity=DatabaseService,
@@ -141,7 +141,7 @@ def _get_service_cached(entity_id: Uuid, metadata: OpenMetadata) -> Optional[Dat
 
 def get_context_entities(
     entity: Table, metadata: OpenMetadata
-) -> Tuple[Optional[DatabaseSchema], Optional[Database], Optional[DatabaseService]]:
+) -> Tuple[Optional[DatabaseSchema], Optional[Database], Optional[DatabaseService]]:  # noqa: UP006, UP045
     """Based on the table, get all the parent entities"""
     schema_entity = None
     database_entity = None

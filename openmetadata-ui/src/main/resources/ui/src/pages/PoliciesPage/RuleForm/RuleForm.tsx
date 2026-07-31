@@ -35,7 +35,7 @@ import {
 } from '../../../rest/rolesAPIV1';
 import { getField } from '../../../utils/formUtils';
 import { ALL_TYPE_RESOURCE_LIST } from '../../../utils/PermissionsUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const { Option } = Select;

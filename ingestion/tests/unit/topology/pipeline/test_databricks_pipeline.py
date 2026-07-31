@@ -53,11 +53,11 @@ from metadata.ingestion.source.pipeline.databrickspipeline.models import (
 from metadata.utils.logger import log_ansi_encoded_string
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/databricks_pipeline_resource.json"
-with open(mock_file_path) as file:
+with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/databricks_pipeline_history.json"
-with open(mock_file_path) as file:
+with open(mock_file_path) as file:  # noqa: PTH123
     mock_run_data: dict = json.load(file)
 
 
@@ -68,7 +68,7 @@ mock_databricks_config = {
         "serviceConnection": {
             "config": {
                 "type": "DatabricksPipeline",
-                "token": "random_token",
+                "authType": {"token": "random_token"},
                 "hostPort": "localhost:443",
                 "connectionTimeout": 120,
                 "connectionArguments": {
@@ -232,7 +232,7 @@ class DatabricksPipelineTests(TestCase):
     maxDiff = None
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         log_ansi_encoded_string(message="init")
         test_connection.return_value = False
@@ -256,7 +256,7 @@ class DatabricksPipelineTests(TestCase):
         self.assertEqual(PIPELINE_LIST, results)
 
     def test_yield_pipeline(self):
-        pipelines = list(self.databricks.yield_pipeline(PIPELINE_LIST[0]))[0].right
+        pipelines = list(self.databricks.yield_pipeline(PIPELINE_LIST[0]))[0].right  # noqa: RUF015
         self.assertEqual(pipelines, EXPECTED_CREATED_PIPELINES)
 
     @patch("metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs")
@@ -266,6 +266,25 @@ class DatabricksPipelineTests(TestCase):
             either.right for either in self.databricks.yield_pipeline_status(DataBrickPipelineDetails(**mock_data[0]))
         ]
         self.assertEqual(pipeline_status, EXPECTED_PIPELINE_STATUS)
+
+    @patch("metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs")
+    def test_yield_pipeline_status_deduplicates_run_timestamps(self, get_job_runs):
+        # Databricks' inclusive `start_time_to` pagination returns boundary runs
+        # more than once. OpenMetadata stores a single status per timestamp
+        # (entityFQNHash, extension, timestamp), so runs sharing a start_time must
+        # collapse to one status or the Postgres bulk upsert fails with
+        # "ON CONFLICT DO UPDATE command cannot affect row a second time".
+        duplicate_run = dict(mock_run_data[0])
+        older_run = dict(mock_run_data[0])
+        older_run["start_time"] = mock_run_data[0]["start_time"] - 900000
+        get_job_runs.return_value = [mock_run_data[0], duplicate_run, older_run]
+
+        result = list(self.databricks.yield_pipeline_status(DataBrickPipelineDetails(**mock_data[0])))
+        statuses = result[0].right.pipeline_statuses
+        timestamps = [status.timestamp.root for status in statuses]
+
+        self.assertEqual(len(statuses), 2)
+        self.assertEqual(len(timestamps), len(set(timestamps)))
 
     def test_databricks_pipeline_lineage(self):
         self.databricks.context.get().__dict__["pipeline"] = "11223344"
@@ -317,7 +336,7 @@ class DatabricksPipelineTests(TestCase):
                 elif entity == Table:
                     if "table_1" in fqn:
                         return mock_source_table
-                    elif "table_2" in fqn:
+                    elif "table_2" in fqn:  # noqa: RET505
                         return mock_target_table
                 return None
 
@@ -340,7 +359,7 @@ class DatabricksPipelineTests(TestCase):
                     with patch.object(self.databricks.client, "get_pipeline_details") as mock_get_pipeline_details:
                         mock_get_pipeline_details.return_value = None
 
-                        lineage_details = list(
+                        lineage_details = list(  # noqa: RUF015
                             self.databricks.yield_pipeline_lineage_details(DataBrickPipelineDetails(**mock_data[0]))
                         )[0].right
                         self.assertEqual(
@@ -365,7 +384,7 @@ class DatabricksPipelineTests(TestCase):
                 elif entity == Table:
                     if "table_1" in fqn:
                         return mock_source_table
-                    elif "table_2" in fqn:
+                    elif "table_2" in fqn:  # noqa: RET505
                         return mock_target_table
                 return None
 
@@ -380,7 +399,7 @@ class DatabricksPipelineTests(TestCase):
                 ]
                 with patch.object(self.databricks.client, "get_column_lineage") as mock_get_column_lineage:
                     mock_get_column_lineage.return_value = []  # No column lineage
-                    lineage_details = list(
+                    lineage_details = list(  # noqa: RUF015
                         self.databricks.yield_pipeline_lineage_details(DataBrickPipelineDetails(**mock_data[0]))
                     )[0].right
                     self.assertEqual(
@@ -452,7 +471,7 @@ class DatabricksPipelineTests(TestCase):
                 elif entity == Table:
                     if "table_1" in fqn:
                         return mock_source_table
-                    elif "table_2" in fqn:
+                    elif "table_2" in fqn:  # noqa: RET505
                         return mock_target_table
                 return None
 
@@ -473,7 +492,7 @@ class DatabricksPipelineTests(TestCase):
                     with patch.object(self.databricks.client, "get_pipeline_details") as mock_get_pipeline_details:
                         mock_get_pipeline_details.return_value = None
 
-                        lineage_details = list(self.databricks.yield_pipeline_lineage_details(dlt_pipeline_details))[
+                        lineage_details = list(self.databricks.yield_pipeline_lineage_details(dlt_pipeline_details))[  # noqa: RUF015
                             0
                         ].right
                         self.assertEqual(
@@ -498,7 +517,7 @@ class DatabricksPipelineTests(TestCase):
                 elif entity == Table:
                     if "table_1" in fqn:
                         return mock_source_table
-                    elif "table_2" in fqn:
+                    elif "table_2" in fqn:  # noqa: RET505
                         return mock_target_table
                 return None
 
@@ -515,7 +534,7 @@ class DatabricksPipelineTests(TestCase):
                     mock_get_column_lineage.return_value = []  # No column lineage
                     with patch.object(self.databricks.client, "get_pipeline_details") as mock_get_pipeline_details:
                         mock_get_pipeline_details.return_value = None
-                        lineage_details = list(self.databricks.yield_pipeline_lineage_details(dlt_pipeline_details))[
+                        lineage_details = list(self.databricks.yield_pipeline_lineage_details(dlt_pipeline_details))[  # noqa: RUF015
                             0
                         ].right
                         self.assertEqual(

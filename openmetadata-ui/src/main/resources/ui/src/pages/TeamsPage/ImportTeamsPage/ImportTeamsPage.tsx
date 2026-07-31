@@ -40,7 +40,7 @@ import {
   importTeam,
   importUserInTeam,
 } from '../../../rest/teamsAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ImportType } from './ImportTeamsPage.interface';

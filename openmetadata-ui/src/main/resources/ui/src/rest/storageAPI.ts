@@ -22,7 +22,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/containers';
@@ -64,14 +64,34 @@ export const getContainerByName = async (name: string, params?: ListParams) => {
 };
 
 export const getContainerChildrenByName = async (
-  name: string,
-  params?: ListParamsWithOffset
+  fqn: string,
+  params?: ListParamsWithOffset & { q?: string }
 ) => {
-  const response = await APIClient.get<PagingResponse<Container['children']>>(
-    `${BASE_URL}/name/${getEncodedFqn(name)}/children`,
+  // The /children endpoint returns slim Container summaries
+  // (id, name, displayName, fullyQualifiedName, description, service) — not
+  // EntityReferences. dataModel/tags/owners/extension are intentionally not
+  // populated. Re-fetch via getContainerByName when full details are needed.
+  // `include` toggles between non-deleted (default), deleted-only, and all.
+  // `q` is a case-insensitive substring filter on the child container name.
+  const response = await APIClient.get<PagingResponse<Container[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/children`,
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+/**
+ * Resolve the full ancestor chain for a container in a single call.
+ * Returns references ordered from root container (immediate child of the
+ * storage service) down to the immediate parent of `fqn`. Empty when the
+ * container is at the top level.
+ */
+export const getContainerAncestors = async (fqn: string) => {
+  const response = await APIClient.get<EntityReference[]>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/ancestors`
   );
 
   return response.data;
@@ -124,13 +144,10 @@ export const removeContainerFollower = async (id: string, userId: string) => {
   return response.data;
 };
 
-export const getContainerVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getContainerVersions = async (id: string) => {
   const url = `${BASE_URL}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

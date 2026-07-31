@@ -13,7 +13,7 @@ Deltalake source methods.
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -43,17 +43,24 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
+
 logger = ingestion_logger()
 
 
-class MetaStoreNotFoundException(Exception):
+class MetaStoreNotFoundException(Exception):  # noqa: N818
     """
     Metastore is not passed thorugh file or url
     """
@@ -77,14 +84,15 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = metadata
 
         self.service_connection = self.config.serviceConnection.root.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = cast("BaseConnection", self._connection).client
         self.client = self.connection.client
 
-        self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DeltaLakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DeltaLakeConnection):
@@ -128,8 +136,8 @@ class DeltalakeSource(DatabaseServiceSource):
                 schema_name=schema,
             )
             if filter_by_schema(
-                self.config.sourceConfig.config.schemaFilterPattern,
-                schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema,
+                self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema,  # pyright: ignore[reportAttributeAccessIssue]
             ):
                 self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
@@ -155,7 +163,7 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -186,14 +194,14 @@ class DeltalakeSource(DatabaseServiceSource):
                     continue
 
                 if self.source_config.includeTables and table_info._type != TableType.View:
-                    table_info = self.client.update_table_info(table_info)
+                    table_info = self.client.update_table_info(table_info)  # noqa: PLW2901
                     self.context.get().table_description = table_info.description
                     self.context.get().table_columns = table_info.columns
                     self.context.get().table_partitions = table_info.table_partitions
                     yield table_info.name, table_info._type
 
                 if self.source_config.includeViews and table_info._type == TableType.View:
-                    table_info = self.client.update_table_info(table_info)
+                    table_info = self.client.update_table_info(table_info)  # noqa: PLW2901
                     self.context.get().table_description = table_info.description
                     self.context.get().table_columns = table_info.columns
                     self.context.get().table_partitions = table_info.table_partitions
@@ -204,7 +212,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 logger.warning(f"Unexpected exception for table [{table_info}]: {exc}")
                 self.status.warnings.append(f"{self.config.serviceName}.{table_info.name}")
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -262,6 +270,3 @@ class DeltalakeSource(DatabaseServiceSource):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def close(self):
-        """No client to close"""

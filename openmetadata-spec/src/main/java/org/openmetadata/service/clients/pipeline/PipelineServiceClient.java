@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
+import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.Setter;
@@ -112,18 +113,23 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
 
   public final String getVersionFromString(String version) {
     if (version != null) {
-      return Pattern.compile("(\\d+.\\d+.\\d+)")
+      return Pattern.compile("(\\d+)\\.(\\d+)(?:\\.(\\d+))?")
           .matcher(version)
           .results()
-          .map(m -> m.group(1))
+          .map(this::formatVersionMatch)
           .findFirst()
           .orElseThrow(
               () ->
                   new PipelineServiceVersionException(
-                      String.format("Cannot extract version x.y.z from %s", version)));
+                      String.format("Cannot extract version x.y from %s", version)));
     } else {
       throw new PipelineServiceVersionException("Received version as null");
     }
+  }
+
+  private String formatVersionMatch(MatchResult match) {
+    String patch = match.group(3) != null ? match.group(3) : "0";
+    return match.group(1) + "." + match.group(2) + "." + patch;
   }
 
   private String getMajorMinorVersion(String fullVersion) {
@@ -231,10 +237,21 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   }
 
   public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+    List<PipelineStatus> result = new ArrayList<>();
     if (pipelineServiceClientEnabled) {
-      return getQueuedPipelineStatusInternal(ingestionPipeline);
+      try {
+        List<PipelineStatus> internal = getQueuedPipelineStatusInternal(ingestionPipeline);
+        if (internal != null) {
+          result.addAll(internal);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to fetch queued pipeline status for {}: {}. Returning stored statuses only.",
+            ingestionPipeline.getFullyQualifiedName(),
+            e.getMessage());
+      }
     }
-    return new ArrayList<>();
+    return result;
   }
 
   protected abstract PipelineServiceClientResponse getServiceStatusInternal();

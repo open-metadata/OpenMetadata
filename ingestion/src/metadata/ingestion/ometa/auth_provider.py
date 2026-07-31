@@ -24,14 +24,14 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
+    OpenMetadataJWTClientConfig,  # noqa: TC001
 )
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 
-class AuthenticationException(Exception):
+class AuthenticationException(Exception):  # noqa: N818
     """
     Error trying to get the token from the provider
     """
@@ -94,8 +94,8 @@ class OpenMetadataAuthenticationProvider(AuthenticationProvider):
 
     def auth_token(self) -> None:
         if not self.jwt_token:
-            if os.path.isfile(self.security_config.jwtToken.get_secret_value()):
-                with open(
+            if os.path.isfile(self.security_config.jwtToken.get_secret_value()):  # noqa: PTH113
+                with open(  # noqa: PTH123
                     self.security_config.jwtToken.get_secret_value(),
                     "r",
                     encoding="utf-8",

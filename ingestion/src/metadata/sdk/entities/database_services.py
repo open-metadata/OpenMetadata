@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Type
+from typing import Type  # noqa: UP035
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -15,5 +15,5 @@ class DatabaseServices(BaseEntity[DatabaseService, CreateDatabaseServiceRequest]
     """Fluent facade for database service operations."""
 
     @classmethod
-    def entity_type(cls) -> Type[DatabaseService]:
+    def entity_type(cls) -> Type[DatabaseService]:  # noqa: UP006
         return DatabaseService

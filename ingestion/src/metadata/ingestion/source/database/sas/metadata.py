@@ -20,7 +20,7 @@ import re
 import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from requests.exceptions import HTTPError
 
@@ -60,7 +60,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -73,13 +73,20 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sas.client import SASClient
 from metadata.ingestion.source.database.sas.extension_attr import TABLE_CUSTOM_ATTR
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
 
 logger = ingestion_logger()
 
@@ -128,7 +135,7 @@ class SASResourceContext:
 _SAS_FIELD_SEPARATOR = "~fs~"
 
 
-def parse_resource_id(resource_id: str) -> Optional[SASResourceContext]:
+def parse_resource_id(resource_id: str) -> Optional[SASResourceContext]:  # noqa: UP045
     """Parse a SAS Information Catalog resourceId into its components.
 
     Returns ``None`` (instead of raising) when the resourceId does not
@@ -179,9 +186,10 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection = self.config.serviceConnection.root.config
 
-        self.sas_client = get_connection(self.service_connection)
-        self.connection_obj = self.sas_client
-        self.test_connection()
+        self._connection = create_connection(self.service_connection)
+        self.sas_client = cast("BaseConnection", self._connection).client
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         self.db_service_name = self.config.serviceName
         self.db_name = None
@@ -204,7 +212,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         logger.info(f"running create {config_dict}")
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
@@ -296,7 +304,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             service=self.db_service_name,
         )
         database_entity = self.metadata.create_or_update(data=database)
-        return database_entity
+        return database_entity  # noqa: RET504
 
     def create_database_schema(self, table):
         """
@@ -427,7 +435,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             table_name=table_name,
         )
 
-    def create_columns_and_profiles(self, entities, table_entity_instance):
+    def create_columns_and_profiles(self, entities, table_entity_instance):  # noqa: C901
         """
         Create columns and profiles
         """
@@ -511,8 +519,8 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         Create database + db service & Create database schema
         """
         logger.info(f"Ingesting table: {table}")
-        global table_entity
-        global table_fqn
+        global table_entity  # noqa: PLW0603
+        global table_fqn  # noqa: PLW0603
 
         table_entity, table_fqn = None, None
         table_name = table.get("name") if isinstance(table, dict) else None
@@ -560,7 +568,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                         table_resource = self.sas_client.get_resource(table_entity_instance["resourceId"][1:])
                         columns = self.create_columns_alt(table_resource)
                     except HTTPError as http_err:
-                        table_description = f"{str(http_err)} This table does not exist in the file path"
+                        table_description = f"{str(http_err)} This table does not exist in the file path"  # noqa: RUF010
                 else:
                     table_description = (
                         f"Last analyzed: <b>{table_extension.get('analysisTimeStamp')}</b>. "
@@ -644,7 +652,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                 if table_description and "This table does not exist in the file path" in table_description:
                     return
 
-                raw_create_date: Optional[datetime] = table_entity_instance.get("creationTimeStamp")
+                raw_create_date: Optional[datetime] = table_entity_instance.get("creationTimeStamp")  # noqa: UP045
                 if raw_create_date:
                     raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
 
@@ -879,7 +887,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             )
 
     def get_database_names(self) -> Iterable[str]:
-        for database in self.databases:
+        for database in self.databases:  # noqa: UP028
             yield database
 
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
@@ -890,12 +898,12 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         yield Either(right=database_request)
         self.register_record_database_request(database_request=database_request)
 
-    def get_database_schema_names(self) -> Iterable[Tuple[str, str]]:
+    def get_database_schema_names(self) -> Iterable[Tuple[str, str]]:  # noqa: UP006
         for database, database_schemas in self.database_schemas.items():
             for database_schema in database_schemas:
                 yield database, database_schema
 
-    def yield_database_schema(self, schema_name: Tuple[str, str]) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
+    def yield_database_schema(self, schema_name: Tuple[str, str]) -> Iterable[Either[CreateDatabaseSchemaRequest]]:  # noqa: UP006
 
         schema_request = CreateDatabaseSchemaRequest(
             name=schema_name[1],
@@ -913,10 +921,10 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, list]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, list]]]:  # noqa: UP006, UP045
         """Not implemented"""
 
-    def yield_table(self, table_name_and_type: Tuple[str, list]) -> Iterable[Either[Entity]]:
+    def yield_table(self, table_name_and_type: Tuple[str, list]) -> Iterable[Either[Entity]]:  # noqa: UP006
         """Not implemented"""
 
     def get_stored_procedures(self) -> Iterable[Any]:
@@ -924,9 +932,3 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
     def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
-
-    def close(self) -> None:
-        pass
-
-    def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)

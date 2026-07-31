@@ -20,20 +20,23 @@ import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAsset
 import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
-import { Chart } from '../generated/entity/data/chart';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { Metric, UnitOfMeasurement } from '../generated/entity/data/metric';
-import { Pipeline } from '../generated/entity/data/pipeline';
-import { Topic } from '../generated/entity/data/topic';
-import { ChangeDescription } from '../generated/entity/type';
-import { getEntityName } from './EntityUtils';
+import type { Chart } from '../generated/entity/data/chart';
+import type { Dashboard } from '../generated/entity/data/dashboard';
+import type {
+  Metric,
+  UnitOfMeasurement,
+} from '../generated/entity/data/metric';
+import type { Pipeline } from '../generated/entity/data/pipeline';
+import type { Topic } from '../generated/entity/data/topic';
+import type { ChangeDescription } from '../generated/entity/type';
 import {
   getChangedEntityName,
   getDiffByFieldName,
-  getEntityVersionByField,
-} from './EntityVersionUtils';
+} from './EntityDiffPureUtils';
+import { getEntityName } from './EntityNameUtils';
+import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringUtils';
 
 export const VersionExtraInfoLink = ({
   value,

@@ -11,7 +11,7 @@
 
 """Unit tests for DataFrame validator."""
 
-from typing import Generator, List, Tuple
+from typing import Generator, List, Tuple  # noqa: UP035
 from unittest.mock import Mock
 
 import pandas as pd
@@ -278,7 +278,7 @@ class TestEdgeCases:
 
 class TracksValidationCallbacks:
     def __init__(self) -> None:
-        self.calls: List[Tuple[DataFrame, ValidationResult]] = []
+        self.calls: List[Tuple[DataFrame, ValidationResult]] = []  # noqa: UP006
 
     @property
     def times_called(self) -> int:

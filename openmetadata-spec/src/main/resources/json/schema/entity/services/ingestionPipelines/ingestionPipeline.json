@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "autoClassification", "TestSuite", "dataInsight", "elasticSearchReindex", "dbt", "application"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "autoClassification", "TestSuite", "dataInsight", "elasticSearchReindex", "dbt", "application", "policyAgent"]
     },
     "pipelineStatus": {
       "type": "object",
@@ -173,8 +173,11 @@
       "$ref": "../../../type/entityReference.json"
     },
     "pipelineStatuses": {
-      "description": "Last of executions and status for the Pipeline.",
-      "$ref": "#/definitions/pipelineStatus"
+      "description": "List of the most recent executions and status for the Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/pipelineStatus"
+      }
     },
     "loggerLevel": {
       "description": "Set the logging level for the workflow.",

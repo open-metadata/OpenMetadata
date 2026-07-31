@@ -1,0 +1,5 @@
+-- Placeholder for 1.12.9 MySQL schema changes
+-- The Postgres-side fix for collate#3488 has no MySQL counterpart: MySQL's
+-- 1.1.5 unique constraint on profiler_data_time_series was never dropped
+-- (MODIFY COLUMN re-evaluates generated expressions in place), so the
+-- regression that hit Postgres did not affect MySQL.

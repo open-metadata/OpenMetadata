@@ -26,7 +26,7 @@ import SpreadsheetsTable from './SpreadsheetsTable';
 import { SpreadsheetsTableProps } from './SpreadsheetsTable.interface';
 
 jest.mock('../../../../utils/RouterUtils');
-jest.mock('../../../../utils/EntityUtils');
+jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../../utils/TableColumn.util');
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div data-testid="error-placeholder">No data available</div>)

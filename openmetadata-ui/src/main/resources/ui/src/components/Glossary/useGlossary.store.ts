@@ -14,7 +14,7 @@ import { create } from 'zustand';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { GlossaryTermWithChildren } from '../../rest/glossaryAPI';
-import { findAndUpdateNested } from '../../utils/GlossaryUtils';
+import { findAndUpdateNested } from '../../utils/GlossaryPureUtils';
 
 export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];

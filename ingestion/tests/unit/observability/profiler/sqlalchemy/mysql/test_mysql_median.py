@@ -46,7 +46,7 @@ class TestMySQLMedianSQL:
         # Using mysql+pymysql://localhost/test dialect for compilation
         # We don't need actual connection, just the dialect for SQL compilation
         engine = create_engine("mysql+pymysql://", strategy="mock", executor=lambda *a, **kw: None)
-        return engine
+        return engine  # noqa: RET504
 
     def test_median_with_reserved_word_table_name(self, mysql_engine):
         """Test that table name is properly escaped with backticks"""
@@ -71,7 +71,7 @@ class TestMySQLMedianSQL:
         lines = sql_string.split("\n")
         for line in lines:
             # Check FROM clauses - they should have backticks
-            if "FROM" in line and "Signal" in line and "Signal" not in "`Signal`":
+            if "FROM" in line and "Signal" in line and "Signal" not in "`Signal`":  # noqa: PLR0133
                 # This would be the problematic case: FROM Signal without backticks
                 assert "`Signal`" in line, f"FROM clause should have backticks around table name.\nLine: {line}"
 

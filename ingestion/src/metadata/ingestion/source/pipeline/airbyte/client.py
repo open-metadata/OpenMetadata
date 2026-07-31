@@ -14,7 +14,7 @@ Client to interact with airbyte apis
 
 import json
 import time
-from typing import Iterable, Optional, Tuple, Type, Union
+from typing import Iterable, Optional, Tuple, Type, Union  # noqa: UP035
 from urllib.parse import quote
 
 import requests
@@ -82,7 +82,7 @@ class AirbyteClient:
 
         self.client = TrackedREST(client_config, source_name="airbyte")
 
-    def _paginate_get(self, path: str, response_cls: Type[BaseModel]) -> Iterable:
+    def _paginate_get(self, path: str, response_cls: Type[BaseModel]) -> Iterable:  # noqa: UP006
         """
         Handle offset-based pagination for the Airbyte public API.
         All public API list endpoints default to 20 items per page (max 100).
@@ -138,7 +138,7 @@ class AirbyteClient:
             raise APIError(response)
         yield from AirbyteConnectionList.model_validate(response).connections
 
-    def list_jobs(self, connection_id: str) -> Iterable[Union[AirbyteSelfHostedJob, AirbyteCloudJob]]:
+    def list_jobs(self, connection_id: str) -> Iterable[Union[AirbyteSelfHostedJob, AirbyteCloudJob]]:  # noqa: UP007
         """
         Method returns the list of all jobs of a connection.
         """
@@ -208,11 +208,11 @@ class AirbyteCloudClient(AirbyteClient):
     def __init__(self, config: AirbyteConnection):
         self.config = config
         self._use_public_api = True
-        self._oauth_token: Optional[str] = None
+        self._oauth_token: Optional[str] = None  # noqa: UP045
         self._oauth_token_expiry: float = 0
 
         if not isinstance(config.auth, Oauth20ClientCredentialsAuthentication):
-            raise ValueError("AirbyteCloudClient requires OAuth 2.0 Client Credentials authentication")
+            raise ValueError("AirbyteCloudClient requires OAuth 2.0 Client Credentials authentication")  # noqa: TRY004
 
         # The connection schema defaults apiVersion to "api/v1" (the internal API path).
         # AirbyteCloudClient always uses the public API, so silently promote the
@@ -220,6 +220,9 @@ class AirbyteCloudClient(AirbyteClient):
         api_version = self.config.apiVersion or "api/v1"
         if api_version == "api/v1":
             api_version = "api/public/v1"
+        # Store the resolved public-API version so the OAuth token request uses
+        # the same path as every other call (see _fetch_oauth_token).
+        self.api_version = api_version
 
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.hostPort),
@@ -231,11 +234,15 @@ class AirbyteCloudClient(AirbyteClient):
 
         self.client = TrackedREST(client_config)
 
-    def _fetch_oauth_token(self) -> Tuple[str, int]:
+    def _fetch_oauth_token(self) -> Tuple[str, int]:  # noqa: UP006
         """
         Fetch OAuth 2.0 access token using client credentials
         """
-        token_url = f"{clean_uri(self.config.hostPort)}/v1/applications/token"
+        # The Applications token endpoint lives under the same (public) API path
+        # as every other call, e.g. `/api/public/v1/applications/token`. Building
+        # it from the resolved api_version keeps self-hosted and Cloud consistent
+        # and avoids hardcoding a path that 404s to the web UI on self-hosted.
+        token_url = f"{clean_uri(self.config.hostPort)}/{self.api_version}/applications/token"
         payload = {
             "client_id": self.config.auth.clientId,
             "client_secret": self.config.auth.clientSecret.get_secret_value(),

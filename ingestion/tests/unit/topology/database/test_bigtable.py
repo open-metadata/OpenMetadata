@@ -44,7 +44,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigtable.metadata import BigtableSource
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-with open(mock_file_path) as file:
+with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 mock_bigtable_config = {
@@ -207,7 +207,7 @@ def mock_bigtable_instance(mock_bigtable_table):
 
 @pytest.fixture
 def mock_google_cloud_client(mock_bigtable_instance):
-    with patch("google.cloud.bigtable.Client") as mock_client:
+    with patch("metadata.ingestion.source.database.bigtable.connection.Client") as mock_client:
         mock_client.list_instances.return_value = [[], []]
         mock_client().list_instances.return_value = [[mock_bigtable_instance], []]
         yield mock_client

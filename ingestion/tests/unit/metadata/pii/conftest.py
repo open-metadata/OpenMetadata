@@ -12,7 +12,7 @@
 Test fixtures for auto-classification tests.
 """
 
-from typing import Any, Sequence
+from typing import Any, Sequence  # noqa: UP035
 from unittest.mock import Mock
 
 import pytest

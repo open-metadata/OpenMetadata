@@ -14,9 +14,10 @@ Generic call to handle table columns for sql connectors.
 
 import re
 import traceback
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import NoSuchTableError
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -31,7 +32,6 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.ingestion.source.database.json_schema_extractor import (
     infer_json_schema_from_sample,
 )
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
@@ -67,16 +67,16 @@ class SqlColumnHandlerMixin:
             logger.info("Fetching tags not implemented for this connector")
             self.source_config.includeTags = False
 
-    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:
+    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:  # noqa: UP006
         """
         By Default there are no additional table constraints
         """
 
     @staticmethod
     def _filter_invalid_constraints(
-        table_columns: Optional[List[Column]],
-        table_constraints: Optional[List[Optional[TableConstraint]]],
-    ) -> List[TableConstraint]:
+        table_columns: Optional[List[Column]],  # noqa: UP006, UP045
+        table_constraints: Optional[List[Optional[TableConstraint]]],  # noqa: UP006, UP045
+    ) -> List[TableConstraint]:  # noqa: UP006
         """
         Remove constraints referencing columns not present in the processed
         column list.  This can happen when hidden system columns (e.g.
@@ -115,7 +115,7 @@ class SqlColumnHandlerMixin:
         col_type: str,
         col_data_length: str,
         arr_data_type: str,
-        precision: Optional[Tuple[str, str]],
+        precision: Optional[Tuple[str, str]],  # noqa: UP006, UP045
     ) -> str:
         if precision:
             return data_type_display if data_type_display else f"{col_type}({precision[0]},{precision[1]})"
@@ -132,7 +132,7 @@ class SqlColumnHandlerMixin:
             data_type_display = f"array<{arr_data_type}>"
         return data_type_display
 
-    def _process_col_type(self, column: dict, schema: str) -> Tuple:
+    def _process_col_type(self, column: dict, schema: str) -> Tuple:  # noqa: UP006
         data_type_display = None
         arr_data_type = None
         parsed_string = None
@@ -162,8 +162,7 @@ class SqlColumnHandlerMixin:
     @staticmethod
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
-    ) -> Tuple[List, List, List]:
-        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+    ) -> Tuple[List, List, List]:  # noqa: UP006
         try:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
@@ -175,15 +174,18 @@ class SqlColumnHandlerMixin:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
-                "Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+                f"Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
             foreign_constraints = []
+        try:
+            pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        except (NotImplementedError, KeyError, NoSuchTableError):
+            logger.debug(
+                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
+            pk_constraints = {}
 
-        pk_columns = (
-            pk_constraints.get("constrained_columns")
-            if len(pk_constraints) > 0 and pk_constraints.get("constrained_columns")
-            else {}
-        )
+        pk_columns = (pk_constraints.get("constrained_columns") if pk_constraints else None) or []
 
         foreign_columns = []
         for foreign_constraint in foreign_constraints:
@@ -205,14 +207,17 @@ class SqlColumnHandlerMixin:
         unique_columns = []
         for constraint in unique_constraints:
             if constraint.get("column_names"):
-                unique_columns.append(
+                unique_columns.append(  # noqa: PERF401
                     [
                         clean_up_starting_ending_double_quotes_in_string(column)
                         for column in constraint.get("column_names")
                     ]
                 )
 
-        pk_columns = [clean_up_starting_ending_double_quotes_in_string(pk_column) for pk_column in pk_columns]
+        pk_columns = [
+            clean_up_starting_ending_double_quotes_in_string(pk_column)
+            for pk_column in pk_columns  # pyright: ignore[reportOptionalIterable]
+        ]
 
         return pk_columns, unique_columns, foreign_columns
 
@@ -243,7 +248,6 @@ class SqlColumnHandlerMixin:
 
         return inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name)
 
-    @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
         schema_name: str,
@@ -251,7 +255,7 @@ class SqlColumnHandlerMixin:
         db_name: str,
         inspector: Inspector,
         table_type: TableType = None,
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
         """
         Get columns types and constraints information
         """
@@ -269,7 +273,7 @@ class SqlColumnHandlerMixin:
         for col in unique_columns:
             if len(col) == 1:
                 column_level_unique_constraints.add(col[0])
-            else:
+            else:  # noqa: PLR5501
                 if not any(
                     tc.constraintType == ConstraintType.UNIQUE and tc.columns == col for tc in table_constraints
                 ):
@@ -314,7 +318,7 @@ class SqlColumnHandlerMixin:
                 if col_type is None:
                     col_type = DataType.UNKNOWN.name
                     data_type_display = col_type.lower()
-                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")
+                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: RUF010
                 data_type_display = self._get_display_datatype(
                     data_type_display,
                     col_type,
@@ -390,7 +394,7 @@ class SqlColumnHandlerMixin:
         return None
 
     @staticmethod
-    def _get_column_constraints(column, pk_columns, unique_columns) -> Optional[Constraint]:
+    def _get_column_constraints(column, pk_columns, unique_columns) -> Optional[Constraint]:  # noqa: UP045
         """
         Prepare column constraints for the Table Entity
         """
@@ -431,7 +435,7 @@ class SqlColumnHandlerMixin:
         """Check if a column is a JSON type column."""
         if column.dataType and column.dataType.value in JSON_COLUMN_TYPES:
             return True
-        if column.dataTypeDisplay and column.dataTypeDisplay.upper() in JSON_COLUMN_TYPES:
+        if column.dataTypeDisplay and column.dataTypeDisplay.upper() in JSON_COLUMN_TYPES:  # noqa: SIM103
             return True
         return False
 
@@ -439,16 +443,16 @@ class SqlColumnHandlerMixin:
         """Check if a column is a STRING type column that might contain JSON."""
         if column.dataType and column.dataType.value in STRING_COLUMN_TYPES:
             return True
-        if column.dataTypeDisplay and column.dataTypeDisplay.upper() in STRING_COLUMN_TYPES:
+        if column.dataTypeDisplay and column.dataTypeDisplay.upper() in STRING_COLUMN_TYPES:  # noqa: SIM103
             return True
         return False
 
     def _extract_json_schema_for_columns(
         self,
-        table_columns: List[Column],
+        table_columns: List[Column],  # noqa: UP006
         schema_name: str,
         table_name: str,
-        db_name: Optional[str] = None,
+        db_name: Optional[str] = None,  # noqa: UP045
     ) -> None:
         """
         Extract JSON schema for JSON columns by sampling data from the table.
@@ -513,15 +517,15 @@ class SqlColumnHandlerMixin:
         self,
         schema_name: str,
         table_name: str,
-        column_names: List[str],
+        column_names: List[str],  # noqa: UP006
         sample_size: int,
-        db_name: Optional[str] = None,
-    ) -> Dict[str, List]:
+        db_name: Optional[str] = None,  # noqa: UP045
+    ) -> Dict[str, List]:  # noqa: UP006
         """
         Sample data from JSON columns in a table.
         Returns: Dict mapping column names to lists of JSON values
         """
-        result: Dict[str, List] = {c: [] for c in column_names}
+        result: Dict[str, List] = {c: [] for c in column_names}  # noqa: UP006
 
         if not column_names or sample_size <= 0:
             return result
@@ -543,8 +547,8 @@ class SqlColumnHandlerMixin:
         # We explicitly define columns to avoid expensive DESCRIBE/introspection
         # queries that autoload_with would trigger for every table.
         try:
-            from sqlalchemy import Column as SaColumn
-            from sqlalchemy import MetaData, Table, select
+            from sqlalchemy import Column as SaColumn  # noqa: PLC0415
+            from sqlalchemy import MetaData, Table, select  # noqa: PLC0415
 
             metadata = MetaData()
 
@@ -579,7 +583,7 @@ class SqlColumnHandlerMixin:
             )
         # Attempt 2: text() fallback (option 2) but dialect-safe
         try:
-            from sqlalchemy import text
+            from sqlalchemy import text  # noqa: PLC0415
 
             quoted_columns = ", ".join(quote(c) for c in column_names)
             query = text(f"SELECT {quoted_columns} FROM {full_table_name} LIMIT :limit")

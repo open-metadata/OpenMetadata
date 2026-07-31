@@ -44,7 +44,7 @@ class QueryParserTests(TestCase):
         JOIN db.random d
           ON a.col2 = d.col2
         WHERE a.col3 = 'abc'
-    """
+    """  # noqa: W291
 
     parser = LineageParser(col_lineage)
     parser_with_dialect = LineageParser(col_lineage, dialect=Dialect.TSQL)
@@ -181,7 +181,7 @@ class QueryParserTests(TestCase):
         query = """
             /* comment */ merge into table_1 using (select a, b from table_2) when matched update set t.a = 'value' 
             when not matched then insert (table_1.a, table_2.b) values ('value1', 'value2')
-        """
+        """  # noqa: W291
         self.assertEqual(
             LineageParser.clean_raw_query(query),
             "/* comment */ merge into table_1 using (select a, b from table_2)",
@@ -221,7 +221,7 @@ class QueryParserTests(TestCase):
           NAME
         FROM cte_table2
         ;
-        """
+        """  # noqa: W291
 
         expected_lineage = [
             (

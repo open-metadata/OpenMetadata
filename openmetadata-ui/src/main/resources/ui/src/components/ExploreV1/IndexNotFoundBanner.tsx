@@ -27,6 +27,7 @@ export const IndexNotFoundBanner = () => {
   return (
     <Alert
       closable
+      data-testid="index-not-found-banner"
       description={
         <div className="d-flex items-start gap-3">
           <ExclamationCircleOutlined

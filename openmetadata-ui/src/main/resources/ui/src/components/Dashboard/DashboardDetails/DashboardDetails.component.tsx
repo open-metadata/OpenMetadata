@@ -31,14 +31,18 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -48,7 +52,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -59,7 +63,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
-
 const DashboardDetails = ({
   updateDashboardDetailsState,
   dashboardDetails,
@@ -139,8 +142,25 @@ const DashboardDetails = ({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DASHBOARD, decodedDashboardFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDashboardFQN) {
+      fetchEntityTaskCountsInto(decodedDashboardFQN, setFeedCount);
+    }
+  }, [decodedDashboardFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDashboardFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DASHBOARD,
+        decodedDashboardFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDashboardFQN]);
+
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [decodedDashboardFQN]);
 
   const handleTabChange = (activeKey: string) => {

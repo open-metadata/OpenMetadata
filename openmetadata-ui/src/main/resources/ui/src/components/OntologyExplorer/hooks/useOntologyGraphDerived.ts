@@ -306,7 +306,10 @@ export function useOntologyGraphDerived({
     return { nodes: filteredNodes, edges: filteredEdges };
   }, [combinedGraphData, filters, explorationMode, scope, entityId]);
 
-  const isHierarchyView = filters.viewMode === 'hierarchy';
+  const isHierarchyView = useMemo(
+    () => filters.viewMode === 'hierarchy',
+    [filters.viewMode]
+  );
 
   const hierarchyGraphData = useMemo(() => {
     if (!isHierarchyView || !filteredGraphData) {
@@ -384,6 +387,9 @@ export function useOntologyGraphDerived({
           from: e.from,
           to: e.to,
           relationType: e.relationType,
+          ...(e.inverseRelationType
+            ? { inverseRelationType: e.inverseRelationType }
+            : {}),
           label: e.relationType,
         })),
       };
@@ -461,6 +467,7 @@ export function useOntologyGraphDerived({
   }, [graphDataToShow, dataSource, explorationMode, t]);
 
   return {
+    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     graphDataToShow,

@@ -186,7 +186,7 @@ class OracleUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
     ) -> None:
         super().__init__(methodName)
@@ -204,23 +204,23 @@ class OracleUnitTest(TestCase):
         self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.oracle.yield_database(MOCK_DATABASE.name.root)]
+        assert EXPECTED_DATABASE == [either.right for either in self.oracle.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
 
         self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
-        assert EXPECTED_DATABASE_SCHEMA == [
+        assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.oracle.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
         ]
         self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_stored_procedure(self):
-        assert EXPECTED_STORED_PROCEDURE == [
+        assert EXPECTED_STORED_PROCEDURE == [  # noqa: SIM300
             either.right for either in self.oracle.yield_stored_procedure(MOCK_STORED_PROCEDURE)
         ]
 
     def test_yield_stored_package(self):
-        assert EXPECTED_STORED_PACKAGE == [
+        assert EXPECTED_STORED_PACKAGE == [  # noqa: SIM300
             either.right for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
         ]
 

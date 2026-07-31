@@ -13,7 +13,7 @@
 Validator for table column name to match set test case
 """
 
-from typing import List, cast
+from typing import List, cast  # noqa: UP035
 
 from sqlalchemy import inspect
 from sqlalchemy.sql.base import ColumnCollection
@@ -32,11 +32,11 @@ logger = test_suite_logger()
 class TableColumnToMatchSetValidator(BaseTableColumnToMatchSetValidator, SQAValidatorMixin):
     """Validator for table column name to match set test case"""
 
-    def _run_results(self) -> List[str]:
+    def _run_results(self) -> List[str]:  # noqa: UP006
         """compute result of the test case"""
         names = inspect(self.runner.table).c
         if not names:
             raise ValueError(f"Column names for test case {self.test_case.name} returned None")
-        names = cast(ColumnCollection, names)  # satisfy type checker for names.keys() access
+        names = cast(ColumnCollection, names)  # satisfy type checker for names.keys() access  # noqa: TC006
         names = list(names.keys())
-        return names
+        return names  # noqa: RET504

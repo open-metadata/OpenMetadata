@@ -22,7 +22,7 @@ except ImportError:
     from importlib_metadata import version
 
 
-class VersionParsingException(Exception):
+class VersionParsingException(Exception):  # noqa: N818
     """
     Used when we cannot parse version information from a string
     """

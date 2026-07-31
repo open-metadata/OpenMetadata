@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Type, cast
+from typing import Any, Optional, Type, cast  # noqa: UP035
 from uuid import UUID
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tests.createCustomMetric import (
-    CreateCustomMetricRequest,
+    CreateCustomMetricRequest,  # noqa: TC001
 )
 from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.type.basic import (
@@ -16,14 +16,14 @@ from metadata.generated.schema.type.basic import (
     Uuid,
 )
 from metadata.sdk.entities.base import BaseEntity
-from metadata.sdk.types import UuidLike
+from metadata.sdk.types import UuidLike  # noqa: TC001
 
 
 class Tables(BaseEntity[Table, CreateTableRequest]):
     """SDK facade for `Table` entities."""
 
     @classmethod
-    def entity_type(cls) -> Type[Table]:
+    def entity_type(cls) -> Type[Table]:  # noqa: UP006
         return Table
 
     @classmethod
@@ -41,9 +41,9 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
 
         tags = list(getattr(working, "tags", []) or [])
         tags.append({"tagFQN": tag_fqn})
-        setattr(working, "tags", tags)
+        setattr(working, "tags", tags)  # noqa: B010
 
-        updated = cast(Any, client).patch(
+        updated = cast(Any, client).patch(  # noqa: TC006
             entity=Table,
             source=current,
             destination=working,
@@ -65,10 +65,10 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
 
         for column in getattr(working, "columns", []) or []:
             if getattr(column, "name", None) == column_name:
-                setattr(column, "description", description)
+                setattr(column, "description", description)  # noqa: B010
                 break
 
-        updated = cast(Any, client).patch(
+        updated = cast(Any, client).patch(  # noqa: TC006
             entity=Table,
             source=current,
             destination=working,
@@ -79,25 +79,25 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
     def add_custom_metric(cls, table_id: UuidLike, custom_metric: CreateCustomMetricRequest) -> Table:
         """Add or update a table-level custom metric."""
         client = cls._get_client()
-        updated = cast(Any, client).create_or_update_custom_metric(
+        updated = cast(Any, client).create_or_update_custom_metric(  # noqa: TC006
             custom_metric=custom_metric,
             table_id=cls._stringify_identifier(table_id),
         )
         return cls._coerce_entity(updated)
 
     @classmethod
-    def add_sample_data(cls, table_id: UuidLike, sample_data: TableData) -> Optional[TableData]:
+    def add_sample_data(cls, table_id: UuidLike, sample_data: TableData) -> Optional[TableData]:  # noqa: UP045
         """Attach sample data rows to a table."""
         client = cls._get_client()
         table = cls._build_table_reference(table_id)
         return client.ingest_table_sample_data(table, sample_data)
 
     @classmethod
-    def get_sample_data(cls, table_id: UuidLike) -> Optional[Table]:
+    def get_sample_data(cls, table_id: UuidLike) -> Optional[Table]:  # noqa: UP045
         """Fetch a table including its sample data payload."""
         client = cls._get_client()
         table = cls._build_table_reference(table_id)
-        result = cast(Any, client).get_sample_data(table)
+        result = cast(Any, client).get_sample_data(table)  # noqa: TC006
         if result is None:
             return None
         return cls._coerce_entity(result)
@@ -109,10 +109,10 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         table_uuid = UUID(table_id_value)
         table_ref_name = f"sdk_ref_{table_id_value[:8]}"
         table_ref_fqn = f"sdk.ref.{table_id_value}"
-        table_reference = cast(Any, Table).model_construct(
+        table_reference = cast(Any, Table).model_construct(  # noqa: TC006
             id=Uuid(root=table_uuid),
             name=EntityName(root=table_ref_name),
             fullyQualifiedName=FullyQualifiedEntityName(root=table_ref_fqn),
             columns=[],
         )
-        return cast(Table, table_reference)
+        return cast(Table, table_reference)  # noqa: TC006

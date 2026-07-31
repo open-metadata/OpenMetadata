@@ -81,7 +81,7 @@ def rule_library_pandas_test_definition(metadata) -> TestDefinition:
         test_cases = metadata.list_entities(TestCase, fields=["*"], skip_on_failure=True).entities
         for tc in test_cases:
             if tc.testDefinition and tc.testDefinition.name == test_def.name:
-                try:
+                try:  # noqa: SIM105
                     metadata.delete(TestCase, tc.id, hard_delete=True)
                 except Exception:
                     pass  # Ignore cleanup errors for individual test cases

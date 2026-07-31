@@ -34,12 +34,12 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
-import { getNonDeletedTeams } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../utils/RouterUtils';
+import { getNonDeletedTeams } from '../../../utils/TeamUtils';
 import { getUserWithImage } from '../../../utils/UserDataUtils';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';

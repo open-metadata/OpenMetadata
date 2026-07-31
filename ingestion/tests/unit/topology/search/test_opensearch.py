@@ -31,7 +31,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.ingestion.source.search.opensearch.connection import get_connection
+from metadata.ingestion.source.search.opensearch.connection import (
+    OpenSearchConnection as OpenSearchConnectionHandler,
+)
 from metadata.ingestion.source.search.opensearch.metadata import OpensearchSource
 
 # Mock OpenSearch configuration
@@ -176,7 +178,7 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
 
 class OpenSearchUnitTest(TestCase):
     @patch("metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         # Set the test_connection to return False so that test_connection doesn't interfere.
         test_connection.return_value = False
@@ -221,7 +223,7 @@ class OpenSearchConnectionTest(TestCase):
         )
 
         # This should NOT raise AttributeError: 'str' object has no attribute 'get_secret_value'
-        client = get_connection(conn)
+        client = OpenSearchConnectionHandler(conn)._get_client()
         self.assertIsNotNone(client)
 
         # Verify AWS4Auth was called with the session_token as a plain string

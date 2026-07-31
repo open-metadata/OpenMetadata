@@ -11,14 +11,28 @@
  *  limitations under the License.
  */
 
+import { render } from '@testing-library/react';
 import { ServiceCategory } from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
 import { ServicesType } from '../interface/service.interface';
-import { getIngestionTypes, getSupportedPipelineTypes } from './IngestionUtils';
+import {
+  getIngestionTypes,
+  getSupportedPipelineTypes,
+} from './IngestionConfigUtils';
+import { getErrorPlaceHolder } from './IngestionUtils';
+
+const mockTheme = {
+  primaryColor: '#000000',
+} as UIThemePreference['customTheme'];
+
+const AGENTS_CARD_CLASSNAME =
+  'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl';
+const INGESTION_TABLE_CLASSNAME = 'tw:relative tw:py-8';
 
 describe('getSupportedPipelineTypes', () => {
   it('should return only return metadata pipeline types if config is undefined', () => {
@@ -194,5 +208,77 @@ describe('getIngestionTypes', () => {
     const result = getIngestionTypes(supportedPipelineTypes, ingestionList);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('getErrorPlaceHolder', () => {
+  it('should return null when ingestion data exists', () => {
+    const result = getErrorPlaceHolder(1, false, mockTheme);
+
+    expect(result).toBeNull();
+  });
+
+  it('should render the empty placeholder when there is no ingestion data', () => {
+    const { getByTestId } = render(
+      <>{getErrorPlaceHolder(0, false, mockTheme)}</>
+    );
+
+    expect(getByTestId('empty-placeholder')).toBeInTheDocument();
+  });
+
+  it('should forward the caller provided className to the placeholder', () => {
+    const { getByTestId } = render(
+      <>
+        {getErrorPlaceHolder(
+          0,
+          false,
+          mockTheme,
+          undefined,
+          INGESTION_TABLE_CLASSNAME
+        )}
+      </>
+    );
+    const placeholder = getByTestId('empty-placeholder');
+
+    expect(placeholder).toHaveClass('tw:relative', 'tw:py-8');
+    // Guards the visual regression: the agents card styling must never
+    // leak onto a caller that did not ask for it (e.g. the ingestion table).
+    expect(placeholder).not.toHaveClass(
+      'tw:bg-primary',
+      'tw:border-secondary',
+      'tw:rounded-xl'
+    );
+  });
+
+  it('should apply the agents card styling only when that className is passed', () => {
+    const { getByTestId } = render(
+      <>
+        {getErrorPlaceHolder(
+          0,
+          false,
+          mockTheme,
+          undefined,
+          AGENTS_CARD_CLASSNAME
+        )}
+      </>
+    );
+
+    expect(getByTestId('empty-placeholder')).toHaveClass(
+      'tw:bg-primary',
+      'tw:border-secondary',
+      'tw:rounded-xl'
+    );
+  });
+
+  it('should not apply any card styling when no className is provided', () => {
+    const { getByTestId } = render(
+      <>{getErrorPlaceHolder(0, false, mockTheme)}</>
+    );
+
+    expect(getByTestId('empty-placeholder')).not.toHaveClass(
+      'tw:bg-primary',
+      'tw:border-secondary',
+      'tw:rounded-xl'
+    );
   });
 });

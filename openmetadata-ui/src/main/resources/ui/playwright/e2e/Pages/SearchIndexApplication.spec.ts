@@ -24,6 +24,14 @@ import { settingClick } from '../../utils/sidebar';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+const SEARCH_INDEX_APP_NAME = 'SearchIndexingApplication';
+const SUCCESSFUL_RUN_STATUS = /success|completed|activeError/i;
+
+interface AppRunRecordResponse {
+  startTime?: number;
+  status?: string;
+}
+
 /**
  * Installs the Search Indexing Application from the marketplace.
  * Shared by the "Install application" step and the self-healing guard
@@ -136,7 +144,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
         timeout: 300_000,
       }
     )
-    .toEqual(expect.stringMatching(/success|activeError/g));
+    .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
 
   await page.reload();
 
@@ -155,10 +163,95 @@ const verifyLastExecutionRun = async (page: Page, response: Response) => {
       await verifyLastExecutionStatus(page);
     } else {
       expect(responseData.data[0].status).toEqual(
-        expect.stringMatching(/success|activeError/g)
+        expect.stringMatching(SUCCESSFUL_RUN_STATUS)
       );
     }
   }
+};
+
+const getLatestRunStartTime = async (page: Page) => {
+  const { apiContext } = await getApiContext(page);
+  const response = await apiContext.get(
+    `/api/v1/apps/name/${SEARCH_INDEX_APP_NAME}/runs/latest`
+  );
+  const run = await getAppRunRecord(response);
+
+  return run?.startTime;
+};
+
+const getAppRunRecord = async (response: Response) => {
+  if (!response.ok() || response.status() === 204) {
+    return undefined;
+  }
+
+  const body = await response.text();
+
+  return body ? (JSON.parse(body) as AppRunRecordResponse) : undefined;
+};
+
+const waitForNewSuccessfulRun = async (
+  page: Page,
+  previousRunStartTime?: number
+) => {
+  const { apiContext } = await getApiContext(page);
+  let completedRunStartTime: number | undefined;
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/apps/name/${SEARCH_INDEX_APP_NAME}/runs/latest`
+        );
+        const run = await getAppRunRecord(response);
+
+        if (run?.startTime === undefined) {
+          return undefined;
+        }
+
+        if (
+          previousRunStartTime !== undefined &&
+          run.startTime <= previousRunStartTime
+        ) {
+          return undefined;
+        }
+
+        if (run.status && SUCCESSFUL_RUN_STATUS.test(run.status)) {
+          completedRunStartTime = run.startTime;
+        }
+
+        return run.status;
+      },
+      {
+        message: 'Wait for a new successful SearchIndexingApplication run',
+        intervals: [5_000, 10_000, 15_000, 30_000],
+        timeout: 300_000,
+      }
+    )
+    .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
+
+  expect(completedRunStartTime).toBeDefined();
+
+  return completedRunStartTime;
+};
+
+const rerunSearchIndexApplicationForTable = async (
+  page: Page,
+  previousRunStartTime?: number
+) => {
+  const { apiContext } = await getApiContext(page);
+  const response = await apiContext.post(
+    `/api/v1/apps/trigger/${SEARCH_INDEX_APP_NAME}`,
+    {
+      data: {
+        batchSize: 100,
+        entities: ['table'],
+      },
+    }
+  );
+
+  expect(response.status()).toBeLessThan(300);
+
+  return waitForNewSuccessfulRun(page, previousRunStartTime);
 };
 
 test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
@@ -350,13 +443,14 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     if (process.env.PLAYWRIGHT_IS_OSS) {
-      await test.step('Run application', async () => {
+      await test.step('Run application and rerun with table-only config', async () => {
         test.slow(true); // Test time shouldn't exceed while re-fetching the history API.
 
         await page.click(
           '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
         );
 
+        const previousRunStartTime = await getLatestRunStartTime(page);
         const triggerPipelineResponse = page.waitForResponse(
           '/api/v1/apps/trigger/SearchIndexingApplication'
         );
@@ -375,6 +469,12 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         expect(statusResponse.status()).toBe(200);
 
         await verifyLastExecutionRun(page, statusResponse);
+        const firstRunStartTime = await waitForNewSuccessfulRun(
+          page,
+          previousRunStartTime
+        );
+
+        await rerunSearchIndexApplicationForTable(page, firstRunStartTime);
       });
     }
   });

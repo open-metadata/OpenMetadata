@@ -22,7 +22,7 @@ and sample data for that identified entity.
 
 import traceback
 from copy import deepcopy
-from typing import Iterable, Type, cast
+from typing import Iterable, Type, cast  # noqa: UP035
 
 from sqlalchemy.inspection import inspect
 
@@ -35,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
+    DatabaseServiceProfilerPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -77,7 +77,8 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         # Init and type the source config
         self.service_connection = self.config.source.serviceConnection.root.config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
-            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
+            "DatabaseServiceProfilerPipeline",
+            self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
         source_type = self.config.source.type.lower()
         service_type = get_service_type_from_source_type(self.config.source.type)
@@ -93,7 +94,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
 
         logger.info(f"Starting profiler for service {self.config.source.type}:{self.config.source.type.lower()}")
 
-    def set_inspector(self, database_name: str = None) -> None:
+    def set_inspector(self, database_name: str = None) -> None:  # noqa: RUF013
         """
         When sources override `get_database_names`, they will need
         to setup multiple inspectors. They can use this function.
@@ -163,13 +164,13 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 continue
             yield table_name
 
-    def import_profiler_interface(self) -> Type[ProfilerInterface]:
+    def import_profiler_interface(self) -> Type[ProfilerInterface]:  # noqa: UP006
         class_path = BaseSpec.get_for_source(
             ServiceType.Database,
             source_type=self.config.source.type.lower(),
         ).profiler_class
         profiler_source_class = import_from_module(class_path)
-        return cast(Type[ProfilerInterface], profiler_source_class)
+        return cast(Type[ProfilerInterface], profiler_source_class)  # noqa: TC006, UP006
 
     def get_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):

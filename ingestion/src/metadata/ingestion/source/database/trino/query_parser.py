@@ -37,7 +37,7 @@ class TrinoQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: TrinoConnection = config.serviceConnection.root.config
@@ -50,7 +50,7 @@ class TrinoQueryParserSource(QueryParserSource, ABC):
         start_time: datetime,
         end_time: datetime,
         offset: int = 0,
-        limit: int = None,
+        limit: int = None,  # noqa: RUF013
     ) -> str:
         """
         returns sql statement to fetch query logs.

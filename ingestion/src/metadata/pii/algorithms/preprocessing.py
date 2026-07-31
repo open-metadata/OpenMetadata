@@ -13,7 +13,7 @@ Preprocessing functions for the classification tasks.
 """
 
 import datetime
-from typing import Any, List, Mapping, Optional, Sequence, Union, cast
+from typing import Any, List, Mapping, Optional, Sequence, Union, cast  # noqa: UP035
 
 from metadata.utils.logger import pii_logger
 
@@ -23,7 +23,7 @@ MAX_NLP_TEXT_LENGTH = 5_000
 
 
 # pylint: disable=too-many-return-statements
-def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
+def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:  # noqa: UP006, UP007, UP045
     """
     Convert the given value to a string. This is a conversion
     tailored to our use case, not a generic one.
@@ -46,7 +46,7 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
     if isinstance(value, (Sequence, Mapping)):
         if isinstance(value, Mapping):
             value = list(value.values())
-        converted = [convert_to_str(el) for el in cast(List[Any], value)]
+        converted = [convert_to_str(el) for el in cast(List[Any], value)]  # noqa: TC006, UP006
         return [
             item
             for sublist in converted
@@ -59,8 +59,8 @@ def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
     return None
 
 
-def preprocess_values(values: Sequence[Any]) -> List[str]:
-    result: List[str] = []
+def preprocess_values(values: Sequence[Any]) -> List[str]:  # noqa: UP006
+    result: List[str] = []  # noqa: UP006
     for value in values:
         converted_value = convert_to_str(value)
         if converted_value is None:

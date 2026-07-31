@@ -127,6 +127,34 @@ describe('Test TreeSelectWidget Component', () => {
     expect(mockOnChange).toHaveBeenCalledWith(['all']);
   });
 
+  it('Should not render "all" as a child option when it is part of the enum', async () => {
+    const propsWithAllEnum = {
+      ...mockProps,
+      options: {
+        enumOptions: [
+          { label: 'all', value: 'all' },
+          { label: 'table', value: 'table' },
+        ],
+      },
+      value: [],
+    };
+
+    render(<TreeSelectWidget {...propsWithAllEnum} />);
+
+    const treeSelectInput = await findByRole(
+      screen.getByTestId('tree-select-widget'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(treeSelectInput);
+    });
+
+    await waitFor(() => screen.getByText('Table'));
+
+    expect(screen.getAllByText('All')).toHaveLength(1);
+  });
+
   it('Should expand "all" into individual enum values when expandAllValue is true', async () => {
     const expandAllProps = {
       ...mockProps,

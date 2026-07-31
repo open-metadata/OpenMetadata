@@ -1,4 +1,5 @@
 import { cx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 import type { ReactNode } from 'react';
 import type { SwitchProps as AriaSwitchProps } from 'react-aria-components';
 import { Switch as AriaSwitch } from 'react-aria-components';
@@ -50,17 +51,21 @@ export const ToggleBase = ({
   return (
     <div
       className={cx(
-        'tw:cursor-pointer tw:rounded-full tw:bg-tertiary tw:outline-focus-ring tw:transition tw:duration-150 tw:ease-linear',
+        // `tw:relative` anchors the slim variant's ::after border — the element's own
+        // outline is reserved for the focus ring below. The knob uses translate-x, not
+        // absolute positioning, so this does not affect it.
+        'tw:relative tw:cursor-pointer tw:rounded-full tw:bg-tertiary tw:outline-focus-ring tw:transition tw:duration-150 tw:ease-linear',
         isSelected && 'tw:bg-brand-solid',
         isSelected && isHovered && 'tw:bg-brand-solid_hover',
         isDisabled && 'tw:cursor-not-allowed tw:bg-disabled',
         isFocusVisible && 'tw:outline-2 tw:outline-offset-2',
 
-        slim && 'tw:ring-1 tw:ring-secondary tw:ring-inset',
-        slim && isSelected && 'tw:ring-transparent',
+        slim && `${borderAfter} tw:after:outline-secondary`,
+        slim && isSelected && 'tw:after:outline-transparent',
         classes.root,
         className
-      )}>
+      )}
+      data-testid="toggle-root">
       <div
         className={cx(
           'tw:rounded-full tw:bg-fg-white tw:shadow-sm',

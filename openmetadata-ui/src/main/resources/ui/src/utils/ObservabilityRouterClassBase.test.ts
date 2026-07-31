@@ -12,6 +12,8 @@
  */
 
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { Task } from '../rest/tasksAPI';
 import observabilityRouterClassBase, {
   ObservabilityRouterClassBase,
 } from './ObservabilityRouterClassBase';
@@ -32,11 +34,28 @@ jest.mock('./RouterUtils', () => ({
     `/observability/alerts/edit/${fqn}`,
   getObservabilityAlertDetailsPath: (fqn: string, tab?: string) =>
     `/observability/alert/${fqn}/${tab ?? 'configuration'}`,
+  getTestSuitePath: (fqn: string) => `/test-suites/${fqn}`,
+  getTestCaseDetailPagePath: (fqn: string, tab?: string) =>
+    `/test-case/${fqn}/${tab ?? 'test-case-results'}`,
+  getTestCaseVersionPath: (fqn: string, version: string, tab?: string) =>
+    tab
+      ? `/test-case/${fqn}/versions/${version}/${tab}`
+      : `/test-case/${fqn}/versions/${version}`,
+  getTestCaseDimensionsDetailPagePath: (
+    fqn: string,
+    dimensionKey: string,
+    tab?: string
+  ) =>
+    `/test-case/${fqn}/dimensions/${dimensionKey}/${
+      tab ?? 'test-case-results'
+    }`,
 }));
 
 jest.mock('../constants/constants', () => ({
   ROUTES: {
     ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
+    INCIDENT_MANAGER: '/incident-manager',
+    OBSERVABILITY_ALERTS: '/observability/alerts',
   },
 }));
 
@@ -107,6 +126,119 @@ describe('ObservabilityRouterClassBase', () => {
       expect(
         router.getObservabilityAlertDetailsPath('my-alert', 'diagnostics')
       ).toBe('/observability/alert/my-alert/diagnostics');
+    });
+  });
+
+  describe('getTestSuitePath', () => {
+    it('should delegate to RouterUtils helper with the test suite fqn', () => {
+      expect(router.getTestSuitePath('finance.suites.daily')).toBe(
+        '/test-suites/finance.suites.daily'
+      );
+    });
+  });
+
+  describe('getTestCaseDetailPagePath', () => {
+    it('should default the tab to TEST_CASE_RESULTS when omitted', () => {
+      expect(router.getTestCaseDetailPagePath('table.col')).toBe(
+        '/test-case/table.col/test-case-results'
+      );
+    });
+
+    it('should pass through an explicit tab', () => {
+      expect(
+        router.getTestCaseDetailPagePath('table.col', TestCasePageTabs.ISSUES)
+      ).toBe(`/test-case/table.col/${TestCasePageTabs.ISSUES}`);
+    });
+  });
+
+  describe('getTestCaseVersionPath', () => {
+    it('should return path without tab segment when tab is omitted', () => {
+      expect(router.getTestCaseVersionPath('table.col', '0.2')).toBe(
+        '/test-case/table.col/versions/0.2'
+      );
+    });
+
+    it('should include tab segment when tab is provided', () => {
+      expect(
+        router.getTestCaseVersionPath('table.col', '0.2', 'incidents')
+      ).toBe('/test-case/table.col/versions/0.2/incidents');
+    });
+  });
+
+  describe('getTestCaseDimensionsDetailPagePath', () => {
+    it('should default the tab to TEST_CASE_RESULTS when omitted', () => {
+      expect(
+        router.getTestCaseDimensionsDetailPagePath('table.col', 'rowCount')
+      ).toBe('/test-case/table.col/dimensions/rowCount/test-case-results');
+    });
+
+    it('should pass through an explicit tab', () => {
+      expect(
+        router.getTestCaseDimensionsDetailPagePath(
+          'table.col',
+          'rowCount',
+          TestCasePageTabs.ISSUES
+        )
+      ).toBe(
+        `/test-case/table.col/dimensions/rowCount/${TestCasePageTabs.ISSUES}`
+      );
+    });
+  });
+
+  describe('getIncidentManagerPath', () => {
+    it('should return the incident manager route constant', () => {
+      expect(router.getIncidentManagerPath()).toBe('/incident-manager');
+    });
+  });
+
+  describe('getObservabilityAlertsListPath', () => {
+    it('should return the observability alerts route constant', () => {
+      expect(router.getObservabilityAlertsListPath()).toBe(
+        '/observability/alerts'
+      );
+    });
+  });
+
+  describe('getIncidentTaskPath', () => {
+    it('should return the test case issues tab path for test case tasks', () => {
+      expect(
+        router.getIncidentTaskPath({
+          id: 'task-uuid',
+          taskId: 6,
+          about: {
+            type: 'testCase',
+            fullyQualifiedName: 'db.schema.table.col.test_case',
+          },
+        } as unknown as Task)
+      ).toBe('/test-case/db.schema.table.col.test_case/issues');
+    });
+
+    it('should return the activity-feed task path for non test case tasks', () => {
+      expect(
+        router.getIncidentTaskPath({
+          id: 'task-uuid',
+          taskId: 6,
+          about: { type: 'table', fullyQualifiedName: 'db.schema.table' },
+        } as unknown as Task)
+      ).toBe('/table/db.schema.table/activity_feed/tasks/6');
+    });
+
+    it('should fall back to the generic task path when the task has no entity reference', () => {
+      expect(
+        router.getIncidentTaskPath({
+          id: 'task-uuid',
+          taskId: 6,
+        } as unknown as Task)
+      ).toBe('/tasks/task-uuid');
+    });
+
+    it('should use the fallback test case fqn when the task has no entity reference', () => {
+      expect(
+        router.getIncidentTaskPath(
+          { id: 'task-uuid', taskId: 6 } as unknown as Task,
+          'db.schema.table.col.test_case'
+        )
+      ).toBe('/test-case/db.schema.table.col.test_case/issues');
     });
   });
 

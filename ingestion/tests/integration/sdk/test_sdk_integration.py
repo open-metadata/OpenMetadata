@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from types import SimpleNamespace
-from typing import Any, Iterable
+from typing import Any, Iterable  # noqa: UP035
 
 import pytest
 
@@ -55,7 +55,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.team import TeamType
-from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.entity.teams.user import User  # noqa: TC001
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -259,7 +259,7 @@ def sdk_test_data():
         try:
             entity_cls.delete(entity.id)
         except Exception as exc:  # pragma: no cover - best-effort cleanup
-            print(f"Cleanup error for {entity_cls.__name__}: {exc}")
+            print(f"Cleanup error for {entity_cls.__name__}: {exc}")  # noqa: T201
 
 
 @pytest.fixture(scope="function")
@@ -294,7 +294,7 @@ class TestSDKIntegration:
 
             try:
                 om.Tables.add_followers(str(table.id.root), [str(follower.id.root)])
-            except Exception as exc:  # noqa: BLE001 - depends on server config
+            except Exception as exc:  # noqa: BLE001, RUF100
                 pytest.skip(f"Follower API not supported in this environment: {exc}")
 
             table_with_followers = om.Tables.retrieve(table.id.root, fields=["followers"])
@@ -450,7 +450,7 @@ class TestSDKIntegration:
 
             try:
                 restored_table = om.Tables.restore(table_id)
-            except Exception as exc:  # noqa: BLE001 - depends on server config
+            except Exception as exc:  # noqa: BLE001, RUF100
                 pytest.skip(f"Restore API not supported in this environment: {exc}")
             assert restored_table is not None
             assert not getattr(restored_table, "deleted", False)
@@ -458,7 +458,7 @@ class TestSDKIntegration:
             try:
                 om.Tables.delete(table_id, hard_delete=True)
             except Exception as cleanup_error:  # pragma: no cover
-                print(f"Cleanup error: {cleanup_error}")
+                print(f"Cleanup error: {cleanup_error}")  # noqa: T201
 
     def test_update_and_version_tracking(self, sdk_test_data, test_table_name) -> None:
         table = self._create_basic_table(sdk_test_data, test_table_name)

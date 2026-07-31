@@ -13,7 +13,7 @@ Glue source methods.
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -38,7 +38,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
+    DatabaseServiceMetadataPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -52,7 +52,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
@@ -70,6 +73,10 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
+
 logger = ingestion_logger()
 
 
@@ -85,15 +92,16 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.glue = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.glue = cast("BaseConnection", self._connection).client
 
-        self.connection_obj = self.glue
         self.schema_description_map = {}
         self.external_location_map = {}
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GlueConnection = config.serviceConnection.root.config
         if not isinstance(connection, GlueConnection):
@@ -138,8 +146,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                             database_name=schema.CatalogId,
                         )
                         if filter_by_database(
-                            self.config.sourceConfig.config.databaseFilterPattern,
-                            database_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.CatalogId,
+                            self.config.sourceConfig.config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.CatalogId,  # pyright: ignore[reportAttributeAccessIssue]
                         ):
                             self.status.filter(
                                 database_fqn,
@@ -190,8 +198,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         schema_name=schema.Name,
                     )
                     if filter_by_schema(
-                        self.config.sourceConfig.config.schemaFilterPattern,
-                        schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.Name,
+                        self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.Name,  # pyright: ignore[reportAttributeAccessIssue]
                     ):
                         self.status.filter(schema_fqn, "Schema Filtered Out")
                         continue
@@ -231,7 +239,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
         """
         Handle table and views.
 
@@ -256,8 +264,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         table_name=table_name,
                     )
                     if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name,
+                        self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name,  # pyright: ignore[reportAttributeAccessIssue]
                     ):
                         self.status.filter(
                             table_fqn,
@@ -288,7 +296,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         )
                     )
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -360,7 +368,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         return Column(**parsed_string)
 
     # pylint: disable=too-many-locals
-    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:
+    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:  # noqa: UP045
         """
         Get columns from Glue.
         """
@@ -415,7 +423,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         column_obj = GlueColumn(Name=col_name, Type=col_type, Comment=col_comment)
                         yield self._get_column_object(column_obj)
 
-                return
+                return  # noqa: TRY300
 
             except Exception as e:
                 # If we can't get Glue metadata, fall back to the original method
@@ -432,7 +440,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             yield self._get_column_object(column)
 
     @classmethod
-    def get_format(cls, storage: StorageDetails) -> Optional[FileFormat]:
+    def get_format(cls, storage: StorageDetails) -> Optional[FileFormat]:  # noqa: UP045
         library = storage.SerdeInfo.SerializationLibrary
         if library is None:
             return None
@@ -459,10 +467,10 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
 
     def get_source_url(
         self,
-        database_name: Optional[str],
-        schema_name: Optional[str] = None,
-        table_name: Optional[str] = None,
-    ) -> Optional[str]:
+        database_name: Optional[str],  # noqa: UP045
+        schema_name: Optional[str] = None,  # noqa: UP045
+        table_name: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get the source url for dynamodb
         """
@@ -480,11 +488,8 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                     f"{base_url}tables/view/{table_name}"
                     f"?database={schema_name}&catalogId={database_name}&versionId=latest"
                 )
-                return table_url
+                return table_url  # noqa: RET504
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
         return None
-
-    def close(self):
-        """Nothing to close"""

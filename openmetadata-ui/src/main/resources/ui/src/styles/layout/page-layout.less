@@ -23,16 +23,16 @@
 #page-alert {
   position: sticky;
   top: 0px;
-  z-index: 20;
-  background-color: @background-primary;
+  z-index: var(--om-z-20);
+  background-color: var(--tw-color-utility-gray-blue-50);
 }
 
 .page-layout-v1-center:has(.ontology-slideout-open) #page-alert {
-  z-index: 0;
+  z-index: var(--om-z-0);
 }
 
 .page-layout-v1-left-panel {
-  border: @global-border;
+  border: 1px solid var(--tw-color-border-secondary);
   border-radius: @border-rad-base;
 }
 
@@ -49,7 +49,7 @@
 
 .header-center {
   width: 700px;
-  margin: 16px auto 0 auto;
+  margin: var(--om-space-16) auto 0 auto;
   padding: 0;
 }
 

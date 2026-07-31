@@ -37,7 +37,7 @@ from metadata.ingestion.source.dashboard.domodashboard.metadata import (
 )
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domodashboard_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -138,8 +138,8 @@ class DomoDashboardUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None:
+    @patch("metadata.ingestion.source.dashboard.domodashboard.connection.Domo")
+    def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
@@ -156,7 +156,7 @@ class DomoDashboardUnitTest(TestCase):
         results = self.domodashboard.yield_dashboard(MOCK_DASHBOARD)
         for result in results:
             if isinstance(result, Either) and result.right:
-                dashboard_list.append(result.right)
+                dashboard_list.append(result.right)  # noqa: PERF401
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     def test_dashboard_name(self):
@@ -171,8 +171,8 @@ class DomoDashboardUnitTest(TestCase):
             chart_list = []
             for result in results:
                 if isinstance(result, Either) and result.right:
-                    chart_list.append(result.right)
-            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
+                    chart_list.append(result.right)  # noqa: PERF401
+            for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):  # noqa: B905
                 self.assertEqual(expected, original)
 
         # Cover error responses

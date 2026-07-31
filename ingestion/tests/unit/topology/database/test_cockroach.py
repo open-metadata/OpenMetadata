@@ -223,9 +223,9 @@ EXPECTED_COLUMN_VALUE = [
 ]
 
 
-class cockroachUnitTest(TestCase):
+class cockroachUnitTest(TestCase):  # noqa: N801
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_cockroach_config)
@@ -305,7 +305,7 @@ class cockroachUnitTest(TestCase):
 
         (
             columns,
-            table_constraints,
+            table_constraints,  # noqa: RUF059
             _,
         ) = self.cockroach_source.get_columns_and_constraints(
             "public", "test_table", "cockroach", inspector, TableType.Regular
@@ -376,7 +376,7 @@ class cockroachUnitTest(TestCase):
         inspector.get_foreign_keys = lambda table_name, schema_name: []
 
         (
-            columns,
+            columns,  # noqa: RUF059
             table_constraints,
             _,
         ) = self.cockroach_source.get_columns_and_constraints(

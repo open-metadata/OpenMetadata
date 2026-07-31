@@ -13,14 +13,17 @@
 import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
+  BOT_DETAILS,
   createBot,
   deleteBot,
   redirectToBotPage,
+  searchBotFromSearchInput,
   tokenExpirationForDays,
   tokenExpirationUnlimitedDays,
   updateBotDetails,
   verifyGenerateTokenAPIContract,
 } from '../../utils/bot';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -35,6 +38,8 @@ test.describe(
       await redirectToBotPage(page);
 
       await test.step('Verify ingestion bot delete button is always disabled', async () => {
+        await searchBotFromSearchInput(page, 'ingestion');
+
         await expect(
           page.getByTestId('bot-delete-ingestion-bot')
         ).toBeDisabled();
@@ -46,6 +51,51 @@ test.describe(
 
       await test.step('Update display name and description', async () => {
         await updateBotDetails(page);
+      });
+
+      await redirectToBotPage(page);
+
+      const searchInput = page.getByTestId('searchbar');
+      const createdBotLink = page.getByTestId(
+        `bot-link-${BOT_DETAILS.updatedBotName}`
+      );
+
+      await test.step('Search bot by display name', async () => {
+        await searchBotFromSearchInput(page, BOT_DETAILS.updatedBotName);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search bot by bot name', async () => {
+        await searchBotFromSearchInput(page, BOT_DETAILS.botName);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search bot by email', async () => {
+        await searchBotFromSearchInput(page, BOT_DETAILS.botEmail);
+
+        await expect(createdBotLink).toBeVisible();
+      });
+
+      await test.step('Search with no match shows empty state', async () => {
+        await searchBotFromSearchInput(
+          page,
+          `${BOT_DETAILS.updatedBotName}-no-match`
+        );
+
+        await expect(
+          page.getByTestId('search-error-placeholder')
+        ).toBeVisible();
+      });
+
+      await test.step('Clear search restores full list', async () => {
+        await searchInput.clear();
+        await searchInput.fill('');
+        await expect(searchInput).toHaveValue('');
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(createdBotLink).toBeVisible();
       });
 
       await test.step('Verify generateToken API contract', async () => {

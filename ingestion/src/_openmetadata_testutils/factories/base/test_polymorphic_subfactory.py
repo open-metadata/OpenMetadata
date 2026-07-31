@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Union
+from typing import Any, Mapping, Union  # noqa: UP035
 
 import factory.fuzzy
 import pytest
@@ -19,7 +19,7 @@ class Bar(BaseModel):
 
 
 class FooBar(BaseModel):
-    foo_or_bar: Union[Foo, Bar]
+    foo_or_bar: Union[Foo, Bar]  # noqa: UP007
 
 
 class FooFactory(factory.Factory):

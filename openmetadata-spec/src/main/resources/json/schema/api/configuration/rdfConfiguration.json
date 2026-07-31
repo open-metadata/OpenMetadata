@@ -30,6 +30,54 @@
       "type": "string",
       "format": "uri"
     },
+    "connectTimeoutMs": {
+      "description": "Timeout in milliseconds for establishing connections to RDF storage.",
+      "type": "integer",
+      "default": 2000,
+      "minimum": 1
+    },
+    "requestTimeoutMs": {
+      "description": "Timeout in milliseconds for individual RDF storage requests.",
+      "type": "integer",
+      "default": 60000,
+      "minimum": 1
+    },
+    "writeMaxRetries": {
+      "description": "Maximum number of retries for idempotent RDF write requests after the initial attempt.",
+      "type": "integer",
+      "default": 2,
+      "minimum": 0
+    },
+    "writeRetryInitialBackoffMs": {
+      "description": "Initial backoff in milliseconds before retrying an RDF write request.",
+      "type": "integer",
+      "default": 250,
+      "minimum": 0
+    },
+    "writeRetryMaxBackoffMs": {
+      "description": "Maximum backoff in milliseconds between RDF write request retries.",
+      "type": "integer",
+      "default": 2000,
+      "minimum": 0
+    },
+    "bulkEntityBatchSize": {
+      "description": "Maximum number of entity models written to RDF storage in a single bulk request.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1
+    },
+    "bulkRelationshipSourceBatchSize": {
+      "description": "Maximum number of source entities reconciled in a single RDF relationship bulk request.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1
+    },
+    "bulkLineageEdgeBatchSize": {
+      "description": "Maximum number of lineage edges written to RDF storage in a single SPARQL update.",
+      "type": "integer",
+      "default": 50,
+      "minimum": 1
+    },
     "username": {
       "description": "Username for RDF storage authentication",
       "type": "string"
@@ -52,7 +100,7 @@
     "inferenceEnabled": {
       "description": "Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the inference engine to derive additional triples based on the reasoning level.",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "defaultInferenceLevel": {
       "description": "Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides OpenMetadata-specific inference rules including transitive lineage traversal and inverse relationships.",

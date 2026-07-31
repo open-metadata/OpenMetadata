@@ -14,7 +14,7 @@ Simple dictionary implementation for keys with TTL
 """
 
 from datetime import datetime
-from typing import Dict
+from typing import Dict  # noqa: UP035
 
 
 class TTLCache:
@@ -25,7 +25,7 @@ class TTLCache:
     def __init__(self, ttl: int):
         self._ttl = ttl
         # The key will be the object, and the value the created time to check the TTL
-        self._cache: Dict[str, int] = {}
+        self._cache: Dict[str, int] = {}  # noqa: UP006
 
     @staticmethod
     def _now() -> int:

@@ -25,7 +25,6 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
 import {
   getGlobalSettingMenuItem,
@@ -88,9 +87,7 @@ const GlobalSettingPage = () => {
           <PageHeader
             data={{
               header: t(PAGE_HEADERS.SETTING.header),
-              subHeader: t(PAGE_HEADERS.SETTING.subHeader, {
-                brandName: brandClassBase.getPageTitle(),
-              }),
+              subHeader: t(PAGE_HEADERS.SETTING.subHeader),
             }}
             learningPageId={LEARNING_PAGE_IDS.SETTINGS}
             title={t('label.setting-plural')}

@@ -13,7 +13,7 @@
 
 import { Autocomplete, SelectItemType } from '@openmetadata/ui-core-components';
 import { upperFirst } from 'lodash';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
 import { ALL_DATA_ASSETS_OPTION_VALUE } from '../../../../constants/WorkflowBuilder.constants';
@@ -47,10 +47,13 @@ export const DataAssetFormSection: React.FC<DataAssetFormSectionProps> = ({
       : dataAssets;
   }, [dataAssets, availableDataAssets]);
 
-  const resolveLabel = (option: string) =>
-    option === ALL_DATA_ASSETS_OPTION_VALUE
-      ? t('label.all')
-      : upperFirst(option);
+  const resolveLabel = useCallback(
+    (option: string) =>
+      option === ALL_DATA_ASSETS_OPTION_VALUE
+        ? t('label.all')
+        : upperFirst(option),
+    [t]
+  );
 
   const isAllDataAssetsSelected = dataAssetSelectDisplayValue.includes(
     ALL_DATA_ASSETS_OPTION_VALUE
@@ -77,11 +80,16 @@ export const DataAssetFormSection: React.FC<DataAssetFormSectionProps> = ({
     }
   }, [dataAssetSelectDisplayValue]);
 
-  const allItems: SelectItemType[] = dataAssetOptionsIncludingAll.map((v) => ({
-    id: v,
-    isDisabled: isAllDataAssetsSelected && v !== ALL_DATA_ASSETS_OPTION_VALUE,
-    label: resolveLabel(v),
-  }));
+  const allItems: SelectItemType[] = useMemo(
+    () =>
+      dataAssetOptionsIncludingAll.map((v) => ({
+        id: v,
+        isDisabled:
+          isAllDataAssetsSelected && v !== ALL_DATA_ASSETS_OPTION_VALUE,
+        label: resolveLabel(v),
+      })),
+    [dataAssetOptionsIncludingAll, isAllDataAssetsSelected, resolveLabel]
+  );
 
   const handleItemInserted = (key: React.Key) => {
     const id = String(key);

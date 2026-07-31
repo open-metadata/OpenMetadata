@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, Sequence
+from typing import Any, Callable, List, Optional, Sequence  # noqa: UP035
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column
@@ -29,7 +29,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
-ScoreTagsForColumn = Callable[[Column, Sequence[Any], List[Tag]], List[ScoredTag]]
+ScoreTagsForColumn = Callable[[Column, Sequence[Any], List[Tag]], List[ScoredTag]]  # noqa: UP006
 
 
 class TagProcessor(AutoClassificationProcessor):
@@ -44,9 +44,9 @@ class TagProcessor(AutoClassificationProcessor):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        classification_manager: Optional[ClassificationManagerInterface] = None,
-        score_tags_for_column: Optional[ScoreTagsForColumn] = None,
-        classification_filter: Optional[List[str]] = None,
+        classification_manager: Optional[ClassificationManagerInterface] = None,  # noqa: UP045
+        score_tags_for_column: Optional[ScoreTagsForColumn] = None,  # noqa: UP045
+        classification_filter: Optional[List[str]] = None,  # noqa: UP006, UP045
         max_tags_per_column: int = 10,
     ) -> None:
         super().__init__(config, metadata)
@@ -102,9 +102,9 @@ class TagProcessor(AutoClassificationProcessor):
             metadata=metadata,
         )
 
-        return tag_label
+        return tag_label  # noqa: RET504
 
-    def filter_tags_to_analyze(self, column: Column, candidate_tags: List[Tag]) -> List[Tag]:
+    def filter_tags_to_analyze(self, column: Column, candidate_tags: List[Tag]) -> List[Tag]:  # noqa: UP006
         """
         Filter candidate tags based on already-applied tags and mutually exclusive
         classification constraints.

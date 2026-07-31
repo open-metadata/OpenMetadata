@@ -11,7 +11,7 @@
 """Qlik Sense Source Module"""
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -72,7 +72,7 @@ class QliksenseSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: QlikSenseConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikSenseConnection):
@@ -85,11 +85,11 @@ class QliksenseSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.collections: List[QlikDashboard] = []
+        self.collections: List[QlikDashboard] = []  # noqa: UP006
         # Data models will be cleared up for each dashboard
-        self.data_models: List[QlikTable] = []
+        self.data_models: List[QlikTable] = []  # noqa: UP006
         # Mapping of qlik table name -> source SQL tables from load script
-        self.script_table_sources: Optional[Dict[str, Set[str]]] = None
+        self.script_table_sources: Optional[Dict[str, Set[str]]] = None  # noqa: UP006, UP045
 
     def filter_draft_dashboard(self, dashboard: QlikDashboard) -> bool:
         # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikDashboardMeta(qMeta)
@@ -196,7 +196,7 @@ class QliksenseSource(DashboardServiceSource):
                     )
                 )
 
-    def get_column_info(self, data_source: QlikTable) -> Optional[List[Column]]:
+    def get_column_info(self, data_source: QlikTable) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Build data model columns"""
         datasource_columns = []
         for field in data_source.fields or []:
@@ -266,9 +266,9 @@ class QliksenseSource(DashboardServiceSource):
         self,
         db_service_entity: DatabaseService,
         datamodel: QlikTable,
-        schema_name: Optional[str],
-        database_name: Optional[str],
-    ) -> Optional[Table]:
+        schema_name: Optional[str],  # noqa: UP045
+        database_name: Optional[str],  # noqa: UP045
+    ) -> Optional[Table]:  # noqa: UP045
         """
         Get the table entity for lineage
         """
@@ -302,10 +302,10 @@ class QliksenseSource(DashboardServiceSource):
         self,
         datamodel: QlikTable,
         data_model_entity,
-        prefix_service_name: Optional[str],
-        prefix_database_name: Optional[str] = None,
-        prefix_schema_name: Optional[str] = None,
-        prefix_table_name: Optional[str] = None,
+        prefix_service_name: Optional[str],  # noqa: UP045
+        prefix_database_name: Optional[str] = None,  # noqa: UP045
+        prefix_schema_name: Optional[str] = None,  # noqa: UP045
+        prefix_table_name: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Yield lineage from SQL source tables found in the load script
@@ -351,7 +351,7 @@ class QliksenseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: QlikDashboard,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method"""
         (

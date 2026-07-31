@@ -266,7 +266,7 @@ class TestProfilerProcessorStatus(TestCase):
             call_count += 1
             if call_count == 1:
                 return {"nullCount": 0}
-            raise Exception("Simulated failure")
+            raise Exception("Simulated failure")  # noqa: TRY002
 
         self.sqa_profiler_interface._get_metric_fn = {MetricTypes.Static.value: mock_static_metrics}
 

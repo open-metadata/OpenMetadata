@@ -114,7 +114,7 @@ jest.mock('../../../../rest/userAPI', () => {
   };
 });
 
-jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../../common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 

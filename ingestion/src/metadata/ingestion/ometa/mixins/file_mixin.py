@@ -34,7 +34,7 @@ class OMetaFileMixin:
 
     client: REST
 
-    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> Optional[File]:
+    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> Optional[File]:  # noqa: UP045
         """
         PUT sample data for a file
 
@@ -75,7 +75,7 @@ class OMetaFileMixin:
 
         return None
 
-    def get_file_sample_data(self, file: File) -> Optional[File]:
+    def get_file_sample_data(self, file: File) -> Optional[File]:  # noqa: UP045
         """
         GET call for the /sampleData endpoint for a given File
 

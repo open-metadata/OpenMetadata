@@ -60,13 +60,16 @@ public class McpImpersonationTest {
     doAnswer(
             invocation -> {
               capturedImpersonation.set(ImpersonationContext.getImpersonatedBy());
-              return McpSchema.CallToolResult.builder()
-                  .content(List.of(new McpSchema.TextContent("{}")))
-                  .isError(false)
-                  .build();
+              return new DefaultToolContext.CallToolOutcome(
+                  McpSchema.CallToolResult.builder()
+                      .content(List.of(new McpSchema.TextContent("{}")))
+                      .isError(false)
+                      .build(),
+                  0L,
+                  null);
             })
         .when(toolContext)
-        .callTool(any(), any(), anyString(), any(), any());
+        .callToolWithMetadata(any(), any(), anyString(), any(), any());
 
     TestMcpServer server = new TestMcpServer(toolContext, jwtFilter, authorizer, limits);
     McpSchema.Tool tool = McpSchema.Tool.builder().name("test_tool").description("desc").build();
@@ -95,12 +98,15 @@ public class McpImpersonationTest {
     when(jwtFilter.getCatalogSecurityContext(anyString())).thenReturn(securityContext);
 
     DefaultToolContext toolContext = mock(DefaultToolContext.class);
-    when(toolContext.callTool(any(), any(), anyString(), any(), any()))
+    when(toolContext.callToolWithMetadata(any(), any(), anyString(), any(), any()))
         .thenReturn(
-            McpSchema.CallToolResult.builder()
-                .content(List.of(new McpSchema.TextContent("{}")))
-                .isError(false)
-                .build());
+            new DefaultToolContext.CallToolOutcome(
+                McpSchema.CallToolResult.builder()
+                    .content(List.of(new McpSchema.TextContent("{}")))
+                    .isError(false)
+                    .build(),
+                0L,
+                null));
 
     TestMcpServer server =
         new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));
@@ -130,7 +136,7 @@ public class McpImpersonationTest {
     when(jwtFilter.getCatalogSecurityContext(anyString())).thenReturn(securityContext);
 
     DefaultToolContext toolContext = mock(DefaultToolContext.class);
-    when(toolContext.callTool(any(), any(), eq("error_tool"), any(), any()))
+    when(toolContext.callToolWithMetadata(any(), any(), eq("error_tool"), any(), any()))
         .thenThrow(new RuntimeException("tool failed"));
 
     TestMcpServer server =
@@ -174,13 +180,16 @@ public class McpImpersonationTest {
               } else {
                 secondCall.set(ImpersonationContext.getImpersonatedBy());
               }
-              return McpSchema.CallToolResult.builder()
-                  .content(List.of(new McpSchema.TextContent("{}")))
-                  .isError(false)
-                  .build();
+              return new DefaultToolContext.CallToolOutcome(
+                  McpSchema.CallToolResult.builder()
+                      .content(List.of(new McpSchema.TextContent("{}")))
+                      .isError(false)
+                      .build(),
+                  0L,
+                  null);
             })
         .when(toolContext)
-        .callTool(any(), any(), anyString(), any(), any());
+        .callToolWithMetadata(any(), any(), anyString(), any(), any());
 
     TestMcpServer server =
         new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));

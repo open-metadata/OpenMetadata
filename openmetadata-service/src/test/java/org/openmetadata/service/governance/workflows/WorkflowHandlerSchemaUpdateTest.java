@@ -18,11 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -162,6 +164,59 @@ class WorkflowHandlerSchemaUpdateTest {
       StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
       verify(engineConfig)
           .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+    }
+  }
+
+  @Test
+  void runtimeModeEnablesConnectionPoolHealthChecks() {
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) ->
+                    when(mock.buildProcessEngine())
+                        .thenThrow(new FlowableWrongDbException("7.2.0.2", "7.1.0.0")));
+        MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      assertThrows(
+          IllegalStateException.class, () -> WorkflowHandler.initialize(buildMockConfig(), false));
+
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
+      verify(engineConfig).setJdbcPingEnabled(true);
+      verify(engineConfig).setJdbcPingQuery("SELECT 1");
+      verify(engineConfig).setJdbcPingConnectionNotUsedFor(30000);
+    }
+  }
+
+  @Test
+  void migrationModeDoesNotEnableConnectionPoolPing() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> when(mock.buildProcessEngine()).thenReturn(mockEngine));
+        MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), true);
+
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
+      verify(engineConfig, never()).setJdbcPingEnabled(anyBoolean());
     }
   }
 

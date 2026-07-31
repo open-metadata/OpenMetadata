@@ -23,6 +23,7 @@ import {
   deleteEntities,
   disposeApiContext,
   navigateToOntologyExplorer,
+  readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
 } from '../../utils/ontologyExplorer';
@@ -37,6 +38,10 @@ const glossary2 = new Glossary();
 const term3 = new GlossaryTerm(glossary2);
 const term4 = new GlossaryTerm(glossary2);
 
+const multiRelGlossary = new Glossary();
+const multiRelTermA = new GlossaryTerm(multiRelGlossary);
+const multiRelTermB = new GlossaryTerm(multiRelGlossary);
+
 test.describe('Ontology Explorer', () => {
   test.beforeAll(async ({ browser }) => {
     const { page, apiContext } = await createApiContext(browser);
@@ -47,8 +52,18 @@ test.describe('Ontology Explorer', () => {
     await glossary2.create(apiContext);
     await term3.create(apiContext);
     await term4.create(apiContext);
+    await multiRelGlossary.create(apiContext);
+    await multiRelTermA.create(apiContext);
+    await multiRelTermB.create(apiContext);
 
     await addTermRelation(apiContext, term1, term2, 'relatedTo');
+    await addTermRelation(
+      apiContext,
+      multiRelTermA,
+      multiRelTermB,
+      'relatedTo'
+    );
+    await addTermRelation(apiContext, multiRelTermA, multiRelTermB, 'partOf');
 
     await disposeApiContext(page, apiContext);
   });
@@ -62,7 +77,10 @@ test.describe('Ontology Explorer', () => {
       glossary,
       term3,
       term4,
-      glossary2
+      glossary2,
+      multiRelTermA,
+      multiRelTermB,
+      multiRelGlossary
     );
     await disposeApiContext(page, apiContext);
   });
@@ -197,7 +215,9 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await applyRelationTypeFilter(page, 'Synonym');
 
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-no-relations')
+      ).toBeVisible();
     });
   });
 
@@ -523,6 +543,7 @@ test.describe('Ontology Explorer', () => {
         .getByTestId('ontology-graph-search')
         .locator('input');
       await searchInput.fill(term1.data.name);
+      // Search does not re-run layout, so read existing positions without clearing.
       const filteredCount = Object.keys(await readNodePositions(page)).length;
 
       await searchInput.clear();
@@ -539,7 +560,9 @@ test.describe('Ontology Explorer', () => {
         .locator('input');
       await searchInput.fill('__nonexistent_term_xyz__');
 
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-search-empty')
+      ).toBeVisible();
       await expect(
         page.locator('.ontology-g6-container canvas').first()
       ).not.toBeAttached();
@@ -553,10 +576,14 @@ test.describe('Ontology Explorer', () => {
         .getByTestId('ontology-graph-search')
         .locator('input');
       await searchInput.fill('__nonexistent_term_xyz__');
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-search-empty')
+      ).toBeVisible();
 
       await searchInput.clear();
-      await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-search-empty')
+      ).not.toBeVisible();
     });
   });
 
@@ -599,7 +626,14 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
-      await clickFirstGraphNode(page);
+      const positions = await readNodePositions(page);
+      const term1Pos = positions[term1.responseData.id];
+
+      expect(
+        term1Pos,
+        'term1 node must be present in graph positions after glossary filter'
+      ).toBeDefined();
+      await page.mouse.click(term1Pos.x, term1Pos.y);
 
       await expect(
         page.getByTestId('entity-summary-panel-container')
@@ -608,6 +642,39 @@ test.describe('Ontology Explorer', () => {
       await expect(
         page.getByTestId('entity-summary-panel-container')
       ).not.toBeVisible();
+    });
+  });
+
+  test.describe('Multiple Relations Between Same Term Pair', () => {
+    test('renders a distinct edge for each relation type between the same pair', async ({
+      page,
+    }) => {
+      await waitForGraphLoaded(page);
+      await applyGlossaryFilter(page, multiRelGlossary.responseData.id);
+      await waitForGraphLoaded(page);
+
+      const edges = await readGraphEdges(page);
+      const fromId = multiRelTermA.responseData.id;
+      const toId = multiRelTermB.responseData.id;
+
+      const edgesForPair = edges.filter(
+        (e) =>
+          (e.from === fromId && e.to === toId) ||
+          (e.from === toId && e.to === fromId)
+      );
+
+      const allRelationTypes = new Set<string>();
+      edgesForPair.forEach((edge) => {
+        allRelationTypes.add(edge.relationType);
+        if (edge.inverseRelationType) {
+          allRelationTypes.add(edge.inverseRelationType);
+        }
+      });
+
+      expect(allRelationTypes.has('relatedTo')).toBe(true);
+      expect(
+        allRelationTypes.has('partOf') || allRelationTypes.has('hasPart')
+      ).toBe(true);
     });
   });
 });

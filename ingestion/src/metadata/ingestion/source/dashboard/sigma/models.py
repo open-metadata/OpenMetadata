@@ -12,67 +12,67 @@
 PowerBI Models
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
 
 class AuthToken(BaseModel):
     access_token: str
-    refresh_token: Optional[str] = None
+    refresh_token: Optional[str] = None  # noqa: UP045
     token_type: str
-    expires_in: Optional[int] = 0
+    expires_in: Optional[int] = 0  # noqa: UP045
 
 
 class Workbook(BaseModel):
-    workbookId: str
-    name: Optional[str] = None
-    ownerId: Optional[str] = None
+    workbookId: str  # noqa: N815
+    name: Optional[str] = None  # noqa: UP045
+    ownerId: Optional[str] = None  # noqa: N815, UP045
 
 
 class WorkbookDetails(BaseModel):
-    workbookId: str
-    name: Optional[str] = None
-    createdAt: str
+    workbookId: str  # noqa: N815
+    name: Optional[str] = None  # noqa: UP045
+    createdAt: str  # noqa: N815
     url: str
-    path: Optional[str] = None
-    ownerId: Optional[str] = None
-    isArchived: bool
-    description: Optional[str] = None
+    path: Optional[str] = None  # noqa: UP045
+    ownerId: Optional[str] = None  # noqa: N815, UP045
+    isArchived: bool  # noqa: N815
+    description: Optional[str] = None  # noqa: UP045
 
 
 class WorkBookResponseDetails(BaseModel):
-    entries: Optional[List[Workbook]] = []
+    entries: Optional[List[Workbook]] = []  # noqa: UP006, UP045
     total: int
-    nextPage: Optional[str] = None
+    nextPage: Optional[str] = None  # noqa: N815, UP045
 
 
 class OwnerDetails(BaseModel):
-    organizationId: str
+    organizationId: str  # noqa: N815
     email: str
 
 
 class WorkBookPage(BaseModel):
-    pageId: str
+    pageId: str  # noqa: N815
 
 
 class WorkBookPageResponse(BaseModel):
-    entries: Optional[List[WorkBookPage]] = []
+    entries: Optional[List[WorkBookPage]] = []  # noqa: UP006, UP045
     total: int
-    nextPage: Optional[str] = None
+    nextPage: Optional[str] = None  # noqa: N815, UP045
 
 
 class Elements(BaseModel):
-    elementId: str
-    name: Optional[str] = None
-    vizualizationType: Optional[str] = None
-    columns: Optional[List[str]] = []
+    elementId: str  # noqa: N815
+    name: Optional[str] = None  # noqa: UP045
+    vizualizationType: Optional[str] = None  # noqa: N815, UP045
+    columns: Optional[List[str]] = []  # noqa: UP006, UP045
 
 
 class ElementsResponse(BaseModel):
-    entries: Optional[List[Elements]] = []
+    entries: Optional[List[Elements]] = []  # noqa: UP006, UP045
     total: int
-    nextPage: Optional[str] = None
+    nextPage: Optional[str] = None  # noqa: N815, UP045
 
 
 class EdgeSource(BaseModel):
@@ -84,7 +84,7 @@ class EdgeSource(BaseModel):
         if self.source:
             if "inode-" in self.source:
                 return self.source.replace("inode-", "")
-            elif "/" in self.source:
+            elif "/" in self.source:  # noqa: RET505
                 return self.source.split("/")[0]
             else:
                 return self.source
@@ -92,27 +92,27 @@ class EdgeSource(BaseModel):
 
 
 class Dependency(BaseModel):
-    nodeId: str
+    nodeId: str  # noqa: N815
     type: str
-    name: Optional[str]
-    elementId: Optional[str]
+    name: Optional[str]  # noqa: UP045
+    elementId: Optional[str]  # noqa: N815, UP045
 
 
 class EdgeSourceResponse(BaseModel):
-    edges: Optional[List[EdgeSource]] = []
-    dependencies: Optional[dict] = {}
+    edges: Optional[List[EdgeSource]] = []  # noqa: UP006, UP045
+    dependencies: Optional[dict] = {}  # noqa: UP045
 
 
 class NodeDetails(BaseModel):
     id: str
-    name: Optional[str]
+    name: Optional[str]  # noqa: UP045
     node_type: str = Field(alias="type")
-    path: Optional[str] = ""
+    path: Optional[str] = ""  # noqa: UP045
 
     @property
     def node_schema(self):
         """Extract database.schema from path (searches for dotted format like DB.SCHEMA)"""
-        if self.node_type in ["table", "dataset"] and self.path:
+        if self.node_type in ["table", "dataset"] and self.path:  # noqa: SIM102
             if "/" in self.path:
                 parts = self.path.split("/")
                 for part in reversed(parts):
@@ -123,13 +123,13 @@ class NodeDetails(BaseModel):
 
 
 class WorkbookQuery(BaseModel):
-    elementId: str
-    name: Optional[str]
-    sql: Optional[str] = None
-    error: Optional[str] = None
+    elementId: str  # noqa: N815
+    name: Optional[str]  # noqa: UP045
+    sql: Optional[str] = None  # noqa: UP045
+    error: Optional[str] = None  # noqa: UP045
 
 
 class WorkbookQueriesResponse(BaseModel):
-    entries: Optional[List[WorkbookQuery]] = []
+    entries: Optional[List[WorkbookQuery]] = []  # noqa: UP006, UP045
     total: int
-    nextPage: Optional[str] = None
+    nextPage: Optional[str] = None  # noqa: N815, UP045

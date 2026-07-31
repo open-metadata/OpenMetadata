@@ -1,12 +1,12 @@
 from collections import deque
-from typing import List, Union
+from typing import List, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
 
 def assert_equal_pydantic_objects(
-    expected: Union[BaseModel, List[BaseModel]],
-    actual: Union[BaseModel, List[BaseModel]],
+    expected: Union[BaseModel, List[BaseModel]],  # noqa: UP006, UP007
+    actual: Union[BaseModel, List[BaseModel]],  # noqa: UP006, UP007
     ignore_none=True,
 ):
     """Compare 2 pydantic objects recursively and raise an AssertionError if they are not equal along with all
@@ -80,9 +80,9 @@ def assert_equal_pydantic_objects(
                     f"mismatch length at {current_key_prefix}: expected: [{len(expected)}], actual: [{len(actual)}]"
                 )
             else:
-                for i, (expected_item, actual_item) in enumerate(zip(expected, actual)):
+                for i, (expected_item, actual_item) in enumerate(zip(expected, actual)):  # noqa: B905
                     queue.append((expected_item, actual_item, f"{current_key_prefix}[{i}]"))
-        else:
+        else:  # noqa: PLR5501
             if expected != actual:
                 errors.append(f"mismatch at {current_key_prefix}: expected: [{expected}], actual: [{actual}]")
     if errors:

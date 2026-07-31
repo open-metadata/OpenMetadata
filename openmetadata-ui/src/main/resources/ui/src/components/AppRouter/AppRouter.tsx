@@ -17,15 +17,18 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useAppMode } from '../../hooks/useAppMode';
+import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
+import { useResolvedAppMode } from '../../hooks/useResolvedAppMode';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AuthenticatedApp = withSuspenseFallback(
+const AuthenticatedApp = withPageSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
 );
 
-const AuthenticatedRoutes = withSuspenseFallback(
+const AuthenticatedRoutes = withPageSuspenseFallback(
   lazy(() =>
     import('./AuthenticatedRoutes').then((m) => ({
       default: m.AuthenticatedRoutes,
@@ -34,11 +37,11 @@ const AuthenticatedRoutes = withSuspenseFallback(
 );
 
 // Lazy-load infrequently-visited unauthenticated pages
-const AccessNotAllowedPage = withSuspenseFallback(
+const AccessNotAllowedPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/AccessNotAllowedPage/AccessNotAllowedPage'))
 );
 
-const LogoutPage = withSuspenseFallback(
+const LogoutPage = withPageSuspenseFallback(
   lazy(() =>
     import('../../pages/LogoutPage/LogoutPage').then((m) => ({
       default: m.LogoutPage,
@@ -46,15 +49,15 @@ const LogoutPage = withSuspenseFallback(
   )
 );
 
-const PageNotFound = withSuspenseFallback(
+const PageNotFound = withPageSuspenseFallback(
   lazy(() => import('../../pages/PageNotFound/PageNotFound'))
 );
 
-const SamlCallback = withSuspenseFallback(
+const SamlCallback = withPageSuspenseFallback(
   lazy(() => import('../../pages/SamlCallback'))
 );
 
-const SignUpPage = withSuspenseFallback(
+const SignUpPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/SignUp/SignUpPage'))
 );
 
@@ -76,6 +79,11 @@ const AppRouter = () => {
     }))
   );
 
+  const appMode = useAppMode();
+  const ModeRoutes = useAppRoutesRegistry((state) => state.routes[appMode]);
+
+  useResolvedAppMode();
+
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
@@ -89,9 +97,11 @@ const AppRouter = () => {
   }
 
   if (isAuthenticated) {
+    const AuthenticatedRoutesComponent = ModeRoutes ?? AuthenticatedRoutes;
+
     return (
       <AuthenticatedApp>
-        <AuthenticatedRoutes />
+        <AuthenticatedRoutesComponent />
       </AuthenticatedApp>
     );
   }

@@ -15,7 +15,7 @@ Defines the topology for ingesting sources
 import queue
 import threading
 from functools import cache, singledispatchmethod
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Annotated, Any, Dict, Generic, List, Optional, Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -44,7 +44,7 @@ class NodeStage(BaseModel, Generic[T]):
     )
 
     # Required fields to define the yielded entity type and the function processing it
-    type_: Type[T] = Field(..., description="Entity Type. E.g., DatabaseService, Database or Table")
+    type_: Type[T] = Field(..., description="Entity Type. E.g., DatabaseService, Database or Table")  # noqa: UP006
     processor: str = Field(
         ...,
         description="Has the producer results as an argument. Here is where filters happen. It will yield an Entity.",
@@ -60,13 +60,13 @@ class NodeStage(BaseModel, Generic[T]):
         True,
         description="If we want to update existing data from OM. E.g., we don't want to overwrite services.",
     )
-    consumer: Optional[List[str]] = Field(
+    consumer: Optional[List[str]] = Field(  # noqa: UP006, UP045
         None,
         description="Stage dependency from parent nodes. Used to build the FQN of the processed Entity.",
     )
 
     # Context-related flags
-    context: Optional[str] = Field(None, description="Context key storing stage state, if needed")
+    context: Optional[str] = Field(None, description="Context key storing stage state, if needed")  # noqa: UP045
     store_all_in_context: bool = Field(False, description="If we need to store all values being yielded in the context")
     clear_context: bool = Field(
         False,
@@ -75,16 +75,6 @@ class NodeStage(BaseModel, Generic[T]):
     store_fqn: bool = Field(
         False,
         description="If true, store the entity FQN in the context instead of just the name",
-    )
-
-    # Used to compute the fingerprint
-    cache_entities: bool = Field(
-        False,
-        description="Cache all the entities which have use_cache set as True. Used for fingerprint comparison.",
-    )
-    use_cache: bool = Field(
-        False,
-        description="Enable this to get the entity from cached state in the context",
     )
 
 
@@ -104,21 +94,25 @@ class TopologyNode(BaseModel):
         ...,
         description="Method name in the source called to generate the data. Does not accept input parameters",
     )
-    stages: List[NodeStage] = Field(
+    stages: List[NodeStage] = Field(  # noqa: UP006
         ...,
         description=(
             "List of functions to execute - in order - for each element produced by the producer. "
             "Each stage accepts the producer results as an argument"
         ),
     )
-    children: Optional[List[str]] = Field(None, description="Nodes to execute next")
-    post_process: Optional[List[str]] = Field(
-        None, description="Method to be run after the node has been fully processed"
-    )
-    threads: bool = Field(
-        False,
-        description="Flag that defines if a node is open to MultiThreading processing.",
-    )
+    children: Annotated[
+        list[str] | None,
+        Field(description="Nodes to execute next"),
+    ] = None
+    post_process: Annotated[
+        list[str] | None,
+        Field(description="Method to be run after the node has been fully processed"),
+    ] = None
+    threads: Annotated[
+        bool,
+        Field(description="Flag that defines if a node is open to MultiThreading processing."),
+    ] = False
 
 
 class ServiceTopology(BaseModel):
@@ -152,7 +146,10 @@ class TopologyContext(BaseModel):
         """
         nodes = get_topology_nodes(topology)
         ctx_fields = {
-            stage.context: (Optional[stage.type_], None) for node in nodes for stage in node.stages if stage.context
+            stage.context: (Optional[stage.type_], None)  # noqa: UP045
+            for node in nodes
+            for stage in node.stages
+            if stage.context
         }
         return create_model("GeneratedContext", **ctx_fields, __base__=TopologyContext)()
 
@@ -254,12 +251,12 @@ class TopologyContextManager:
         # Due to our code strucutre, the first time the ContextManager is called will be within the MainThread.
         # We can leverage this to guarantee we keep track of the MainThread ID.
         self.main_thread = self.get_current_thread_id()
-        self.contexts: Dict[int, TopologyContext] = {self.main_thread: TopologyContext.create(topology)}
+        self.contexts: Dict[int, TopologyContext] = {self.main_thread: TopologyContext.create(topology)}  # noqa: UP006
 
         # Starts with the Multithreading disabled
         self.threads = 0
 
-    def set_threads(self, threads: Optional[int]):
+    def set_threads(self, threads: Optional[int]):  # noqa: UP045
         self.threads = threads or 0
 
     def get_current_thread_id(self):
@@ -268,7 +265,7 @@ class TopologyContextManager:
     def get_global(self) -> TopologyContext:
         return self.contexts[self.main_thread]
 
-    def get(self, thread_id: Optional[int] = None) -> TopologyContext:
+    def get(self, thread_id: Optional[int] = None) -> TopologyContext:  # noqa: UP045
         """Returns the TopologyContext of a given thread."""
         if thread_id:
             return self.contexts[thread_id]
@@ -277,7 +274,7 @@ class TopologyContextManager:
 
         return self.contexts[thread_id]
 
-    def pop(self, thread_id: Optional[int] = None):
+    def pop(self, thread_id: Optional[int] = None):  # noqa: UP045
         """Cleans the TopologyContext of a given thread in order to lower the Memory Profile."""
         if not thread_id:
             self.contexts.pop(self.get_current_thread_id())
@@ -293,10 +290,27 @@ class TopologyContextManager:
 
 
 class Queue:
-    """Small Queue wrapper"""
+    """Small Queue wrapper.
 
-    def __init__(self):
+    Inter-stage buffer used by `TopologyRunnerMixin`. When the diagnostics
+    subsystem is installed, every put/process call is reported to
+    `metadata.ingestion.diagnostics.collectors.stage_progress` so heartbeats can
+    render queue depth and source-vs-sink throughput. The hook calls are
+    no-ops with a single attribute load when diagnostics is off.
+    """
+
+    def __init__(self, name: str = "topology"):
         self._queue = queue.Queue()
+        self._name = name
+        # Lazy import — keeps the topology module importable even if the
+        # diagnostics package is not on the path (rare, but defensive).
+        try:
+            from metadata.ingestion.diagnostics.collectors import stage_progress  # noqa: PLC0415
+
+            stage_progress.register_queue(name, self)
+            self._stage_progress = stage_progress
+        except Exception:
+            self._stage_progress = None
 
     def has_tasks(self) -> bool:
         """Checks that the Queue is not Empty."""
@@ -307,6 +321,8 @@ class Queue:
         while True:
             try:
                 item = self._queue.get_nowait()
+                if self._stage_progress is not None:
+                    self._stage_progress.record_processed(self._name)
                 yield item
                 self._queue.task_done()
             except queue.Empty:
@@ -315,9 +331,11 @@ class Queue:
     def put(self, item: Any):
         """Puts new item in the Queue."""
         self._queue.put(item)
+        if self._stage_progress is not None:
+            self._stage_progress.record_put(self._name)
 
 
-def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:
+def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:  # noqa: UP006
     """
     Fetch all nodes from a ServiceTopology
     :param topology: ServiceTopology
@@ -336,7 +354,7 @@ def node_has_no_consumers(node: TopologyNode) -> bool:
     return all(consumer is None for consumer in stage_consumers)
 
 
-def get_topology_root(topology: ServiceTopology) -> List[TopologyNode]:
+def get_topology_root(topology: ServiceTopology) -> List[TopologyNode]:  # noqa: UP006
     """
     Fetch the roots from a ServiceTopology.
 
@@ -363,11 +381,28 @@ def get_topology_node(name: str, topology: ServiceTopology) -> TopologyNode:
     return node
 
 
+# Multiplier applied to a node's tree depth so that the stage's position within
+# the node can be encoded in the lower digits. Must stay larger than the maximum
+# number of stages any single TopologyNode declares so that a deeper node always
+# outranks every stage of its parent. The deepest node today has 6 stages.
+HIERARCHY_BASE = 100
+
+# Sentinel returned for entity types that are not part of any topology. Kept well
+# above any real depth produced by HIERARCHY_BASE so unknown types always sort last.
+_UNKNOWN_DEPTH = 10**6
+
+
 def _build_hierarchy_from_topology(
     topology: "ServiceTopology", node_name: str, current_depth: int = 0
-) -> Dict[Type[BaseModel], int]:
+) -> Dict[Type[BaseModel], int]:  # noqa: UP006
     """
     Recursively build entity hierarchy from a topology node.
+
+    The depth encodes both the node's position in the tree and the stage's order
+    within the node (``current_depth * HIERARCHY_BASE + stage_index``). This keeps
+    parents ahead of children while ensuring entities referenced by a later stage
+    (e.g. Chart, DashboardDataModel) sort ahead of the stage that references them
+    (e.g. Dashboard), which the bulk sink relies on for create ordering.
 
     Args:
         topology: ServiceTopology instance
@@ -381,9 +416,11 @@ def _build_hierarchy_from_topology(
     hierarchy = {}
     node = get_topology_node(node_name, topology)
 
-    for stage in node.stages:
-        if stage.type_ not in hierarchy:
-            hierarchy[stage.type_] = current_depth
+    node_base = current_depth * HIERARCHY_BASE
+    for stage_index, stage in enumerate(node.stages):
+        depth = node_base + stage_index
+        if stage.type_ not in hierarchy or depth < hierarchy[stage.type_]:
+            hierarchy[stage.type_] = depth
 
     if node.children:
         for child_name in node.children:
@@ -396,7 +433,7 @@ def _build_hierarchy_from_topology(
 
 
 @cache
-def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:
+def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:  # noqa: UP006
     """
     Get the complete entity hierarchy for all service topologies.
 
@@ -405,35 +442,37 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:
 
     Returns:
         Dictionary mapping entity types to their depth in the hierarchy
-        (lower number = higher in hierarchy, e.g., Service=0, Database=1, Table=2)
+        (lower number = higher in hierarchy / created earlier). Depth encodes the
+        node's tree level scaled by HIERARCHY_BASE plus the stage index within the
+        node, e.g. DatabaseService=0, Database=101, DatabaseSchema=201, Table=301.
 
     Example:
         >>> hierarchy = get_entity_hierarchy()
         >>> hierarchy[DatabaseService]  # Returns 0
-        >>> hierarchy[Database]  # Returns 1
-        >>> hierarchy[Table]  # Returns 3
+        >>> hierarchy[Database]  # Returns 101
+        >>> hierarchy[Table]  # Returns 301
     """
-    from metadata.ingestion.source.api.api_service import ApiServiceTopology
-    from metadata.ingestion.source.dashboard.dashboard_service import (
+    from metadata.ingestion.source.api.api_service import ApiServiceTopology  # noqa: PLC0415
+    from metadata.ingestion.source.dashboard.dashboard_service import (  # noqa: PLC0415
         DashboardServiceTopology,
     )
-    from metadata.ingestion.source.database.database_service import (
+    from metadata.ingestion.source.database.database_service import (  # noqa: PLC0415
         DatabaseServiceTopology,
     )
-    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology
-    from metadata.ingestion.source.drive.drive_service import DriveServiceTopology
-    from metadata.ingestion.source.messaging.messaging_service import (
+    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology  # noqa: PLC0415
+    from metadata.ingestion.source.drive.drive_service import DriveServiceTopology  # noqa: PLC0415
+    from metadata.ingestion.source.messaging.messaging_service import (  # noqa: PLC0415
         MessagingServiceTopology,
     )
-    from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceTopology
-    from metadata.ingestion.source.pipeline.pipeline_service import (
+    from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceTopology  # noqa: PLC0415
+    from metadata.ingestion.source.pipeline.pipeline_service import (  # noqa: PLC0415
         PipelineServiceTopology,
     )
-    from metadata.ingestion.source.search.search_service import SearchServiceTopology
-    from metadata.ingestion.source.security.security_service import (
+    from metadata.ingestion.source.search.search_service import SearchServiceTopology  # noqa: PLC0415
+    from metadata.ingestion.source.security.security_service import (  # noqa: PLC0415
         SecurityServiceTopology,
     )
-    from metadata.ingestion.source.storage.storage_service import StorageServiceTopology
+    from metadata.ingestion.source.storage.storage_service import StorageServiceTopology  # noqa: PLC0415
 
     all_topologies = [
         DatabaseServiceTopology(),
@@ -454,7 +493,7 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:
     for topology in all_topologies:
         root_nodes = get_topology_root(topology)
         for root_node in root_nodes:
-            root_name = [key for key, value in topology.__dict__.items() if value == root_node][0]
+            root_name = [key for key, value in topology.__dict__.items() if value == root_node][0]  # noqa: RUF015
             topology_hierarchy = _build_hierarchy_from_topology(topology, root_name, 0)
 
             for entity_type, depth in topology_hierarchy.items():
@@ -464,7 +503,7 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:
     return hierarchy
 
 
-def get_entity_hierarchy_depth(entity_type: Type[BaseModel]) -> int:
+def get_entity_hierarchy_depth(entity_type: Type[BaseModel]) -> int:  # noqa: UP006
     """
     Get the hierarchy depth for a specific entity type.
 
@@ -472,7 +511,7 @@ def get_entity_hierarchy_depth(entity_type: Type[BaseModel]) -> int:
         entity_type: The entity type to get depth for
 
     Returns:
-        Hierarchy depth (lower = higher in hierarchy), or 999 if not found
+        Hierarchy depth (lower = higher in hierarchy), or _UNKNOWN_DEPTH if not found
     """
     hierarchy = get_entity_hierarchy()
-    return hierarchy.get(entity_type, 999)
+    return hierarchy.get(entity_type, _UNKNOWN_DEPTH)

@@ -12,7 +12,7 @@
  */
 
 import { JSON_TAB_SIZE } from '../constants/constants';
-import { getJSONFromString } from './StringsUtils';
+import { getJSONFromString } from './StringUtils';
 
 export const getSchemaEditorValue = (
   value: string,

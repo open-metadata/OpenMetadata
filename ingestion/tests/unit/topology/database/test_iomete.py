@@ -22,7 +22,9 @@ from metadata.generated.schema.entity.services.connections.database.iometeConnec
     IometeConnection,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.source.database.iomete.connection import get_connection
+from metadata.ingestion.source.database.iomete.connection import (
+    IometeConnection as IometeConnectionHandler,
+)
 from metadata.ingestion.source.database.iomete.metadata import IometeSource
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
@@ -68,14 +70,14 @@ def minimal_connection():
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_uses_flightsql_dialect(mock_engine, iomete_connection):
-    get_connection(iomete_connection)
+    _ = IometeConnectionHandler(iomete_connection).client
     url = mock_engine.call_args[0][0]
     assert url.drivername == "iomete"
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_parses_host_and_port(mock_engine, iomete_connection):
-    get_connection(iomete_connection)
+    _ = IometeConnectionHandler(iomete_connection).client
     url = mock_engine.call_args[0][0]
     assert url.host == "dev.iomete.cloud"
     assert url.port == 443
@@ -83,7 +85,7 @@ def test_get_connection_parses_host_and_port(mock_engine, iomete_connection):
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_defaults_to_port_443_when_no_port(mock_engine, iomete_connection_no_port):
-    get_connection(iomete_connection_no_port)
+    _ = IometeConnectionHandler(iomete_connection_no_port).client
     url = mock_engine.call_args[0][0]
     assert url.host == "dev.iomete.cloud"
     assert url.port == 443
@@ -91,7 +93,7 @@ def test_get_connection_defaults_to_port_443_when_no_port(mock_engine, iomete_co
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_passes_credentials(mock_engine, iomete_connection):
-    get_connection(iomete_connection)
+    _ = IometeConnectionHandler(iomete_connection).client
     url = mock_engine.call_args[0][0]
     assert url.username == "alice"
     assert url.password == "secret"
@@ -99,14 +101,14 @@ def test_get_connection_passes_credentials(mock_engine, iomete_connection):
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_passes_cluster_query_param(mock_engine, iomete_connection):
-    get_connection(iomete_connection)
+    _ = IometeConnectionHandler(iomete_connection).client
     url = mock_engine.call_args[0][0]
     assert url.query["cluster"] == "dwh"
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_passes_data_plane_query_param(mock_engine, iomete_connection):
-    get_connection(iomete_connection)
+    _ = IometeConnectionHandler(iomete_connection).client
     url = mock_engine.call_args[0][0]
     assert url.query["data_plane"] == "spark-resources"
 
@@ -114,14 +116,14 @@ def test_get_connection_passes_data_plane_query_param(mock_engine, iomete_connec
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_passes_catalog_as_database(mock_engine, minimal_connection):
     minimal_connection.catalog = "spark_catalog"
-    get_connection(minimal_connection)
+    _ = IometeConnectionHandler(minimal_connection).client
     url = mock_engine.call_args[0][0]
     assert url.database == "spark_catalog"
 
 
 @patch("metadata.ingestion.source.database.iomete.connection.sqlalchemy.create_engine")
 def test_get_connection_omits_database_when_catalog_not_set(mock_engine, minimal_connection):
-    get_connection(minimal_connection)
+    _ = IometeConnectionHandler(minimal_connection).client
     url = mock_engine.call_args[0][0]
     assert url.database is None
 

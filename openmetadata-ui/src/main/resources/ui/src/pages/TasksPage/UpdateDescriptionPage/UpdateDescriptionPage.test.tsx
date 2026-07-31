@@ -68,15 +68,20 @@ const mockTableData = {
     },
   ],
 };
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
+jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
       setEntityData(mockTableData);
     }),
-  fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
+}));
+jest.mock('../../../utils/TaskAssigneeUtils', () => ({
+  fetchOptions: jest.fn(),
+}));
+jest.mock('../../../utils/TaskFieldUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskFieldUtils'),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
   getTaskFieldColumns: jest
     .fn()
@@ -172,8 +177,7 @@ describe('UpdateDescriptionPage', () => {
       category: 'MetadataUpdate',
       type: 'DescriptionUpdate',
       priority: 'Medium',
-      about: 'sample_data.ecommerce_db.shopify.dim_location',
-      aboutType: 'table',
+      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
         newDescription:
@@ -187,7 +191,7 @@ describe('UpdateDescriptionPage', () => {
 
   it('should render description editor when current description is empty', async () => {
     const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TasksUtils'
+      '../../../utils/TaskFieldUtils'
     );
     getColumnObjectByPath.mockReturnValueOnce({
       description: '',

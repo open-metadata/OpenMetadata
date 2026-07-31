@@ -25,7 +25,7 @@ import {
   formatDateTime,
   formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
-import { getColumnSorter } from '../../utils/EntityUtils';
+import { getColumnSorter } from '../../utils/EntitySortUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import Table from '../common/Table/Table';

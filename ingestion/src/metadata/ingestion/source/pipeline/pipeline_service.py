@@ -15,10 +15,10 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set  # noqa: UP035
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -54,7 +54,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
@@ -80,7 +86,7 @@ class TablePipelineObservability(BaseModel):
     """
 
     table: Table
-    observability_data: List[PipelineObservability]
+    observability_data: List[PipelineObservability]  # noqa: UP006
 
 
 class PipelineServiceTopology(ServiceTopology):
@@ -100,7 +106,6 @@ class PipelineServiceTopology(ServiceTopology):
                 processor="yield_create_request_pipeline_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["pipeline"],
@@ -120,7 +125,6 @@ class PipelineServiceTopology(ServiceTopology):
                 context="pipeline",
                 processor="yield_pipeline",
                 consumer=["pipeline_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=OMetaPipelineStatus,
@@ -164,7 +168,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = PipelineServiceTopology()
     context = TopologyContextManager(topology)
-    pipeline_source_state: Set = set()
+    pipeline_source_state: Set = set()  # noqa: RUF012, UP006
 
     @retry_with_docker_host()
     def __init__(
@@ -179,11 +183,13 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = self.config.sourceConfig.config
 
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
         # Flag the connection for the test connection
         self.connection_obj = self.connection
         self.client = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def name(self) -> str:
@@ -198,7 +204,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         """Get lineage between pipeline and data sources"""
 
     @abstractmethod
-    def get_pipelines_list(self) -> Optional[List[Any]]:
+    def get_pipelines_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """Get List of all pipelines"""
 
     @abstractmethod
@@ -209,7 +215,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_pipeline_status(self, pipeline_details: Any) -> Iterable[Either[OMetaPipelineStatus]]:
         """Get Pipeline Status"""
 
-    def get_pipeline_state(self, pipeline_details: Any) -> Optional[PipelineState]:
+    def get_pipeline_state(self, pipeline_details: Any) -> Optional[PipelineState]:  # noqa: UP045
         """Get Pipeline State"""
 
     def yield_pipeline_usage(self, pipeline_details: Any) -> Iterable[Either[PipelineUsage]]:
@@ -239,9 +245,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 current_task_usage = sum(
                     1
                     for task in pipeline.tasks
-                    if task.startDate
+                    if task.startDate  # noqa: RUF021
                     and task.startDate.startswith(self.today)
-                    or task.endDate
+                    or task.endDate  # noqa: RUF021
                     and task.endDate.startswith(self.today)
                 )
                 if not current_task_usage:
@@ -319,7 +325,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 else:
                     yield lineage
 
-    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
+    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:  # noqa: UP045
         """
         Based on partial schema and table names look for matching table object in open metadata.
         :param table_details: TableDetails object containing table name, schema, database information
@@ -345,6 +351,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """Method to implement any required logic after the ingestion process is completed"""
+        if self._connection is not None:
+            self._connection.close()
         self.metadata.compute_percentile(Pipeline, self.today)
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -352,6 +360,13 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_create_request_pipeline_service(self, config: WorkflowSource):
         yield Either(right=self.metadata.get_create_service_from_source(entity=PipelineService, config=config))
+
+    def has_pipeline_filter(self) -> bool:
+        """Whether a ``pipelineFilterPattern`` that actually drops pipelines is
+        configured. An empty pattern object filters nothing, so a progress
+        pre-count stays accurate only while this is ``False``."""
+        pattern = self.source_config.pipelineFilterPattern
+        return bool(pattern and (pattern.includes or pattern.excludes))
 
     def get_pipeline(self) -> Any:
         for pipeline_detail in self.get_pipelines_list():
@@ -369,7 +384,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_table_pipeline_observability(
         self, pipeline_details: Any
-    ) -> Iterable[Dict[str, List[PipelineObservability]]]:
+    ) -> Iterable[Dict[str, List[PipelineObservability]]]:  # noqa: UP006
         """
         Method to extract pipeline observability data grouped by table FQN.
         This method should be implemented by each pipeline service.
@@ -399,7 +414,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             )
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
         """Mark the pipeline record as scanned and update the pipeline_source_state"""
@@ -419,11 +437,11 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Pipeline,
                 entity_source_state=self.pipeline_source_state,
-                mark_deleted_entity=self.source_config.markDeletedPipelines,
+                recursive=self.source_config.markDeletedPipelines,
                 params={"service": self.context.get().pipeline_service},
             )
 
-    def get_db_service_names(self) -> List[str]:
+    def get_db_service_names(self) -> List[str]:  # noqa: UP006
         """
         Get the list of db service names
         """
@@ -433,7 +451,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
-    def get_storage_service_names(self) -> List[str]:
+    def get_storage_service_names(self) -> List[str]:  # noqa: UP006
         """
         Get the list of storage service names
         """
@@ -443,7 +461,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             else []
         )
 
-    def get_messaging_service_names(self) -> List[str]:
+    def get_messaging_service_names(self) -> List[str]:  # noqa: UP006
         """
         Get the list of messaging service names
         """

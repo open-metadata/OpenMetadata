@@ -38,7 +38,7 @@ from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSo
 from metadata.ingestion.source.dashboard.quicksight.models import DashboardDetail
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -149,7 +149,7 @@ class QuickSightUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_quicksight_config)
@@ -167,7 +167,7 @@ class QuickSightUnitTest(TestCase):
         results = self.quicksight.yield_dashboard(DashboardDetail(**MOCK_DASHBOARD_DETAILS))
         for result in results:
             if isinstance(result, Either) and result.right:
-                dashboard_list.append(result.right)
+                dashboard_list.append(result.right)  # noqa: PERF401
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     @pytest.mark.order(2)
@@ -182,8 +182,8 @@ class QuickSightUnitTest(TestCase):
         chart_list = []
         for result in results:
             if isinstance(result, CreateChartRequest):
-                chart_list.append(result)
-        for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):
+                chart_list.append(result)  # noqa: PERF401
+        for _, (expected, original) in enumerate(zip(EXPECTED_DASHBOARDS, chart_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     @pytest.mark.order(4)

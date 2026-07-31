@@ -12,7 +12,7 @@
 Superset source models.
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -20,152 +20,152 @@ from pydantic import BaseModel, Field
 class SupersetDashboard(BaseModel):
     """Superset dashboard Model"""
 
-    description: Optional[str] = None
-    id: Optional[int] = None
+    description: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
 
 
 class SupersetDashboardList(BaseModel):
-    dashboards: Optional[List[SupersetDashboard]] = []
+    dashboards: Optional[List[SupersetDashboard]] = []  # noqa: UP006, UP045
 
 
 class DashOwner(BaseModel):
-    first_name: Optional[str] = None
-    id: Optional[int] = None
-    last_name: Optional[str] = None
-    username: Optional[str] = None
-    email: Optional[str] = None
+    first_name: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
+    last_name: Optional[str] = None  # noqa: UP045
+    username: Optional[str] = None  # noqa: UP045
+    email: Optional[str] = None  # noqa: UP045
 
 
 class DashboardResult(BaseModel):
-    dashboard_title: Optional[str] = None
-    url: Optional[str] = None
-    owners: Optional[List[DashOwner]] = []
-    position_json: Optional[str] = None
-    id: Optional[int] = None
-    email: Optional[str] = None
-    published: Optional[bool] = None
+    dashboard_title: Optional[str] = None  # noqa: UP045
+    url: Optional[str] = None  # noqa: UP045
+    owners: Optional[List[DashOwner]] = []  # noqa: UP006, UP045
+    position_json: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
+    email: Optional[str] = None  # noqa: UP045
+    published: Optional[bool] = None  # noqa: UP045
 
 
 class SupersetDashboardCount(BaseModel):
-    count: Optional[int] = None
-    ids: Optional[List[int]] = []
-    dashboard_title: Optional[str] = None
-    result: Optional[List[DashboardResult]] = []
+    count: Optional[int] = None  # noqa: UP045
+    ids: Optional[List[int]] = []  # noqa: UP006, UP045
+    dashboard_title: Optional[str] = None  # noqa: UP045
+    result: Optional[List[DashboardResult]] = []  # noqa: UP006, UP045
 
 
 class FetchedDashboard(BaseModel):
     """Model for individual dashboard fetch response"""
 
-    id: Optional[int] = None
-    result: Optional[DashboardResult] = DashboardResult()
+    id: Optional[int] = None  # noqa: UP045
+    result: Optional[DashboardResult] = DashboardResult()  # noqa: UP045
 
 
 # Chart
 class ChartTable(BaseModel):
-    default_endpoint: Optional[str] = None
-    table_name: Optional[str] = None
+    default_endpoint: Optional[str] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
 
 
 class ChartResult(BaseModel):
-    datasource_id: Optional[int] = None
-    datasource_url: Optional[str] = None
-    description: Optional[str] = None
-    id: Optional[int] = None
-    table: Optional[ChartTable] = ChartTable()
-    url: Optional[str] = None
-    slice_name: Optional[str] = None
-    viz_type: Optional[str] = None
+    datasource_id: Optional[int] = None  # noqa: UP045
+    datasource_url: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
+    table: Optional[ChartTable] = ChartTable()  # noqa: UP045
+    url: Optional[str] = None  # noqa: UP045
+    slice_name: Optional[str] = None  # noqa: UP045
+    viz_type: Optional[str] = None  # noqa: UP045
 
 
 class SupersetChart(BaseModel):
-    count: Optional[int] = None
-    ids: Optional[List[int]] = []
-    result: Optional[List[ChartResult]] = []
+    count: Optional[int] = None  # noqa: UP045
+    ids: Optional[List[int]] = []  # noqa: UP006, UP045
+    result: Optional[List[ChartResult]] = []  # noqa: UP006, UP045
 
 
 # DataSource
 class DSColumns(BaseModel):
-    column_name: Optional[str] = None
-    id: Optional[int] = None
-    type: Optional[str] = None
-    description: Optional[str] = None
+    column_name: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
+    type: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
 
 
 class DSDatabase(BaseModel):
-    database_name: Optional[str] = None
-    id: Optional[int] = None
+    database_name: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
 
 
 class DataSourceResult(BaseModel):
-    database: Optional[DSDatabase] = DSDatabase()
-    datasource_type: Optional[str] = None
-    description: Optional[str] = None
-    extra: Optional[str] = None
-    id: Optional[int] = None
-    owners: Optional[list] = []
-    table_schema: Optional[str] = Field(None, alias="schema")
-    sql: Optional[str] = None
-    table_name: Optional[str] = None
-    template_params: Optional[str] = None
-    url: Optional[str] = None
-    columns: Optional[List[DSColumns]] = []
+    database: Optional[DSDatabase] = DSDatabase()  # noqa: UP045
+    datasource_type: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    extra: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
+    owners: Optional[list] = []  # noqa: UP045
+    table_schema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
+    sql: Optional[str] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
+    template_params: Optional[str] = None  # noqa: UP045
+    url: Optional[str] = None  # noqa: UP045
+    columns: Optional[List[DSColumns]] = []  # noqa: UP006, UP045
 
 
 class SupersetDatasource(BaseModel):
-    id: Optional[int] = None
-    result: Optional[DataSourceResult] = DataSourceResult()
-    show_title: Optional[str] = None
+    id: Optional[int] = None  # noqa: UP045
+    result: Optional[DataSourceResult] = DataSourceResult()  # noqa: UP045
+    show_title: Optional[str] = None  # noqa: UP045
 
 
 # Database
 
 
 class DbParameter(BaseModel):
-    database: Optional[str] = None
-    host: Optional[str] = None
-    password: Optional[str] = None
-    port: Optional[int] = None
-    username: Optional[str] = None
+    database: Optional[str] = None  # noqa: UP045
+    host: Optional[str] = None  # noqa: UP045
+    password: Optional[str] = None  # noqa: UP045
+    port: Optional[int] = None  # noqa: UP045
+    username: Optional[str] = None  # noqa: UP045
 
 
 class DatabaseResult(BaseModel):
-    database_name: Optional[str] = None
-    id: Optional[int] = None
-    parameters: Optional[DbParameter] = DbParameter()
+    database_name: Optional[str] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
+    parameters: Optional[DbParameter] = DbParameter()  # noqa: UP045
 
 
 class ListDatabaseResult(BaseModel):
-    count: Optional[int] = None
-    id: Optional[int] = None
-    result: Optional[DatabaseResult] = DatabaseResult()
+    count: Optional[int] = None  # noqa: UP045
+    id: Optional[int] = None  # noqa: UP045
+    result: Optional[DatabaseResult] = DatabaseResult()  # noqa: UP045
 
 
 class FetchDashboard(BaseModel):
-    id: Optional[int] = None
-    dashboard_title: Optional[str] = None
-    position_json: Optional[str] = None
-    published: Optional[bool] = None
-    email: Optional[str] = None
+    id: Optional[int] = None  # noqa: UP045
+    dashboard_title: Optional[str] = None  # noqa: UP045
+    position_json: Optional[str] = None  # noqa: UP045
+    published: Optional[bool] = None  # noqa: UP045
+    email: Optional[str] = None  # noqa: UP045
 
 
 class FetchChart(BaseModel):
-    id: Optional[int] = None
-    slice_name: Optional[str] = None
-    description: Optional[str] = None
-    table_id: Optional[int] = None
-    table_name: Optional[str] = None
-    table_schema: Optional[str] = Field(None, alias="schema")
-    database_name: Optional[str] = None
-    sqlalchemy_uri: Optional[str] = None
-    viz_type: Optional[str] = None
-    datasource_id: Optional[int] = None
-    sql: Optional[str] = None
+    id: Optional[int] = None  # noqa: UP045
+    slice_name: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    table_id: Optional[int] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
+    table_schema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
+    database_name: Optional[str] = None  # noqa: UP045
+    sqlalchemy_uri: Optional[str] = None  # noqa: UP045
+    viz_type: Optional[str] = None  # noqa: UP045
+    datasource_id: Optional[int] = None  # noqa: UP045
+    sql: Optional[str] = None  # noqa: UP045
 
 
 class FetchColumn(BaseModel):
-    id: Optional[int] = None
-    type: Optional[str] = None
-    column_name: Optional[str] = None
-    table_id: Optional[int] = None
-    table_name: Optional[str] = None
-    description: Optional[str] = None
+    id: Optional[int] = None  # noqa: UP045
+    type: Optional[str] = None  # noqa: UP045
+    column_name: Optional[str] = None  # noqa: UP045
+    table_id: Optional[int] = None  # noqa: UP045
+    table_name: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045

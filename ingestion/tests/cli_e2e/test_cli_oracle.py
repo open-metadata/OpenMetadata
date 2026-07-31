@@ -13,15 +13,15 @@
 Oracle E2E tests
 """
 
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
 from metadata.ingestion.api.status import Status
 
-from .base.e2e_types import E2EType
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .base.e2e_types import E2EType  # noqa: TID252
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -46,7 +46,7 @@ class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         CREATE OR REPLACE VIEW admin.admin_emp_view AS SELECT * FROM admin.admin_emp
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         """
         INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo) WITH names AS (
 SELECT 1, 'John Doe', 12356789, 'Manager', 121, 5200.0, 5000.0, 'Amazing', 'Active', EMPTY_BLOB() FROM dual UNION ALL
@@ -72,13 +72,13 @@ SELECT * from names
     """
 
     def create_table_and_view(self) -> None:
-        try:
+        try:  # noqa: SIM105
             SQACommonMethods.create_table_and_view(self)
         except Exception:
             pass
 
     def delete_table_and_view(self) -> None:
-        try:
+        try:  # noqa: SIM105
             SQACommonMethods.delete_table_and_view(self)
         except Exception:
             pass
@@ -117,7 +117,7 @@ SELECT * from names
         return "e2e_oracle.default.admin.ADMIN_EMP"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         # Oracle stores unquoted identifiers in uppercase in the DB, but
         # OpenMetadata normalises them to lowercase when ingested. Use a
         # case-insensitive regex so the pattern works for both the
@@ -126,11 +126,11 @@ SELECT * from names
         return ["(?i)^admin$"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return ["ADMIN_EMP"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return ["customers"]
 
     @staticmethod

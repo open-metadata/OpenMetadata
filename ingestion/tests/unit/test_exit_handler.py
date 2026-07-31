@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 operators_path = Path(__file__).parent.parent.parent / "operators" / "docker"
 sys.path.insert(0, str(operators_path))
 
-from exit_handler import (
+from exit_handler import (  # noqa: E402
     FailureDiagnostics,
     create_pod_diagnostics,
     find_main_pod,

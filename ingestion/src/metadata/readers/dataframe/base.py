@@ -39,13 +39,13 @@ MAX_FILE_SIZE_FOR_PREVIEW = 50 * 1024 * 1024  # 50MB
 logger = ingestion_logger()
 
 
-class FileFormatException(Exception):
+class FileFormatException(Exception):  # noqa: N818
     def __init__(self, config_source: Any, file_name: str) -> None:
         message = f"Missing implementation for {config_source.__class__.__name__} for {file_name}"
         super().__init__(message)
 
 
-class DataFrameReadException(Exception):
+class DataFrameReadException(Exception):  # noqa: N818
     """
     To be raised by any errors with the read calls
     """
@@ -67,8 +67,8 @@ class DataFrameReader(ABC):
     def __init__(
         self,
         config_source: ConfigSource,
-        client: Optional[Any],
-        session: Optional[Any] = None,
+        client: Optional[Any],  # noqa: UP045
+        session: Optional[Any] = None,  # noqa: UP045
     ):
         self.config_source = config_source
         self.client = client
@@ -76,7 +76,7 @@ class DataFrameReader(ABC):
 
         self.reader = get_reader(config_source=config_source, client=client)
 
-    def _get_file_size_mb(self, key: str, bucket_name: str, file_size: Optional[int] = None) -> float:
+    def _get_file_size_mb(self, key: str, bucket_name: str, file_size: Optional[int] = None) -> float:  # noqa: UP045
         """
         Get file size in MB. Returns 0 if unable to determine.
         If file_size (bytes) is provided from listing metadata, uses that
@@ -89,7 +89,7 @@ class DataFrameReader(ABC):
                 response = self.client.head_object(Bucket=bucket_name, Key=key)
                 return response.get("ContentLength", 0) / (1024 * 1024)
 
-            elif isinstance(self.config_source, GCSConfig):
+            elif isinstance(self.config_source, GCSConfig):  # noqa: RET505
                 bucket = self.client.get_bucket(bucket_name)
                 blob = bucket.get_blob(key)
                 return (blob.size or 0) / (1024 * 1024) if blob else 0
@@ -100,9 +100,9 @@ class DataFrameReader(ABC):
                 return (props.size or 0) / (1024 * 1024)
 
             elif isinstance(self.config_source, LocalConfig):
-                import os
+                import os  # noqa: PLC0415
 
-                return os.path.getsize(key) / (1024 * 1024)
+                return os.path.getsize(key) / (1024 * 1024)  # noqa: PTH202
 
         except Exception as exc:
             logger.debug(f"Could not determine file size for {key}: {exc}")
@@ -122,7 +122,7 @@ class DataFrameReader(ABC):
         try:
             return self._read(key=key, bucket_name=bucket_name, **kwargs)
         except Exception as err:
-            raise DataFrameReadException(f"Error reading dataframe due to [{err}]")
+            raise DataFrameReadException(f"Error reading dataframe due to [{err}]")  # noqa: B904
 
     def read_first_chunk(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
         """
@@ -152,4 +152,4 @@ class DataFrameReader(ABC):
                 raw_data=wrapper.raw_data,
             )
         except Exception as err:
-            raise DataFrameReadException(f"Error reading first chunk due to [{err}]")
+            raise DataFrameReadException(f"Error reading first chunk due to [{err}]")  # noqa: B904

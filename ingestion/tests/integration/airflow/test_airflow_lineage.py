@@ -85,7 +85,7 @@ def get_airflow_headers() -> dict:
     }
 
 
-def get_task_status_type_by_name(pipeline: Pipeline, name: str) -> Optional[StatusType]:
+def get_task_status_type_by_name(pipeline: Pipeline, name: str) -> Optional[StatusType]:  # noqa: UP045
     """
     Given a pipeline, get its status by name
     """
@@ -252,7 +252,7 @@ class AirflowLineageTest(TestCase):
             )
             dag_run_data = res.json()
             state = dag_run_data.get("state")
-            print(f"Try {tries}/{max_tries}: DAG state = {state}")
+            print(f"Try {tries}/{max_tries}: DAG state = {state}")  # noqa: T201
 
         if state not in ("success", "failed"):
             raise RuntimeError(f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time. Last state: {state}")
@@ -271,7 +271,7 @@ class AirflowLineageTest(TestCase):
         )
         self.assertIsNotNone(pipeline)
 
-        expected_task_names = set((task.name for task in pipeline.tasks))
+        expected_task_names = set((task.name for task in pipeline.tasks))  # noqa: C401, UP034
         self.assertEqual(expected_task_names, {"print_date", "sleep", "templated", "lineage_op"})
 
         self.assertEqual(pipeline.description.root, "A simple tutorial DAG")
@@ -297,7 +297,7 @@ class AirflowLineageTest(TestCase):
                 entity=Table,
                 fqn=inlet_table,
             )
-            node_names = set((node["name"] for node in lineage.get("nodes") or []))
+            node_names = set((node["name"] for node in lineage.get("nodes") or []))  # noqa: C401, UP034
             self.assertEqual(node_names, {"lineage-test-outlet"})
             self.assertEqual(len(lineage.get("downstreamEdges")), 1)
             self.assertEqual(

@@ -27,12 +27,16 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_OWNERS_ID = "owners.id";
   private static final String FIELD_CREATED_BY = "createdBy";
   private static final String FIELD_DOMAINS_FQN = "domains.fullyQualifiedName";
+  private static final String FIELD_DATA_PRODUCTS_FQN = "dataProducts.fullyQualifiedName";
   private static final String FIELD_SERVICE_NAME = "service.name";
   private static final String FIELD_TEST_CASE_STATUS = "testCaseResult.testCaseStatus";
   private static final String FIELD_TEST_PLATFORMS = "testPlatforms";
   private static final String FIELD_FOLLOWERS_KEYWORD = "followers.keyword";
   private static final String FIELD_TEST_STATUS = "testCaseStatus";
   private static final String FIELD_BASIC = "basic";
+  private static final String FIELD_PINNED = "pinned";
+  private static final String FIELD_PRIMARY_ENTITY_ID = "primaryEntity.id";
+  private static final String FIELD_RELATED_ENTITIES_ID = "relatedEntities.id";
 
   @Override
   public String getCondition(String entityType) {
@@ -62,6 +66,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     conditions.add(getCreatedByCondition());
 
     if (entityType != null) {
+      conditions.add(entityType.equals(Entity.CONTEXT_MEMORY) ? getContextMemoryCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
       conditions.add(
@@ -169,6 +174,32 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return "";
   }
 
+  private String getContextMemoryCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+    String pinned = getQueryParam("pinned");
+    if (!nullOrEmpty(pinned)) {
+      conditions.add(String.format("{\"term\": {\"%s\": %s}}", FIELD_PINNED, pinned));
+    }
+
+    String assets = getQueryParam("assets");
+    if (!nullOrEmpty(assets)) {
+      String assetIds =
+          Arrays.stream(assets.split(","))
+              .map(String::trim)
+              .filter(id -> !id.isEmpty())
+              .map(this::escapeDoubleQuotes)
+              .collect(Collectors.joining("\", \"", "\"", "\""));
+      if (!assetIds.isEmpty()) {
+        conditions.add(
+            String.format(
+                "{\"bool\":{\"should\":[{\"terms\":{\"%s\":[%s]}},{\"nested\":{\"path\":\"relatedEntities\",\"query\":{\"terms\":{\"%s\":[%s]}},\"ignore_unmapped\":true}}]}}",
+                FIELD_PRIMARY_ENTITY_ID, assetIds, FIELD_RELATED_ENTITIES_ID, assetIds));
+      }
+    }
+
+    return addCondition(conditions);
+  }
+
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {
     String queryPart = buildQueryPart(conditionFilter);
     String q = queryParams.get("q");
@@ -217,6 +248,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String tier = getQueryParam("tier");
     String serviceName = getQueryParam("serviceName");
     String dataQualityDimension = getQueryParam("dataQualityDimension");
+    String dataProductFqn = getQueryParam("dataProductFqn");
     String followedBy = getQueryParam("followedBy");
     String columnName = getQueryParam("columnName");
 
@@ -276,6 +308,13 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (dataQualityDimension != null)
       conditions.add(
           getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
+
+    if (dataProductFqn != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"%s\": \"%s\"}}",
+              FIELD_DATA_PRODUCTS_FQN, escapeDoubleQuotes(dataProductFqn)));
+    }
 
     if (followedBy != null) {
       conditions.add(

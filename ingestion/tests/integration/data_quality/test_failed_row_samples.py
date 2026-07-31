@@ -5,7 +5,7 @@ Runs data quality tests against a PostgreSQL database and asserts that
 failed row samples are published for failing tests and not for passing tests.
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 import pandas as pd
 import pytest
@@ -34,14 +34,14 @@ class SampleDataParameters(BaseModel):
         arbitrary_types_allowed = True
 
     test_case_definition: TestCaseDefinition
-    assumptions: List[Assumption]
+    assumptions: List[Assumption]  # noqa: UP006
     table: str = "customer"
-    expected_query: Optional[str] = None
+    expected_query: Optional[str] = None  # noqa: UP045
 
     def __init__(self, *args, **kwargs):
         if args:
             field_names = list(self.__annotations__.keys())
-            kwargs.update(dict(zip(field_names, args)))
+            kwargs.update(dict(zip(field_names, args)))  # noqa: B905
         super().__init__(**kwargs)
 
 
@@ -203,6 +203,7 @@ FAILING_TEST_PARAMS = [
             TestCaseDefinition(
                 name="custom_sql_test",
                 testDefinitionName="tableCustomSQLQuery",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     TestCaseParameterValue(
                         name="sqlExpression",

@@ -12,7 +12,7 @@
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from pydoris.sqlalchemy import datatype
 from pydoris.sqlalchemy.dialect import DorisDialect
@@ -81,7 +81,7 @@ def extract_number(data):
     # doris view column may be VARCHAR(*), check data length if not digit then return 1
     if result:
         result = [i.strip() if i.strip().isdigit() else 1 for i in result[0].split(",")]
-        return result
+        return result  # noqa: RET504
     return []
 
 
@@ -156,11 +156,11 @@ class DorisSource(CommonDbSourceService):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
-        connection = cast(DorisConnection, config.serviceConnection.root.config)
+        connection = cast(DorisConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(connection, DorisConnection):
             raise InvalidSourceException(f"Expected DorisConnection, but got {connection}")
         return cls(config, metadata)
@@ -178,7 +178,7 @@ class DorisSource(CommonDbSourceService):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(engine, TableType.Regular))
             for name, engine in self.connection.execute(sql.text(DORIS_GET_TABLE_NAMES), {"schema": schema_name}) or []
         ]
-        return tables
+        return tables  # noqa: RET504
 
     @staticmethod
     def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
@@ -215,8 +215,8 @@ class DorisSource(CommonDbSourceService):
         table_name: str,
         db_name: str,
         inspector: Inspector,
-        table_type: str = None,
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:
+        table_type: str = None,  # noqa: RUF013
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
         """
         :param schema_name:
         :param table_name:
@@ -252,7 +252,7 @@ class DorisSource(CommonDbSourceService):
                 if col_data_length is None:
                     col_data_length = 1
                 if column["system_data_type"] is None:
-                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")
+                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: RUF010
                 om_column = Column(
                     name=column["name"] if column["name"] else " ",
                     description=column.get("comment"),
@@ -281,7 +281,7 @@ class DorisSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         """
         check if the table is partitioned table and return the partition details
         """
@@ -302,6 +302,6 @@ class DorisSource(CommonDbSourceService):
                 )
 
                 return True, partition_details
-            return False, None
+            return False, None  # noqa: TRY300
         except Exception:
             return False, None

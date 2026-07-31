@@ -23,7 +23,10 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
-    TeradataConnection,
+    TeradataConnection as TeradataConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
+    TeradataScheme,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -33,73 +36,69 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.teradata.queries import TERADATA_GET_DATABASE
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection_url(connection: TeradataConnection) -> str:
-    """
-    Create Teradtaa connection url
-    """
-    url = f"{connection.scheme.value}://{connection.hostPort}/"
-    url += f"?user={quote_plus(connection.username)}"
-    if connection.password:
-        url += f"&password={quote_plus(connection.password.get_secret_value())}"
-
-    # add standard options
-    params = "&".join(
-        [
-            f"{key}={quote_plus(str(getattr(connection, key) if not isinstance(getattr(connection, key), enum.Enum) else getattr(connection, key).value))}"
-            for key in ["account", "logdata", "logmech", "tmode"]
-            if getattr(connection, key, None)
-        ]
-    )
-    url = f"{url}&{params}"
-
-    # add additional options if specified
-    options = get_connection_options_dict(connection)
-    if options:
-        params = "&".join(
-            f"{key}={quote_plus(str(value if not isinstance(value, enum.Enum) else value.value))}"
-            for (key, value) in options.items()
-            if value
+class TeradataConnection(BaseConnection[TeradataConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        """
+        Return the SQLAlchemy Engine for Teradata.
+        """
+        return create_generic_db_connection(
+            connection=self.service_connection,
+            get_connection_url_fn=self.get_connection_url,
+            get_connection_args_fn=get_connection_args_common,
         )
-        url += f"{url}&{params}"
 
-    return url
+    @staticmethod
+    def get_connection_url(connection: TeradataConnectionConfig) -> str:
+        scheme = connection.scheme.value if connection.scheme else TeradataScheme.teradatasql.value
+        url = f"{scheme}://{connection.hostPort}/"
+        url += f"?user={quote_plus(connection.username)}"
+        if connection.password:
+            url += f"&password={quote_plus(connection.password.get_secret_value())}"
 
+        # add standard options
+        params = "&".join(
+            [
+                f"{key}={quote_plus(str(getattr(connection, key) if not isinstance(getattr(connection, key), enum.Enum) else getattr(connection, key).value))}"
+                for key in ["account", "logdata", "logmech", "tmode"]
+                if getattr(connection, key, None)
+            ]
+        )
+        url = f"{url}&{params}"
 
-def get_connection(connection: TeradataConnection) -> Engine:
-    """
-    Create connection
-    """
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
+        # add additional options if specified
+        options = get_connection_options_dict(connection)
+        if options:
+            params = "&".join(
+                f"{key}={quote_plus(str(value if not isinstance(value, enum.Enum) else value.value))}"
+                for (key, value) in options.items()
+                if value
+            )
+            url = f"{url}&{params}"
+        return url
 
-
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: TeradataConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    queries = {"GetDatabases": TERADATA_GET_DATABASE}
-
-    return test_connection_db_common(
-        metadata=metadata,
-        engine=engine,
-        service_connection=service_connection,
-        automation_workflow=automation_workflow,
-        queries=queries,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        queries = {"GetDatabases": TERADATA_GET_DATABASE}
+        return test_connection_db_common(
+            metadata=metadata,
+            engine=self.client,
+            service_connection=self.service_connection,
+            automation_workflow=automation_workflow,
+            queries=queries,
+            timeout_seconds=timeout_seconds,
+        )

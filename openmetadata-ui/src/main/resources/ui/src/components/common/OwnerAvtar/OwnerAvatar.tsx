@@ -17,7 +17,7 @@ import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignee
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './owner-avtar.less';
 

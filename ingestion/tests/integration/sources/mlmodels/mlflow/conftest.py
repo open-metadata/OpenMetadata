@@ -35,7 +35,7 @@ import pytest
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 
-from ....containers import (
+from ....containers import (  # noqa: TID252
     MinioContainerConfigs,
     MySqlContainerConfigs,
     get_docker_network,
@@ -51,7 +51,7 @@ class MlflowContainerConfigs:
     backend_uri: str = "mysql+pymysql://mlflow:password@mlflow-db:3306/experiments"
     artifact_bucket: str = "mlops.local.com"
     port: int = 6000
-    exposed_port: Optional[int] = None
+    exposed_port: Optional[int] = None  # noqa: UP045
 
     def with_exposed_port(self, container):
         self.exposed_port = container.get_exposed_port(self.port)
@@ -87,6 +87,9 @@ def mlflow_environment():
 
     minio_container = get_minio_container(config.minio_configs)
     mysql_container = get_mysql_container(config.mysql_configs)
+    # mlflow 3.8.1+ creates a trigger at backend init; with binlog on (mysql:8
+    # default) this needs SUPER unless log_bin_trust_function_creators=1.
+    mysql_container.with_command("mysqld --log-bin-trust-function-creators=1")
     mlflow_container = build_and_get_mlflow_container(config.mlflow_configs, config.minio_configs, unique_id)
 
     with docker_network:
@@ -147,7 +150,7 @@ def build_and_get_mlflow_container(
         b"""
         FROM python:3.10-slim-buster
         RUN python -m pip install --upgrade pip
-        RUN pip install cryptography "mlflow~=3.6.0" boto3 pymysql
+        RUN pip install cryptography "mlflow>=3.10.0,<3.11" boto3 pymysql
         """
     )
 

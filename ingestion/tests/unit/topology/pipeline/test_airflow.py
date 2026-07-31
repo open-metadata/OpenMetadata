@@ -184,7 +184,7 @@ class TestAirflow(TestCase):
         },
     )
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
@@ -501,7 +501,7 @@ class TestAirflow(TestCase):
 
         # This would normally be called in get_pipelines_list,
         # but we're testing the error handling
-        try:
+        try:  # noqa: SIM105
             mock_session_instance.query(mock_dag_model.is_paused).filter(mock_dag_model.dag_id == "test_dag").scalar()
         except Exception:  # pylint: disable=broad-exception-caught
             # Expected to fail, but in the actual code

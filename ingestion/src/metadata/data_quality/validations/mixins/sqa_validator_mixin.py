@@ -14,7 +14,7 @@ Validator Mixin for SQA tests cases
 """
 
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, cast  # noqa: UP035
 
 from sqlalchemy import (
     Column,
@@ -75,7 +75,7 @@ class DataQualityQueryType(Enum):
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
 
-    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> Column:
+    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> Column:  # noqa: UP045
         """Get column object for the given column name
 
         Args:
@@ -84,7 +84,7 @@ class SQAValidatorMixin:
         Returns:
             Column: Column object
         """
-        table: Table = cast(Table, inspect(cast(QueryRunner, self.runner).dataset))
+        table: Table = cast(Table, inspect(cast(QueryRunner, self.runner).dataset))  # noqa: TC006
         if column_name is None:
             return SQAValidatorMixin.get_column_from_list(
                 self.test_case.entityLink.root,
@@ -96,7 +96,7 @@ class SQAValidatorMixin:
         )
 
     @staticmethod
-    def get_column_from_list(entity_link: str, columns: List) -> Column:
+    def get_column_from_list(entity_link: str, columns: List) -> Column:  # noqa: UP006
         """Given a column name get the column object
 
         Args:
@@ -117,9 +117,9 @@ class SQAValidatorMixin:
         self,
         runner: QueryRunner,
         metric: Metrics,
-        column: Optional[Column] = None,
-        **kwargs: Optional[Any],
-    ) -> Optional[int]:
+        column: Optional[Column] = None,  # noqa: UP045
+        **kwargs: Optional[Any],  # noqa: UP045
+    ) -> Optional[int]:  # noqa: UP045
         """Run the metric query against the column
 
         Args:
@@ -142,7 +142,7 @@ class SQAValidatorMixin:
             value = dict(row._mapping)
             res = value.get(metric.name)
         except Exception as exc:
-            raise SQLAlchemyError(exc)
+            raise SQLAlchemyError(exc)  # noqa: B904
 
         if res is None:
             raise ValueError(
@@ -180,7 +180,7 @@ class SQAValidatorMixin:
             value = dict(row._mapping)
             res = value.get(Metrics.rowCount.name)
         except Exception as exc:
-            raise SQLAlchemyError(exc)
+            raise SQLAlchemyError(exc)  # noqa: B904
 
         return res
 
@@ -224,16 +224,16 @@ class SQAValidatorMixin:
             else_=dimension_col_as_string,
         )
 
-        return normalized_dimension
+        return normalized_dimension  # noqa: RET504
 
     @staticmethod
     def _get_metrics_query(
         source: Any,
         dimension_expr: ColumnElement,
-        metric_expressions: Dict[str, ClauseElement],
+        metric_expressions: Dict[str, ClauseElement],  # noqa: UP006
         query_type: DataQualityQueryType,
-        filter_clause: Optional[ColumnElement] = None,
-        failed_count_builder: Optional[Callable] = None,
+        filter_clause: Optional[ColumnElement] = None,  # noqa: UP045
+        failed_count_builder: Optional[Callable] = None,  # noqa: UP045
         top_n: int = DEFAULT_TOP_DIMENSIONS,
     ):
         if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
@@ -280,9 +280,9 @@ class SQAValidatorMixin:
             case DataQualityQueryType.OTHERS:
                 final_metrics_columns.append(literal(DIMENSION_OTHERS_LABEL).label(DIMENSION_VALUE_KEY))
 
-        for metric_name in metric_expressions.keys():
+        for metric_name in metric_expressions.keys():  # noqa: SIM118
             if metric_name != DIMENSION_FAILED_COUNT_KEY:
-                final_metrics_columns.append(getattr(basic_metrics_cte.c, metric_name).label(metric_name))
+                final_metrics_columns.append(getattr(basic_metrics_cte.c, metric_name).label(metric_name))  # noqa: PERF401
 
         total_count_col = getattr(basic_metrics_cte.c, DIMENSION_TOTAL_COUNT_KEY)
         failed_count_expr = (
@@ -312,12 +312,12 @@ class SQAValidatorMixin:
         self: HasValidatorContext,
         source: FromClause,
         dimension_expr: ColumnElement,
-        metric_expressions: Dict[str, ClauseElement],
-        failed_count_builder: Optional[Callable] = None,
-        others_source_builder: Optional[Callable[[List[str]], FromClause]] = None,
-        others_metric_expressions_builder: Optional[Callable[[FromClause], Dict[str, ClauseElement]]] = None,
+        metric_expressions: Dict[str, ClauseElement],  # noqa: UP006
+        failed_count_builder: Optional[Callable] = None,  # noqa: UP045
+        others_source_builder: Optional[Callable[[List[str]], FromClause]] = None,  # noqa: UP006, UP045
+        others_metric_expressions_builder: Optional[Callable[[FromClause], Dict[str, ClauseElement]]] = None,  # noqa: UP006, UP045
         top_n: int = DEFAULT_TOP_DIMENSIONS,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:  # noqa: UP006
         """Execute two-pass dimensional validation with metrics.
 
         Pass 1: Get top N+1 dimensions with full metrics

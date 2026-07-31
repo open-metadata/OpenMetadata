@@ -12,7 +12,7 @@
  */
 
 import { map, startCase, values } from 'lodash';
-import { DateFilterType, StepperStepType } from 'Models';
+import { DateFilterType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';
@@ -302,15 +302,6 @@ export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
   total: 0,
 };
 
-export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
-  {
-    name: 'label.configure-entity',
-    nameData: { entity: 'label.test-case-lowercase' },
-    step: 1,
-  },
-  { name: 'label.success', step: 2 },
-];
-
 export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
   DataType.Timestamp,
   DataType.Date,
@@ -398,6 +389,7 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   tags: 'tags',
   service: 'serviceName',
   dimension: 'dataQualityDimension',
+  dataProduct: 'dataProductFqn',
 };
 
 export const TEST_CASE_FILTERS_LABELS: Record<
@@ -413,6 +405,7 @@ export const TEST_CASE_FILTERS_LABELS: Record<
   tags: t('label.tag-plural'),
   service: t('label.service'),
   dimension: t('label.dimension'),
+  dataProduct: t('label.data-product-plural'),
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({

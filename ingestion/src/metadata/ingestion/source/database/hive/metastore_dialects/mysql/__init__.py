@@ -14,7 +14,7 @@ Hive Metastore Mysql Dialect
 
 from sqlalchemy.dialects import registry
 
-from .dialect import HiveMysqlMetaStoreDialect
+from .dialect import HiveMysqlMetaStoreDialect  # noqa: TID252
 
 __version__ = "0.1.0"
 __all__ = ["HiveMysqlMetaStoreDialect"]

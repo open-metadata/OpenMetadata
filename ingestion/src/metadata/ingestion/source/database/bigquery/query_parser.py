@@ -46,7 +46,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         self.database = self.project_id
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
@@ -62,7 +62,7 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
             end_time=end_time,
             region=self.service_connection.usageLocation,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
             cost_per_tib=self.service_connection.costPerTB,
         )
 
@@ -82,12 +82,12 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
         else:
             yield self.engine
 
-    def check_life_cycle_query(self, query_type: Optional[str], query_text: Optional[str]) -> bool:
+    def check_life_cycle_query(self, query_type: Optional[str], query_text: Optional[str]) -> bool:  # noqa: UP045
         """
         returns true if query is to be used for life cycle processing.
 
         Override if we have specific parameters
         """
-        if query_type != "SELECT":
+        if query_type != "SELECT":  # noqa: SIM103
             return True
         return False

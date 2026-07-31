@@ -1,0 +1,56 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Sample OpenAPI",
+    "version": "1.0.0",
+    "description": "Sample OpenAPI schema bundled with the ingestion container."
+  },
+  "tags": [
+    { "name": "pet", "description": "Everything about your Pets" },
+    { "name": "store", "description": "Access to Petstore orders" },
+    { "name": "user", "description": "Operations about user" }
+  ],
+  "paths": {
+    "/pet": {
+      "post": {
+        "tags": ["pet"],
+        "summary": "Add a new pet to the store",
+        "operationId": "addPet",
+        "responses": { "200": { "description": "successful operation" } }
+      },
+      "get": {
+        "tags": ["pet"],
+        "summary": "List pets",
+        "operationId": "listPets",
+        "responses": { "200": { "description": "successful operation" } }
+      }
+    },
+    "/store/order": {
+      "post": {
+        "tags": ["store"],
+        "summary": "Place an order for a pet",
+        "operationId": "placeOrder",
+        "responses": { "200": { "description": "successful operation" } }
+      }
+    },
+    "/user/login": {
+      "get": {
+        "tags": ["user"],
+        "summary": "Logs user into the system",
+        "operationId": "loginUser",
+        "responses": { "200": { "description": "successful operation" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "name": { "type": "string" }
+        }
+      }
+    }
+  }
+}

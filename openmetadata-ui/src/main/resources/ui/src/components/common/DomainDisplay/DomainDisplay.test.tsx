@@ -12,11 +12,12 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
+import { ComponentProps } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainDisplay } from './DomainDisplay.component';
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name || 'Unknown'),
@@ -53,7 +54,7 @@ const mockDomain3: EntityReference = {
   type: 'domain',
 };
 
-const renderDomainDisplay = (props: any) =>
+const renderDomainDisplay = (props: ComponentProps<typeof DomainDisplay>) =>
   render(
     <MemoryRouter>
       <DomainDisplay {...props} />
@@ -84,10 +85,11 @@ describe('DomainDisplay Component', () => {
   });
 
   it('should render single domain with icon by default', () => {
-    renderDomainDisplay({ domains: [mockDomain1] });
+    const { container } = renderDomainDisplay({ domains: [mockDomain1] });
 
     expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
     expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(container.firstChild).toHaveClass('gap-1');
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
       '/domain/domain.one'
@@ -111,8 +113,11 @@ describe('DomainDisplay Component', () => {
     });
 
     expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
-    expect(screen.getByText('+2')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-count-button')).toHaveClass(
+      'flex-shrink-0'
+    );
+    expect(screen.getByText('+2')).toHaveClass('domain-count-label');
+    expect(screen.getByText('+2')).not.toHaveClass('ant-typography');
     expect(screen.queryByText('Domain Two')).not.toBeInTheDocument();
     expect(screen.queryByText('Domain Three')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('domain-icon')).toHaveLength(1);

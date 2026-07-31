@@ -33,15 +33,15 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
-import { getTableFQNFromColumnFQN } from '../../../../utils/CommonUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
+import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
-import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
@@ -222,7 +222,9 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
             <Link
               className="test-case-name"
               data-testid={`test-case-${testCaseName}`}
-              to={getTestCaseDetailPagePath(testCase.fullyQualifiedName ?? '')}>
+              to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+                testCase.fullyQualifiedName ?? ''
+              )}>
               {testCaseName}
             </Link>
           </div>

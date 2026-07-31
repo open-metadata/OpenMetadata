@@ -106,6 +106,12 @@ public class TaskService extends EntityServiceBase<Task> {
   public ListResponse<Task> listAssigned(
       TaskEntityStatus status, String statusGroup, String domain, String fields)
       throws OpenMetadataException {
+    return listAssigned(status, statusGroup, domain, fields, null);
+  }
+
+  public ListResponse<Task> listAssigned(
+      TaskEntityStatus status, String statusGroup, String domain, String fields, Integer limit)
+      throws OpenMetadataException {
     String path = basePath + "/assigned";
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (status != null) {
@@ -119,6 +125,9 @@ public class TaskService extends EntityServiceBase<Task> {
     }
     if (fields != null) {
       optionsBuilder.queryParam("fields", fields);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
     }
     String responseStr =
         httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
@@ -136,6 +145,12 @@ public class TaskService extends EntityServiceBase<Task> {
   public ListResponse<Task> listCreated(
       TaskEntityStatus status, String statusGroup, String domain, String fields)
       throws OpenMetadataException {
+    return listCreated(status, statusGroup, domain, fields, null);
+  }
+
+  public ListResponse<Task> listCreated(
+      TaskEntityStatus status, String statusGroup, String domain, String fields, Integer limit)
+      throws OpenMetadataException {
     String path = basePath + "/created";
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (status != null) {
@@ -149,6 +164,9 @@ public class TaskService extends EntityServiceBase<Task> {
     }
     if (fields != null) {
       optionsBuilder.queryParam("fields", fields);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
     }
     String responseStr =
         httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
@@ -209,6 +227,107 @@ public class TaskService extends EntityServiceBase<Task> {
     }
     if (fields != null) {
       optionsBuilder.queryParam("fields", fields);
+    }
+    String responseStr =
+        httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
+    return deserializeListResponse(responseStr);
+  }
+
+  private ListResponse<Task> listScopedTasks(
+      String path,
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (status != null) {
+      optionsBuilder.queryParam("status", status.value());
+    }
+    if (statusGroup != null) {
+      optionsBuilder.queryParam("statusGroup", statusGroup);
+    }
+    if (domain != null) {
+      optionsBuilder.queryParam("domain", domain);
+    }
+    if (fields != null) {
+      optionsBuilder.queryParam("fields", fields);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
+    }
+    if (startTs != null) {
+      optionsBuilder.queryParam("startTs", startTs.toString());
+    }
+    if (endTs != null) {
+      optionsBuilder.queryParam("endTs", endTs.toString());
+    }
+    String responseStr =
+        httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
+    return deserializeListResponse(responseStr);
+  }
+
+  public ListResponse<Task> listVisible(
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    return listScopedTasks(
+        basePath + "/visible", status, statusGroup, domain, fields, limit, startTs, endTs);
+  }
+
+  public ListResponse<Task> listOwned(
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    return listScopedTasks(
+        basePath + "/owned", status, statusGroup, domain, fields, limit, startTs, endTs);
+  }
+
+  public ListResponse<Task> listCreated(
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    return listScopedTasks(
+        basePath + "/created", status, statusGroup, domain, fields, limit, startTs, endTs);
+  }
+
+  /**
+   * List Data Access Requests with DAR-specific filters and offset-based pagination.
+   * Pre-applies category=DataAccess and type=DataAccessRequest server-side.
+   *
+   * @param filters Optional filters (dataset, service, status, statusGroup, requestedBy,
+   *     requestedById, approver, approverId, accessType, domain, sortOrder, limit, offset,
+   *     include, fields).
+   */
+  public ListResponse<Task> listDataAccessRequests(Map<String, String> filters)
+      throws OpenMetadataException {
+    String path = basePath + "/dataAccessRequests";
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (filters != null) {
+      filters.forEach(
+          (k, v) -> {
+            if (v != null) {
+              optionsBuilder.queryParam(k, v);
+            }
+          });
     }
     String responseStr =
         httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());

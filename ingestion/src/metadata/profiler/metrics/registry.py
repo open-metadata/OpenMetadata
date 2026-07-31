@@ -70,48 +70,48 @@ class Metrics(MetricRegistry):
     # Static Metrics
     # pylint: disable=invalid-name
     mean = Mean
-    valuesCount = Count
-    countInSet = CountInSet
-    columnCount = ColumnCount
-    distinctCount = DistinctCount
-    distinctProportion = DistinctRatio
-    iLikeCount = ILikeCount
-    likeCount = LikeCount
-    notLikeCount = NotLikeCount
-    regexCount = RegexCount
-    notRegexCount = NotRegexCount
+    valuesCount = Count  # noqa: N815
+    countInSet = CountInSet  # noqa: N815
+    columnCount = ColumnCount  # noqa: N815
+    distinctCount = DistinctCount  # noqa: N815
+    distinctProportion = DistinctRatio  # noqa: N815
+    iLikeCount = ILikeCount  # noqa: N815
+    likeCount = LikeCount  # noqa: N815
+    notLikeCount = NotLikeCount  # noqa: N815
+    regexCount = RegexCount  # noqa: N815
+    notRegexCount = NotRegexCount  # noqa: N815
     max = Max
-    maxLength = MaxLength
+    maxLength = MaxLength  # noqa: N815
     min = Min
-    minLength = MinLength
-    nullCount = NullCount
-    rowCount = RowCount
+    minLength = MinLength  # noqa: N815
+    nullCount = NullCount  # noqa: N815
+    rowCount = RowCount  # noqa: N815
     stddev = StdDev
     sum = Sum
-    uniqueCount = UniqueCount
-    uniqueProportion = UniqueRatio
-    columnNames = ColumnNames
+    uniqueCount = UniqueCount  # noqa: N815
+    uniqueProportion = UniqueRatio  # noqa: N815
+    columnNames = ColumnNames  # noqa: N815
 
     # Composed Metrics
-    duplicateCount = DuplicateCount
-    iLikeRatio = ILikeRatio
-    likeRatio = LikeRatio
-    nullProportion = NullRatio
-    interQuartileRange = InterQuartileRange
-    nonParametricSkew = NonParametricSkew
+    duplicateCount = DuplicateCount  # noqa: N815
+    iLikeRatio = ILikeRatio  # noqa: N815
+    likeRatio = LikeRatio  # noqa: N815
+    nullProportion = NullRatio  # noqa: N815
+    interQuartileRange = InterQuartileRange  # noqa: N815
+    nonParametricSkew = NonParametricSkew  # noqa: N815
 
     # Window Metrics
     median = Median
-    firstQuartile = FirstQuartile
-    thirdQuartile = ThirdQuartile
-    valueRank = ValueRank
+    firstQuartile = FirstQuartile  # noqa: N815
+    thirdQuartile = ThirdQuartile  # noqa: N815
+    valueRank = ValueRank  # noqa: N815
 
     # System Metrics
     system = System
 
     # Hybrid Metrics
     histogram = Histogram
-    cardinalityDistribution = CardinalityDistribution
+    cardinalityDistribution = CardinalityDistribution  # noqa: N815
 
     # Missing Count
-    nullMissingCount = NullMissingCount
+    nullMissingCount = NullMissingCount  # noqa: N815

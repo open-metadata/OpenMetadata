@@ -27,6 +27,10 @@
     "provider" : {
       "$ref": "../type/basic.json#/definitions/providerType"
     },
+    "allowImpersonation": {
+      "description": "When true, the bot user is allowed to impersonate users via the X-Impersonate-User header, subject to policy checks on the target user. Can only be enabled by an admin when the bot is created. Omit to keep the current value; set to false to revoke.",
+      "type": "boolean"
+    },
     "domains" : {
       "description": "Fully qualified names of the domains the Bot belongs to.",
       "type": "array",

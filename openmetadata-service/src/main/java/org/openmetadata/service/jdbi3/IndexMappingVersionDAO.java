@@ -38,6 +38,9 @@ public interface IndexMappingVersionDAO {
   @SqlQuery("SELECT mappingHash FROM index_mapping_versions WHERE entityType = :entityType")
   String getMappingHash(@Bind("entityType") String entityType);
 
+  @SqlQuery("SELECT DISTINCT version FROM index_mapping_versions")
+  List<String> getDistinctMappingVersions();
+
   @SqlQuery("SELECT entityType, mappingHash FROM index_mapping_versions")
   @RegisterRowMapper(IndexMappingVersionMapper.class)
   List<IndexMappingVersion> getAllMappingVersions();

@@ -2,7 +2,7 @@
 Pipelines entity SDK with fluent API
 """
 
-from typing import Any, List, Optional, Type, cast
+from typing import Any, List, Optional, Type, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
@@ -13,7 +13,7 @@ class Pipelines(BaseEntity[Pipeline, CreatePipelineRequest]):
     """Pipelines SDK class - plural to avoid conflict with generated Pipeline entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[Pipeline]:
+    def entity_type(cls) -> Type[Pipeline]:  # noqa: UP006
         """Return the Pipeline entity type"""
         return Pipeline
 
@@ -21,14 +21,14 @@ class Pipelines(BaseEntity[Pipeline, CreatePipelineRequest]):
     def add_pipeline_status(cls, fqn: str, status: PipelineStatus) -> Pipeline:
         """Add a single pipeline execution status."""
         client = cls._get_client()
-        result = cast(Any, client).add_pipeline_status(fqn=fqn, status=status)
+        result = cast(Any, client).add_pipeline_status(fqn=fqn, status=status)  # noqa: TC006
         return cls._coerce_entity(result)
 
     @classmethod
-    def add_bulk_pipeline_status(cls, fqn: str, statuses: List[PipelineStatus]) -> Pipeline:
+    def add_bulk_pipeline_status(cls, fqn: str, statuses: List[PipelineStatus]) -> Pipeline:  # noqa: UP006
         """Add multiple pipeline execution statuses in a single bulk request."""
         client = cls._get_client()
-        result = cast(Any, client).add_bulk_pipeline_status(fqn=fqn, statuses=statuses)
+        result = cast(Any, client).add_bulk_pipeline_status(fqn=fqn, statuses=statuses)  # noqa: TC006
         return cls._coerce_entity(result)
 
     @classmethod
@@ -37,8 +37,8 @@ class Pipelines(BaseEntity[Pipeline, CreatePipelineRequest]):
         fqn: str,
         start_ts: int,
         end_ts: int,
-        limit: Optional[int] = None,
-    ) -> List[PipelineStatus]:
+        limit: Optional[int] = None,  # noqa: UP045
+    ) -> List[PipelineStatus]:  # noqa: UP006
         """List pipeline execution statuses within a time range."""
         client = cls._get_client()
-        return cast(Any, client).list_pipeline_statuses(fqn=fqn, start_ts=start_ts, end_ts=end_ts, limit=limit)
+        return cast(Any, client).list_pipeline_statuses(fqn=fqn, start_ts=start_ts, end_ts=end_ts, limit=limit)  # noqa: TC006

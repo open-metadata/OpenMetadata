@@ -14,13 +14,13 @@ for the OpenMetadata Python API
 """
 
 import os
-from typing import Tuple
+from typing import Tuple  # noqa: UP035
 
 import dateutil.parser
 
 from metadata.utils.logger import ometa_logger
 
-Credentials = Tuple[str, str, str]
+Credentials = Tuple[str, str, str]  # noqa: UP006
 
 logger = ometa_logger()
 
@@ -45,7 +45,7 @@ class URL(str):
             if not isinstance(url, (URL, str)):
                 raise TypeError(f'Unexpected type for URL: "{type(url)}"')
             if not (
-                url.startswith("http://")
+                url.startswith("http://")  # noqa: PIE810
                 or url.startswith("https://")
                 or url.startswith("ws://")
                 or url.startswith("wss://")
@@ -70,7 +70,7 @@ class DATE(str):
             dateutil.parser.parse(value)
         except Exception as exc:
             msg = f"{value} is not a valid date string: {exc}"
-            raise ValueError(msg)
+            raise ValueError(msg)  # noqa: B904
 
         return str.__new__(cls, value)
 
@@ -91,7 +91,7 @@ class FLOAT(str):
         raise ValueError(f'Unexpected float format "{value}"')
 
 
-def get_credentials(key_id: str = None, secret_key: str = None, oauth: str = None) -> Credentials:
+def get_credentials(key_id: str = None, secret_key: str = None, oauth: str = None) -> Credentials:  # noqa: RUF013
     """
     Get credentials
 

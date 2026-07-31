@@ -48,13 +48,13 @@ import { EntityReference } from '../../generated/entity/type';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
-import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getCronDefaultValue } from '../../utils/CronExpressionUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getCronDefaultValue } from '../../utils/SchedularUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 
@@ -150,9 +150,7 @@ const AppInstall = () => {
         }
       }
     } catch (_) {
-      showErrorToast(
-        t('message.no-application-schema-found', { appName: fqn })
-      );
+      showErrorToast(t('server.no-application-schema-found', { appName: fqn }));
     } finally {
       setIsLoading(false);
     }

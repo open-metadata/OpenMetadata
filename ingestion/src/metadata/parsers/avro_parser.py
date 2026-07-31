@@ -14,9 +14,10 @@ Utils module to parse the avro schema
 """
 
 import traceback
-from typing import List, Optional, Tuple, Type, Union
+from typing import List, Optional, Tuple, Type, Union  # noqa: UP035
 
 import avro.schema as avroschema
+from avro.errors import AvroException
 from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema
 from pydantic import BaseModel
 
@@ -31,9 +32,9 @@ RECORD_DATATYPE_NAME = "RECORD"
 
 def _parse_array_children(
     arr_item: Schema,
-    cls: Type[BaseModel] = FieldModel,
-    already_parsed: Optional[dict] = None,
-) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
+    cls: Type[BaseModel] = FieldModel,  # noqa: UP006
+    already_parsed: Optional[dict] = None,  # noqa: UP045
+) -> Tuple[str, Optional[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
     if isinstance(arr_item, ArraySchema):
         display_type, children = _parse_array_children(arr_item.items, cls=cls, already_parsed=already_parsed)
         return f"ARRAY<{display_type}>", children
@@ -58,9 +59,9 @@ def _parse_array_children(
 
 def parse_array_fields(
     field: ArraySchema,
-    cls: Type[BaseModel] = FieldModel,
-    already_parsed: Optional[dict] = None,
-) -> Optional[List[Union[FieldModel, Column]]]:
+    cls: Type[BaseModel] = FieldModel,  # noqa: UP006
+    already_parsed: Optional[dict] = None,  # noqa: UP045
+) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
     """
     Parse array field for avro schema
 
@@ -110,11 +111,11 @@ def parse_array_fields(
 
 
 def _parse_union_children(
-    parent: Optional[Schema],
+    parent: Optional[Schema],  # noqa: UP045
     union_field: UnionSchema,
-    cls: Type[BaseModel] = FieldModel,
-    already_parsed: Optional[dict] = None,
-) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
+    cls: Type[BaseModel] = FieldModel,  # noqa: UP006
+    already_parsed: Optional[dict] = None,  # noqa: UP045
+) -> Tuple[str, Optional[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
     non_null_schema = [(i, schema) for i, schema in enumerate(union_field.schemas) if schema.type != "null"]
     sub_type = ",".join(str(schema.type) for schema in union_field.schemas)
     if len(union_field.schemas) == 2 and len(non_null_schema) == 1:
@@ -142,8 +143,8 @@ def _parse_union_children(
 
 def parse_record_fields(
     field: RecordSchema,
-    cls: Type[BaseModel] = FieldModel,
-    already_parsed: Optional[dict] = None,
+    cls: Type[BaseModel] = FieldModel,  # noqa: UP006
+    already_parsed: Optional[dict] = None,  # noqa: UP045
 ):
     """
     Parse the nested record fields for avro
@@ -161,15 +162,15 @@ def parse_record_fields(
         ],
         description=field.doc,
     )
-    return children
+    return children  # noqa: RET504
 
 
 def parse_union_fields(
-    parent: Optional[Schema],
+    parent: Optional[Schema],  # noqa: UP045
     union_field: Schema,
-    cls: Type[BaseModel] = FieldModel,
-    already_parsed: Optional[dict] = None,
-) -> Optional[List[Union[FieldModel, Column]]]:
+    cls: Type[BaseModel] = FieldModel,  # noqa: UP006
+    already_parsed: Optional[dict] = None,  # noqa: UP045
+) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
     """
     Parse union field for avro schema
 
@@ -216,7 +217,7 @@ def parse_union_fields(
     return obj
 
 
-def parse_single_field(field: Schema, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:
+def parse_single_field(field: Schema, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
     """
     Parse primitive field for avro schema
     """
@@ -226,10 +227,10 @@ def parse_single_field(field: Schema, cls: Type[BaseModel] = FieldModel) -> Opti
         description=field.doc,
         dataTypeDisplay=str(field.type.type),
     )
-    return obj
+    return obj  # noqa: RET504
 
 
-def parse_avro_schema(schema: str, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:
+def parse_avro_schema(schema: str, cls: Type[BaseModel] = FieldModel) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
     """
     Method to parse the avro schema
     """
@@ -243,18 +244,23 @@ def parse_avro_schema(schema: str, cls: Type[BaseModel] = FieldModel) -> Optiona
                 description=parsed_schema.doc,
             )
         ]
-        return models
+        return models  # noqa: RET504, TRY300
+    except AvroException as exc:
+        # Avro formats the offending payload into its exception messages, so neither the
+        # message nor the traceback that quotes it can be logged without leaking the file
+        # content this parser was handed. See issue #24798.
+        logger.warning("Unable to parse the avro schema: %s", type(exc).__name__)
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unable to parse the avro schema: {exc}")
+        logger.warning("Unable to parse the avro schema: %s", type(exc).__name__)
     return None
 
 
 def get_avro_fields(
     parsed_schema: Schema,
-    cls: Type[BaseModel] = FieldModel,
-    already_parsed: Optional[dict] = None,
-) -> Optional[List[Union[FieldModel, Column]]]:
+    cls: Type[BaseModel] = FieldModel,  # noqa: UP006
+    already_parsed: Optional[dict] = None,  # noqa: UP045
+) -> Optional[List[Union[FieldModel, Column]]]:  # noqa: UP006, UP007, UP045
     """
     Recursively convert the parsed schema into required models
     """
@@ -283,7 +289,9 @@ def get_avro_fields(
                 field_models.append(parse_record_fields(field, cls=cls, already_parsed=already_parsed))
             else:
                 field_models.append(parse_single_field(field, cls=cls))
+        except AvroException as exc:
+            logger.warning("Unable to parse the avro schema into models: %s", type(exc).__name__)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse the avro schema into models: {exc}")
+            logger.warning("Unable to parse the avro schema into models: %s", type(exc).__name__)
     return field_models

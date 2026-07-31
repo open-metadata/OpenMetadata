@@ -154,7 +154,7 @@ describe('TestSummaryGraph', () => {
   it('should display error placeholder when the result data is empty', () => {
     render(<TestSummaryGraph {...mockProps} testCaseResults={[]} />);
 
-    expect(screen.getByText('ErrorPlaceHolder.component')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
   });
 
   it('should display the graph when the test result data is present', () => {
@@ -208,7 +208,7 @@ describe('TestSummaryGraph', () => {
       />
     );
 
-    expect(screen.getByText('ErrorPlaceHolder.component')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
   });
 
   it('should render with minHeight prop', () => {

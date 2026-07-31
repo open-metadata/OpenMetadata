@@ -14,7 +14,7 @@ import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
 import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useMemo, useState } from 'react';
+import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
@@ -24,9 +24,9 @@ import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -61,7 +61,9 @@ const EntityHeaderTitle = ({
     entityUrl ?? globalThis.location.href
   );
 
-  const handleShareButtonClick = async () => {
+  const handleShareButtonClick = async (e: MouseEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     await onCopyToClipBoard();
     setCopyTooltip(t('message.link-copy-to-clipboard'));
     setTimeout(() => setCopyTooltip(''), 2000);
@@ -220,7 +222,8 @@ const EntityHeaderTitle = ({
       className="no-underline d-inline-block w-max-full entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
-      to={link}>
+      to={link}
+      onClick={(e) => e.stopPropagation()}>
       {content}
     </Link>
   ) : (

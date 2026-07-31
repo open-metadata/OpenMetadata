@@ -21,20 +21,21 @@ from airflow import settings
 from airflow.models import DagBag
 from airflow.version import version as airflow_version
 from flask import request
-from openmetadata_managed_apis.utils.logger import api_logger
 from packaging import version
+
+from openmetadata_managed_apis.utils.logger import api_logger
 
 logger = api_logger()
 
 
-class MissingArgException(Exception):
+class MissingArgException(Exception):  # noqa: N818
     """
     Raised when we cannot properly validate the incoming data
     """
 
 
 def import_path(path):
-    module_name = os.path.basename(path).replace("-", "_")
+    module_name = os.path.basename(path).replace("-", "_")  # noqa: PTH119
     spec = importlib.util.spec_from_loader(module_name, importlib.machinery.SourceFileLoader(module_name, path))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -42,7 +43,7 @@ def import_path(path):
     return module
 
 
-def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
+def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:  # noqa: UP045
     """
     Given a string we want to use as a dag_id, we should
     give it a cleanup as Airflow does not support anything
@@ -51,7 +52,7 @@ def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
     return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id) if raw_dag_id else None
 
 
-def sanitize_task_id(raw_task_id: Optional[str]) -> Optional[str]:
+def sanitize_task_id(raw_task_id: Optional[str]) -> Optional[str]:  # noqa: UP045
     """
     Sanitize task_id to prevent path traversal attacks.
     Only allows alphanumeric characters, dashes, and underscores.
@@ -61,7 +62,7 @@ def sanitize_task_id(raw_task_id: Optional[str]) -> Optional[str]:
     return re.sub("[^0-9a-zA-Z-_]+", "_", raw_task_id) if raw_task_id else None
 
 
-def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:
+def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:  # noqa: UP045
     """
     Pick up the `arg` from the flask `req`.
     E.g., GET api/v1/endpoint?key=value
@@ -77,7 +78,7 @@ def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:
     return request_argument
 
 
-def get_arg_dag_id() -> Optional[str]:
+def get_arg_dag_id() -> Optional[str]:  # noqa: UP045
     """
     Try to fetch the dag_id from the args
     and clean it
@@ -87,14 +88,14 @@ def get_arg_dag_id() -> Optional[str]:
     return clean_dag_id(raw_dag_id)
 
 
-def get_arg_only_queued() -> Optional[str]:
+def get_arg_only_queued() -> Optional[str]:  # noqa: UP045
     """
     Try to fetch the only_queued from the args
     """
     return get_request_arg(request, "only_queued", raise_missing=False)
 
 
-def get_request_dag_id() -> Optional[str]:
+def get_request_dag_id() -> Optional[str]:  # noqa: UP045
     """
     Try to fetch the dag_id from the JSON request
     and clean it
@@ -107,7 +108,7 @@ def get_request_dag_id() -> Optional[str]:
     return clean_dag_id(raw_dag_id)
 
 
-def get_request_conf() -> Optional[dict]:
+def get_request_conf() -> Optional[dict]:  # noqa: UP045
     """
     Try to fetch the conf from the JSON request. Return None if no conf is provided.
     """
@@ -165,7 +166,7 @@ class ScanDagsTask(Process):
         dedicated DAG processor. We use the DagFileProcessorManager to
         trigger a single parsing run.
         """
-        from airflow.dag_processing.manager import DagFileProcessorManager
+        from airflow.dag_processing.manager import DagFileProcessorManager  # noqa: PLC0415
 
         processor_manager = DagFileProcessorManager(max_runs=1)
         processor_manager.run()
@@ -175,8 +176,8 @@ class ScanDagsTask(Process):
         """
         Run the new scheduler job from Airflow 2.6
         """
-        from airflow.jobs.job import Job, run_job
-        from airflow.jobs.scheduler_job_runner import SchedulerJobRunner
+        from airflow.jobs.job import Job, run_job  # noqa: PLC0415
+        from airflow.jobs.scheduler_job_runner import SchedulerJobRunner  # noqa: PLC0415
 
         scheduler_job = Job()
         job_runner = SchedulerJobRunner(
@@ -195,7 +196,7 @@ class ScanDagsTask(Process):
         """
         Run the old scheduler job before 2.6
         """
-        from airflow.jobs.scheduler_job import SchedulerJob
+        from airflow.jobs.scheduler_job import SchedulerJob  # noqa: PLC0415
 
         scheduler_job = SchedulerJob(num_times_parse_dags=1)
         scheduler_job.heartrate = 0

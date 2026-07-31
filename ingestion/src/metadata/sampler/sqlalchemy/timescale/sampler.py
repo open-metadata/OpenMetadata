@@ -15,7 +15,7 @@ requires expensive decompression).
 """
 
 from datetime import datetime
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel
 from sqlalchemy import Column, select, text
@@ -47,7 +47,7 @@ class HypertableMeta(BaseModel):
 
     time_column: str
     has_compressed: bool
-    uncompressed_boundary: Optional[datetime] = None
+    uncompressed_boundary: Optional[datetime] = None  # noqa: UP045
 
 
 class TimescaleSampler(PostgresSampler):
@@ -64,14 +64,14 @@ class TimescaleSampler(PostgresSampler):
 
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
         ometa_client: OpenMetadata,
         entity: Table,
-        sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        sample_query: Optional[str] = None,
+        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
+        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
+        sample_query: Optional[str] = None,  # noqa: UP045
         storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
         **kwargs,
     ):
         super().__init__(
@@ -85,7 +85,7 @@ class TimescaleSampler(PostgresSampler):
             sample_data_count=sample_data_count,
             **kwargs,
         )
-        self._hypertable_meta: Optional[HypertableMeta] = None
+        self._hypertable_meta: Optional[HypertableMeta] = None  # noqa: UP045
         self._hypertable_checked = False
 
     def _get_hypertable_sampling_boundary(
@@ -174,7 +174,7 @@ class TimescaleSampler(PostgresSampler):
         )
         return stmt.cte(f"{self.get_sampler_table_name()}_uncompressed")
 
-    def get_dataset(self, column=None, **kwargs) -> Union[type, AliasedClass]:
+    def get_dataset(self, column=None, **kwargs) -> Union[type, AliasedClass]:  # noqa: UP007
         """Return the effective dataset, substituting raw_dataset with the
         uncompressed-only CTE when the hypertable has compressed chunks.
 
@@ -186,14 +186,14 @@ class TimescaleSampler(PostgresSampler):
             return self._get_uncompressed_dataset()
         return dataset
 
-    def _base_sample_query(self, column: Optional[Column], label=None):
+    def _base_sample_query(self, selectable, column: Column | None, label=None):
         """Add an uncompressed-chunks filter when sampling is active.
 
-        The base class builds the sampling query from ``raw_dataset.__table__``.
+        The base class builds the sampling query from the given selectable.
         We call super() to keep TABLESAMPLE / partition logic intact, then
         append a WHERE predicate that restricts rows to uncompressed chunks.
         """
-        query = super()._base_sample_query(column, label)
+        query = super()._base_sample_query(selectable, column, label)
         if not self._has_compressed_chunks():
             return query
 

@@ -68,7 +68,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_tsv_reader_local(self):
         """Test basic TSV reading with tab separator."""
@@ -93,7 +93,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_csv_with_gzip_compression(self):
         """Test CSV reading with gzip compression."""
@@ -119,7 +119,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_malformed_quoted_csv(self):
         malformed_csv = '"col1,col2,col3"\n1,2,3\n4,5,6\n'
@@ -143,7 +143,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_custom_separator(self):
         """Test CSV reading with custom separator."""
@@ -168,7 +168,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     @patch("pandas.read_csv")
     def test_gcs_csv_reading(self, mock_read_csv):
@@ -293,7 +293,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_csv_complex_escaping_backslash_and_double_quote(self):
         """Test complex CSV with both backslash escaping (\") and double-quote escaping ("") in same file."""
@@ -341,7 +341,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_csv_edge_cases_with_newlines_and_mixed_quotes(self):
         """Test edge cases with newlines in quoted fields and complex mixed escaping."""
@@ -380,7 +380,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_field_larger_than_default_csv_limit(self):
         """
@@ -407,7 +407,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_field_with_embedded_unescaped_quotes(self):
         """
@@ -433,7 +433,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
     def test_line_contains_nul(self):
         """
@@ -464,7 +464,7 @@ class TestDSVReader(unittest.TestCase):
         finally:
             import os
 
-            os.unlink(tmp_path)
+            os.unlink(tmp_path)  # noqa: PTH108
 
 
 if __name__ == "__main__":

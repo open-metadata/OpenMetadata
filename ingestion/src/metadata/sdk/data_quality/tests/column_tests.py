@@ -11,7 +11,7 @@
 
 """Column-level test definitions for DQ as Code API."""
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.sdk.data_quality.tests.base_tests import ColumnTest
@@ -38,10 +38,10 @@ class ColumnValuesToBeInSet(ColumnTest):
     def __init__(
         self,
         column: str,
-        allowed_values: List[str],
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        allowed_values: List[str],  # noqa: UP006
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeInSet",
@@ -75,10 +75,10 @@ class ColumnValuesToBeNotInSet(ColumnTest):
     def __init__(
         self,
         column: str,
-        forbidden_values: List[str],
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        forbidden_values: List[str],  # noqa: UP006
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeNotInSet",
@@ -111,9 +111,9 @@ class ColumnValuesToBeNotNull(ColumnTest):
     def __init__(
         self,
         column: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeNotNull",
@@ -144,9 +144,9 @@ class ColumnValuesToBeUnique(ColumnTest):
     def __init__(
         self,
         column: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeUnique",
@@ -179,9 +179,9 @@ class ColumnValuesToMatchRegex(ColumnTest):
         self,
         column: str,
         regex: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToMatchRegex",
@@ -215,9 +215,9 @@ class ColumnValuesToNotMatchRegex(ColumnTest):
         self,
         column: str,
         regex: str,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToNotMatchRegex",
@@ -251,11 +251,11 @@ class ColumnValuesToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeBetween",
@@ -293,11 +293,11 @@ class ColumnValueMaxToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the maximum value in column '{column}' "
@@ -338,11 +338,11 @@ class ColumnValueMinToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the minimum value in column '{column}' "
@@ -383,11 +383,11 @@ class ColumnValueMeanToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the mean value in column '{column}' "
@@ -428,11 +428,11 @@ class ColumnValueMedianToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the median value in column '{column}' "
@@ -473,11 +473,11 @@ class ColumnValueStdDevToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the standard deviation in column '{column}' "
@@ -518,11 +518,11 @@ class ColumnValuesSumToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_value: Optional[float] = None,  # noqa: UP045
+        max_value: Optional[float] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that the sum of values in column '{column}' "
@@ -563,11 +563,11 @@ class ColumnValuesMissingCount(ColumnTest):
     def __init__(
         self,
         column: str,
-        missing_count_value: Optional[int] = None,
-        missing_value_match: Optional[List[str]] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        missing_count_value: Optional[int] = None,  # noqa: UP045
+        missing_value_match: Optional[List[str]] = None,  # noqa: UP006, UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesMissingCount",
@@ -604,11 +604,11 @@ class ColumnValueLengthsToBeBetween(ColumnTest):
     def __init__(
         self,
         column: str,
-        min_length: Optional[int] = None,
-        max_length: Optional[int] = None,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        min_length: Optional[int] = None,  # noqa: UP045
+        max_length: Optional[int] = None,  # noqa: UP045
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         default_desc = (
             f"Validates that value lengths in column '{column}' "
@@ -660,9 +660,9 @@ class ColumnValuesToBeAtExpectedLocation(ColumnTest):
         longitude_column_name: str,
         latitude_column_name: str,
         radius: float,
-        name: Optional[str] = None,
-        display_name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: Optional[str] = None,  # noqa: UP045
+        display_name: Optional[str] = None,  # noqa: UP045
+        description: Optional[str] = None,  # noqa: UP045
     ):
         super().__init__(
             test_definition_name="columnValuesToBeAtExpectedLocation",

@@ -73,6 +73,11 @@ try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
     from airflow.operators.bash import BashOperator
+from flask import Flask
+
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from openmetadata_managed_apis.operations.delete import delete_dag_id
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.operations.kill_all import kill_all
@@ -80,14 +85,11 @@ from openmetadata_managed_apis.operations.state import disable_dag, enable_dag
 from openmetadata_managed_apis.operations.status import status
 from openmetadata_managed_apis.operations.trigger import trigger
 
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-
 
 class TestAirflowOps(TestCase):
     dagbag: DagBag
     dag: DAG
+    _app_ctx = None
 
     conn = OpenMetadataConnection(
         hostPort=os.getenv("OPENMETADATA_HOST_PORT", "http://localhost:8585/api"),
@@ -103,10 +105,13 @@ class TestAirflowOps(TestCase):
         """
         Prepare ingredients
         """
-        # Initialize Airflow database if it doesn't exist
-        from airflow.utils.db import initdb
+        cls._app_ctx = Flask(__name__).app_context()
+        cls._app_ctx.push()
 
-        try:
+        # Initialize Airflow database if it doesn't exist
+        from airflow.utils.db import initdb  # noqa: PLC0415
+
+        try:  # noqa: SIM105
             initdb()
         except Exception:
             # Database might already be initialized
@@ -126,11 +131,11 @@ class TestAirflowOps(TestCase):
         if hasattr(cls.dag, "sync_to_db"):
             cls.dag.sync_to_db()
         else:
-            from airflow.models.dag import DagModel
-            from airflow.utils.session import create_session
+            from airflow.models.dag import DagModel  # noqa: PLC0415
+            from airflow.utils.session import create_session  # noqa: PLC0415
 
             with create_session() as session:
-                from airflow.models.dagbundle import DagBundleModel
+                from airflow.models.dagbundle import DagBundleModel  # noqa: PLC0415
 
                 bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
                 if not bundle:
@@ -150,7 +155,7 @@ class TestAirflowOps(TestCase):
 
         # In Airflow 2.x, bag_dag() requires root_dag parameter
         # In Airflow 3.x, it doesn't accept root_dag parameter
-        import inspect
+        import inspect  # noqa: PLC0415
 
         bag_dag_sig = inspect.signature(cls.dagbag.bag_dag)
         if "root_dag" in bag_dag_sig.parameters:
@@ -165,6 +170,9 @@ class TestAirflowOps(TestCase):
         """
         Clean up
         """
+        if cls._app_ctx is not None:
+            cls._app_ctx.pop()
+
         try:
             service = cls.metadata.get_by_name(entity=DatabaseService, fqn="test-service-ops")
             if service:
@@ -181,7 +189,7 @@ class TestAirflowOps(TestCase):
         if hasattr(cls, "_temp_dag_file") and cls._temp_dag_file.exists():
             cls._temp_dag_file.unlink()
 
-        if os.path.exists("/tmp/airflow"):
+        if os.path.exists("/tmp/airflow"):  # noqa: PTH110
             shutil.rmtree("/tmp/airflow")
 
     def test_dag_status(self):
@@ -193,8 +201,8 @@ class TestAirflowOps(TestCase):
             - Missing DAG
         """
 
-        from airflow.models import DagRun
-        from airflow.utils.session import create_session
+        from airflow.models import DagRun  # noqa: PLC0415
+        from airflow.utils.session import create_session  # noqa: PLC0415
 
         # Ensure a clean slate in case previous tests populated `dag_status`
         with create_session() as session:
@@ -318,7 +326,7 @@ class TestAirflowOps(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json, {"message": "Workflow [my_new_dag] has been created"})
 
-        from airflow.configuration import conf as airflow_conf
+        from airflow.configuration import conf as airflow_conf  # noqa: PLC0415
 
         dags_folder = airflow_conf.get("core", "DAGS_FOLDER")
         dag_file = Path(dags_folder) / "my_new_dag.py"
@@ -335,13 +343,13 @@ class TestAirflowOps(TestCase):
         stub_dag.fileloc = str(dag_file)
 
         try:
-            from airflow.operators.empty import EmptyOperator
+            from airflow.operators.empty import EmptyOperator  # noqa: PLC0415
         except ImportError:
-            from airflow.operators.dummy import DummyOperator as EmptyOperator
+            from airflow.operators.dummy import DummyOperator as EmptyOperator  # noqa: PLC0415
 
         EmptyOperator(task_id="noop", dag=stub_dag)
-        from airflow.models.dagbundle import DagBundleModel
-        from airflow.utils.session import create_session
+        from airflow.models.dagbundle import DagBundleModel  # noqa: PLC0415
+        from airflow.utils.session import create_session  # noqa: PLC0415
 
         with create_session() as session:
             bundle = session.query(DagBundleModel).filter(DagBundleModel.name == "").first()
@@ -369,10 +377,10 @@ class TestAirflowOps(TestCase):
 
         self.assertIsNotNone(dag_model)
 
-        res = trigger(dag_id="my_new_dag", run_id=None)
+        trigger_payload, trigger_status = trigger(dag_id="my_new_dag", run_id=None)
 
-        self.assertEqual(res.status_code, 200)
-        self.assertIn("Workflow [my_new_dag] has been triggered", res.json["message"])
+        self.assertEqual(trigger_status, 200)
+        self.assertIn("Workflow [my_new_dag] has been triggered", trigger_payload["message"])
 
         # Delete it
         res = delete_dag_id("my_new_dag")

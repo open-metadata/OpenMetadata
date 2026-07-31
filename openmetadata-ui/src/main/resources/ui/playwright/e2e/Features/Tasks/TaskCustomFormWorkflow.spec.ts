@@ -412,8 +412,7 @@ test.describe.serial('Task Custom Form Workflow', () => {
           description: 'Playwright custom task form workflow',
           category: 'Custom',
           type: 'CustomTask',
-          about: table.entityResponseData.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
           assignees: ['admin'],
           payload: {
             targetField: 'description',

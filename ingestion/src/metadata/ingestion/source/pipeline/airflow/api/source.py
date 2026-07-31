@@ -13,7 +13,7 @@ Airflow REST API source to extract metadata via Airflow REST API
 """
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional  # noqa: UP035
 from urllib.parse import quote
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -48,6 +48,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.pipeline.airflow.api.models import AirflowApiDagDetails
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -76,7 +77,7 @@ class AirflowApiSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None) -> "AirflowApiSource":
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None) -> "AirflowApiSource":  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
@@ -92,10 +93,25 @@ class AirflowApiSource(PipelineServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error building DAG details for {dag_data.get('dag_id')}: {exc}")
 
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the ``Pipeline`` denominator from the Airflow REST DAG count.
+
+        Skipped when a ``pipelineFilterPattern`` is configured: the cheap
+        server-side DAG count cannot honor the include/exclude regex, so the
+        declared total would overstate the pipelines actually processed. Since
+        ``Pipeline`` is a leaf counter that is never reconciled down, a filtered
+        run would otherwise sit permanently below 100%; fall back to
+        denominator-less progress instead."""
+        if self.has_pipeline_filter():
+            return
+        count = self.connection.get_dags_count()
+        if isinstance(count, int) and count > 0:
+            totals.set_total("Pipeline", count)
+
     def get_pipeline_name(self, pipeline_details: AirflowApiDagDetails) -> str:
         return pipeline_details.dag_id
 
-    def get_pipeline_state(self, pipeline_details: AirflowApiDagDetails) -> Optional[PipelineState]:
+    def get_pipeline_state(self, pipeline_details: AirflowApiDagDetails) -> Optional[PipelineState]:  # noqa: UP045
         if pipeline_details.is_paused is None:
             return None
         return PipelineState.Inactive if pipeline_details.is_paused else PipelineState.Active
@@ -112,7 +128,7 @@ class AirflowApiSource(PipelineServiceSource):
             return f"{host}/dags/{quote(dag_id)}"
         return f"{host}/dags/{quote(dag_id)}/grid"
 
-    def get_owners(self, owners: Optional[List[str]]) -> Optional[EntityReferenceList]:
+    def get_owners(self, owners: Optional[List[str]]) -> Optional[EntityReferenceList]:  # noqa: UP006, UP045
         if not self.source_config.includeOwners or not owners:
             return None
         refs = EntityReferenceList(root=[])
@@ -125,7 +141,7 @@ class AirflowApiSource(PipelineServiceSource):
                 logger.warning(f"Error while getting details of user {owner_name} - {exc}")
         return refs if refs.root else None
 
-    def _build_tasks(self, dag_details: AirflowApiDagDetails) -> List[Task]:
+    def _build_tasks(self, dag_details: AirflowApiDagDetails) -> List[Task]:  # noqa: UP006
         return [
             Task(
                 name=task.task_id,

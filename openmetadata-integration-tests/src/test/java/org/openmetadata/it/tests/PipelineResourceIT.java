@@ -166,17 +166,6 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().pipelines().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected Pipeline getVersion(UUID id, Double version) {
     return SdkClients.adminClient().pipelines().getVersion(id.toString(), version);
   }
@@ -222,6 +211,21 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertNotNull(pipeline);
     assertNotNull(pipeline.getTasks());
     assertEquals(2, pipeline.getTasks().size());
+  }
+
+  @Test
+  void post_pipelineWithInvalidTaskName_4xx(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_invalid_task"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task>invalid")));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating pipeline with invalid task name should fail");
   }
 
   @Test

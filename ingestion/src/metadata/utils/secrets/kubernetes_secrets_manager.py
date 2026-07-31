@@ -49,7 +49,7 @@ def _get_current_namespace() -> str:
     :return: The namespace where the application service account is running or default if it can't be retrieved
     """
     try:
-        with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace", encoding="utf-8") as f:
+        with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace", encoding="utf-8") as f:  # noqa: PTH123
             return f.read().strip()
     except Exception as _:
         logger.info("Can't read the current namespace from in-cluster kubernetes. Is the service account configured?")
@@ -63,8 +63,8 @@ def _() -> None:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
-def _() -> Optional[KubernetesCredentials]:
-    from airflow.configuration import conf
+def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
+    from airflow.configuration import conf  # noqa: PLC0415
 
     namespace = conf.get(
         SECRET_MANAGER_AIRFLOW_CONF,
@@ -82,7 +82,7 @@ def _() -> Optional[KubernetesCredentials]:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
-def _() -> Optional[KubernetesCredentials]:
+def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
     namespace = os.getenv("KUBERNETES_NAMESPACE", _get_current_namespace())
     in_cluster = os.getenv("KUBERNETES_IN_CLUSTER", "false").lower() == "true"
     kubeconfig_path = os.getenv("KUBERNETES_KUBECONFIG_PATH")
@@ -137,7 +137,7 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
                 logger.debug(f"Got value for secret {secret_id}")
                 return secret_value
             logger.warning(f"Secret {secret_id} exists but has no 'value' key")
-            return None
+            return None  # noqa: TRY300
 
         except ApiException as exc:
             if exc.status == 404:
@@ -145,16 +145,16 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
                 return None
             logger.debug(traceback.format_exc())
             logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
-            raise exc
+            raise exc  # noqa: TRY201
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
-            raise exc
+            raise exc  # noqa: TRY201
 
-    def load_credentials(self) -> Optional[dict]:
+    def load_credentials(self) -> Optional[dict]:  # noqa: UP045
         """Load the provider credentials based on the loader type"""
         try:
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)
             return loader_fn()
         except Exception as err:
-            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")
+            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")  # noqa: B904

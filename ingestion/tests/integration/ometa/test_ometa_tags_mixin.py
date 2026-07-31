@@ -24,8 +24,8 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 
-from ..integration_base import generate_name, get_create_service
-from .conftest import _safe_delete
+from ..integration_base import generate_name, get_create_service  # noqa: TID252
+from .conftest import _safe_delete  # noqa: TID252
 
 _RUN_ID = uuid.uuid4().hex[:8]
 CLASSIFICATION_NAME = f"TestTag{_RUN_ID}"

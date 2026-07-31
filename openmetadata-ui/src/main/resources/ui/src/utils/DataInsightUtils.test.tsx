@@ -12,7 +12,7 @@
  */
 import { render } from '@testing-library/react';
 import { DataInsightChartTooltipProps } from '../interface/data-insight.interface';
-import { CustomTooltip } from './DataInsightUtils';
+import { CustomTooltip } from './DataInsightChartUtils';
 
 describe('CustomTooltip', () => {
   const defaultProps: DataInsightChartTooltipProps = {

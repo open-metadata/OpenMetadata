@@ -64,5 +64,5 @@ class DatabricksSamplerInterface(SQASampler):
             WHEN `{column.name}` IS NULL THEN NULL
             ELSE slice(`{column.name}`, 1, {max_elements})
         END AS `{column._label}`
-        """
+        """  # noqa: W291
         )

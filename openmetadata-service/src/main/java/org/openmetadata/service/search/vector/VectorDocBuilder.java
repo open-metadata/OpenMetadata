@@ -4,9 +4,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -31,11 +33,41 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @UtilityClass
 public class VectorDocBuilder {
+
+  /**
+   * Schema version of the denormalized chunk document (issue #862/#858). Stamped on every chunk doc
+   * as {@code docVersion} and mirrored on the chunk index mapping as {@code _meta.chunkDocVersion}.
+   * Bump this whenever {@link #buildDenormalizedFields} materializes a new field or changes an existing one
+   * so {@code OpenSearchVectorService} triggers an additive {@code PUT _mapping} and an
+   * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
+   * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
+   */
+  public static final int CHUNK_DOC_VERSION = 1;
+
+  /**
+   * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
+   * text is already embedded and searchable via {@code textToEmbed}; the {@code description} field
+   * exists only so the shard-fair lexical clauses (which target {@code description}) can match on
+   * chunk docs, so a hard cap keeps chunk {@code _source} growth bounded on pathological bodies.
+   */
+  static final int MAX_CHUNK_DESCRIPTION_CHARS = 5000;
+
+  /**
+   * Source of the per-chunk embedding vector. The normal write path calls the embedding client;
+   * the docVersion-migration path reuses vectors already stored on the chunk docs so a mapping-only
+   * change never incurs embedding-provider cost.
+   */
+  @FunctionalInterface
+  interface ChunkEmbeddingSource {
+    float[] embeddingFor(int chunkIndex, String textToEmbed);
+  }
 
   /**
    * Strategy for producing the semantic "body text" of an entity that will be chunked and fed to
@@ -110,30 +142,328 @@ public class VectorDocBuilder {
     BODY_TEXT_EXTRACTORS.put(entityType, extractor);
   }
 
+  /**
+   * Build one standalone embedding document per body chunk (issue #4789). Each doc carries its own
+   * per-chunk {@code embedding}/{@code textToEmbed}/{@code textToLLMContext} plus {@code chunkIndex},
+   * a shared {@code parentId}/{@code fingerprint}, and the KNN filter fields (entityType, deleted,
+   * tags, domains, tier) so the docs can live in the dedicated {@code dataAssetEmbeddings} chunk
+   * index and still be filtered by the vector query. Callers index each doc under the id
+   * {@code <parentId>_<chunkIndex>}.
+   */
   public static List<Map<String, Object>> fromEntity(
       EntityInterface entity, EmbeddingClient embeddingClient) {
-    Map<String, Object> doc = new HashMap<>(buildEmbeddingFields(entity, embeddingClient));
+    if (embeddingClient == null || !embeddingClient.isAvailable()) {
+      // Signal the outage explicitly rather than returning an empty list, which callers cannot
+      // distinguish from "entity has no chunks" and would treat as a delete of existing vectors.
+      throw new EmbeddingUnavailableException(
+          "Embedding provider unavailable; skipping chunk build for " + entity.getId());
+    }
+    return fromEntity(entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed));
+  }
 
+  /**
+   * Rebuild an entity's chunk docs reusing already-computed embeddings keyed by chunk index, so a
+   * docVersion-only mapping upgrade re-materializes the denormalized fields with <b>zero</b>
+   * embedding-provider cost (issue #862 versioned rollout). Callers must supply a vector for every
+   * chunk index the re-chunked body produces; a missing vector throws {@link IllegalStateException}
+   * so the service layer can fall back to a full re-embed.
+   */
+  public static List<Map<String, Object>> fromEntityReusingEmbeddings(
+      EntityInterface entity, Map<Integer, float[]> reuseEmbeddings) {
+    return fromEntity(
+        entity,
+        (index, textToEmbed) -> {
+          float[] vector = reuseEmbeddings.get(index);
+          if (vector == null) {
+            throw new IllegalStateException(
+                "No reusable embedding for chunk " + index + " of entity " + entity.getId());
+          }
+          return vector;
+        });
+  }
+
+  private static List<Map<String, Object>> fromEntity(
+      EntityInterface entity, ChunkEmbeddingSource embeddingSource) {
+    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingSource);
     if (entity instanceof GlossaryTerm term) {
-      List<TermRelation> relatedTerms = term.getRelatedTerms();
-      if (relatedTerms != null && !relatedTerms.isEmpty()) {
-        List<Map<String, Object>> relatedTermDocs = new ArrayList<>();
-        for (TermRelation rel : relatedTerms) {
-          EntityReference ref = rel.getTerm();
-          if (ref == null) continue;
-          Map<String, Object> refMap = new HashMap<>();
-          if (ref.getId() != null) refMap.put("id", ref.getId().toString());
-          if (ref.getName() != null) refMap.put("name", ref.getName());
-          if (ref.getType() != null) refMap.put("type", ref.getType());
-          if (ref.getFullyQualifiedName() != null)
-            refMap.put("fullyQualifiedName", ref.getFullyQualifiedName());
-          relatedTermDocs.add(refMap);
+      List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
+      if (!relatedTermDocs.isEmpty()) {
+        for (Map<String, Object> doc : docs) {
+          doc.put("relatedTerms", relatedTermDocs);
         }
-        doc.put("relatedTerms", relatedTermDocs);
       }
     }
+    return docs;
+  }
 
-    return List.of(doc);
+  private static List<Map<String, Object>> buildRelatedTermRefs(GlossaryTerm term) {
+    List<Map<String, Object>> refs = new ArrayList<>();
+    List<TermRelation> relatedTerms =
+        term.getRelatedTerms() != null ? term.getRelatedTerms() : Collections.emptyList();
+    for (TermRelation rel : relatedTerms) {
+      EntityReference ref = rel.getTerm();
+      if (ref != null) {
+        Map<String, Object> refMap = new HashMap<>();
+        if (ref.getId() != null) refMap.put("id", ref.getId().toString());
+        if (ref.getName() != null) refMap.put("name", ref.getName());
+        if (ref.getType() != null) refMap.put("type", ref.getType());
+        if (ref.getFullyQualifiedName() != null) {
+          refMap.put("fullyQualifiedName", ref.getFullyQualifiedName());
+        }
+        refs.add(refMap);
+      }
+    }
+    return refs;
+  }
+
+  private record ChunkContext(
+      EntityInterface entity,
+      String entityType,
+      String parentId,
+      String fingerprint,
+      String metaLight,
+      String semanticMetaLight,
+      List<String> chunks,
+      List<String> semanticChunks,
+      Map<String, Object> denormalizedFields) {}
+
+  /** One embedding-field map per body chunk. See {@link #fromEntity} for the doc shape. */
+  public static List<Map<String, Object>> buildChunkFields(
+      EntityInterface entity, EmbeddingClient embeddingClient) {
+    return buildChunkFields(entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed));
+  }
+
+  private static List<Map<String, Object>> buildChunkFields(
+      EntityInterface entity, ChunkEmbeddingSource embeddingSource) {
+    EntityReference reference = entity.getEntityReference();
+    String entityType = reference == null ? null : reference.getType();
+    ChunkContext ctx =
+        new ChunkContext(
+            entity,
+            entityType,
+            entity.getId().toString(),
+            computeFingerprintForEntity(entity),
+            buildMetaLightText(entity, entityType),
+            buildSemanticMetaLightText(entity, entityType),
+            TextChunkManager.chunk(buildBodyText(entity, entityType)),
+            TextChunkManager.chunk(buildSemanticBodyText(entity, entityType)),
+            // Denormalized keyword/filter fields are entity-level constants — build them once and
+            // share them across every chunk instead of recomputing (reflection, HTML strip,
+            // fqnParts,
+            // column/owner iteration) per chunk.
+            buildDenormalizedFields(entity, entityType));
+    List<Map<String, Object>> docs = new ArrayList<>(ctx.chunks().size());
+    for (int index = 0; index < ctx.chunks().size(); index++) {
+      docs.add(buildChunkDoc(ctx, index, embeddingSource));
+    }
+    return docs;
+  }
+
+  private static Map<String, Object> buildChunkDoc(
+      ChunkContext ctx, int index, ChunkEmbeddingSource embeddingSource) {
+    int chunkCount = ctx.chunks().size();
+    String semanticChunk =
+        index < ctx.semanticChunks().size() ? ctx.semanticChunks().get(index) : "";
+    String textToEmbed = joinSemanticParts(ctx.semanticMetaLight(), semanticChunk);
+    String textToLLMContext =
+        String.format(
+            "%s%s | chunk %d/%d", ctx.metaLight(), ctx.chunks().get(index), index + 1, chunkCount);
+    // Shallow-copy the shared entity-level fields, then overlay this chunk's per-chunk fields.
+    Map<String, Object> fields = new HashMap<>(ctx.denormalizedFields());
+    fields.put("embedding", embeddingSource.embeddingFor(index, textToEmbed));
+    fields.put("textToLLMContext", textToLLMContext);
+    fields.put("textToEmbed", textToEmbed);
+    fields.put("chunkIndex", index);
+    fields.put("chunkCount", chunkCount);
+    fields.put("parentId", ctx.parentId());
+    fields.put("fingerprint", ctx.fingerprint());
+    return fields;
+  }
+
+  /**
+   * Build, <b>once per entity</b>, the keyword, filter and identity fields every chunk doc needs to
+   * be self-sufficient (issues #862/#858); {@link #buildChunkDoc} copies this map onto each chunk.
+   * Chunk docs live in a dedicated {@code dynamic:false} index co-aliased with the entity indices,
+   * so unlike the legacy entity-doc path every field the read side scores, filters or displays on
+   * must be copied here:
+   *
+   * <ul>
+   *   <li>KNN filter fields ({@code entityType}, {@code deleted}, {@code tags}/{@code domains}/
+   *       {@code tier}) — the original chunk-doc contract.
+   *   <li>Lexical parity: {@code description} (capped), {@code fqnParts}, {@code synonyms} and
+   *       {@code columns.name} so the shard-fair keyword clauses match on the best-semantic chunk,
+   *       not only on chunk 0's spliced entity doc.
+   *   <li>Filter parity: {@code owners}, {@code serviceType}, {@code service}/{@code database}/
+   *       {@code databaseSchema} and {@code certification} so NLQ filters on those facets no longer
+   *       exclude every chunk doc.
+   * </ul>
+   *
+   * <p>Every field here is already covered by the fingerprint (via {@code metaLight}/{@code body}),
+   * so denormalizing them does not change the fingerprint; the {@link #CHUNK_DOC_VERSION} marker is
+   * what drives the additive backfill.
+   */
+  private static Map<String, Object> buildDenormalizedFields(
+      EntityInterface entity, String entityType) {
+    Map<String, Object> fields = new HashMap<>();
+    fields.put("entityType", entityType);
+    fields.put("deleted", Boolean.TRUE.equals(entity.getDeleted()));
+    fields.put("docVersion", CHUNK_DOC_VERSION);
+    putIfPresent(fields, "name", entity.getName());
+    putIfPresent(fields, "fullyQualifiedName", entity.getFullyQualifiedName());
+    putIfPresent(fields, "displayName", entity.getDisplayName());
+    putIfPresent(fields, "serviceType", extractServiceType(entity));
+
+    String description = removeHtml(entity.getDescription());
+    if (!description.isBlank()) {
+      fields.put("description", capText(description, MAX_CHUNK_DESCRIPTION_CHARS));
+    }
+    Set<String> fqnParts = fqnParts(entity.getFullyQualifiedName());
+    if (!fqnParts.isEmpty()) {
+      fields.put("fqnParts", new ArrayList<>(fqnParts));
+    }
+
+    List<Map<String, Object>> tags = tagFqnObjects(entity);
+    if (!tags.isEmpty()) {
+      fields.put("tags", tags);
+    }
+    List<Map<String, Object>> domains = domainNameObjects(entity);
+    if (!domains.isEmpty()) {
+      fields.put("domains", domains);
+    }
+    String tier = extractTierLabel(entity);
+    if (tier != null) {
+      fields.put("tier", Map.of("tagFQN", tier));
+    }
+    String certification = extractCertificationLabel(entity);
+    if (certification != null) {
+      fields.put("certification", Map.of("tagLabel", Map.of("tagFQN", certification)));
+    }
+    List<Map<String, Object>> owners = ownerNameObjects(entity);
+    if (!owners.isEmpty()) {
+      fields.put("owners", owners);
+    }
+    addReferenceField(fields, entity, "service", "getService");
+    addReferenceField(fields, entity, "database", "getDatabase");
+    addReferenceField(fields, entity, "databaseSchema", "getDatabaseSchema");
+
+    if (entity instanceof GlossaryTerm term
+        && term.getSynonyms() != null
+        && !term.getSynonyms().isEmpty()) {
+      fields.put("synonyms", new ArrayList<>(term.getSynonyms()));
+    }
+    if (entity instanceof Table table) {
+      List<Map<String, Object>> columns = columnNameObjects(table.getColumns());
+      if (!columns.isEmpty()) {
+        fields.put("columns", columns);
+      }
+    }
+    return fields;
+  }
+
+  private static String capText(String text, int maxChars) {
+    return text.length() <= maxChars ? text : text.substring(0, maxChars);
+  }
+
+  /**
+   * Mirror of {@code SearchIndex#getFQNParts}: the hierarchical FQN parts minus the entity's own
+   * name, so a query for a parent (service/database/schema) name matches chunk docs the same way it
+   * matches entity docs.
+   */
+  private static Set<String> fqnParts(String fqn) {
+    if (fqn == null || fqn.isBlank()) {
+      return Collections.emptySet();
+    }
+    String[] parts = FullyQualifiedName.split(fqn);
+    String entityName = parts[parts.length - 1];
+    Set<String> result = new LinkedHashSet<>();
+    for (String part : FullyQualifiedName.getAllParts(fqn)) {
+      if (!part.equals(entityName)) {
+        result.add(part);
+      }
+    }
+    return result;
+  }
+
+  private static List<Map<String, Object>> ownerNameObjects(EntityInterface entity) {
+    List<Map<String, Object>> owners = new ArrayList<>();
+    List<EntityReference> ownerRefs =
+        entity.getOwners() != null ? entity.getOwners() : Collections.emptyList();
+    for (EntityReference owner : ownerRefs) {
+      if (owner.getName() != null) {
+        owners.add(Map.of("name", owner.getName()));
+      }
+    }
+    return owners;
+  }
+
+  private static List<Map<String, Object>> columnNameObjects(List<Column> columns) {
+    if (columns == null || columns.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<Map<String, Object>> result = new ArrayList<>(columns.size());
+    for (Column column : columns) {
+      if (column.getName() != null) {
+        result.add(Map.of("name", column.getName()));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Reflectively read a container reference ({@code getService}/{@code getDatabase}/
+   * {@code getDatabaseSchema}) and copy its {@code name}/{@code displayName} onto the chunk doc, so
+   * NLQ service/database/schema filters match. The getter is only present on the entity types that
+   * have it; absence is a no-op.
+   */
+  private static void addReferenceField(
+      Map<String, Object> fields, EntityInterface entity, String key, String getter) {
+    try {
+      Method method = entity.getClass().getMethod(getter);
+      Object result = method.invoke(entity);
+      if (result instanceof EntityReference ref) {
+        Map<String, Object> value = new HashMap<>();
+        putIfPresent(value, "name", ref.getName());
+        putIfPresent(value, "displayName", ref.getDisplayName());
+        if (!value.isEmpty()) {
+          fields.put(key, value);
+        }
+      }
+    } catch (NoSuchMethodException e) {
+      // Expected: this entity type has no such reference; nothing to denormalize.
+    } catch (ReflectiveOperationException e) {
+      // A getter that exists but failed (e.g. threw) is a real problem worth surfacing.
+      LOG.debug("Failed to denormalize {} for entity {}: {}", key, entity.getId(), e.getMessage());
+    }
+  }
+
+  private static void putIfPresent(Map<String, Object> fields, String key, String value) {
+    if (value != null && !value.isBlank()) {
+      fields.put(key, value);
+    }
+  }
+
+  private static List<Map<String, Object>> tagFqnObjects(EntityInterface entity) {
+    List<Map<String, Object>> tags = new ArrayList<>();
+    List<TagLabel> tagLabels =
+        entity.getTags() != null ? entity.getTags() : Collections.emptyList();
+    for (TagLabel tag : tagLabels) {
+      if (tag.getTagFQN() != null) {
+        tags.add(Map.of("tagFQN", tag.getTagFQN()));
+      }
+    }
+    return tags;
+  }
+
+  private static List<Map<String, Object>> domainNameObjects(EntityInterface entity) {
+    List<Map<String, Object>> domains = new ArrayList<>();
+    List<EntityReference> domainRefs =
+        entity.getDomains() != null ? entity.getDomains() : Collections.emptyList();
+    for (EntityReference domain : domainRefs) {
+      if (domain.getName() != null) {
+        domains.add(Map.of("name", domain.getName()));
+      }
+    }
+    return domains;
   }
 
   /**
@@ -349,7 +679,8 @@ public class VectorDocBuilder {
     List<String> phrases = new ArrayList<>();
     appendSubjectPhrase(phrases, entity, entityType);
 
-    BiConsumer<List<String>, EntityInterface> enricher = SEMANTIC_ENRICHERS.get(entityType);
+    BiConsumer<List<String>, EntityInterface> enricher =
+        entityType == null ? null : SEMANTIC_ENRICHERS.get(entityType);
     if (enricher != null) {
       enricher.accept(phrases, entity);
     }

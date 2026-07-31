@@ -13,7 +13,7 @@ Airbyte source to extract metadata
 """
 
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -59,7 +59,7 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
-from .utils import get_destination_table_details, get_source_table_details
+from .utils import get_destination_table_details, get_source_table_details  # noqa: TID252
 
 logger = ingestion_logger()
 
@@ -100,7 +100,7 @@ class AirbyteSource(PipelineServiceSource):
             self.source_url_prefix = clean_uri(self.service_connection.hostPort)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirbyteConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirbyteConnection):
@@ -224,14 +224,14 @@ class AirbyteSource(PipelineServiceSource):
                     start_dt = datetime.fromisoformat(job.startTime.replace("Z", "+00:00"))
                     created_at = datetime_to_timestamp(start_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.warning(f"Failed to parse startTime: {exc}")
+                    logger.error(f"Failed to parse startTime: {exc}")
 
             if job.lastUpdatedAt:
                 try:
                     end_dt = datetime.fromisoformat(job.lastUpdatedAt.replace("Z", "+00:00"))
                     ended_at = datetime_to_timestamp(end_dt, milliseconds=True)
                 except (ValueError, AttributeError) as exc:
-                    logger.warning(f"Failed to parse lastUpdatedAt: {exc}")
+                    logger.error(f"Failed to parse lastUpdatedAt: {exc}")
 
             task_status = [
                 TaskStatus(
@@ -263,7 +263,7 @@ class AirbyteSource(PipelineServiceSource):
                 )
             )
 
-    def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
+    def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:  # noqa: UP045
         """
         Get the FQN of the table
         """

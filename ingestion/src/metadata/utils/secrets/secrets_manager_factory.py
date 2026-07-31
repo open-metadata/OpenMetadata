@@ -40,8 +40,8 @@ class SecretsManagerFactory(metaclass=Singleton):
 
     def __init__(
         self,
-        secrets_manager_provider: Optional[SecretsManagerProvider] = None,
-        secrets_manager_loader: Optional[SecretsManagerClientLoader] = None,
+        secrets_manager_provider: Optional[SecretsManagerProvider] = None,  # noqa: UP045
+        secrets_manager_loader: Optional[SecretsManagerClientLoader] = None,  # noqa: UP045
     ):
         """Here the concrete class object is no passed to avoid the creation of circular dependencies
 
@@ -58,11 +58,11 @@ class SecretsManagerFactory(metaclass=Singleton):
         )
 
     @property
-    def secrets_manager_provider(self) -> Optional[SecretsManagerProvider]:
+    def secrets_manager_provider(self) -> Optional[SecretsManagerProvider]:  # noqa: UP045
         return self._secrets_manager_provider
 
     @property
-    def secrets_manager_loader(self) -> Optional[SecretsManagerClientLoader]:
+    def secrets_manager_loader(self) -> Optional[SecretsManagerClientLoader]:  # noqa: UP045
         return self._secrets_manager_loader
 
     def _get_secrets_manager(

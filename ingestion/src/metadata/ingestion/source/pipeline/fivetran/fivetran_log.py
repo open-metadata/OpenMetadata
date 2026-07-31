@@ -19,7 +19,7 @@ publishes operational metadata to fivetran_metadata.log with 90 days of history.
 import json
 import traceback
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy import MetaData as SaMetaData
 from sqlalchemy import desc, select
@@ -53,7 +53,7 @@ FIVETRAN_MESSAGE_EVENTS = (
 )
 
 
-def _try_parse_json(data_str: Optional[str]) -> Optional[dict]:
+def _try_parse_json(data_str: Optional[str]) -> Optional[dict]:  # noqa: UP045
     if not data_str:
         return None
     try:
@@ -66,7 +66,7 @@ def _try_parse_json(data_str: Optional[str]) -> Optional[dict]:
         return None
 
 
-def _ts(dt: Optional[datetime]) -> Optional[Timestamp]:
+def _ts(dt: Optional[datetime]) -> Optional[Timestamp]:  # noqa: UP045
     if dt is None:
         return None
     return Timestamp(datetime_to_ts(dt))
@@ -76,7 +76,7 @@ def query_sync_logs(
     service: DatabaseService,
     log_database: str,
     connector_id: str,
-) -> Optional[Dict[str, dict]]:
+) -> Optional[Dict[str, dict]]:  # noqa: UP006, UP045
     """Query fivetran_metadata.log and return parsed syncs grouped by sync_id.
 
     Fivetran's "destination" warehouse is, from OpenMetadata's perspective,
@@ -112,7 +112,7 @@ def query_sync_logs(
                 .limit(MAX_LOG_ROWS)
             )
 
-            syncs: Dict[str, dict] = {}
+            syncs: Dict[str, dict] = {}  # noqa: UP006
             result = conn.execute(query).yield_per(LOG_STREAM_PARTITION_SIZE)
             for partition in result.partitions():
                 parse_sync_events(partition, syncs)
@@ -129,33 +129,33 @@ def query_sync_logs(
             engine.dispose()
 
 
-def _handle_sync_start(sync: dict, _data_str: Optional[str], ts: datetime) -> None:
+def _handle_sync_start(sync: dict, _data_str: Optional[str], ts: datetime) -> None:  # noqa: UP045
     sync["sync_start_ts"] = ts
 
 
-def _handle_extract_summary(sync: dict, data_str: Optional[str], ts: datetime) -> None:
+def _handle_extract_summary(sync: dict, data_str: Optional[str], ts: datetime) -> None:  # noqa: UP045
     sync["extract_end_ts"] = ts
     parsed = _try_parse_json(data_str)
     if parsed:
         sync["extract_data"] = parsed
 
 
-def _handle_write_start(sync: dict, _data_str: Optional[str], ts: datetime) -> None:
+def _handle_write_start(sync: dict, _data_str: Optional[str], ts: datetime) -> None:  # noqa: UP045
     sync["write_start_min"] = min(ts, sync.get("write_start_min", ts))
 
 
-def _handle_write_end(sync: dict, _data_str: Optional[str], ts: datetime) -> None:
+def _handle_write_end(sync: dict, _data_str: Optional[str], ts: datetime) -> None:  # noqa: UP045
     sync["write_end_max"] = max(ts, sync.get("write_end_max", ts))
 
 
-def _handle_sync_end(sync: dict, data_str: Optional[str], ts: datetime) -> None:
+def _handle_sync_end(sync: dict, data_str: Optional[str], ts: datetime) -> None:  # noqa: UP045
     sync["sync_end_ts"] = ts
     parsed = _try_parse_json(data_str)
     if parsed:
         sync["sync_end_data"] = parsed
 
 
-def _handle_sync_stats(sync: dict, data_str: Optional[str], _ts: datetime) -> None:
+def _handle_sync_stats(sync: dict, data_str: Optional[str], _ts: datetime) -> None:  # noqa: UP045
     parsed = _try_parse_json(data_str)
     if parsed:
         sync["sync_stats"] = parsed
@@ -172,9 +172,9 @@ _EVENT_HANDLERS = {
 
 
 def parse_sync_events(
-    rows: Iterable[Tuple],
-    syncs: Optional[Dict[str, dict]] = None,
-) -> Dict[str, dict]:
+    rows: Iterable[Tuple],  # noqa: UP006
+    syncs: Optional[Dict[str, dict]] = None,  # noqa: UP006, UP045
+) -> Dict[str, dict]:  # noqa: UP006
     """Group log rows by sync_id into per-sync event dictionaries.
 
     Accepts an optional ``syncs`` accumulator so callers can fold multiple
@@ -237,7 +237,7 @@ def _determine_load_status(sync: dict) -> StatusType:
     return StatusType.Failed
 
 
-def build_task_statuses(sync: dict) -> List[TaskStatus]:
+def build_task_statuses(sync: dict) -> List[TaskStatus]:  # noqa: UP006
     """Build Extract/Process/Load TaskStatus from parsed sync events."""
     _apply_stats_fallback(sync)
 
@@ -276,8 +276,8 @@ def build_task_statuses(sync: dict) -> List[TaskStatus]:
 def build_fallback_task_statuses(
     status_type: StatusType,
     start_ms: int,
-    end_ms: Optional[int],
-) -> List[TaskStatus]:
+    end_ms: Optional[int],  # noqa: UP045
+) -> List[TaskStatus]:  # noqa: UP006
     """Build uniform task statuses for the REST API fallback path."""
     end_time = Timestamp(end_ms) if end_ms else None
     return [
@@ -312,7 +312,7 @@ def _get_sortable_sync_start(sync: dict) -> datetime:
     return ts
 
 
-def sort_and_limit_syncs(syncs: Dict[str, dict]) -> List[dict]:
+def sort_and_limit_syncs(syncs: Dict[str, dict]) -> List[dict]:  # noqa: UP006
     """Sort parsed syncs by start time descending and limit to MAX_SYNC_RUNS."""
     sorted_pairs = sorted(
         syncs.items(),

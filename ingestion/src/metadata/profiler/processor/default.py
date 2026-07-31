@@ -13,7 +13,7 @@
 Default simple profiler to use
 """
 
-from typing import List, Optional, Type
+from typing import List, Optional, Type  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -26,11 +26,11 @@ from metadata.profiler.registry import MetricRegistry
 
 
 def get_default_metrics(
-    metrics_registry: Type[MetricRegistry],
+    metrics_registry: Type[MetricRegistry],  # noqa: UP006
     table: type,
-    ometa_client: Optional[OpenMetadata] = None,
-    db_service: Optional[DatabaseService] = None,
-) -> List[Metric]:
+    ometa_client: Optional[OpenMetadata] = None,  # noqa: UP045
+    db_service: Optional[DatabaseService] = None,  # noqa: UP045
+) -> List[Metric]:  # noqa: UP006
     return [
         # Table Metrics
         metrics_registry.rowCount.value,
@@ -67,10 +67,10 @@ class DefaultProfiler(Profiler):
     def __init__(
         self,
         profiler_interface: ProfilerInterface,
-        metrics_registry: Type[MetricRegistry],
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,
-        exclude_columns: Optional[List[str]] = None,
-        global_profiler_configuration: Optional[Settings] = None,
+        metrics_registry: Type[MetricRegistry],  # noqa: UP006
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,  # noqa: UP006, UP045
+        exclude_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
+        global_profiler_configuration: Optional[Settings] = None,  # noqa: UP045
         db_service=None,
     ):
         _metrics = get_default_metrics(

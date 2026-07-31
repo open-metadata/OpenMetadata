@@ -159,7 +159,9 @@ public class LineageCacheKeyTest {
             1,
             Boolean.FALSE,
             0,
-            0);
+            0,
+            null,
+            null);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -175,7 +177,9 @@ public class LineageCacheKeyTest {
             1,
             Boolean.FALSE,
             0,
-            0);
+            0,
+            null,
+            null);
 
     assertNotEquals(key1, key2);
   }
@@ -197,7 +201,9 @@ public class LineageCacheKeyTest {
             1,
             Boolean.FALSE,
             0,
-            0);
+            0,
+            null,
+            null);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -213,7 +219,9 @@ public class LineageCacheKeyTest {
             2,
             Boolean.FALSE,
             0,
-            0);
+            0,
+            null,
+            null);
 
     assertNotEquals(key1, key2);
   }
@@ -235,7 +243,9 @@ public class LineageCacheKeyTest {
             1,
             Boolean.FALSE,
             0,
-            0);
+            0,
+            null,
+            null);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -251,7 +261,9 @@ public class LineageCacheKeyTest {
             1,
             Boolean.FALSE,
             0,
-            0);
+            0,
+            null,
+            null);
 
     assertEquals(key1, key2);
     assertEquals(key1.hashCode(), key2.hashCode());
@@ -274,7 +286,9 @@ public class LineageCacheKeyTest {
             1,
             Boolean.FALSE,
             0,
-            0);
+            0,
+            null,
+            null);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -290,7 +304,9 @@ public class LineageCacheKeyTest {
             1,
             Boolean.TRUE,
             2,
-            3);
+            3,
+            null,
+            null);
 
     assertNotEquals(key1, key2);
   }

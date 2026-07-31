@@ -13,7 +13,7 @@
 Cardinality Distribution Metric definition
 """
 
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional  # noqa: UP035
 
 from sqlalchemy import case, column, desc, func, or_
 from sqlalchemy.orm import Session
@@ -56,10 +56,10 @@ class CardinalityDistribution(HybridMetric):
 
     def fn(
         self,
-        sample: Optional[type],
-        res: Dict[str, Any],
-        session: Optional[Session] = None,
-    ) -> Optional[Dict[str, Any]]:
+        sample: Optional[type],  # noqa: UP045
+        res: Dict[str, Any],  # noqa: UP006
+        session: Optional[Session] = None,  # noqa: UP045
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Build the Cardinality Distribution metric query
         """
@@ -97,7 +97,7 @@ class CardinalityDistribution(HybridMetric):
                 ValueRank(col).fn(),
             )
             .select_from(sample)
-            .where(col != None)
+            .where(col != None)  # noqa: E711
             .group_by(col)
             .cte("value_counts")
         )
@@ -136,12 +136,12 @@ class CardinalityDistribution(HybridMetric):
             }
         return None
 
-    def df_fn(self, res: Dict[str, Any], dfs: Optional["PandasRunner"] = None):
+    def df_fn(self, res: Dict[str, Any], dfs: Optional["PandasRunner"] = None):  # noqa: UP006
         """
         Pandas implementation for dataframes
         """
         # pylint: disable=import-outside-toplevel
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
 
         if self.col is None:
             return None
@@ -200,7 +200,7 @@ class CardinalityDistribution(HybridMetric):
                 counts.append(int(others_count))
                 percentages.append(round((others_count / total_count) * 100, 2))
 
-            return {
+            return {  # noqa: TRY300
                 "categories": categories,
                 "counts": counts,
                 "percentages": percentages,

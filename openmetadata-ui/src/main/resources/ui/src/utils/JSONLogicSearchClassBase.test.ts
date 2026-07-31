@@ -265,11 +265,12 @@ describe('JSONLogicSearchClassBase', () => {
   });
 
   describe('getNegativeQueryForNotContainsReverserOperation', () => {
-    it('should handle array_not_contains logic reversal', () => {
+    it('should lift negation out of some for array_not_contains (contains shape)', () => {
       const logic = {
-        '!': {
-          contains: ['field_value', 'search_term'],
-        },
+        some: [
+          { var: 'tags' },
+          { '!': { contains: [{ var: 'tagFQN' }, ['Tag1']] } },
+        ],
       };
 
       const result =
@@ -277,17 +278,20 @@ describe('JSONLogicSearchClassBase', () => {
           logic
         );
 
-      expect(result).toBeDefined();
-      // The function should return appropriate logic for reversing not_contains operations
+      expect(result).toEqual({
+        '!': {
+          some: [{ var: 'tags' }, { contains: [{ var: 'tagFQN' }, ['Tag1']] }],
+        },
+      });
     });
 
-    it('should handle complex nested logic structures', () => {
-      const complexLogic = {
-        and: [
-          { '==': ['field1', 'value1'] },
+    it('should lift negation out of some for select_not_any_in (in shape)', () => {
+      const logic = {
+        some: [
+          { var: 'dataProducts' },
           {
             '!': {
-              contains: ['array_field', 'excluded_value'],
+              in: [{ var: 'fullyQualifiedName' }, ['TestDataProduct']],
             },
           },
         ],
@@ -295,10 +299,137 @@ describe('JSONLogicSearchClassBase', () => {
 
       const result =
         jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
-          complexLogic
+          logic
         );
 
-      expect(result).toBeDefined();
+      expect(result).toEqual({
+        '!': {
+          some: [
+            { var: 'dataProducts' },
+            { in: [{ var: 'fullyQualifiedName' }, ['TestDataProduct']] },
+          ],
+        },
+      });
+    });
+
+    it('should handle and-combined rules where one uses select_not_any_in', () => {
+      const logic = {
+        and: [
+          { '==': [{ var: 'name' }, 'foo'] },
+          {
+            some: [
+              { var: 'dataProducts' },
+              {
+                '!': {
+                  in: [{ var: 'fullyQualifiedName' }, ['TestDataProduct']],
+                },
+              },
+            ],
+          },
+        ],
+      };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual({
+        and: [
+          { '==': [{ var: 'name' }, 'foo'] },
+          {
+            '!': {
+              some: [
+                { var: 'dataProducts' },
+                { in: [{ var: 'fullyQualifiedName' }, ['TestDataProduct']] },
+              ],
+            },
+          },
+        ],
+      });
+    });
+
+    it('should leave unrelated logic unchanged', () => {
+      const logic = { '==': [{ var: 'status' }, 'active'] };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual(logic);
+    });
+
+    it('should lift negation out of some for is_null (Is Not Set) on a group field', () => {
+      const logic = {
+        some: [
+          { var: 'owners' },
+          { '==': [{ var: 'fullyQualifiedName' }, null] },
+        ],
+      };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual({
+        '!': {
+          some: [
+            { var: 'owners' },
+            { '!=': [{ var: 'fullyQualifiedName' }, null] },
+          ],
+        },
+      });
+    });
+
+    it('should handle and-combined rules where one uses is_null on a group field', () => {
+      const logic = {
+        and: [
+          { '==': [{ var: 'name' }, 'foo'] },
+          {
+            some: [
+              { var: 'domain' },
+              { '==': [{ var: 'fullyQualifiedName' }, null] },
+            ],
+          },
+        ],
+      };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual({
+        and: [
+          { '==': [{ var: 'name' }, 'foo'] },
+          {
+            '!': {
+              some: [
+                { var: 'domain' },
+                { '!=': [{ var: 'fullyQualifiedName' }, null] },
+              ],
+            },
+          },
+        ],
+      });
+    });
+
+    it('should not alter a "some" whose condition compares to a non-null value', () => {
+      const logic = {
+        some: [
+          { var: 'owners' },
+          { '==': [{ var: 'fullyQualifiedName' }, 'x'] },
+        ],
+      };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual(logic);
     });
   });
 

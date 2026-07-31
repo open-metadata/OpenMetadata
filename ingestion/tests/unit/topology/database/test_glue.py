@@ -40,7 +40,7 @@ from metadata.ingestion.source.database.glue.models import (
 )
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-with open(mock_file_path) as file:
+with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 mock_glue_config = {
@@ -72,7 +72,7 @@ mock_glue_config = {
 
 
 def mock_fqn_build(*args, **kwargs) -> str:
-    return ".".join((kwargs[key] for key in kwargs if key.endswith("_name")))
+    return ".".join((kwargs[key] for key in kwargs if key.endswith("_name")))  # noqa: UP034
 
 
 MOCK_CUSTOM_DB_NAME = "NEW_DB"
@@ -139,7 +139,7 @@ EXPECTED_LOCATION_PATHS = [
 
 class GlueUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
@@ -161,7 +161,7 @@ class GlueUnitTest(TestCase):
             yield next(self.glue_source.yield_table(table)).right
 
     def test_database_names(self):
-        assert EXPECTED_DATABASE_NAMES == list(self.glue_source.get_database_names())
+        assert EXPECTED_DATABASE_NAMES == list(self.glue_source.get_database_names())  # noqa: SIM300
 
     @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
     def test_custom_db_name(self, test_connection):
@@ -173,7 +173,7 @@ class GlueUnitTest(TestCase):
         self.assertEqual(list(glue_source_new.get_database_names()), [MOCK_CUSTOM_DB_NAME])
 
     def test_database_schema_names(self):
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.glue_source.get_database_schema_names())
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.glue_source.get_database_schema_names())  # noqa: SIM300
 
     def test_database_schema_names_filters_other_catalogs_before_schema_filter(self):
         self.glue_source.source_config.schemaFilterPattern = FilterPattern(includes=["default"])
@@ -194,7 +194,7 @@ class GlueUnitTest(TestCase):
             )
         ]
 
-        assert ["default"] == list(self.glue_source.get_database_schema_names())
+        assert ["default"] == list(self.glue_source.get_database_schema_names())  # noqa: SIM300
 
     @patch("metadata.ingestion.source.database.glue.metadata.fqn")
     def test_table_names(self, fqn):
@@ -207,12 +207,12 @@ class GlueUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.glue.metadata.fqn")
     def test_file_formats(self, fqn):
         fqn.build = mock_fqn_build
-        assert list(map(lambda x: x.fileFormat, self.get_table_requests())) == EXPECTED_FILE_FORMATS
+        assert list(map(lambda x: x.fileFormat, self.get_table_requests())) == EXPECTED_FILE_FORMATS  # noqa: C417
 
     @patch("metadata.ingestion.source.database.glue.metadata.fqn")
     def test_location_paths(self, fqn):
         fqn.build = mock_fqn_build
-        assert list(map(lambda x: x.locationPath, self.get_table_requests())) == EXPECTED_LOCATION_PATHS
+        assert list(map(lambda x: x.locationPath, self.get_table_requests())) == EXPECTED_LOCATION_PATHS  # noqa: C417
 
     def test_iceberg_column_filtering_logic(self):
         """Test the Iceberg column filtering logic directly"""

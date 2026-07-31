@@ -14,8 +14,9 @@ Test looker source
 
 import uuid
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
@@ -47,6 +48,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -141,7 +143,7 @@ class LookerUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
@@ -199,7 +201,7 @@ class LookerUnitTest(TestCase):
             raise RuntimeError("Something bad")
 
         with patch.object(Looker40SDK, "all_dashboards", side_effect=raise_something_bad):
-            self.assertRaises(Exception, LookerSource.get_dashboards_list)
+            self.assertRaises(Exception, LookerSource.get_dashboards_list)  # noqa: B017
 
     def test_get_dashboard_name(self):
         """
@@ -268,7 +270,7 @@ class LookerUnitTest(TestCase):
             raise RuntimeError("Something bad")
 
         with patch.object(Looker40SDK, "user", side_effect=raise_something_bad):
-            self.assertRaises(Exception, LookerSource.get_owner_ref)
+            self.assertRaises(Exception, LookerSource.get_owner_ref)  # noqa: B017
 
     def test_yield_dashboard(self):
         """
@@ -518,7 +520,7 @@ class LookerUnitTest(TestCase):
         # We don't blow up if the chart cannot be built.
         # Let's mock a random function exploding
         def something_bad():
-            raise Exception("something bad")
+            raise Exception("something bad")  # noqa: TRY002
 
         with patch.object(LookerSource, "build_chart_description", side_effect=something_bad):
             self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)
@@ -653,7 +655,7 @@ class LookerUnitTest(TestCase):
         mock_user = User(email="test@example.com")
 
         # Mock the client.user method to return our mock user
-        with patch.object(self.looker.client, "user", return_value=mock_user):
+        with patch.object(self.looker.client, "user", return_value=mock_user):  # noqa: SIM117
             # Mock the metadata.get_reference_by_email method
             with patch.object(self.looker.metadata, "get_reference_by_email") as mock_get_ref:
                 mock_get_ref.return_value = EntityReferenceList(
@@ -912,3 +914,177 @@ class LookerUnitTest(TestCase):
         list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
         assert len(self.looker.chart_source_state) == 1
         assert any("looker_source_test" in fqn for fqn in self.looker.chart_source_state)
+
+    def test_list_datamodels_declares_datamodel_total(self):
+        """
+        Check that list_datamodels declares the DashboardDataModel progress
+        total from the explore navigation, and marks it reconcilable so
+        standalone views can grow it later.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 3)
+        self.assertTrue(counter.reconcilable)
+
+    def test_list_datamodels_excludes_filtered_models_from_total(self):
+        """
+        Check that list_datamodels excludes explores belonging to models
+        filtered out by dataModelFilterPattern when computing the
+        DashboardDataModel progress total, matching what
+        fetch_lookml_explores actually yields.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["^m2$"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
+
+    def test_list_datamodels_excludes_filtered_explore_from_total(self):
+        """
+        Check that a dataModelFilterPattern matching an explore's composite
+        datamodel name (model_explore) excludes only that explore from the
+        total, mirroring the per-explore filter in yield_bulk_datamodel.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["m1_e2"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
+
+    def test_get_dashboards_list_declares_dashboard_total(self):
+        """
+        Check that get_dashboards_list declares the Dashboard progress total
+        from the name-filtered dashboard list.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertEqual(registry._global["Dashboard"].total, 2)
+
+    def test_get_dashboards_list_reconcilable_when_project_filtered(self):
+        """
+        projectFilterPattern is applied downstream in the base get_dashboard
+        (needs per-dashboard project detail), so get_dashboards_list falls back
+        to a reconcilable running count instead of an unreachable pre-filter
+        total.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+        self.looker.source_config.projectFilterPattern = FilterPattern(excludes=["^skip$"])
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertTrue(registry._global["Dashboard"].reconcilable)
+        self.assertIsNone(registry._global["Dashboard"].total)
+
+    def test_yield_bulk_datamodel_tracks_progress(self):
+        """
+        Check that yield_bulk_datamodel advances the DashboardDataModel
+        counter after successfully yielding the explore request.
+        """
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_explore = LookmlModelExplore(
+            name="my_explore",
+            model_name="my_model",
+            project_name="my_project",
+            fields=LookmlModelExploreFieldset(dimensions=[], measures=[]),
+        )
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_get_explore_sql", return_value=None),
+        ):
+            list(self.looker.yield_bulk_datamodel(mock_explore))
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_standalone_datamodels_tracks_progress(self):
+        """
+        Check that yield_standalone_datamodels advances the
+        DashboardDataModel counter after successfully yielding a view request.
+        """
+        from metadata.ingestion.source.dashboard.looker.models import LookMlView
+
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_view = LookMlView(name="my_view", source_file="views/my_view.view.lkml")
+        mock_parser = MagicMock()
+        mock_parser._views_cache = {"my_view": mock_view}
+        mock_parser.parsed_files = {}
+
+        self.looker._repo_credentials = True
+        self.looker._project_parsers = {"my_project": mock_parser}
+        self.looker._views_cache = {}
+        self.looker._all_lookml_models = [SimpleNamespace(name="my_model")]
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_add_standalone_view_lineage", return_value=iter([])),
+        ):
+            list(self.looker.yield_standalone_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_dashboard_tracks_progress(self):
+        """
+        Check that yield_dashboard advances the Dashboard counter after
+        successfully yielding the dashboard request.
+        """
+        self.looker.progress_tracking.manual.set_total("Dashboard", 5)
+
+        with patch.object(LookerSource, "get_owner_ref", return_value=None):
+            list(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD))
+
+        counter = self.looker.progress_tracking.registry._global["Dashboard"]
+        self.assertGreaterEqual(counter.done, 1)

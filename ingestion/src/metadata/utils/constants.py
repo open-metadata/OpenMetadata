@@ -13,6 +13,9 @@
 Define constants useful for the metadata ingestion
 """
 
+from metadata.generated.schema.entity.ai.aiApplication import AIApplication
+from metadata.generated.schema.entity.ai.llmModel import LLMModel
+from metadata.generated.schema.entity.ai.mcpServer import McpServer
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
@@ -21,15 +24,19 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.directory import Directory
+from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.apiService import ApiService
@@ -68,6 +75,9 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
+from metadata.generated.schema.entity.services.llmService import LLMService
+from metadata.generated.schema.entity.services.mcpService import McpService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -85,7 +95,7 @@ THREE_MIN = 3 * 60
 UTF_8 = "utf-8"
 CHUNKSIZE = 100000
 DEFAULT_DATABASE = "default"
-DEFAULT_DASHBAORD = "default"
+DEFAULT_DASHBOARD = "default"
 BUILDER_PASSWORD_ATTR = "password"
 TIMEDELTA = "timedelta"
 COMPLEX_COLUMN_SEPARATOR = "_##"
@@ -132,6 +142,9 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metadataService": MetadataService,
     "searchService": SearchService,
     "securityService": SecurityService,
+    "driveService": DriveService,
+    "llmService": LLMService,
+    "mcpService": McpService,
     # Data Asset Entities
     "apiCollection": APICollection,
     "apiEndpoint": APIEndpoint,
@@ -147,6 +160,15 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "searchIndex": SearchIndex,
     "mlmodel": MlModel,
     "container": Container,
+    # AI Governance Entities
+    "llmModel": LLMModel,
+    "mcpServer": McpServer,
+    "aiApplication": AIApplication,
+    # Drive Entities
+    "directory": Directory,
+    "file": File,
+    "spreadsheet": Spreadsheet,
+    "worksheet": Worksheet,
     # User Entities
     "user": User,
     "team": Team,

@@ -18,7 +18,7 @@ Each edge contains:
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -59,11 +59,11 @@ class BurstiqLineageSource(Source):
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client: Optional[BurstIQClient] = None
+        self.client: Optional[BurstIQClient] = None  # noqa: UP045
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: BurstIQConnection = config.serviceConnection.root.config
@@ -83,14 +83,14 @@ class BurstiqLineageSource(Source):
 
     def prepare(self):
         """Nothing to prepare"""
-        pass
+        pass  # noqa: PIE790
 
     def close(self):
         """Close the BurstIQ client"""
         if self.client:
             self.client.close()
 
-    def _get_table_entity(self, dictionary_name: str) -> Optional[Table]:
+    def _get_table_entity(self, dictionary_name: str) -> Optional[Table]:  # noqa: UP045
         """
         Get table entity from OpenMetadata
 
@@ -114,7 +114,7 @@ class BurstiqLineageSource(Source):
             logger.debug(f"Table not found for dictionary {dictionary_name}: {exc}")
             return None
 
-    def _process_edge(self, edge: BurstIQEdge) -> Optional[Either[AddLineageRequest]]:
+    def _process_edge(self, edge: BurstIQEdge) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         """
         Process a single edge and create lineage request
 

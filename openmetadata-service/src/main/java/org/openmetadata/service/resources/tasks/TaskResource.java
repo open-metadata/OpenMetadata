@@ -46,9 +46,12 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.tasks.BulkTaskOperation;
 import org.openmetadata.schema.api.tasks.CreateTask;
@@ -61,9 +64,12 @@ import org.openmetadata.schema.type.BulkTaskOperationParams;
 import org.openmetadata.schema.type.BulkTaskOperationResult;
 import org.openmetadata.schema.type.BulkTaskOperationResultItem;
 import org.openmetadata.schema.type.BulkTaskOperationType;
+import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -72,6 +78,7 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -81,11 +88,18 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Path("/v1/tasks")
@@ -98,6 +112,16 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   public static final String COLLECTION_PATH = "v1/tasks/";
   static final String FIELDS =
       "assignees,reviewers,watchers,about,domains,comments,createdBy,payload";
+
+  /**
+   * Lightweight default for list endpoints — enough for the UI card (assignee, target entity,
+   * author) without pulling {@code comments} / {@code payload} / {@code domains} / {@code watchers}
+   * for every row. These three relationship fields are bulk-hydrated in a single query via
+   * {@code setFieldsInBulk}, so the default stays O(1) queries per page even at the maximum page
+   * size.
+   */
+  static final String LIST_FIELDS = "assignees,about,createdBy";
+
   private static final String COUNT_VIEW_ALL = "all";
   private static final String COUNT_VIEW_VISIBLE = "visible";
   private static final String COUNT_VIEW_ASSIGNED = "assigned";
@@ -108,6 +132,35 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   public TaskResource(Authorizer authorizer, Limits limits) {
     super(Entity.TASK, authorizer, limits);
+    // PATCH on assignees / priority must require ReassignTask, not the default EditAll.
+    // Without this, any holder of EditAll on the task resource (filer, assignees, reviewers via
+    // TaskAuthorPolicy) could reassign or change priority through a JSON Patch, bypassing the
+    // entity-owner-only guard enforced in bulk operations.
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "assignees", MetadataOperation.REASSIGN_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "priority", MetadataOperation.REASSIGN_TASK);
+    // PATCH on status / resolution / approvedBy / approvedAt must require ResolveTask. Without
+    // this, the filer's EditAll allow rule would let them PATCH /status to a terminal value
+    // (Approved, Rejected, …) and bypass the self-approval deny on ResolveTask. The dedicated
+    // /resolve endpoint and the bulk Approve/Reject path remain the only state-transition routes.
+    ResourceRegistry.mapEntityFieldOperation(Entity.TASK, "status", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "resolution", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedBy", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return List.of(
+        MetadataOperation.RESOLVE_TASK,
+        MetadataOperation.CLOSE_TASK,
+        MetadataOperation.REASSIGN_TASK);
   }
 
   public static class TaskList extends ResultList<Task> {
@@ -134,6 +187,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -154,6 +208,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID createdById,
       @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
           String aboutEntity,
+      @Parameter(description = "Filter by parent service FQN of the entity the task is about")
+          @QueryParam("aboutService")
+          String aboutService,
+      @Parameter(description = "Filter by approver FQN (user who approved the task)")
+          @QueryParam("approver")
+          String approver,
+      @Parameter(description = "Filter by approver user id") @QueryParam("approverId")
+          UUID approverId,
       @Parameter(description = "Filter by user FQN who was mentioned in task comments")
           @QueryParam("mentionedUser")
           String mentionedUser,
@@ -167,6 +229,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -177,6 +245,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     } else if (status != null) {
       filter.addQueryParam("taskStatus", status.value());
     }
+    applyTaskTimeRange(filter, startTs, endTs);
     if (category != null) {
       filter.addQueryParam("category", category.value());
     }
@@ -199,11 +268,32 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
     }
+    if (aboutService != null) {
+      filter.addQueryParam("aboutService", aboutService);
+    }
+    if (approver != null) {
+      filter.addQueryParam("approver", approver);
+    }
+    if (approverId != null) {
+      filter.addQueryParam("approverId", approverId.toString());
+    }
     if (mentionedUser != null) {
       filter.addQueryParam("mentionedUser", mentionedUser);
     }
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+  }
+
+  private void applyTaskTimeRange(ListFilter filter, Long startTs, Long endTs) {
+    if (startTs != null && endTs != null && startTs > endTs) {
+      throw BadRequestException.of("startTs must be less than or equal to endTs");
+    }
+    if (startTs != null) {
+      filter.addQueryParam("taskStartTs", startTs.toString());
+    }
+    if (endTs != null) {
+      filter.addQueryParam("taskEndTs", endTs.toString());
+    }
   }
 
   @GET
@@ -260,9 +350,182 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withOpen(countSummary.getOpen())
             .withCompleted(countSummary.getCompleted())
             .withInProgress(countSummary.getInProgress())
+            .withApproved(countSummary.getApproved())
+            .withGranted(countSummary.getGranted())
             .withTotal(countSummary.getTotal());
 
     return Response.ok(response).build();
+  }
+
+  @GET
+  @Path("/dataAccessRequests")
+  @Operation(
+      operationId = "listDataAccessRequests",
+      summary = "List data access requests",
+      description =
+          "Get a paginated list of Data Access Request tasks with DAR-specific filters. "
+              + "Pre-applies category=DataAccess and type=DataAccessRequest. "
+              + "Pagination is offset-based and results are sorted by createdAt (default DESC).",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Data Access Requests",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TaskList.class)))
+      })
+  public ResultList<Task> listDataAccessRequests(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue(LIST_FIELDS)
+          String fieldsParam,
+      @Parameter(
+              description =
+                  "Filter by task status. Accepts a comma-separated list (e.g. 'Approved,Granted') which is matched as SQL IN(...). Allowed values match TaskEntityStatus.")
+          @QueryParam("status")
+          String status,
+      @Parameter(
+              description =
+                  "Filter by status group. 'open' = Open/InProgress/Pending only (still awaiting review). "
+                      + "'active' = Open/InProgress/Pending/Approved/Granted (full non-terminal DAR lifecycle — use this when looking for "
+                      + "DARs that are still 'in progress', including awaiting-grant and granted-with-active-access). "
+                      + "'closed' = Approved/Rejected/Completed/Cancelled/Failed/Revoked (mirrors the legacy closed bucket, which includes "
+                      + "Approved for backward compatibility with non-DAR workflows where Approved is terminal).",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"open", "active", "closed"}))
+          @QueryParam("statusGroup")
+          String statusGroup,
+      @Parameter(
+              description =
+                  "Filter by dataset FQN (entity the DAR is about). Accepts a comma-separated list; matches each via FQN-hash prefix and OR's the results.")
+          @QueryParam("dataset")
+          String dataset,
+      @Parameter(
+              description =
+                  "Filter by parent service FQN of the dataset. Accepts a comma-separated list (OR-joined).")
+          @QueryParam("service")
+          String service,
+      @Parameter(
+              description = "Filter by requester FQN. Accepts a comma-separated list (OR-joined).")
+          @QueryParam("requestedBy")
+          String requestedBy,
+      @Parameter(
+              description =
+                  "Filter by requester user id. Accepts a comma-separated list of UUIDs matched via SQL IN(...).")
+          @QueryParam("requestedById")
+          String requestedById,
+      @Parameter(
+              description = "Filter by approver FQN. Accepts a comma-separated list (OR-joined).")
+          @QueryParam("approver")
+          String approver,
+      @Parameter(
+              description =
+                  "Filter by approver user id. Accepts a comma-separated list of UUIDs matched via SQL IN(...).")
+          @QueryParam("approverId")
+          String approverId,
+      @Parameter(
+              description =
+                  "Filter by access type. Accepts a comma-separated list (e.g. 'FullAccess,Masked') matched via SQL IN(...). Allowed values match DataAccessType.")
+          @QueryParam("accessType")
+          String accessType,
+      @Parameter(
+              description =
+                  "Filter by assignee FQN (user or team). Accepts a comma-separated list (OR-joined).")
+          @QueryParam("assignee")
+          String assignee,
+      @Parameter(description = "Filter by assignee user/team id (single UUID).")
+          @QueryParam("assigneeId")
+          UUID assigneeId,
+      @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (DARs are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, payload.reason, about.displayName, and about.fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
+      @Parameter(
+              description = "Sort order on createdAt",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("desc")
+          String sortOrder,
+      @Parameter(description = "Limit the number of results", schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limitParam,
+      @Parameter(description = "Offset into the result set", schema = @Schema(type = "integer"))
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          int offset,
+      @Parameter(description = "Include deleted tasks")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
+    filter.addQueryParam("category", TaskCategory.DataAccess.value());
+    filter.addQueryParam("taskType", TaskEntityType.DataAccessRequest.value());
+
+    if (statusGroup != null) {
+      filter.addQueryParam("taskStatusGroup", statusGroup);
+    } else if (!nullOrEmpty(status)) {
+      validateCsvAgainstEnum("status", status, TaskEntityStatus.class);
+      filter.addQueryParam("taskStatus", status);
+    }
+    if (!nullOrEmpty(dataset)) {
+      filter.addQueryParam("aboutEntity", dataset);
+    }
+    if (!nullOrEmpty(service)) {
+      filter.addQueryParam("aboutService", service);
+    }
+    if (!nullOrEmpty(requestedBy)) {
+      filter.addQueryParam("createdBy", requestedBy);
+    }
+    if (!nullOrEmpty(requestedById)) {
+      filter.addQueryParam("createdById", requestedById);
+    }
+    if (!nullOrEmpty(approver)) {
+      filter.addQueryParam("approver", approver);
+    }
+    if (!nullOrEmpty(approverId)) {
+      filter.addQueryParam("approverId", approverId);
+    }
+    if (!nullOrEmpty(accessType)) {
+      validateCsvAgainstAccessType(accessType);
+      filter.addQueryParam("accessType", accessType);
+    }
+    if (!nullOrEmpty(assignee)) {
+      filter.addQueryParam("assignee", assignee);
+    }
+    if (assigneeId != null) {
+      filter.addQueryParam("assigneeId", assigneeId.toString());
+    }
+    if (!nullOrEmpty(q)) {
+      filter.addQueryParam("darSearch", q);
+    }
+    repository.addDomainFilter(filter, domain);
+
+    Fields fields = getFields(fieldsParam);
+    // Mirror the auth + domain-scoping that listInternal applies on the generic /v1/tasks
+    // endpoint. We don't reuse listInternal directly because this endpoint is offset-paginated
+    // and sorts by createdAt rather than the cursor-based (name, id) pagination listInternal uses.
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+
+    return repository.listDataAccessRequests(
+        uriInfo, fields, filter, limitParam, offset, sortOrder);
   }
 
   @GET
@@ -287,6 +550,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -306,12 +570,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -339,6 +610,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -358,12 +630,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -390,6 +669,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -409,6 +689,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -427,6 +713,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -451,6 +738,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -470,6 +758,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -479,6 +773,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("createdById", user.getId().toString());
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -505,6 +800,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Include deleted task")
           @QueryParam("include")
@@ -535,6 +831,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Task ID (e.g., TASK-00001)") @PathParam("taskId") String taskId,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Include deleted task")
           @QueryParam("include")
@@ -620,6 +917,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Valid CreateTask create) {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
+    authorizeCreateTaskOnAboutEntity(securityContext, task);
     return create(uriInfo, securityContext, task);
   }
 
@@ -647,7 +945,28 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Valid CreateTask create) {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
+    authorizeCreateTaskOnAboutEntity(securityContext, task);
     return createOrUpdate(uriInfo, securityContext, task);
+  }
+
+  /**
+   * Enforce {@code CreateTask} on the target entity referenced by {@code task.about}, in addition
+   * to the resource-level {@code Create} check on the {@code task} resource performed by
+   * {@link org.openmetadata.service.resources.EntityResource#create}. Both must pass when an
+   * {@code about} entity is set, which lets policy authors restrict task filing per target entity
+   * (e.g. {@code isOwner()}-conditional rules on the table). Tasks without an {@code about} field
+   * (rare; admin/bot-created) bypass the per-entity check and rely on the resource-level grant.
+   */
+  private void authorizeCreateTaskOnAboutEntity(SecurityContext securityContext, Task task) {
+    EntityReference aboutRef = task.getAbout();
+    if (aboutRef == null || aboutRef.getType() == null || aboutRef.getId() == null) {
+      return;
+    }
+    ResourceContext<?> resourceContext =
+        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+    OperationContext operationContext =
+        new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
   /**
@@ -802,7 +1121,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             resolvedPayload,
             comment,
             userName);
-    return Response.ok(resolvedTask).build();
+    // Change-event header so resolve fires task alerts.
+    return Response.ok(resolvedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   private ListFilter buildTaskListFilter(
@@ -975,7 +1297,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
 
     Task closedTask = repository.closeTask(task, userName, comment);
-    return Response.ok(closedTask).build();
+    // Change-event header so close fires task alerts.
+    return Response.ok(closedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   @DELETE
@@ -997,7 +1322,21 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           boolean hardDelete,
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    // Use TaskResourceContext so isTaskFiler() can read task.createdBy. The default
+    // EntityResource.delete builds a generic ResourceContext that loads only owners/tags/domains,
+    // which would leave createdBy null and prevent the filer-delete-own-task TaskAuthorPolicy
+    // rule from matching. Include.ALL so a hardDelete request can fetch a previously soft-deleted
+    // task for the authorization check.
+    Task task = repository.get(uriInfo, id, getFields(FIELDS), Include.ALL, false);
+    OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
+    RestUtil.DeleteResponse<Task> response =
+        repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
   }
 
   // ========================= Suggestion Endpoints =========================
@@ -1052,7 +1391,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             null,
             null,
             userName);
-    return Response.ok(resolvedTask).build();
+    // Change-event header so resolve fires task alerts.
+    return Response.ok(resolvedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   // ========================= Bulk Operations Endpoint =========================
@@ -1171,7 +1513,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
           throw new IllegalArgumentException("Assignees required for Assign operation");
         }
-        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "reassignTask");
+        repository.checkPermissionsForOwnerOnlyAction(
+            authorizer, securityContext, task, "reassignTask");
         List<EntityReference> newAssignees =
             params.getAssignees().stream().map(this::resolveUserOrTeam).toList();
         task.setAssignees(newAssignees);
@@ -1183,7 +1526,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         if (params == null || params.getPriority() == null) {
           throw new IllegalArgumentException("Priority required for UpdatePriority operation");
         }
-        repository.checkPermissionsForOwnerOnlyAction(securityContext, task, "changeTaskPriority");
+        repository.checkPermissionsForOwnerOnlyAction(
+            authorizer, securityContext, task, "changeTaskPriority");
         task.setPriority(params.getPriority());
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());
@@ -1196,11 +1540,54 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
   }
 
+  /**
+   * Per-token validation for a comma-separated enum query param. Surfaces a 400 if any token
+   * isn't a recognized {@link Enum} value, so callers see a clear error instead of an opaque
+   * empty result set or a downstream SQL surprise.
+   */
+  private <E extends Enum<E>> void validateCsvAgainstEnum(
+      String paramName, String csv, Class<E> enumClass) {
+    Set<String> allowed =
+        Arrays.stream(enumClass.getEnumConstants()).map(Enum::name).collect(Collectors.toSet());
+    Arrays.stream(csv.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
+        .forEach(
+            token -> {
+              if (!allowed.contains(token)) {
+                throw BadRequestException.of(
+                    String.format(
+                        "Invalid '%s' value '%s'. Allowed values: %s", paramName, token, allowed));
+              }
+            });
+  }
+
+  /**
+   * Per-token validation for the {@code accessType} CSV. Reuses the schema-generated
+   * {@link DataAccessType} enum.
+   */
+  private void validateCsvAgainstAccessType(String csv) {
+    validateCsvAgainstEnum("accessType", csv, DataAccessType.class);
+  }
+
   private void validateTaskCanBeResolved(Task task) {
     TaskEntityStatus status = task.getStatus();
     if (status == TaskEntityStatus.Open
         || status == TaskEntityStatus.InProgress
         || status == TaskEntityStatus.Pending) {
+      return;
+    }
+
+    // Approved / Granted / ManualRevoke are non-terminal only for workflows that expose further
+    // transitions out of them (Data Access Request: Approved → markAsGranted/revoke,
+    // Granted → revoke, ManualRevoke → markAsRevoked). For workflows where these are terminal
+    // (Glossary, DescriptionUpdate, etc.), availableTransitions is empty and the task must stay
+    // closed — re-resolving it would re-run postUpdate hooks and clobber resolution.
+    if ((status == TaskEntityStatus.Approved
+            || status == TaskEntityStatus.Granted
+            || status == TaskEntityStatus.ManualRevoke)
+        && task.getAvailableTransitions() != null
+        && !task.getAvailableTransitions().isEmpty()) {
       return;
     }
 
@@ -1243,7 +1630,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withCreatedAt(System.currentTimeMillis());
 
     Task updatedTask = repository.addComment(task, comment);
-    return Response.ok(updatedTask).build();
+    return Response.ok(updatedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   @PATCH
@@ -1338,10 +1727,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
 
-    if (create.getAbout() != null && create.getAboutType() != null) {
+    if (create.getAbout() != null) {
+      EntityLink link = EntityLink.parse(create.getAbout());
       task.setAbout(
           Entity.getEntityReferenceByName(
-              create.getAboutType(), create.getAbout(), Include.NON_DELETED));
+              link.getEntityType(), link.getEntityFQN(), Include.NON_DELETED));
     }
 
     // Note: domains are inherited from the target entity (about) automatically in

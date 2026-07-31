@@ -13,7 +13,7 @@ QlikCloud Models
 """
 
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -29,8 +29,8 @@ class QlikSpaceType(Enum):
 class QlikSpace(BaseModel):
     """QlikCloud Space Model"""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
     id: str
     type: QlikSpaceType
 
@@ -57,42 +57,42 @@ class QlikSpace(BaseModel):
 class QlikApp(BaseModel):
     """QlikCloud App model"""
 
-    description: Optional[str] = None
-    name: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
+    name: Optional[str] = None  # noqa: UP045
     id: str
-    app_id: Optional[str] = Field(None, alias="resourceId")
-    space_id: Optional[str] = Field("", alias="spaceId")
-    published: Optional[bool] = None
+    app_id: Optional[str] = Field(None, alias="resourceId")  # noqa: UP045
+    space_id: Optional[str] = Field("", alias="spaceId")  # noqa: UP045
+    published: Optional[bool] = None  # noqa: UP045
 
 
 class QlikLink(BaseModel):
-    href: Optional[str] = None
+    href: Optional[str] = None  # noqa: UP045
 
 
 class QlikLinks(BaseModel):
-    next: Optional[QlikLink] = None
+    next: Optional[QlikLink] = None  # noqa: UP045
 
 
 class QlikSpaceResponse(BaseModel):
     """QlikCloud Spaces List"""
 
-    spaces: Optional[List[QlikSpace]] = Field(None, alias="data")
-    links: Optional[QlikLinks] = None
+    spaces: Optional[List[QlikSpace]] = Field(None, alias="data")  # noqa: UP006, UP045
+    links: Optional[QlikLinks] = None  # noqa: UP045
 
 
 class QlikAppResponse(BaseModel):
     """QlikCloud Apps List"""
 
-    apps: Optional[List[QlikApp]] = Field(None, alias="data")
-    links: Optional[QlikLinks] = None
+    apps: Optional[List[QlikApp]] = Field(None, alias="data")  # noqa: UP006, UP045
+    links: Optional[QlikLinks] = None  # noqa: UP045
 
 
 class QlikScript(BaseModel):
-    qScript: Optional[str] = None
+    qScript: Optional[str] = None  # noqa: N815, UP045
 
 
 class QlikScriptResult(BaseModel):
-    result: Optional[QlikScript] = QlikScript()
+    result: Optional[QlikScript] = QlikScript()  # noqa: UP045
 
 
 class QlikDataFile(BaseModel):
@@ -102,4 +102,4 @@ class QlikDataFile(BaseModel):
 
 
 class QlikDataFiles(BaseModel):
-    data: Optional[List[QlikDataFile]] = None
+    data: Optional[List[QlikDataFile]] = None  # noqa: UP006, UP045

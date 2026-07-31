@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -45,7 +45,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
@@ -425,7 +425,7 @@ const RolesDetailPage = () => {
               </Col>
             </Row>
 
-            <DescriptionV1
+            <Description
               hasEditAccess
               className="m-y-md"
               description={role.description || ''}

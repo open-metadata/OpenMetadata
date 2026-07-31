@@ -15,7 +15,7 @@ OpenMetadata Airflow Lineage Backend
 
 import json
 import os
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from airflow.configuration import AirflowConfigParser
 from pydantic import BaseModel
@@ -35,10 +35,10 @@ class AirflowLineageConfig(BaseModel):
     metadata_config: OpenMetadataConnection
     only_keep_dag_lineage: bool = False
     max_status: int = 10
-    timeout: Optional[int] = None
-    retry: Optional[int] = None
-    retry_wait: Optional[int] = None
-    retry_codes: Optional[List[int]] = None
+    timeout: Optional[int] = None  # noqa: UP045
+    retry: Optional[int] = None  # noqa: UP045
+    retry_wait: Optional[int] = None  # noqa: UP045
+    retry_codes: Optional[List[int]] = None  # noqa: UP006, UP045
 
 
 def parse_airflow_config(airflow_service_name: str, conf: AirflowConfigParser) -> AirflowLineageConfig:
@@ -86,7 +86,7 @@ def get_lineage_config() -> AirflowLineageConfig:
     """
 
     # Import conf settings at call time
-    from airflow.configuration import conf  # pylint: disable=import-outside-toplevel
+    from airflow.configuration import conf  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
     airflow_service_name = conf.get(LINEAGE, "airflow_service_name", fallback=None)
     if airflow_service_name:
@@ -96,7 +96,7 @@ def get_lineage_config() -> AirflowLineageConfig:
 
     # If config file, parse the JSON config, that should conform to AirflowLineageConfig
     if openmetadata_config_file:
-        with open(openmetadata_config_file, encoding="utf-8") as config_file:
+        with open(openmetadata_config_file, encoding="utf-8") as config_file:  # noqa: PTH123
             config = json.load(config_file)
             return AirflowLineageConfig.model_validate(config)
 

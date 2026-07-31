@@ -20,7 +20,7 @@ import { EntityType } from '../enums/entity.enum';
 import globalSettingsClassBase from './GlobalSettingsClassBase';
 import i18n from './i18next/LocalUtil';
 import { getSettingPath } from './RouterUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 
 export interface SettingMenuItem {
   key: string;

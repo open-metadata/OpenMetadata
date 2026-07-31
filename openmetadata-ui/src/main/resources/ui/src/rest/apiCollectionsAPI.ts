@@ -18,7 +18,7 @@ import { APICollection } from '../generated/entity/data/apiCollection';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 type GetApiCollectionsType = {
@@ -80,13 +80,10 @@ export const restoreApiCollection = async (id: string) => {
   return response.data;
 };
 
-export const getApiCollectionVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getApiCollectionVersions = async (id: string) => {
   const url = `/apiCollections/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

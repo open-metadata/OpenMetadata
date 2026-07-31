@@ -117,12 +117,7 @@ class TestScoreTagsForColumnServiceLanguage:
 
         with patch("metadata.pii.algorithms.tag_scoring.TagAnalyzer") as mock_tag_analyzer_class:
             mock_analyzer_instance = Mock()
-            mock_analyzer_instance.analyze_content.return_value = TagAnalysis(
-                tag=sample_tag, score=0.5, explanation="test"
-            )
-            mock_analyzer_instance.analyze_column.return_value = TagAnalysis(
-                tag=sample_tag, score=0.3, explanation="test"
-            )
+            mock_analyzer_instance.analyze.return_value = TagAnalysis(tag=sample_tag, score=0.5, explanation="test")
             mock_analyzer_instance.tag = sample_tag
             mock_tag_analyzer_class.return_value = mock_analyzer_instance
 
@@ -285,3 +280,94 @@ class TestLanguageModelMapping:
 
         model = get_model_for_language(ClassificationLanguage.en)
         assert model == "en_core_web_md"
+
+
+class TestAnyLanguageRecognizerPassthrough:
+    """Regression tests: recognizers with supportedLanguage=any must not be skipped."""
+
+    @pytest.fixture
+    def any_language_tag(self):
+        return Tag(
+            id=uuid.uuid4(),
+            name="AnyLang",
+            fullyQualifiedName="PII.AnyLang",
+            description="Tag with any-language recognizer",
+            autoClassificationEnabled=True,
+            recognizers=[
+                Recognizer(
+                    name="AnyLang_Recognizer",
+                    enabled=True,
+                    target=Target.content,
+                    recognizerConfig=RecognizerConfig(
+                        root=PredefinedRecognizer(
+                            type="predefined",
+                            name=PredefinedName.EsNifRecognizer,
+                            supportedLanguage=ClassificationLanguage.any,
+                        )
+                    ),
+                )
+            ],
+        )
+
+    @pytest.fixture
+    def fr_language_tag(self):
+        return Tag(
+            id=uuid.uuid4(),
+            name="FrLang",
+            fullyQualifiedName="PII.FrLang",
+            description="Tag with French-language recognizer",
+            autoClassificationEnabled=True,
+            recognizers=[
+                Recognizer(
+                    name="Fr_Recognizer",
+                    enabled=True,
+                    target=Target.content,
+                    recognizerConfig=RecognizerConfig(
+                        root=PredefinedRecognizer(
+                            type="predefined",
+                            name=PredefinedName.EsNifRecognizer,
+                            supportedLanguage=ClassificationLanguage.fr,
+                        )
+                    ),
+                )
+            ],
+        )
+
+    def test_any_language_recognizer_included_when_agent_is_en(self, any_language_tag, sample_column, mock_nlp_engine):
+        analyzer = TagAnalyzer(
+            tag=any_language_tag,
+            column=sample_column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.en,
+        )
+
+        recognizers = analyzer.get_recognizers_by(Target.content)
+
+        assert len(recognizers) == 1
+        assert recognizers[0].supported_language == ClassificationLanguage.any.value
+
+    def test_any_language_recognizer_included_when_agent_is_any(self, any_language_tag, sample_column, mock_nlp_engine):
+        analyzer = TagAnalyzer(
+            tag=any_language_tag,
+            column=sample_column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.any,
+        )
+
+        recognizers = analyzer.get_recognizers_by(Target.content)
+
+        assert len(recognizers) == 1
+
+    def test_specific_language_recognizer_excluded_when_agent_language_differs(
+        self, fr_language_tag, sample_column, mock_nlp_engine
+    ):
+        analyzer = TagAnalyzer(
+            tag=fr_language_tag,
+            column=sample_column,
+            nlp_engine=mock_nlp_engine,
+            language=ClassificationLanguage.en,
+        )
+
+        recognizers = analyzer.get_recognizers_by(Target.content)
+
+        assert len(recognizers) == 0

@@ -41,7 +41,7 @@ class HugeTextTable(Base):
 class TestSQASamplerTruncation:
     """Verify that fetch_sample_data truncates values that exceed SAMPLE_DATA_MAX_CELL_LENGTH."""
 
-    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -86,8 +86,8 @@ class TestSQASamplerTruncation:
     @classmethod
     def teardown_class(cls):
         cls.sampler.close()
-        if os.path.exists(cls.db_path):
-            os.remove(cls.db_path)
+        if os.path.exists(cls.db_path):  # noqa: PTH110
+            os.remove(cls.db_path)  # noqa: PTH107
 
     def test_fetch_sample_data_truncates_oversized_cells(self):
         sample_data = self.sampler.fetch_sample_data()

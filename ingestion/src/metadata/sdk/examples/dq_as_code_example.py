@@ -50,7 +50,7 @@ runner.add_test(ColumnValuesToBeUnique(column="id").with_name("bot_entity_id_uni
 runner.add_test(ColumnValuesToBeNotNull(column="name"))
 
 # Execute all tests
-print("Running data quality tests...")
+print("Running data quality tests...")  # noqa: T201
 results = runner.run()
 
 # Process results
@@ -58,13 +58,13 @@ for result in results:
     test_case = result.testCase
     test_result = result.testCaseResult
 
-    print(f"\nTest: {test_case.name.root}")
-    print(f"Status: {test_result.testCaseStatus}")
-    print(f"Result: {test_result.result}")
+    print(f"\nTest: {test_case.name.root}")  # noqa: T201
+    print(f"Status: {test_result.testCaseStatus}")  # noqa: T201
+    print(f"Result: {test_result.result}")  # noqa: T201
 
     if test_result.passedRows is not None:
-        print(f"Passed Rows: {test_result.passedRows}")
-        print(f"Failed Rows: {test_result.failedRows}")
-        print(f"Pass Rate: {test_result.passedRowsPercentage:.2f}%")
+        print(f"Passed Rows: {test_result.passedRows}")  # noqa: T201
+        print(f"Failed Rows: {test_result.failedRows}")  # noqa: T201
+        print(f"Pass Rate: {test_result.passedRowsPercentage:.2f}%")  # noqa: T201
 
-print(f"\n✅ All tests completed! {len(results)} tests executed.")
+print(f"\n✅ All tests completed! {len(results)} tests executed.")  # noqa: T201

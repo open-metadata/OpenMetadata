@@ -67,8 +67,8 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 
-from ..conftest import _safe_delete
-from ..integration_base import generate_name, get_create_entity, get_create_service
+from ..conftest import _safe_delete  # noqa: TID252
+from ..integration_base import generate_name, get_create_entity, get_create_service  # noqa: TID252
 
 
 def add_lineage_with_retry(metadata, data, retries=3, delay=1, **kwargs):

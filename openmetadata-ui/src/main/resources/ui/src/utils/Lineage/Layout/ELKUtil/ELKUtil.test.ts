@@ -32,8 +32,8 @@ describe('ELKLayout', () => {
       'elk.direction': 'RIGHT',
       'elk.spacing.nodeNode': '80',
       'elk.layered.spacing.nodeNodeBetweenLayers': '200',
-      'elk.layered.nodePlacement.strategy': 'SIMPLE',
-      'elk.partitioning.activate': 'true',
+      'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+      'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
     });
   });
 
@@ -344,13 +344,18 @@ describe('ELKLayout', () => {
     ).toBe('200');
   });
 
-  it('uses simple node placement strategy', () => {
+  it('uses brandes-koepf node placement with balanced alignment', () => {
     expect(ELKLayout.layoutOptions['elk.layered.nodePlacement.strategy']).toBe(
-      'SIMPLE'
+      'BRANDES_KOEPF'
     );
+    expect(
+      ELKLayout.layoutOptions['elk.layered.nodePlacement.bk.fixedAlignment']
+    ).toBe('BALANCED');
   });
 
-  it('activates partitioning', () => {
-    expect(ELKLayout.layoutOptions['elk.partitioning.activate']).toBe('true');
+  it('does not activate partitioning so ELK derives layers from edges', () => {
+    expect(
+      ELKLayout.layoutOptions['elk.partitioning.activate']
+    ).toBeUndefined();
   });
 });
