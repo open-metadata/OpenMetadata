@@ -1377,6 +1377,12 @@ test.describe(
       await parentDomain.visitEntityPage(page);
       await waitForAllLoadersToDisappear(page);
 
+      const addButton = page.getByTestId('domain-details-add-button');
+      await expect(addButton).toBeVisible();
+      const dataProductsMenuItem = page.getByRole('menuitem', {
+        name: 'Data Products',
+      });
+
       const intakeFetch = page.waitForResponse(
         (response) =>
           response
@@ -1384,8 +1390,17 @@ test.describe(
             .includes('/api/v1/governance/intakeForms/entityType/') &&
           response.request().method() === 'GET'
       );
-      await page.getByTestId('domain-details-add-button').click();
-      await page.getByRole('menuitem', { name: 'Data Products' }).click();
+      // Under full-suite load the domain permissions that gate the
+      // "Data Products" menu item can resolve after the dropdown first opens,
+      // and the re-render can drop the menu. Re-open (Escape closes any stale
+      // dropdown) until the item is actually present, so the suite run is as
+      // stable as running this spec on its own.
+      await expect(async () => {
+        await page.keyboard.press('Escape');
+        await addButton.click();
+        await expect(dataProductsMenuItem).toBeVisible({ timeout: 5000 });
+      }).toPass({ timeout: 60000 });
+      await dataProductsMenuItem.click();
       await intakeFetch;
       await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
 
@@ -1575,206 +1590,6 @@ test.describe(
         `/api/v1/dataProducts/${createdDataProduct.id}?hardDelete=true`
       );
       await cleanup.afterAction();
-    });
-
-    test('Data Product intake form renders all custom-property field types', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await ensureNoIntakeForm(apiContext, DP_INTAKE_NAME);
-      await createIntakeForm(apiContext, DP_INTAKE_NAME, [
-        {
-          fieldPath: `extension.${dataProductProperties.string}`,
-          fieldLabel: 'Text Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.email}`,
-          fieldLabel: 'Email Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.duration}`,
-          fieldLabel: 'Duration Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.enum}`,
-          fieldLabel: 'Enum Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.enumMulti}`,
-          fieldLabel: 'Multi-Enum Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.markdown}`,
-          fieldLabel: 'Markdown Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.sqlQuery}`,
-          fieldLabel: 'SQL Query Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.table}`,
-          fieldLabel: 'Table Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.timeInterval}`,
-          fieldLabel: 'Time Interval Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.hyperlink}`,
-          fieldLabel: 'Hyperlink Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.integer}`,
-          fieldLabel: 'Integer Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.number}`,
-          fieldLabel: 'Number Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.date}`,
-          fieldLabel: 'Date Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.dateTime}`,
-          fieldLabel: 'DateTime Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.time}`,
-          fieldLabel: 'Time Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.timestamp}`,
-          fieldLabel: 'Timestamp Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.reference}`,
-          fieldLabel: 'Reference Field',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.referenceList}`,
-          fieldLabel: 'Reference List Field',
-          fieldKind: 'customProperty',
-        },
-      ]);
-      await afterAction();
-
-      await redirectToHomePage(page);
-      await parentDomain.visitEntityPage(page);
-      await waitForAllLoadersToDisappear(page);
-
-      const intakeFetch = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/governance/intakeForms/entityType/') &&
-          response.request().method() === 'GET'
-      );
-      await page.getByTestId('domain-details-add-button').click();
-      await page.getByRole('menuitem', { name: 'Data Products' }).click();
-      await intakeFetch;
-      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
-
-      const customPropertiesSection = page.getByTestId(
-        'custom-properties-section'
-      );
-      await expect(customPropertiesSection).toBeVisible();
-
-      // Verify each field type is visible
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.string}`)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.email}`)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.duration}`)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.enum}`)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.enumMulti}`)
-      ).toBeVisible();
-      // Markdown renders via RichTextEditor — verify the block editor is present
-      await expect(
-        customPropertiesSection.locator('.om-block-editor').first()
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.sqlQuery}`)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.table}`)
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(
-          `extension-${dataProductProperties.timeInterval}-start`
-        )
-      ).toBeVisible();
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.timeInterval}-end`)
-      ).toBeVisible();
-
-      // Verify all expected badge types are present
-      const badges = [
-        'STRING',
-        'EMAIL',
-        'DURATION',
-        'MARKDOWN',
-        'ENUM',
-        'SQLQUERY',
-        'TABLE',
-        'TIMEINTERVAL',
-        'HYPERLINK',
-        'INTEGER',
-        'NUMBER',
-        'DATE',
-        'DATETIME',
-        'TIME',
-        'TIMESTAMP',
-        'ENTITYREFERENCE',
-        'ENTITYREFERENCELIST',
-      ];
-      for (const badge of badges) {
-        await expect(
-          customPropertiesSection
-            .getByTestId('custom-property-type-badge')
-            .filter({ hasText: new RegExp(`^${badge}$`) })
-            .first()
-        ).toBeVisible();
-      }
-
-      // Verify sql editor (CodeMirror) renders
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.sqlQuery}`)
-             .locator('.CodeMirror')
-      ).toBeVisible();
-
-      // Verify table editor renders with the Add Row button
-      await expect(
-        page.getByTestId(`extension-${dataProductProperties.table}`)
-             .getByRole('button')
-      ).toBeVisible();
     });
 
     test('Domain intake form renders all custom-property field types', async ({

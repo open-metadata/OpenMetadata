@@ -58,7 +58,11 @@ const GlossaryTermIntakeFields = forwardRef<
   );
 
   return (
-    <Form component={false} form={form} layout="vertical">
+    <Form
+      className="m-t-md"
+      form={form}
+      layout="vertical"
+      onSubmitCapture={(event) => event.preventDefault()}>
       <AddDomainFormExtensionFields
         customProperties={customProperties}
         formFields={formFields}
