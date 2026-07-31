@@ -59,7 +59,7 @@ const GlossaryTermIntakeFields = forwardRef<
 
   return (
     <Form
-      className="m-t-md"
+      className="form-item-vertical m-t-md"
       form={form}
       layout="vertical"
       onSubmitCapture={(event) => event.preventDefault()}>
