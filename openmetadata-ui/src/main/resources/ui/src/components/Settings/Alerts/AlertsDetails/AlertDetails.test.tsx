@@ -23,6 +23,9 @@ import { AlertDetailsComponent } from './AlertDetails.component';
 
 jest.mock('../../../../utils/Alerts/AlertsUtil', () => ({
   EDIT_LINK_PATH: 'Edit Alert Link',
+}));
+
+jest.mock('../../../../utils/Alerts/AlertsUtilPure', () => ({
   getDisplayNameForEntities: jest.fn().mockImplementation((entity) => entity),
   getFunctionDisplayName: jest
     .fn()
