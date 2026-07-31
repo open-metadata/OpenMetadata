@@ -37,7 +37,7 @@ import {
   getSubLevelHierarchyKey,
   updateTreeData,
   updateTreeDataWithCounts,
-} from '../../../utils/ExploreUtils';
+} from '../../../utils/ExplorePureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
@@ -53,7 +53,6 @@ import {
   ExploreTreeProps,
   TreeNodeData,
 } from './ExploreTree.interface';
-
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   const tooltipText = node.tooltip ?? node.title;
 

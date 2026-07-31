@@ -20,7 +20,6 @@ import AppBadge from '../../../../common/Badge/Badge.component';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
-
 const { Text, Paragraph } = Typography;
 
 function SummaryListItem({

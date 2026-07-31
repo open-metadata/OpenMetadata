@@ -14,11 +14,10 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   getEntityTypeFromSearchIndex,
-  getGroupLabel,
   getTermQuery,
   parseBucketsData,
-} from './SearchUtils';
-
+} from './SearchPureUtils';
+import { getGroupLabel } from './SearchUtils';
 // Add type definition for ESQueryClause to fix type errors
 type ESQueryClause = {
   term?: Record<string, string | number | boolean>;

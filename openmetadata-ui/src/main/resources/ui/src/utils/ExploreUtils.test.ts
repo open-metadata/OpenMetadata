@@ -22,7 +22,7 @@ import {
   getSelectedValuesFromQuickFilter,
   getSubLevelHierarchyKey,
   updateTreeData,
-} from './ExploreUtils';
+} from './ExplorePureUtils';
 
 describe('Explore Utils', () => {
   it('should return undefined if data is empty', () => {
