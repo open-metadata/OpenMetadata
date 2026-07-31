@@ -202,7 +202,18 @@ export default defineConfig({
         '**/IntakeForm.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
+        '**/VisualRegression/**',
       ],
+    },
+    {
+      name: 'visual-regression',
+      testMatch: '**/VisualRegression/**/*.spec.ts',
+      dependencies: ['setup', 'entity-data-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        storageState: 'playwright/.auth/admin.json',
+      },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
     // Playwright to do discovery for it on every default run even though its spec files are
