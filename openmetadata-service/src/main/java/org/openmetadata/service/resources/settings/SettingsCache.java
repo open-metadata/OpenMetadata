@@ -534,13 +534,18 @@ public class SettingsCache {
 
   public static <T> T getSettingOrDefault(
       SettingsType settingName, T defaultValue, Class<T> clazz) {
+    T result = defaultValue;
     try {
       Object configValue = CACHE.get(settingName.toString()).getConfigValue();
-      return JsonUtils.convertValue(configValue, clazz);
+      result = JsonUtils.convertValue(configValue, clazz);
+    } catch (CacheLoader.InvalidCacheLoadException ex) {
+      // The loader returns null for a setting that was never configured. Serving the caller's
+      // default is what this method exists for, so it is not a failure.
+      LOG.debug("Setting {} is not configured, using the supplied default", settingName);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
-      return defaultValue;
     }
+    return result;
   }
 
   public static void cleanUp() {
