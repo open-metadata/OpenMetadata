@@ -120,8 +120,24 @@ WHERE u.oracle_maintained = 'N'
 """
 )
 
-# GET_DDL returns a CLOB, read through a locator rather than an inline LONG
-# buffer, so it is immune to the ORA-01406 truncation the fallback works around.
+# Per-view read of the LONG text. Fetching a single row is not an array fetch,
+# so it does not hit the ORA-01406 truncation, and it needs no privileges beyond
+# the bulk read. This is the same source column SQLAlchemy's Oracle dialect uses.
+ORACLE_GET_VIEW_TEXT_BY_NAME = textwrap.dedent(
+    """
+SELECT text FROM {prefix}_VIEWS WHERE owner = :owner AND view_name = :name
+"""
+)
+
+ORACLE_GET_MVIEW_QUERY_BY_NAME = textwrap.dedent(
+    """
+SELECT query FROM {prefix}_MVIEWS WHERE owner = :owner AND mview_name = :name
+"""
+)
+
+# Last resort when the raw text is NULL or still cannot be read. GET_DDL returns
+# a CLOB (read through a locator, immune to the LONG truncation) but needs
+# SELECT_CATALOG_ROLE for objects in other schemas.
 ORACLE_GET_VIEW_DEFINITION_BY_NAME = "SELECT DBMS_METADATA.GET_DDL(:object_type, :name, :owner) AS view_ddl FROM dual"
 
 GET_VIEW_NAMES = textwrap.dedent(

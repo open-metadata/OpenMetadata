@@ -19,6 +19,7 @@ import traceback
 from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
 from sqlalchemy.engine import reflection
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.oracle.queries import (
@@ -27,8 +28,10 @@ from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_CONSTRAINTS,
     ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES,
     ORACLE_GET_COLUMNS,
+    ORACLE_GET_MVIEW_QUERY_BY_NAME,
     ORACLE_GET_TABLE_NAMES,
     ORACLE_GET_VIEW_DEFINITION_BY_NAME,
+    ORACLE_GET_VIEW_TEXT_BY_NAME,
     ORACLE_IDENTITY_TYPE,
     ORACLE_TABLE_COMMENTS,
     ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
@@ -99,7 +102,7 @@ def get_all_view_definitions(self, connection, query):
     DBA_MVIEWS.QUERY. In Oracle thick mode a view whose definition is larger than
     OCI's LONG fetch buffer raises ORA-01406 while the row is being fetched,
     which aborts the whole array fetch and leaves every view without a
-    definition. If the bulk fetch fails, fall back to reading each definition on
+    definition. On that database error, fall back to reading each definition on
     its own so one oversized or failing view cannot blank out the rest.
     See https://github.com/open-metadata/OpenMetadata/issues/30319
     """
@@ -108,11 +111,8 @@ def get_all_view_definitions(self, connection, query):
     try:
         for view in connection.execute(text(query)):
             _store_bulk_view_definition(self, view)
-    except Exception as exc:
-        logger.warning(
-            f"Bulk Oracle view-definition fetch failed ({exc}). Falling back to "
-            "per-view retrieval via DBMS_METADATA.GET_DDL."
-        )
+    except DatabaseError as exc:
+        logger.warning(f"Bulk Oracle view-definition fetch failed ({exc}). Falling back to per-view retrieval.")
         logger.debug(traceback.format_exc())
         _get_view_definitions_individually(self, connection)
 
@@ -147,22 +147,50 @@ def _get_view_definitions_individually(self, connection) -> None:
     # Match the cache-key casing that get_view_definition uses for lookups:
     # lowercased by default, kept verbatim when preserveIdentifierCase is set.
     normalize = (lambda value: value) if getattr(self, "preserve_identifier_case", False) else str.lower
-    view_names = connection.execute(
-        text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=_get_table_prefix(self)))
-    ).fetchall()
+    prefix = _get_table_prefix(self)
+    view_names = connection.execute(text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=prefix))).fetchall()
     for owner, name, object_type in view_names:
         try:
-            definition = connection.execute(
-                text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),
-                {"object_type": object_type, "name": name, "owner": owner},
-            ).scalar()
-            if definition is not None and hasattr(definition, "read"):
-                definition = definition.read()
-            if definition is not None:
-                self.all_view_definitions[(normalize(name), normalize(owner))] = definition
-        except Exception as exc:
+            definition = _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
+        except DatabaseError as exc:
             logger.warning(f"Could not fetch view definition for {owner}.{name}: {exc}")
             logger.debug(traceback.format_exc())
+            continue
+        if definition:
+            self.all_view_definitions[(normalize(name), normalize(owner))] = definition
+
+
+def _read_scalar(result):
+    """Return a scalar result, materializing a LOB locator to str if needed."""
+    value = result.scalar()
+    return value.read() if value is not None and hasattr(value, "read") else value
+
+
+def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type):
+    """Fetch one view's definition without the bulk LONG array truncation.
+
+    Reads the raw text/query with a single-row query first. A single-row fetch is
+    not an array fetch, so it does not hit ORA-01406, and it needs no privileges
+    beyond the bulk read (this is the same column SQLAlchemy's Oracle dialect
+    reads). Only when the text is NULL or still cannot be read does it fall back
+    to DBMS_METADATA.GET_DDL, mirroring the bulk query's text-else-GET_DDL logic.
+    """
+    is_mview = object_type == "MATERIALIZED_VIEW"
+    text_query = ORACLE_GET_MVIEW_QUERY_BY_NAME if is_mview else ORACLE_GET_VIEW_TEXT_BY_NAME
+    try:
+        raw_text = _read_scalar(
+            connection.execute(text(text_query.format(prefix=prefix)), {"owner": owner, "name": name})
+        )
+        if raw_text:
+            return f"CREATE OR REPLACE VIEW {name} AS {raw_text}"
+    except DatabaseError:
+        logger.debug(f"Single-row text read failed for {owner}.{name}, using GET_DDL")
+    return _read_scalar(
+        connection.execute(
+            text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),
+            {"object_type": object_type, "name": name, "owner": owner},
+        )
+    )
 
 
 def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches
