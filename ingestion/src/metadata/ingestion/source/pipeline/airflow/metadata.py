@@ -96,6 +96,8 @@ class AirflowTaskStatus(Enum):
     QUEUED = "queued"
     REMOVED = "removed"
     SKIPPED = "skipped"
+    RUNNING = "running"
+    UPSTREAM_FAILED = "upstream_failed"
 
 
 STATUS_MAP = {
@@ -103,6 +105,8 @@ STATUS_MAP = {
     AirflowTaskStatus.FAILED.value: StatusType.Failed.value,
     AirflowTaskStatus.QUEUED.value: StatusType.Pending.value,
     AirflowTaskStatus.SKIPPED.value: StatusType.Skipped.value,
+    AirflowTaskStatus.RUNNING.value: StatusType.Pending.value,
+    AirflowTaskStatus.UPSTREAM_FAILED.value: StatusType.Failed.value,
 }
 
 # Upper bound on run_ids sent in a single TaskInstance bulk query. Keeps peak
