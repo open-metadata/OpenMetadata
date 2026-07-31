@@ -43,6 +43,8 @@ import { test } from '../fixtures/pages';
 // ---------------------------------------------------------------------------
 
 const DP_ENTITY_TYPE = 'dataProduct';
+const DOMAIN_ENTITY_TYPE = 'domain';
+const GLOSSARY_TERM_ENTITY_TYPE = 'glossaryTerm';
 const INTAKE_FORMS_API = '/api/v1/governance/intakeForms';
 const SEARCH_QUERY_API = '/api/v1/search/query';
 
@@ -200,7 +202,12 @@ test.describe(
     test.beforeAll('Create fixtures', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      // Intake forms are enforced by the backend on API creates too — a
+      // leftover domain/glossaryTerm form (e.g. from manual testing) with
+      // required custom properties would 400 the fixture creates below.
       await ensureNoIntakeForm(apiContext, DP_ENTITY_TYPE);
+      await ensureNoIntakeForm(apiContext, DOMAIN_ENTITY_TYPE);
+      await ensureNoIntakeForm(apiContext, GLOSSARY_TERM_ENTITY_TYPE);
       await domain.create(apiContext);
       await glossary.create(apiContext);
       await term1.create(apiContext);
