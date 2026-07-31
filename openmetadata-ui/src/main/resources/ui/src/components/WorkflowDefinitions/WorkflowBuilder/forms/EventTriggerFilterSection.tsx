@@ -100,7 +100,7 @@ export const EventTriggerFilterSection: React.FC<
                 label={t('label.exclude-filter')}
                 outputType={SearchOutputType.ElasticSearch}
                 showExploreLink={false}
-            value={triggerFilter}
+                value={triggerFilter}
                 onChange={(value: string) => {
                   onTriggerFilterChange?.(value || '');
                 }}
