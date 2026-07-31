@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import {
   fetchEntityCoveredWithDQ,
   fetchTestCaseSummary,
@@ -173,6 +173,31 @@ describe('DataQualityProvider', () => {
       testCaseType: 'table',
       tier: ['Tier.Tier1'],
     });
+  });
+
+  it('should not reload the summary when only the table search changes', async () => {
+    mockLocation.search = '?testCaseStatus=Failed';
+    const provider = (
+      <DataQualityProvider>
+        <MockComponent />
+      </DataQualityProvider>
+    );
+    const { rerender } = render(provider);
+
+    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
+    expect(fetchTestCaseSummary).toHaveBeenCalledTimes(1);
+
+    mockLocation.search = '?testCaseStatus=Failed&searchValue=orders';
+    rerender(
+      <DataQualityProvider>
+        <MockComponent />
+      </DataQualityProvider>
+    );
+
+    await waitFor(() => expect(fetchTestCaseSummary).toHaveBeenCalledTimes(1));
+
+    expect(fetchEntityCoveredWithDQ).toHaveBeenCalledTimes(2);
+    expect(fetchTotalEntityCount).toHaveBeenCalledTimes(1);
   });
 
   it('should handle different tab values correctly', async () => {

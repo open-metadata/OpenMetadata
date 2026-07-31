@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { parse } from 'papaparse';
 import { MemoryRouter } from 'react-router-dom';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -81,6 +82,40 @@ describe('TestCaseUtils', () => {
       expect(csv).toContain('service.db.schema.table.column');
       expect(csv).toContain('PII.Sensitive');
       expect(csv).toContain('Glossary.Term');
+    });
+
+    it('escapes values that spreadsheet applications can evaluate as formulas', () => {
+      const csv = convertTestCasesToCSV([
+        {
+          name: '=SUM(1,1)',
+          displayName: '+1+1',
+          description: '-1+1',
+          inspectionQuery: '@SUM(1,1)',
+          tags: [
+            {
+              source: TagSource.Classification,
+              tagFQN: '\tPII.Sensitive',
+            },
+            {
+              source: TagSource.Glossary,
+              tagFQN: '\rGlossary.Term',
+            },
+          ],
+        } as TestCase,
+      ]);
+
+      const [row] = parse<Record<string, string>>(csv, { header: true }).data;
+
+      expect(row).toEqual(
+        expect.objectContaining({
+          name: "'=SUM(1,1)",
+          displayName: "'+1+1",
+          description: "'-1+1",
+          inspectionQuery: "'@SUM(1,1)",
+          tags: "'\tPII.Sensitive",
+          glossaryTerms: "'\rGlossary.Term",
+        })
+      );
     });
   });
 

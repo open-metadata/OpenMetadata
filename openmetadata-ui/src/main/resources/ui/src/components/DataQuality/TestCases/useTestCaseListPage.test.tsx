@@ -25,6 +25,7 @@ import { getTags } from '../../../rest/tagAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import tagClassBase from '../../../utils/TagClassBase';
 import { TestCaseSearchParams } from '../DataQuality.interface';
+import * as useTestCaseListModule from './useTestCaseList';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
 const mockNavigate = jest.fn();
@@ -304,6 +305,51 @@ describe('useTestCaseListPage', () => {
       })
     );
     expect(csv).toContain('filtered-test');
+  });
+
+  it('should preserve URL-only filters when exporting before selector state is hydrated', async () => {
+    const useTestCaseListSpy = jest
+      .spyOn(useTestCaseListModule, 'useTestCaseList')
+      .mockReturnValue({
+        testCase: [],
+        setTestCase: jest.fn(),
+        isLoading: false,
+        fetchTestCases: jest.fn(),
+        sortTestCase: jest.fn(),
+        pagingData: {},
+        showPagination: false,
+      } as unknown as ReturnType<typeof useTestCaseListModule.useTestCaseList>);
+    mockLocation.search = QueryString.stringify({
+      tier: 'Tier.Tier1',
+      serviceName: 'sample_data',
+      dataProductFqn: 'Product.Marketing',
+      dataQualityDimension: 'Accuracy',
+      lastRunRange: { startTs: 100, endTs: 200 },
+      testPlatforms: 'OpenMetadata',
+    });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    await exportData.onExport('*');
+    useTestCaseListSpy.mockRestore();
+
+    expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        tier: 'Tier.Tier1',
+        serviceName: 'sample_data',
+        dataProductFqn: 'Product.Marketing',
+        dataQualityDimension: 'Accuracy',
+        startTimestamp: '100',
+        endTimestamp: '200',
+        testPlatforms: 'OpenMetadata',
+      })
+    );
   });
 
   it('should paginate filtered exports using the fresh response total', async () => {

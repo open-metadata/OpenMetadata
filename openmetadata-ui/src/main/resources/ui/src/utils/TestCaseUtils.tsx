@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { lowerCase } from 'lodash';
-import { unparse } from 'papaparse';
+import { unparse, type UnparseObject } from 'papaparse';
 import type { ReactElement, ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
@@ -69,12 +69,16 @@ const TEST_CASE_CSV_HEADERS = [
   'glossaryTerms',
 ];
 
+const unparseTestCaseCsv = (
+  data: UnparseObject<Record<string, string>>
+): string => unparse(data, { escapeFormulae: true });
+
 /**
  * Serializes client-fetched filtered results with the import-compatible test
  * case schema. The async server export accepts an FQN but not list filters.
  */
 export const convertTestCasesToCSV = (testCases: TestCase[]): string =>
-  unparse({
+  unparseTestCaseCsv({
     fields: TEST_CASE_CSV_HEADERS,
     data: testCases.map((testCase) => ({
       name: testCase.name,

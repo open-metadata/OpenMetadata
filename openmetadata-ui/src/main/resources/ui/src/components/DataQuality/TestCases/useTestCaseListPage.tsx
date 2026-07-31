@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, uniq } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -135,7 +135,8 @@ export const useTestCaseListPage = () => {
   });
 
   const exportFilteredTestCases = useCallback(async () => {
-    const updatedParams = getTestCaseFiltersValue(params, selectedFilter);
+    const activeFilters = uniq([...selectedFilter, ...Object.keys(params)]);
+    const updatedParams = getTestCaseFiltersValue(params, activeFilters);
     const exportParams = {
       ...updatedParams,
       testCaseStatus: isEmpty(params.testCaseStatus)
