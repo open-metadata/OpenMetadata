@@ -197,6 +197,8 @@ export interface ServiceConnection {
  *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -473,6 +475,8 @@ export interface ConfigObject {
      *
      * Hex API token for authentication. Can be personal or workspace token.
      *
+     * API token to authenticate with Omni.
+     *
      * To Connect to Dagster Cloud
      *
      * Generated Token to connect to DBTCloud.
@@ -564,6 +568,8 @@ export interface ConfigObject {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
     /**
@@ -607,6 +613,9 @@ export interface ConfigObject {
      * Host and Port of the Ssrs instance.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
      *
      * BigQuery APIs URL.
      *
@@ -2482,6 +2491,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
  *
@@ -5248,6 +5259,7 @@ export enum ConfigType {
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nifi = "Nifi",
+    Omni = "Omni",
     OpenLineage = "OpenLineage",
     OpenMetadata = "OpenMetadata",
     OpenSearch = "OpenSearch",
