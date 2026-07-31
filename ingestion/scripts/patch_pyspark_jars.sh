@@ -43,18 +43,26 @@ set -euo pipefail
 #   3 -> installed but import failed for any other reason -> fail the build
 locate_pyspark_jars() {
   python - <<'PY'
-import os, sys
+import importlib.util, os, sys
+
+# Distinguish "pyspark genuinely not installed" from "pyspark present but broken".
+# find_spec only inspects the top-level pyspark package without importing it, so a
+# missing pyspark.* submodule during a real import is never mistaken for absence.
 try:
-    import pyspark
-except ModuleNotFoundError as exc:
-    if exc.name == "pyspark" or (exc.name or "").split(".")[0] == "pyspark":
-        sys.exit(2)
-    # pyspark itself is present but one of ITS imports is missing -> broken install
-    sys.stderr.write(f"pyspark is installed but failed to import: {exc!r}\n")
-    sys.exit(3)
+    spec = importlib.util.find_spec("pyspark")
 except Exception as exc:
     sys.stderr.write(f"pyspark is installed but failed to import: {exc!r}\n")
     sys.exit(3)
+
+if spec is None:
+    sys.exit(2)
+
+try:
+    import pyspark
+except Exception as exc:
+    sys.stderr.write(f"pyspark is installed but failed to import: {exc!r}\n")
+    sys.exit(3)
+
 print(os.path.join(os.path.dirname(pyspark.__file__), "jars"))
 PY
 }
