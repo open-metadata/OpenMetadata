@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Button } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -72,14 +73,14 @@ const WidgetEmptyState = ({
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <div className="d-flex flex-col items-center">
           {title && (
-            <Typography.Text className="empty-state-title text-md font-semibold m-b-sm">
+            <Typography className="empty-state-title text-md font-semibold m-b-sm">
               {title}
-            </Typography.Text>
+            </Typography>
           )}
           {description && (
-            <Typography.Text className="empty-state-placeholder text-sm font-regular">
+            <Typography className="empty-state-placeholder text-sm font-regular">
               {description}
-            </Typography.Text>
+            </Typography>
           )}
           {actionButton}
           {actionLink}

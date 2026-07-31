@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,9 +85,9 @@ const AnnouncementCardV1 = ({
         userName={userName}
       />
       {!description && (
-        <Typography.Text className="text-grey-muted text-xs">
+        <Typography className="text-grey-muted text-xs">
           {t('message.no-announcement-message')}
-        </Typography.Text>
+        </Typography>
       )}
     </Card>
   );

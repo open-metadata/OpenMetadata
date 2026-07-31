@@ -16,7 +16,8 @@ import {
   RedoOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -118,23 +119,20 @@ export const CustomizablePageHeader = ({
       data-testid="customize-landing-page-header">
       <div className="d-flex items-center justify-between">
         <div>
-          <Typography.Title
-            className="m-0"
-            data-testid="customize-page-title"
-            level={5}>
+          <Typography as='h5' size='text-md' data-testid="customize-page-title" className="m-0">
             {t('label.customize-entity', {
               entity: isLandingPage
                 ? t('label.home-page')
                 : t(`label.${kebabCase(currentPageType as string)}`),
             })}
-          </Typography.Title>
-          <Typography.Paragraph className="m-0">
+          </Typography>
+          <Typography as='p' className="m-0">
             <Transi18next
               i18nKey={subTitle}
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
               values={i18Values}
             />
-          </Typography.Paragraph>
+          </Typography>
         </div>
         <Space>
           {showWidgetActions && (
@@ -171,7 +169,6 @@ export const CustomizablePageHeader = ({
           />
         </Space>
       </div>
-
       <UnsavedChangesModal
         description={t('message.reset-layout-confirmation')}
         discardText={t('label.cancel')}

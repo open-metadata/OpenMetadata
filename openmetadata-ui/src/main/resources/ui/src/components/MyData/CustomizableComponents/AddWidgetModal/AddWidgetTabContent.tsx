@@ -12,17 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Image,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Image, Radio, RadioChangeEvent, Row, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
@@ -77,7 +68,7 @@ function AddWidgetTabContent({
     <Row data-testid={widget.id}>
       <Col span={24}>
         <Space>
-          <Typography.Text>{`${t('label.size')}:`}</Typography.Text>
+          <Typography>{`${t('label.size')}:`}</Typography>
           <Radio.Group
             data-testid="size-selector-button"
             defaultValue={selectedWidgetSize}
@@ -97,11 +88,9 @@ function AddWidgetTabContent({
                 preview={false}
                 src={widgetImage}
               />
-              <Typography.Paragraph
-                className="d-block text-center"
-                data-testid="widget-description">
+              <Typography as='p' data-testid="widget-description" className="d-block text-center">
                 {widget.description}
-              </Typography.Paragraph>
+              </Typography>
               <Tooltip
                 placement="bottom"
                 title={widgetAddable ? '' : t('message.can-not-add-widget')}>

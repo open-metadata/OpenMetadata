@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -152,12 +152,12 @@ const AnnouncementCardV1Content = ({
                 </Link>
               )}
               {fieldOperation && fieldOperation !== FieldOperation.None && (
-                <Typography.Text
-                  className="field-operation-text"
-                  style={{ color }}>
+                <Typography
+                  style={{ color }}
+                  className="field-operation-text">
                   {' '}
                   {getFieldOperationText(fieldOperation)}
-                </Typography.Text>
+                </Typography>
               )}
               <span
                 className={classNames(
@@ -168,7 +168,7 @@ const AnnouncementCardV1Content = ({
                 {entityIcon}
               </span>
               {entityFQN && entityType ? (
-                <Typography.Text
+                <Typography
                   ellipsis={{
                     tooltip: (
                       <div className="announcement-entity-name-tooltip">
@@ -195,47 +195,46 @@ const AnnouncementCardV1Content = ({
                     onClick={handleEntityClick}>
                     {entityName}
                   </Link>
-                </Typography.Text>
+                </Typography>
               ) : (
-                <Typography.Text
-                  className={classNames(
-                    'announcement-entity-name',
-                    variantConfig.entityName
-                  )}
+                <Typography
                   ellipsis={{ tooltip: true }}
                   style={{
                     color: currentBackgroundColor ?? 'inherit',
-                  }}>
+                  }}
+                  className={classNames(
+                    'announcement-entity-name',
+                    variantConfig.entityName
+                  )}>
                   {entityName}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
           ) : (
-            <Typography.Text
-              className="announcement-header"
-              style={announcementTitleStyle}>
+            <Typography
+              style={announcementTitleStyle}
+              className="announcement-header">
               {title}
-            </Typography.Text>
+            </Typography>
           )}
-          <Typography.Text className="timestamp" style={timeStampStyle}>
+          <Typography style={timeStampStyle} className="timestamp">
             {getShortRelativeTime(timestamp)}
-          </Typography.Text>
+          </Typography>
         </div>
       </div>
-
       {(userName || entityName) && title && (
-        <Typography.Paragraph
-          className={classNames('announcement-title', variantConfig.title)}
-          ellipsis={{ tooltip: true, rows: 2 }}>
+        <Typography
+          as='p'
+          ellipsis={{ tooltip: true, rows: 2 }}
+          className={classNames('announcement-title', variantConfig.title)}>
           {title}
           {columnName && (
-            <Typography.Text>
+            <Typography>
               {`${t('label.column-name')}: ${columnName}`}
-            </Typography.Text>
+            </Typography>
           )}
-        </Typography.Paragraph>
+        </Typography>
       )}
-
       {description && (
         <RichTextEditorPreviewerV1
           className={classNames(

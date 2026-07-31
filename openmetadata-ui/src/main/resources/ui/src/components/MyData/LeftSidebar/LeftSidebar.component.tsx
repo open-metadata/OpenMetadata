@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
+import { Button, Layout, Menu, MenuProps } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -119,7 +120,6 @@ const LeftSidebar = () => {
           />
         </Link>
       </div>
-
       <div className="left-sidebar-layout">
         <div className="menu-container">
           <div className="top-menu">
@@ -154,7 +154,6 @@ const LeftSidebar = () => {
           </div>
         </div>
       </div>
-
       {isConfirmLogoutModalOpen && (
         <Modal
           centered
@@ -165,10 +164,10 @@ const LeftSidebar = () => {
           open={isConfirmLogoutModalOpen}
           width={360}
           onCancel={hideConfirmLogoutModal}>
-          <Typography.Title level={5}>{t('label.logout')}</Typography.Title>
-          <Typography.Text className="text-grey-muted">
+          <Typography as='h5' size='text-md'>{t('label.logout')}</Typography>
+          <Typography className="text-grey-muted">
             {t('message.logout-confirmation')}
-          </Typography.Text>
+          </Typography>
 
           <div className="d-flex gap-2 w-full m-t-md justify-center">
             <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Carousel, Typography } from 'antd';
+import { Carousel } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -125,11 +126,11 @@ const RecentlyViewedCarousel = ({
             <div className="d-flex items-center justify-center entity-icon-container">
               {data.icon}
             </div>
-            <Typography.Text
-              className="text-sm font-medium text-white"
-              ellipsis={{ tooltip: true }}>
+            <Typography
+              ellipsis={{ tooltip: true }}
+              className="text-sm font-medium text-white">
               {data.name}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
       ))}

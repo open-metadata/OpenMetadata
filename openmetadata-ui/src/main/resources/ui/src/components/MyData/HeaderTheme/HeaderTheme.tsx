@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Button } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { headerBackgroundColors } from '../../../constants/Mydata.constants';
 import CustomiseLandingPageHeader from '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -30,9 +31,12 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
 
   return (
     <div className="header-theme-settings">
-      <Typography.Title className="header-theme-title display-xs font-semibold">
+      <Typography
+        as='h1'
+        size='display-sm'
+        className="header-theme-title display-xs font-semibold">
         {t('label.preview-header')}
-      </Typography.Title>
+      </Typography>
       <div className="header-theme-container p-box bg-white">
         <CustomiseLandingPageHeader
           hideCustomiseButton
@@ -42,9 +46,9 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
         />
       </div>
       <div className="select-background-container">
-        <Typography.Text className="display-xs font-semibold">
+        <Typography className="display-xs font-semibold">
           {t('label.select-background')}
-        </Typography.Text>
+        </Typography>
         <div className="select-background-options p-y-lg p-x-0 d-flex flex-wrap items-center">
           <div className="d-flex flex-wrap items-center gap-2">
             {headerBackgroundColors.map((value) => (

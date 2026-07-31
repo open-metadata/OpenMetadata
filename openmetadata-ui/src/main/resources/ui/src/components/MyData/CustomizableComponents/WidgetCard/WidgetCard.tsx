@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Typography } from 'antd';
+import { Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -83,14 +84,15 @@ const WidgetCard = ({
         )}
       </div>
       <div className="p-t-md p-x-sm">
-        <Typography.Text className="text-sm font-medium">
+        <Typography className="text-sm font-medium">
           {startCase(widget.name)}
-        </Typography.Text>
-        <Typography.Paragraph
-          className="widget-desc m-t-xs text-xs font-regular"
-          data-testid="widget-description">
+        </Typography>
+        <Typography
+          as='p'
+          data-testid="widget-description"
+          className="widget-desc m-t-xs text-xs font-regular">
           {widget.description ?? t('message.no-description-available')}
-        </Typography.Paragraph>
+        </Typography>
       </div>
     </Card>
   );

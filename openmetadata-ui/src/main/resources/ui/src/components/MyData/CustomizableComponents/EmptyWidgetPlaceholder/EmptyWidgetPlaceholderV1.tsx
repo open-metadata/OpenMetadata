@@ -12,7 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import WidgetWrapper from '../../Widgets/Common/WidgetWrapper/WidgetWrapper';
@@ -34,14 +35,14 @@ function EmptyWidgetPlaceholderV1({
 
   const widgetContent = (
     <div className="empty-widget-placeholder-v1-content">
-      <Typography.Title className="add-widgets-title" level={4}>
+      <Typography as='h4' size='text-lg' className="add-widgets-title">
         {t('label.add-new-widget-plural')}
-      </Typography.Title>
-      <Typography.Text className="add-widgets-description">
+      </Typography>
+      <Typography className="add-widgets-description">
         {t('message.tailor-experience-for-persona', {
           persona: personaName,
         })}
-      </Typography.Text>
+      </Typography>
       <Button
         className="add-widgets-button"
         data-testid="add-widget-button"

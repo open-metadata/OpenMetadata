@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Button } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -153,11 +154,11 @@ const CustomiseLandingPageHeader = ({
             className={classNames('d-flex items-center gap-4 mb-5', {
               'justify-center': !showAnnouncements,
             })}>
-            <Typography.Text className="welcome-user">
+            <Typography className="welcome-user">
               {t('label.welcome', {
                 name: currentUser?.displayName || currentUser?.name,
               })}
-            </Typography.Text>
+            </Typography>
             {!hideCustomiseButton && (
               <Button
                 className="customise-header-btn"
@@ -207,7 +208,6 @@ const CustomiseLandingPageHeader = ({
           )}
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
-
       {!hideCustomiseButton && showCustomiseHomeModal && (
         <CustomiseHomeModal
           addedWidgetsList={addedWidgetsList}

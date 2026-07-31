@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Button } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -213,17 +214,17 @@ const MyDataWidgetInternal = ({
                       type="text">
                       <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
-                          <Typography.Text
-                            className="text-left text-xs font-regular text-grey-600"
-                            ellipsis={{ tooltip: true }}>
+                          <Typography
+                            ellipsis={{ tooltip: true }}
+                            className="text-left text-xs font-regular text-grey-600">
                             {item.serviceType}
-                          </Typography.Text>
+                          </Typography>
                         )}
-                        <Typography.Text
-                          className="text-left text-sm font-regular text-grey-800"
-                          ellipsis={{ tooltip: true }}>
+                        <Typography
+                          ellipsis={{ tooltip: true }}
+                          className="text-left text-sm font-regular text-grey-800">
                           {getEntityName(item)}
-                        </Typography.Text>
+                        </Typography>
                       </div>
                     </Button>
                   </Link>

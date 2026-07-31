@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { toString } from 'lodash';
 import type { Bucket } from 'Models';
 import { useMemo } from 'react';
@@ -59,11 +60,11 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
           <DataAssetServiceLogo className="h-8" serviceType={key} />
         </div>
 
-        <Typography.Text
-          className="m-t-sm text-sm text-grey-body font-medium truncate w-full d-inline-block"
-          data-testid={`service-name-${key}`}>
+        <Typography
+          data-testid={`service-name-${key}`}
+          className="m-t-sm text-sm text-grey-body font-medium truncate w-full d-inline-block">
           {formattedServiceType}
-        </Typography.Text>
+        </Typography>
 
         <AppBadge
           className="data-asset-badge m-t-sm"

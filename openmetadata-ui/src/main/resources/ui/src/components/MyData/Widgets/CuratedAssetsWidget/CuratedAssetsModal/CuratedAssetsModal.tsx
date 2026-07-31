@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Modal, Typography } from 'antd';
+import { Button, Form, Input, Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -120,11 +121,11 @@ const CuratedAssetsModal = ({
     () => (
       <div className="flex items-center">
         <PlusSquare className="text-xl" />
-        <Typography.Text strong className="m-l-xs text-white">
+        <Typography weight='bold' className="m-l-xs text-white">
           {!isEmpty(curatedAssetsConfig)
             ? t('label.edit-widget')
             : t('label.create-widget')}
-        </Typography.Text>
+        </Typography>
       </div>
     ),
     [curatedAssetsConfig, t]

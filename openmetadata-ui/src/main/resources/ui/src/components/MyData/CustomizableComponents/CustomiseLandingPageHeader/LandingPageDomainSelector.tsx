@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -87,9 +87,9 @@ const LandingPageDomainSelector = ({
           height={22}
           width={22}
         />
-        <Typography.Text className="text-sm font-medium domain-title">
+        <Typography className="text-sm font-medium domain-title">
           {domainDisplayName}
-        </Typography.Text>
+        </Typography>
         <DropdownIcon
           className="dropdown-icon"
           data-testid="dropdown-icon"

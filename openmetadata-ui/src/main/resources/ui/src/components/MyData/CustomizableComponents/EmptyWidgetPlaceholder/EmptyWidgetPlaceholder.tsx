@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -80,11 +81,11 @@ function EmptyWidgetPlaceholder({
                   height={iconHeight}
                   width={iconWidth}
                 />
-                <Typography.Text>
+                <Typography>
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                     entity: t('label.widget'),
                   })}
-                </Typography.Text>
+                </Typography>
                 <Button
                   ghost
                   className="add-button"
