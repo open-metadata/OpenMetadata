@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.governance.IntakeForm;
+import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField.FieldKind;
 import org.openmetadata.schema.entity.teams.User;
@@ -80,9 +82,16 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class IntakeFormResourceIT {
 
   private static final String INTAKE_FORMS_PATH = "/v1/governance/intakeForms";
+  private static final Double INITIAL_ENTITY_VERSION = 0.1;
+  private static final String FORM_FIELDS_FIELD = "formFields";
+  private static final String INTAKE_FORM_ENTITY_TYPE = "intakeForm";
   private static final String RISK_PROPERTY = "intakeRiskAssessment";
   private static final String DOMAIN_OWNER_PROPERTY = "intakeDomainOwner";
+  private static final String DOMAIN_AUDIENCE_PROPERTY = "intakeDomainAudience";
+  private static final String DOMAIN_SOURCE_PROPERTY = "intakeDomainSource";
   private static final String GLOSSARY_TERM_STEWARD_PROPERTY = "intakeTermSteward";
+  private static final String GLOSSARY_TERM_AUDIENCE_PROPERTY = "intakeTermAudience";
+  private static final String GLOSSARY_TERM_SOURCE_PROPERTY = "intakeTermSource";
   private static final String DP_STEWARD_REF_PROPERTY = "intakeStewardUserRef";
   private static final String DP_STEWARDS_REF_LIST_PROPERTY = "intakeStewardsList";
   private static final String DP_PRIORITY_ENUM_PROPERTY = "intakePriorityEnum";
@@ -94,7 +103,11 @@ public class IntakeFormResourceIT {
   static void setupCustomProperties() throws Exception {
     ensureStringCustomProperty("dataProduct", RISK_PROPERTY);
     ensureStringCustomProperty("domain", DOMAIN_OWNER_PROPERTY);
+    ensureStringCustomProperty("domain", DOMAIN_AUDIENCE_PROPERTY);
+    ensureStringCustomProperty("domain", DOMAIN_SOURCE_PROPERTY);
     ensureStringCustomProperty("glossaryTerm", GLOSSARY_TERM_STEWARD_PROPERTY);
+    ensureStringCustomProperty("glossaryTerm", GLOSSARY_TERM_AUDIENCE_PROPERTY);
+    ensureStringCustomProperty("glossaryTerm", GLOSSARY_TERM_SOURCE_PROPERTY);
     ensureEntityReferenceCustomProperty("dataProduct", DP_STEWARD_REF_PROPERTY, "user");
     ensureEntityReferenceListCustomProperty("dataProduct", DP_STEWARDS_REF_LIST_PROPERTY, "user");
     ensureEnumCustomProperty(
@@ -185,6 +198,59 @@ public class IntakeFormResourceIT {
     } finally {
       deleteIntakeForm(created.getId());
     }
+  }
+
+  @Test
+  void intakeForm_updatesKeepIncludedAndRequiredStateIndependentForEveryEntityType(TestNamespace ns)
+      throws Exception {
+    assertSelectionUpdateLifecycle(
+        ns.prefix("dp-selection-update"),
+        TargetEntityType.DATA_PRODUCT,
+        RISK_PROPERTY,
+        DP_COST_INTEGER_PROPERTY,
+        DP_PRIORITY_ENUM_PROPERTY);
+    assertSelectionUpdateLifecycle(
+        ns.prefix("domain-selection-update"),
+        TargetEntityType.DOMAIN,
+        DOMAIN_OWNER_PROPERTY,
+        DOMAIN_AUDIENCE_PROPERTY,
+        DOMAIN_SOURCE_PROPERTY);
+    assertSelectionUpdateLifecycle(
+        ns.prefix("glossary-selection-update"),
+        TargetEntityType.GLOSSARY_TERM,
+        GLOSSARY_TERM_STEWARD_PROPERTY,
+        GLOSSARY_TERM_AUDIENCE_PROPERTY,
+        GLOSSARY_TERM_SOURCE_PROPERTY);
+  }
+
+  @Test
+  void intakeForm_hardDeletePreservesCustomPropertyDefinitions() throws Exception {
+    IntakeForm dataProductForm =
+        createIntakeForm(
+            customPropertyForm(
+                "dataProduct",
+                TargetEntityType.DATA_PRODUCT,
+                customPropertyFormField(RISK_PROPERTY, false)));
+    IntakeForm domainForm =
+        createIntakeForm(
+            customPropertyForm(
+                "domain",
+                TargetEntityType.DOMAIN,
+                customPropertyFormField(DOMAIN_OWNER_PROPERTY, false)));
+    IntakeForm glossaryTermForm =
+        createIntakeForm(
+            customPropertyForm(
+                "glossaryTerm",
+                TargetEntityType.GLOSSARY_TERM,
+                customPropertyFormField(GLOSSARY_TERM_STEWARD_PROPERTY, false)));
+
+    deleteIntakeForm(dataProductForm.getId());
+    deleteIntakeForm(domainForm.getId());
+    deleteIntakeForm(glossaryTermForm.getId());
+
+    assertCustomPropertyExists("dataProduct", RISK_PROPERTY);
+    assertCustomPropertyExists("domain", DOMAIN_OWNER_PROPERTY);
+    assertCustomPropertyExists("glossaryTerm", GLOSSARY_TERM_STEWARD_PROPERTY);
   }
 
   @Test
@@ -467,6 +533,7 @@ public class IntakeFormResourceIT {
           () -> SdkClients.adminClient().dataProducts().create(blocked));
 
       // drop the required field
+      form.setFormFields(List.of());
       form.setRequiredFields(List.of());
       putIntakeForm(toCreate(form));
 
@@ -498,6 +565,51 @@ public class IntakeFormResourceIT {
               () -> SdkClients.adminClient().dataProducts().create(req));
       assertEquals(400, ex.getStatusCode());
       assertTrue(ex.getMessage().contains("Risk Assessment"));
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  @Test
+  void dataProduct_create_includesOptionalCustomPropertyWithoutEnforcingIt(TestNamespace ns)
+      throws Exception {
+    Domain domain = createDomain(ns);
+    CreateIntakeForm request =
+        new CreateIntakeForm()
+            .withName(ns.prefix("intake-optional-property"))
+            .withEntityType(TargetEntityType.DATA_PRODUCT)
+            .withEnabled(Boolean.TRUE)
+            .withFormFields(
+                List.of(
+                    new IntakeFormField()
+                        .withFieldPath("extension." + RISK_PROPERTY)
+                        .withFieldLabel("Risk Assessment")
+                        .withFieldKind(IntakeFormField.FieldKind.CUSTOM_PROPERTY)
+                        .withRequired(false),
+                    new IntakeFormField()
+                        .withFieldPath("dataProductType")
+                        .withFieldLabel("Data Product Type")
+                        .withFieldKind(IntakeFormField.FieldKind.NATIVE)
+                        .withRequired(true)));
+    IntakeForm form = createIntakeForm(request);
+    try {
+      assertEquals(2, form.getFormFields().size());
+      assertEquals(1, form.getRequiredFields().size());
+
+      DataProduct created =
+          SdkClients.adminClient()
+              .dataProducts()
+              .create(
+                  minimalDataProductRequest(ns, domain, "optional-property")
+                      .withDataProductType(DataProductType.DATASET));
+      assertNotNull(created.getId());
+
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .dataProducts()
+                  .create(minimalDataProductRequest(ns, domain, "missing-required-type")));
     } finally {
       deleteIntakeForm(form.getId());
     }
@@ -641,6 +753,43 @@ public class IntakeFormResourceIT {
     }
   }
 
+  @Test
+  void domain_create_includesThreeCustomPropertiesAndEnforcesOnlyRequiredOne(TestNamespace ns)
+      throws Exception {
+    IntakeForm form =
+        createIntakeForm(
+            customPropertySelectionForm(
+                ns.prefix("dom-intake-selection"),
+                TargetEntityType.DOMAIN,
+                DOMAIN_OWNER_PROPERTY,
+                DOMAIN_AUDIENCE_PROPERTY,
+                DOMAIN_SOURCE_PROPERTY));
+    try {
+      assertEquals(3, form.getFormFields().size());
+      assertEquals(1, form.getRequiredFields().size());
+
+      Map<String, Object> extension = new LinkedHashMap<>();
+      extension.put(DOMAIN_OWNER_PROPERTY, "finance-team");
+      Domain created =
+          SdkClients.adminClient()
+              .domains()
+              .create(
+                  minimalDomainRequest(ns, "dom-selection-with-required").withExtension(extension));
+      assertNotNull(created.getId());
+      assertFalse(OBJECT_MAPPER.valueToTree(created.getExtension()).has(DOMAIN_AUDIENCE_PROPERTY));
+      assertFalse(OBJECT_MAPPER.valueToTree(created.getExtension()).has(DOMAIN_SOURCE_PROPERTY));
+
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .domains()
+                  .create(minimalDomainRequest(ns, "dom-selection-missing-required")));
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // GlossaryTerm — POST, PUT, PATCH matrix
   // ---------------------------------------------------------------------------
@@ -689,6 +838,46 @@ public class IntakeFormResourceIT {
       GlossaryTerm created = SdkClients.adminClient().glossaryTerms().create(req);
       assertNotNull(created.getId());
       assertNotNull(created.getExtension());
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
+  @Test
+  void glossaryTerm_create_includesThreeCustomPropertiesAndEnforcesOnlyRequiredOne(TestNamespace ns)
+      throws Exception {
+    IntakeForm form =
+        createIntakeForm(
+            customPropertySelectionForm(
+                ns.prefix("gt-intake-selection"),
+                TargetEntityType.GLOSSARY_TERM,
+                GLOSSARY_TERM_STEWARD_PROPERTY,
+                GLOSSARY_TERM_AUDIENCE_PROPERTY,
+                GLOSSARY_TERM_SOURCE_PROPERTY));
+    try {
+      assertEquals(3, form.getFormFields().size());
+      assertEquals(1, form.getRequiredFields().size());
+
+      Map<String, Object> extension = new LinkedHashMap<>();
+      extension.put(GLOSSARY_TERM_STEWARD_PROPERTY, "data-stewards@example.com");
+      GlossaryTerm created =
+          SdkClients.adminClient()
+              .glossaryTerms()
+              .create(
+                  minimalGlossaryTermRequest(ns, "gt-selection-with-required")
+                      .withExtension(extension));
+      assertNotNull(created.getId());
+      assertFalse(
+          OBJECT_MAPPER.valueToTree(created.getExtension()).has(GLOSSARY_TERM_AUDIENCE_PROPERTY));
+      assertFalse(
+          OBJECT_MAPPER.valueToTree(created.getExtension()).has(GLOSSARY_TERM_SOURCE_PROPERTY));
+
+      assertThrows(
+          InvalidRequestException.class,
+          () ->
+              SdkClients.adminClient()
+                  .glossaryTerms()
+                  .create(minimalGlossaryTermRequest(ns, "gt-selection-missing-required")));
     } finally {
       deleteIntakeForm(form.getId());
     }
@@ -939,6 +1128,154 @@ public class IntakeFormResourceIT {
           "Expected IntakeForm error mentioning Owner, got: " + ex.getMessage());
     } finally {
       deleteIntakeForm(form.getId());
+    }
+  }
+
+  @Test
+  void deletingRequiredCustomPropertiesPrunesAllIntakeFormsAndEntitiesContinueWorking(
+      TestNamespace ns) throws Exception {
+    String dataProductProperty = uniqueCustomPropertyName("intakeDeletedDataProduct");
+    String domainProperty = uniqueCustomPropertyName("intakeDeletedDomain");
+    String glossaryTermProperty = uniqueCustomPropertyName("intakeDeletedGlossaryTerm");
+    String survivingDataProductProperty = uniqueCustomPropertyName("intakeSurvivingDataProduct");
+    String survivingDomainProperty = uniqueCustomPropertyName("intakeSurvivingDomain");
+    String survivingGlossaryTermProperty = uniqueCustomPropertyName("intakeSurvivingGlossaryTerm");
+    ensureStringCustomProperty("dataProduct", dataProductProperty);
+    ensureStringCustomProperty("domain", domainProperty);
+    ensureStringCustomProperty("glossaryTerm", glossaryTermProperty);
+    ensureStringCustomProperty("dataProduct", survivingDataProductProperty);
+    ensureStringCustomProperty("domain", survivingDomainProperty);
+    ensureStringCustomProperty("glossaryTerm", survivingGlossaryTermProperty);
+
+    Map<String, Object> domainExtension = new LinkedHashMap<>();
+    domainExtension.put(domainProperty, "domain-value");
+    domainExtension.put(survivingDomainProperty, "surviving-domain-value");
+    Domain existingDomain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                minimalDomainRequest(ns, "domain-before-property-delete")
+                    .withExtension(domainExtension));
+
+    Map<String, Object> dataProductExtension = new LinkedHashMap<>();
+    dataProductExtension.put(dataProductProperty, "data-product-value");
+    dataProductExtension.put(survivingDataProductProperty, "surviving-data-product-value");
+    DataProduct existingDataProduct =
+        SdkClients.adminClient()
+            .dataProducts()
+            .create(
+                minimalDataProductRequest(ns, existingDomain, "data-product-before-property-delete")
+                    .withExtension(dataProductExtension));
+
+    Map<String, Object> glossaryTermExtension = new LinkedHashMap<>();
+    glossaryTermExtension.put(glossaryTermProperty, "glossary-term-value");
+    glossaryTermExtension.put(survivingGlossaryTermProperty, "surviving-glossary-term-value");
+    GlossaryTerm existingGlossaryTerm =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                minimalGlossaryTermRequest(ns, "glossary-term-before-property-delete")
+                    .withExtension(glossaryTermExtension));
+
+    IntakeForm dataProductForm = null;
+    IntakeForm domainForm = null;
+    IntakeForm glossaryTermForm = null;
+    try {
+      dataProductForm =
+          createIntakeForm(
+              customPropertyForm(
+                  ns.prefix("dp-delete-property"),
+                  TargetEntityType.DATA_PRODUCT,
+                  customPropertyFormField(dataProductProperty, true),
+                  customPropertyFormField(survivingDataProductProperty, false)));
+      domainForm =
+          createIntakeForm(
+              customPropertyForm(
+                  ns.prefix("domain-delete-property"),
+                  TargetEntityType.DOMAIN,
+                  customPropertyFormField(domainProperty, true),
+                  customPropertyFormField(survivingDomainProperty, false)));
+      glossaryTermForm =
+          createIntakeForm(
+              customPropertyForm(
+                  ns.prefix("glossary-delete-property"),
+                  TargetEntityType.GLOSSARY_TERM,
+                  customPropertyFormField(glossaryTermProperty, true),
+                  customPropertyFormField(survivingGlossaryTermProperty, false)));
+
+      long pruneStartTs = System.currentTimeMillis();
+      deleteCustomProperty("dataProduct", dataProductProperty);
+      deleteCustomProperty("domain", domainProperty);
+      deleteCustomProperty("glossaryTerm", glossaryTermProperty);
+
+      assertPruneEmittedChangeEvent(dataProductForm.getId(), pruneStartTs);
+      assertDeletedPropertyPruned(
+          getIntakeFormById(dataProductForm.getId()),
+          dataProductProperty,
+          survivingDataProductProperty);
+      assertDeletedPropertyPruned(
+          getIntakeFormById(domainForm.getId()), domainProperty, survivingDomainProperty);
+      assertDeletedPropertyPruned(
+          getIntakeFormById(glossaryTermForm.getId()),
+          glossaryTermProperty,
+          survivingGlossaryTermProperty);
+
+      DataProduct reloadedDataProduct =
+          SdkClients.adminClient()
+              .dataProducts()
+              .get(existingDataProduct.getId().toString(), "extension");
+      Domain reloadedDomain =
+          SdkClients.adminClient().domains().get(existingDomain.getId().toString(), "extension");
+      GlossaryTerm reloadedGlossaryTerm =
+          SdkClients.adminClient()
+              .glossaryTerms()
+              .get(existingGlossaryTerm.getId().toString(), "extension");
+      assertDeletedAndSurvivingExtensionValues(
+          reloadedDataProduct.getExtension(),
+          dataProductProperty,
+          survivingDataProductProperty,
+          "surviving-data-product-value");
+      assertDeletedAndSurvivingExtensionValues(
+          reloadedDomain.getExtension(),
+          domainProperty,
+          survivingDomainProperty,
+          "surviving-domain-value");
+      assertDeletedAndSurvivingExtensionValues(
+          reloadedGlossaryTerm.getExtension(),
+          glossaryTermProperty,
+          survivingGlossaryTermProperty,
+          "surviving-glossary-term-value");
+
+      assertNotNull(
+          SdkClients.adminClient()
+              .dataProducts()
+              .create(
+                  minimalDataProductRequest(
+                      ns, existingDomain, "data-product-after-property-delete")));
+      assertNotNull(
+          SdkClients.adminClient()
+              .domains()
+              .create(minimalDomainRequest(ns, "domain-after-property-delete")));
+      assertNotNull(
+          SdkClients.adminClient()
+              .glossaryTerms()
+              .create(minimalGlossaryTermRequest(ns, "glossary-term-after-property-delete")));
+    } finally {
+      deleteCustomProperty("dataProduct", dataProductProperty);
+      deleteCustomProperty("domain", domainProperty);
+      deleteCustomProperty("glossaryTerm", glossaryTermProperty);
+      deleteCustomProperty("dataProduct", survivingDataProductProperty);
+      deleteCustomProperty("domain", survivingDomainProperty);
+      deleteCustomProperty("glossaryTerm", survivingGlossaryTermProperty);
+      if (dataProductForm != null) {
+        deleteIntakeForm(dataProductForm.getId());
+      }
+      if (domainForm != null) {
+        deleteIntakeForm(domainForm.getId());
+      }
+      if (glossaryTermForm != null) {
+        deleteIntakeForm(glossaryTermForm.getId());
+      }
     }
   }
 
@@ -1505,6 +1842,121 @@ public class IntakeFormResourceIT {
         .execute(HttpMethod.PUT, "/v1/metadata/types/" + type.getId(), prop, Type.class);
   }
 
+  private static void deleteCustomProperty(String entityType, String propertyName)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type type = getTypeByName(client, entityType);
+    if (type.getCustomProperties() == null) {
+      return;
+    }
+    int propertyIndex = -1;
+    for (int index = 0; index < type.getCustomProperties().size(); index++) {
+      if (propertyName.equals(type.getCustomProperties().get(index).getName())) {
+        propertyIndex = index;
+        break;
+      }
+    }
+    if (propertyIndex < 0) {
+      return;
+    }
+
+    ArrayNode patch = OBJECT_MAPPER.createArrayNode();
+    ObjectNode testOperation = patch.addObject();
+    testOperation.put("op", "test");
+    testOperation.put("path", "/customProperties/" + propertyIndex + "/name");
+    testOperation.put("value", propertyName);
+    ObjectNode removeOperation = patch.addObject();
+    removeOperation.put("op", "remove");
+    removeOperation.put("path", "/customProperties/" + propertyIndex);
+    patchEntity("/v1/metadata/types/" + type.getId(), patch.toString());
+  }
+
+  private static String uniqueCustomPropertyName(String prefix) {
+    return prefix + UUID.randomUUID().toString().replace("-", "");
+  }
+
+  private static void assertDeletedPropertyPruned(
+      IntakeForm form, String deletedProperty, String survivingProperty) {
+    assertEquals(1, form.getFormFields().size());
+    assertEquals("extension." + survivingProperty, form.getFormFields().get(0).getFieldPath());
+    assertFalse(
+        form.getFormFields().stream()
+            .anyMatch(field -> ("extension." + deletedProperty).equals(field.getFieldPath())));
+    assertTrue(form.getRequiredFields().isEmpty());
+    assertPruneWasVersioned(form, deletedProperty);
+  }
+
+  /**
+   * Change events are emitted by ChangeEventHandler, a REST response filter that only ever sees the
+   * Type request driving this cascade. Without an explicit event the IntakeForm changes version with
+   * nothing for subscribers to consume, so assert one was recorded.
+   */
+  private static void assertPruneEmittedChangeEvent(UUID formId, long sinceTs) throws Exception {
+    ObjectNode events =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/events?entityUpdated=" + INTAKE_FORM_ENTITY_TYPE + "&timestamp=" + sinceTs,
+                null,
+                ObjectNode.class);
+    ArrayNode data = (ArrayNode) events.path("data");
+    boolean emitted = false;
+    for (int i = 0; i < data.size(); i++) {
+      if (formId.toString().equals(data.get(i).path("entityId").asText())) {
+        emitted = true;
+
+        break;
+      }
+    }
+    assertTrue(
+        emitted,
+        "Pruning a custom property must record an "
+            + INTAKE_FORM_ENTITY_TYPE
+            + " change event for form "
+            + formId);
+  }
+
+  /**
+   * The prune must go through the standard update path: storing the mutated form directly would
+   * leave the version untouched, so a client holding a pre-prune copy could PUT it back and still
+   * pass the optimistic-lock check.
+   */
+  private static void assertPruneWasVersioned(IntakeForm form, String deletedProperty) {
+    assertTrue(
+        form.getVersion() > INITIAL_ENTITY_VERSION,
+        "Pruning custom property '"
+            + deletedProperty
+            + "' must increment the IntakeForm version, but it stayed at "
+            + form.getVersion());
+    assertNotNull(form.getUpdatedBy());
+    assertNotNull(form.getChangeDescription());
+    assertTrue(
+        form.getChangeDescription().getFieldsUpdated().stream()
+            .anyMatch(field -> FORM_FIELDS_FIELD.equals(field.getName())),
+        "Pruning must record a '"
+            + FORM_FIELDS_FIELD
+            + "' change, got: "
+            + form.getChangeDescription().getFieldsUpdated());
+  }
+
+  private static void assertDeletedAndSurvivingExtensionValues(
+      Object extension, String deletedProperty, String survivingProperty, String survivingValue) {
+    assertNotNull(extension);
+    ObjectNode extensionNode = OBJECT_MAPPER.valueToTree(extension);
+    assertFalse(extensionNode.has(deletedProperty));
+    assertEquals(survivingValue, extensionNode.path(survivingProperty).asText());
+  }
+
+  private static void assertCustomPropertyExists(String entityType, String propertyName)
+      throws Exception {
+    Type type = getTypeByName(SdkClients.adminClient(), entityType);
+    assertNotNull(type.getCustomProperties());
+    assertTrue(
+        type.getCustomProperties().stream()
+            .anyMatch(property -> propertyName.equals(property.getName())));
+  }
+
   private static Type getTypeByName(OpenMetadataClient client, String name) throws Exception {
     String json =
         client
@@ -1575,6 +2027,7 @@ public class IntakeFormResourceIT {
         .withDescription(form.getDescription())
         .withEntityType(form.getEntityType())
         .withEnabled(form.getEnabled())
+        .withFormFields(form.getFormFields())
         .withRequiredFields(form.getRequiredFields());
   }
 
@@ -1618,6 +2071,94 @@ public class IntakeFormResourceIT {
                     .withFieldKind(kind)));
   }
 
+  private static CreateIntakeForm customPropertySelectionForm(
+      String name,
+      TargetEntityType entityType,
+      String requiredProperty,
+      String firstOptionalProperty,
+      String secondOptionalProperty) {
+    return customPropertyForm(
+        name,
+        entityType,
+        customPropertyFormField(requiredProperty, true),
+        customPropertyFormField(firstOptionalProperty, false),
+        customPropertyFormField(secondOptionalProperty, false));
+  }
+
+  private static CreateIntakeForm customPropertyForm(
+      String name, TargetEntityType entityType, IntakeFormField... formFields) {
+    return new CreateIntakeForm()
+        .withName(name)
+        .withEntityType(entityType)
+        .withEnabled(Boolean.TRUE)
+        .withFormFields(List.of(formFields));
+  }
+
+  private static void assertSelectionUpdateLifecycle(
+      String name,
+      TargetEntityType entityType,
+      String requiredProperty,
+      String removedOptionalProperty,
+      String survivingOptionalProperty)
+      throws Exception {
+    IntakeForm created =
+        createIntakeForm(
+            customPropertySelectionForm(
+                name,
+                entityType,
+                requiredProperty,
+                removedOptionalProperty,
+                survivingOptionalProperty));
+    try {
+      assertEquals(3, created.getFormFields().size());
+      assertEquals(1, created.getRequiredFields().size());
+
+      IntakeForm optionalRemoved =
+          putIntakeForm(
+              customPropertyForm(
+                  name,
+                  entityType,
+                  customPropertyFormField(requiredProperty, true),
+                  customPropertyFormField(survivingOptionalProperty, false)));
+      assertEquals(2, optionalRemoved.getFormFields().size());
+      assertEquals(1, optionalRemoved.getRequiredFields().size());
+      assertFalse(
+          optionalRemoved.getFormFields().stream()
+              .anyMatch(
+                  field -> ("extension." + removedOptionalProperty).equals(field.getFieldPath())));
+
+      IntakeForm requiredChangedToOptional =
+          putIntakeForm(
+              customPropertyForm(
+                  name,
+                  entityType,
+                  customPropertyFormField(requiredProperty, false),
+                  customPropertyFormField(survivingOptionalProperty, false)));
+      assertEquals(2, requiredChangedToOptional.getFormFields().size());
+      assertTrue(requiredChangedToOptional.getRequiredFields().isEmpty());
+
+      IntakeForm formerlyRequiredRemoved =
+          putIntakeForm(
+              customPropertyForm(
+                  name, entityType, customPropertyFormField(survivingOptionalProperty, false)));
+      assertEquals(1, formerlyRequiredRemoved.getFormFields().size());
+      assertEquals(
+          "extension." + survivingOptionalProperty,
+          formerlyRequiredRemoved.getFormFields().get(0).getFieldPath());
+      assertTrue(formerlyRequiredRemoved.getRequiredFields().isEmpty());
+    } finally {
+      deleteIntakeForm(created.getId());
+    }
+  }
+
+  private static IntakeFormField customPropertyFormField(String propertyName, boolean required) {
+    return new IntakeFormField()
+        .withFieldPath("extension." + propertyName)
+        .withFieldLabel(propertyName)
+        .withFieldKind(IntakeFormField.FieldKind.CUSTOM_PROPERTY)
+        .withRequired(required);
+  }
+
   private static Domain createDomain(TestNamespace ns) {
     String domainName = ns.prefix("intake-test-domain");
     try {
@@ -1631,6 +2172,13 @@ public class IntakeFormResourceIT {
                   .withDescription("Test domain for IntakeForm integration tests")
                   .withDomainType(DomainType.AGGREGATE));
     }
+  }
+
+  private static CreateDomain minimalDomainRequest(TestNamespace ns, String suffix) {
+    return new CreateDomain()
+        .withName(ns.prefix(suffix))
+        .withDescription("IntakeForm integration test domain")
+        .withDomainType(DomainType.AGGREGATE);
   }
 
   private static CreateDataProduct minimalDataProductRequest(
