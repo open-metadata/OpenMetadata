@@ -18,6 +18,7 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Memories } from '@openmetadata/ui-core-components/icons';
 import { ChevronDown, FlipBackward, Plus, Stars01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -27,7 +28,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
-import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
@@ -496,7 +496,7 @@ const ContextCenterDashboardPage: FC = () => {
                   entity: t('label.memory-plural'),
                 })}
                 dataTestId="memory-detail-card"
-                icon={MemoryIcon}
+                icon={Memories}
                 isLoading={isMemoriesLoading}
                 recent={memories}
                 stat={String(memoriesCount)}
@@ -571,7 +571,7 @@ const ContextCenterDashboardPage: FC = () => {
               <ContextSimplePillarCard
                 dataTestId="most-cited-memories-card"
                 emptyMessage={t('message.most-cited-empty-description')}
-                icon={MemoryIcon}
+                icon={Memories}
                 isEmpty={mostCitedItems.length === 0}
                 isLoading={isMostCitedLoading}
                 title={t('label.most-cited')}>
@@ -582,7 +582,7 @@ const ContextCenterDashboardPage: FC = () => {
                       className="tw:py-1.5"
                       gap={2}
                       key={item.id}>
-                      <MemoryIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
+                      <Memories className="tw:size-4 tw:text-quaternary tw:shrink-0" />
                       <Box
                         align="center"
                         className="tw:min-w-0 tw:flex-1"
