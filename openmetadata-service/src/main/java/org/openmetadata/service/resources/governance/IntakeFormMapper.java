@@ -16,14 +16,19 @@ package org.openmetadata.service.resources.governance;
 import org.openmetadata.schema.api.governance.CreateIntakeForm;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.service.mapper.EntityMapper;
+import org.openmetadata.service.util.IntakeFormUtil;
 
 public class IntakeFormMapper implements EntityMapper<IntakeForm, CreateIntakeForm> {
   @Override
   public IntakeForm createToEntity(CreateIntakeForm create, String user) {
-    return copy(new IntakeForm(), create, user)
-        .withEntityType(create.getEntityType())
-        .withEnabled(create.getEnabled() == null ? Boolean.TRUE : create.getEnabled())
-        .withRequiredFields(create.getRequiredFields())
-        .withFullyQualifiedName(create.getName());
+    IntakeForm intakeForm =
+        copy(new IntakeForm(), create, user)
+            .withEntityType(create.getEntityType())
+            .withEnabled(create.getEnabled() == null ? Boolean.TRUE : create.getEnabled())
+            .withFormFields(create.getFormFields())
+            .withRequiredFields(create.getRequiredFields())
+            .withFullyQualifiedName(create.getName());
+    IntakeFormUtil.synchronizeFields(intakeForm);
+    return intakeForm;
   }
 }
