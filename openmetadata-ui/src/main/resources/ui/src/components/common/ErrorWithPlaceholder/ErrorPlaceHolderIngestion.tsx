@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import classNames from 'classnames';
 
 import { useMemo } from 'react';

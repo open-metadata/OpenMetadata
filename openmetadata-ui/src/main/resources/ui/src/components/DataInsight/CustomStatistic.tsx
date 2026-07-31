@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { isNil, round } from 'lodash';
 import { useTranslation } from 'react-i18next';
 
@@ -34,31 +34,31 @@ const CustomStatistic = ({
   return (
     <Row justify="space-between">
       <Col>
-        <CoreTypography as='p' className="font-medium m-b-0">
+        <Typography as="p" className="font-medium m-b-0">
           {label}
-        </CoreTypography>
-        <CoreTypography as='p' className="font-bold text-2xl m-b-0">
+        </Typography>
+        <Typography as="p" className="font-bold text-2xl m-b-0">
           {value}
-        </CoreTypography>
+        </Typography>
       </Col>
       <Col className="text-right">
         {!isNil(changeInValue) && (
-          <CoreTypography as='p' className="m-b-0">
-            <Typography.Text
+          <Typography as="p" className="m-b-0">
+            <Typography
               className="d-block"
-              type={changeInValue >= 0 ? 'success' : 'danger'}>
+              color={changeInValue >= 0 ? 'success' : 'danger'}>
               {`${changeInValue >= 0 ? '+' : ''}${round(
                 changeInValue || 0,
                 2
               )}%`}
-            </Typography.Text>
-            <CoreTypography className="d-block">
+            </Typography>
+            <Typography className="d-block">
               {!isNil(duration) &&
                 t('label.days-change-lowercase', {
                   days: duration,
                 })}
-            </CoreTypography>
-          </CoreTypography>
+            </Typography>
+          </Typography>
         )}
       </Col>
     </Row>

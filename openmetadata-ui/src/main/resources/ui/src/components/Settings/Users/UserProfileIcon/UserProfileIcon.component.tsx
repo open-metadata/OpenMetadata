@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Radio, Tag, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Radio, Tag, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -197,11 +197,11 @@ export const UserProfileIcon = () => {
     (count: number, isPersona?: boolean) =>
       isPersona ? (
         <Typography
+          className="more-teams-pill"
           onClick={(e) => {
             e.stopPropagation();
             setShowAllPersona(true);
-          }}
-          className="more-teams-pill">
+          }}>
           {count} {t('label.more')}
         </Typography>
       ) : (
@@ -261,9 +261,9 @@ export const UserProfileIcon = () => {
             to={getUserPath(currentUser?.name as string)}
             onClick={handleCloseDropdown}>
             <Typography
-              as='p'
-              ellipsis={{ rows: 1, tooltip: true }}
-              className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0">
+              as="p"
+              className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
+              ellipsis={{ rows: 1, tooltip: true }}>
               {t('label.view-entity', { entity: t('label.profile') })}
             </Typography>
           </Link>
@@ -432,16 +432,28 @@ export const UserProfileIcon = () => {
         type="text">
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
-            <Typography
-              data-testid="nav-user-name"
-              className="font-semibold">
+            <Typography className="font-semibold" data-testid="nav-user-name">
               {getEntityName(currentUser)}
             </Typography>
           </Tooltip>
 
+          {
+            // Nested inside the dropdown trigger `<Button>` above: core
+            // Typography's `ellipsis={{ tooltip: true }}` renders a real
+            // `<button>` trigger (via TooltipTrigger), which is invalid
+            // nested inside another interactive button. Use a plain
+            // ellipsis truncation plus a native `title` attribute instead,
+            // which preserves the hover-tooltip text without adding an
+            // interactive element.
+          }
           <Typography
+            ellipsis
             data-testid="default-persona"
-            ellipsis={{ tooltip: true }}>
+            title={
+              isEmpty(selectedPersona)
+                ? t('label.default')
+                : getEntityName(selectedPersona)
+            }>
             {isEmpty(selectedPersona)
               ? t('label.default')
               : getEntityName(selectedPersona)}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Typography } from 'antd';
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -102,7 +102,7 @@ const SuccessScreen = ({
       <Card>
         <Space>
           <IconSuccessBadge data-testid="success-icon" width="20px" />
-          <CoreTypography as='p' data-testid="success-line" className="m-b-0">
+          <Typography as="p" className="m-b-0" data-testid="success-line">
             {isUndefined(successMessage) ? (
               <span>
                 <span className="m-r-xss font-semibold">
@@ -114,7 +114,7 @@ const SuccessScreen = ({
             ) : (
               successMessage
             )}
-          </CoreTypography>
+          </Typography>
         </Space>
       </Card>
       <div className="m-t-sm">

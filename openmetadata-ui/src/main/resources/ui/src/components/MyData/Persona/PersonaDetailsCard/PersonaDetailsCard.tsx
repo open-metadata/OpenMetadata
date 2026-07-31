@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Space, Tag } from 'antd';
 import { lazy, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -64,7 +64,13 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
           title={
             <div className="d-flex justify-between w-full">
               <div>
-                <Typography ellipsis={{ tooltip: true }}>
+                {/* Card.Meta's title sits inside the whole-card onClick
+                    handler above: `ellipsis={{ tooltip: true }}` would wrap
+                    this in a real `<button>` (TooltipTrigger), which
+                    swallows the click before it bubbles to the Card. Use
+                    plain ellipsis truncation plus a native `title`
+                    attribute instead. */}
+                <Typography ellipsis title={getEntityName(persona)}>
                   {getEntityName(persona)}
                 </Typography>
               </div>

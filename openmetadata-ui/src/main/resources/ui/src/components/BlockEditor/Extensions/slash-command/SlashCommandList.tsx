@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { Image, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Image, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
@@ -76,20 +76,20 @@ const TestCaseIncidentManagerStatus = ({
   const onCancel = useCallback(() => setIsEditStatus(false), []);
 
   if (!statusType) {
-    return <CoreTypography>{NO_DATA_PLACEHOLDER}</CoreTypography>;
+    return <Typography>{NO_DATA_PLACEHOLDER}</Typography>;
   }
 
   if (headerName) {
     return (
       <div className="tw:flex tw:flex-col tw:gap-1.5">
         <div className="tw:flex tw:items-center tw:gap-1">
-          <CoreTypography
+          <Typography
             as="span"
             className="tw:whitespace-nowrap tw:text-secondary"
             size="text-sm"
             weight="medium">
             {headerName}
-          </CoreTypography>
+          </Typography>
 
           {hasEditPermission && (
             <EditIconButton

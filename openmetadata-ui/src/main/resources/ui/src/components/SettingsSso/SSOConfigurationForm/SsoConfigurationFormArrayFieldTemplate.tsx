@@ -12,7 +12,8 @@
  */
 
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Select } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';

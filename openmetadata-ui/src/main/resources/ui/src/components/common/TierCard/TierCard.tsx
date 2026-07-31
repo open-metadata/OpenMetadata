@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Collapse, Popover, Radio, RadioChangeEvent, Space, Spin } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  Collapse,
+  Popover,
+  Radio,
+  RadioChangeEvent,
+  Space,
+  Spin,
+} from 'antd';
 import { AxiosError } from 'axios';
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
@@ -128,6 +137,7 @@ const TierCard = ({
                     {t('label.edit-entity', { entity: t('label.tier') })}
                   </Typography>
                   <Typography
+                    className="m-b-0 font-normal text-primary cursor-pointer"
                     data-testid="clear-tier"
                     tabIndex={0}
                     // we need to pass undefined to clear the tier
@@ -137,8 +147,7 @@ const TierCard = ({
                         e.preventDefault();
                         updateTierData();
                       }
-                    }}
-                    className="m-b-0 font-normal text-primary cursor-pointer">
+                    }}>
                     {t('label.clear')}
                   </Typography>
                 </Space>
@@ -165,12 +174,14 @@ const TierCard = ({
                             value={card.id}>
                             <Space direction="vertical" size={0}>
                               <Typography
-                                as='p'
-                                style={{ color: card.style?.color }}
-                                className="m-b-0 font-regular text-grey-body">
+                                as="p"
+                                className="m-b-0 font-regular text-grey-body"
+                                style={{ color: card.style?.color }}>
                                 {card.title}
                               </Typography>
-                              <Typography as='p' className="m-b-0 font-regular text-xs text-grey-muted">
+                              <Typography
+                                as="p"
+                                className="m-b-0 font-regular text-xs text-grey-muted">
                                 {card.description.replace(/\*/g, '')}
                               </Typography>
                             </Space>

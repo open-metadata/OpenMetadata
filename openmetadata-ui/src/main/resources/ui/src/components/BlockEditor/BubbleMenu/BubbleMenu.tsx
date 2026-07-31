@@ -15,7 +15,8 @@ import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,
 } from '@tiptap/react';
-import { Button, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, useMemo } from 'react';
