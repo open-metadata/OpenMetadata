@@ -181,7 +181,8 @@ test.describe(
       'downloads the QTT template and validates CSV without persisting terms',
       async ({ browser }) => {
         const { page, apiContext, afterAction } = await performAdminLogin(
-          browser
+          browser,
+          { navigate: true }
         );
         const termId = randomUUID();
         const termName = `BulkCustomer${termId.replaceAll('-', '')}`;
@@ -325,7 +326,9 @@ test.describe(
     test.fixme(
       'previews a version-bound delete impact before enabling a destructive decision',
       async ({ browser }) => {
-        const { page, afterAction } = await performAdminLogin(browser);
+        const { page, afterAction } = await performAdminLogin(browser, {
+          navigate: true,
+        });
 
         try {
           await navigateToOntologyExplorer(page);

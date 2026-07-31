@@ -171,9 +171,9 @@ public class GlossaryTermRealizationIT {
 
     SdkClients.adminClient()
         .glossaryTerms()
-        .create(
-            termRequest(glossary, customer.getName())
-                .withRealizedIn(List.of(realization(warehouse, AssetRealizationRole.REPLICA))));
+        .update(
+            customer.getId(),
+            customer.withRealizedIn(List.of(realization(warehouse, AssetRealizationRole.REPLICA))));
 
     GlossaryTerm fetched =
         SdkClients.adminClient().glossaryTerms().get(customer.getId().toString(), REALIZED_IN);

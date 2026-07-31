@@ -83,7 +83,9 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
     browser,
   }) => {
     test.setTimeout(120_000);
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       await navigateToOntologyExplorer(page);

@@ -48,7 +48,7 @@ import {
   NEW_ONTOLOGY_QUERY,
   OntologyQuerySuggestion,
 } from './OntologyStudio.utils';
-import './OntologyStudioQueryConsole.less';
+import './OntologyStudioQueryConsole.css';
 
 interface OntologyStudioQueryConsoleProps {
   readonly initialQuery?: string;

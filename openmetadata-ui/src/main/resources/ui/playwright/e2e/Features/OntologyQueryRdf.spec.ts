@@ -151,7 +151,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
   test('runs and persists a glossary-scoped query from the Studio rail', async ({
     browser,
   }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       await navigateToOntologyExplorer(page);
@@ -204,7 +206,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
   test('keeps the visual builder equivalent to the scoped SPARQL endpoint', async ({
     browser,
   }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       await navigateToOntologyExplorer(page);
@@ -248,7 +252,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
   test('renders triple-shaped scoped results as a read-only subgraph', async ({
     browser,
   }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       await fixture.expectRelationProjected(

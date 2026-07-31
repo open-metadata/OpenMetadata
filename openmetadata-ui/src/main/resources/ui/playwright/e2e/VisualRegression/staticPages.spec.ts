@@ -61,8 +61,13 @@ const PAGES: {
   { name: 'glossary', route: '/glossary' },
   { name: 'settings', route: '/settings' },
   { name: 'database-services', route: '/settings/services/databases' },
-  { name: 'data-quality', route: '/data-quality' },
-  { name: 'incident-manager', route: '/incident-manager' },
+  // Seeded test-result rows and server-side timestamps vary between CI runs.
+  { name: 'data-quality', route: '/data-quality', maxDiffPixelRatio: 0.03 },
+  {
+    name: 'incident-manager',
+    route: '/incident-manager',
+    maxDiffPixelRatio: 0.03,
+  },
   { name: 'users', route: '/settings/members/users' },
   { name: 'teams', route: '/settings/members/teams' },
   // 'roles' intentionally omitted: the roles listing renders seeded roles

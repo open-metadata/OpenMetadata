@@ -362,7 +362,9 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
     browser,
   }) => {
     test.slow();
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       await navigateToOntologyExplorer(page);

@@ -173,7 +173,8 @@ test.describe(
       async ({ browser }) => {
         test.slow();
         const { page, apiContext, afterAction } = await performAdminLogin(
-          browser
+          browser,
+          { navigate: true }
         );
 
         try {
@@ -240,7 +241,9 @@ test.describe(
     test('opens the design-matched inline inspector in Edit Graph mode', async ({
       browser,
     }) => {
-      const { page, afterAction } = await performAdminLogin(browser);
+      const { page, afterAction } = await performAdminLogin(browser, {
+        navigate: true,
+      });
 
       try {
         await navigateToOntologyExplorer(page);
@@ -272,7 +275,8 @@ test.describe(
     }) => {
       test.slow();
       const { page, apiContext, afterAction } = await performAdminLogin(
-        browser
+        browser,
+        { navigate: true }
       );
 
       try {

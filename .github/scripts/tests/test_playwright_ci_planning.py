@@ -1401,6 +1401,26 @@ def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
     assert "tag: '@ingestion'" in schema_search
 
 
+def test_permission_impact_mapping_includes_ingestion_project():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
+        in entry["sources"]
+    )
+    service_creation_permissions = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ServiceCreationPermissions.spec.ts"
+    ).read_text()
+
+    assert "playwright/e2e/**/*Permission*.spec.ts" in mapping["specs"]
+    assert "Ingestion" in mapping["projects"]
+    assert "PLAYWRIGHT_INGESTION_TAG_OBJ" in service_creation_permissions
+
+
 def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
@@ -1436,11 +1456,7 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
         "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
     )
     assert (
-        "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
-        in impact_map["delegatedSpecs"]
-    )
-    assert (
-        "playwright/e2e/Features/OntologyImportRdf.spec.ts"
+        "playwright/e2e/Features/Ontology*Rdf.spec.ts"
         in impact_map["delegatedSpecs"]
     )
 
@@ -1467,13 +1483,22 @@ def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monk
                 "canary": [],
                 "delegatedSpecs": ["playwright/e2e/VisualRegression/**"],
                 "sharedInfrastructure": [],
-                "mappings": [],
+                "mappings": [
+                    {
+                        "sources": ["src/**"],
+                        "projects": ["chromium"],
+                        "specs": [
+                            "playwright/e2e/VisualRegression/entityDetails.spec.ts"
+                        ],
+                    }
+                ],
             }
         )
     )
     changed = tmp_path / "changed.txt"
     changed.write_text(
         f"{selector.UI_ROOT}playwright/e2e/VisualRegression/entityDetails.spec.ts\n"
+        "src/VisualRegressionPage.tsx\n"
     )
     output = tmp_path / "selection.json"
     monkeypatch.chdir(tmp_path)

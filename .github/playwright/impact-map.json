@@ -7,8 +7,7 @@
     "playwright/e2e/Pages/DataInsight.spec.ts",
     "playwright/e2e/Pages/DataInsightSettings.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
-    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
-    "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    "playwright/e2e/Features/Ontology*Rdf.spec.ts",
     "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
@@ -256,7 +255,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
+      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport", "Ingestion"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",

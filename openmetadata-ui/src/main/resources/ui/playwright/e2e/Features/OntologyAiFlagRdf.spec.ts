@@ -73,7 +73,9 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
   test('renders no AI affordance and sends no AI request when disabled', async ({
     browser,
   }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     let aiRequestCount = 0;
 
     page.on('request', (request) => {
@@ -109,7 +111,9 @@ test.describe('Ontology AI effective flag', { tag: ['@ontology-rdf'] }, () => {
   test('shows generated SPARQL before execution when enabled', async ({
     browser,
   }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     let aiRequestCount = 0;
     let sparqlExecutionCount = 0;
 
