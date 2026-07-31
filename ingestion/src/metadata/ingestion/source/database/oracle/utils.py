@@ -114,7 +114,7 @@ def get_all_view_definitions(self, connection, query):
             "per-view retrieval via DBMS_METADATA.GET_DDL."
         )
         logger.debug(traceback.format_exc())
-        _get_view_definitions_individually(self, connection, query)
+        _get_view_definitions_individually(self, connection)
 
 
 def _store_bulk_view_definition(self, view) -> None:
@@ -139,14 +139,14 @@ def _store_bulk_view_definition(self, view) -> None:
         self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
 
 
-def _get_view_definitions_individually(self, connection, query) -> None:
+def _get_view_definitions_individually(self, connection) -> None:
     """Populate self.all_view_definitions one view at a time. Each fetch is
     isolated so a view that truncates or errors is skipped instead of aborting
     the whole run. Used only as the fallback after the bulk fetch fails.
     """
-    # Match the cache-key casing of the bulk query: the default query LOWER()s
-    # the names, the preserve-identifier-case variant keeps them verbatim.
-    normalize = str.lower if "LOWER(" in query.upper() else (lambda value: value)
+    # Match the cache-key casing that get_view_definition uses for lookups:
+    # lowercased by default, kept verbatim when preserveIdentifierCase is set.
+    normalize = (lambda value: value) if getattr(self, "preserve_identifier_case", False) else str.lower
     view_names = connection.execute(
         text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=_get_table_prefix(self)))
     ).fetchall()

@@ -585,7 +585,7 @@ class TestOracleViewDefinitionFallback:
         assert ("big_view", "sam") not in defs
 
     def test_fallback_keeps_native_case_for_preserve_identifier_case(self):
-        """The preserve-identifier-case query has no LOWER(), so fallback keys stay verbatim."""
+        """With preserveIdentifierCase set on the dialect, fallback keys stay verbatim."""
         from sqlalchemy.dialects.oracle.base import OracleDialect
 
         from metadata.ingestion.source.database.oracle.utils import (
@@ -594,12 +594,10 @@ class TestOracleViewDefinitionFallback:
 
         dialect = OracleDialect()
         dialect.table_prefix = "DBA"
+        dialect.preserve_identifier_case = True
         conn = self._make_connection([("Sam", "MyView", "VIEW")])
-        preserve_case_query = (
-            'SELECT v.view_name AS "view_name", v.owner AS "schema", text AS "view_def" FROM DBA_VIEWS v'
-        )
 
-        get_all_view_definitions(dialect, conn, preserve_case_query)
+        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
 
         assert dialect.all_view_definitions[("MyView", "Sam")] == "CREATE VIEW MyView AS SELECT 1 FROM dual"
 
