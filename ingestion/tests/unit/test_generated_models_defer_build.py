@@ -15,6 +15,9 @@ import os
 import pkgutil
 import subprocess
 import sys
+import threading
+
+from pydantic import ConfigDict
 
 import metadata.generated.schema as generated_schema
 from metadata.ingestion.models.custom_pydantic import BaseModel
@@ -39,6 +42,42 @@ warnings.filterwarnings("ignore")
 from metadata.generated.schema.entity.data.table import Table
 
 assert Table.model_config.get("defer_build") is False, "OM_PYDANTIC_DEFER_BUILD=0 did not disable defer_build"
+print("OK")
+"""
+
+_SERIALIZE_PROBE = """
+import warnings
+
+warnings.filterwarnings("ignore")
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import Source
+
+assert SnowflakeConnection.__pydantic_complete__ is False, "connection schema was built eagerly at import"
+
+# Nothing here builds the nested models' own schema: validating Source goes through
+# the members pydantic inlined into the parent. Dumping the parent then falls back to
+# reading the serializer off the nested class, which is where a deferred model that was
+# never built surfaces as a MockValSer.
+source = Source.model_validate(
+    {
+        "type": "snowflake",
+        "serviceName": "test",
+        "serviceConnection": {
+            "config": {
+                "type": "Snowflake",
+                "account": "account",
+                "username": "username",
+                "password": "password",
+                "warehouse": "warehouse",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+)
+dumped = source.model_dump()
+assert dumped["serviceConnection"]["config"]["account"] == "account"
 print("OK")
 """
 
@@ -96,6 +135,72 @@ def test_generated_models_defer_build_is_enabled():
     )
     assert result.returncode == 0, f"defer_build probe failed:\n{result.stdout}\n{result.stderr}"
     assert result.stdout.strip().endswith("OK")
+
+
+def test_deferred_nested_models_are_serializable():
+    """Dumping a parent reaches nested models whose own schema was never built."""
+    # Fresh interpreter with the toggle unset, for the same reasons as the probe above:
+    # completeness flips on first use, and this has to assert the default.
+    env = {key: value for key, value in os.environ.items() if key != "OM_PYDANTIC_DEFER_BUILD"}
+    result = subprocess.run(
+        [sys.executable, "-c", _SERIALIZE_PROBE],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 0, f"serialization probe failed:\n{result.stdout}\n{result.stderr}"
+    assert result.stdout.strip().endswith("OK")
+
+
+def _make_deferred_family():
+    """Return (Parent, Nested) deferred models; Nested is only ever built via Parent's schema."""
+
+    class Nested(BaseModel):
+        model_config = ConfigDict(defer_build=True)
+
+        account: str | None = None
+
+    class Parent(BaseModel):
+        model_config = ConfigDict(defer_build=True)
+
+        nested: Nested | None = None
+
+    return Parent, Nested
+
+
+def test_concurrent_first_instantiation_is_safe():
+    """Threads racing a deferred model's first build never observe a half-rebuilt class."""
+    # Covers both rebuild routes at once: the parent is validated directly, so pydantic repairs it
+    # through MockValSer.attempt_rebuild, while the nested class is only ever reached via
+    # model_post_init. The delete-then-rebuild window is a handful of bytecodes, so force frequent
+    # switches instead of relying on the default 5ms interval.
+    original_interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    failures = []
+    try:
+        for _ in range(200):
+            parent_model, nested_model = _make_deferred_family()
+            assert parent_model.__pydantic_complete__ is False
+            assert nested_model.__pydantic_complete__ is False
+            barrier = threading.Barrier(8)
+
+            def work(parent: type = parent_model, gate: threading.Barrier = barrier):
+                try:
+                    gate.wait()
+                    parent.model_validate({"nested": {"account": "acct"}}).model_dump()
+                except Exception as exc:
+                    failures.append(repr(exc))
+
+            threads = [threading.Thread(target=work) for _ in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+    finally:
+        sys.setswitchinterval(original_interval)
+
+    assert not failures, f"concurrent first instantiation failed {len(failures)}x: {failures[:3]}"
 
 
 def test_defer_build_env_var_disables_it():
