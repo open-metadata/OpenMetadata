@@ -79,8 +79,11 @@ const QueryBuilderWidget: FC<
     (props.formContext?.entityType ?? schema?.entityType) || EntityType.ALL;
   const searchIndexMapping = searchClassBase.getEntityTypeSearchIndexMapping();
   const searchIndex = searchIndexMapping[entityType as string];
+  const resolvedSearchIndex =
+    searchIndex === SearchIndex.ALL ? SearchIndex.DATA_ASSET : searchIndex;
   const outputType = schema?.outputType ?? SearchOutputType.ElasticSearch;
-  const isSearchIndexUpdatedInContext = searchIndexFromContext === searchIndex;
+  const isSearchIndexUpdatedInContext =
+    searchIndexFromContext === resolvedSearchIndex;
   const [initDone, setInitDone] = useState<boolean>(false);
   const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
@@ -213,7 +216,7 @@ const QueryBuilderWidget: FC<
   }, [config, value, outputType]);
 
   useEffect(() => {
-    onChangeSearchIndex(searchIndex);
+    onChangeSearchIndex(resolvedSearchIndex);
   }, []);
 
   useEffect(() => {
