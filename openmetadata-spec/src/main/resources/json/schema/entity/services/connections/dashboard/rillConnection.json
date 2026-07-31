@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/rillConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RillConnection",
-  "description": "The fastest business intelligence tool for humans and agents",
+  "description": "Rill Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.dashboard.RillConnection",
   "definitions": {
