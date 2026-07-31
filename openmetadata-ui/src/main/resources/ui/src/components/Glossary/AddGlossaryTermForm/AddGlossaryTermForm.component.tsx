@@ -16,7 +16,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
@@ -39,16 +39,15 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import AddDomainFormExtensionFields from '../../Domain/AddDomainForm/AddDomainFormExtensionFields';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
-import GlossaryTermIntakeFields, {
-  GlossaryTermIntakeFieldsHandle,
-} from './GlossaryTermIntakeFields.component';
 
 const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
 
@@ -67,8 +66,6 @@ const AddGlossaryTermForm = ({
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
   );
-  const [customPropertiesLoaded, setCustomPropertiesLoaded] = useState(false);
-  const intakeFieldsRef = useRef<GlossaryTermIntakeFieldsHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,23 +99,19 @@ const AddGlossaryTermForm = ({
 
     if (editMode) {
       setCustomProperties([]);
-      setCustomPropertiesLoaded(true);
 
       return;
     }
-    setCustomPropertiesLoaded(false);
 
     getCustomPropertiesByEntityType(TargetEntityType.GlossaryTerm)
       .then((properties) => {
         if (!cancelled) {
           setCustomProperties(properties ?? []);
-          setCustomPropertiesLoaded(true);
         }
       })
       .catch((error: AxiosError) => {
         if (!cancelled) {
           setCustomProperties([]);
-          setCustomPropertiesLoaded(true);
           showErrorToast(error);
         }
       });
@@ -221,16 +214,7 @@ const AddGlossaryTermForm = ({
       iconURL,
     } = formObj;
 
-    // Intake custom properties live in a nested form owned by
-    // GlossaryTermIntakeFields, so antd's own submit-time validation on this
-    // form cannot see them — validate explicitly and abort so the inline
-    // errors render.
-    if (!editMode && !(await (intakeFieldsRef.current?.validate() ?? true))) {
-      return;
-    }
-
-    const extension =
-      editMode ? {} : intakeFieldsRef.current?.getExtension() ?? {};
+    const extension = editMode ? {} : buildExtension(formObj.extension);
 
     const selectedOwners =
       ownersList.length > 0
@@ -528,17 +512,36 @@ const AddGlossaryTermForm = ({
     },
   });
 
+  const buildExtension = (extension?: Record<string, unknown>) => {
+    if (!extension) {
+      return {};
+    }
+    const result: Record<string, unknown> = {};
+    Object.entries(extension).forEach(([key, value]) => {
+      const definition = customProperties.find((cp) => cp.name === key);
+      if (definition) {
+        const serialized = serializeExtensionValue(definition, value);
+        if (serialized !== undefined) {
+          result[key] = serialized;
+        }
+      } else {
+        result[key] = value;
+      }
+    });
+
+    return result;
+  };
+
   const intakeAwareFormFields = formFields.map(applyIntakeFormRequired);
 
   return (
-    <>
-      <Form
-        form={form}
-        initialValues={{
-          description: editMode && glossaryTerm ? glossaryTerm.description : '',
-        }}
-        layout="vertical"
-        onFinish={handleSave}>
+    <Form
+      form={form}
+      initialValues={{
+        description: editMode && glossaryTerm ? glossaryTerm.description : '',
+      }}
+      layout="vertical"
+      onFinish={handleSave}>
         {generateFormFields(intakeAwareFormFields)}
 
         <Form.List name="references">
@@ -634,16 +637,14 @@ const AddGlossaryTermForm = ({
             </Space>
           )}
         </div>
-      </Form>
 
-      {customPropertiesLoaded && extensionFormFields.length > 0 && (
-        <GlossaryTermIntakeFields
+      {extensionFormFields.length > 0 && (
+        <AddDomainFormExtensionFields
           customProperties={customProperties}
           formFields={extensionFormFields}
-          ref={intakeFieldsRef}
         />
       )}
-    </>
+    </Form>
   );
 };
 
