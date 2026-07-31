@@ -16,7 +16,7 @@ import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { isActiveAnnouncement } from '../../utils/AnnouncementsUtils';
-import { getFeedListWithRelativeDays } from '../../utils/FeedUtils';
+import { getFeedListWithRelativeDays } from '../../utils/FeedUtilsPure';
 import { AnnouncementThreadListProp } from './Announcement.interface';
 import './announcement.less';
 import AnnouncementFeedCard from './AnnouncementFeedCard.component';

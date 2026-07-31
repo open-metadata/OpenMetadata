@@ -19,7 +19,7 @@ import {
   ENTITY_URL_MAP,
 } from '../../../../constants/Feeds.constants';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
-import { buildMentionLink } from '../../../../utils/FeedUtils';
+import { buildMentionLink } from '../../../../utils/FeedUtilsPure';
 import { ExtensionRef } from '../../BlockEditor.interface';
 import MentionList from './MentionList';
 

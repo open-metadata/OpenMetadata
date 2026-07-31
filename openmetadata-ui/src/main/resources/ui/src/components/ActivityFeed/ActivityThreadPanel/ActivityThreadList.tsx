@@ -27,7 +27,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -37,7 +37,6 @@ import FeedListSeparator from '../FeedListSeparator/FeedListSeparator';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
-
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
   className,
   threads,

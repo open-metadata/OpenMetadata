@@ -19,10 +19,9 @@ import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import DiffView from './DiffView/DiffView';
-
 const RichTextEditor = withSuspenseFallback(
   lazy(() => import('../../../components/common/RichTextEditor/RichTextEditor'))
 );

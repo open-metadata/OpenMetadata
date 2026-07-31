@@ -30,7 +30,7 @@ import {
   getEntityField,
   getEntityFQN,
   getEntityType,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import FeedCardBody from '../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBody';
 import FeedCardHeader from '../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeader';
 import PopoverContent from '../ActivityFeed/ActivityFeedCard/PopoverContent';
@@ -39,7 +39,6 @@ import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
 import './announcement.less';
-
 const AnnouncementFeedCardBody = ({
   feed,
   entityLink,
