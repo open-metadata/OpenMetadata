@@ -87,9 +87,14 @@ test.describe(
       });
 
       await openExportModalWithCsv(page);
+
+      // Install fake browser clock after the page has loaded so timers in
+      // the polling loop are controllable without affecting page navigation.
+      await page.clock.install();
+
       await page.getByTestId('submit-button').click();
 
-      // Confirm polling started — wait for the first status call.
+      // The first poll (attempt 0) fires without a timer — wait for it.
       await expect
         .poll(() => statusCallCount, { timeout: 15_000 })
         .toBeGreaterThan(0);
@@ -102,8 +107,9 @@ test.describe(
         page.locator('[data-testid="export-entity-modal"]')
       ).not.toBeVisible();
 
-      // Wait just over one retry interval (1 s) to confirm no further polls fire.
-      await page.waitForTimeout(3_000);
+      // Advance 15 s of fake time — cancel already cleared the retry timer
+      // via clearTimeout, so no new requests should fire.
+      await page.clock.fastForward(15_000);
 
       expect(statusCallCount).toBe(countBeforeCancel);
     });

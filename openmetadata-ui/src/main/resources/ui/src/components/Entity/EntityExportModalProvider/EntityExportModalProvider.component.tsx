@@ -447,8 +447,8 @@ export const EntityExportModalProvider = ({
           }
 
           if (
-            Date.now() - pollingStartTime >=
-            CSV_EXPORT_MAX_POLL_DURATION_MS
+            !bulkEdit &&
+            Date.now() - pollingStartTime >= CSV_EXPORT_MAX_POLL_DURATION_MS
           ) {
             timedOut = true;
 
@@ -491,9 +491,10 @@ export const EntityExportModalProvider = ({
           return;
         }
 
-        if (timedOut && !bulkEdit) {
-          // Non-bulk-edit: backend job is still running — close the modal and
-          // hand it off to CsvJobsTray so the user can follow progress there.
+        if (timedOut) {
+          // timedOut is only set when bulkEdit === false (the duration cap is
+          // skipped for bulk-edit). Close the modal and hand the still-running
+          // backend job off to CsvJobsTray so the user can track it there.
           csvExportPollingRef.current = undefined;
           csvExportJobRef.current = undefined;
           pendingCSVExportResponsesRef.current.clear();
@@ -502,8 +503,8 @@ export const EntityExportModalProvider = ({
           setExportData(null);
           window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
         } else {
-          // Bulk-edit timeout or max-failures: surface an error so the grid
-          // page can show an error banner instead of hanging on the loader.
+          // Max consecutive network failures — surface FAILED so any waiting
+          // consumer (bulk-edit grid or the modal itself) can show an error.
           applyCSVExportJobUpdate({
             error: null,
             jobId,

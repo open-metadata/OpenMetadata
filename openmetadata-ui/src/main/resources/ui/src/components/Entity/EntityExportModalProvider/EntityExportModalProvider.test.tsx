@@ -1020,7 +1020,7 @@ describe('EntityExportModalProvider component', () => {
     expect(downloadFile).not.toHaveBeenCalled();
   });
 
-  it('bulk-edit: timeout surfaces an error so the grid page does not hang', async () => {
+  it('bulk-edit: keeps polling past the 5-minute cap without failing', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
@@ -1050,19 +1050,18 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      // Advance Date.now past the 5-minute cap; trigger the next poll wait.
+      // Advance Date.now well past the 5-minute modal cap.
       nowMs = 5 * 60 * 1_000 + 1_000;
 
+      // Advance the 1-s retry timer — bulk-edit must NOT stop here.
       await act(async () => {
         jest.advanceTimersByTime(1_000);
       });
 
-      // Bulk-edit timeout uses the FAILED path so the grid page gets an error
-      // banner instead of hanging on the loader indefinitely.
-      expect(onError).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
-        'server.unexpected-error'
-      );
+      // Poll count increased: polling continued despite the elapsed time.
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(2);
+      expect(onError).not.toHaveBeenCalled();
+      expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
     } finally {
       dateSpy.mockRestore();
       (getCsvAsyncJob as jest.Mock).mockReset();
