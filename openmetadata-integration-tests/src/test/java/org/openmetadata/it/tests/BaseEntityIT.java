@@ -16,6 +16,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -6549,6 +6550,201 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         }
         assertFalse(hasBeforeOnFirstPage, "First page should not have 'before' cursor");
       }
+    }
+
+    private static final int HISTORY_PAGE_SIZE = 3;
+    private static final int HISTORY_UNPAGINATED_LIMIT = 500;
+    private static final int HISTORY_ENTITY_COUNT = 5;
+    private static final int HISTORY_PATCHES_PER_ENTITY = 2;
+    private static final int HISTORY_MIN_PAGES = 3;
+
+    private record HistoryWalk(List<List<String>> pages, String lastPageBeforeCursor) {
+      List<String> versionKeys() {
+        return pages.stream().flatMap(List::stream).toList();
+      }
+
+      List<String> versionKeysExcludingLastPage() {
+        return pages.subList(0, pages.size() - 1).stream().flatMap(List::stream).toList();
+      }
+    }
+
+    /**
+     * Walks the whole window one small page at a time and asserts the result is indistinguishable
+     * from a single unpaginated read - same versions, same order, no gaps, no repeats - through
+     * both the {@code after} and the {@code before} cursor.
+     *
+     * <p>Rows written by concurrently running tests may share the window, so the comparison is made
+     * over the versions this test created. Ordering and uniqueness are asserted over every row the
+     * walk returned.
+     */
+    @Test
+    @Timeout(300)
+    void test_listEntityHistoryByTimestamp_pagedWalkMatchesUnpaginatedRead(TestNamespace ns)
+        throws Exception {
+      Assumptions.assumeTrue(
+          supportsListHistoryByTimestamp,
+          "Entity does not support listEntityHistoryByTimestamp endpoint");
+      Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+      OpenMetadataClient client = SdkClients.adminClient();
+      long startTs = System.currentTimeMillis();
+      List<String> ownEntityIds = createVersionedEntities(ns);
+      long endTs = System.currentTimeMillis();
+      String basePath = getResourcePath() + "history";
+
+      HistoryWalk unpaginated =
+          walkForward(client, basePath, startTs, endTs, HISTORY_UNPAGINATED_LIMIT);
+      HistoryWalk paged = walkForward(client, basePath, startTs, endTs, HISTORY_PAGE_SIZE);
+      List<String> expected = ownVersions(unpaginated.versionKeys(), ownEntityIds);
+
+      assertTrue(
+          expected.size() >= 2 * HISTORY_PAGE_SIZE,
+          "Test data must span more than one page, got " + expected.size() + " versions");
+      assertTrue(
+          paged.pages().size() >= HISTORY_MIN_PAGES,
+          "Walk must cross at least " + HISTORY_MIN_PAGES + " pages to exercise deep cursors");
+      assertEquals(
+          expected,
+          ownVersions(paged.versionKeys(), ownEntityIds),
+          "Forward paged walk must reproduce the unpaginated read exactly");
+      assertNoRepeats(paged.versionKeys());
+      assertNewestFirst(paged.versionKeys());
+
+      List<List<String>> backwardPages =
+          walkBackward(client, basePath, startTs, endTs, paged.lastPageBeforeCursor());
+      assertTrue(
+          backwardPages.size() >= HISTORY_MIN_PAGES - 1,
+          "Backward walk must cross multiple pages, got " + backwardPages.size());
+      List<String> backward = replayInForwardOrder(backwardPages);
+      assertEquals(
+          ownVersions(paged.versionKeysExcludingLastPage(), ownEntityIds),
+          ownVersions(backward, ownEntityIds),
+          "Backward paged walk must reproduce the forward walk minus its final page");
+      assertNoRepeats(backward);
+      assertNewestFirst(backward);
+    }
+
+    private List<String> createVersionedEntities(TestNamespace ns) throws Exception {
+      List<String> entityIds = new ArrayList<>();
+      for (int i = 0; i < HISTORY_ENTITY_COUNT; i++) {
+        T entity = createEntity(createRequest(ns.prefix("paged_walk_" + i), ns));
+        entityIds.add(entity.getId().toString());
+        for (int patch = 0; patch < HISTORY_PATCHES_PER_ENTITY; patch++) {
+          entity.setDescription(
+              "Paged walk revision " + patch + " - " + System.currentTimeMillis());
+          patchEntity(entity.getId().toString(), entity);
+        }
+      }
+      return entityIds;
+    }
+
+    private HistoryWalk walkForward(
+        OpenMetadataClient client, String basePath, long startTs, long endTs, int limit)
+        throws Exception {
+      List<List<String>> pages = new ArrayList<>();
+      String lastPageBeforeCursor = null;
+      String after = null;
+      do {
+        JsonNode result = readHistoryPage(client, basePath, startTs, endTs, limit, "after", after);
+        pages.add(versionKeys(result));
+        lastPageBeforeCursor = cursor(result, "before");
+        after = cursor(result, "after");
+      } while (after != null);
+      return new HistoryWalk(pages, lastPageBeforeCursor);
+    }
+
+    /**
+     * Pages in visit order. A backward walk starts next to the final forward page and moves towards
+     * the newest, so the oldest page comes back first. Rows within each page are newest-first.
+     */
+    private List<List<String>> walkBackward(
+        OpenMetadataClient client, String basePath, long startTs, long endTs, String startCursor)
+        throws Exception {
+      assertNotNull(startCursor, "Final forward page must expose a 'before' cursor");
+      List<List<String>> pages = new ArrayList<>();
+      String before = startCursor;
+      while (before != null) {
+        JsonNode result =
+            readHistoryPage(client, basePath, startTs, endTs, HISTORY_PAGE_SIZE, "before", before);
+        pages.add(versionKeys(result));
+        before = cursor(result, "before");
+      }
+      return pages;
+    }
+
+    /** Backward pages arrive oldest-first, so replaying them forward reverses the page sequence. */
+    private List<String> replayInForwardOrder(List<List<String>> backwardPages) {
+      List<String> versionKeys = new ArrayList<>();
+      for (int i = backwardPages.size() - 1; i >= 0; i--) {
+        versionKeys.addAll(backwardPages.get(i));
+      }
+      return versionKeys;
+    }
+
+    private JsonNode readHistoryPage(
+        OpenMetadataClient client,
+        String basePath,
+        long startTs,
+        long endTs,
+        int limit,
+        String cursorName,
+        String cursorValue)
+        throws Exception {
+      String url = basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=" + limit;
+      if (cursorValue != null) {
+        url += "&" + cursorName + "=" + cursorValue;
+      }
+      return MAPPER.readTree(client.getHttpClient().executeForString(HttpMethod.GET, url, null));
+    }
+
+    private List<String> versionKeys(JsonNode result) {
+      List<String> versionKeys = new ArrayList<>();
+      for (JsonNode item : result.get("data")) {
+        versionKeys.add(item.get("updatedAt").asLong() + ":" + item.get("id").asText());
+      }
+      return versionKeys;
+    }
+
+    private String cursor(JsonNode result, String name) {
+      JsonNode paging = result.get("paging");
+      if (paging == null || paging.isNull() || !paging.hasNonNull(name)) {
+        return null;
+      }
+      return paging.get(name).asText();
+    }
+
+    private List<String> ownVersions(List<String> versionKeys, List<String> ownEntityIds) {
+      return versionKeys.stream().filter(key -> ownEntityIds.contains(entityIdOf(key))).toList();
+    }
+
+    private void assertNoRepeats(List<String> versionKeys) {
+      assertEquals(
+          versionKeys.size(),
+          new LinkedHashSet<>(versionKeys).size(),
+          "Paged walk returned the same version more than once");
+    }
+
+    private void assertNewestFirst(List<String> versionKeys) {
+      for (int i = 1; i < versionKeys.size(); i++) {
+        String previous = versionKeys.get(i - 1);
+        String current = versionKeys.get(i);
+        assertTrue(
+            compareVersionKeys(previous, current) > 0,
+            "Versions must be strictly newest-first, got " + previous + " before " + current);
+      }
+    }
+
+    private int compareVersionKeys(String left, String right) {
+      int updatedAtOrder = Long.compare(updatedAtOf(left), updatedAtOf(right));
+      return updatedAtOrder != 0 ? updatedAtOrder : entityIdOf(left).compareTo(entityIdOf(right));
+    }
+
+    private long updatedAtOf(String versionKey) {
+      return Long.parseLong(versionKey.substring(0, versionKey.indexOf(':')));
+    }
+
+    private String entityIdOf(String versionKey) {
+      return versionKey.substring(versionKey.indexOf(':') + 1);
     }
   }
 

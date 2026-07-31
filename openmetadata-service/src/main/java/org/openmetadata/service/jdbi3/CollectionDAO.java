@@ -1407,36 +1407,51 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    // The keyset condition and the LIMIT are applied inside each UNION branch so that neither
+    // side materialises more than one page: the global top-:limit under this ORDER BY is always a
+    // subset of the union of each branch's own top-:limit. UNION ALL is safe because
+    // entity_extension only ever holds superseded versions while <table> holds the current one, so
+    // the same (id, updatedAt) cannot appear in both.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "(SELECT id, updatedAt, json FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
-                + "UNION "
-                + "SELECT id, updatedAt, json FROM <table> "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + "UNION ALL "
+                + "(SELECT id, updatedAt, json FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs "
-                + ") combined WHERE 1=1 "
                 + "<cursorCondition> "
-                + "ORDER BY updatedAt DESC, id DESC "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + ") combined "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT id, updatedAt, json FROM entity_extension "
+                + "(SELECT id, updatedAt, json FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
-                + "UNION "
-                + "SELECT id, updatedAt, json::jsonb FROM <table> "
+                + "<cursorCondition> "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + "UNION ALL "
+                + "(SELECT id, updatedAt, json::jsonb FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs "
-                + ") combined WHERE 1=1 "
                 + "<cursorCondition> "
-                + "ORDER BY updatedAt DESC, id DESC "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
+                + "LIMIT :limit) "
+                + ") combined "
+                + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @RegisterRowMapper(ExtensionMapper.class)
@@ -1445,6 +1460,7 @@ public interface CollectionDAO {
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs,
         @Define("cursorCondition") String cursorCondition,
+        @Define("sortOrder") String sortOrder,
         @Bind("entityType") String entityType,
         @Bind("cursorUpdatedAt") Long cursorUpdatedAt,
         @Bind("cursorId") String cursorId,
