@@ -12,7 +12,7 @@
  */
 
 import { InputBase } from '@openmetadata/ui-core-components';
-import { DatePicker, Form, Select, TimePicker } from 'antd';
+import { Form, Select } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../generated/entity/type';
@@ -51,6 +51,52 @@ const CoreTextInput: React.FC<CoreTextInputProps> = ({
     {...({ id, type, 'data-testid': testId, value: value ?? '', onChange, placeholder } as any)}
   />
 );
+
+interface CoreDateInputProps {
+  value?: string;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  dateKind: 'date' | 'dateTime' | 'time';
+  'data-testid'?: string;
+}
+
+/**
+ * Bridges antd Form.Item (onChange: ChangeEventHandler) with InputBase for
+ * date / dateTime / time fields. Converts between the HTML datetime-local
+ * wire format ("YYYY-MM-DDTHH:MM:SS") and the stored format
+ * ("YYYY-MM-DD HH:MM:SS") for dateTime fields.
+ */
+const CoreDateInput: React.FC<CoreDateInputProps> = ({
+  value,
+  onChange,
+  dateKind,
+  'data-testid': testId,
+}) => {
+  const inputType = dateKind === 'dateTime' ? 'datetime-local' : dateKind;
+  const htmlValue =
+    dateKind === 'dateTime' && value ? value.replace(' ', 'T') : (value ?? '');
+
+  const handleChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const raw = e.target.value;
+    const stored = dateKind === 'dateTime' ? raw.replace('T', ' ') : raw;
+    onChange?.({
+      ...e,
+      target: { ...e.target, value: stored },
+    } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  return (
+    <InputBase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      {...({
+        type: inputType,
+        step: dateKind !== 'date' ? '1' : undefined,
+        'data-testid': testId,
+        value: htmlValue,
+        onChange: handleChange,
+      } as any)}
+    />
+  );
+};
 
 interface AddDomainFormExtensionFieldsProps {
   customProperties: CustomProperty[];
@@ -314,11 +360,7 @@ const AddDomainFormExtensionFields = ({
               label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
-              <DatePicker
-                className="w-full"
-                data-testid={dataTestId}
-                showTime={kind === 'dateTime'}
-              />
+              <CoreDateInput dateKind={kind} data-testid={dataTestId} />
             </Form.Item>
           );
         }
@@ -330,7 +372,7 @@ const AddDomainFormExtensionFields = ({
               label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
-              <TimePicker className="w-full" data-testid={dataTestId} />
+              <CoreDateInput dateKind="time" data-testid={dataTestId} />
             </Form.Item>
           );
         }
@@ -367,15 +409,14 @@ const AddDomainFormExtensionFields = ({
                   placeholder={t('label.url-lowercase')}
                 />
               </Form.Item>
-              <Form.Item
-                name={[...namePath, 'displayText']}
-                noStyle
-                style={{ marginTop: 8 }}>
-                <CoreTextInput
-                  data-testid={`${dataTestId}-displayText`}
-                  placeholder={t('label.display-name')}
-                />
-              </Form.Item>
+              <div style={{ marginTop: 8 }}>
+                <Form.Item name={[...namePath, 'displayText']} noStyle>
+                  <CoreTextInput
+                    data-testid={`${dataTestId}-displayText`}
+                    placeholder={t('label.display-name')}
+                  />
+                </Form.Item>
+              </div>
             </Form.Item>
           );
         }
