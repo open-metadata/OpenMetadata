@@ -1,0 +1,12 @@
+# Applies only to builds whose context is ingestion/ (currently the Airflow test image).
+# Dockerfile.ci builds from the repository root and uses the top-level .dockerignore.
+build/
+dist/
+tests/
+examples/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/__pycache__/
+**/*.py[cod]
