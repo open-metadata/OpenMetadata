@@ -4939,23 +4939,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete all the relationships to other entities
               daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-              // Delete all the field relationships to other entities
-              daoCollection
-                  .fieldRelationshipDAO()
-                  .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              if (shouldCleanupFqnDependents()) {
+                daoCollection
+                    .fieldRelationshipDAO()
+                    .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              }
 
               // Delete all the extensions of entity
               daoCollection.entityExtensionDAO().deleteAll(id);
 
-              // Delete all the tag labels
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-
-              // when the glossary and tag is deleted, delete its usage
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              if (shouldCleanupFqnDependents()) {
+                daoCollection
+                    .tagUsageDAO()
+                    .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+                daoCollection
+                    .tagUsageDAO()
+                    .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              }
               // Delete all the usage data
               daoCollection.usageDAO().delete(id);
 
@@ -4998,6 +4998,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
+
+  protected boolean shouldCleanupFqnDependents() {
+    return true;
+  }
 
   /**
    * Variant of {@link #entitySpecificCleanup(EntityInterface)} that receives the user performing
@@ -6966,7 +6970,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
     // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
     // keep the per-entity path.
-    if (!descendantsCoveredByAncestorCascade) {
+    if (shouldCleanupFqnDependents() && !descendantsCoveredByAncestorCascade) {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
         for (T entity : entities) {
           String fqn = entity.getFullyQualifiedName();
