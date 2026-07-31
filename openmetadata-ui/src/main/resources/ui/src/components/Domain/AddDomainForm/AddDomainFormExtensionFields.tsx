@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { InputBase } from '@openmetadata/ui-core-components';
-import { Form, Select } from 'antd';
-import React, { useCallback, useState } from 'react';
+import {
+  Autocomplete,
+  InputBase,
+  Select as CoreSelect,
+  type SelectItemType,
+} from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
@@ -25,10 +30,10 @@ import {
   getExtensionFieldKind,
 } from './AddDomainFormExtensionFields.utils';
 
-/**
- * Thin adapter so InputBase (react-aria onChange: (value: string) => void)
- * works with antd Form.Item (onChange: React.ChangeEventHandler).
- */
+// ---------------------------------------------------------------------------
+// CoreTextInput — bridges antd Form.Item (ChangeEventHandler) with InputBase
+// ---------------------------------------------------------------------------
+
 interface CoreTextInputProps {
   value?: string;
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
@@ -52,6 +57,10 @@ const CoreTextInput: React.FC<CoreTextInputProps> = ({
   />
 );
 
+// ---------------------------------------------------------------------------
+// CoreDateInput — wraps InputBase for date / dateTime / time fields
+// ---------------------------------------------------------------------------
+
 interface CoreDateInputProps {
   value?: string;
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
@@ -60,10 +69,9 @@ interface CoreDateInputProps {
 }
 
 /**
- * Bridges antd Form.Item (onChange: ChangeEventHandler) with InputBase for
- * date / dateTime / time fields. Converts between the HTML datetime-local
- * wire format ("YYYY-MM-DDTHH:MM:SS") and the stored format
- * ("YYYY-MM-DD HH:MM:SS") for dateTime fields.
+ * Bridges antd Form.Item with InputBase for date/dateTime/time. Converts
+ * between HTML datetime-local format ("YYYY-MM-DDTHH:MM:SS") and the stored
+ * format ("YYYY-MM-DD HH:MM:SS") for dateTime fields.
  */
 const CoreDateInput: React.FC<CoreDateInputProps> = ({
   value,
@@ -98,18 +106,87 @@ const CoreDateInput: React.FC<CoreDateInputProps> = ({
   );
 };
 
-interface AddDomainFormExtensionFieldsProps {
-  customProperties: CustomProperty[];
-  formFields: IntakeFormField[];
+// ---------------------------------------------------------------------------
+// CoreEnumSelect — single-select enum using core Select (chevron dropdown)
+// ---------------------------------------------------------------------------
+
+interface CoreEnumSelectProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  options: SelectItemType[];
+  placeholder?: string;
+  'data-testid'?: string;
 }
 
-interface EntityRefOption {
-  label: string;
-  value: string;
-  ref: Record<string, unknown>;
+const CoreEnumSelect: React.FC<CoreEnumSelectProps> = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  'data-testid': testId,
+}) => (
+  <div data-testid={testId}>
+    <CoreSelect
+      items={options}
+      placeholder={placeholder}
+      selectedKey={value ?? null}
+      onSelectionChange={(key) => {
+        if (key !== null) onChange?.(String(key));
+      }}>
+      {(item) => <CoreSelect.Item id={String(item.id)} label={item.label} />}
+    </CoreSelect>
+  </div>
+);
+
+// ---------------------------------------------------------------------------
+// CoreEnumMultiSelect — multi-select enum using core Autocomplete chip-picker
+// ---------------------------------------------------------------------------
+
+interface CoreEnumMultiSelectProps {
+  value?: string[];
+  onChange?: (value: string[]) => void;
+  options: SelectItemType[];
+  placeholder?: string;
+  'data-testid'?: string;
 }
 
-interface ExtensionEntityRefSelectProps {
+const CoreEnumMultiSelect: React.FC<CoreEnumMultiSelectProps> = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  'data-testid': testId,
+}) => {
+  const currentValues = Array.isArray(value) ? value : [];
+  const selected = currentValues
+    .map((v) => options.find((o) => o.id === v))
+    .filter((o): o is SelectItemType => o !== undefined);
+
+  return (
+    <div data-testid={testId}>
+      <Autocomplete
+        items={options}
+        multiple
+        placeholder={placeholder}
+        placeholderIcon={null}
+        selectedItems={selected}
+        onItemCleared={(key) =>
+          onChange?.(currentValues.filter((v) => v !== String(key)))
+        }
+        onItemInserted={(key) =>
+          onChange?.([...currentValues, String(key)])
+        }>
+        {(item) => <Autocomplete.Item id={String(item.id)} label={item.label} />}
+      </Autocomplete>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// CoreEntityRefSelect — async entity-reference picker using core Autocomplete
+// ---------------------------------------------------------------------------
+
+interface CoreEntityRefSelectProps {
   allowedTypes: string[];
   label: string;
   multiple?: boolean;
@@ -121,11 +198,11 @@ interface ExtensionEntityRefSelectProps {
 }
 
 /**
- * A standalone combobox for picking an entity reference via the search API.
- * Lives in its own component so we can use `useState` without violating the
- * rules-of-hooks (parent maps over `formFields`).
+ * Replaces the old antd-based ExtensionEntityRefSelect. Uses core Autocomplete
+ * for a consistent look; searches entities via the API on user input.
+ * Lives as a standalone component so hooks (useState / useRef) are valid here.
  */
-const ExtensionEntityRefSelect: React.FC<ExtensionEntityRefSelectProps> = ({
+const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
   allowedTypes,
   label,
   multiple = false,
@@ -133,16 +210,17 @@ const ExtensionEntityRefSelect: React.FC<ExtensionEntityRefSelectProps> = ({
   value,
   onChange,
 }) => {
-  const [options, setOptions] = useState<EntityRefOption[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [searchItems, setSearchItems] = useState<SelectItemType[]>([]);
+  const optionMapRef = useRef<Map<string, Record<string, unknown>>>(new Map());
   const searchIndex = (allowedTypes[0] ?? 'glossaryTerm') as string;
 
   const handleSearch = useCallback(
     async (query: string) => {
       if (!query) {
+        setSearchItems([]);
+
         return;
       }
-      setSearching(true);
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = await (searchQuery as any)({
@@ -161,78 +239,94 @@ const ExtensionEntityRefSelect: React.FC<ExtensionEntityRefSelectProps> = ({
             entityType?: string;
           };
         }>;
-        setOptions(
-          hits.map((hit) => ({
-            label:
-              hit._source?.displayName ||
-              hit._source?.name ||
-              String(hit._id),
-            value: String(hit._id),
-            ref: {
-              id: hit._id,
-              type: hit._source?.entityType || searchIndex,
-              name: hit._source?.name,
-              displayName: hit._source?.displayName,
-              fullyQualifiedName: hit._source?.fullyQualifiedName,
-            },
-          }))
-        );
+        const items: SelectItemType[] = hits.map((hit) => ({
+          id: String(hit._id),
+          label:
+            hit._source?.displayName ||
+            hit._source?.name ||
+            String(hit._id),
+        }));
+        setSearchItems(items);
+        hits.forEach((hit) => {
+          optionMapRef.current.set(String(hit._id), {
+            id: hit._id,
+            type: hit._source?.entityType || searchIndex,
+            name: hit._source?.name,
+            displayName: hit._source?.displayName,
+            fullyQualifiedName: hit._source?.fullyQualifiedName,
+          });
+        });
       } catch {
-        setOptions([]);
-      } finally {
-        setSearching(false);
+        setSearchItems([]);
       }
     },
     [searchIndex]
   );
 
-  const toId = (ref: Record<string, unknown>) =>
-    'id' in ref ? String(ref.id) : undefined;
+  const currentValues: Array<Record<string, unknown>> = useMemo(() => {
+    if (multiple) {
+      return Array.isArray(value) ? value : value ? [value] : [];
+    }
 
-  const currentValue = multiple
-    ? (Array.isArray(value) ? value : value ? [value] : [])
-        .map((v) => toId(v))
-        .filter((id): id is string => id !== undefined)
-    : Array.isArray(value)
-    ? undefined
-    : value && 'id' in value
-    ? toId(value)
-    : undefined;
+    return value && !Array.isArray(value) ? [value] : [];
+  }, [value, multiple]);
+
+  const selectedItems: SelectItemType[] = useMemo(
+    () =>
+      currentValues
+        .filter((v) => v && typeof v.id === 'string')
+        .map((v) => ({
+          id: String(v.id),
+          label: String(v.displayName || v.name || v.id),
+        })),
+    [currentValues]
+  );
 
   return (
     <div data-testid={testId}>
-      <Select
-        allowClear
-        aria-label={label}
-        filterOption={false}
-        loading={searching}
-        mode={multiple ? 'multiple' : undefined}
+      <Autocomplete
+        allowsEmptyCollection
+        filterOption={() => true}
+        items={searchItems}
+        multiple={multiple}
         placeholder={label}
-        showSearch
-        style={{ width: '100%' }}
-        value={currentValue}
-        onChange={(val) => {
+        selectedItems={selectedItems}
+        onItemCleared={(key) => {
           if (multiple) {
-            const ids = Array.isArray(val) ? val : val ? [val] : [];
-            const refs = ids
-              .map((id: string) => options.find((o) => o.value === id)?.ref)
-              .filter((ref): ref is Record<string, unknown> => ref !== undefined);
-            onChange?.(refs);
+            const next = currentValues.filter((v) => String(v.id) !== String(key));
+            onChange?.(next);
           } else {
-            const found = options.find((o) => o.value === String(val));
-            onChange?.(found ? found.ref : undefined);
+            onChange?.(undefined);
           }
         }}
-        onSearch={handleSearch}>
-        {options.map((opt) => (
-          <Select.Option key={opt.value} value={opt.value}>
-            {opt.label}
-          </Select.Option>
-        ))}
-      </Select>
+        onItemInserted={(key) => {
+          const ref = optionMapRef.current.get(String(key));
+          if (!ref) {
+            return;
+          }
+          if (multiple) {
+            onChange?.([...currentValues, ref]);
+          } else {
+            onChange?.(ref);
+          }
+        }}
+        onSearchChange={handleSearch}>
+        {(item) => (
+          <Autocomplete.Item id={String(item.id)} label={item.label} />
+        )}
+      </Autocomplete>
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+interface AddDomainFormExtensionFieldsProps {
+  customProperties: CustomProperty[];
+  formFields: IntakeFormField[];
+}
 
 const AddDomainFormExtensionFields = ({
   customProperties,
@@ -315,26 +409,40 @@ const AddDomainFormExtensionFields = ({
           const config = definition?.customPropertyConfig?.config as
             | { values?: string[]; multiSelect?: boolean }
             | undefined;
-          const options = (config?.values ?? []).map((v) => ({
-            label: v,
-            value: v,
-          }));
+          const enumOptions: SelectItemType[] = (config?.values ?? []).map(
+            (v) => ({ id: v, label: v })
+          );
           const isMulti = kind === 'enumMultiSelect' || config?.multiSelect;
-          const fieldProp: FieldProp = {
-            id: `root/extension/${propertyName}`,
-            label: labelWithBadge,
-            name: namePath as string[],
-            required: isRequired,
-            rules: baseRules,
-            type: FieldTypes.SELECT,
-            props: {
-              'data-testid': dataTestId,
-              options,
-              ...(isMulti ? { mode: 'multiple' } : {}),
-            },
-          };
 
-          return <div key={formField.fieldPath}>{getField(fieldProp)}</div>;
+          if (isMulti) {
+            return (
+              <Form.Item
+                key={formField.fieldPath}
+                label={labelWithBadge}
+                name={namePath}
+                rules={baseRules}>
+                <CoreEnumMultiSelect
+                  data-testid={dataTestId}
+                  options={enumOptions}
+                  placeholder={label}
+                />
+              </Form.Item>
+            );
+          }
+
+          return (
+            <Form.Item
+              key={formField.fieldPath}
+              label={labelWithBadge}
+              name={namePath}
+              rules={baseRules}>
+              <CoreEnumSelect
+                data-testid={dataTestId}
+                options={enumOptions}
+                placeholder={label}
+              />
+            </Form.Item>
+          );
         }
 
         if (kind === 'number' || kind === 'timestamp') {
@@ -458,21 +566,22 @@ const AddDomainFormExtensionFields = ({
                   type="number"
                 />
               </Form.Item>
-              <Form.Item
-                name={[...namePath, 'end']}
-                noStyle
-                style={{ marginTop: 8 }}
-                rules={
-                  isRequired
-                    ? [{ required: true, message: requiredMessage }]
-                    : []
-                }>
-                <CoreTextInput
-                  data-testid={`${dataTestId}-end`}
-                  placeholder={t('label.end')}
-                  type="number"
-                />
-              </Form.Item>
+              <div style={{ marginTop: 8 }}>
+                <Form.Item
+                  name={[...namePath, 'end']}
+                  noStyle
+                  rules={
+                    isRequired
+                      ? [{ required: true, message: requiredMessage }]
+                      : []
+                  }>
+                  <CoreTextInput
+                    data-testid={`${dataTestId}-end`}
+                    placeholder={t('label.end')}
+                    type="number"
+                  />
+                </Form.Item>
+              </div>
             </Form.Item>
           );
         }
@@ -518,7 +627,7 @@ const AddDomainFormExtensionFields = ({
               label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
-              <ExtensionEntityRefSelect
+              <CoreEntityRefSelect
                 allowedTypes={allowedTypes}
                 data-testid={dataTestId}
                 label={label}
