@@ -241,15 +241,17 @@ def main() -> None:
     }
     targets = {
         "environmentAtMostFiveMinutes": metrics["maxEnvironmentSeconds"] <= 300,
-        # Must track the `timeout ... 25m` wrapper the shard step runs under
-        # (playwright-postgresql-e2e.yml). #30689 raised that wrapper 21m -> 25m
-        # without moving this target, leaving a band where a shard finishes well
-        # inside its timeout and still fails the gate.
-        "executionAtMostTwentyFiveMinutes": metrics["maxExecutionSeconds"] <= 1500,
-        "shardsAtMostThirtyMinutesBeforeUpload": metrics[
+        # These two must track the `timeout ... 30m` wrapper the shard step runs
+        # under (playwright-postgresql-e2e.yml). #30689 moved that wrapper
+        # 21m -> 25m without moving them, which left a band where a shard
+        # finished inside its timeout and still failed the gate. Elapsed runs
+        # ~200 s above execution (setup + upload), so it gets 35m against the
+        # wrapper's 30m.
+        "executionAtMostThirtyMinutes": metrics["maxExecutionSeconds"] <= 1800,
+        "shardsAtMostThirtyFiveMinutesBeforeUpload": metrics[
             "maxElapsedBeforeUploadSeconds"
         ]
-        <= 1800,
+        <= 2100,
         "commonShardSkewAtMostFifteenPercent": skew_percent <= 15,
         "flakyRateAtMostPointFivePercent": metrics["flakyRatePercent"] <= 0.5,
         "retryWorkerTimeAtMostTwoPercent": metrics["retryWorkerPercent"] <= 2,
