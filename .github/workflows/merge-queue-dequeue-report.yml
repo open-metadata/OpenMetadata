@@ -96,11 +96,10 @@ jobs:
 
           gh api "repos/$GH_REPO/commits/$SHA/check-runs?per_page=100" --paginate \
             --jq '.check_runs[]
-                  | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled")
+                  | select(.conclusion != null and .conclusion != "success" and .conclusion != "neutral" and .conclusion != "skipped")
                   | "- [\(.name)](\(.html_url)) — `\(.conclusion)`"' > failures.md
 
           {
-            echo "<!-- merge-queue-dequeue-report -->"
             echo "### 🚦 Removed from the merge queue — \`$REASON\`"
             echo
             if [ -s failures.md ]; then
