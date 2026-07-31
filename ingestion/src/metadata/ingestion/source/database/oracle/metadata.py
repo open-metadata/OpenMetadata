@@ -123,7 +123,7 @@ class OracleSource(CommonDbSourceService):
         dialect = self.engine.dialect
         dialect.table_prefix = get_table_prefix_from_connection(self.service_connection)
         preserve_identifier_case = getattr(self.service_connection, "preserveIdentifierCase", False)
-        dialect.preserve_identifier_case = preserve_identifier_case
+        dialect.preserve_identifier_case = preserve_identifier_case  # type: ignore
         if preserve_identifier_case:
             dialect.normalize_name = types.MethodType(normalize_name, dialect)
             dialect.denormalize_name = types.MethodType(denormalize_name, dialect)
