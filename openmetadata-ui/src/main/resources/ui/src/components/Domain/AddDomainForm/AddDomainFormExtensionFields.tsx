@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { DatePicker, Form, Input, InputNumber, Select, TimePicker } from 'antd';
+import { DatePicker, Form, Select, TimePicker } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import MUITextField from '../../common/MUITextField/MUITextField';
 import { getField } from '../../../utils/formUtils';
 import CustomPropertyTypeBadge from '../../common/CustomPropertyTypeBadge/CustomPropertyTypeBadge.component';
 import {
@@ -171,7 +172,7 @@ const AddDomainFormExtensionFields = ({
   }
 
   return (
-    <div data-testid="custom-properties-section">
+    <div className="m-t-xss" data-testid="custom-properties-section">
       {formFields.map((formField) => {
         const propertyName = formField.fieldPath.startsWith('extension.')
           ? formField.fieldPath.slice('extension.'.length)
@@ -207,37 +208,37 @@ const AddDomainFormExtensionFields = ({
         );
 
         if (kind === 'text' || kind === 'duration' || kind === 'unknown') {
-          const fieldProp: FieldProp = {
-            id: `root/extension/${propertyName}`,
-            label: labelWithBadge,
-            name: namePath as string[],
-            required: isRequired,
-            rules: baseRules,
-            type: FieldTypes.TEXT,
-            props: { 'data-testid': dataTestId },
-          };
-
-          return <div key={formField.fieldPath}>{getField(fieldProp)}</div>;
+          return (
+            <Form.Item
+              key={formField.fieldPath}
+              label={labelWithBadge}
+              name={namePath}
+              rules={baseRules}>
+              <MUITextField
+                data-testid={dataTestId}
+                placeholder={label}
+              />
+            </Form.Item>
+          );
         }
 
         if (kind === 'email') {
-          const fieldProp: FieldProp = {
-            id: `root/extension/${propertyName}`,
-            label: labelWithBadge,
-            name: namePath as string[],
-            required: isRequired,
-            rules: [
-              ...baseRules,
-              {
-                type: 'email' as const,
-                message: t('message.email-is-invalid'),
-              },
-            ],
-            type: FieldTypes.TEXT,
-            props: { 'data-testid': dataTestId, type: 'email' },
-          };
-
-          return <div key={formField.fieldPath}>{getField(fieldProp)}</div>;
+          return (
+            <Form.Item
+              key={formField.fieldPath}
+              label={labelWithBadge}
+              name={namePath}
+              rules={[
+                ...baseRules,
+                { type: 'email' as const, message: t('message.email-is-invalid') },
+              ]}>
+              <MUITextField
+                data-testid={dataTestId}
+                placeholder={label}
+                type="email"
+              />
+            </Form.Item>
+          );
         }
 
         if (kind === 'enum' || kind === 'enumMultiSelect') {
@@ -270,17 +271,14 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={
-                <>
-                  {label} {typeBadge}
-                </>
-              }
+              label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
-              <InputNumber
-                className="w-full"
+              <MUITextField
                 data-testid={dataTestId}
+                inputProps={{ inputMode: 'numeric' }}
                 placeholder={label}
+                type="number"
               />
             </Form.Item>
           );
@@ -290,11 +288,7 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={
-                <>
-                  {label} {typeBadge}
-                </>
-              }
+              label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
               <DatePicker
@@ -310,11 +304,7 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={
-                <>
-                  {label} {typeBadge}
-                </>
-              }
+              label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
               <TimePicker className="w-full" data-testid={dataTestId} />
@@ -326,11 +316,7 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={
-                <>
-                  {label} {typeBadge}
-                </>
-              }>
+              label={labelWithBadge}>
               <Form.Item
                 name={[...namePath, 'url']}
                 noStyle
@@ -353,16 +339,16 @@ const AddDomainFormExtensionFields = ({
                     },
                   },
                 ]}>
-                <Input
+                <MUITextField
                   data-testid={`${dataTestId}-url`}
                   placeholder={t('label.url-lowercase')}
                 />
               </Form.Item>
               <Form.Item
                 name={[...namePath, 'displayText']}
-                noStyle>
-                <Input
-                  className="m-t-xs"
+                noStyle
+                style={{ marginTop: 8 }}>
+                <MUITextField
                   data-testid={`${dataTestId}-displayText`}
                   placeholder={t('label.display-name')}
                 />
@@ -393,11 +379,7 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={
-                <>
-                  {label} {typeBadge}
-                </>
-              }>
+              label={labelWithBadge}>
               <Form.Item
                 name={[...namePath, 'start']}
                 noStyle
@@ -406,24 +388,27 @@ const AddDomainFormExtensionFields = ({
                     ? [{ required: true, message: requiredMessage }]
                     : []
                 }>
-                <InputNumber
-                  className="w-full m-b-xs"
+                <MUITextField
                   data-testid={`${dataTestId}-start`}
+                  inputProps={{ inputMode: 'numeric' }}
                   placeholder={t('label.start')}
+                  type="number"
                 />
               </Form.Item>
               <Form.Item
                 name={[...namePath, 'end']}
                 noStyle
+                style={{ marginTop: 8 }}
                 rules={
                   isRequired
                     ? [{ required: true, message: requiredMessage }]
                     : []
                 }>
-                <InputNumber
-                  className="w-full"
+                <MUITextField
                   data-testid={`${dataTestId}-end`}
+                  inputProps={{ inputMode: 'numeric' }}
                   placeholder={t('label.end')}
+                  type="number"
                 />
               </Form.Item>
             </Form.Item>
@@ -468,11 +453,7 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={
-                <>
-                  {label} {typeBadge}
-                </>
-              }
+              label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
               <ExtensionEntityRefSelect
@@ -485,18 +466,17 @@ const AddDomainFormExtensionFields = ({
           );
         }
 
-        const fallbackFieldProp: FieldProp = {
-          id: `root/extension/${propertyName}`,
-          label,
-          name: namePath as string[],
-          required: isRequired,
-          rules: baseRules,
-          type: FieldTypes.TEXT,
-          props: { 'data-testid': dataTestId },
-        };
-
         return (
-          <div key={formField.fieldPath}>{getField(fallbackFieldProp)}</div>
+          <Form.Item
+            key={formField.fieldPath}
+            label={labelWithBadge}
+            name={namePath}
+            rules={baseRules}>
+            <MUITextField
+              data-testid={dataTestId}
+              placeholder={label}
+            />
+          </Form.Item>
         );
       })}
     </div>

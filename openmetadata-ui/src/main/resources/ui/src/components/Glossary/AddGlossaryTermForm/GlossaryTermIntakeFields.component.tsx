@@ -12,7 +12,7 @@
  */
 
 import { Form } from 'antd';
-import React, { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import AddDomainFormExtensionFields from '../../Domain/AddDomainForm/AddDomainFormExtensionFields';
@@ -58,7 +58,7 @@ const GlossaryTermIntakeFields = forwardRef<
   );
 
   return (
-    <Form form={form} layout="vertical">
+    <Form component={false} form={form} layout="vertical">
       <AddDomainFormExtensionFields
         customProperties={customProperties}
         formFields={formFields}

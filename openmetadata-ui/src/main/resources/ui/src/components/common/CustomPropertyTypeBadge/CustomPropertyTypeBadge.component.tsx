@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Tag } from 'antd';
-import React from 'react';
 import { getCustomPropertyTypeDisplayName } from '../../../utils/CustomProperty.utils';
 
 interface CustomPropertyTypeBadgeProps {
@@ -27,7 +26,24 @@ const CustomPropertyTypeBadge = ({
     return null;
   }
 
-  return <Tag data-testid="custom-property-type-badge">{displayName}</Tag>;
+  return (
+    <Tag
+      data-testid="custom-property-type-badge"
+      style={{
+        fontSize: 10,
+        lineHeight: '16px',
+        padding: '0 6px',
+        borderRadius: 4,
+        backgroundColor: '#f0f2f5',
+        border: 'none',
+        color: '#5c6370',
+        verticalAlign: 'middle',
+        fontWeight: 500,
+        letterSpacing: '0.04em',
+      }}>
+      {displayName}
+    </Tag>
+  );
 };
 
 export default CustomPropertyTypeBadge;
