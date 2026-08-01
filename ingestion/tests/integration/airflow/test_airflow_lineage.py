@@ -134,9 +134,11 @@ def om_entities(metadata):
 
 
 @pytest.fixture(scope="module")
-def registered_dag(airflow_dag_dir, airflow_api, airflow_headers, om_entities):
+def registered_dag(airflow_container, airflow_dag_dir, airflow_api, airflow_headers, om_entities):
     """DAG_ID, once the dag-processor has picked the file up."""
-    (airflow_dag_dir / f"{DAG_ID}.py").write_text(DAG_SOURCE)
+    dag_file = airflow_dag_dir / f"{DAG_ID}.py"
+    dag_file.write_text(DAG_SOURCE)
+    dag_file.chmod(0o644)
 
     deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
@@ -146,7 +148,13 @@ def registered_dag(airflow_dag_dir, airflow_api, airflow_headers, om_entities):
         time.sleep(5)
 
     errors = requests.get(f"{airflow_api}/importErrors", headers=airflow_headers, timeout=30)
-    raise TimeoutError(f"{DAG_ID} never registered. Import errors: {errors.text}")
+    # An empty importErrors list means the processor never read the file at all, so show
+    # it what it can actually see in the mount.
+    listing = airflow_container.exec("ls -la /opt/airflow/dags")
+    raise TimeoutError(
+        f"{DAG_ID} never registered.\nImport errors: {errors.text}\n"
+        f"Container view of /opt/airflow/dags:\n{listing.output.decode(errors='replace')}"
+    )
 
 
 @pytest.fixture(scope="module")

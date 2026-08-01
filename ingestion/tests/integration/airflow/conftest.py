@@ -16,6 +16,8 @@ its own DAGs and connections instead of depending on the compose ingestion servi
 """
 
 import json
+import shutil
+import tempfile
 import time
 from pathlib import Path
 
@@ -100,9 +102,16 @@ def airflow_image():
 
 
 @pytest.fixture(scope="module")
-def airflow_dag_dir(tmp_path_factory):
+def airflow_dag_dir():
     """Host directory mounted as the Airflow DAG folder; tests write their DAGs here."""
-    return tmp_path_factory.mktemp("airflow_dags")
+    # Not tmp_path_factory: its 0700 dirs are unreadable to the container's airflow user
+    # on Linux, and Docker Desktop's uid translation hides that everywhere but CI.
+    dag_dir = Path(tempfile.mkdtemp(prefix="airflow_dags_"))
+    dag_dir.chmod(0o755)
+
+    yield dag_dir
+
+    shutil.rmtree(dag_dir, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")
