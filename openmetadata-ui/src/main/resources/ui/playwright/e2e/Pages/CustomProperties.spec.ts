@@ -301,9 +301,22 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         if (key === 'entity_table') {
           // Created concurrently: sequential round-trips in this hook
           // accumulate enough latency under load to exhaust its 60s budget.
+          // allSettled rather than all, so a partial failure still registers
+          // whatever was created for teardown before the hook fails — the
+          // rejection is rethrown, never swallowed.
           const newUsers = Array.from({ length: 5 }, () => new UserClass());
-          await Promise.all(newUsers.map((user) => user.create(apiContext)));
-          users.push(...newUsers);
+          const created = await Promise.allSettled(
+            newUsers.map((user) => user.create(apiContext))
+          );
+          created.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              users.push(newUsers[index]);
+            }
+          });
+          const failed = created.find((result) => result.status === 'rejected');
+          if (failed) {
+            throw failed.reason;
+          }
         } else if (key === 'entity_dashboard') {
           dashboardTopic1 = new TopicClass();
           dashboardTopic2 = new TopicClass();
