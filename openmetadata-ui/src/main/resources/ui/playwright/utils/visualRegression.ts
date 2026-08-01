@@ -47,3 +47,30 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await waitForPageLoaded(page);
   await page.addStyleTag({ content: FREEZE_CSS });
 };
+
+/**
+ * Every landing-page ("My Data") widget is built on the shared
+ * `WidgetWrapper` (src/components/MyData/Widgets/Common/WidgetWrapper), which
+ * tags its outer container `data-testid="KnowledgePanel.<Widget>"` and shows
+ * an `EntityListSkeleton` (`data-testid="entity-list-skeleton"`) for as long
+ * as its `loading` prop is true. The widgets fetch their data asynchronously
+ * after mount, so shooting right after navigation bakes a skeleton (or a
+ * half-painted list) into the baseline — this is exactly how the original
+ * `landing-page` baseline went stale (see OM#30783).
+ *
+ * This waits for a real loaded-state signal — every widget's skeleton
+ * detaching — instead of a fixed timeout or a wide `maxDiffPixelRatio`
+ * tolerance band-aid. `waitFor({ state: 'detached' })` resolves immediately
+ * for a widget whose skeleton has already disappeared (or never rendered),
+ * so call order doesn't matter.
+ */
+export const waitForLandingWidgetsSettled = async (page: Page) => {
+  const widgets = page.locator('[data-testid^="KnowledgePanel."]');
+  const count = await widgets.count();
+  for (let i = 0; i < count; i++) {
+    await widgets
+      .nth(i)
+      .locator('[data-testid="entity-list-skeleton"]')
+      .waitFor({ state: 'detached' });
+  }
+};

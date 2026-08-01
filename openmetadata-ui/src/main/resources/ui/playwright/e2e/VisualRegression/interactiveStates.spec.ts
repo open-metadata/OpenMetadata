@@ -82,3 +82,74 @@ test('delete confirmation modal matches baseline', async ({ page }) => {
     ...SCREENSHOT_OPTS,
   });
 });
+
+test('explore entity summary panel (side panel) matches baseline', async ({
+  page,
+}) => {
+  // ExploreV1.component.tsx auto-opens the summary panel for the first
+  // search result as soon as results arrive (see the `searchResults`
+  // useEffect), so the panel is already visible on plain `/explore` load —
+  // that's what the static `explore` baseline (staticPages.spec.ts)
+  // incidentally captures. This test exercises the panel as its own
+  // composition context instead: it explicitly re-selects a *different*
+  // result by clicking its card, then screenshots just the panel, isolating
+  // the "Typography inside a side panel/drawer" styling context from the
+  // rest of the Explore layout.
+  await gotoForScreenshot(page, '/explore');
+  const summaryPanel = page.getByTestId('entity-summary-panel-container');
+  await summaryPanel.waitFor({ state: 'visible' });
+
+  // Dispatch directly on the card container (not a physical click) so the
+  // event bubbles to the Card's own onClick without also triggering the
+  // nested `entity-link` <Link>, which would navigate away from Explore
+  // instead of just updating the panel (same technique as the
+  // delete-modal test above, and playwright/utils/lineage.ts).
+  await page
+    .locator('[data-testid^="table-data-card_"]')
+    .nth(1)
+    .dispatchEvent('click');
+  await summaryPanel.waitFor({ state: 'visible' });
+  // The panel's Lineage tab-content fetches asynchronously and renders a
+  // spinner (`data-testid="loader"`, src/components/common/Loader) while
+  // in flight — wait for it to clear so the baseline captures the settled
+  // "No lineage connections found" state rather than a mid-load spinner.
+  await summaryPanel
+    .getByTestId('loader')
+    .waitFor({ state: 'detached' });
+
+  await expect(summaryPanel).toHaveScreenshot(
+    'explore-entity-summary-panel.png',
+    SCREENSHOT_OPTS
+  );
+});
+
+test('add team form (form inside modal) matches baseline', async ({
+  page,
+}) => {
+  // The highest-value coupling case for this migration: Typography/Input
+  // labels rendered by an antd <Form> nested inside an antd <Modal> —
+  // AddTeamForm.tsx (src/pages/TeamsPage/AddTeamForm.tsx), opened from the
+  // `teams` static page (staticPages.spec.ts) via its "add-team" button.
+  // The form is blank on open (no seeded/random data rendered), so no
+  // masking is required.
+  await gotoForScreenshot(page, '/settings/members/teams');
+  await page.getByTestId('add-team').click();
+  await page.getByTestId('name').waitFor({ state: 'visible' });
+  await page.getByTestId('display-name').waitFor({ state: 'visible' });
+  // The description field is a lazily-mounted RichTextEditor
+  // (src/components/common/RichTextEditor/RichTextEditor.tsx); wait for it
+  // so the screenshot doesn't race its async chunk load / toolbar mount.
+  await page.getByTestId('editor').waitFor({ state: 'visible' });
+  // antd autofocuses the first field (`name`) on modal open; a live text
+  // caret keeps repainting every blink cycle, which stops the screenshot
+  // assertion from ever seeing two identical frames in a row. `caret:
+  // 'hide'` (in SCREENSHOT_OPTS) covers native <input>/<textarea> carets,
+  // but blur explicitly too so nothing is left focused/blinking.
+  await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.blur()
+  );
+
+  await expect(page).toHaveScreenshot('add-team-form.png', {
+    ...SCREENSHOT_OPTS,
+  });
+});
