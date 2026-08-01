@@ -78,8 +78,7 @@ export const searchForEntityShouldWork = async (
 export const searchForEntityShouldWorkShowNoResult = async (
   fqn: string,
   displayName: string,
-  page: Page,
-  entityName: string
+  page: Page
 ) => {
   // Wait for welcome screen and close it if visible
   const isWelcomeScreenVisible = await page
@@ -96,13 +95,6 @@ export const searchForEntityShouldWorkShowNoResult = async (
 
   await page.waitForResponse(`api/v1/search/query?**`);
 
-  await waitForAllLoadersToDisappear(page);
-  // Scope to the entity category before asserting absence, the same way
-  // searchForEntityShouldWork does. Unscoped, the assertion is made against
-  // whatever category Explore happens to be showing, so a match from an
-  // unrelated category leaves the result attached and the "no results"
-  // placeholder unrendered — which is exactly how this fails on 1.13.
-  await page.getByRole('menuitem').filter({ hasText: entityName }).click();
   await waitForAllLoadersToDisappear(page);
 
   await expect(
