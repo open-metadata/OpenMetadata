@@ -179,7 +179,18 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
-def test_history_includes_retry_time_and_only_preserves_explicit_skips(tmp_path):
+def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):
+    # Was previously "only_preserves_explicit_skips" — the planner used to pin
+    # weight_ms=0 for tests whose only recorded outcome was 'skipped'. That was
+    # correct for tests that STAY skipped but silently wrong for a suite that
+    # was skipped at baseline capture and later re-enabled (Pages/Domains.spec.ts,
+    # PR #30451): the planner reserved zero budget for the newly-live tests and
+    # the shard blew past the 25-minute wall timeout (chromium-12 in run
+    # 30716060441). New rule: an all-zero history is treated as no data, so
+    # the unit falls through to the identity/FALLBACK_TEST_MS path.
+    # The trade-off — a legitimately-skipped test now consumes 30 s of planning
+    # budget per re-run — is negligible compared to under-budgeting a
+    # re-enabled suite by tens of minutes.
     planner = load_script("build_playwright_shards")
     history = tmp_path / "history.json"
     history.write_text(
@@ -248,16 +259,18 @@ def test_history_includes_retry_time_and_only_preserves_explicit_skips(tmp_path)
     planner.apply_history_weights(units, weights, identity_weights)
 
     assert weights["flaky-test"] == 150
-    assert weights["known-skip"] == 0
+    assert "known-skip" not in weights
     assert "expected-zero" not in weights
     assert ("Features/Entity.spec.ts", "zero observation") not in identity_weights
-    assert units[0].weight_ms == 0
+    assert units[0].weight_ms == planner.FALLBACK_TEST_MS
     assert units[1].weight_ms == planner.FALLBACK_TEST_MS
     assert units[2].weight_ms == planner.FALLBACK_TEST_MS
     assert units[3].weight_ms == planner.FALLBACK_TEST_MS
 
 
-def test_versioned_baseline_only_uses_zero_weight_for_skipped_ids():
+def test_versioned_baseline_omits_all_zero_ids_from_weights():
+    # Was previously "only_uses_zero_weight_for_skipped_ids". See the sibling
+    # test above for the rationale for the behavior change.
     planner = load_script("build_playwright_shards")
     baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
     payload = json.loads(baseline.read_text())
@@ -266,10 +279,7 @@ def test_versioned_baseline_only_uses_zero_weight_for_skipped_ids():
     weights, _ = planner.load_history([baseline])
 
     assert any(test["outcome"] == "expected" for test in zero_tests)
-    assert all(
-        (weights.get(test["id"]) == 0) == (test["outcome"] == "skipped")
-        for test in zero_tests
-    )
+    assert all(test["id"] not in weights for test in zero_tests)
 
 
 def test_timing_import_keeps_project_executions_separate(tmp_path, monkeypatch):
