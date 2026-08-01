@@ -24,6 +24,8 @@ import { settingClick } from '../../utils/sidebar';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+const SUCCESSFUL_RUN_STATUS = /success|completed|activeError/i;
+
 /**
  * Installs the Search Indexing Application from the marketplace.
  * Shared by the "Install application" step and the self-healing guard
