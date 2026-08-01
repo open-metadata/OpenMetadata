@@ -2684,13 +2684,13 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       const ruleLocator = page.locator('.group').nth(0);
       await selectOption(
         page,
-        ruleLocator.locator('.group--field .ant-select'),
+        ruleLocator.locator('.group--field'),
         'Data Product',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.locator('.rule--operator'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
       );
 
