@@ -12,8 +12,8 @@
  */
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import { Button, Card, Col, Row, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -160,8 +160,8 @@ const TaskFeedCardFromTask = ({
             {taskColumnName}
 
             <Typography
-              data-testid="entity-link"
-              className="break-all header-link text-sm">
+              className="break-all header-link text-sm"
+              data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography>
 

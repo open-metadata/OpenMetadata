@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { headerBackgroundColors } from '../../../constants/Mydata.constants';
 import CustomiseLandingPageHeader from '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -32,9 +32,9 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
   return (
     <div className="header-theme-settings">
       <Typography
-        as='h1'
-        size='display-sm'
-        className="header-theme-title display-xs font-semibold">
+        as="h1"
+        className="header-theme-title display-xs font-semibold"
+        size="display-sm">
         {t('label.preview-header')}
       </Typography>
       <div className="header-theme-container p-box bg-white">

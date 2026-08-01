@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger, Typography } from '@openmetadata/ui-core-components';
+import {
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -302,7 +306,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography as='p' className="text-center  no-data-placeholder">
+              <Typography as="p" className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
               </Typography>
             </ErrorPlaceHolderNew>

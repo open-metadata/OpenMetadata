@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -191,10 +191,10 @@ const DomainsWidget = ({
                   <div className="domain-card-full-content">
                     <div className="domain-card-full-title-row">
                       <Typography
+                        className="font-semibold"
                         ellipsis={{
                           tooltip: true,
-                        }}
-                        className="font-semibold">
+                        }}>
                         {domain.displayName || domain.name}
                       </Typography>
                       <span className="domain-card-full-count">
@@ -213,8 +213,8 @@ const DomainsWidget = ({
                         {getDomainIcon(domain.style?.iconURL)}
                       </div>
                       <Typography
-                        ellipsis={{ tooltip: true }}
-                        className="domain-card-name">
+                        className="domain-card-name"
+                        ellipsis={{ tooltip: true }}>
                         {domain.displayName || domain.name}
                       </Typography>
                     </span>

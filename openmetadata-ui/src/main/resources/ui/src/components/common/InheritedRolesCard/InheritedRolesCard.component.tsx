@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Card } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,8 +42,8 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
               <div className="mb-2 d-flex items-center gap-2" key={i}>
                 <Icon component={IconUser} style={{ fontSize: '16px' }} />
                 <Typography
-                  ellipsis={{ tooltip: true }}
-                  className="ant-typography-ellipsis-custom w-48">
+                  className="ant-typography-ellipsis-custom w-48"
+                  ellipsis={{ tooltip: true }}>
                   {getEntityName(inheritedRole)}
                 </Typography>
               </div>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Empty, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Empty, Row } from 'antd';
 import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';

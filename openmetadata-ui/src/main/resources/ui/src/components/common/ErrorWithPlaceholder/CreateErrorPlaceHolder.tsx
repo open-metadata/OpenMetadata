@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -60,14 +60,14 @@ const CreateErrorPlaceHolder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography as='p'>
+          <Typography as="p">
             {placeholderText ??
               t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                 entity: heading,
               })}
           </Typography>
           {!placeholderText && (
-            <Typography as='p'>
+            <Typography as="p">
               <Transi18next
                 i18nKey="message.refer-to-our-doc"
                 renderElement={

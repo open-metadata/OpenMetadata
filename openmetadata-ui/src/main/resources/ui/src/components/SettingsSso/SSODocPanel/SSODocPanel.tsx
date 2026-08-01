@@ -80,7 +80,10 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
             />
           </div>
         )}
-        <Typography as='h1' size='display-sm' className="sso-provider-title text-md">
+        <Typography
+          as="h1"
+          className="sso-provider-title text-md"
+          size="display-sm">
           {serviceName === AuthProvider.Basic
             ? t('label.basic-configuration')
             : `${getProviderDisplayName(serviceName)} ${t(

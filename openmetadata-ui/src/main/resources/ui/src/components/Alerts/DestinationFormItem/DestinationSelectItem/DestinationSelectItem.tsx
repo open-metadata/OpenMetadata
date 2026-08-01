@@ -12,8 +12,19 @@
  */
 
 import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Alert, Button, Col, Form, Input, Row, Select, Skeleton, Switch, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Alert,
+  Button,
+  Col,
+  Form,
+  Input,
+  Row,
+  Select,
+  Skeleton,
+  Switch,
+  Tabs,
+} from 'antd';
 import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -334,9 +345,7 @@ function DestinationSelectItem({
               <Col span={24}>
                 <Form.Item
                   label={
-                    <Typography>
-                      {t('label.notify-downstream')}
-                    </Typography>
+                    <Typography>{t('label.notify-downstream')}</Typography>
                   }
                   labelAlign="left"
                   labelCol={{ span: 6 }}

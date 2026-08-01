@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Affix, Button, Card, Skeleton, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card, Skeleton, Space } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -145,12 +145,12 @@ const GithubStarCard = () => {
           />
         </Space>
 
-        <Typography as='p' className="github-star-popup-description">
+        <Typography as="p" className="github-star-popup-description">
           {t('message.star-on-github-description')}
         </Typography>
 
         <ButtonGroup className="github-action-button-group">
-          <Typography as='a' href={OMD_REPOSITORY_LINK} target="_blank">
+          <Typography as="a" href={OMD_REPOSITORY_LINK} target="_blank">
             <Button
               className="github-star-button github-modal-action-button"
               icon={<Icon component={StarGithubIcon} size={12} />}>
@@ -158,7 +158,7 @@ const GithubStarCard = () => {
             </Button>
           </Typography>
 
-          <Typography as='a' href={OMD_REPOSITORY_LINK} target="_blank">
+          <Typography as="a" href={OMD_REPOSITORY_LINK} target="_blank">
             <Button className="github-modal-action-button">
               {isLoading ? (
                 <div data-testid="skeleton-loader">

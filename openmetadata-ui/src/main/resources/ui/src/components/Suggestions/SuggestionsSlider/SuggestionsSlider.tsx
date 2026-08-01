@@ -52,9 +52,7 @@ const SuggestionsSlider = () => {
 
   return (
     <div className="d-flex items-center gap-2 m-r-md">
-      <Typography className="right-panel-label">
-        {suggestionLabel}
-      </Typography>
+      <Typography className="right-panel-label">{suggestionLabel}</Typography>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
         <Button

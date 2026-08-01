@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
@@ -77,8 +77,8 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
       <>
         {renderNameWithOptionalLink(name)}
         <Typography
-          data-testid="column-display-name"
-          className="d-block break-word">
+          className="d-block break-word"
+          data-testid="column-display-name">
           {renderNameWithOptionalLink(displayName)}
         </Typography>
       </>
@@ -91,8 +91,8 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
       style={{ maxWidth: '80%' }}>
       <div className="d-inline-flex items-start gap-1 flex-column">
         <Typography
-          data-testid="column-name"
-          className="m-b-0 d-block text-link-color">
+          className="m-b-0 d-block text-link-color"
+          data-testid="column-name">
           {renderMainContent}
         </Typography>
 

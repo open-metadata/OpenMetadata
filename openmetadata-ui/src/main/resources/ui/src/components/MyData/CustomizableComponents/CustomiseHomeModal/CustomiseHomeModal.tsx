@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Modal, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Divider, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';

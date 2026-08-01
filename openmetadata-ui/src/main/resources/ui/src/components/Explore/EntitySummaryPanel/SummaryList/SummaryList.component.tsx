@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Collapse, List, Row, Skeleton } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Collapse, List, Row, Skeleton } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';

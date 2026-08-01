@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -58,7 +58,7 @@ const TeamsSubscription = ({
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
-      <Typography as='a' href={value.endpoint} target="_blank">
+      <Typography as="a" href={value.endpoint} target="_blank">
         {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
       </Typography>
     ),
@@ -73,8 +73,8 @@ const TeamsSubscription = ({
         return (
           <div className="d-flex gap-2">
             <Typography
-              data-testid="subscription-no-data"
-              className="font-medium text-sm text-secondary-new ">
+              className="font-medium text-sm text-secondary-new "
+              data-testid="subscription-no-data">
               {t('label.none')}
             </Typography>
           </div>
@@ -83,8 +83,8 @@ const TeamsSubscription = ({
 
       return (
         <Typography
-          data-testid="subscription-no-data"
-          className="font-medium text-sm text-secondary-new">
+          className="font-medium text-sm text-secondary-new"
+          data-testid="subscription-no-data">
           {NO_DATA_PLACEHOLDER}
         </Typography>
       );
@@ -185,7 +185,7 @@ const TeamsSubscription = ({
       {subscriptionRenderElement}
       {editSubscription && (
         // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
-        (<Button
+        <Button
           className="remove-button-default-styling"
           onClick={(e) => e.stopPropagation()}>
           <Modal
@@ -242,7 +242,7 @@ const TeamsSubscription = ({
               </Form.Item>
             </Form>
           </Modal>
-        </Button>)
+        </Button>
       )}
     </Space>
   );

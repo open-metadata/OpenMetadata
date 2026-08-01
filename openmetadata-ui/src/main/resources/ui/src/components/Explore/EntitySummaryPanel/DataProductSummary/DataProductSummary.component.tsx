@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,8 +45,8 @@ const DataProductSummary = ({
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="domain-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="domain-header">
               {t('label.domain-plural')}
             </Typography>
           </Col>
@@ -73,8 +73,8 @@ const DataProductSummary = ({
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="owner-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="owner-header">
               {t('label.owner-plural')}
             </Typography>
           </Col>
@@ -86,8 +86,8 @@ const DataProductSummary = ({
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="expert-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="expert-header">
               {t('label.expert-plural')}
             </Typography>
           </Col>
@@ -98,8 +98,8 @@ const DataProductSummary = ({
               </Space>
             ) : (
               <Typography
-                data-testid="no-expert-header"
-                className="text-grey-body">
+                className="text-grey-body"
+                data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { camelCase, isEmpty, isUndefined } from 'lodash';
@@ -271,7 +271,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Typography data-testid="header" className="font-medium">
+        <Typography className="font-medium" data-testid="header">
           {t('label.schedule-for-entity', {
             entity: t('label.test-case-plural'),
           })}

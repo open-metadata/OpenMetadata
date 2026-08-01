@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FeaturedIcon, Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  FeaturedIcon,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { User03 } from '@untitledui/icons';
 import { Button, Col, Modal, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';

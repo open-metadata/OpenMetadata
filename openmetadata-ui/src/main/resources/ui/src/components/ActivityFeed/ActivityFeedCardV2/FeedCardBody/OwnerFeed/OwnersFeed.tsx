@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';

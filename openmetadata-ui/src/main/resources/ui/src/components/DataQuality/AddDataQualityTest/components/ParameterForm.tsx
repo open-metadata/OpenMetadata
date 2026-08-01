@@ -13,8 +13,17 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Form, FormItemProps, Input, InputNumber, Select, Switch, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Form,
+  FormItemProps,
+  Input,
+  InputNumber,
+  Select,
+  Switch,
+  Tooltip,
+} from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';

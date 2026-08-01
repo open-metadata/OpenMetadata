@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';

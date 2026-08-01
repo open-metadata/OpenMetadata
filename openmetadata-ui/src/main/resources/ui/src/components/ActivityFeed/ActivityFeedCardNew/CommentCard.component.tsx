@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -153,17 +153,15 @@ const CommentCard = ({
               </Link>
             </UserPopOverCard>
           </Typography>
-          <Typography className="seperator m-b-xss">
-            {seperator}
-          </Typography>
+          <Typography className="seperator m-b-xss">{seperator}</Typography>
           <Typography>
             <Tooltip
               color="white"
               overlayClassName="timestamp-tooltip"
               title={formatDateTime(post.postTs)}>
               <Typography
-                data-testid="timestamp"
-                className="feed-card-header-v2-timestamp mr-2">
+                className="feed-card-header-v2-timestamp mr-2"
+                data-testid="timestamp">
                 {getRelativeTime(post.postTs)}
               </Typography>
             </Tooltip>

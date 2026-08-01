@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import { Button, Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -211,9 +215,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           </Col>
                           <Col>
                             {/* Display the change event id */}
-                            <Typography>
-                              {changeEventData.id}
-                            </Typography>
+                            <Typography>{changeEventData.id}</Typography>
                           </Col>
                         </Row>
                       </Col>
@@ -240,8 +242,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   gutter={[4, 4]}>
                                   <Col span={24}>
                                     <Typography
-                                      data-testid="event-data-key"
-                                      className="text-grey-muted">
+                                      className="text-grey-muted"
+                                      data-testid="event-data-key">
                                       {`${getLabelsForEventDetails(
                                         key as keyof AlertEventDetailsToDisplay
                                       )}:`}
@@ -249,8 +251,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   </Col>
                                   <Col span={24}>
                                     <Typography
-                                      data-testid="event-data-value"
-                                      className="font-medium">
+                                      className="font-medium"
+                                      data-testid="event-data-value">
                                       {value}
                                     </Typography>
                                   </Col>
@@ -350,8 +352,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 icon={<FilterIcon height={16} />}>
                 {filter !== AlertRecentEventFilters.ALL && (
                   <Typography
-                    data-testid="applied-filter-text"
-                    className="font-medium">{` : ${getAlertEventsFilterLabels(
+                    className="font-medium"
+                    data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
                     filter as AlertRecentEventFilters
                   )}`}</Typography>
                 )}

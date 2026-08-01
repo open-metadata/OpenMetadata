@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Row, Slider } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Divider, Row, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
@@ -77,14 +77,12 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         return {
           label: (
             <div className="d-flex flex-column">
-              <Typography
-                data-testid="tag-option-label"
-                className="text-sm">
+              <Typography className="text-sm" data-testid="tag-option-label">
                 {item.data.displayName ?? item.data.name}
               </Typography>
               <Typography
-                data-testid="tag-option-fully-qualified-name"
-                className="text-grey-muted text-sm">
+                className="text-grey-muted text-sm"
+                data-testid="tag-option-fully-qualified-name">
                 {fqn}
               </Typography>
             </div>
@@ -154,8 +152,8 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
               {t('label.boost')}
             </Typography>
             <Typography
-              data-testid="term-boost-value"
-              className="font-semibold boost-value">
+              className="font-semibold boost-value"
+              data-testid="term-boost-value">
               {termBoostData.boost}
             </Typography>
           </div>

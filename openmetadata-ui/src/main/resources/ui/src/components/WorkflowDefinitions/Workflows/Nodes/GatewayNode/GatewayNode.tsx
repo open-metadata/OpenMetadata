@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { ForkOutlined } from '@ant-design/icons';
-import { Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +45,7 @@ const GatewayNode = ({ data }: Node['data']) => {
           <Typography className="text-grey-muted gateway-node-action">
             {t('label.gateway')}
           </Typography>
-          <Typography weight='bold'>{getEntityName(data)}</Typography>
+          <Typography weight="bold">{getEntityName(data)}</Typography>
         </Space>
       </div>
       <Handle isConnectable={false} position={Position.Bottom} type="source" />

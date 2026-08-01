@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Alert } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

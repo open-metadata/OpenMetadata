@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -87,9 +87,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         title: t('label.data-asset-type'),
         dataIndex: 'entityType',
         key: 'entityType',
-        render: (entityType: string) => (
-          <Typography>{entityType}</Typography>
-        ),
+        render: (entityType: string) => <Typography>{entityType}</Typography>,
       },
       {
         title: t('label.owner'),
@@ -108,9 +106,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         }),
         dataIndex: 'pageViews',
         key: 'totalViews',
-        render: (pageViews: number) => (
-          <Typography>{pageViews}</Typography>
-        ),
+        render: (pageViews: number) => <Typography>{pageViews}</Typography>,
       },
     ],
     []

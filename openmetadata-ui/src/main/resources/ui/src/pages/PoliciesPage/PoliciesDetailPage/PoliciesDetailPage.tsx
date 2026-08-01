@@ -13,8 +13,18 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Card, Col, Dropdown, Modal, Row, Space, Tabs, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  Col,
+  Dropdown,
+  Modal,
+  Row,
+  Space,
+  Tabs,
+  Tooltip,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -386,8 +396,8 @@ const PoliciesDetailPage = () => {
                     className="w-full justify-between p-b-lg"
                     direction="horizontal">
                     <Typography
-                      data-testid="rule-name"
-                      className="font-medium text-base text-grey-body">
+                      className="font-medium text-base text-grey-body"
+                      data-testid="rule-name">
                       {rule.name}
                     </Typography>
                     {getRuleActionElement(rule)}

@@ -12,8 +12,19 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Form, FormProps, Input, Radio, Row, Select, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  FormProps,
+  Input,
+  Radio,
+  Row,
+  Select,
+  Space,
+} from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {

@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Space } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { isArray } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +111,7 @@ const AddGlossary = ({
 
   const rightPanel = (
     <div data-testid="right-panel">
-      <Typography as='h5' size='text-md'>
+      <Typography as="h5" size="text-md">
         {t('label.configure-entity', {
           entity: t('label.glossary'),
         })}
@@ -303,7 +303,11 @@ const AddGlossary = ({
         children: (
           <>
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-            <Typography as='h5' size='text-md' data-testid="form-heading" className="m-t-md">
+            <Typography
+              as="h5"
+              className="m-t-md"
+              data-testid="form-heading"
+              size="text-md">
               {header}
             </Typography>
             <div className="add-glossary" data-testid="add-glossary">

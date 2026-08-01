@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Divider, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Tooltip } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

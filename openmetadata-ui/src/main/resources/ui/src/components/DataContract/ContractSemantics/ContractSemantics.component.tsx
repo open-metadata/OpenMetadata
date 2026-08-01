@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
@@ -72,9 +72,7 @@ const ContractSemantics: React.FC<{
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">
-                  <Typography className="rule-name">
-                    {item.name}
-                  </Typography>
+                  <Typography className="rule-name">{item.name}</Typography>
                   {inheritedIcon}
                 </div>
                 <Typography className="rule-description">

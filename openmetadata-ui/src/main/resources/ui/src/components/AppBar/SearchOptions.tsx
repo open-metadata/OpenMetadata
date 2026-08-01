@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { FunctionComponent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';

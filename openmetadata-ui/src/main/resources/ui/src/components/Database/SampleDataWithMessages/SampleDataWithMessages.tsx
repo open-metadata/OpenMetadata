@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -65,7 +65,7 @@ const SampleDataWithMessages: FC<{
         className="border-default border-radius-sm p-y-lg"
         data-testid="no-data">
         <ErrorPlaceHolder>
-          <Typography as='p'>
+          <Typography as="p">
             <Transi18next
               i18nKey="message.view-sample-data-entity"
               renderElement={

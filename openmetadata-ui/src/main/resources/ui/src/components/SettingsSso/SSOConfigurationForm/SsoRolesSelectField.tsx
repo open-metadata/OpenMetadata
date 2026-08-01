@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { FieldProps } from '@rjsf/utils';
 import { Typography } from '@openmetadata/ui-core-components';
+import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

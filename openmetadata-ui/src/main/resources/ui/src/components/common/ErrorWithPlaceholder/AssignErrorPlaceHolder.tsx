@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -54,7 +54,7 @@ const AssignErrorPlaceHolder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography as='p' className="w-max-600">
+          <Typography as="p" className="w-max-600">
             {children ??
               t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                 entity: heading,

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -23,7 +24,6 @@ import {
   Row,
   Tag,
 } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import {
@@ -81,8 +81,8 @@ function TeamAndUserSelectItem({
                 flex="1 1 auto">
                 <Typography
                   ellipsis
-                  title={label}
-                  className="dropdown-option-label">
+                  className="dropdown-option-label"
+                  title={label}>
                   {label}
                 </Typography>
               </Col>
@@ -243,8 +243,8 @@ function TeamAndUserSelectItem({
         <Row gutter={[4, 4]}>
           {isEmpty(selectedOptions) ? (
             <Typography
-              data-testid="placeholder-text"
-              className="text-sm p-l-xss text-grey-3">
+              className="text-sm p-l-xss text-grey-3"
+              data-testid="placeholder-text">
               {t('label.please-select-entity', {
                 entity: entityType,
               })}

@@ -167,8 +167,8 @@ const TaskFeedCard = ({
 
           {!isRecognizerFeedback && (
             <Typography
-              data-testid="entity-link"
-              className="break-all header-link text-sm">
+              className="break-all header-link text-sm"
+              data-testid="entity-link">
               {entityName}
             </Typography>
           )}

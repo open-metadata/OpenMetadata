@@ -12,8 +12,17 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Image, Radio, RadioChangeEvent, Row, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Col,
+  Image,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Tooltip,
+} from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
@@ -88,7 +97,10 @@ function AddWidgetTabContent({
                 preview={false}
                 src={widgetImage}
               />
-              <Typography as='p' data-testid="widget-description" className="d-block text-center">
+              <Typography
+                as="p"
+                className="d-block text-center"
+                data-testid="widget-description">
                 {widget.description}
               </Typography>
               <Tooltip

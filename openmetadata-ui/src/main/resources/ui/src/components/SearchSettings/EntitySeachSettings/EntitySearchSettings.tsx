@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Collapse, InputNumber, Row, Select, Switch, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Collapse, InputNumber, Row, Select, Switch, Tag } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, omit, startCase } from 'lodash';
 import type { MenuInfo } from 'rc-menu/lib/interface';
@@ -722,7 +722,7 @@ const EntitySearchSettings = () => {
           </Col>
         </Row>
         {stage.purpose && (
-          <Typography as='p' className="ranking-stage-purpose">
+          <Typography as="p" className="ranking-stage-purpose">
             {stage.purpose}
           </Typography>
         )}
@@ -731,7 +731,7 @@ const EntitySearchSettings = () => {
             <Typography className="text-grey-muted text-xs font-normal">
               {t('label.match-type')}
             </Typography>
-            <Typography as='p' className="ranking-stage-value">
+            <Typography as="p" className="ranking-stage-value">
               {matchType}
             </Typography>
           </Col>
@@ -767,7 +767,7 @@ const EntitySearchSettings = () => {
               <Typography className="text-grey-muted text-xs font-normal">
                 {t('label.algorithm')}
               </Typography>
-              <Typography as='p' className="m-0">
+              <Typography as="p" className="m-0">
                 {ranking.algorithm
                   ? startCase(ranking.algorithm)
                   : t('label.no-data')}
@@ -789,11 +789,11 @@ const EntitySearchSettings = () => {
         {signals && (
           <div className="ranking-settings-card" data-testid="ranking-signals">
             {signals.purpose && (
-              <Typography as='p' className="text-grey-muted m-b-xs">
+              <Typography as="p" className="text-grey-muted m-b-xs">
                 {signals.purpose}
               </Typography>
             )}
-            <Typography as='p' className="text-grey-muted m-b-sm">
+            <Typography as="p" className="text-grey-muted m-b-sm">
               {t('message.search-ranking-signals-explanation')}
             </Typography>
             <Row gutter={[12, 12]}>
@@ -866,10 +866,17 @@ const EntitySearchSettings = () => {
           <div
             className="page-header-container"
             data-testid="page-header-container">
-            <Typography as='h5' size='text-md' data-testid="heading" className="heading">
+            <Typography
+              as="h5"
+              className="heading"
+              data-testid="heading"
+              size="text-md">
               {entityData?.label}
             </Typography>
-            <Typography as='p' data-testid="sub-heading" className="sub-heading">
+            <Typography
+              as="p"
+              className="sub-heading"
+              data-testid="sub-heading">
               {entityData?.description}
             </Typography>
           </div>

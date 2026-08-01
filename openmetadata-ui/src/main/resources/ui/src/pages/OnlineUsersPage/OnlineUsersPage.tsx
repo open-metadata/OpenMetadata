@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Select, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Select, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import moment from 'moment';
@@ -192,11 +192,7 @@ const OnlineUsersPage = () => {
         const activityTime = lastActivityTime || record.lastLoginTime;
 
         if (!activityTime) {
-          return (
-            <Typography color='secondary'>
-              {t('label.never')}
-            </Typography>
-          );
+          return <Typography color="secondary">{t('label.never')}</Typography>;
         }
 
         const lastActivityMoment = moment(activityTime);
@@ -224,10 +220,8 @@ const OnlineUsersPage = () => {
 
         return (
           <Space direction="vertical" size={0}>
-            <Typography style={{ color: statusColor }}>
-              {statusText}
-            </Typography>
-            <Typography style={{ fontSize: '12px' }} color='secondary'>
+            <Typography style={{ color: statusColor }}>{statusText}</Typography>
+            <Typography color="secondary" style={{ fontSize: '12px' }}>
               {formatDateTime(activityTime)}
             </Typography>
           </Space>

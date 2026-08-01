@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import { FC, useMemo } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
@@ -45,10 +45,10 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
           width={20}
         />
         <Typography
-          as='p'
           ellipsis
-          data-testid="announcement-title"
-          className="announcement-title">
+          as="p"
+          className="announcement-title"
+          data-testid="announcement-title">
           {title}
         </Typography>
       </Space>

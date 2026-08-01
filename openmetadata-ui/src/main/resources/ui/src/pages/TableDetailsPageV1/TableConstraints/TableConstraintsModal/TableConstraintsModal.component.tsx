@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Empty, Form, Modal, Select, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Empty, Form, Modal, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -171,8 +171,8 @@ const TableConstraintsModal = ({
               {breadcrumbs.slice(0, 4).map((breadcrumb, index) => (
                 <Fragment key={breadcrumb.name}>
                   <Typography
-                    ellipsis={{ tooltip: true }}
-                    className="constraint-breadcrumb-item">
+                    className="constraint-breadcrumb-item"
+                    ellipsis={{ tooltip: true }}>
                     {breadcrumb.name}
                   </Typography>
                   {index !== breadcrumbs.length - 2 && (
@@ -184,8 +184,8 @@ const TableConstraintsModal = ({
               ))}
             </Space>
             <Typography
-              ellipsis={{ tooltip: true }}
-              className="constraint-breadcrumb-item constraint-column-name">
+              className="constraint-breadcrumb-item constraint-column-name"
+              ellipsis={{ tooltip: true }}>
               {breadcrumbs[4].name}
             </Typography>
           </div>

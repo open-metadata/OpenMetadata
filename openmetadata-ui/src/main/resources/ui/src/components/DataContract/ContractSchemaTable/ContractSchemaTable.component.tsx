@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Tag } from 'antd';
 import { ColumnsType, ColumnType, TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useMemo } from 'react';

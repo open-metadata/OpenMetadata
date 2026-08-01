@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -26,7 +27,6 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import {
@@ -411,7 +411,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               <div
                 className="p-x-sm p-y-xss search-dropdown-helper-text"
                 data-testid="search-dropdown-helper-text">
-                <Typography color='secondary' className="text-xs">
+                <Typography className="text-xs" color="secondary">
                   {helperText}
                 </Typography>
               </div>

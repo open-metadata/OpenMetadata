@@ -400,7 +400,7 @@ const TaskPayloadSchemaFields = ({
                 onChange={(value) => updateField(fieldName, value)}
               />
               {description ? (
-                <Typography as='p' className="m-b-0 m-t-xs text-grey-muted">
+                <Typography as="p" className="m-b-0 m-t-xs text-grey-muted">
                   {description}
                 </Typography>
               ) : null}
@@ -449,7 +449,7 @@ const TaskPayloadSchemaFields = ({
                 }}
               />
               {description ? (
-                <Typography as='p' className="m-b-0 m-t-xs text-grey-muted">
+                <Typography as="p" className="m-b-0 m-t-xs text-grey-muted">
                   {description}
                 </Typography>
               ) : null}
@@ -476,7 +476,7 @@ const TaskPayloadSchemaFields = ({
                 onChange={(newTags) => updateField(fieldName, newTags)}
               />
               {description ? (
-                <Typography as='p' className="m-b-0 m-t-xs text-grey-muted">
+                <Typography as="p" className="m-b-0 m-t-xs text-grey-muted">
                   {description}
                 </Typography>
               ) : null}
@@ -635,7 +635,7 @@ const TaskPayloadSchemaFields = ({
                 }}
               />
               {description ? (
-                <Typography as='p' className="m-b-0 m-t-xs text-grey-muted">
+                <Typography as="p" className="m-b-0 m-t-xs text-grey-muted">
                   {description}
                 </Typography>
               ) : null}
@@ -659,7 +659,7 @@ const TaskPayloadSchemaFields = ({
               onChange={(event) => updateField(fieldName, event.target.value)}
             />
             {description ? (
-              <Typography as='p' className="m-b-0 m-t-xs text-grey-muted">
+              <Typography as="p" className="m-b-0 m-t-xs text-grey-muted">
                 {description}
               </Typography>
             ) : null}

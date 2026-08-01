@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';

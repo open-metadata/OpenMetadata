@@ -12,8 +12,18 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Avatar, Button, Col, Modal, Row, Space, Switch, Tabs, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Button,
+  Col,
+  Modal,
+  Row,
+  Space,
+  Switch,
+  Tabs,
+  Tooltip,
+} from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -582,8 +592,8 @@ const TeamDetailsV1 = ({
                     <Row>
                       <Col span={21}>
                         <Typography
-                          data-testid="open-group-label"
-                          className="font-medium">
+                          className="font-medium"
+                          data-testid="open-group-label">
                           {t('label.public-team')}
                         </Typography>
                       </Col>
@@ -643,12 +653,12 @@ const TeamDetailsV1 = ({
         className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as='p' style={{ marginBottom: '0' }}>
+        <Typography as="p" style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.team'),
           })}
         </Typography>
-        <Typography as='p'>
+        <Typography as="p">
           <Transi18next
             i18nKey="message.refer-to-our-doc"
             renderElement={

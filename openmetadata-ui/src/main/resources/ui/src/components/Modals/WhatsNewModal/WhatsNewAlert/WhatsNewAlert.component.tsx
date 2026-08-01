@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Affix, Button, Card, Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card, Col, Row } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -101,7 +101,7 @@ const WhatsNewAlert = () => {
                 <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography>
-                <Typography as='p' className="whats-new-alert-subtext">
+                <Typography as="p" className="whats-new-alert-subtext">
                   {t('label.to-learn-more-please-check-out')}
                 </Typography>
                 <div className="whats-new-alert-links">

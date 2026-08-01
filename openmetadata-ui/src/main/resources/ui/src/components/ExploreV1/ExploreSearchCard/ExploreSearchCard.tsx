@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  Breadcrumbs,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
@@ -449,8 +453,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography
-                  data-testid="entity-header-display-name"
-                  className="text-lg font-medium text-link-color">
+                  className="text-lg font-medium text-link-color"
+                  data-testid="entity-header-display-name">
                   {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography>
               </Button>
@@ -473,8 +477,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   onFocus={handlePrefetch}
                   onMouseEnter={handlePrefetch}>
                   <Typography
-                    data-testid="entity-header-display-name"
-                    className="text-lg font-medium text-link-color break-word whitespace-normal">
+                    className="text-lg font-medium text-link-color break-word whitespace-normal"
+                    data-testid="entity-header-display-name">
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography>
                 </Link>
@@ -554,8 +558,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               </Typography>
               {score !== undefined && (
                 <Typography
-                  data-testid="ranking-score"
-                  className="ranking-details-score">
+                  className="ranking-details-score"
+                  data-testid="ranking-score">
                   {t('label.score')}: {formatScoreValue(score)}
                 </Typography>
               )}

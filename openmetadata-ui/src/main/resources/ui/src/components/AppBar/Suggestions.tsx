@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -413,7 +413,7 @@ const Suggestions = ({
 
     return (
       <div data-testid="ai-query-suggestions">
-        <Typography weight='bold' className="m-b-sm d-block">
+        <Typography className="m-b-sm d-block" weight="bold">
           {t('label.ai-queries')}
         </Typography>
         {aiQueries.map((query) => (

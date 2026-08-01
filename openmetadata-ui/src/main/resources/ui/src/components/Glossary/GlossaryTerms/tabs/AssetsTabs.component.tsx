@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -23,7 +24,6 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -706,16 +706,14 @@ const AssetsTabs = forwardRef(
             }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
-                <Typography as='p'>
+                <Typography as="p">
                   {t('label.no-matching-data-asset')}
                 </Typography>
               </div>
             )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
-                <Typography as='p'>
-                  {noDataPlaceholder.message}
-                </Typography>
+                <Typography as="p">{noDataPlaceholder.message}</Typography>
               </div>
             )}
           </ErrorPlaceHolderNew>
@@ -1073,8 +1071,8 @@ const AssetsTabs = forwardRef(
                       />
                       {quickFilterQuery && (
                         <Typography
-                          onClick={clearFilters}
-                          className="text-primary self-center cursor-pointer">
+                          className="text-primary self-center cursor-pointer"
+                          onClick={clearFilters}>
                           {t('label.clear-entity', {
                             entity: '',
                           })}

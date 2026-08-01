@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Progress, Skeleton, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Progress, Skeleton, Space } from 'antd';
 import classNames from 'classnames';
 import { isNumber, round } from 'lodash';
 import { useMemo } from 'react';
@@ -59,14 +59,17 @@ export const SummaryCard = ({
         data-testid="summary-card-label">
         <Space align="center" size={8}>
           {titleIcon}
-          <Typography as='p' data-testid="summary-card-title" className="summary-card-title">
+          <Typography
+            as="p"
+            className="summary-card-title"
+            data-testid="summary-card-title">
             {title}
           </Typography>
         </Space>
         <Typography
-          as='p'
-          data-testid="summary-card-description"
-          className="summary-card-description">
+          as="p"
+          className="summary-card-description"
+          data-testid="summary-card-description">
           {isNumber(value) ? formatNumberWithComma(value) : value}
         </Typography>
       </div>

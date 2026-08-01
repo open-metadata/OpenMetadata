@@ -12,8 +12,8 @@
  */
 
 import { DragOutlined } from '@ant-design/icons';
-import { Button, Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
@@ -96,11 +96,11 @@ const WidgetHeader = ({
           <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
         )}
         <Typography
-          as='p'
+          as="p"
+          className="widget-title cursor-pointer"
           data-testid="widget-title"
           ellipsis={{ tooltip: true }}
-          onClick={onTitleClick}
-          className="widget-title cursor-pointer">
+          onClick={onTitleClick}>
           {title}
         </Typography>
       </Col>

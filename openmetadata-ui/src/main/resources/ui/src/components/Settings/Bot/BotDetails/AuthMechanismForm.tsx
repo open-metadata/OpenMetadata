@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Select, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
@@ -126,7 +126,7 @@ const AuthMechanismForm: FC<Props> = ({
         <Typography className="card-title m-t-0 m-b-2 text-md">
           {t('message.automate-provisioning-with-scim')}
         </Typography>
-        <Typography as='p' className="m-b-0 card-description">
+        <Typography as="p" className="m-b-0 card-description">
           {t(
             'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
           )}

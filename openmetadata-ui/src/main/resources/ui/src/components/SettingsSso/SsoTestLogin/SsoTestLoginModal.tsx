@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Modal, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Modal, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,29 +39,29 @@ const SsoTestLoginModal = ({
         className="sso-test-login-details"
         data-testid="sso-test-login-details">
         {result.resolvedPrincipal && (
-          <Typography as='p' className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.user')}:</strong> {result.resolvedPrincipal}
           </Typography>
         )}
         {result.resolvedEmail && (
-          <Typography as='p' className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.email')}:</strong> {result.resolvedEmail}
           </Typography>
         )}
         {!isEmpty(result.mappedRoles) && (
-          <Typography as='p' className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.role-plural')}:</strong>{' '}
             {result.mappedRoles?.join(', ')}
           </Typography>
         )}
         {!isEmpty(result.mappedTeams) && (
-          <Typography as='p' className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.team-plural')}:</strong>{' '}
             {result.mappedTeams?.join(', ')}
           </Typography>
         )}
         {result.domainCheck?.enforced && (
-          <Typography as='p' className="m-b-0">
+          <Typography as="p" className="m-b-0">
             <strong>{t('label.domain')}:</strong>{' '}
             {result.domainCheck.resolvedDomain}{' '}
             {result.domainCheck.passed
@@ -81,9 +81,7 @@ const SsoTestLoginModal = ({
           className="d-flex flex-col items-center gap-3 p-md"
           data-testid="sso-test-login-loading">
           <Loader size="small" />
-          <Typography>
-            {t('message.sso-test-login-waiting')}
-          </Typography>
+          <Typography>{t('message.sso-test-login-waiting')}</Typography>
         </div>
       );
     } else if (error) {
@@ -129,7 +127,7 @@ const SsoTestLoginModal = ({
       open={open}
       title={t('label.test-login')}
       onCancel={onClose}>
-      <Typography as='p' className="text-grey-muted">
+      <Typography as="p" className="text-grey-muted">
         {t('message.sso-test-login-description')}
       </Typography>
       {body}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Empty, Popover, Radio, Space, Spin } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Empty, Popover, Radio, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -183,10 +183,14 @@ const Certification = ({
                     </div>
                   )}
                   <div>
-                    <Typography as='p' className="m-b-0 font-regular text-xs text-grey-body">
+                    <Typography
+                      as="p"
+                      className="m-b-0 font-regular text-xs text-grey-body">
                       {title}
                     </Typography>
-                    <Typography as='p' className="m-b-0 font-regular text-xs text-grey-muted">
+                    <Typography
+                      as="p"
+                      className="m-b-0 font-regular text-xs text-grey-muted">
                       {stringToHTML(description)}
                     </Typography>
                   </div>
@@ -259,6 +263,7 @@ const Certification = ({
                   </Typography>
                 </div>
                 <Typography
+                  className="m-b-0 font-semibold text-primary text-sm cursor-pointer"
                   data-testid="clear-certification"
                   tabIndex={0}
                   onClick={() => updateCertificationData()}
@@ -267,8 +272,7 @@ const Certification = ({
                       e.preventDefault();
                       updateCertificationData();
                     }
-                  }}
-                  className="m-b-0 font-semibold text-primary text-sm cursor-pointer">
+                  }}>
                   {t('label.clear')}
                 </Typography>
               </Space>

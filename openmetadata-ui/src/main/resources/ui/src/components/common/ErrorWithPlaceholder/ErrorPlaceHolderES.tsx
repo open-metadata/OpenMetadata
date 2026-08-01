@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -132,7 +132,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
           className="border-none"
           size={size}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as='p' style={{ marginBottom: '0' }}>
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.no-data-available-entity"
               renderElement={<b />}
@@ -141,7 +141,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
               }}
             />
           </Typography>
-          <Typography as='p' style={{ marginBottom: '0' }}>
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.add-data-asset-domain"
               renderElement={<b />}
@@ -150,7 +150,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
               }}
             />
           </Typography>
-          <Typography as='p'>
+          <Typography as="p">
             <Transi18next
               i18nKey="message.refer-to-our-doc"
               renderElement={

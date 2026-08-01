@@ -15,8 +15,8 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Button, Input, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Input, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,7 +92,7 @@ const TeamsHeadingLabel = ({
       isHeadingEditing ? (
         // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel
-        (<div
+        <div
           className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
           onClick={(e) => e.stopPropagation()}>
           <Input
@@ -123,23 +123,23 @@ const TeamsHeadingLabel = ({
               <CheckOutlined />
             </Button>
           </Space>
-        </div>)
+        </div>
       ) : (
         <>
           <>
             {heading ? (
               <Typography
-                as='h5'
-                size='text-md'
+                as="h5"
+                className="m-b-0 flex-1 w-min-0"
                 data-testid="team-heading"
                 ellipsis={{ tooltip: true }}
-                className="m-b-0 flex-1 w-min-0">
+                size="text-md">
                 {heading}
               </Typography>
             ) : (
               <Typography
-                data-testid="team-heading"
-                className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm">
+                className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
+                data-testid="team-heading">
                 {t('label.no-entity', {
                   entity: t('label.display-name'),
                 })}

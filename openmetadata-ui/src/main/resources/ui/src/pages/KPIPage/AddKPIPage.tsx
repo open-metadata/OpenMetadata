@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -23,7 +24,6 @@ import {
   Slider,
   Space,
 } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
@@ -193,7 +193,7 @@ const AddKPIPage = () => {
               className="m-t-0 my-4"
               titleLinks={translatedKPIBreadcrumb}
             />
-            <Typography as='p' data-testid="form-title" className="text-base">
+            <Typography as="p" className="text-base" data-testid="form-title">
               {t('label.add-new-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
@@ -395,7 +395,7 @@ const AddKPIPage = () => {
       secondPanel={{
         children: (
           <div data-testid="right-panel">
-            <Typography as='p' className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.kpi-uppercase'),
               })}

@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Dropdown, Form, MenuItemProps, MenuProps, Select } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  Dropdown,
+  Form,
+  MenuItemProps,
+  MenuProps,
+  Select,
+} from 'antd';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

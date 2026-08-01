@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Col, Drawer, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Drawer, Row, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
@@ -148,9 +148,7 @@ const TableQueryRightPanel = ({
             <ExpandableCard
               cardProps={{
                 title: (
-                  <Typography
-                    data-testid="users"
-                    className="right-panel-label">
+                  <Typography className="right-panel-label" data-testid="users">
                     {t('label.user-plural')}
                   </Typography>
                 ),
@@ -171,7 +169,7 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography as='p' className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0 text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.user-plural'),
                   })}
@@ -184,8 +182,8 @@ const TableQueryRightPanel = ({
               cardProps={{
                 title: (
                   <Typography
-                    data-testid="used-by"
-                    className="right-panel-label">
+                    className="right-panel-label"
+                    data-testid="used-by">
                     {t('label.used-by')}
                   </Typography>
                 ),
@@ -200,7 +198,7 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography as='p' className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0 text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.used-by'),
                   })}

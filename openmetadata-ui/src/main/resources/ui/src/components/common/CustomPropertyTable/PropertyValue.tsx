@@ -12,8 +12,8 @@
  */
 
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Form, Input, Select, Tag, TimePicker, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Form, Input, Select, Tag, TimePicker, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -892,8 +892,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         )}
       </div>
       <Typography
-        ellipsis={{ tooltip: true }}
-        className="text-left text-primary truncate w-max-full">
+        className="text-left text-primary truncate w-max-full"
+        ellipsis={{ tooltip: true }}>
         {getEntityName(item)}
       </Typography>
     </Link>
@@ -1012,12 +1012,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             </div>
             <div className="d-flex flex-column gap-2 items-center">
               <EndTimeIcon height={30} width={30} />
-              <Typography className="property-value">{`${t(
-                'label.end-entity',
-                {
-                  entity: t('label.time'),
-                }
-              )}`}</Typography>
+              <Typography className="property-value">{`${t('label.end-entity', {
+                entity: t('label.time'),
+              })}`}</Typography>
               <Typography className="text-sm text-grey-body property-value">
                 {timeInterval.end}
               </Typography>
@@ -1057,12 +1054,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <Typography
-            as='a'
+            as="a"
+            className="break-all property-value"
             data-testid="hyperlink-value"
             href={safeHref}
             rel="noopener noreferrer"
-            target="_blank"
-            className="break-all property-value">
+            target="_blank">
             {hyperlinkValue.displayText || hyperlinkValue.url}
           </Typography>
         );
@@ -1080,8 +1077,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       default:
         return (
           <Typography
-            data-testid="value"
-            className="break-all text-grey-body property-value">
+            className="break-all text-grey-body property-value"
+            data-testid="value">
             {value}
           </Typography>
         );
@@ -1149,8 +1146,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     <div className="tw:flex tw:flex-col tw:gap-2" data-testid={propertyName}>
       <div className="d-flex items-center gap-1">
         <Typography
-          data-testid="property-name"
-          className="text-grey-body property-name">
+          className="text-grey-body property-name"
+          data-testid="property-name">
           {getEntityName(property)}
           {propertyCountSuffix}
         </Typography>

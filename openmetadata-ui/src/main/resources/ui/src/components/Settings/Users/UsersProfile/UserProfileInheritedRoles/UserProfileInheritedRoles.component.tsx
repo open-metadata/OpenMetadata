@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Divider } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as InheritedRolesIcon } from '../../../../../assets/svg/ic-inherited-roles.svg';
 import { EntityType } from '../../../../../enums/entity.enum';

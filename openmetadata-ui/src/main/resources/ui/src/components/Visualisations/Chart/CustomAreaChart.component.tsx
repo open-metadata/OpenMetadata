@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Divider } from 'antd';
 import { useMemo } from 'react';
 import {
   Area,

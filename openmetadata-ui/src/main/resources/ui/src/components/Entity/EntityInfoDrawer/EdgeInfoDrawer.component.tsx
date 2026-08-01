@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -214,7 +214,7 @@ const EdgeInfoDrawer = ({
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
           }}>
-          <Typography data-testid="sql-function" className="m-b-0">
+          <Typography className="m-b-0" data-testid="sql-function">
             {functionValue ?? NO_DATA_PLACEHOLDER}
           </Typography>
         </SectionWithEdit>
@@ -239,7 +239,7 @@ const EdgeInfoDrawer = ({
               value={mysqlQuery}
             />
           ) : (
-            <Typography as='p' className="m-b-0">
+            <Typography as="p" className="m-b-0">
               {t('server.no-query-available')}
             </Typography>
           )}
@@ -405,8 +405,8 @@ const EdgeInfoDrawer = ({
                       <GitMerge height={16} width={16} />
                     </span>
                     <Typography
-                      data-testid="edge-header-title"
-                      className="edge-info-drawer-title">
+                      className="edge-info-drawer-title"
+                      data-testid="edge-header-title">
                       {t('label.edge-information')}
                     </Typography>
                   </div>

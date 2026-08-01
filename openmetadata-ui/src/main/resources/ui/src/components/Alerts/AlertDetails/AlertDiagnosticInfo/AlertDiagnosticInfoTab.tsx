@@ -12,8 +12,8 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Col, Row, Skeleton, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
@@ -67,7 +67,7 @@ function AlertDiagnosticInfoTab() {
               <Row align="middle">
                 <Col className="d-flex items-center" span={12}>
                   <Typography className="d-flex items-center gap-1">
-                    <Typography color='secondary' className="m-0">
+                    <Typography className="m-0" color="secondary">
                       {`${item.key}:`}
                     </Typography>
                     <Tooltip placement="bottom" title={item.description}>

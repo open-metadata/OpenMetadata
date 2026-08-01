@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { List, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { List, Space } from 'antd';
 import { startCase } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -148,7 +148,10 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
             data-testid={`notification-item-${entityName}`}
             direction="vertical"
             size={0}>
-            <Typography as='p' style={{ color: '#37352F', marginBottom: 0 }} className="m-0">
+            <Typography
+              as="p"
+              className="m-0"
+              style={{ color: '#37352F', marginBottom: 0 }}>
               <>{createdBy}</>
               {isMentionNotification ? mentionContent : taskContent}
             </Typography>

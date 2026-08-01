@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Collapse, Row, Slider, Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Collapse, Row, Slider, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -385,7 +385,10 @@ const SearchSettingsPage = () => {
       <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>
         <Col span={24}>
           <Row align="middle" justify="space-between">
-            <Typography as='h5' size='text-md' className="text-sm font-semibold m-b-0">
+            <Typography
+              as="h5"
+              className="text-sm font-semibold m-b-0"
+              size="text-md">
               {t('label.global-setting-plural')}
             </Typography>
             {isAdminUser && (
@@ -438,7 +441,10 @@ const SearchSettingsPage = () => {
             <Row className="p-x-xs m-t-lg" gutter={0}>
               <Col span={24}>
                 <Row align="middle" justify="space-between">
-                  <Typography as='h5' size='text-md' className="text-sm font-semibold m-b-0">
+                  <Typography
+                    as="h5"
+                    className="text-sm font-semibold m-b-0"
+                    size="text-md">
                     {t('label.hybrid-search-weight-plural')}
                   </Typography>
                   <Button

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -132,7 +132,7 @@ const TaskFeedCard = ({
 
             {taskColumnName}
 
-            <Typography data-testid="entity-link" className="break-all">
+            <Typography className="break-all" data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography>
 

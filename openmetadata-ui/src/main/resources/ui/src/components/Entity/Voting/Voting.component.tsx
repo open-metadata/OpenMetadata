@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +49,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           icon={<ThumbsUpOutline height={15} width={15} />}
           loading={loading === QueryVoteType.votedUp}
           onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
-          <Typography data-testid="up-vote-count" className="m-l-xs">
+          <Typography className="m-l-xs" data-testid="up-vote-count">
             {votes?.upVotes ?? 0}
           </Typography>
         </Button>
@@ -70,7 +70,7 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           }
           loading={loading === QueryVoteType.votedDown}
           onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
-          <Typography data-testid="down-vote-count" className="m-l-xs">
+          <Typography className="m-l-xs" data-testid="down-vote-count">
             {votes?.downVotes ?? 0}
           </Typography>
         </Button>

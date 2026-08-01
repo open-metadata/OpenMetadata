@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, Row, Select, Switch } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -126,9 +126,7 @@ function ObservabilityFormFiltersItem({
                       )}
                     </div>
                     <Form.Item
-                      label={
-                        <Typography>{t('label.include')}</Typography>
-                      }
+                      label={<Typography>{t('label.include')}</Typography>}
                       name={[name, 'effect']}
                       normalize={(value) =>
                         value ? Effect.Include : Effect.Exclude

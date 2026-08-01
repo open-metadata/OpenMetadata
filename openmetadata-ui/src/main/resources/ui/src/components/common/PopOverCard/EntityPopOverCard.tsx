@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Popover } from 'antd';
 import { isUndefined } from 'lodash';
 import {
   FC,

@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Card, Col, Modal, Row, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Modal, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';

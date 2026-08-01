@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { Select, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Select, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Tag } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,8 +53,8 @@ const Chip = ({
         )}>
         {icon}
         <Typography
-          ellipsis={{ tooltip: getEntityName(item) }}
-          className="text-left chip-tag-link chip-name">
+          className="text-left chip-tag-link chip-name"
+          ellipsis={{ tooltip: getEntityName(item) }}>
           {getEntityName(item)}
         </Typography>
       </Link>
@@ -67,7 +67,7 @@ const Chip = ({
 
   if (isEmpty(data) && showNoDataPlaceholder) {
     return (
-      <Typography as='p' className="m-t-xs text-sm no-data-chip-placeholder">
+      <Typography as="p" className="m-t-xs text-sm no-data-chip-placeholder">
         {noDataPlaceholder ?? NO_DATA_PLACEHOLDER}
       </Typography>
     );

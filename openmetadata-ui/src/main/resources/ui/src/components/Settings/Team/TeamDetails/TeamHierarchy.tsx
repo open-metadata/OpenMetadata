@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Skeleton, Space, Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal, Skeleton, Space, Switch } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -261,9 +261,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
                 data-testid="show-deleted"
                 onClick={onShowDeletedTeamChange}
               />
-              <Typography className="m-l-xs">
-                {t('label.deleted')}
-              </Typography>
+              <Typography className="m-l-xs">{t('label.deleted')}</Typography>
             </span>
 
             {createTeamPermission && !isTeamDeleted && (

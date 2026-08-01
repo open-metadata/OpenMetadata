@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -449,9 +449,7 @@ export const DashboardChartTable = ({
               data-testid="show-deleted"
               onClick={handleShowDeletedCharts}
             />
-            <Typography className="m-l-xs">
-              {t('label.deleted')}
-            </Typography>
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>
         }
         locale={{

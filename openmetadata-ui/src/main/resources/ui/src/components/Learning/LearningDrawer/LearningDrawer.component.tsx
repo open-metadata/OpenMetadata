@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Drawer, Empty, Spin } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Drawer, Empty, Spin } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -107,7 +107,10 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         placement="right"
         title={
           <div className="learning-drawer-header">
-            <Typography as='h5' size='text-md' className="learning-drawer-title">
+            <Typography
+              as="h5"
+              className="learning-drawer-title"
+              size="text-md">
               {t('label.entity-resource', { entity: getPageTitle() })}
             </Typography>
             <CloseOutlined

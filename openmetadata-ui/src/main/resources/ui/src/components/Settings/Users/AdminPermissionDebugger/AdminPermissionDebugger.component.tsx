@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import {
   AutoComplete,
   Button,
@@ -23,7 +24,6 @@ import {
   Space,
   Spin,
 } from 'antd';
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -182,7 +182,7 @@ const AdminPermissionDebugger: React.FC = () => {
         title={t('label.permission-evaluation-result')}>
         <Space className="w-full" direction="vertical">
           <div className="evaluation-summary">
-            <CoreTypography as='h4' size='text-lg'>
+            <CoreTypography as="h4" size="text-lg">
               {t('label.decision') + ': '}{' '}
               <span>{evaluationInfo.finalDecision}</span>
             </CoreTypography>
@@ -239,7 +239,9 @@ const AdminPermissionDebugger: React.FC = () => {
           )}
 
           <div className="evaluation-steps">
-            <CoreTypography as='h5' size='text-md'>{t('label.evaluation-step-plural')}:</CoreTypography>
+            <CoreTypography as="h5" size="text-md">
+              {t('label.evaluation-step-plural')}:
+            </CoreTypography>
             {evaluationInfo.evaluationSteps.map((step) => (
               <Card
                 className={`evaluation-step ${
@@ -253,7 +255,9 @@ const AdminPermissionDebugger: React.FC = () => {
                       {t('label.step')} <span>{step.stepNumber}</span>
                       {' : '}
                     </CoreTypography>
-                    <CoreTypography weight='bold'>{step.policy.name}</CoreTypography>
+                    <CoreTypography weight="bold">
+                      {step.policy.name}
+                    </CoreTypography>
                     <CoreTypography>
                       {' - '} {t('label.rule') + ': '} <span>{step.rule}</span>
                     </CoreTypography>
@@ -282,10 +286,14 @@ const AdminPermissionDebugger: React.FC = () => {
                       {step.matched ? t('label.yes') : t('label.no')}
                     </strong>
                   </CoreTypography>
-                  <CoreTypography color='secondary'>{step.matchReason}</CoreTypography>
+                  <CoreTypography color="secondary">
+                    {step.matchReason}
+                  </CoreTypography>
                   {step.conditionEvaluations.length > 0 && (
                     <div>
-                      <CoreTypography>{t('label.condition-plural')}:</CoreTypography>
+                      <CoreTypography>
+                        {t('label.condition-plural')}:
+                      </CoreTypography>
                       {step.conditionEvaluations.map((cond, idx) => (
                         <div className="condition-eval" key={idx}>
                           <CoreTypography
@@ -299,7 +307,7 @@ const AdminPermissionDebugger: React.FC = () => {
                               {cond.result ? t('label.true') : t('label.false')}
                             </span>
                           </CoreTypography>
-                          <CoreTypography color='secondary'>
+                          <CoreTypography color="secondary">
                             <span>(${cond.evaluationDetails})</span>
                           </CoreTypography>
                         </div>
@@ -313,7 +321,9 @@ const AdminPermissionDebugger: React.FC = () => {
 
           {evaluationInfo.summary?.reasonsForDecision && (
             <div className="decision-reasons">
-              <CoreTypography as='h5' size='text-md'>{t('label.reasons-for-decision')}:</CoreTypography>
+              <CoreTypography as="h5" size="text-md">
+                {t('label.reasons-for-decision')}:
+              </CoreTypography>
               {evaluationInfo.summary.reasonsForDecision.map((reason, idx) => (
                 <CoreTypography key={idx}>
                   {'• '}
@@ -339,7 +349,7 @@ const AdminPermissionDebugger: React.FC = () => {
           <Card>
             <Space className="w-full" direction="vertical" size={16}>
               <div>
-                <CoreTypography as='h5' size='text-md'>
+                <CoreTypography as="h5" size="text-md">
                   {t('label.select-user-to-debug-permissions')}
                 </CoreTypography>
               </div>
@@ -358,7 +368,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
               {selectedUsername && (
                 <>
-                  <CoreTypography color='secondary'>
+                  <CoreTypography color="secondary">
                     {t('label.selected-entity', {
                       entity: t('label.user-lowercase'),
                     })}
@@ -374,7 +384,9 @@ const AdminPermissionDebugger: React.FC = () => {
 
           <Card className="m-b-md" title={t('label.evaluate-permission')}>
             {!selectedUsername ? (
-              <CoreTypography color='secondary'>{t('message.select-user-first')}</CoreTypography>
+              <CoreTypography color="secondary">
+                {t('message.select-user-first')}
+              </CoreTypography>
             ) : (
               <Form form={form} layout="vertical" onFinish={handleEvaluate}>
                 <Space className="w-full" direction="vertical">

@@ -10,8 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Form, InputNumber, Row, Select, TimePicker, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  InputNumber,
+  Row,
+  Select,
+  TimePicker,
+  Tooltip,
+} from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import moment from 'moment';
@@ -152,7 +162,7 @@ export const ContractSLAFormTab: React.FC<{
           <Typography className="contract-detail-form-tab-title">
             {t('label.sla')}
           </Typography>
-          <Typography as='p' className="contract-detail-form-tab-description">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-sla-description')}
           </Typography>
         </div>

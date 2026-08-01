@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input } from 'antd';
 import classNames from 'classnames';
 import {
   useCallback,
@@ -197,7 +197,7 @@ const SignInPage = () => {
             'sso-container': !isAuthProviderBasic,
           })}>
           <BrandImage isMonoGram height={50} width={50} />
-          <Typography as='h3' size='text-xl' className="header-text display-sm">
+          <Typography as="h3" className="header-text display-sm" size="text-xl">
             {t('label.welcome-to')} {brandName}
           </Typography>
           {isAuthProviderBasic ? (
@@ -236,10 +236,10 @@ const SignInPage = () => {
                         {t('label.password')}
                       </Typography>
                       <Typography
-                        as='a'
+                        as="a"
+                        className="forgot-password-link"
                         data-testid="forgot-password"
-                        onClick={onClickForgotPassword}
-                        className="forgot-password-link">
+                        onClick={onClickForgotPassword}>
                         {t('label.forgot-password')}
                       </Typography>
                     </>

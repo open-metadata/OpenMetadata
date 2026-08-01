@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, List, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button, List, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -292,10 +292,10 @@ const NotificationBox = ({
   return (
     <div className="notification-box">
       <Typography
-        as='h5'
-        size='text-md'
+        as="h5"
+        className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
-        className="p-x-md p-t-sm p-b-xss">
+        size="text-md">
         {t('label.notification-plural')}
       </Typography>
       <Tabs

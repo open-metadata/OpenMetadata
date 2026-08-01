@@ -536,9 +536,9 @@ const SchemaTable = () => {
 
         return (
           <Typography
-            as='p'
-            ellipsis={{ tooltip: displayValue, rows: 3 }}
-            className="cursor-pointer">
+            as="p"
+            className="cursor-pointer"
+            ellipsis={{ tooltip: displayValue, rows: 3 }}>
             {highlightSearchArrayElement(dataTypeDisplay, searchText)}
           </Typography>
         );
@@ -712,10 +712,10 @@ const SchemaTable = () => {
                 tableConstraints,
               })}
               <Typography
-                data-testid="column-name"
                 className={classNames(
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
-                )}>
+                )}
+                data-testid="column-name">
                 {stringToHTML(highlightSearchText(name, searchText))}
               </Typography>
             </div>
@@ -751,8 +751,8 @@ const SchemaTable = () => {
           </div>
           {isEmpty(displayName) ? null : (
             <Typography
-              data-testid="column-display-name"
-              className="m-b-0 d-block break-word">
+              className="m-b-0 d-block break-word"
+              data-testid="column-display-name">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)
               )}

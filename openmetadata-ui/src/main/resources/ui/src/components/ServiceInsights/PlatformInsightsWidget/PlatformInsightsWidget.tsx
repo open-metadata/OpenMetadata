@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Collapse, Row, Skeleton } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Collapse, Row, Skeleton } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -136,10 +136,10 @@ function PlatformInsightsWidget({
                             <div className="percent-change-tag">
                               {showIcon && icon}
                               <Typography
+                                className="font-medium text-xs"
                                 style={{
                                   color: chart.isIncreased ? GREEN_1 : RED_1,
-                                }}
-                                className="font-medium text-xs">
+                                }}>
                                 {`${getReadableCountString(
                                   chart.percentageChange
                                 )}%`}

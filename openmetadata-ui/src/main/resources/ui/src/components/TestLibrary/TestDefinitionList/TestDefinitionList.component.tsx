@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -101,7 +101,7 @@ const TestDefinitionList = () => {
             <Row justify="space-between">
               <Col>
                 <div className="flex gap-2 items-center m-b-xss">
-                  <Typography as='h5' size='text-md' className="m-b-0">
+                  <Typography as="h5" className="m-b-0" size="text-md">
                     {t('label.data-quality-rule-plural')}
                   </Typography>
                   <LearningIcon
@@ -109,7 +109,7 @@ const TestDefinitionList = () => {
                     title={t('label.data-quality-rule-plural')}
                   />
                 </div>
-                <Typography color='secondary'>
+                <Typography color="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
                 </Typography>
               </Col>

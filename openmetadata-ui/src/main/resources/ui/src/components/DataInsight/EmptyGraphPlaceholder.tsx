@@ -28,12 +28,12 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
       icon={icon}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography as='p' style={{ marginBottom: '0' }}>
+      <Typography as="p" style={{ marginBottom: '0' }}>
         {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.data-insight'),
         })}
       </Typography>
-      <Typography as='p'>
+      <Typography as="p">
         <Transi18next
           i18nKey="message.refer-to-our-doc"
           renderElement={

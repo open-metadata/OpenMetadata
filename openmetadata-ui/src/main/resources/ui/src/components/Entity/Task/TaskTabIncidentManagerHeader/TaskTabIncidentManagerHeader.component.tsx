@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Steps } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Steps } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,10 +85,10 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
         className: toLower(status.testCaseResolutionStatusType),
         title: (
           <div>
-            <Typography as='p' className="m-b-0">
+            <Typography as="p" className="m-b-0">
               {status.testCaseResolutionStatusType}
             </Typography>
-            <Typography as='p' className="m-b-0">
+            <Typography as="p" className="m-b-0">
               {details}
               {status.updatedAt && (
                 <Typography className="text-grey-muted text-xss">

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,7 +58,7 @@ function AnnouncementsWidget({
               />
             }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography as='p'>
+            <Typography as="p">
               {t('message.no-entity-data-available', {
                 entity: t('label.announcement-lowercase'),
               })}
@@ -118,7 +118,7 @@ function AnnouncementsWidget({
       data-testid="announcement-container">
       <Row justify="space-between">
         <Col>
-          <Typography as='p' className="font-medium m-b-sm">
+          <Typography as="p" className="font-medium m-b-sm">
             {t('label.recent-announcement-plural')}
           </Typography>
         </Col>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Divider } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
@@ -90,8 +90,8 @@ const UserProfilePersonas = ({
           </div>
           <div className="d-flex justify-between w-full">
             <Typography
-              data-testid="persona-list"
-              className="text-sm font-medium">
+              className="text-sm font-medium"
+              data-testid="persona-list">
               {t('label.default-persona')}
             </Typography>
             <PersonaSelectableList
@@ -138,8 +138,8 @@ const UserProfilePersonas = ({
         </div>
         <div className="d-flex justify-between w-full">
           <Typography
-            data-testid="persona-list"
-            className="text-sm font-medium">
+            className="text-sm font-medium"
+            data-testid="persona-list">
             {t('label.persona')}
           </Typography>
           <PersonaSelectableList

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { SelectProps, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { SelectProps, Tag } from 'antd';
 import { isEmpty } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useEffect, useState } from 'react';

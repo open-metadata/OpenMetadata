@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Segmented, Tag, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Segmented, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -458,9 +458,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
         <Col>
-          <Typography color='secondary'>
-            {t('label.schema')}
-          </Typography>
+          <Typography color="secondary">{t('label.schema')}</Typography>
           {schemaTypePlaceholder ?? (
             <Tag className="ml-4">{messageSchema.schemaType}</Tag>
           )}

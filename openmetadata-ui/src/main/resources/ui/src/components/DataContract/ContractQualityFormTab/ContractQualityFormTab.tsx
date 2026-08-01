@@ -12,8 +12,8 @@
  */
 
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Card, Dropdown } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Dropdown } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';

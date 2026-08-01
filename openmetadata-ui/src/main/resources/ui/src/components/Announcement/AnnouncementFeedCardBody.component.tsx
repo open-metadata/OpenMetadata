@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { MoreOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Space } from 'antd';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';

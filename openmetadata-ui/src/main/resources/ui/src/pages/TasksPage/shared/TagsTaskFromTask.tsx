@@ -88,8 +88,8 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     if (!suggestedValue && !currentValue) {
       return (
         <Typography
-          data-testid="no-suggestion"
-          className="text-grey-muted p-xs">
+          className="text-grey-muted p-xs"
+          data-testid="no-suggestion">
           {t('label.no-entity', { entity: t('label.suggestion') })}
         </Typography>
       );

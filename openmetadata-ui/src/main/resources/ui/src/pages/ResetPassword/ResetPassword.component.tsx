@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Form, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useMemo } from 'react';

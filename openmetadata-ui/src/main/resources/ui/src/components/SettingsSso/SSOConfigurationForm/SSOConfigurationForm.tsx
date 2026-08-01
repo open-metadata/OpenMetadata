@@ -12,6 +12,7 @@
  */
 
 import { removeSession } from '@analytics/session-utils';
+import { Typography } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
   CustomValidator,
@@ -23,7 +24,6 @@ import {
 import validator from '@rjsf/validator-ajv8';
 import { Check, UploadCloud02, X } from '@untitledui/icons';
 import { Button, Card, Upload } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -1340,7 +1340,7 @@ const SSOConfigurationFormRJSF = ({
                 />
               )}
             </div>
-            <Typography as='h1' size='display-sm' className="m-0 text-md">
+            <Typography as="h1" className="m-0 text-md" size="display-sm">
               {getProviderDisplayName(currentProvider)} {t('label.set-up')}
             </Typography>
           </div>

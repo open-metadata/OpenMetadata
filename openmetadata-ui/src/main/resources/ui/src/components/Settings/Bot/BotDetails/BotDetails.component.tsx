@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Tag, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Input, Row, Tag, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -167,7 +167,11 @@ const BotDetails: FC<BotsDetailProps> = ({
                   ) : (
                     <>
                       {displayName ? (
-                        <Typography as='h5' size='text-md' ellipsis className="m-0">
+                        <Typography
+                          ellipsis
+                          as="h5"
+                          className="m-0"
+                          size="text-md">
                           {displayName}
                         </Typography>
                       ) : (

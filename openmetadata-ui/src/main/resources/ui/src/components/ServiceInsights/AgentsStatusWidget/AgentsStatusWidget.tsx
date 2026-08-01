@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Collapse, Row, Skeleton, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Collapse, Row, Skeleton, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -67,17 +67,15 @@ function AgentsStatusWidget({
                   data-testid={`agent-status-summary-item-${key}`}
                   key={key}>
                   {getIconFromStatus(key)}
-                  <Typography data-testid="pipeline-count">
-                    {value}
-                  </Typography>
+                  <Typography data-testid="pipeline-count">{value}</Typography>
                   <Typography>{key}</Typography>
                 </div>
               ))}
             </div>
           )}
           <Typography
-            data-testid="agent-status-widget-view-more"
-            className="text-primary">
+            className="text-primary"
+            data-testid="agent-status-widget-view-more">
             {t('label.view-more')}
           </Typography>
           <ArrowSvg className="text-primary" height={14} width={14} />

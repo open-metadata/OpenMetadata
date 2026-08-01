@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
@@ -44,19 +44,19 @@ const FilterErrorPlaceHolder = ({
         />
         <div className="m-t-xss text-center text-sm font-normal">
           {placeholderText ? (
-            <Typography as='p'>{placeholderText}</Typography>
+            <Typography as="p">{placeholderText}</Typography>
           ) : (
             <>
-              <Typography as='p' style={{ marginBottom: '0' }}>
+              <Typography as="p" style={{ marginBottom: '0' }}>
                 {t('label.no-result-found')}
               </Typography>
-              <Typography as='p' style={{ marginBottom: '0' }}>
+              <Typography as="p" style={{ marginBottom: '0' }}>
                 {t('message.try-adjusting-filter')}
               </Typography>
             </>
           )}
           {doc ? (
-            <Typography as='p'>
+            <Typography as="p">
               <Transi18next
                 i18nKey="message.refer-to-our-doc"
                 renderElement={

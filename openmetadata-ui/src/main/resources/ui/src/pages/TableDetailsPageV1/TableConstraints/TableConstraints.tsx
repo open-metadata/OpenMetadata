@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { isEmpty, map } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

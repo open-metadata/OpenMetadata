@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Popover, Space, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Popover, Space, Tabs } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

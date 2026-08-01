@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { EntityReference } from '../../../generated/entity/type';
@@ -91,10 +91,10 @@ export const DomainDisplay = ({
             }}
             trigger={['hover']}>
             <Typography
-              data-testid="domain-count-button"
               className={`flex-center flex-shrink-0 cursor-pointer align-middle ant-typography-secondary domain-count-button ${
                 remainingCount <= 9 ? 'h-6 w-6' : ''
-              }`}>
+              }`}
+              data-testid="domain-count-button">
               <span className="domain-count-label">{`+${remainingCount}`}</span>
             </Typography>
           </Dropdown>

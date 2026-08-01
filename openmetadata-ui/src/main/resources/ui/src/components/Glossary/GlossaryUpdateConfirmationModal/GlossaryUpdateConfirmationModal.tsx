@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Alert, Button, Modal, Progress, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Button, Modal, Progress, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,9 +100,7 @@ export const GlossaryUpdateConfirmationModal = ({
         title: t('label.failure-reason'),
         dataIndex: 'message',
         key: 'message',
-        render: (error: string) => (
-          <Typography as='p'>{error}</Typography>
-        ),
+        render: (error: string) => <Typography as="p">{error}</Typography>,
       },
     ];
   }, []);
@@ -117,7 +115,7 @@ export const GlossaryUpdateConfirmationModal = ({
   const data = useMemo(() => {
     const footer = (
       <div className="d-flex justify-between">
-        <Typography color='secondary'>
+        <Typography color="secondary">
           {failedStatus?.numberOfRowsFailed &&
             `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
         </Typography>
@@ -142,7 +140,7 @@ export const GlossaryUpdateConfirmationModal = ({
                 component={ExclamationIcon}
                 style={{ fontSize: '60px' }}
               />
-              <Typography as='h5' size='text-md'>
+              <Typography as="h5" size="text-md">
                 {t('message.tag-update-confirmation')}
               </Typography>
               <Typography className="text-center">
@@ -198,7 +196,7 @@ export const GlossaryUpdateConfirmationModal = ({
           ),
           footer: (
             <div className="d-flex justify-between">
-              <Typography color='secondary'>
+              <Typography color="secondary">
                 {failedStatus?.numberOfRowsFailed &&
                   `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
               </Typography>

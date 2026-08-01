@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { isString, isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
@@ -103,12 +103,12 @@ const CustomPieChart = ({
                 className="legend-dot"
                 style={{ backgroundColor: item.color }}
               />
-              <Typography as='p' className="text-grey-muted m-b-0 font-medium">
+              <Typography as="p" className="text-grey-muted m-b-0 font-medium">
                 {item.name}{' '}
                 <Typography
+                  className="text-grey-muted"
                   data-testid={`legend-count-${item.name.toLowerCase()}`}
-                  weight='bold'
-                  className="text-grey-muted">
+                  weight="bold">
                   {formatNumberWithComma(item.value)}
                 </Typography>
               </Typography>

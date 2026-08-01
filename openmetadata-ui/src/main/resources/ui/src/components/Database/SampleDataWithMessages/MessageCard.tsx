@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Collapse, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Collapse, Tag } from 'antd';
 import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -46,8 +46,8 @@ const MessageCard = ({ message }: { message: string }) => {
       setHeader(
         <Typography
           ellipsis
-          data-testid="collapsed-header"
-          className="text-primary">
+          className="text-primary"
+          data-testid="collapsed-header">
           {message}
         </Typography>
       );

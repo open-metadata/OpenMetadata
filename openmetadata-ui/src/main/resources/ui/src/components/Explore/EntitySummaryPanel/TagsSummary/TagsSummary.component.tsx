@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -80,8 +80,8 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
       <Row className="p-md border-radius-card" gutter={[0, 8]}>
         <Col span={24}>
           <Typography
-            data-testid="usage-header"
-            className="summary-panel-section-title">
+            className="summary-panel-section-title"
+            data-testid="usage-header">
             {t('label.usage')}
           </Typography>
         </Col>
@@ -90,8 +90,8 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
             <div className="">{usageItems}</div>
           ) : (
             <Typography
-              data-testid="no-reference-available"
-              className="text-grey-body">
+              className="text-grey-body"
+              data-testid="no-reference-available">
               {t('label.no-entity', {
                 entity: t('label.usage'),
               })}

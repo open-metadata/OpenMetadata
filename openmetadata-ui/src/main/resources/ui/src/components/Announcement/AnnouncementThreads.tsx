@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Divider } from 'antd';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementEntity } from '../../rest/announcementsAPI';
@@ -76,8 +76,8 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
       {Boolean(inActiveAnnouncements.length) && (
         <div className="d-flex flex-column items-end m-y-xlg">
           <Typography
-            data-testid="inActive-announcements"
-            className="text-announcement">
+            className="text-announcement"
+            data-testid="inActive-announcements">
             <strong>{inActiveAnnouncements.length}</strong>{' '}
             {t('label.inactive-announcement-plural')}
           </Typography>

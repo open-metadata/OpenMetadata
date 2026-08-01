@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -180,10 +180,10 @@ export const DomainLabel = ({
                 className: 'domain-tooltip-list',
               }}>
               <Typography
-                data-testid="domain-count-button"
                 className={`flex-center cursor-pointer align-middle ant-typography-secondary domain-count-button ${
                   remainingCount <= 9 ? 'h-6 w-6' : ''
-                }`}>
+                }`}
+                data-testid="domain-count-button">
                 <span className="ant-typography domain-count-label">{`+${remainingCount}`}</span>
               </Typography>
             </Dropdown>
@@ -196,12 +196,12 @@ export const DomainLabel = ({
 
     return (
       <Typography
-        data-testid="no-domain-text"
         className={classNames(
           'domain-link-text',
           { 'font-medium text-sm': !showDomainHeading },
           textClassName
-        )}>
+        )}
+        data-testid="no-domain-text">
         {defaultDomainText}
       </Typography>
     );

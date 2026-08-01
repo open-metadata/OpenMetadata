@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { UploadCloud01 } from '@untitledui/icons';
 import { Space, UploadProps } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import type { RcFile } from 'antd/lib/upload';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';

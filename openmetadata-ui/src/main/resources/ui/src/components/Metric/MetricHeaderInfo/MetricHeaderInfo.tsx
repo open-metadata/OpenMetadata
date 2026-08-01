@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Popover, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, List, Popover, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { FC, useMemo, useState } from 'react';
@@ -147,8 +147,8 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
       data-testid={modiFiedLabel}>
       <div className="d-flex extra-info-container align-start ">
         <Typography
-          data-testid={modiFiedLabel}
-          className="whitespace-nowrap text-sm d-flex flex-col gap-2">
+          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+          data-testid={modiFiedLabel}>
           <div className="d-flex items-center gap-1">
             <span className="extra-info-label-heading">{label}</span>
             {hasPermission && !metricDetails.deleted && (

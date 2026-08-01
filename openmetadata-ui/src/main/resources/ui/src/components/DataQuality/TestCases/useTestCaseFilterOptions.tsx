@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -36,11 +36,7 @@ export interface FetchedOption extends DefaultOptionType {
 
 const optionLabel = (name: string, fqn?: string, testId?: string) => (
   <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
-    {fqn && (
-      <Typography className="text-xs text-grey-muted">
-        {fqn}
-      </Typography>
-    )}
+    {fqn && <Typography className="text-xs text-grey-muted">{fqn}</Typography>}
     <Typography className="text-sm">{name}</Typography>
   </Space>
 );

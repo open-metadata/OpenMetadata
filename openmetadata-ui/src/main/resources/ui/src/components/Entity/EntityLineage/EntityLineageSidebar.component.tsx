@@ -73,9 +73,7 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
           />
         </span>
       </div>
-      <Typography className="text-grey-body text-xs p-t-xs">
-        {label}
-      </Typography>
+      <Typography className="text-grey-body text-xs p-t-xs">{label}</Typography>
     </div>
   );
 };

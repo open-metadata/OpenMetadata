@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Carousel } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Carousel } from 'antd';
 import { uniqueId } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,10 @@ const LoginCarousel = () => {
           data-testid="slider-container"
           key={uniqueId() + '-' + currentIndex + '-' + idx}>
           <div className="text-container d-flex flex-col gap-4">
-            <Typography as='h1' size='display-sm' className="carousel-header display-md">
+            <Typography
+              as="h1"
+              className="carousel-header display-md"
+              size="display-sm">
               {t(`label.${data.title}`)}
             </Typography>
             <p

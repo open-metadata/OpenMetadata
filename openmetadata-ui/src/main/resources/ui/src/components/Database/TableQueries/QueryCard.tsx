@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -196,8 +196,12 @@ const QueryCard: FC<QueryCardProp> = ({
               <Typography className="text-sm">{queryDate}</Typography>
               {duration && (
                 <>
-                  <Typography className="text-gray-400">{PIPE_SYMBOL}</Typography>
-                  <Typography data-testid="query-run-duration" className="text-sm">
+                  <Typography className="text-gray-400">
+                    {PIPE_SYMBOL}
+                  </Typography>
+                  <Typography
+                    className="text-sm"
+                    data-testid="query-run-duration">
                     {duration}
                   </Typography>
                 </>

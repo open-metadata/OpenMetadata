@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { Alert, Button, Carousel, Col, Row, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Button, Carousel, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -221,7 +221,7 @@ const MarketPlaceAppDetails = () => {
           <Typography>
             {appData?.supportEmail && (
               <Typography
-                as='a'
+                as="a"
                 data-testid="app-support-email"
                 href={`mailto:${appData?.supportEmail}`}
                 target="_blank">
@@ -229,12 +229,15 @@ const MarketPlaceAppDetails = () => {
               </Typography>
             )}
             {appData?.developerUrl && (
-              <Typography as='a' href={appData?.developerUrl} target="_blank">
+              <Typography as="a" href={appData?.developerUrl} target="_blank">
                 <Space>{t('label.visit-developer-website')}</Space>
               </Typography>
             )}
             {appData?.privacyPolicyUrl && (
-              <Typography as='a' href={appData?.privacyPolicyUrl} target="_blank">
+              <Typography
+                as="a"
+                href={appData?.privacyPolicyUrl}
+                target="_blank">
                 <Space>{t('label.privacy-policy')}</Space>
               </Typography>
             )}
@@ -260,7 +263,7 @@ const MarketPlaceAppDetails = () => {
       pageTitle={t('label.application-plural')}>
       <Row>
         <Col span={24}>
-          <Typography as='h2' size='display-xs' className="p-md m-0 p-t-xss">
+          <Typography as="h2" className="p-md m-0 p-t-xss" size="display-xs">
             {getEntityName(appData)}
           </Typography>
         </Col>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, RadioChangeEvent, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, RadioChangeEvent, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -511,7 +511,7 @@ const AddDataContract: React.FC<{
           <Typography className="add-contract-card-title">
             {t('label.add-contract-detail-plural')}
           </Typography>
-          <Typography as='p' className="add-contract-card-description">
+          <Typography as="p" className="add-contract-card-description">
             {t('message.add-contract-detail-description')}
           </Typography>
         </div>

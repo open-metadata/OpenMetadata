@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
@@ -45,8 +45,8 @@ function SummaryListItem({
                 iconWidth: '14px',
               })}
             <Typography
-              ellipsis={{ tooltip: entityDetails.title }}
-              className="m-r-xs">
+              className="m-r-xs"
+              ellipsis={{ tooltip: entityDetails.title }}>
               {entityDetails.title}
             </Typography>
 
@@ -68,8 +68,8 @@ function SummaryListItem({
                   'label.algorithm'
                 )}:`}</Typography>
                 <Typography
-                  data-testid="algorithm"
-                  className="font-medium text-grey-body">
+                  className="font-medium text-grey-body"
+                  data-testid="algorithm">
                   {entityDetails.algorithm}
                 </Typography>
               </Space>
@@ -77,7 +77,7 @@ function SummaryListItem({
           )}
 
           <Col span={24}>
-            <Typography as='p' className="text-grey-body m-y-0">
+            <Typography as="p" className="text-grey-body m-y-0">
               {entityDetails.description ? (
                 <RichTextEditorPreviewerV1
                   markdown={entityDetails.description || ''}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import { Progress, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Progress, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,8 +78,8 @@ const KPILegend: React.FC<KPILegendProps> = ({
             <div className="kpi-full-legend" key={key}>
               <div className="kpi-legend-header">
                 <Typography
-                  ellipsis={{ tooltip: true }}
-                  className="kpi-legend-title">
+                  className="kpi-legend-title"
+                  ellipsis={{ tooltip: true }}>
                   {resultData.displayName}
                 </Typography>
 
@@ -136,10 +136,10 @@ const KPILegend: React.FC<KPILegendProps> = ({
               className="legend-dot h-3 w-3 m-r-xss"
               style={{ backgroundColor: color }}
             />
-            <Typography weight='bold' className="text-xs font-semibold">
+            <Typography className="text-xs font-semibold" weight="bold">
               {`${resultData.displayName}:`}
             </Typography>
-            <Typography color='secondary' className="text-xs font-normal">
+            <Typography className="text-xs font-normal" color="secondary">
               {daysLeft <= 0 ? 0 : daysLeft} {t('label.days-left')}
             </Typography>
           </div>

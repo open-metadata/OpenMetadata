@@ -71,13 +71,13 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
           )}
           {showLabel && (
             <Typography
-              data-testid="owner-link"
               className={classNames(
                 isCompactView
                   ? 'text-xs no-owner'
                   : ' no-owner-heading font-medium text-sm',
                 className
-              )}>
+              )}
+              data-testid="owner-link">
               {placeHolder ??
                 (!isCompactView
                   ? t('label.owner-plural')

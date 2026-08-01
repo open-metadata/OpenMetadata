@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,7 +64,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
               title={
                 firstPanel.title && (
                   <div className="d-flex align-items-center gap-2">
-                    <Typography weight='bold' className="m-b-0 text-sm">
+                    <Typography className="m-b-0 text-sm" weight="bold">
                       {firstPanel.title}
                     </Typography>
                     {showLearningIcon && (

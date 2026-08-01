@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Checkbox, List, Popover, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Checkbox, List, Popover, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
@@ -80,9 +80,7 @@ const FeedsFilterPopover = ({
             <Space align="start">
               <Checkbox checked={selectedFilter === item.key} />
               <Space direction="vertical" size={0}>
-                <Typography className="font-medium">
-                  {item.title}
-                </Typography>
+                <Typography className="font-medium">{item.title}</Typography>
                 <Typography className="text-muted text-xs">
                   {item.description}
                 </Typography>

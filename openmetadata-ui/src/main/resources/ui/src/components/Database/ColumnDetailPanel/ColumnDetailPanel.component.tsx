@@ -788,18 +788,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 key={breadcrumb.fullyQualifiedName}>
                 <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
                   <Typography
-                    title={getEntityName(breadcrumb)}
-                    onClick={
-                      isLastItem
-                        ? undefined
-                        : () => handleBreadcrumbClick(breadcrumb)
-                    }
                     className={classNames('tw:text-xs tw:truncate', {
                       'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                         isLastItem,
                       'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
                         !isLastItem,
-                    })}>
+                    })}
+                    title={getEntityName(breadcrumb)}
+                    onClick={
+                      isLastItem
+                        ? undefined
+                        : () => handleBreadcrumbClick(breadcrumb)
+                    }>
                     {getEntityName(breadcrumb)}
                   </Typography>
                   {index < breadcrumbPath.length - 1 && (
@@ -831,8 +831,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   trigger="hover">
                   <Typography
                     ellipsis
-                    data-testid="entity-link"
-                    className="entity-title-link">
+                    className="entity-title-link"
+                    data-testid="entity-link">
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
                         activeColumn.name ||
@@ -869,9 +869,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 (entityType === EntityType.TABLE ||
                   entityType === EntityType.DASHBOARD_DATA_MODEL) && (
                   <Typography
+                    className="tw:text-gray-400 tw:text-xs"
                     data-testid="entity-name"
-                    ellipsis={{ tooltip: true }}
-                    className="tw:text-gray-400 tw:text-xs">
+                    ellipsis={{ tooltip: true }}>
                     {stringToHTML(activeColumn.name || '')}
                   </Typography>
                 )}

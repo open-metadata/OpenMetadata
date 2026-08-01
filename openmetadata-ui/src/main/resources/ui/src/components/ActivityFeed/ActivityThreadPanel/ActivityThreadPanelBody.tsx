@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -364,7 +364,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               <>
                 {isConversationType && (
                   <Space className="w-full" direction="vertical">
-                    <Typography as='p'>
+                    <Typography as="p">
                       {t('message.new-conversation')}
                     </Typography>
                     <ActivityFeedEditor
@@ -379,7 +379,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    <Typography as='p'>
+                    <Typography as="p">
                       {isTaskClosed
                         ? t('message.no-closed-task')
                         : t('message.no-open-task')}

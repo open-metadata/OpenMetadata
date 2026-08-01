@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Segmented, Space, Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Segmented, Space, Switch } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

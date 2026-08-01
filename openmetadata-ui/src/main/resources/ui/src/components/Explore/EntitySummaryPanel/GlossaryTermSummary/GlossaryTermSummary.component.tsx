@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,8 +88,8 @@ function GlossaryTermSummary({
           gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="reviewer-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="reviewer-header">
               {t('label.reviewer-plural')}
             </Typography>
           </Col>
@@ -100,8 +100,8 @@ function GlossaryTermSummary({
               </Space>
             ) : (
               <Typography
-                data-testid="no-reviewer-header"
-                className="no-data-chip-placeholder">
+                className="no-data-chip-placeholder"
+                data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
               </Typography>
             )}
@@ -113,8 +113,8 @@ function GlossaryTermSummary({
           gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="synonyms-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="synonyms-header">
               {t('label.synonym-plural')}
             </Typography>
           </Col>
@@ -131,8 +131,8 @@ function GlossaryTermSummary({
               </div>
             ) : (
               <Typography
-                data-testid="no-synonyms-available-header"
-                className="no-data-chip-placeholder">
+                className="no-data-chip-placeholder"
+                data-testid="no-synonyms-available-header">
                 {t('message.no-synonyms-available')}
               </Typography>
             )}
@@ -144,8 +144,8 @@ function GlossaryTermSummary({
           gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="children-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="children-header">
               {t('label.children')}
             </Typography>
           </Col>

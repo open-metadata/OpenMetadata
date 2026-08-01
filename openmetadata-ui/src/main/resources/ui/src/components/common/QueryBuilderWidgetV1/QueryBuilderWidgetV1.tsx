@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Actions,
   Builder,
@@ -25,7 +26,6 @@ import {
 } from '@react-awesome-query-builder/antd';
 import '@react-awesome-query-builder/antd/css/styles.css';
 import { Alert, Button, Card, Col, Divider, Row, Skeleton } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isEqual, isUndefined } from 'lodash';
 import Qs from 'qs';

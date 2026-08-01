@@ -25,8 +25,18 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Form, Input, Select, Space, Spin, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Alert,
+  Button,
+  Card,
+  Form,
+  Input,
+  Select,
+  Space,
+  Spin,
+  Tabs,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -544,10 +554,15 @@ const TaskFormSettingsPage = () => {
                   <Typography className="task-form-settings-hero__eyebrow">
                     Form Builder
                   </Typography>
-                  <Typography as='h2' size='display-xs' className="task-form-settings-hero__title">
+                  <Typography
+                    as="h2"
+                    className="task-form-settings-hero__title"
+                    size="display-xs">
                     {pageTitle}
                   </Typography>
-                  <Typography as='p' className="task-form-settings-hero__description">
+                  <Typography
+                    as="p"
+                    className="task-form-settings-hero__description">
                     {pageDescription}
                   </Typography>
                   {schemaSubtitle ? (
@@ -715,10 +730,15 @@ const TaskFormSettingsPage = () => {
                                   <div className="task-form-settings-transition-pane">
                                     <div className="task-form-settings-section-header">
                                       <div>
-                                        <Typography as='h5' size='text-md' className="m-b-xs">
+                                        <Typography
+                                          as="h5"
+                                          className="m-b-xs"
+                                          size="text-md">
                                           Transition Forms
                                         </Typography>
-                                        <Typography as='p' className="m-b-0 text-grey-muted">
+                                        <Typography
+                                          as="p"
+                                          className="m-b-0 text-grey-muted">
                                           Configure additional fields for
                                           specific workflow transitions like
                                           approve, reject, or reassign.
@@ -847,10 +867,15 @@ const TaskFormSettingsPage = () => {
                                   <div className="task-form-settings-stage-pane">
                                     <div className="task-form-settings-section-header">
                                       <div>
-                                        <Typography as='h5' size='text-md' className="m-b-xs">
+                                        <Typography
+                                          as="h5"
+                                          className="m-b-xs"
+                                          size="text-md">
                                           Stage to Status Mapping
                                         </Typography>
-                                        <Typography as='p' className="m-b-0 text-grey-muted">
+                                        <Typography
+                                          as="p"
+                                          className="m-b-0 text-grey-muted">
                                           Map workflow stage ids to the coarse
                                           task status exposed in APIs and
                                           counts.
@@ -981,7 +1006,7 @@ const TaskFormSettingsPage = () => {
                       label: 'Advanced JSON',
                       children: (
                         <div className="task-form-settings-json-pane">
-                          <Typography as='h5' size='text-md' className="m-b-sm">
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Resolve Form Schema
                           </Typography>
                           <CodeEditor
@@ -1004,7 +1029,7 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography as='h5' size='text-md' className="m-b-sm">
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Resolve UI Schema
                           </Typography>
                           <CodeEditor
@@ -1027,7 +1052,7 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography as='h5' size='text-md' className="m-b-sm">
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Create Form Schema
                           </Typography>
                           <CodeEditor
@@ -1050,7 +1075,7 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography as='h5' size='text-md' className="m-b-sm">
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Create UI Schema
                           </Typography>
                           <CodeEditor
@@ -1074,7 +1099,7 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography as='h5' size='text-md' className="m-b-sm">
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Transition Forms
                           </Typography>
                           <CodeEditor
@@ -1095,7 +1120,7 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography as='h5' size='text-md' className="m-b-sm">
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Default Stage Mappings
                           </Typography>
                           <CodeEditor
@@ -1115,7 +1140,7 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography as='h5' size='text-md' className="m-b-sm">
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Workflow Definition JSON
                           </Typography>
                           <CodeEditor

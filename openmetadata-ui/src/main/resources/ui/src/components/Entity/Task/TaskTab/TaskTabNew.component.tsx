@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -24,7 +25,6 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
@@ -665,8 +665,8 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography
-              data-testid="entity-link"
-              className="break-all text-sm entity-link header-link whitespace-normal">
+              className="break-all text-sm entity-link header-link whitespace-normal"
+              data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography>
 

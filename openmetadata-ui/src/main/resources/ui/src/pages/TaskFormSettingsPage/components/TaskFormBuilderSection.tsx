@@ -25,8 +25,17 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Checkbox, Empty, Form, Input, Select, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Card,
+  Checkbox,
+  Empty,
+  Form,
+  Input,
+  Select,
+  Space,
+} from 'antd';
 import { useMemo } from 'react';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import {
@@ -105,11 +114,11 @@ const TaskFormBuilderSection = ({
     <div className="task-form-builder-section">
       <div className="task-form-builder-section__header">
         <div>
-          <Typography as='h5' size='text-md' className="m-b-xs">
+          <Typography as="h5" className="m-b-xs" size="text-md">
             {title}
           </Typography>
           {description ? (
-            <Typography as='p' className="m-b-0 text-grey-muted">
+            <Typography as="p" className="m-b-0 text-grey-muted">
               {description}
             </Typography>
           ) : null}

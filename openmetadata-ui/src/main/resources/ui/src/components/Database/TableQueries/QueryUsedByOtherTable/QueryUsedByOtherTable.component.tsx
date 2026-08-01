@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Popover, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Popover, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -68,7 +68,7 @@ const QueryUsedByOtherTable = ({
       <Typography>
         {topThreeTable.length
           ? topThreeTable.map((table, index) => (
-              <Typography key={table.name} className="m-r-xss">
+              <Typography className="m-r-xss" key={table.name}>
                 <Link
                   to={getEntityDetailsPath(
                     EntityType.TABLE,
@@ -82,7 +82,9 @@ const QueryUsedByOtherTable = ({
           : '--'}
         {remainingTable.length ? (
           <>
-            <Typography className="m-r-xss">{t('label.and-lowercase')}</Typography>
+            <Typography className="m-r-xss">
+              {t('label.and-lowercase')}
+            </Typography>
             <Popover
               content={
                 <Space direction="vertical">
@@ -100,7 +102,7 @@ const QueryUsedByOtherTable = ({
               }
               placement="bottom"
               trigger="click">
-              <Typography data-testid="show-more" className="show-more">
+              <Typography className="show-more" data-testid="show-more">
                 {`${remainingTable.length} ${t('label.more-lowercase')}`}
               </Typography>
             </Popover>

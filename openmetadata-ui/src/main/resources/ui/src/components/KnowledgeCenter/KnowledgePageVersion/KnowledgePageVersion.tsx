@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { diffWordsWithSpace } from 'diff';
 import { isEmpty, map, toString } from 'lodash';
@@ -146,8 +146,8 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
           <Col className="m-r-md knowledge-version-title-col" flex="auto">
             <Space className="w-full" direction="vertical" size={32}>
               <Typography
-                data-testid="entity-header-display-name"
-                className="m-b-0 d-block entity-header-display-name text-lg font-semibold">
+                className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+                data-testid="entity-header-display-name">
                 {stringToHTML(displayName || knowledgePage.name)}
               </Typography>
               <Row align="middle" gutter={[16, 16]}>

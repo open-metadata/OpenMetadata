@@ -12,9 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
 import { Button, Col, Form, FormListFieldData, Input, Row, Switch } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';

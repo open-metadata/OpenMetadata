@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Card } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Card } from 'antd';
 import classNames from 'classnames';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +51,10 @@ const SettingItemCard = ({
         <Typography className="font-semibold">
           {data.category ?? data.label}
         </Typography>
-        <Typography as='p' ellipsis={{ rows: 2 }} className="font-normal text-sm">
+        <Typography
+          as="p"
+          className="font-normal text-sm"
+          ellipsis={{ rows: 2 }}>
           {data.description}
         </Typography>
       </div>

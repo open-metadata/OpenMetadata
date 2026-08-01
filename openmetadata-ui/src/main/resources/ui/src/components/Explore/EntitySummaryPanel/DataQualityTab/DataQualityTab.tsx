@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -673,7 +673,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           className="text-grey-14 m-t-lg"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as='p' className="text-center p-x-md  no-data-placeholder">
+          <Typography
+            as="p"
+            className="text-center p-x-md  no-data-placeholder">
             {t('message.no-data-quality-test-message')}
           </Typography>
         </ErrorPlaceHolderNew>
@@ -730,7 +732,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             className="text-grey-14"
             icon={<AddPlaceHolderIcon height={100} width={100} />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography as='p' className="text-center p-x-md  no-data-placeholder">
+            <Typography
+              as="p"
+              className="text-center p-x-md  no-data-placeholder">
               {t('message.no-data-quality-test-message')}
             </Typography>
           </ErrorPlaceHolderNew>

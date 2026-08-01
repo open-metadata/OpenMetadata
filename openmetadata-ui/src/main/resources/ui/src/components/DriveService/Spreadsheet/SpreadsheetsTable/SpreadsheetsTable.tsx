@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -198,9 +198,7 @@ function SpreadsheetsTable({
             data-testid="show-deleted"
             onClick={handleShowDeletedChange}
           />
-          <Typography className="m-l-xs">
-            {t('label.deleted')}
-          </Typography>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}

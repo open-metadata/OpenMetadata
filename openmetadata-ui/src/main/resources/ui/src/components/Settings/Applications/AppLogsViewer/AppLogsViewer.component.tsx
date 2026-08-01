@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, Card, Col, Divider, Row, Space, Table } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button, Card, Col, Divider, Row, Space, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -332,9 +332,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'readerAvgMs',
             key: 'readerAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-reader-avg">
-                {value}
-              </Typography>
+              <Typography data-testid="entity-reader-avg">{value}</Typography>
             ),
           },
           {
@@ -342,9 +340,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'processAvgMs',
             key: 'processAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-process-avg">
-                {value}
-              </Typography>
+              <Typography data-testid="entity-process-avg">{value}</Typography>
             ),
           },
           {
@@ -352,9 +348,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             dataIndex: 'sinkAvgMs',
             key: 'sinkAvgMs',
             render: (value: string) => (
-              <Typography data-testid="entity-sink-avg">
-                {value}
-              </Typography>
+              <Typography data-testid="entity-sink-avg">{value}</Typography>
             ),
           },
           ...(successContext?.stats?.vectorStats?.totalRecords

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
@@ -182,9 +182,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               <div
                 className="w-full d-flex gap-2 flex-column"
                 data-testid="enum-config">
-                <Typography>
-                  {JSON.stringify(config?.values ?? [])}
-                </Typography>
+                <Typography>{JSON.stringify(config?.values ?? [])}</Typography>
                 <Typography>
                   {t('label.multi-select')}:{' '}
                   {config?.multiSelect ? t('label.yes') : t('label.no')}

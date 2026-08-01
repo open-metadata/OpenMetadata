@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Skeleton, Space } from 'antd';
 import { compact, startCase } from 'lodash';
 import { FC, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -456,15 +456,15 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           <Space size={4}>
             {userLink}
             <Typography className="event-separator">–</Typography>
-            <Typography data-testid="event-type" className="event-type">
+            <Typography className="event-type" data-testid="event-type">
               {eventType}
             </Typography>
             {log.impersonatedBy && (
               <>
                 <Typography className="event-separator">–</Typography>
                 <Typography
-                  data-testid="impersonated-by"
-                  className="impersonated-by">
+                  className="impersonated-by"
+                  data-testid="impersonated-by">
                   {t('label.impersonated-by-with-colon')}
                 </Typography>{' '}
                 <Link
@@ -490,9 +490,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             </div>
           ) : (
             <Space size={4}>
-              <Typography className="action-text">
-                {eventType}
-              </Typography>
+              <Typography className="action-text">{eventType}</Typography>
               {entityLink}
             </Space>
           )}
@@ -501,15 +499,15 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           <Space size={8} split={<span className="meta-separator">|</span>}>
             {entityType && (
               <Typography
-                data-testid="entity-type-badge"
-                className="meta-item entity-type-badge">
+                className="meta-item entity-type-badge"
+                data-testid="entity-type-badge">
                 {startCase(entityType)}
               </Typography>
             )}
             {timestamp && (
               <Typography
-                data-testid="timestamp"
-                className="meta-item timestamp">
+                className="meta-item timestamp"
+                data-testid="timestamp">
                 {getRelativeTime(timestamp)}
               </Typography>
             )}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

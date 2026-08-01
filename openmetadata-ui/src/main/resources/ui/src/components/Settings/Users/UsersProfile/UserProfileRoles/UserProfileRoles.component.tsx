@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Divider, Popover, Select, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

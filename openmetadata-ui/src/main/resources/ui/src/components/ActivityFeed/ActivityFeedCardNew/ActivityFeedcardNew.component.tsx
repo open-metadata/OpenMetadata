@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Skeleton, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Input, Skeleton, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
@@ -242,8 +242,8 @@ const ActivityFeedCardNew = ({
       overlayClassName="timestamp-tooltip"
       title={formatDateTime(timestampValue)}>
       <Typography
-        data-testid="timestamp"
-        className="feed-card-header-v2-timestamp">
+        className="feed-card-header-v2-timestamp"
+        data-testid="timestamp">
         {getRelativeTime(timestampValue)}
       </Typography>
     </Tooltip>
@@ -379,8 +379,8 @@ const ActivityFeedCardNew = ({
                         showThread && entityRef?.type !== EntityType.CONTAINER,
                     })}>
                     <Typography
-                      data-testid="headerText"
-                      className="card-style-feed-header text-sm">
+                      className="card-style-feed-header text-sm"
+                      data-testid="headerText">
                       {feedHeaderText}
                     </Typography>
 
@@ -492,8 +492,8 @@ const ActivityFeedCardNew = ({
                       showThread && entityRef?.type !== EntityType.CONTAINER,
                   })}>
                   <Typography
-                    data-testid="headerText"
-                    className="card-style-feed-header text-sm">
+                    className="card-style-feed-header text-sm"
+                    data-testid="headerText">
                     {feedHeaderText}
                   </Typography>
 

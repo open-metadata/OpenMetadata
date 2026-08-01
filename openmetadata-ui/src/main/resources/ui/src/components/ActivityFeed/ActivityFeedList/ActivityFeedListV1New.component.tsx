@@ -179,7 +179,10 @@ const ActivityFeedListV1New = ({
         <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as='p' style={{ marginBottom: '0' }} className="placeholder-text">
+          <Typography
+            as="p"
+            className="placeholder-text"
+            style={{ marginBottom: '0' }}>
             {emptyPlaceholderText}
           </Typography>
         </ErrorPlaceHolderNew>

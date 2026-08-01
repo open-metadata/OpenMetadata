@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Button, Card, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -56,7 +56,7 @@ const ApplicationCard = ({
         </div>
         <div className="application-info">
           <div className="d-flex gap-2">
-            <Typography as='h5' size='text-md' className="m-0">
+            <Typography as="h5" className="m-0" size="text-md">
               {title}
             </Typography>
             {isUnavailable && (

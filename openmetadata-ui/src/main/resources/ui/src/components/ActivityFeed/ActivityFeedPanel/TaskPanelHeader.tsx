@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

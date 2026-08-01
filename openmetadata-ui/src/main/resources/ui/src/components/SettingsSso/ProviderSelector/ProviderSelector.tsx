@@ -12,8 +12,8 @@
  */
 
 import { ArrowUpOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -43,7 +43,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   return (
     <div className="provider-selector-container">
       <div className="provider-selector-header">
-        <Typography as='h5' size='text-md' className="m-b-lg">
+        <Typography as="h5" className="m-b-lg" size="text-md">
           {t('label.choose-provider')}
         </Typography>
         <Button

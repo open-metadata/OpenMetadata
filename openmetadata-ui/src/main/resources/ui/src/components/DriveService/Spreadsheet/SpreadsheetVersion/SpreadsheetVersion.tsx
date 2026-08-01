@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -143,9 +143,7 @@ const SpreadsheetVersion = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (_, record) => (
-          <Typography>{getEntityName(record)}</Typography>
-        ),
+        render: (_, record) => <Typography>{getEntityName(record)}</Typography>,
       },
       ...descriptionTableObject(),
     ],

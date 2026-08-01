@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Card, Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -256,8 +256,8 @@ export const EntityImport = ({
                   direction="vertical"
                   size={16}>
                   <Typography
-                    data-testid="abort-reason"
-                    className="text-center">
+                    className="text-center"
+                    data-testid="abort-reason">
                     <strong className="d-block">{t('label.aborted')}</strong>{' '}
                     {csvImportResult.abortReason}
                   </Typography>
@@ -274,7 +274,7 @@ export const EntityImport = ({
               </Card>
             ) : (
               // added extra margin to prevent data lost due to fixed footer at bottom
-              (<div className="mb-16 m-t-lg">
+              <div className="mb-16 m-t-lg">
                 <Row data-testid="import-results" gutter={[16, 16]}>
                   <Col span={24}>{importStartedBanner}</Col>
                   <Col span={24}>
@@ -303,7 +303,7 @@ export const EntityImport = ({
                     )}
                   </Space>
                 </Affix>
-              </div>)
+              </div>
             )}
           </Col>
         )}

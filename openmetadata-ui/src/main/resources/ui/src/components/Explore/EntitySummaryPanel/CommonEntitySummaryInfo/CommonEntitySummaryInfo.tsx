@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -41,8 +41,8 @@ function CommonEntitySummaryInfo({
             <Row gutter={[16, 32]}>
               <Col span={8}>
                 <Typography
-                  data-testid={`${info.name}-label`}
-                  className="summary-item-key font-semibold">
+                  className="summary-item-key font-semibold"
+                  data-testid={`${info.name}-label`}>
                   {info.name}
                 </Typography>
               </Col>
@@ -72,8 +72,8 @@ function CommonEntitySummaryInfo({
                   )
                 ) : (
                   <Typography
-                    data-testid={`${info.name}-value`}
-                    className={classNames('summary-item-value text-grey-body')}>
+                    className={classNames('summary-item-value text-grey-body')}
+                    data-testid={`${info.name}-value`}>
                     {info.value}
                   </Typography>
                 )}

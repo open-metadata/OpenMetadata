@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isArray, startCase } from 'lodash';

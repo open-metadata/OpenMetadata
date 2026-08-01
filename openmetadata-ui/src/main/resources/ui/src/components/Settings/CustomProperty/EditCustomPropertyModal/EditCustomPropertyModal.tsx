@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Modal } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Form, Modal } from 'antd';
 import { isUndefined, uniq } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -194,8 +194,8 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
 
   const note = (
     <Typography
-      style={{ display: 'block', marginTop: '-18px' }}
-      className="text-grey-muted">
+      className="text-grey-muted"
+      style={{ display: 'block', marginTop: '-18px' }}>
       {`Note: ${t(
         'message.updating-existing-not-possible-can-add-new-values'
       )}`}

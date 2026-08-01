@@ -77,7 +77,9 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
         className="text-grey-14"
         icon={<AddPlaceHolderIcon height={100} width={100} />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as='p' className="text-center p-x-md m-t-sm no-data-placeholder">
+        <Typography
+          as="p"
+          className="text-center p-x-md m-t-sm no-data-placeholder">
           {t('message.no-schema-message')}
         </Typography>
       </ErrorPlaceHolderNew>

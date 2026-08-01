@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Layout, Menu, MenuProps } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Layout, Menu, MenuProps } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -164,7 +164,9 @@ const LeftSidebar = () => {
           open={isConfirmLogoutModalOpen}
           width={360}
           onCancel={hideConfirmLogoutModal}>
-          <Typography as='h5' size='text-md'>{t('label.logout')}</Typography>
+          <Typography as="h5" size="text-md">
+            {t('label.logout')}
+          </Typography>
           <Typography className="text-grey-muted">
             {t('message.logout-confirmation')}
           </Typography>

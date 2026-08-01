@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Modal } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

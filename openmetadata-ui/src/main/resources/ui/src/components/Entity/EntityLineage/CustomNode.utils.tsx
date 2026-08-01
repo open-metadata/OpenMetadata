@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
 import { Button, Skeleton } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -189,10 +189,10 @@ const getColumnNameContent = (
         </div>
       )}
       <Typography
+        className="custom-node-column-label"
         ellipsis={{
           tooltip: true,
-        }}
-        className="custom-node-column-label">
+        }}>
         {getEntityName(column)}
       </Typography>
     </>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -296,9 +296,7 @@ function APIEndpointsTab({
               data-testid="show-deleted"
               onClick={handleDeleteAction}
             />
-            <Typography className="m-l-xs">
-              {t('label.deleted')}
-            </Typography>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>{' '}
           </span>
         )
       }

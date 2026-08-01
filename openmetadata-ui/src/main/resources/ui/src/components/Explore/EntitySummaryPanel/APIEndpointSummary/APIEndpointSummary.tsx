@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, RadioChangeEvent, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Radio, RadioChangeEvent, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

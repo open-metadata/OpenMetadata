@@ -12,8 +12,8 @@
  */
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Progress, Row, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Progress, Row, Space, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,16 +81,16 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 {isTargetMet ? (
                   <>
                     <Typography
-                      data-testid="kpi-success"
-                      className="days-remaining">
+                      className="days-remaining"
+                      data-testid="kpi-success">
                       <CheckCircleOutlined style={{ fontSize: '20px' }} />
                     </Typography>
                   </>
                 ) : (
                   <>
                     <Typography
-                      data-testid="kpi-days-remaining"
-                      className="days-remaining">
+                      className="days-remaining"
+                      data-testid="kpi-days-remaining">
                       {daysLeft <= 0 ? 0 : daysLeft}
                     </Typography>
                     <Typography className="days-left">

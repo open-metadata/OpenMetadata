@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Divider, Row, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Tag } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,8 +56,8 @@ const ContractSecurityCard: React.FC<{
               'label.access-policy'
             )}: `}</Typography>
             <Typography
-              data-testid={`contract-security-access-policy-${index}`}
-              className="access-policy-value">
+              className="access-policy-value"
+              data-testid={`contract-security-access-policy-${index}`}>
               {policy.accessPolicy || NO_DATA_PLACEHOLDER}
             </Typography>
           </div>

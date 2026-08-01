@@ -15,8 +15,8 @@ import {
   ClockCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Avatar, Button, Card, Collapse, Divider, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Card, Collapse, Divider, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -59,7 +59,7 @@ const AppInstallVerifyCard = ({
           size={100}
         />
       </Space>
-      <Typography as='h5' size='text-md' className="m-t-md">
+      <Typography as="h5" className="m-t-md" size="text-md">
         {t('label.authorize-app', {
           app: getEntityName(appData),
         })}

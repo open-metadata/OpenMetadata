@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { Builder, Query } from '@react-awesome-query-builder/antd';
 import { Button, Modal, Space } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import './advanced-search-modal.less';

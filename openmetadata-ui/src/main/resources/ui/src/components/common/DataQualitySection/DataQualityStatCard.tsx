@@ -29,13 +29,13 @@ export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
     type="button"
     onClick={onClick}>
     <Typography
-      data-testid={`data-quality-stat-card-count-${type}`}
-      className={`stat-count ${type}`}>
+      className={`stat-count ${type}`}
+      data-testid={`data-quality-stat-card-count-${type}`}>
       {count}
     </Typography>
     <Typography
-      data-testid={`data-quality-stat-card-label-${type}`}
-      className={`stat-label ${type}`}>
+      className={`stat-label ${type}`}
+      data-testid={`data-quality-stat-card-label-${type}`}>
       {label}
     </Typography>
   </button>

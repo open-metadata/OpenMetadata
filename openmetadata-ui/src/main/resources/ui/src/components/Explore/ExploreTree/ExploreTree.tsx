@@ -35,24 +35,24 @@ import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-    buildTreeCountQueryFilter,
-    findTreeNodeKeyByBrowsePath,
-    getAggregations,
-    getDisabledExploreTreeKeys,
-    getExploreQueryFilterMust,
-    getQueryFilterMust,
-    getQuickFilterMust,
-    getQuickFilterObject,
-    getQuickFilterObjectForEntities,
-    getSubLevelHierarchyKey,
-    hasServiceDrillDownFilter,
-    isEntityTypeBucketSelected,
-    isSelectionWithinBrowsePath,
-    parseBrowsePathFields,
-    reconcilePresentRoots,
-    refreshRootCounts,
-    updateTreeData,
-    updateTreeDataWithCounts
+  buildTreeCountQueryFilter,
+  findTreeNodeKeyByBrowsePath,
+  getAggregations,
+  getDisabledExploreTreeKeys,
+  getExploreQueryFilterMust,
+  getQueryFilterMust,
+  getQuickFilterMust,
+  getQuickFilterObject,
+  getQuickFilterObjectForEntities,
+  getSubLevelHierarchyKey,
+  hasServiceDrillDownFilter,
+  isEntityTypeBucketSelected,
+  isSelectionWithinBrowsePath,
+  parseBrowsePathFields,
+  reconcilePresentRoots,
+  refreshRootCounts,
+  updateTreeData,
+  updateTreeDataWithCounts,
 } from '../../../utils/ExplorePureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -65,9 +65,9 @@ import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
 import {
-    ExploreTreeNode,
-    ExploreTreeProps,
-    TreeNodeData
+  ExploreTreeNode,
+  ExploreTreeProps,
+  TreeNodeData,
 } from './ExploreTree.interface';
 
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
@@ -713,13 +713,16 @@ const ExploreTree = ({
         className="h-min-80 d-flex flex-col justify-center border-none"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as='p' style={{ marginBottom: '0' }} className="font-medium">
+        <Typography
+          as="p"
+          className="font-medium"
+          style={{ marginBottom: '0' }}>
           {t('message.no-data-yet')}
         </Typography>
-        <Typography as='p' style={{ marginBottom: '0' }}>
+        <Typography as="p" style={{ marginBottom: '0' }}>
           {t('message.add-service-and-data-assets')}
         </Typography>
-        <Typography as='p'>
+        <Typography as="p">
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={

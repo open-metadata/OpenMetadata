@@ -12,8 +12,8 @@
  */
 
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
-import { Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -55,17 +55,13 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
               <Typography className="text-grey-muted">
                 {`${t('label.name')}:`}
               </Typography>
-              <Typography className="m-l-xs">
-                {source.name}
-              </Typography>
+              <Typography className="m-l-xs">{source.name}</Typography>
             </Col>
             <Col span={6}>
               <Typography className="text-grey-muted">
                 {`${t('label.type')}:`}
               </Typography>
-              <Typography className="m-l-xs">
-                {source.dataType}
-              </Typography>
+              <Typography className="m-l-xs">{source.dataType}</Typography>
             </Col>
             <Col span={11}>
               <Row>

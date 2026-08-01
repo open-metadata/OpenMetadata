@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Tabs } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Switch, Tabs } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -139,7 +139,10 @@ const SettingsSso = () => {
           <div className="enable-sso-card-container">
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
-                <Typography as='h1' size='display-sm' className="enable-self-signup-header m-b-xs">
+                <Typography
+                  as="h1"
+                  className="enable-self-signup-header m-b-xs"
+                  size="display-sm">
                   {t('label.enable-sso')}
                 </Typography>
                 <Typography className="enable-self-signup-desc">
@@ -387,7 +390,10 @@ const SettingsSso = () => {
                     />
                   )}
                 </div>
-                <Typography as='h1' size='display-sm' className="m-0 sso-form-header text-md">
+                <Typography
+                  as="h1"
+                  className="m-0 sso-form-header text-md"
+                  size="display-sm">
                   {getProviderDisplayName(currentProvider)}
                 </Typography>
               </div>

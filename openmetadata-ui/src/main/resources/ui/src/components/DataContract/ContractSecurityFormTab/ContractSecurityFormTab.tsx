@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card, Col, Divider, Form, Input, Row, Select } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Divider, Form, Input, Row, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -155,7 +155,7 @@ export const ContractSecurityFormTab: React.FC<{
           <Typography className="contract-detail-form-tab-title">
             {t('label.security')}
           </Typography>
-          <Typography as='p' className="contract-detail-form-tab-description">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-security-description')}
           </Typography>
         </div>
@@ -187,7 +187,7 @@ export const ContractSecurityFormTab: React.FC<{
                 <Typography className="consumer-title">
                   {t('label.policy-plural')}
                 </Typography>
-                <Typography as='p' className="consumer-description">
+                <Typography as="p" className="consumer-description">
                   {t('message.contract-security-consume-description')}
                 </Typography>
               </div>

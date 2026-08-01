@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
@@ -63,7 +63,7 @@ export const ContractTermsOfService: React.FC<{
           <Typography className="contract-detail-form-tab-title">
             {t('label.terms-of-service')}
           </Typography>
-          <Typography as='p' className="contract-detail-form-tab-description">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-terms-of-service-description')}
           </Typography>
         </div>

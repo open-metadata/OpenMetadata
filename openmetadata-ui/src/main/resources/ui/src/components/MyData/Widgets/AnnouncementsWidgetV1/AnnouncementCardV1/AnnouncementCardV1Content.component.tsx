@@ -152,9 +152,7 @@ const AnnouncementCardV1Content = ({
                 </Link>
               )}
               {fieldOperation && fieldOperation !== FieldOperation.None && (
-                <Typography
-                  style={{ color }}
-                  className="field-operation-text">
+                <Typography className="field-operation-text" style={{ color }}>
                   {' '}
                   {getFieldOperationText(fieldOperation)}
                 </Typography>
@@ -198,35 +196,35 @@ const AnnouncementCardV1Content = ({
                 </Typography>
               ) : (
                 <Typography
-                  ellipsis={{ tooltip: true }}
-                  style={{
-                    color: currentBackgroundColor ?? 'inherit',
-                  }}
                   className={classNames(
                     'announcement-entity-name',
                     variantConfig.entityName
-                  )}>
+                  )}
+                  ellipsis={{ tooltip: true }}
+                  style={{
+                    color: currentBackgroundColor ?? 'inherit',
+                  }}>
                   {entityName}
                 </Typography>
               )}
             </div>
           ) : (
             <Typography
-              style={announcementTitleStyle}
-              className="announcement-header">
+              className="announcement-header"
+              style={announcementTitleStyle}>
               {title}
             </Typography>
           )}
-          <Typography style={timeStampStyle} className="timestamp">
+          <Typography className="timestamp" style={timeStampStyle}>
             {getShortRelativeTime(timestamp)}
           </Typography>
         </div>
       </div>
       {(userName || entityName) && title && (
         <Typography
-          as='p'
-          ellipsis={{ tooltip: true, rows: 2 }}
-          className={classNames('announcement-title', variantConfig.title)}>
+          as="p"
+          className={classNames('announcement-title', variantConfig.title)}
+          ellipsis={{ tooltip: true, rows: 2 }}>
           {title}
           {columnName && (
             <Typography>

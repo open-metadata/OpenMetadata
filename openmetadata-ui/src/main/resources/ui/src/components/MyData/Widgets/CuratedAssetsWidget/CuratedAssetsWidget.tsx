@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -368,8 +368,8 @@ const CuratedAssetsWidgetContent = ({
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
                 <Typography
-                  ellipsis={{ tooltip: true }}
-                  className="entity-list-item-title">
+                  className="entity-list-item-title"
+                  ellipsis={{ tooltip: true }}>
                   {title}
                 </Typography>
                 {certification && (
@@ -380,8 +380,8 @@ const CuratedAssetsWidgetContent = ({
               </div>
               {description && (
                 <Typography
-                  ellipsis={{ tooltip: true }}
-                  className="max-two-lines entity-list-item-description text-grey-muted">
+                  className="max-two-lines entity-list-item-description text-grey-muted"
+                  ellipsis={{ tooltip: true }}>
                   {getTextFromHtmlString(description)}
                 </Typography>
               )}
@@ -439,10 +439,10 @@ const CuratedAssetsWidgetContent = ({
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}
         title={
           <Typography
-            ellipsis={{ tooltip: true }}
             className={
               isFullSize ? 'widget-title-full-size' : 'widget-title-half-size'
-            }>
+            }
+            ellipsis={{ tooltip: true }}>
             {title || t('label.curated-asset-plural')}
           </Typography>
         }

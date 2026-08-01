@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Badge, Button, Collapse, Divider, Select, Slider, Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button, Collapse, Divider, Select, Slider, Switch } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -142,9 +142,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
         <div className="m-y-sm" style={{ padding: '10px' }}>
           {/* Highlight Fields Section */}
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
-            <Typography>
-              {t('label.highlight-field-plural')}
-            </Typography>
+            <Typography>{t('label.highlight-field-plural')}</Typography>
             <Switch
               checked={
                 searchSettings?.highlightFields?.includes(field.fieldName) ??
@@ -161,8 +159,8 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
             <Typography>{t('label.weight')}</Typography>
             <Typography
-              data-testid="field-weight-value"
-              className="font-semibold field-weightage-text">
+              className="font-semibold field-weightage-text"
+              data-testid="field-weight-value">
               {fieldWeight}
             </Typography>
           </div>

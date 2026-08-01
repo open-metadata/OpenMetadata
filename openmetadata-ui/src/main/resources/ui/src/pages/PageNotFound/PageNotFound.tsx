@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import notFoundImage from '../../assets/img/404-image.png';
@@ -29,7 +29,7 @@ const PageNotFound = () => {
         <Typography className="text-3xl font-bold text-grey-muted m-b-xs">
           {t('label.page-not-found')}
         </Typography>
-        <Typography as='p' className="text-lg text-grey-muted-muted">
+        <Typography as="p" className="text-lg text-grey-muted-muted">
           {t('message.page-is-not-available')}
         </Typography>
         <Space data-testid="route-links" size="middle">

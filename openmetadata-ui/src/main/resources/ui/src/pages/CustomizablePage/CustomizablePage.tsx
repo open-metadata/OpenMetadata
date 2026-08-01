@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
@@ -372,7 +372,7 @@ export const CustomizablePage = () => {
           <ErrorPlaceHolder
             className="m-t-lg"
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography as='p' className="w-max-500">
+            <Typography as="p" className="w-max-500">
               <Transi18next
                 i18nKey="message.no-persona-message"
                 renderElement={

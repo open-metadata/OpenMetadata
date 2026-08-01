@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Input } from 'antd';
 import classNames from 'classnames';
 import { FC, lazy, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';

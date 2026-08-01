@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space } from 'antd';
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Divider, Row, Space } from 'antd';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,7 +82,7 @@ export const AlertDetailsComponent = ({
       <Col span={24}>
         <Card>
           <Space direction="vertical" size={8}>
-            <CoreTypography as='h5' size='text-md' className="m-0">
+            <CoreTypography as="h5" className="m-0" size="text-md">
               {t('label.trigger')}
             </CoreTypography>
             <CoreTypography data-testid="display-name-entities">
@@ -92,7 +92,7 @@ export const AlertDetailsComponent = ({
             </CoreTypography>
           </Space>
           <Divider />
-          <CoreTypography as='h5' size='text-md'>
+          <CoreTypography as="h5" size="text-md">
             {t('label.filter-plural')}
           </CoreTypography>
           {/*
@@ -124,7 +124,7 @@ export const AlertDetailsComponent = ({
             })}
           </CoreTypography>
           <Divider />
-          <CoreTypography as='h5' size='text-md'>
+          <CoreTypography as="h5" size="text-md">
             {t('label.destination')}
           </CoreTypography>
           <Row gutter={[16, 16]} />

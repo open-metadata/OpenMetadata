@@ -48,7 +48,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
               component={AssigneesIcon}
               data-testid={!isCompactView && getEntityName(owner)}
             />
-            <Typography ellipsis={{ tooltip: true }} className="text-sm">
+            <Typography className="text-sm" ellipsis={{ tooltip: true }}>
               {displayName}
             </Typography>
           </div>
@@ -86,7 +86,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         style={{ fontSize: isCompactView ? '16px' : `${avatarSize}px` }}
       />
       {!isCompactView && (
-        <Typography ellipsis={{ tooltip: true }} className="text-sm">
+        <Typography className="text-sm" ellipsis={{ tooltip: true }}>
           {displayName}
         </Typography>
       )}

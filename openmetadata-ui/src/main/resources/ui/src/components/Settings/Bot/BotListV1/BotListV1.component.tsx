@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -285,8 +285,8 @@ const BotListV1 = ({
           return (
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
               <Typography
-                ellipsis={{ tooltip: true }}
-                className="text-ellipsis bot-link">
+                className="text-ellipsis bot-link"
+                ellipsis={{ tooltip: true }}>
                 {stringToHTML(highlightSearchText(name, searchTerm))}
               </Typography>
             </Link>

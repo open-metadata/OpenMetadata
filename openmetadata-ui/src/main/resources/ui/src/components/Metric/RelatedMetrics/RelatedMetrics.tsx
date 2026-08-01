@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -77,9 +77,9 @@ const RelatedMetrics: FC = () => {
   const showMoreLessElement = useMemo(() => {
     return (
       <Typography
+        className="cursor-pointer text-xs text-primary underline"
         data-testid={`show-${isShowMore ? 'less' : 'more'}`}
-        onClick={() => setIsShowMore(!isShowMore)}
-        className="cursor-pointer text-xs text-primary underline">
+        onClick={() => setIsShowMore(!isShowMore)}>
         {isShowMore ? t('label.show-less') : t('label.show-more')}
       </Typography>
     );
@@ -110,8 +110,8 @@ const RelatedMetrics: FC = () => {
                   title={getEntityName(item)}
                   type="text">
                   <Typography
-                    ellipsis={{ tooltip: true }}
-                    className="w-72 text-left text-xs">
+                    className="w-72 text-left text-xs"
+                    ellipsis={{ tooltip: true }}>
                     {getEntityName(item)}
                   </Typography>
                 </Button>

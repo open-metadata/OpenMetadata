@@ -14,8 +14,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Alert, Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Alert, Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -102,16 +102,14 @@ function InlineAlert({
         <div className="d-flex items-start gap-3">
           {alertIcon}
           <div className="d-flex flex-col gap-2">
-            <Typography className="font-semibold text-sm">
-              {heading}
-            </Typography>
+            <Typography className="font-semibold text-sm">{heading}</Typography>
             <Typography
-              as='p'
-              data-testid="inline-alert-description"
+              as="p"
               className={classNames('m-b-0 text-sm', {
                 'truncated-text': !showMore,
                 'expanded-text': showMore,
-              })}>
+              })}
+              data-testid="inline-alert-description">
               {description}
               {subDescription && (
                 <>

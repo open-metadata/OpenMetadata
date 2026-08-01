@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
@@ -126,8 +126,8 @@ const KnowledgePages: FC = () => {
                       }
                 }>
                 <Typography
-                  ellipsis={{ tooltip: true }}
-                  className="article-header">
+                  className="article-header"
+                  ellipsis={{ tooltip: true }}>
                   {getEntityName(knowledgePage)}
                 </Typography>
               </Link>

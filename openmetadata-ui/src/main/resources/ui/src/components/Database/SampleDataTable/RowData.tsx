@@ -27,26 +27,22 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
   const dataElementRenderer = useMemo(() => {
     if (isNil(data) || data === '') {
       return (
-        <Typography data-testid="empty-data">
-          {NO_DATA_PLACEHOLDER}
-        </Typography>
+        <Typography data-testid="empty-data">{NO_DATA_PLACEHOLDER}</Typography>
       );
     } else if (isObject(data)) {
       return (
         <Typography
-          as='p'
+          as="p"
+          className="w-52 cursor-pointer"
           data-testid="json-object"
           ellipsis={{ rows: 4 }}
-          onClick={onOpen}
-          className="w-52 cursor-pointer">
+          onClick={onOpen}>
           {JSON.stringify(data)}
         </Typography>
       );
     } else {
       return (
-        <Typography data-testid="string-data">
-          {data.toString()}
-        </Typography>
+        <Typography data-testid="string-data">{data.toString()}</Typography>
       );
     }
   }, [data, onOpen]);

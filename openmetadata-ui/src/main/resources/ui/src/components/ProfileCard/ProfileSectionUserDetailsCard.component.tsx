@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Badge, Button, Modal, Popover } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button, Modal, Popover } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,9 +123,9 @@ const ProfileSectionUserDetailsCard = ({
     () =>
       !isMaskedEmail(userData.email) && (
         <Typography
-          as='p'
-          data-testid="user-email-value"
-          className="m-b-0 profile-details-email">
+          as="p"
+          className="m-b-0 profile-details-email"
+          data-testid="user-email-value">
           {userData.email}
         </Typography>
       ),

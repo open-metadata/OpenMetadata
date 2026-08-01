@@ -42,7 +42,7 @@ export const IndexNotFoundBanner = () => {
             <Typography className="font-semibold text-xs">
               {t('server.indexing-error')}
             </Typography>
-            <Typography as='p' className="m-b-0 text-xs">
+            <Typography as="p" className="m-b-0 text-xs">
               <Transi18next
                 i18nKey="message.configure-search-re-index"
                 renderElement={

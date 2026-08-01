@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, InputNumber, Row, Select } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, InputNumber, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -134,7 +134,11 @@ const LineageConfigPage = () => {
                 </Col>
 
                 <Col span={24}>
-                  <Typography as='h5' size='text-md' data-testid="heading" className="m-b-0">
+                  <Typography
+                    as="h5"
+                    className="m-b-0"
+                    data-testid="heading"
+                    size="text-md">
                     {t('label.lineage')}
                   </Typography>
                 </Col>

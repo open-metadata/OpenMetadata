@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -226,7 +226,7 @@ const RequestDescription = () => {
             <div
               className="m-t-0 request-description"
               key="request-description">
-              <Typography as='p' data-testid="form-title" className="text-base">
+              <Typography as="p" className="text-base" data-testid="form-title">
                 {t('label.create-entity', {
                   entity: t('label.task'),
                 })}

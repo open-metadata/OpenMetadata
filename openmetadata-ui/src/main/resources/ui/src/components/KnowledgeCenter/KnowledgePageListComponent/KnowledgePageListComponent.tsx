@@ -530,13 +530,13 @@ const KnowledgePageListComponent = forwardRef<
               direction="vertical"
               size={10}>
               <div className="text-center text-sm font-normal">
-                <Typography as='p'>
+                <Typography as="p">
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                     entity: t('label.article'),
                   })}
                 </Typography>
 
-                <Typography as='p'>
+                <Typography as="p">
                   <Transi18next
                     i18nKey="message.refer-to-our-doc"
                     renderElement={

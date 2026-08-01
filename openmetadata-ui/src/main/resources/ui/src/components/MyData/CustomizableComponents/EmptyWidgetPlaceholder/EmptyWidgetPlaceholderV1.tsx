@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import WidgetWrapper from '../../Widgets/Common/WidgetWrapper/WidgetWrapper';
@@ -35,7 +35,7 @@ function EmptyWidgetPlaceholderV1({
 
   const widgetContent = (
     <div className="empty-widget-placeholder-v1-content">
-      <Typography as='h4' size='text-lg' className="add-widgets-title">
+      <Typography as="h4" className="add-widgets-title" size="text-lg">
         {t('label.add-new-widget-plural')}
       </Typography>
       <Typography className="add-widgets-description">

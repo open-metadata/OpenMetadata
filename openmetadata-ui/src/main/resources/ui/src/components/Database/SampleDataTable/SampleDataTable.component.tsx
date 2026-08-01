@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Select, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -270,7 +270,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
       <ErrorPlaceHolder className="error-placeholder">
-        <Typography as='p'>
+        <Typography as="p">
           <Transi18next
             i18nKey="message.view-sample-data-entity"
             renderElement={

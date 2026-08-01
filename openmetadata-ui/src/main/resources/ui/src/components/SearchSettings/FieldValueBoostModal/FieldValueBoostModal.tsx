@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal, Select, Slider } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Form, Input, Modal, Select, Slider } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -106,7 +106,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
       okText={t('label.save')}
       open={open}
       title={
-        <Typography weight='bold'>
+        <Typography weight="bold">
           {selectedBoost
             ? t('label.edit-entity', { entity: t('label.field-value-boost') })
             : t('label.add-entity', { entity: t('label.field-value-boost') })}
@@ -149,8 +149,8 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
           <div className="d-flex items-center justify-between m-b-md">
             <Typography>{t('label.impact')}</Typography>
             <Typography
-              data-testid="field-boost-value"
-              className="font-semibold boost-value">
+              className="font-semibold boost-value"
+              data-testid="field-boost-value">
               {factor}
             </Typography>
           </div>
@@ -180,9 +180,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
           <Input data-testid="missing-value-input" min={1} type="number" />
         </Form.Item>
 
-        <Typography
-          data-testid="range-condition"
-          className="m-b-sm d-block">
+        <Typography className="m-b-sm d-block" data-testid="range-condition">
           {t('label.range-condition')}
         </Typography>
         <div className="range-inputs d-flex flex-col gap-1">

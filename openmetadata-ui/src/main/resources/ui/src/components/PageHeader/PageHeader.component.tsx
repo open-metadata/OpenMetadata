@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Badge, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LearningIcon } from '../Learning/LearningIcon/LearningIcon.component';
 import './page-header.less';
@@ -32,9 +32,9 @@ const PageHeader = ({
     <div className="page-header-container" data-testid="page-header-container">
       <Space align="center" size={4}>
         <Typography
-          as='h5'
-          size='text-md'
+          as="h5"
           data-testid="heading"
+          size="text-md"
           {...titleProps}
           className="heading m-b-0">
           {header}
@@ -53,7 +53,7 @@ const PageHeader = ({
         )}
       </Space>
       <Typography
-        as='p'
+        as="p"
         data-testid="sub-heading"
         {...subHeaderProps}
         className="sub-heading">

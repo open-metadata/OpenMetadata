@@ -153,7 +153,7 @@ const BotDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        <Typography as='p' data-testid="error-message" className="text-base">
+        <Typography as="p" className="text-base" data-testid="error-message">
           {t('message.no-entity-available-with-name', {
             entity: t('label.bot-plural'),
           })}{' '}

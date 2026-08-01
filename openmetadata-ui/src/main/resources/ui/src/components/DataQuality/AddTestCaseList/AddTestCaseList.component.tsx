@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button, Checkbox, Col, Divider, List, Row, Space } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { debounce } from 'lodash';
@@ -639,10 +643,10 @@ export const AddTestCaseList = ({
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
                       <Typography
-                        as='p'
+                        as="p"
+                        className="m-0 font-medium text-base w-max-500"
                         data-testid={test.name}
-                        ellipsis={{ tooltip: true }}
-                        className="m-0 font-medium text-base w-max-500">
+                        ellipsis={{ tooltip: true }}>
                         {getEntityName(test)}
                       </Typography>
 
@@ -655,10 +659,13 @@ export const AddTestCaseList = ({
                         data-testid={`checkbox-${test.name}`}
                       />
                     </Space>
-                    <Typography as='p' ellipsis={{ tooltip: true }} className="m-0 w-max-500">
+                    <Typography
+                      as="p"
+                      className="m-0 w-max-500"
+                      ellipsis={{ tooltip: true }}>
                       {getEntityName(test.testDefinition)}
                     </Typography>
-                    <Typography as='p' className="m-0">
+                    <Typography as="p" className="m-0">
                       <Link
                         data-testid="table-link"
                         to={getEntityDetailsPath(
@@ -810,7 +817,7 @@ export const AddTestCaseList = ({
             </Typography>
             {showSelectAllTotalLink && (
               <>
-                <Typography color='secondary' className="text-grey-muted">
+                <Typography className="text-grey-muted" color="secondary">
                   |
                 </Typography>
                 <Button

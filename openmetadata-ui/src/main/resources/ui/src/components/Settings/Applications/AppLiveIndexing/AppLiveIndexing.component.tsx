@@ -142,9 +142,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'failureReason',
         ellipsis: true,
         render: (reason: string) => (
-          <Typography
-            ellipsis={{ tooltip: reason }}
-            style={{ maxWidth: 300 }}>
+          <Typography ellipsis={{ tooltip: reason }} style={{ maxWidth: 300 }}>
             {reason || NO_DATA_PLACEHOLDER}
           </Typography>
         ),

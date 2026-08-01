@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row, Space } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,8 +53,8 @@ const DomainSummary = ({
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="owner-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="owner-header">
               {t('label.owner-plural')}
             </Typography>
           </Col>
@@ -68,8 +68,8 @@ const DomainSummary = ({
         <Row className="m-md m-t-0" gutter={[0, 8]}>
           <Col span={24}>
             <Typography
-              data-testid="expert-header"
-              className="summary-panel-section-title">
+              className="summary-panel-section-title"
+              data-testid="expert-header">
               {t('label.expert-plural')}
             </Typography>
           </Col>
@@ -80,8 +80,8 @@ const DomainSummary = ({
               </Space>
             ) : (
               <Typography
-                data-testid="no-expert-header"
-                className="text-grey-body">
+                className="text-grey-body"
+                data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}

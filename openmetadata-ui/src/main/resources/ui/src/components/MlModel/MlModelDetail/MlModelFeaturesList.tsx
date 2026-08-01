@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
@@ -172,7 +172,7 @@ const MlModelFeaturesList = () => {
             <Divider className="m-y-md" />
           </Col>
           <Col span={24}>
-            <Typography as='h5' size='text-md'>
+            <Typography as="h5" size="text-md">
               {t('label.feature-plural-used')}
             </Typography>
           </Col>
@@ -187,12 +187,12 @@ const MlModelFeaturesList = () => {
                   <Row gutter={[0, 8]}>
                     <Col span={24}>
                       <Typography
+                        className="font-semibold"
                         data-testid="column-name"
                         style={{
                           cursor: isDeleted ? 'default' : 'pointer',
                         }}
-                        onClick={(event) => handleColumnClick(feature, event)}
-                        className="font-semibold">
+                        onClick={(event) => handleColumnClick(feature, event)}>
                         {feature.name}
                       </Typography>
                     </Col>
@@ -202,9 +202,7 @@ const MlModelFeaturesList = () => {
                           <Typography className="text-grey-muted">
                             {`${t('label.type')} :`}
                           </Typography>{' '}
-                          <Typography>
-                            {feature.dataType || '--'}
-                          </Typography>
+                          <Typography>{feature.dataType || '--'}</Typography>
                         </Space>
                         <Divider className="border-gray" type="vertical" />
                         <Space>

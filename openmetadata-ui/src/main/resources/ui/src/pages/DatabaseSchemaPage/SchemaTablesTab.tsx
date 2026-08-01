@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Switch } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Switch } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -374,9 +374,7 @@ function SchemaTablesTab({
                 data-testid="show-deleted"
                 onClick={handleShowDeletedTables}
               />
-              <Typography className="m-l-xs">
-                {t('label.deleted')}
-              </Typography>
+              <Typography className="m-l-xs">{t('label.deleted')}</Typography>
             </span>
 
             {getBulkEditButton(

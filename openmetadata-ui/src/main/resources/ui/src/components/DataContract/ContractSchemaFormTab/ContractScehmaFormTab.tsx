@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
@@ -538,7 +538,7 @@ export const ContractSchemaFormTab: React.FC<{
           <Typography className="contract-detail-form-tab-title">
             {t('label.schema')}
           </Typography>
-          <Typography as='p' className="contract-detail-form-tab-description">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-schema-description')}
           </Typography>
         </div>

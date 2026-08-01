@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import {
@@ -196,10 +196,10 @@ function WorksheetColumnsTable() {
                   columnConstraint: record.constraint,
                 })}
                 <Typography
-                  data-testid="column-name"
                   className={classNames(
                     'm-b-0 d-block break-word text-link-color'
-                  )}>
+                  )}
+                  data-testid="column-name">
                   {name}
                 </Typography>
                 {record.fullyQualifiedName && (
@@ -211,8 +211,8 @@ function WorksheetColumnsTable() {
               </div>
               {isEmpty(displayName) ? null : (
                 <Typography
-                  data-testid="column-display-name"
-                  className="m-b-0 d-block break-word">
+                  className="m-b-0 d-block break-word"
+                  data-testid="column-display-name">
                   {getEntityName(record)}
                 </Typography>
               )}

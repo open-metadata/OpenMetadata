@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Divider, Input, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Divider, Input, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -74,7 +74,7 @@ const AuthMechanism: FC<Props> = ({
             <Typography className="card-title m-t-0 m-b-2 text-md">
               {t('message.automate-provisioning-with-scim')}
             </Typography>
-            <Typography as='p' className="m-b-0 card-description">
+            <Typography as="p" className="m-b-0 card-description">
               {t(
                 'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
               )}
@@ -113,13 +113,9 @@ const AuthMechanism: FC<Props> = ({
         </Space>
       </Space>
       <Divider className={isSCIMBot ? 'scim-divider' : ''} />
-      {!isSCIMBot && (
-        <Typography as='p'>{t('message.jwt-token')}</Typography>
-      )}
+      {!isSCIMBot && <Typography as="p">{t('message.jwt-token')}</Typography>}
       {isSCIMBot && (
-        <Typography className="token-label">
-          {t('label.scim-token')}
-        </Typography>
+        <Typography className="token-label">{t('label.scim-token')}</Typography>
       )}
       {JWTToken ? (
         <>

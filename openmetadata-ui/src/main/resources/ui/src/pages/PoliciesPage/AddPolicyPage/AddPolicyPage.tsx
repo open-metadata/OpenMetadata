@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Form, Input, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Divider, Form, Input, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -131,7 +131,7 @@ const AddPolicyPage = () => {
           <div data-testid="add-policy-container">
             <TitleBreadcrumb titleLinks={translatedAddPolicyBreadcrumb} />
             <div className="m-t-md">
-              <Typography as='p' data-testid="form-title" className="text-base">
+              <Typography as="p" className="text-base" data-testid="form-title">
                 {t('label.add-new-entity', {
                   entity: t('label.policy'),
                 })}
@@ -193,7 +193,7 @@ const AddPolicyPage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography as='p' className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.policy'),
               })}

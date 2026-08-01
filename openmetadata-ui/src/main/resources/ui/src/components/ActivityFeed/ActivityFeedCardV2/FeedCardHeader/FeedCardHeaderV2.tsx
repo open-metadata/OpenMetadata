@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
@@ -143,8 +143,8 @@ const FeedCardHeaderV2 = ({
 
         {entityCheck && !isEntityFeed && (
           <Typography
-            data-testid="headerText"
-            className="font-normal whitespace-normal">
+            className="font-normal whitespace-normal"
+            data-testid="headerText">
             {isAnnouncement ? (
               <Typography className="m-r-xss">
                 {t('label.posted-on-lowercase')}

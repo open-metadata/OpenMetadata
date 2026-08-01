@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Select, SelectProps } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Select, SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';

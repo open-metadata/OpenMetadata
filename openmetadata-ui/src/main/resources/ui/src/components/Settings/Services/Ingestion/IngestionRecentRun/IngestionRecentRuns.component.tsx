@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Popover, Skeleton, Space, Tag } from 'antd';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';

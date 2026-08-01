@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Space, Tabs, TabsProps } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -164,7 +164,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                         <Divider className="m-y-md" />
                       </Col>
                       <Col span={24}>
-                        <Typography as='h5' size='text-md'>
+                        <Typography as="h5" size="text-md">
                           {t('label.feature-plural-used')}
                         </Typography>
                       </Col>

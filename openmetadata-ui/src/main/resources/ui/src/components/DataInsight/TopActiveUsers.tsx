@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -82,9 +82,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         title: t('label.team'),
         dataIndex: 'team',
         key: 'team',
-        render: (team: string) => (
-          <Typography>{team ?? '--'}</Typography>
-        ),
+        render: (team: string) => <Typography>{team ?? '--'}</Typography>,
       },
       {
         title: t('label.most-recent-session'),
@@ -100,9 +98,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         }),
         dataIndex: 'sessions',
         key: 'sessions',
-        render: (sessions: number) => (
-          <Typography>{sessions}</Typography>
-        ),
+        render: (sessions: number) => <Typography>{sessions}</Typography>,
       },
       {
         title: t('label.average-session'),

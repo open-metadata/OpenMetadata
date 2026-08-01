@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Modal } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Modal } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useState } from 'react';

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Row } from 'antd';
 import classNames from 'classnames';
 import './form-card-section.less';
 import { FormCardSectionProps } from './FormCardSection.interface';

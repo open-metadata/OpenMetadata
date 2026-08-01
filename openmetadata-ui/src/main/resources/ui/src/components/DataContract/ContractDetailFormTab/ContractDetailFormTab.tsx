@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card, Form } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
@@ -108,7 +108,7 @@ export const ContractDetailFormTab: React.FC<{
           <Typography className="contract-detail-form-tab-title">
             {t('label.contract-detail-plural')}
           </Typography>
-          <Typography as='p' className="contract-detail-form-tab-description">
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.contract-detail-plural-description')}
           </Typography>
         </div>

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
 import { Button, Space, Switch, Tooltip } from 'antd';
 import { useMemo } from 'react';
@@ -185,9 +191,7 @@ const TestDefinitionTable = ({
         <Typography>{record.entityType}</Typography>
       </Table.Cell>
       <Table.Cell>
-        <Typography>
-          {record.testPlatforms?.join(', ') ?? '--'}
-        </Typography>
+        <Typography>{record.testPlatforms?.join(', ') ?? '--'}</Typography>
       </Table.Cell>
       <Table.Cell>{renderEnabledCell(record)}</Table.Cell>
       <Table.Cell>{renderActionsCell(record)}</Table.Cell>

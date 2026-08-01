@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';

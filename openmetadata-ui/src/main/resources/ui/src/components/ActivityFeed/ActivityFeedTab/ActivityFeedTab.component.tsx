@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Divider, Dropdown, Menu, Segmented, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Divider, Dropdown, Menu, Segmented, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -881,7 +881,7 @@ export const ActivityFeedTab = ({
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography as='p' className="placeholder-text">
+                  <Typography as="p" className="placeholder-text">
                     {getRightPanelPlaceholder}
                   </Typography>
                 </ErrorPlaceHolderNew>

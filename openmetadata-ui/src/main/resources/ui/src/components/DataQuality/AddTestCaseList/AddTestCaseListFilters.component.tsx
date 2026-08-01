@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import SearchDropdown from '../../SearchDropdown/SearchDropdown';

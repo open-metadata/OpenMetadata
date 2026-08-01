@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -24,7 +25,6 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { Typography } from '@openmetadata/ui-core-components';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -226,7 +226,7 @@ const EditKPIPage = () => {
         children: (
           <div data-testid="edit-kpi-container">
             <TitleBreadcrumb className="m-t-0 my-4" titleLinks={breadcrumb} />
-            <Typography as='p' data-testid="form-title" className="text-base">
+            <Typography as="p" className="text-base" data-testid="form-title">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
@@ -436,7 +436,7 @@ const EditKPIPage = () => {
       secondPanel={{
         children: (
           <div data-testid="right-panel">
-            <Typography as='p' className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}

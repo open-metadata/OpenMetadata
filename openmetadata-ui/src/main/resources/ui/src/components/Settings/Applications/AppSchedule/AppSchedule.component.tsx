@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Modal, Row, Space } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -154,11 +154,7 @@ const AppSchedule = ({
       );
     }
 
-    return (
-      <Typography>
-        {t('message.no-ingestion-pipeline-found')}
-      </Typography>
-    );
+    return <Typography>{t('message.no-ingestion-pipeline-found')}</Typography>;
   }, [
     appData,
     disabledReason,
@@ -211,9 +207,7 @@ const AppSchedule = ({
                 <Typography className="right-panel-label">
                   {t('label.schedule-type')}
                 </Typography>
-                <Typography
-                  data-testid="schedule-type"
-                  className="font-medium">
+                <Typography className="font-medium" data-testid="schedule-type">
                   {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
                     ''}
                 </Typography>
@@ -224,9 +218,7 @@ const AppSchedule = ({
                   <Typography className="right-panel-label">
                     {t('label.schedule-interval')}
                   </Typography>
-                  <Typography
-                    data-testid="cron-string"
-                    className="font-medium">
+                  <Typography className="font-medium" data-testid="cron-string">
                     {cronString}
                   </Typography>
                 </div>
