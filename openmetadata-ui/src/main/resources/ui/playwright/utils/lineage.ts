@@ -901,7 +901,9 @@ export const verifyExportLineagePNG = async (
 
     if (isDownloadTimeout && pageErrors.length > 0) {
       throw new Error(
-        `${error.message}\n\nThe page also threw during the export, which may be the real cause:\n  ${pageErrors.join(
+        `${
+          error.message
+        }\n\nThe page also threw during the export, which may be the real cause:\n  ${pageErrors.join(
           '\n  '
         )}`
       );
