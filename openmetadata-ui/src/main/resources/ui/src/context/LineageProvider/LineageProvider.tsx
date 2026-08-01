@@ -144,7 +144,6 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
-
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>

@@ -157,7 +157,7 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
 
 const mockGetServiceType = jest.fn().mockReturnValue('database');
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
   getServiceType: jest.fn((category) => mockGetServiceType(category)),
 }));

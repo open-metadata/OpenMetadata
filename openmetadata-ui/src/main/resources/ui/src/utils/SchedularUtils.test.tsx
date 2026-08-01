@@ -24,7 +24,7 @@ import {
   getCronDefaultValue,
   getScheduleOptionsFromSchedules,
   getUpdatedStateFromFormState,
-} from './SchedularUtils';
+} from './CronExpressionUtils';
 
 describe('getCronDefaultValue function', () => {
   it('should generate day cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
