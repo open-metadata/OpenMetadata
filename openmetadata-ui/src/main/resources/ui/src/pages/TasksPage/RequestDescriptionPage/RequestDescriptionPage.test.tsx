@@ -10,16 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { forwardRef } from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { postThread } from '../../../rest/feedsAPI';
+import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import RequestDescription from './RequestDescriptionPage';
 
@@ -48,7 +41,8 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
-jest.mock('../../../utils/TasksUtils', () => ({
+jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
@@ -66,8 +60,13 @@ jest.mock('../../../utils/TasksUtils', () => ({
         ],
       });
     }),
-  fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
+}));
+jest.mock('../../../utils/TaskAssigneeUtils', () => ({
+  fetchOptions: jest.fn(),
+}));
+jest.mock('../../../utils/TaskFieldUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskFieldUtils'),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
   getTaskEntityFQN: jest
@@ -86,13 +85,17 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
-  forwardRef(
-    jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
-  )
+jest.mock('../shared/TaskPayloadSchemaFields', () =>
+  jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
 );
-jest.mock('../../../rest/feedsAPI', () => ({
-  postThread: jest.fn().mockResolvedValue({}),
+jest.mock('../../../rest/taskFormSchemasAPI', () => ({
+  resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../../rest/tasksAPI', () => ({
+  createTask: jest.fn().mockResolvedValue({}),
+  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
+  TaskEntityType: { DescriptionUpdate: 'DescriptionUpdate' },
+  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -134,36 +137,28 @@ describe('RequestDescriptionPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockPostThread = postThread as jest.Mock;
+    const mockCreateTask = createTask as jest.Mock;
     render(
       <RequestDescription pageTitle={i18n.t('label.request-description')} />
     );
-    const form = await screen.findByTestId('form-container');
-    await screen.findByDisplayValue('Task message');
+    const submitBtn = await screen.findByTestId('submit-btn');
 
     await act(async () => {
-      fireEvent.submit(form);
+      fireEvent.click(submitBtn);
     });
 
-    await waitFor(() =>
-      expect(mockPostThread).toHaveBeenCalledWith({
-        about:
-          '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::description>',
-        from: undefined,
-        message: 'Task message',
-        taskDetails: {
-          assignees: [
-            {
-              id: 'id1',
-              type: 'User',
-            },
-          ],
-          oldValue: '',
-          suggestion: undefined,
-          type: 'RequestDescription',
-        },
-        type: 'Task',
-      })
-    );
+    expect(mockCreateTask).toHaveBeenCalledWith({
+      name: 'Task message',
+      category: 'MetadataUpdate',
+      type: 'DescriptionUpdate',
+      priority: 'Medium',
+      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
+      assignees: ['sample_data'],
+      payload: {
+        newDescription: '',
+        currentDescription: '',
+        fieldPath: 'columns::"address.street_name"::description',
+      },
+    });
   });
 });
