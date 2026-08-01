@@ -13,7 +13,6 @@
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Typography, Button } from '@openmetadata/ui-core-components';
 import { Dropdown, Space, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -566,7 +565,7 @@ const GlossaryHeader = ({
           <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
-            <ButtonGroup className="spaced" size="small">
+            <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}
@@ -637,7 +636,7 @@ const GlossaryHeader = ({
                   </Tooltip>
                 </Dropdown>
               )}
-            </ButtonGroup>
+            </div>
           </div>
         </div>
       </div>

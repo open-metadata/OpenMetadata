@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tag } from 'antd';
+import { Tag } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get } from 'lodash';
 import { FC, useMemo } from 'react';
@@ -54,14 +55,13 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
 
   return (
     <Button
-      block
       className={classNames(
-        'd-flex items-center entity-suggestion-option-btn p-0',
+        'd-flex items-center entity-suggestion-option-btn p-0 tw:w-full',
         className
       )}
+      color="tertiary"
       data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
       key={entity.fullyQualifiedName}
-      type="text"
       onClick={() => {
         onSelectHandler?.(entity);
       }}>

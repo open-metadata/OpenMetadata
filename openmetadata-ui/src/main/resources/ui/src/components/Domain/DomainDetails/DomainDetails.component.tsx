@@ -13,7 +13,6 @@
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Avatar, Box, Typography, Button } from '@openmetadata/ui-core-components';
 import { Dropdown, Space, Tabs, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -1035,7 +1034,7 @@ const DomainDetails = ({
               </Dropdown>
             )}
 
-            <ButtonGroup className="spaced" size="small">
+            <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
               {onUpdateVote && (
                 <Voting
                   voteStatus={voteStatus}
@@ -1100,7 +1099,7 @@ const DomainDetails = ({
                   </Tooltip>
                 </Dropdown>
               )}
-            </ButtonGroup>
+            </div>
             {activeAnnouncement && (
               <AnnouncementCard
                 announcement={activeAnnouncement}

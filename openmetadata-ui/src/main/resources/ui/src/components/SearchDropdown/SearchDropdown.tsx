@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography, Button as CoreButton } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Card,
   Checkbox,
   Col,
@@ -362,7 +361,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           {showClearAllBtn && (
             <>
               <Divider className="m-t-xs m-b-0" />
-              <CoreButton
+              <Button
                 className="p-0 m-l-sm"
                 data-testid="clear-button"
                 onClick={handleClear}
@@ -370,7 +369,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 {t('label.clear-entity', {
                   entity: t('label.all'),
                 })}
-              </CoreButton>
+              </Button>
             </>
           )}
           {!hideSearchBar && (
@@ -418,21 +417,21 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             ) : null
           ) : (
             <Space className="p-sm p-t-xss">
-              <CoreButton
+              <Button
                 className="update-btn"
                 data-testid="update-btn"
                 onClick={handleUpdate}
                 color='secondary'
                 size='xs'>
                 {t('label.update')}
-              </CoreButton>
-              <CoreButton
+              </Button>
+              <Button
                 data-testid="close-btn"
                 onClick={handleDropdownClose}
                 color='link-gray'
                 size='xs'>
                 {t('label.close')}
-              </CoreButton>
+              </Button>
             </Space>
           )}
         </Space>
@@ -484,8 +483,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         trigger="hover">
         <Button
           className="quick-filter-dropdown-trigger-btn"
+          color="secondary"
           data-testid={`search-dropdown-${searchKey}`}
-          size={triggerButtonSize}>
+          size={
+            triggerButtonSize === 'small'
+              ? 'xs'
+              : triggerButtonSize === 'middle'
+              ? 'sm'
+              : 'md'
+          }>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space
               className={classNames({

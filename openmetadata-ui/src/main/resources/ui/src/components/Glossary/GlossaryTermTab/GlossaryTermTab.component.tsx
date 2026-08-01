@@ -13,7 +13,7 @@
 
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button as CoreButton, EmptyPlaceholder, TableCard, Button } from '@openmetadata/ui-core-components';
+import { Button, EmptyPlaceholder, TableCard } from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
 import {
   Checkbox,
@@ -1759,14 +1759,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           description={t('message.glossary-term-empty-description')}
           footer={
             canCreateTerm ? (
-              <CoreButton
+              <Button
                 color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 size="sm"
                 onPress={handleAddGlossaryTermClick}>
                 {t('label.new-term')}
-              </CoreButton>
+              </Button>
             ) : undefined
           }
           icon={<File02 className="tw:text-fg-warning-primary" />}

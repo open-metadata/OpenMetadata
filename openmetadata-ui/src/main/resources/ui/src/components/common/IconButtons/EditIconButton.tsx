@@ -12,8 +12,8 @@
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
 import type { ButtonProps } from 'antd';
-import { Button, Tooltip } from 'antd';
-import { Button as CoreButton } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -24,6 +24,19 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 
 export type IconButtonProps = ButtonProps & {
   newLook?: boolean;
+};
+
+// antd `size` (large | middle | small | undefined) -> core `size`.
+// Approved 2026-07-30 mapping (docs/antd-migration/button.md).
+const toCoreSize = (size?: ButtonProps['size']) => {
+  if (size === 'small') {
+    return 'xs';
+  }
+  if (size === 'large') {
+    return 'md';
+  }
+
+  return 'sm';
 };
 
 export const EditIconButton = ({
@@ -38,12 +51,13 @@ export const EditIconButton = ({
       {newLook ? (
         <Button
           className={classNames('bordered', className)}
-          icon={<EditIcon />}
-          size={size}
           {...props}
+          color="secondary"
+          iconLeading={<EditIcon />}
+          size={toCoreSize(size)}
         />
       ) : (
-        <CoreButton
+        <Button
           className={className}
           {...props}
           color='tertiary'
@@ -66,9 +80,10 @@ export const RequestIconButton = ({
       {newLook ? (
         <Button
           className={classNames('bordered', className)}
-          icon={<RequestIcon />}
-          size={size}
           {...props}
+          color="secondary"
+          iconLeading={<RequestIcon />}
+          size={toCoreSize(size)}
         />
       ) : (
         <Icon
@@ -93,9 +108,10 @@ export const CommentIconButton = ({
       {newLook ? (
         <Button
           className={classNames('bordered', className)}
-          icon={<CommentIcon />}
-          size={size}
           {...props}
+          color="secondary"
+          iconLeading={<CommentIcon />}
+          size={toCoreSize(size)}
         />
       ) : (
         <Icon
@@ -119,10 +135,10 @@ export const AlignRightIconButton = ({
       <Button
         className={classNames('border-none tab-expand-icon', className)}
         data-testid="tab-expand-button"
-        icon={<ExpandIcon />}
-        size={size}
-        type="text"
         {...props}
+        color="tertiary"
+        iconLeading={<ExpandIcon />}
+        size={toCoreSize(size)}
       />
     </Tooltip>
   );
@@ -135,7 +151,7 @@ export const CardExpandCollapseIconButton = ({
   ...props
 }: IconButtonProps) => {
   const button = (
-    <CoreButton
+    <Button
       className={classNames('bordered', className)}
       tabIndex={0}
       {...props}
@@ -163,9 +179,10 @@ export const PlusIconButton = ({
     <Tooltip title={title}>
       <Button
         className={classNames('bordered', className)}
-        icon={<PlusOutlined />}
-        size={size}
         {...props}
+        color="secondary"
+        iconLeading={<PlusOutlined />}
+        size={toCoreSize(size)}
       />
     </Tooltip>
   );
@@ -181,9 +198,10 @@ export const DeleteIconButton = ({
     <Tooltip title={title}>
       <Button
         className={classNames('bordered', className)}
-        icon={<IconDelete />}
-        size={size}
         {...props}
+        color="secondary"
+        iconLeading={<IconDelete />}
+        size={toCoreSize(size)}
       />
     </Tooltip>
   );

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
@@ -66,10 +66,9 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   if (isActivityEvent) {
     return (
       <Button
-        block
-        className={classNames('activity-feed-card-container')}
+        className={classNames('activity-feed-card-container tw:w-full')}
+        color="tertiary"
         data-testid="message-container"
-        type="text"
         onClick={handleActivityClick}>
         <ActivityFeedCardNew
           activity={activity}
@@ -93,10 +92,9 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
 
   return (
     <Button
-      block
-      className={classNames('activity-feed-card-container')}
+      className={classNames('activity-feed-card-container tw:w-full')}
+      color="tertiary"
       data-testid="message-container"
-      type="text"
       onClick={handleFeedClick}>
       <ActivityFeedCardNew
         feed={feed}

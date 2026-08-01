@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography, Button } from '@openmetadata/ui-core-components';
 import { Affix, Card, Skeleton, Space } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -149,7 +148,7 @@ const GithubStarCard = () => {
           {t('message.star-on-github-description')}
         </Typography>
 
-        <ButtonGroup className="github-action-button-group">
+        <div className="github-action-button-group tw:flex tw:items-center">
           <Typography as="a" href={OMD_REPOSITORY_LINK} target="_blank">
             <Button
               className="github-star-button github-modal-action-button"
@@ -170,7 +169,7 @@ const GithubStarCard = () => {
               )}
             </Button>
           </Typography>
-        </ButtonGroup>
+        </div>
       </Card>
     </Affix>
   ) : null;

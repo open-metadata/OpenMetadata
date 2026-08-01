@@ -14,7 +14,6 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, EmptyPlaceholder, Typography, Button } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
 import { Card, Col, Row, Space, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
@@ -436,7 +435,7 @@ const ClassificationDetails = forwardRef(
                   </Tooltip>
                 )}
 
-                <ButtonGroup className="spaced" size="small">
+                <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
                   <Tooltip
                     title={t(
                       `label.${
@@ -473,7 +472,7 @@ const ClassificationDetails = forwardRef(
                       onEditDisplayName={handleUpdateDisplayName}
                     />
                   )}
-                </ButtonGroup>
+                </div>
               </Space>
             </Col>
           </Row>

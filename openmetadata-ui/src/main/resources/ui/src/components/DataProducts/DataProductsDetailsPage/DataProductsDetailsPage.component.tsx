@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons';
 import { Avatar, Typography, Button } from '@openmetadata/ui-core-components';
 import { Dropdown, Tabs, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -856,7 +855,7 @@ const DataProductsDetailsPage = ({
                   </Button>
                 )}
 
-                <ButtonGroup className="spaced" size="small">
+                <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
                   {dataContractLatestResultButton}
 
                   {onUpdateVote && (
@@ -923,7 +922,7 @@ const DataProductsDetailsPage = ({
                       </Tooltip>
                     </Dropdown>
                   )}
-                </ButtonGroup>
+                </div>
 
                 {activeAnnouncement && (
                   <AnnouncementCard

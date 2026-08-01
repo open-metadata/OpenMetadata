@@ -12,8 +12,8 @@
  */
 
 import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
-import { Button as CoreButton } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
@@ -263,8 +263,15 @@ const DatePickerMenu = ({
           size === 'small' &&
             (isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-72')
         )}
+        color="secondary"
         data-testid="date-picker-menu"
-        size={size}>
+        size={
+          size === 'small'
+            ? 'xs'
+            : size === 'large'
+            ? 'md'
+            : 'sm'
+        }>
         <Space align="center" size={8}>
           <span
             className={classNames(
@@ -295,7 +302,7 @@ const DatePickerMenu = ({
       data-testid="date-picker-container">
       {datePickerMenu}
       {selectedTimeRangeKey && (
-        <CoreButton
+        <Button
           aria-label={t('label.clear')}
           className={classNames(
             'tw:absolute! tw:right-8 tw:top-1/2 tw:z-10 tw:inline-flex! tw:size-4!',

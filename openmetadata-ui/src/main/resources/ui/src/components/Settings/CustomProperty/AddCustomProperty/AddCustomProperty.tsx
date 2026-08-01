@@ -13,12 +13,11 @@
 
 import {
   Badge,
-  Button as CoreButton,
+  Button,
   SelectItemType,
   SlideoutMenu,
   Toggle,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
@@ -673,21 +672,21 @@ const AddCustomProperty = ({
 
             <SlideoutMenu.Footer>
               <div className="tw:flex tw:justify-end tw:gap-4">
-                <CoreButton
+                <Button
                   color="tertiary"
                   data-testid="cancel-button"
                   isDisabled={isDrawerLoading}
                   onClick={close}>
                   {t('label.cancel')}
-                </CoreButton>
-                <CoreButton
+                </Button>
+                <Button
                   color="primary"
                   data-testid="create-button"
                   isDisabled={isDrawerLoading || isFormInvalid}
                   isLoading={isDrawerLoading}
                   onClick={() => form.submit()}>
                   {t('label.create')}
-                </CoreButton>
+                </Button>
               </div>
             </SlideoutMenu.Footer>
           </>
