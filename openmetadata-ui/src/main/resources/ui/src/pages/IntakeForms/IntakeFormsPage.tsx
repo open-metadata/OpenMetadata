@@ -43,6 +43,7 @@ import {
   listIntakeForms,
   patchIntakeForm,
 } from '../../rest/intakeFormsAPI';
+import { getIntakeFormFields } from '../../utils/IntakeFormUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import IntakeFormDesignerModal from './IntakeFormDesignerModal';
 
@@ -75,7 +76,7 @@ const IntakeFormsPage = () => {
     setLoading(true);
     try {
       const response = await listIntakeForms({
-        fields: 'owners,requiredFields',
+        fields: 'owners,formFields,requiredFields',
       });
       setForms(response.data ?? []);
     } catch (err) {
@@ -271,27 +272,27 @@ const IntakeFormsPage = () => {
               </Table.Cell>
               <Table.Cell>
                 <Box className="tw:gap-1" direction="col">
-                  {(record.requiredFields ?? []).length === 0 ? (
+                  {getIntakeFormFields(record).length === 0 ? (
                     <Typography className="tw:text-tertiary" size="text-sm">
                       {t('label.none')}
                     </Typography>
                   ) : (
-                    (record.requiredFields ?? []).map((rf) => (
+                    getIntakeFormFields(record).map((field) => (
                       <Badge
                         color={
-                          rf.fieldKind === FieldKind.CustomProperty
+                          field.fieldKind === FieldKind.CustomProperty
                             ? 'gray'
                             : 'brand'
                         }
-                        key={rf.fieldPath}
+                        key={field.fieldPath}
                         size="sm"
                         type="pill-color">
-                        {rf.fieldLabel}
+                        {field.fieldLabel}
                         <Typography
                           as="span"
                           className="tw:ml-1 tw:text-tertiary"
                           size="text-xs">
-                          ({rf.fieldPath})
+                          ({field.fieldPath})
                         </Typography>
                       </Badge>
                     ))
