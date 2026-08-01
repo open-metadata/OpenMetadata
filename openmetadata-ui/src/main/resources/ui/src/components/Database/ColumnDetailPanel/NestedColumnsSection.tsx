@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Badge } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
@@ -39,12 +39,20 @@ const NestedColumnItem: React.FC<{
             strokeWidth: '1.2px',
           }}
         />
-        <Typography
-          as='a'
-          onClick={() => onColumnClick(column)}
-          className="nested-column-name tw:text-sm tw:font-normal group-hover:tw:underline">
+        {/*
+         * Plain (native, keyboard-accessible) button — not core Typography —
+         * so this element's parent stays the padded `<p>` above. Core
+         * Typography always wraps children in an extra `div.prose`, which
+         * would otherwise sit between this node and the padding-left the
+         * e2e indentation check reads via `.nested-column-name`.locator('..')`.
+         * See https://github.com/open-metadata/OpenMetadata/issues/30779.
+         */}
+        <button
+          className="nested-column-name tw:border-0 tw:bg-transparent tw:p-0 tw:text-sm tw:font-normal group-hover:tw:underline"
+          type="button"
+          onClick={() => onColumnClick(column)}>
           {getEntityName(column)}
-        </Typography>
+        </button>
       </p>
       {hasChildren && (
         <div className="tw:pl-2">
