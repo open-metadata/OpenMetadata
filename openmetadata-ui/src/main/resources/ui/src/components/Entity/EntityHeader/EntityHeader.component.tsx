@@ -12,12 +12,16 @@
  */
 
 import classNames from 'classnames';
-import { ReactNode } from 'react';
+import { lazy, ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
+
+const EntityHeaderTitle = withSuspenseFallback(
+  lazy(() => import('../EntityHeaderTitle/EntityHeaderTitle.component'))
+);
 
 interface Props {
   breadcrumb: TitleBreadcrumbProps['titleLinks'];
