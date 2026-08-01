@@ -873,7 +873,8 @@ export const verifyExportLineagePNG = async (
   // is reported as the cause instead of an anonymous 120s timeout; a genuinely
   // slow render still surfaces the original timeout untouched.
   const pageErrors: string[] = [];
-  const collectPageError = (error: Error) => pageErrors.push(error.message);
+  const collectPageError = (error: Error) =>
+    pageErrors.push(error.stack ?? error.message);
   page.on('pageerror', collectPageError);
 
   try {
@@ -890,9 +891,17 @@ export const verifyExportLineagePNG = async (
 
     expect(filePath).not.toBeNull();
   } catch (error) {
-    if (pageErrors.length > 0) {
+    // Only the download wait is ambiguous about its cause. A click or selector
+    // failure already says what went wrong, so a stray page error must never
+    // replace it — and even for a timeout the original message is kept and the
+    // page errors appended, so a slow render still reads as a slow render.
+    const isDownloadTimeout =
+      error instanceof Error &&
+      error.message.includes('waiting for event "download"');
+
+    if (isDownloadTimeout && pageErrors.length > 0) {
       throw new Error(
-        `PNG export produced no download because the page threw:\n  ${pageErrors.join(
+        `${error.message}\n\nThe page also threw during the export, which may be the real cause:\n  ${pageErrors.join(
           '\n  '
         )}`
       );
