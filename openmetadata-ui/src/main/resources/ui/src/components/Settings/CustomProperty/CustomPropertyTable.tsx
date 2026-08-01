@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
@@ -215,13 +215,13 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               <Button
                 className="cursor-pointer p-0"
                 data-testid="edit-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
                 onClick={() => {
                   setSelectedProperty(record);
                   setOperation(OPERATION.UPDATE);
-                }}>
+                }}
+                color='tertiary'
+                size='xs'
+                isDisabled={!hasAccess}>
                 <IconEdit name={t('label.edit')} width={16} />
               </Button>
             </Tooltip>
@@ -236,13 +236,13 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               <Button
                 className="cursor-pointer p-0"
                 data-testid="delete-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
                 onClick={() => {
                   setSelectedProperty(record);
                   setOperation(OPERATION.DELETE);
-                }}>
+                }}
+                color='tertiary'
+                size='xs'
+                isDisabled={!hasAccess}>
                 <IconDelete name={t('label.delete')} width={16} />
               </Button>
             </Tooltip>

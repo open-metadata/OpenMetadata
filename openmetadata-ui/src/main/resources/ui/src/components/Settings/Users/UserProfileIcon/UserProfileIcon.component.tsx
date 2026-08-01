@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Radio, Tag, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Dropdown, Radio, Tag, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty, orderBy } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -373,8 +373,8 @@ export const UserProfileIcon = () => {
         label: (
           <Button
             className="text-primary d-flex items-center gap-2 p-0 font-medium"
-            type="text"
-            onClick={onLogoutHandler}>
+            onClick={onLogoutHandler}
+            color='tertiary'>
             <LogoutIcon height={20} width={20} />
             {t('label.logout')}
           </Button>
@@ -410,7 +410,9 @@ export const UserProfileIcon = () => {
       <Button
         className="user-profile-btn flex-center"
         data-testid="dropdown-profile"
-        icon={
+        color='tertiary'
+        size='md'
+        iconLeading={
           isImgUrlValid ? (
             <img
               alt={getEntityName(currentUser)}
@@ -427,9 +429,7 @@ export const UserProfileIcon = () => {
               width="40"
             />
           )
-        }
-        size="large"
-        type="text">
+        }>
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
             <Typography className="font-semibold" data-testid="nav-user-name">

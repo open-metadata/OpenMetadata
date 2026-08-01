@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Modal, Row, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Modal, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -232,10 +232,10 @@ const AppSchedule = ({
               {appData.appType === AppType.External && (
                 <Button
                   data-testid="deploy-button"
-                  disabled={isAppDisabled}
-                  loading={isDeployLoading}
-                  type="primary"
-                  onClick={onDeployTrigger}>
+                  onClick={onDeployTrigger}
+                  color='primary'
+                  isDisabled={isAppDisabled}
+                  isLoading={isDeployLoading}>
                   {t('label.deploy')}
                 </Button>
               )}
@@ -243,9 +243,9 @@ const AppSchedule = ({
               {!appData.system && (
                 <Button
                   data-testid="edit-button"
-                  disabled={isAppDisabled}
-                  type="primary"
-                  onClick={() => setShowModal(true)}>
+                  onClick={() => setShowModal(true)}
+                  color='primary'
+                  isDisabled={isAppDisabled}>
                   {t('label.edit')}
                 </Button>
               )}
@@ -253,10 +253,10 @@ const AppSchedule = ({
               {showRunNowButton && (
                 <Button
                   data-testid="run-now-button"
-                  disabled={isAppDisabled}
-                  loading={isRunLoading}
-                  type="primary"
-                  onClick={onAppTrigger}>
+                  onClick={onAppTrigger}
+                  color='primary'
+                  isDisabled={isAppDisabled}
+                  isLoading={isRunLoading}>
                   {t('label.run-now')}
                 </Button>
               )}

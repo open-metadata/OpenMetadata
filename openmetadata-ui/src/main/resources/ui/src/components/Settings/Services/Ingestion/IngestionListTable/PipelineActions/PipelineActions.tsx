@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Col, Row, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
@@ -99,13 +100,14 @@ function PipelineActions({
               }>
               <Button
                 data-testid="pause-button"
-                disabled={!pipeline.deployed}
-                icon={getLoadingStatus(
+                onClick={() => onPauseUnpauseClick(pipelineId)}
+                color='secondary'
+                isDisabled={!pipeline.deployed}
+                iconLeading={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
                   <PauseIcon height={12} width={12} />
-                )}
-                onClick={() => onPauseUnpauseClick(pipelineId)}>
+                )}>
                 {t('label.pause')}
               </Button>
             </Tooltip>
@@ -118,13 +120,14 @@ function PipelineActions({
               }>
               <Button
                 data-testid="resume-button"
-                disabled={!pipeline.deployed}
-                icon={getLoadingStatus(
+                onClick={() => onPauseUnpauseClick(pipelineId)}
+                color='secondary'
+                isDisabled={!pipeline.deployed}
+                iconLeading={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
                   <ResumeIcon height={12} width={12} />
-                )}
-                onClick={() => onPauseUnpauseClick(pipelineId)}>
+                )}>
                 {t('label.resume')}
               </Button>
             </Tooltip>
@@ -150,8 +153,9 @@ function PipelineActions({
           <Col>
             <Button
               data-testid="logs-button"
-              icon={<LogsIcon height={12} width={12} />}
-              onClick={handleLogsClick}>
+              onClick={handleLogsClick}
+              color='secondary'
+              iconLeading={<LogsIcon height={12} width={12} />}>
               {t('label.log-plural')}
             </Button>
           </Col>

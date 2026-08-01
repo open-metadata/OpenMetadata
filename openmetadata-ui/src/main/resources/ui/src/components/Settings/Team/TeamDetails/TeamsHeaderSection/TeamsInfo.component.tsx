@@ -15,8 +15,8 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Divider, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -186,20 +186,20 @@ const TeamsInfo = ({
               <Button
                 className="flex-center teams-info-email-edit-button p-0"
                 data-testid="edit-email"
-                icon={
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setIsEmailEdit(true);
+                }}
+                color='tertiary'
+                size='xs'
+                iconLeading={
                   <EditIcon
                     color={DE_ACTIVE_COLOR}
                     {...ICON_DIMENSION}
                     width="12px"
                   />
                 }
-                size="small"
-                type="text"
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                  e.stopPropagation();
-                  setIsEmailEdit(true);
-                }}
               />
             </Tooltip>
           )}
@@ -236,19 +236,19 @@ const TeamsInfo = ({
                 <Button
                   className="h-8 p-x-xss"
                   data-testid="cancel-edit-email"
-                  disabled={isLoading}
-                  size="small"
-                  type="primary"
-                  onClick={() => setIsEmailEdit(false)}>
+                  onClick={() => setIsEmailEdit(false)}
+                  color='primary'
+                  size='xs'
+                  isDisabled={isLoading}>
                   <CloseOutlined />
                 </Button>
                 <Button
                   className="h-8 p-x-xss"
                   data-testid="save-edit-email"
-                  htmlType="submit"
-                  loading={isLoading}
-                  size="small"
-                  type="primary">
+                  color='primary'
+                  size='xs'
+                  isLoading={isLoading}
+                  type='submit'>
                   <CheckOutlined />
                 </Button>
               </Space>
@@ -290,20 +290,20 @@ const TeamsInfo = ({
                 <Button
                   className="flex-center edit-team-type-icon p-0"
                   data-testid="edit-team-type-icon"
-                  icon={
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    setShowTypeSelector(true);
+                  }}
+                  color='tertiary'
+                  size='xs'
+                  iconLeading={
                     <EditIcon
                       color={DE_ACTIVE_COLOR}
                       {...ICON_DIMENSION}
                       width={12}
                     />
                   }
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setShowTypeSelector(true);
-                  }}
                 />
               </Tooltip>
             )}

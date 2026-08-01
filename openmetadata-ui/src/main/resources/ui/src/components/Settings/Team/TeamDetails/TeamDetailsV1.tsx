@@ -12,18 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Avatar,
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Switch,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Avatar, Col, Modal, Row, Space, Switch, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -671,12 +661,11 @@ const TeamDetailsV1 = ({
         </Typography>
         <Tooltip placement="top" title={addTeamButtonTitle}>
           <Button
-            ghost
             data-testid="add-placeholder-button"
-            disabled={!entityPermissions.Create || isTeamDeleted}
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={handleAddTeamButtonClick}>
+            onClick={handleAddTeamButtonClick}
+            color='tertiary'
+            isDisabled={!entityPermissions.Create || isTeamDeleted}
+            iconLeading={<PlusOutlined />}>
             {t('label.add')}
           </Button>
         </Tooltip>
@@ -786,20 +775,19 @@ const TeamDetailsV1 = ({
                   : t('label.add-entity', { entity: t('label.role') })
               }>
               <Button
-                ghost
                 className={classNames({
                   'p-x-lg': entityPermissions.EditAll && !isTeamDeleted,
                 })}
                 data-testid="add-placeholder-button"
-                disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }>
+                }
+                color='tertiary'
+                isDisabled={isTeamDeleted}
+                iconLeading={<PlusOutlined />}>
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -811,13 +799,13 @@ const TeamDetailsV1 = ({
             <Col className="d-flex justify-end" span={24}>
               <Button
                 data-testid="add-role"
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }>
+                }
+                color='primary'>
                 {addRole}
               </Button>
             </Col>
@@ -858,20 +846,19 @@ const TeamDetailsV1 = ({
                   : t('label.add-entity', { entity: t('label.policy') })
               }>
               <Button
-                ghost
                 className={classNames({
                   'p-x-lg': entityPermissions.EditAll && !isTeamDeleted,
                 })}
                 data-testid="add-placeholder-button"
-                disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }>
+                }
+                color='tertiary'
+                isDisabled={isTeamDeleted}
+                iconLeading={<PlusOutlined />}>
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -888,13 +875,13 @@ const TeamDetailsV1 = ({
                     ? addPolicy
                     : t('message.no-permission-for-action')
                 }
-                type="primary"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }>
+                }
+                color='primary'>
                 {addPolicy}
               </Button>
             </Col>
@@ -922,19 +909,18 @@ const TeamDetailsV1 = ({
       isGroupType &&
       (isAlreadyJoinedTeam ? (
         <Button
-          ghost
           data-testid="leave-team-button"
-          type="primary"
           onClick={(e) => {
             // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);
-          }}>
+          }}
+          color='tertiary'>
           {t('label.leave-team')}
         </Button>
       ) : (
         (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-          <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+          <Button data-testid="join-teams" onClick={joinTeam} color='primary'>
             {t('label.join-team')}
           </Button>
         )

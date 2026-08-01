@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Input, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Divider, Input, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -91,22 +91,21 @@ const AuthMechanism: FC<Props> = ({
         <Space>
           {JWTToken ? (
             <Button
-              danger
               data-testid="revoke-button"
-              disabled={!hasPermission}
-              size="small"
-              type="default"
-              onClick={onTokenRevoke}>
+              onClick={onTokenRevoke}
+              color='secondary-destructive'
+              size='xs'
+              isDisabled={!hasPermission}>
               {t('label.revoke-token')}
             </Button>
           ) : (
             <Button
               className="text-sm"
               data-testid="auth-mechanism"
-              disabled={!hasPermission}
-              size="small"
-              type="primary"
-              onClick={onEdit}>
+              onClick={onEdit}
+              color='primary'
+              size='xs'
+              isDisabled={!hasPermission}>
               {t('label.generate-new-token')}
             </Button>
           )}

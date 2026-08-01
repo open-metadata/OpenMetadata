@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import {
-  AutoComplete,
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  Row,
-  Select,
-  Space,
-  Spin,
-} from 'antd';
+import { Typography as CoreTypography, Button } from '@openmetadata/ui-core-components';
+import { AutoComplete, Card, Col, Form, Input, Row, Select, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -452,9 +441,9 @@ const AdminPermissionDebugger: React.FC = () => {
 
                   <Form.Item>
                     <Button
-                      htmlType="submit"
-                      loading={loadingEvaluation}
-                      type="primary">
+                      color='primary'
+                      isLoading={loadingEvaluation}
+                      type='submit'>
                       {t('label.evaluate')}
                     </Button>
                   </Form.Item>

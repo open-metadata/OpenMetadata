@@ -13,16 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Select,
-  Space,
-  Switch,
-} from 'antd';
+import { Form, FormProps, Input, Radio, Select, Space, Switch } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import {
   compact,
@@ -120,9 +112,9 @@ const CreateUser = ({
       children: (
         <Button
           data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          color='primary'
+          size='xs'
+          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
         />
       ),
     },
@@ -382,9 +374,7 @@ const CreateUser = ({
           <Switch data-testid="allow-impersonation" />
         </Form.Item>
       )}
-
       {getField(descriptionField)}
-
       {!forceBot && (
         <>
           {isAuthProviderBasic && (
@@ -558,7 +548,6 @@ const CreateUser = ({
           </Form.Item>
         </>
       )}
-
       {!isBot && (
         <div className="m-t-xs">
           {getField(domainsField)}
@@ -577,17 +566,16 @@ const CreateUser = ({
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
-
       <Space className="w-full justify-end" size={4}>
-        <Button data-testid="cancel-user" type="link" onClick={onCancel}>
+        <Button data-testid="cancel-user" onClick={onCancel} color='link-gray'>
           {t('label.cancel')}
         </Button>
         <Button
           data-testid="save-user"
           form="create-user-bot-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          color='primary'
+          isLoading={isLoading}
+          type='submit'>
           {t('label.create')}
         </Button>
       </Space>

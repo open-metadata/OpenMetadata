@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -324,16 +324,16 @@ const BotListV1 = ({
             <Tooltip placement="topRight" title={title}>
               <Button
                 data-testid={`bot-delete-${record.name}`}
-                disabled={isDisabled}
-                icon={
+                onClick={() => setSelectedUser(record)}
+                color='tertiary'
+                isDisabled={isDisabled}
+                iconLeading={
                   <Icon
                     className="align-middle"
                     component={IconDelete}
                     style={{ fontSize: '16px' }}
                   />
                 }
-                type="text"
-                onClick={() => setSelectedUser(record)}
               />
             </Tooltip>
           );
@@ -492,9 +492,9 @@ const BotListV1 = ({
             <LimitWrapper resource="bot">
               <Button
                 data-testid="add-bot"
-                disabled={!isAdminUser}
-                type="primary"
-                onClick={handleAddBotClick}>
+                onClick={handleAddBotClick}
+                color='primary'
+                isDisabled={!isAdminUser}>
                 {addBotLabel}
               </Button>
             </LimitWrapper>

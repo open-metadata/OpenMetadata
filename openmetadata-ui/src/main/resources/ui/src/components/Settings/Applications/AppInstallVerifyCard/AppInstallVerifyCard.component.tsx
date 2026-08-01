@@ -15,8 +15,8 @@ import {
   ClockCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Card, Collapse, Divider, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Avatar, Card, Collapse, Divider, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -107,15 +107,19 @@ const AppInstallVerifyCard = ({
 
         <Divider />
         <div className="d-flex justify-end gap-2">
-          <Button block data-testid="cancel" onClick={onCancel}>
+          <Button
+            data-testid="cancel"
+            onClick={onCancel}
+            color='secondary'
+            className='tw:w-full'>
             {t('label.cancel')}
           </Button>
           <Button
-            block
             data-testid="save-button"
             key="save-btn"
-            type="primary"
-            onClick={onSave}>
+            onClick={onSave}
+            color='primary'
+            className='tw:w-full'>
             {nextButtonLabel}
           </Button>
         </div>

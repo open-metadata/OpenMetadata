@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Space, Tooltip } from 'antd';
+import { Col, Modal, Space, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
@@ -227,12 +228,12 @@ export const UserTab = ({
               }>
               <Button
                 data-testid="remove-user-btn"
-                disabled={!editUserPermission}
-                icon={
+                onClick={() => handleRemoveClick(record.id)}
+                color='tertiary'
+                isDisabled={!editUserPermission}
+                iconLeading={
                   <IconRemove height={16} name={t('label.remove')} width={16} />
                 }
-                type="text"
-                onClick={() => handleRemoveClick(record.id)}
               />
             </Tooltip>
           </Space>
@@ -337,14 +338,13 @@ export const UserTab = ({
               onUpdate={onAddUser}>
               <Tooltip placement="topRight" title={addUserButtonTitle}>
                 <Button
-                  ghost
                   className={classNames({
                     'p-x-lg': editUserPermission && !isTeamDeleted,
                   })}
                   data-testid="add-new-user"
-                  disabled={!editUserPermission || isTeamDeleted}
-                  icon={<PlusOutlined />}
-                  type="primary">
+                  color='tertiary'
+                  isDisabled={!editUserPermission || isTeamDeleted}
+                  iconLeading={<PlusOutlined />}>
                   {t('label.add')}
                 </Button>
               </Tooltip>
@@ -404,7 +404,7 @@ export const UserTab = ({
                     includeBot
                     selectedUsers={currentTeam?.users ?? []}
                     onUpdate={onAddUser}>
-                    <Button data-testid="add-new-user" type="primary">
+                    <Button data-testid="add-new-user" color='primary'>
                       {t('label.add-entity', { entity: t('label.user') })}
                     </Button>
                   </UserSelectableList>

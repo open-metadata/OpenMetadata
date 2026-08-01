@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Input, Row, Tag, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Input, Row, Tag, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -148,19 +148,19 @@ const BotDetails: FC<BotsDetailProps> = ({
                         <Button
                           className="text-sm mr-1"
                           data-testid="cancel-displayName"
-                          icon={<CloseOutlined />}
-                          size="small"
-                          type="primary"
                           onMouseDown={() => setIsDisplayNameEdit(false)}
+                          color='primary'
+                          size='xs'
+                          iconLeading={<CloseOutlined />}
                         />
 
                         <Button
                           className="text-sm mr-1"
                           data-testid="save-displayName"
-                          icon={<CheckOutlined />}
-                          size="small"
-                          type="primary"
                           onClick={handleDisplayNameChange}
+                          color='primary'
+                          size='xs'
+                          iconLeading={<CheckOutlined />}
                         />
                       </div>
                     </>

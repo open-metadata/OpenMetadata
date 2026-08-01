@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal, Space } from 'antd';
+import { Modal, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -197,19 +197,19 @@ const AppRunsHistory = forwardRef(
             <Button
               className="p-0"
               data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
-              onClick={() => handleRowExpandable(record.id, record)}>
+              onClick={() => handleRowExpandable(record.id, record)}
+              color='link-gray'
+              size='xs'
+              isDisabled={showLogAction(record)}>
               {t('label.log-plural')}
             </Button>
             <Button
               className="m-l-xs p-0"
               data-testid="app-historical-config"
-              disabled={!jsonSchema}
-              size="small"
-              type="link"
-              onClick={() => showAppRunConfig(record)}>
+              onClick={() => showAppRunConfig(record)}
+              color='link-gray'
+              size='xs'
+              isDisabled={!jsonSchema}>
               {t('label.config')}
             </Button>
             {!record.isSynthetic &&
@@ -222,15 +222,15 @@ const AppRunsHistory = forwardRef(
                 <Button
                   className="m-l-xs p-0"
                   data-testid="stop-button"
-                  size="small"
-                  type="link"
                   onClick={() => {
                     const rawRunId = record.properties?.pipelineRunId;
                     setSelectedRunId(
                       typeof rawRunId === 'string' ? rawRunId : undefined
                     );
                     setIsStopModalOpen(true);
-                  }}>
+                  }}
+                  color='link-gray'
+                  size='xs'>
                   {t('label.stop')}
                 </Button>
               )}
@@ -526,8 +526,8 @@ const AppRunsHistory = forwardRef(
             <Space className="w-full justify-end">
               <Button
                 data-testid="app-run-config-close"
-                type="primary"
-                onClick={() => setShowConfigModal(false)}>
+                onClick={() => setShowConfigModal(false)}
+                color='primary'>
                 {t('label.close')}
               </Button>
             </Space>

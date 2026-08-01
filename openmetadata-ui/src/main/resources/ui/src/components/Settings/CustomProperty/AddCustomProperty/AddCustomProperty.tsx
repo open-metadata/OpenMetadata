@@ -18,8 +18,9 @@ import {
   SlideoutMenu,
   Toggle,
   Typography,
+  Button,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, FormInstance, Row } from 'antd';
+import { Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
@@ -589,17 +590,17 @@ const AddCustomProperty = ({
           <Col>
             <Button
               data-testid="back-button"
-              type="link"
-              onClick={handleCancel}>
+              onClick={handleCancel}
+              color='link-gray'>
               {t('label.back')}
             </Button>
           </Col>
           <Col>
             <Button
               data-testid="create-button"
-              htmlType="submit"
-              loading={isCreating || loading}
-              type="primary">
+              color='primary'
+              isLoading={isCreating || loading}
+              type='submit'>
               {t('label.create')}
             </Button>
           </Col>

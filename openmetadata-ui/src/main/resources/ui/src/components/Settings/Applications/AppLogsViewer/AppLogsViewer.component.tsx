@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Card, Col, Divider, Row, Space, Table } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Badge, Card, Col, Divider, Row, Space, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -557,7 +557,6 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             latencyLabelKey: 'label.wall-clock',
           }
         )}
-
       <Row className="m-t-md" gutter={[16, 16]}>
         {successContext?.stats?.readerStats && (
           <Col span={6}>
@@ -651,41 +650,35 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           </Col>
         )}
       </Row>
-
       {serverStatsRenderer()}
-
       {successContext?.stats?.entityStats &&
         entityStatsRenderer(successContext.stats.entityStats)}
       {failureContext?.stats?.entityStats &&
         entityStatsRenderer(failureContext.stats.entityStats)}
-
       {failureLogs && (
         <div className="m-t-md">
           <Button
             data-testid="view-logs-button"
-            type="link"
-            onClick={() => setShowLogsModal(true)}>
+            onClick={() => setShowLogsModal(true)}
+            color='link-gray'>
             {t('label.view-entity', { entity: t('label.log-plural') })}
           </Button>
         </div>
       )}
-
       {hasFailures && (
         <div className="m-t-md">
           <Button
             data-testid="view-reindex-failures-button"
-            type="link"
-            onClick={() => setShowFailuresDrawer(true)}>
+            onClick={() => setShowFailuresDrawer(true)}
+            color='link-gray'>
             {t('label.view-reindex-failure-plural')}
           </Button>
         </div>
       )}
-
       <ReindexFailures
         visible={showFailuresDrawer}
         onClose={() => setShowFailuresDrawer(false)}
       />
-
       <LogViewerModal
         logs={failureLogs}
         open={showLogsModal}

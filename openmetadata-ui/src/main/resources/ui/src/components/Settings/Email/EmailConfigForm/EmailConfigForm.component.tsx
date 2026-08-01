@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Select, Switch } from 'antd';
+import { Col, Form, Input, Row, Select, Switch } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
@@ -117,12 +118,12 @@ function EmailConfigForm({
       </Item>
       <Row justify="end">
         <Col>
-          <Button type="link" onClick={onCancel}>
+          <Button onClick={onCancel} color='link-gray'>
             {t('label.cancel')}
           </Button>
         </Col>
         <Col>
-          <Button htmlType="submit" loading={isLoading} type="primary">
+          <Button color='primary' isLoading={isLoading} type='submit'>
             {t('label.save')}
           </Button>
         </Col>

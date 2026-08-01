@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Popover, Select, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Divider, Popover, Select, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -302,8 +302,6 @@ const UserProfileRoles = ({
                   <Button
                     className="profile-edit-save"
                     data-testid="user-profile-edit-roles-cancel-button"
-                    icon={<ClosePopoverIcon height={24} />}
-                    size="small"
                     style={{
                       width: '30px',
                       height: '30px',
@@ -312,15 +310,14 @@ const UserProfileRoles = ({
                       bottom: '0px',
                       right: '38px',
                     }}
-                    type="primary"
                     onClick={handleCloseEditRole}
+                    color='primary'
+                    size='xs'
+                    iconLeading={<ClosePopoverIcon height={24} />}
                   />
                   <Button
                     className="profile-edit-cancel"
                     data-testid="user-profile-edit-roles-save-button"
-                    icon={<SavePopoverIcon height={24} />}
-                    loading={isLoading}
-                    size="small"
                     style={{
                       width: '30px',
                       height: '30px',
@@ -328,8 +325,11 @@ const UserProfileRoles = ({
                       position: 'absolute',
                       bottom: '0px',
                     }}
-                    type="primary"
                     onClick={handleRolesSave}
+                    color='primary'
+                    size='xs'
+                    isLoading={isLoading}
+                    iconLeading={<SavePopoverIcon height={24} />}
                   />
                 </div>
               </div>

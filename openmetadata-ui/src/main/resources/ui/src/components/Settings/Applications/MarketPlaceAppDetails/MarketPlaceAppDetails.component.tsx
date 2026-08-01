@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button, Carousel, Col, Row, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Alert, Carousel, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -155,10 +155,10 @@ const MarketPlaceAppDetails = () => {
       <div className="p-x-md p-t-md ">
         <Button
           className="p-0"
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
-          onClick={onBrowseAppsClick}>
+          onClick={onBrowseAppsClick}
+          color='tertiary'
+          size='xs'
+          iconLeading={<LeftOutlined />}>
           <Typography className="font-medium">
             {t('label.browse-app-plural')}
           </Typography>
@@ -168,12 +168,11 @@ const MarketPlaceAppDetails = () => {
         </div>
         <Tooltip placement="top" title={tooltipTitle} trigger="hover">
           <Button
-            block
-            className="m-t-md"
             data-testid="install-application"
-            disabled={isInstalled || isAppDisabled}
-            type="primary"
-            onClick={installApp}>
+            onClick={installApp}
+            color='primary'
+            isDisabled={isInstalled || isAppDisabled}
+            className='m-t-md tw:w-full'>
             {t('label.install')}
           </Button>
         </Tooltip>

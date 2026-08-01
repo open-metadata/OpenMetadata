@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Tooltip } from 'antd';
+import { Modal, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,23 +94,19 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       key: 'id',
       width: 90,
       render: (_: string, record: User) => {
-        return (
-          onRemoveUser && (
-            <Tooltip
-              title={t('label.remove-entity', {
-                entity: t('label.user'),
-              })}>
-              <Button
-                data-testid="remove-user-btn"
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => handleRemoveButtonClick(record)}
-              />
-            </Tooltip>
-          )
-        );
+        return (onRemoveUser && (<Tooltip
+          title={t('label.remove-entity', {
+            entity: t('label.user'),
+          })}>
+          <Button
+            data-testid="remove-user-btn"
+            onClick={() => handleRemoveButtonClick(record)}
+            color='tertiary'
+            iconLeading={
+              <IconRemove height={16} name={t('label.remove')} width={16} />
+            }
+          />
+        </Tooltip>));
       },
     };
   }, [onRemoveUser]);

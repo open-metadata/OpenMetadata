@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -74,7 +74,7 @@ const ApplicationCard = ({
               markdown={description}
             />
           )}
-          <Button className="p-0" data-testid="config-btn" type="link">
+          <Button className="p-0" data-testid="config-btn" color='link-gray'>
             {linkTitle}
           </Button>
         </div>

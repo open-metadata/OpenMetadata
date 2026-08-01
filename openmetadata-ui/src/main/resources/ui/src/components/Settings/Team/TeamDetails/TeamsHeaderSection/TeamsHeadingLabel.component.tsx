@@ -15,8 +15,8 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Input, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Input, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -92,7 +92,7 @@ const TeamsHeadingLabel = ({
       isHeadingEditing ? (
         // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel
-        <div
+        (<div
           className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
           onClick={(e) => e.stopPropagation()}>
           <Input
@@ -109,21 +109,21 @@ const TeamsHeadingLabel = ({
             <Button
               className="rounded-4 text-sm p-xss"
               data-testid="cancelAssociatedTag"
-              disabled={isLoading}
-              type="primary"
-              onMouseDown={handleClose}>
+              onMouseDown={handleClose}
+              color='primary'
+              isDisabled={isLoading}>
               <CloseOutlined />
             </Button>
             <Button
               className="rounded-4 text-sm p-xss"
               data-testid="saveAssociatedTag"
-              loading={isLoading}
-              type="primary"
-              onMouseDown={onHeadingSave}>
+              onMouseDown={onHeadingSave}
+              color='primary'
+              isLoading={isLoading}>
               <CheckOutlined />
             </Button>
           </Space>
-        </div>
+        </div>)
       ) : (
         <>
           <>
@@ -158,15 +158,15 @@ const TeamsHeadingLabel = ({
                 <Button
                   className="p-0 edit-team-name flex-center"
                   data-testid="edit-team-name"
-                  disabled={!hasEditDisplayNamePermission}
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-                  size="small"
-                  type="text"
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     setIsHeadingEditing(true);
                   }}
+                  color='tertiary'
+                  size='xs'
+                  isDisabled={!hasEditDisplayNamePermission}
+                  iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
                 />
               </Tooltip>
             )}

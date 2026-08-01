@@ -13,7 +13,8 @@
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button, Space } from 'antd';
+import { Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
 import {
@@ -339,11 +340,11 @@ const IngestionWorkflowForm = forwardRef<
         {!hideFooter && (
           <div className="d-flex w-full justify-end">
             <Space>
-              <Button type="link" onClick={onCancel}>
+              <Button onClick={onCancel} color='link-gray'>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              <Button data-testid="submit-btn" color='primary' type='submit'>
                 {okText ?? t('label.save')}
               </Button>
             </Space>

@@ -12,19 +12,8 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Row,
-  Select,
-  Space,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Form, FormProps, Input, Radio, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -432,25 +421,25 @@ function ScheduleIntervalInner<T>(
             <Button
               className="m-r-xs"
               data-testid="back-button"
-              type="link"
-              onClick={onBack}>
+              onClick={onBack}
+              color='link-gray'>
               <span>{buttonProps?.cancelText ?? t('label.back')}</span>
             </Button>
 
             {status === 'success' ? (
               <Button
-                disabled
                 className="w-16 opacity-100 p-x-md p-y-xxs"
-                type="primary">
+                color='primary'
+                isDisabled>
                 <CheckOutlined />
               </Button>
             ) : (
               <Button
                 className="font-medium p-x-md p-y-xxs h-auto rounded-6"
                 data-testid="deploy-button"
-                htmlType="submit"
-                loading={status === LOADING_STATE.WAITING}
-                type="primary">
+                color='primary'
+                isLoading={status === LOADING_STATE.WAITING}
+                type='submit'>
                 {buttonProps?.okText ?? t('label.create')}
               </Button>
             )}
