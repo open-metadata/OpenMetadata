@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Tree, TreeProps } from 'antd';
 import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip, Tree, TreeProps } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -35,24 +35,24 @@ import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  buildTreeCountQueryFilter,
-  findTreeNodeKeyByBrowsePath,
-  getAggregations,
-  getDisabledExploreTreeKeys,
-  getExploreQueryFilterMust,
-  getQueryFilterMust,
-  getQuickFilterMust,
-  getQuickFilterObject,
-  getQuickFilterObjectForEntities,
-  getSubLevelHierarchyKey,
-  hasServiceDrillDownFilter,
-  isEntityTypeBucketSelected,
-  isSelectionWithinBrowsePath,
-  parseBrowsePathFields,
-  reconcilePresentRoots,
-  refreshRootCounts,
-  updateTreeData,
-  updateTreeDataWithCounts,
+    buildTreeCountQueryFilter,
+    findTreeNodeKeyByBrowsePath,
+    getAggregations,
+    getDisabledExploreTreeKeys,
+    getExploreQueryFilterMust,
+    getQueryFilterMust,
+    getQuickFilterMust,
+    getQuickFilterObject,
+    getQuickFilterObjectForEntities,
+    getSubLevelHierarchyKey,
+    hasServiceDrillDownFilter,
+    isEntityTypeBucketSelected,
+    isSelectionWithinBrowsePath,
+    parseBrowsePathFields,
+    reconcilePresentRoots,
+    refreshRootCounts,
+    updateTreeData,
+    updateTreeDataWithCounts
 } from '../../../utils/ExplorePureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -65,9 +65,9 @@ import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
 import {
-  ExploreTreeNode,
-  ExploreTreeProps,
-  TreeNodeData,
+    ExploreTreeNode,
+    ExploreTreeProps,
+    TreeNodeData
 } from './ExploreTree.interface';
 
 const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
@@ -90,13 +90,21 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
         className={classNames('d-flex justify-between', {
           'tw:opacity-50': node.disabled,
         })}>
-        <Typography
-          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}
+        {/*
+         * Plain span (not Typography) so the testid element's parent stays
+         * the `d-flex justify-between` row above — core Typography always
+         * wraps its children in an extra `div.prose`, which would otherwise
+         * land between this node and the `.explore-node-count` sibling that
+         * e2e specs reach via `getByTestId(...).locator('..')`.
+         * See https://github.com/open-metadata/OpenMetadata/issues/30779.
+         */}
+        <span
           className={classNames({
             'm-l-xss': node.data?.isRoot,
-          })}>
-          {node.title}
-        </Typography>
+          })}
+          data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+          <Typography>{node.title}</Typography>
+        </span>
         {!isUndefined(node.count) && (
           <span className="explore-node-count">
             {getCountBadge(node.count)}
