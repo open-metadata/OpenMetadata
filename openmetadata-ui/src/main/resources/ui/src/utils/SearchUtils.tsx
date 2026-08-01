@@ -12,7 +12,6 @@
  */
 
 import { SearchOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { Link } from 'react-router-dom';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
@@ -215,9 +214,11 @@ export const getSuggestionElement = (
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
-        <Typography className="m-l-xs text-xs" color="secondary">
-          {fqn}
-        </Typography>
+        {/* Plain span, not core Typography: Typography always wraps its
+        children in a block-level `div.prose`, which breaks this inline
+        Link/Button into two lines and shifts the Button's click point off
+        the anchor's actual line boxes (see antd-migration typography.md). */}
+        <span className="m-l-xs text-xs tw:text-tertiary">{fqn}</span>
       </Link>
     </Button>
   );
