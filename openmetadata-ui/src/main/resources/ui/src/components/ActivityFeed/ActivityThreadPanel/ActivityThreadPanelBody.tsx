@@ -21,27 +21,20 @@ import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
-import { TaskStatusGroup } from '../../../rest/tasksAPI';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
-import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';
-const TaskTabNew = withSuspenseFallback(
-  lazy(() =>
-    import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
-      default: m.TaskTabNew,
-    }))
-  )
-);
 
 const ErrorPlaceHolder = withSuspenseFallback(
   lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
@@ -49,10 +42,6 @@ const ErrorPlaceHolder = withSuspenseFallback(
 
 const FeedPanelHeader = withSuspenseFallback(
   lazy(() => import('../ActivityFeedPanel/FeedPanelHeader'))
-);
-
-const TaskFeedCardFromTask = withSuspenseFallback(
-  lazy(() => import('../TaskFeedCard/TaskFeedCardFromTask.component'))
 );
 
 const ActivityThread = withSuspenseFallback(
@@ -80,17 +69,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   updateThreadHandler,
   className,
   showHeader = true,
-  view,
+  threadType,
 }) => {
   const { t } = useTranslation();
-  const {
-    tasks,
-    selectedTask,
-    setActiveTask,
-    getTaskData,
-    loading,
-    entityPaging,
-  } = useActivityFeedProvider();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -107,41 +88,20 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const [isThreadLoading, setIsThreadLoading] = useState(false);
 
-  const [taskStatusGroup, setTaskStatusGroup] = useState<TaskStatusGroup>(
-    TaskStatusGroup.Open
+  const [taskStatus, setTaskStatus] = useState<ThreadTaskStatus>(
+    ThreadTaskStatus.Open
   );
 
-  const isTaskType = view === 'tasks';
+  const isTaskType = isEqual(threadType, ThreadType.Task);
 
-  const isConversationType = view === 'conversations';
+  const isConversationType = isEqual(threadType, ThreadType.Conversation);
 
-  const isTaskClosed = taskStatusGroup === 'closed';
-  const taskList = tasks ?? [];
+  const isTaskClosed = isEqual(taskStatus, ThreadTaskStatus.Closed);
 
   const getThreads = (after?: string) => {
-    if (isTaskType) {
-      getTaskData?.(
-        FeedFilter.ALL,
-        after,
-        (threadLink ? getEntityType(threadLink) : undefined) as EntityType,
-        threadLink ? getEntityFQN(threadLink) : undefined,
-        taskStatusGroup
-      );
-
-      return;
-    }
-
+    const status = isTaskType ? taskStatus : undefined;
     setIsThreadLoading(true);
-
-    const fetchPromise = getAllFeeds(
-      threadLink,
-      after,
-      ThreadType.Conversation,
-      FeedFilter.ALL,
-      undefined
-    );
-
-    fetchPromise
+    getAllFeeds(threadLink, after, threadType, FeedFilter.ALL, status)
       .then((res) => {
         const { data, paging: pagingObj } = res;
         setThreads((prevData) => {
@@ -214,7 +174,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const onBack = () => {
     setSelectedThread(undefined);
-    setActiveTask(undefined);
   };
 
   const onPostThread = async (value: string) => {
@@ -251,7 +210,11 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   };
 
   const onSwitchChange = (checked: boolean) => {
-    setTaskStatusGroup(checked ? TaskStatusGroup.Closed : TaskStatusGroup.Open);
+    if (checked) {
+      setTaskStatus(ThreadTaskStatus.Closed);
+    } else {
+      setTaskStatus(ThreadTaskStatus.Open);
+    }
   };
 
   useEffect(() => {
@@ -268,29 +231,16 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   }, []);
 
   useEffect(() => {
-    if (isConversationType) {
-      onThreadSelect(selectedThread?.id as string);
-    }
+    onThreadSelect(selectedThread?.id as string);
   }, [threads]);
 
   useEffect(() => {
     getThreads();
-  }, [
-    getTaskData,
-    isConversationType,
-    isTaskType,
-    taskStatusGroup,
-    threadLink,
-    view,
-  ]);
+  }, [threadLink, threadType, taskStatus]);
 
   useEffect(() => {
-    fetchMoreThread(
-      isInView,
-      isTaskType ? entityPaging : paging,
-      isTaskType ? loading : isThreadLoading
-    );
-  }, [entityPaging, isInView, isTaskType, isThreadLoading, loading, paging]);
+    fetchMoreThread(isInView, paging, isThreadLoading);
+  }, [paging, isThreadLoading, isInView]);
 
   return (
     <Fragment>
@@ -322,25 +272,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         )}
 
         {/* When user selects a thread will show that particular thread from here */}
-        {isTaskType && !isUndefined(selectedTask) ? (
-          <Fragment>
-            <Button
-              className="m-b-sm p-0"
-              size="small"
-              type="link"
-              onClick={onBack}>
-              {t('label.back')}
-            </Button>
-            <TaskTabNew
-              entityType={
-                (selectedTask.about?.type as EntityType) ?? EntityType.TABLE
-              }
-              hasGlossaryReviewer={false}
-              owners={[]}
-              task={selectedTask}
-            />
-          </Fragment>
-        ) : !isUndefined(selectedThread) ? (
+        {!isUndefined(selectedThread) ? (
           <Fragment>
             <Button
               className="m-b-sm p-0"
@@ -374,7 +306,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     />
                   </Space>
                 )}
-                {isTaskType && !loading && (
+                {isTaskType && !isThreadLoading && (
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
@@ -387,36 +319,21 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 )}
               </>
             ) : null}
-            {isTaskType ? (
-              <div className={classNames(className, 'd-flex flex-col gap-3')}>
-                {taskList.map((task) => (
-                  <TaskFeedCardFromTask
-                    isOpenInDrawer
-                    isActive={selectedTask?.id === task.id}
-                    key={task.id}
-                    task={task}
-                    onAfterClose={loadNewThreads}
-                    onTaskClick={setActiveTask}
-                  />
-                ))}
-              </div>
-            ) : (
-              <ActivityThreadList
-                className={classNames(className)}
-                postFeed={postFeed}
-                selectedThreadId={selectedThreadId}
-                threads={threads}
-                updateThreadHandler={onUpdateThread}
-                onConfirmation={onConfirmation}
-                onThreadIdSelect={onThreadIdSelect}
-                onThreadSelect={onThreadSelect}
-              />
-            )}
+            <ActivityThreadList
+              className={classNames(className)}
+              postFeed={postFeed}
+              selectedThreadId={selectedThreadId}
+              threads={threads}
+              updateThreadHandler={onUpdateThread}
+              onConfirmation={onConfirmation}
+              onThreadIdSelect={onThreadIdSelect}
+              onThreadSelect={onThreadSelect}
+            />
             <div
               data-testid="observer-element"
               id="observer-element"
               ref={elementRef as RefObject<HTMLDivElement>}>
-              {isTaskType ? loading ? <Loader /> : null : getLoader()}
+              {getLoader()}
             </div>
           </Fragment>
         )}

@@ -108,13 +108,13 @@ const RecentlyViewedCarousel = ({
       ]}
       slidesToScroll={10}
       slidesToShow={10}>
-      {recentlyViewData.map((data, index) => (
+      {recentlyViewData.map((data) => (
         <div
           className={classNames('customise-recently-viewed-data', {
             disabled,
           })}
           data-testid="recently-viewed-asset"
-          key={index}
+          key={data.fullyQualifiedName}
           role="button"
           tabIndex={0}
           onClick={() => navigateToEntity(data)}>
