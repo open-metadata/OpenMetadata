@@ -58,6 +58,16 @@ const waitForExportJobCompleted = async (
           status: string;
         }>;
 
+        // An unauthenticated or errored call returns an object, not a list, and
+        // `jobs.find` then fails with a TypeError that says nothing about why.
+        if (!Array.isArray(jobs)) {
+          throw new Error(
+            `csvAsyncJobs returned ${response.status()}: ${JSON.stringify(
+              jobs
+            ).slice(0, 200)}`
+          );
+        }
+
         return jobs.find((job) => job.jobId === jobId)?.status;
       },
       { timeout: 90_000 }
@@ -419,6 +429,7 @@ test.describe(
 
     test('Export queues a background job and downloads from the jobs tray', async ({
       page,
+      browser,
     }) => {
       test.slow();
 
@@ -453,7 +464,13 @@ test.describe(
         // "Target page, context or browser has been closed". Poll the job over the
         // API first (the same way fetchCompletedExportCsv does), so a stalled job is
         // named as such and the UI waits that follow are short.
-        await waitForExportJobCompleted(page.request, jobId);
+        //
+        // performAdminLogin, not page.request: the latter carries the page's cookies
+        // but not the bearer token these endpoints need, so it returns an error object
+        // rather than the job array.
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await waitForExportJobCompleted(apiContext, jobId);
+        await afterAction();
 
         const downloadButton = page
           .getByRole('button', { name: 'Download' })
