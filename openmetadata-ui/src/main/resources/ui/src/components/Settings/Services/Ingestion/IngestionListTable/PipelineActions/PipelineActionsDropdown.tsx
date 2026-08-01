@@ -28,7 +28,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLoadingStatus } from '../../../../../../utils/EntityDisplayUtils';
+import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   getEditIngestionPath,

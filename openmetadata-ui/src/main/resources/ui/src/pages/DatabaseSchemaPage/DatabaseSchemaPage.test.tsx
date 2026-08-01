@@ -118,8 +118,11 @@ jest.mock('../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
-  getEntityMissingError: jest.fn().mockImplementation((error) => error),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
+}));
+
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation((error) => error),
 }));
 
 jest.mock('../../utils/FeedUtilsPure', () => ({
