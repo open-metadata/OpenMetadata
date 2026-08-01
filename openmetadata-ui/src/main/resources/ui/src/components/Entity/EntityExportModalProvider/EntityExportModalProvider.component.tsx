@@ -61,6 +61,12 @@ export const EntityExportModalProvider = ({
   const [downloading, setDownloading] = useState<boolean>(false);
 
   const csvExportJobRef = useRef<Partial<CSVExportJob>>();
+  // Websocket export results are broadcast to every connection belonging to the
+  // user, so a response can arrive before this tab knows its own jobId. Hold
+  // those by jobId until the id is known rather than applying them blind.
+  const pendingCSVExportResponsesRef = useRef<
+    Map<string, Partial<CSVExportWebsocketResponse>>
+  >(new Map());
 
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
 
@@ -91,6 +97,50 @@ export const EntityExportModalProvider = ({
   const showModal = (data: ExportData) => {
     setExportData(data);
   };
+
+  const handleCSVExportSuccess = useCallback(
+    (data: string, fileName?: string) => {
+      if (isBulkEdit) {
+        setCSVExportData(data);
+      } else {
+        const csvFileName =
+          fileName ?? `${exportData?.name}_${getCurrentISODate()}`;
+        downloadFile(data, `${csvFileName}.csv`);
+      }
+      setDownloading(false);
+      handleCancel();
+      setCSVExportJob(undefined);
+      csvExportJobRef.current = undefined;
+      pendingCSVExportResponsesRef.current.clear();
+    },
+    [isBulkEdit]
+  );
+
+  const applyCSVExportJobUpdate = useCallback(
+    (response: Partial<CSVExportWebsocketResponse>) => {
+      const updatedCSVExportJob: Partial<CSVExportJob> = {
+        ...response,
+        ...csvExportJobRef.current,
+      };
+
+      setCSVExportJob(updatedCSVExportJob);
+
+      csvExportJobRef.current = updatedCSVExportJob;
+
+      if (response.status === 'COMPLETED' && response.data) {
+        handleCSVExportSuccess(
+          response.data ?? '',
+          csvExportJobRef.current?.fileName
+        );
+      } else if (response.status === 'IN_PROGRESS') {
+        // Keep downloading state true during progress
+        setDownloading(true);
+      } else {
+        setDownloading(false);
+      }
+    },
+    [isBulkEdit, handleCSVExportSuccess]
+  );
 
   const handleExport = async ({
     fileName,
@@ -148,9 +198,19 @@ export const EntityExportModalProvider = ({
           fileName: fileName,
           message: data.message,
         };
+        // A result for this job may have arrived while we were still waiting
+        // for the jobId; replay it now that we can attribute it.
+        const pendingResponse = pendingCSVExportResponsesRef.current.get(
+          data.jobId
+        );
 
         setCSVExportJob(jobData);
         csvExportJobRef.current = jobData;
+        pendingCSVExportResponsesRef.current.clear();
+
+        if (pendingResponse) {
+          applyCSVExportJobUpdate(pendingResponse);
+        }
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -158,58 +218,45 @@ export const EntityExportModalProvider = ({
     }
   };
 
-  const handleCSVExportSuccess = useCallback(
-    (data: string, fileName?: string) => {
-      if (isBulkEdit) {
-        setCSVExportData(data);
-      } else {
-        const csvFileName =
-          fileName ?? `${exportData?.name}_${getCurrentISODate()}`;
-        downloadFile(data, `${csvFileName}.csv`);
-      }
-      setDownloading(false);
-      handleCancel();
-      setCSVExportJob(undefined);
-      csvExportJobRef.current = undefined;
-    },
-    [isBulkEdit]
-  );
-
   const handleClearCSVExportData = useCallback(() => {
     setCSVExportData(undefined);
     setCSVExportJob(undefined);
     setExportData(null);
     csvExportJobRef.current = undefined;
+    pendingCSVExportResponsesRef.current.clear();
   }, []);
 
   const handleCSVExportJobUpdate = useCallback(
     (response: Partial<CSVExportWebsocketResponse>) => {
-      // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
-      if (!csvExportJobRef.current) {
+      const activeJob = csvExportJobRef.current;
+      const responseJobId = response.jobId;
+
+      // No export in flight in this tab, or a payload we cannot attribute.
+      if (!activeJob || !responseJobId) {
         return;
       }
-      const updatedCSVExportJob: Partial<CSVExportJob> = {
-        ...response,
-        ...csvExportJobRef.current,
-      };
 
-      setCSVExportJob(updatedCSVExportJob);
+      // The export request has not returned its jobId yet. Park the response
+      // instead of assuming it belongs to us — the backend fans results out to
+      // every socket this user has open, so it may well be another tab's.
+      if (!activeJob.jobId) {
+        const pendingResponse =
+          pendingCSVExportResponsesRef.current.get(responseJobId);
+        pendingCSVExportResponsesRef.current.set(responseJobId, {
+          ...pendingResponse,
+          ...response,
+        });
 
-      csvExportJobRef.current = updatedCSVExportJob;
-
-      if (response.status === 'COMPLETED' && response.data) {
-        handleCSVExportSuccess(
-          response.data ?? '',
-          csvExportJobRef.current?.fileName
-        );
-      } else if (response.status === 'IN_PROGRESS') {
-        // Keep downloading state true during progress
-        setDownloading(true);
-      } else {
-        setDownloading(false);
+        return;
       }
+
+      if (responseJobId !== activeJob.jobId) {
+        return;
+      }
+
+      applyCSVExportJobUpdate(response);
     },
-    [isBulkEdit, handleCSVExportSuccess]
+    [applyCSVExportJobUpdate]
   );
 
   useEffect(() => {

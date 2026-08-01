@@ -36,11 +36,100 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+const mockDownloadFile = jest.fn();
+jest.mock('../../../utils/Export/ExportUtils', () => ({
+  downloadFile: (...args: unknown[]) => mockDownloadFile(...args),
+}));
+
 const ConsumerComponent = () => {
   const { showModal } = useEntityExportModalProvider();
 
   return <button onClick={() => showModal(mockShowModal)}>Manage</button>;
 };
+
+/**
+ * Drives the websocket callback directly, the way the socket listener does.
+ * The backend broadcasts export results to every connection belonging to the
+ * user, so this provider receives other tabs' jobs too.
+ */
+const CorrelationComponent = () => {
+  const { showModal, onUpdateCSVExportJob } = useEntityExportModalProvider();
+
+  return (
+    <>
+      <button onClick={() => showModal(mockShowModal)}>Manage</button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            jobId: 'another-tabs-job',
+            status: 'COMPLETED',
+            data: 'WRONG,CSV',
+          })
+        }>
+        emit-foreign
+      </button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            jobId: mockExportJob.jobId,
+            status: 'COMPLETED',
+            data: 'OURS,CSV',
+          })
+        }>
+        emit-ours
+      </button>
+    </>
+  );
+};
+
+describe('EntityExportModalProvider CSV export job correlation', () => {
+  beforeEach(() => {
+    mockDownloadFile.mockClear();
+  });
+
+  it('ignores a completed export belonging to a different job', async () => {
+    render(
+      <EntityExportModalProvider>
+        <CorrelationComponent />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Manage'));
+    await act(async () => {
+      fireEvent.click(await screen.findByText('label.export'));
+    });
+
+    // This job id is not ours; the payload must be discarded rather than
+    // downloaded under our own file name.
+    await act(async () => {
+      fireEvent.click(screen.getByText('emit-foreign'));
+    });
+
+    expect(mockDownloadFile).not.toHaveBeenCalled();
+  });
+
+  it('downloads the export matching its own job id', async () => {
+    render(
+      <EntityExportModalProvider>
+        <CorrelationComponent />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Manage'));
+    await act(async () => {
+      fireEvent.click(await screen.findByText('label.export'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('emit-ours'));
+    });
+
+    expect(mockDownloadFile).toHaveBeenCalledWith(
+      'OURS,CSV',
+      expect.stringContaining('.csv')
+    );
+  });
+});
 
 describe('EntityExportModalProvider component', () => {
   it('Component should render', async () => {
