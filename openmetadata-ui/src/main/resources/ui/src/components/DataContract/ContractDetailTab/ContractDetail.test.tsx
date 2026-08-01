@@ -93,7 +93,7 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../utils/BlockEditorUtils', () => ({
-  formatContent: jest.fn().mockReturnValue('formatted content'),
+  formatServerContent: jest.fn().mockReturnValue('formatted content'),
 }));
 
 jest.mock('../../../utils/BlockEditorPureUtils', () => ({
