@@ -21,9 +21,9 @@ import { PipelineType } from '../../../../generated/entity/services/ingestionPip
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
   getIngestionTypes,
-  getMenuItems,
   getSupportedPipelineTypes,
-} from '../../../../utils/IngestionUtils';
+} from '../../../../utils/IngestionConfigUtils';
+import { getMenuItems } from '../../../../utils/IngestionUtils';
 import { getAddIngestionPath } from '../../../../utils/RouterUtils';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 

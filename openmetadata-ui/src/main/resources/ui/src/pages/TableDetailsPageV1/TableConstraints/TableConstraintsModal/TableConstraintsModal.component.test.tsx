@@ -60,7 +60,7 @@ jest.mock('../../../../utils/EntityPureUtils', () => ({
     ]),
 }));
 
-jest.mock('../../../../utils/ServiceUtils', () => ({
+jest.mock('../../../../utils/ServicePureUtils', () => ({
   getServiceNameQueryFilter: jest.fn().mockImplementation(() => ''),
 }));
 

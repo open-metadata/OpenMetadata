@@ -35,7 +35,7 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
@@ -55,7 +55,6 @@ import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import SourceList from '../MlModelDetail/SourceList.component';
 import { MlModelVersionProp } from './MlModelVersion.interface';
-
 const MlModelVersion: FC<MlModelVersionProp> = ({
   version,
   currentVersionData,
