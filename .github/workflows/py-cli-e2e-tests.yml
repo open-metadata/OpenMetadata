@@ -339,10 +339,13 @@ jobs:
       continue-on-error: true
       uses: slackapi/slack-github-action@v4
       with:
-        webhook: ${{ secrets.E2E_SLACK_WEBHOOK }}
-        webhook-type: incoming-webhook
+        method: chat.postMessage
+        token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+        # Keep on — the action discards Slack API errors by default.
+        errors: true
         payload: |
           {
+            "channel": "C03EYBDDX17",
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
 

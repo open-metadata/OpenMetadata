@@ -227,3 +227,24 @@ jobs:
           projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
           args: >
             -Dsonar.branch.name=${{ env.BRANCH_NAME }}
+
+  notify:
+    needs: [py-unit-tests, py-integration-tests, py-combine-coverage]
+    # Stay silent on green nights, or a daily cron becomes a channel nobody reads.
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Slack on failure
+        continue-on-error: true
+        uses: slackapi/slack-github-action@v4
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          # Keep on — the action discards Slack API errors by default.
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": "🔥 *SonarCloud Ingestion Nightly* failed on `${{ env.BRANCH_NAME }}` 🔥\nunit: ${{ needs.py-unit-tests.result }} · integration: ${{ needs.py-integration-tests.result }} · combine+sonar: ${{ needs.py-combine-coverage.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
