@@ -18,7 +18,6 @@ import {
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { Button, Form } from 'antd';
-import { isEmpty, omit } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Column, textEditor } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
@@ -416,7 +415,7 @@ const CoreTableEditor: React.FC<CoreTableEditorProps> = ({
         ? value.rows
         : [];
 
-    return rawRows.map((row, i) => ({ ...row, id: String(i) }));
+    return rawRows.map((row) => ({ ...row }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // initialize once from initial value
 
@@ -435,6 +434,9 @@ const CoreTableEditor: React.FC<CoreTableEditorProps> = ({
     dataSource,
     setDataSource,
     columns: gridColumns,
+    // No injected row-id key: the grid keys rows by array index, and injecting
+    // an `id` field would clobber a user-defined column literally named "id".
+    rowIdKey: null,
   });
 
   // Keep a stable ref to onChange so the effect below never re-fires solely
@@ -443,9 +445,9 @@ const CoreTableEditor: React.FC<CoreTableEditorProps> = ({
   onChangeRef.current = onChange;
 
   useEffect(() => {
-    const rows = dataSource
-      .map((row) => omit(row, 'id'))
-      .filter((row) => !isEmpty(row) && Object.values(row).some(Boolean));
+    const rows = dataSource.filter((row) =>
+      Object.values(row).some(Boolean)
+    );
     onChangeRef.current?.({ rows, columns });
   }, [dataSource, columns]);
 
@@ -640,7 +642,8 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={labelWithBadge}>
+              label={labelWithBadge}
+              required={isRequired}>
               <Form.Item
                 name={[...namePath, 'url']}
                 noStyle
@@ -702,7 +705,8 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={labelWithBadge}>
+              label={labelWithBadge}
+              required={isRequired}>
               <Form.Item
                 name={[...namePath, 'start']}
                 noStyle
@@ -718,14 +722,7 @@ const AddDomainFormExtensionFields = ({
                 />
               </Form.Item>
               <div style={{ marginTop: 8 }}>
-                <Form.Item
-                  name={[...namePath, 'end']}
-                  noStyle
-                  rules={
-                    isRequired
-                      ? [{ required: true, message: requiredMessage }]
-                      : []
-                  }>
+                <Form.Item noStyle name={[...namePath, 'end']}>
                   <CoreTextInput
                     data-testid={`${dataTestId}-end`}
                     placeholder={t('label.end')}
@@ -743,11 +740,11 @@ const AddDomainFormExtensionFields = ({
             ? (config as string[])
             : typeof config === 'string'
             ? [config]
-            : ['glossaryTerm'];
+            : [];
 
-          const isUserOrTeam = allowedTypes.every(
-            (t) => t === 'user' || t === 'team'
-          );
+          const isUserOrTeam =
+            allowedTypes.length > 0 &&
+            allowedTypes.every((t) => t === 'user' || t === 'team');
 
           if (isUserOrTeam) {
             const fieldProp: FieldProp = {

@@ -17,12 +17,26 @@ import {
   ENTITY_REFERENCE_OPTIONS,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
 } from '../constants/CustomProperty.constants';
+import { CustomProperty } from '../generated/entity/type';
 import {
   formatTableCellValue,
   getCustomPropertyDateTimeDefaultFormat,
   getCustomPropertyEntityPathname,
   getCustomPropertyMomentFormat,
+  hasPopulatedTableRows,
+  serializeExtensionValue,
 } from './CustomProperty.utils';
+
+const makeDefinition = (
+  typeName: string,
+  config?: unknown
+): CustomProperty =>
+  ({
+    name: 'cp',
+    description: 'cp',
+    propertyType: { id: 'type-id', type: 'type', name: typeName },
+    ...(config === undefined ? {} : { customPropertyConfig: { config } }),
+  } as unknown as CustomProperty);
 
 describe('CustomProperty.utils', () => {
   it('getCustomPropertyEntityPathname should return entityPath[0] if entityPath is found', () => {
@@ -340,6 +354,149 @@ describe('CustomProperty.utils', () => {
       const result = formatTableCellValue({ value: undefined });
 
       expect(result).toBe('{}');
+    });
+  });
+
+  describe('hasPopulatedTableRows', () => {
+    it('returns true for an object whose rows array has data', () => {
+      expect(
+        hasPopulatedTableRows({
+          columns: ['id', 'value'],
+          rows: [{ id: '1', value: 'a' }],
+        })
+      ).toBe(true);
+    });
+
+    it('returns false when the rows array is empty', () => {
+      expect(
+        hasPopulatedTableRows({ columns: ['id', 'value'], rows: [] })
+      ).toBe(false);
+    });
+
+    it('returns false when every row is blank', () => {
+      expect(
+        hasPopulatedTableRows({ columns: ['id'], rows: [{ id: '' }] })
+      ).toBe(false);
+    });
+
+    it('returns false for a bare array (the incorrect shape that dropped tables)', () => {
+      expect(hasPopulatedTableRows([{ id: '1', value: 'a' }])).toBe(false);
+    });
+
+    it('returns false for null, undefined, or an object without rows', () => {
+      expect(hasPopulatedTableRows(null)).toBe(false);
+      expect(hasPopulatedTableRows(undefined)).toBe(false);
+      expect(hasPopulatedTableRows({ columns: ['id'] })).toBe(false);
+    });
+  });
+
+  describe('serializeExtensionValue - table', () => {
+    const tableDefinition = makeDefinition('table-cp', {
+      columns: ['id', 'value'],
+    });
+
+    it('keeps a populated table value in the {columns, rows} shape', () => {
+      const value = {
+        columns: ['id', 'value'],
+        rows: [{ id: '1', value: 'a' }],
+      };
+
+      expect(serializeExtensionValue(tableDefinition, value)).toEqual(value);
+    });
+
+    it('drops a table value that has no populated rows', () => {
+      expect(
+        serializeExtensionValue(tableDefinition, {
+          columns: ['id', 'value'],
+          rows: [],
+        })
+      ).toBeUndefined();
+    });
+  });
+
+  describe('serializeExtensionValue - entity reference', () => {
+    const reference = {
+      id: 'u1',
+      type: 'user',
+      name: 'alec',
+      displayName: 'Alec Kane',
+    };
+
+    it('unwraps a single reference wrapped in an array (user/team picker shape)', () => {
+      expect(
+        serializeExtensionValue(makeDefinition('entityReference'), [reference])
+      ).toEqual(reference);
+    });
+
+    it('keeps a single reference passed as a plain object', () => {
+      expect(
+        serializeExtensionValue(makeDefinition('entityReference'), reference)
+      ).toEqual(reference);
+    });
+
+    it('serializes a list of references to an array', () => {
+      const references = [reference, { id: 'u2', type: 'user' }];
+
+      expect(
+        serializeExtensionValue(
+          makeDefinition('entityReferenceList'),
+          references
+        )
+      ).toEqual(references);
+    });
+  });
+
+  describe('serializeExtensionValue - scalar and structured types', () => {
+    it('coerces numeric strings to numbers', () => {
+      expect(serializeExtensionValue(makeDefinition('integer'), '5')).toBe(5);
+      expect(serializeExtensionValue(makeDefinition('number'), '6.5')).toBe(6.5);
+      expect(serializeExtensionValue(makeDefinition('timestamp'), '100')).toBe(
+        100
+      );
+    });
+
+    it('wraps a single enum value in an array and keeps multi values', () => {
+      expect(serializeExtensionValue(makeDefinition('enum'), 'High')).toEqual([
+        'High',
+      ]);
+      expect(
+        serializeExtensionValue(makeDefinition('enum'), ['A', 'B'])
+      ).toEqual(['A', 'B']);
+    });
+
+    it('serializes a hyperlink object', () => {
+      const hyperlink = { url: 'https://collate.io', displayText: 'Collate' };
+
+      expect(
+        serializeExtensionValue(makeDefinition('hyperlink-cp'), hyperlink)
+      ).toEqual(hyperlink);
+    });
+
+    it('serializes a time interval to numbers', () => {
+      expect(
+        serializeExtensionValue(makeDefinition('timeInterval'), {
+          start: '1',
+          end: '2',
+        })
+      ).toEqual({ start: 1, end: 2 });
+    });
+
+    it('passes date and string values through unchanged', () => {
+      expect(
+        serializeExtensionValue(makeDefinition('date-cp'), '2026-08-01')
+      ).toBe('2026-08-01');
+      expect(serializeExtensionValue(makeDefinition('string'), 'abc')).toBe(
+        'abc'
+      );
+    });
+
+    it('returns undefined for empty raw values', () => {
+      expect(
+        serializeExtensionValue(makeDefinition('string'), '')
+      ).toBeUndefined();
+      expect(
+        serializeExtensionValue(makeDefinition('string'), undefined)
+      ).toBeUndefined();
     });
   });
 });
