@@ -83,7 +83,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
                 data-testid="save-button"
                 isDisabled={!postMessage.length}
                 size="xs"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   handleSave();
                 }}>

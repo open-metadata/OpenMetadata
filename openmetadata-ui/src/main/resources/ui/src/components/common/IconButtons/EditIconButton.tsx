@@ -16,6 +16,7 @@ import { Button } from '@openmetadata/ui-core-components';
 import type { ButtonProps as AntdButtonProps } from 'antd';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
+import type { ReactNode } from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
@@ -29,6 +30,11 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 export type IconButtonProps = Omit<CoreButtonProps, 'size'> & {
   size?: AntdButtonProps['size'];
   newLook?: boolean;
+  // Legacy antd `icon` prop kept for source compatibility with existing
+  // call sites -- every variant below always renders its own hardcoded
+  // `iconLeading`, so a caller-supplied `icon` is intentionally ignored
+  // (it was equally inert under the old antd `Button` implementation).
+  icon?: ReactNode;
 };
 
 // antd `size` (large | middle | small | undefined) -> core `size`.
@@ -95,7 +101,7 @@ export const RequestIconButton = ({
         <Icon
           className={classNames('table-action-icon', className)}
           component={RequestIcon}
-          {...props}
+          {...(props as Omit<typeof props, 'slot'>)}
         />
       )}
     </Tooltip>
@@ -123,7 +129,7 @@ export const CommentIconButton = ({
         <Icon
           className={classNames('table-action-icon', className)}
           component={CommentIcon}
-          {...props}
+          {...(props as Omit<typeof props, 'slot'>)}
         />
       )}
     </Tooltip>
@@ -154,6 +160,7 @@ export const CardExpandCollapseIconButton = ({
   title,
   className,
   disabled,
+  size,
   ...props
 }: IconButtonProps) => {
   const button = (
@@ -164,6 +171,7 @@ export const CardExpandCollapseIconButton = ({
       color="tertiary"
       iconLeading={<CardExpandCollapseIcon />}
       isDisabled={disabled}
+      size={toCoreSize(size)}
     />
   );
 
