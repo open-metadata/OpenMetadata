@@ -779,9 +779,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
    * to re-evaluate incident state.
    */
   test('Resolving incident & re-run pipeline', async ({ page }) => {
-    // Re-run waits on a pipeline; the default 60s test timeout is below its
-    // poll, so bump to test.slow() (180s) and cap the poll under that.
-    test.slow();
+    // This test does UI steps and then waits on a pipeline re-run. The wait can
+    // consume the helper's appearance window (up to 60s) plus the success poll
+    // (successTimeout below), so the budget must exceed those combined plus the
+    // UI steps — test.slow() (180s) is not enough.
+    test.setTimeout(5 * 60 * 1000);
     const testCase = table1.testCasesResponseData[1];
     const testCaseName = testCase?.['name'];
     const pipeline = table1.testSuitePipelineResponseData[0];
@@ -903,9 +905,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
    * @description Acknowledges and assigns an open incident, reruns pipeline, and validates status reflects Assigned.
    */
   test('Rerunning pipeline for an open incident', async ({ page }) => {
-    // Re-run waits on a pipeline; the default 60s test timeout is below its
-    // poll, so bump to test.slow() (180s) and cap the poll under that.
-    test.slow();
+    // This test does UI steps and then waits on a pipeline re-run. The wait can
+    // consume the helper's appearance window (up to 60s) plus the success poll
+    // (successTimeout below), so the budget must exceed those combined plus the
+    // UI steps — test.slow() (180s) is not enough.
+    test.setTimeout(5 * 60 * 1000);
     const testCase = table1.testCasesResponseData[2];
     const testCaseName = testCase?.['name'];
     const pipeline = table1.testSuitePipelineResponseData[0];

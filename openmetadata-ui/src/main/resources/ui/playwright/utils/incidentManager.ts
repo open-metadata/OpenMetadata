@@ -19,7 +19,6 @@ import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
-import { waitForIncidentToBeIndexed } from './dataQuality';
 import { getCurrentMillis } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
@@ -59,14 +58,40 @@ export const seedFailedIncidents = async (data: {
     testCases.push(testCase);
   }
 
-  // Confirm the last incident is indexed so UI assertions don't race the write.
-  if (testCases.length > 0) {
-    await waitForIncidentToBeIndexed(
-      apiContext,
-      testCases[testCases.length - 1]['fullyQualifiedName'],
-      failTimestamp
-    );
-  }
+  // Wait until ALL seeded incidents are indexed, not just the last — Elasticsearch
+  // indexing is not ordered, so an earlier incident can still be missing when the
+  // last one is searchable, which would under-fill the list and defeat the point.
+  const seededFqns = new Set(
+    testCases.map((testCase) => testCase['fullyQualifiedName'])
+  );
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
+            `&startTs=${failTimestamp - 60_000}` +
+            `&endTs=${failTimestamp + 120_000}` +
+            `&limit=${count + 50}`
+        );
+
+        if (!response.ok()) {
+          return 0;
+        }
+
+        const body = await response.json();
+        const indexedFqns = new Set(
+          (body.data ?? []).map(
+            (incident: {
+              testCaseReference?: { fullyQualifiedName?: string };
+            }) => incident.testCaseReference?.fullyQualifiedName
+          )
+        );
+
+        return [...seededFqns].filter((fqn) => indexedFqns.has(fqn)).length;
+      },
+      { timeout: 90_000, intervals: [2_000, 3_000, 5_000] }
+    )
+    .toBeGreaterThanOrEqual(count);
 
   return testCases;
 };
