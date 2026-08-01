@@ -66,6 +66,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.ColumnSearchUtil.ColumnTagFilter;
 
 @Path("/v1/dashboard/datamodels")
 @Tag(
@@ -860,13 +861,52 @@ public class DashboardDataModelResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by field. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder,
+      @Parameter(
+              description =
+                  "Filter by classification tags at column level (comma-separated tag FQNs)",
+              example = "PII.Sensitive,PersonalData.Email")
+          @QueryParam("tags")
+          String tags,
+      @Parameter(
+              description =
+                  "Filter by glossary terms at column level (comma-separated glossary term FQNs)",
+              example = "Business.CustomerData,Business.Revenue")
+          @QueryParam("glossaryTerms")
+          String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     ResultList<Column> result =
         repository.searchDataModelColumnsById(
-            id, query, limitParam, offsetParam, fieldsParam, include);
+            id,
+            query,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            sortBy,
+            sortOrder,
+            ColumnTagFilter.fromCsv(tags, glossaryTerms));
     DataModelColumnList dataModelColumnList = new DataModelColumnList();
     dataModelColumnList.setData(result.getData());
     dataModelColumnList.setPaging(result.getPaging());
@@ -921,13 +961,52 @@ public class DashboardDataModelResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "Sort columns by field. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder,
+      @Parameter(
+              description =
+                  "Filter by classification tags at column level (comma-separated tag FQNs)",
+              example = "PII.Sensitive,PersonalData.Email")
+          @QueryParam("tags")
+          String tags,
+      @Parameter(
+              description =
+                  "Filter by glossary terms at column level (comma-separated glossary term FQNs)",
+              example = "Business.CustomerData,Business.Revenue")
+          @QueryParam("glossaryTerms")
+          String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchDataModelColumnsByFQN(
-            fqn, query, limitParam, offsetParam, fieldsParam, include);
+            fqn,
+            query,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            sortBy,
+            sortOrder,
+            ColumnTagFilter.fromCsv(tags, glossaryTerms));
     DataModelColumnList dataModelColumnList = new DataModelColumnList();
     dataModelColumnList.setData(result.getData());
     dataModelColumnList.setPaging(result.getPaging());

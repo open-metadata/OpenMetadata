@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,11 +43,14 @@ import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
+import org.openmetadata.service.resources.datamodels.DashboardDataModelResource.DataModelColumnList;
 
 /**
  * Integration tests for DashboardDataModel entity operations.
@@ -912,6 +917,109 @@ public class DashboardDataModelResourceIT
         readOnce(client, id, relationshipErrors);
       }
     }
+  }
+
+  @Test
+  void searchColumns_tagFilterReturnsMatchesAcrossPages(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
+
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix("DmColTagFilter"))
+            .withDescription("Classification for data model column tag filter test");
+    Classification classification = client.classifications().create(createClassification);
+    CreateTag createTag =
+        new CreateTag()
+            .withName("Sensitive")
+            .withClassification(classification.getName())
+            .withDescription("Sensitive tag");
+    Tag tag = client.tags().create(createTag);
+    String tagFqn = tag.getFullyQualifiedName();
+
+    TagLabel sensitiveLabel =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    int totalColumns = 60;
+    int taggedColumnIndex = 58;
+    List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < totalColumns; i++) {
+      Column column =
+          new Column()
+              .withName(String.format("col_%02d", i))
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(100);
+      if (i == taggedColumnIndex) {
+        column.withTags(List.of(sensitiveLabel));
+      }
+      columns.add(column);
+    }
+
+    CreateDashboardDataModel request =
+        new CreateDashboardDataModel()
+            .withName(ns.prefix("dm_col_tag_filter"))
+            .withService(service.getFullyQualifiedName())
+            .withDataModelType(DataModelType.LookMlView)
+            .withColumns(columns);
+    DashboardDataModel dataModel = createEntity(request);
+
+    String encodedFqn =
+        URLEncoder.encode(dataModel.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String taggedColumnName = String.format("col_%02d", taggedColumnIndex);
+
+    DataModelColumnList firstPage = searchDataModelColumns(client, encodedFqn, "limit=50&offset=0");
+    assertEquals(totalColumns, firstPage.getPaging().getTotal());
+    assertFalse(
+        firstPage.getData().stream().anyMatch(c -> taggedColumnName.equals(c.getName())),
+        "Tagged column should fall on a later page without a filter");
+
+    String encodedTag = URLEncoder.encode(tagFqn, StandardCharsets.UTF_8);
+    DataModelColumnList filtered =
+        searchDataModelColumns(
+            client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        1,
+        filtered.getPaging().getTotal(),
+        "Tag filter total should count all matches across pages, not a single page");
+    assertEquals(1, filtered.getData().size());
+    assertEquals(taggedColumnName, filtered.getData().get(0).getName());
+
+    DataModelColumnList filteredById =
+        searchDataModelColumnsById(
+            client,
+            dataModel.getId().toString(),
+            "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        1, filteredById.getPaging().getTotal(), "By-id endpoint should honour the same tag filter");
+    assertEquals(taggedColumnName, filteredById.getData().get(0).getName());
+  }
+
+  private DataModelColumnList searchDataModelColumns(
+      OpenMetadataClient client, String encodedFqn, String queryParams) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dashboard/datamodels/name/" + encodedFqn + "/columns/search?" + queryParams,
+                null);
+    return JsonUtils.readValue(response, DataModelColumnList.class);
+  }
+
+  private DataModelColumnList searchDataModelColumnsById(
+      OpenMetadataClient client, String id, String queryParams) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dashboard/datamodels/" + id + "/columns/search?" + queryParams,
+                null);
+    return JsonUtils.readValue(response, DataModelColumnList.class);
   }
 
   private void readOnce(OpenMetadataClient client, String id, List<String> relationshipErrors) {
