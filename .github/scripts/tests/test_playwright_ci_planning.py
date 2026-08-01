@@ -61,10 +61,13 @@ def test_full_common_shard_count_is_capped_at_24():
     assert planner.shard_count(units, "chromium", "full") == 24
 
 
-def test_common_lane_keeps_one_minute_of_allocation_reserve():
+def test_common_lane_carries_its_own_shard_budget():
+    # The chromium lane no longer sits a minute under TARGET_MS: the suite grew
+    # past what COMMON_MAX_SHARDS could hold at 19m, so it now runs a minute
+    # above the other lanes. Both still fit the 25m playwright timeout wrapper.
     planner = load_script("build_playwright_shards")
 
-    assert planner.shard_budget_ms_for_lane("chromium") == 19 * 60 * 1000
+    assert planner.shard_budget_ms_for_lane("chromium") == 21 * 60 * 1000
     assert planner.shard_budget_ms_for_lane("search") == 20 * 60 * 1000
 
 
@@ -93,6 +96,44 @@ def test_common_assignment_stays_within_the_execution_ceiling():
         planner.predicted_execution_ms(shard, 3) <= planner.TARGET_MS
         for shard in shards
     )
+
+
+def test_full_mode_chromium_converges_at_the_shard_ceiling():
+    # Regression guard for the merge-queue outage: a lane of this shape exhausted
+    # COMMON_MAX_SHARDS under the old 19m budget and aborted planning outright.
+    # The allocator must converge at or before the ceiling, and the resulting
+    # plan genuinely needs the window above 19m -- so quietly reverting the
+    # budget to 19m fails on the final assertion rather than only in CI.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium", f"heavy-{index}.spec.ts", str(index), weight_ms=13 * 60 * 1000
+        )
+        for index in range(96)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "chromium", "full")
+
+    workers = planner.LANE_WORKERS.get("chromium", 3)
+    heaviest_ms = max(
+        planner.predicted_execution_ms(shard, workers) for shard in shards
+    )
+    assert len(shards) <= planner.COMMON_MAX_SHARDS
+    assert heaviest_ms <= planner.COMMON_SHARD_BUDGET_MS
+    assert heaviest_ms > 19 * 60 * 1000
+
+
+def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium", f"huge-{index}.spec.ts", str(index), weight_ms=19 * 60 * 1000
+        )
+        for index in range(120)
+    ]
+
+    with pytest.raises(SystemExit, match=r"needs more than 24 shards"):
+        planner.assign_lane_within_budget(units, "chromium", "full")
 
 
 def test_shard_pattern_includes_project_and_file():
@@ -449,7 +490,7 @@ def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():
     ]
 
 
-def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
+def test_common_shards_enforce_the_twenty_one_minute_budget(tmp_path):
     planner = load_script("build_playwright_shards")
     within_budget = planner.Unit(
         "chromium",
@@ -457,7 +498,7 @@ def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
         "within",
         grep_titles={("chromium", "within.spec.ts", "within")},
         test_ids={"within"},
-        weight_ms=19 * 60 * 1000,
+        weight_ms=21 * 60 * 1000,
     )
     above_budget = planner.Unit(
         "chromium",
@@ -465,11 +506,11 @@ def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
         "above",
         grep_titles={("chromium", "above.spec.ts", "above")},
         test_ids={"above"},
-        weight_ms=19 * 60 * 1000 + 1,
+        weight_ms=21 * 60 * 1000 + 1,
     )
 
     planner.write_plan(tmp_path, "chromium", 0, [within_budget])
-    with pytest.raises(SystemExit, match="above the 19-minute plan budget"):
+    with pytest.raises(SystemExit, match="above the 21-minute plan budget"):
         planner.write_plan(tmp_path, "chromium", 1, [above_budget])
 
 
