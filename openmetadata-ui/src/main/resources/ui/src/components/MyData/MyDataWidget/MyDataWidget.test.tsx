@@ -72,8 +72,21 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
+jest.mock('../../../utils/EntityLinkUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockReturnValue('/entity/test'),
+}));
+
 jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
+}));
+
+jest.mock('../../../utils/RouterUtils', () => ({
+  getDomainPath: jest.fn().mockReturnValue('/domain/test'),
+  getUserPath: jest.fn().mockReturnValue('/user/test'),
+}));
+
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <span>OwnerLabel</span>),
 }));
 
 jest.mock('../../../constants/Widgets.constant', () => ({
@@ -92,11 +105,19 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 jest.mock(
   '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () => {
-    return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+    return jest.fn().mockImplementation(({ children, loading }) => (
+      <div data-loading={loading} data-testid="entity-list-skeleton">
+        {children}
+      </div>
+    ));
   }
 );
 
 describe('MyDataWidget component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should fetch data', async () => {
     await act(async () => {
       render(<MyDataWidget widgetKey="widgetKey" />, { wrapper: MemoryRouter });
