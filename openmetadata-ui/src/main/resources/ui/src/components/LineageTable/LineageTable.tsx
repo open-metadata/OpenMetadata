@@ -63,10 +63,10 @@ import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
   getSearchNameEsQuery,
-  LINEAGE_IMPACT_OPTIONS,
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from '../../utils/Lineage/LineageUtils';
+} from '../../utils/Lineage/LineagePureUtils';
+import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -91,7 +91,6 @@ import {
 import { EImpactLevel } from './LineageTable.interface';
 import { StyledMenu, StyledToggleButtonGroup } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
-
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();

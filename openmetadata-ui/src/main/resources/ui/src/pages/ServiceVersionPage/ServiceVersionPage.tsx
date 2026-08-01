@@ -60,7 +60,7 @@ import {
   getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
-} from '../../utils/EntityVersionUtils';
+} from '../../utils/EntityVersionUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -73,7 +73,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 

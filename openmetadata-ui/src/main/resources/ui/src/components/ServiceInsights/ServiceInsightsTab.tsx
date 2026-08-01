@@ -55,11 +55,11 @@ import {
   getPlatformInsightsChartDataFormattingMethod,
 } from '../../utils/ServiceInsightsTabPureUtils';
 import { getFormattedTotalAssetsDataFromSocketData } from '../../utils/ServiceInsightsTabUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getEntityTypeFromServiceCategory,
   getServiceNameQueryFilter,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -70,7 +70,6 @@ import {
   ServiceInsightsTabProps,
   TotalAssetsCount,
 } from './ServiceInsightsTab.interface';
-
 const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,

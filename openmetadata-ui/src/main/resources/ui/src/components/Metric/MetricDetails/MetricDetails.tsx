@@ -58,7 +58,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './metric.less';
 import { MetricDetailsProps } from './MetricDetails.interface';
-
 const MetricDetails: React.FC<MetricDetailsProps> = ({
   metricDetails,
   metricPermissions,

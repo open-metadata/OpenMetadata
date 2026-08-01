@@ -450,7 +450,6 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
     return t('label.day-left', { day: pluralize(day, 'day') });
   }
 };
-
 export const getDataInsightPathWithFqn = (tab = DataInsightTabs.DATA_ASSETS) =>
   ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab);
 
