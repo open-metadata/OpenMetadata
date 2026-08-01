@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import { isEqual } from 'lodash';
-import { FC, Fragment } from 'react';
+import { FC, Fragment, lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -29,14 +29,28 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
-import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedListSeparator from '../FeedListSeparator/FeedListSeparator';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
+
+const ActivityFeedCard = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedCard/ActivityFeedCard'))
+);
+
+const FeedCardFooter = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedCard/FeedCardFooter/FeedCardFooter'))
+);
+
+const FeedListSeparator = withSuspenseFallback(
+  lazy(() => import('../FeedListSeparator/FeedListSeparator'))
+);
+
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditor'))
+);
+
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
   className,
   threads,
