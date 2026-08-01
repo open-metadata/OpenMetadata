@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
@@ -75,8 +74,8 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       />
       <Button
         className="draggable-menu-item-button"
-        type="text"
-        onClick={() => onSelect(value, !isItemSelected)}>
+        onClick={() => onSelect(value, !isItemSelected)}
+        color='tertiary'>
         <Typography className="draggable-menu-item-button-label">
           {label}
         </Typography>

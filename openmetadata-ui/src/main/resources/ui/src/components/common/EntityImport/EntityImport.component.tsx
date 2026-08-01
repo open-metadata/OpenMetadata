@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card, Col, Row, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Affix, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -234,11 +234,10 @@ export const EntityImport = ({
               <Affix className="bg-white p-md import-preview-footer">
                 <Space className="justify-end w-full p-r-md">
                   <Button
-                    ghost
                     data-testid="cancel-button"
-                    type="primary"
                     // as we need to redirect back, from where we enter import screen
-                    onClick={onCancel}>
+                    onClick={onCancel}
+                    color='tertiary'>
                     {t('label.cancel')}
                   </Button>
                 </Space>
@@ -262,11 +261,7 @@ export const EntityImport = ({
                     {csvImportResult.abortReason}
                   </Typography>
                   <Space size={16}>
-                    <Button
-                      ghost
-                      data-testid="cancel-button"
-                      type="primary"
-                      onClick={handleCancel}>
+                    <Button data-testid="cancel-button" onClick={handleCancel} color='tertiary'>
                       {t('label.back')}
                     </Button>
                   </Space>
@@ -274,7 +269,7 @@ export const EntityImport = ({
               </Card>
             ) : (
               // added extra margin to prevent data lost due to fixed footer at bottom
-              <div className="mb-16 m-t-lg">
+              (<div className="mb-16 m-t-lg">
                 <Row data-testid="import-results" gutter={[16, 16]}>
                   <Col span={24}>{importStartedBanner}</Col>
                   <Col span={24}>
@@ -285,25 +280,24 @@ export const EntityImport = ({
                 <Affix className="bg-white p-md import-preview-footer">
                   <Space className="justify-end w-full p-r-md">
                     <Button
-                      ghost
                       data-testid="preview-cancel-button"
-                      disabled={isImporting}
-                      type="primary"
-                      onClick={handleCancel}>
+                      onClick={handleCancel}
+                      color='tertiary'
+                      isDisabled={isImporting}>
                       {t('label.back')}
                     </Button>
                     {!isFailure && (
                       <Button
                         data-testid="import-button"
-                        disabled={isImporting}
-                        type="primary"
-                        onClick={handleImport}>
+                        onClick={handleImport}
+                        color='primary'
+                        isDisabled={isImporting}>
                         {t('label.import')}
                       </Button>
                     )}
                   </Space>
                 </Affix>
-              </div>
+              </div>)
             )}
           </Col>
         )}
@@ -325,8 +319,8 @@ export const EntityImport = ({
                 <Space size={16}>
                   <Button
                     data-testid="preview-button"
-                    type="primary"
-                    onClick={onSuccess}>
+                    onClick={onSuccess}
+                    color='primary'>
                     {t('label.view')}
                   </Button>
                 </Space>

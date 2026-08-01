@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Button, Col, Row, Select, Tooltip } from 'antd';
+import { Col, Row, Select, Tooltip } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -156,13 +156,13 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
           title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
           <Button
             className="workflow-array-field-copy-button remove-button-default-styling"
-            icon={<CopyLeft height={20} />}
-            size="small"
-            type="text"
             onClick={(e) => {
               e.stopPropagation();
               handleCopy(e);
             }}
+            color='tertiary'
+            size='xs'
+            iconLeading={<CopyLeft height={20} />}
           />
         </Tooltip>
       </Col>

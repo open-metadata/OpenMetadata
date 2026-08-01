@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 
 import { useTranslation } from 'react-i18next';
 import './login-button.style.less';
@@ -47,7 +47,11 @@ const LoginButton = ({
   ) : null;
 
   return (
-    <Button className="signin-button m-x-auto" icon={svgIcon} onClick={onClick}>
+    <Button
+      className="signin-button m-x-auto"
+      onClick={onClick}
+      color='secondary'
+      iconLeading={svgIcon}>
       <span className="font-medium text-grey-muted text-xl m-l-0">
         {t('label.sign-in-with-sso', { sso: ssoBrandName })}
       </span>

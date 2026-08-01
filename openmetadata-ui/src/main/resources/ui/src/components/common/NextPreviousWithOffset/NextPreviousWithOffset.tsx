@@ -16,7 +16,8 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Dropdown } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -70,25 +71,23 @@ const NextPreviousWithOffset = ({
   return (
     <div className="flex-center gap-3" data-testid="pagination">
       <Button
-        ghost
         className="hover-button text-sm flex-center"
         data-testid="previous"
-        disabled={currentPage === 1 || isLoading}
-        icon={<ArrowLeftOutlined />}
-        type="primary"
-        onClick={onPreviousHandler}>
+        onClick={onPreviousHandler}
+        color='tertiary'
+        isDisabled={currentPage === 1 || isLoading}
+        iconLeading={<ArrowLeftOutlined />}>
         <span>{t('label.previous')}</span>
       </Button>
       <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
         'label.page'
       )}`}</span>
       <Button
-        ghost
         className="hover-button text-sm flex-center"
         data-testid="next"
-        disabled={nextButtonDisabled || isLoading}
-        type="primary"
-        onClick={onNextHandler}>
+        onClick={onNextHandler}
+        color='tertiary'
+        isDisabled={nextButtonDisabled || isLoading}>
         <span> {t('label.next')}</span>
         <ArrowRightOutlined />
       </Button>
@@ -105,7 +104,8 @@ const NextPreviousWithOffset = ({
           }}>
           <Button
             data-testid="page-size-change-button"
-            onClick={(e) => e.preventDefault()}>
+            onClick={(e) => e.preventDefault()}
+            color='secondary'>
             {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>

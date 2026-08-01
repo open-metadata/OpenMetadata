@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space } from 'antd';
+import { Card, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,18 +122,18 @@ const RolesCard = ({
                 <Button
                   className="text-sm mr-1"
                   data-testid="cancel-roles"
-                  icon={<CloseOutlined />}
-                  size="small"
-                  type="primary"
                   onMouseDown={() => setIsRolesEdit(false)}
+                  color='primary'
+                  size='xs'
+                  iconLeading={<CloseOutlined />}
                 />
                 <Button
                   className="text-sm"
                   data-testid="save-roles"
-                  icon={<CheckOutlined />}
-                  size="small"
-                  type="primary"
                   onClick={handleRolesChange}
+                  color='primary'
+                  size='xs'
+                  iconLeading={<CheckOutlined />}
                 />
               </div>
             </Space>

@@ -14,8 +14,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Alert } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -122,8 +122,8 @@ function InlineAlert({
               <Button
                 className="text-xs p-0 m-0 w-fit-content h-auto"
                 data-testid={`read-${showMore ? 'less' : 'more'}-button`}
-                type="link"
-                onClick={handleToggleShowMore}>
+                onClick={handleToggleShowMore}
+                color='link-gray'>
                 {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
               </Button>
             )}

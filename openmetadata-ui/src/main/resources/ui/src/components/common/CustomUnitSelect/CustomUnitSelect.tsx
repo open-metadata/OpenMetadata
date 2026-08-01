@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Divider, Input, Select } from 'antd';
+import { Divider, Input, Select } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -156,9 +157,9 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
               }}
             />
             <Button
-              icon={<PlusOutlined />}
-              type="text"
-              onClick={handleAddCustomUnit}>
+              onClick={handleAddCustomUnit}
+              color='tertiary'
+              iconLeading={<PlusOutlined />}>
               {t('label.add')}
             </Button>
           </div>

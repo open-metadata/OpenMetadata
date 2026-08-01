@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Modal, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Dropdown, Modal, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -326,7 +326,8 @@ const ManageButton: FC<ManageButtonProps> = ({
     return (
       <Button
         className="remove-button-default-styling p-0"
-        onClick={(e) => e.stopPropagation()}>
+        onClick={(e) => e.stopPropagation()}
+        color='secondary'>
         <Dropdown
           align={{ targetOffset: [-12, 0] }}
           dropdownRender={renderDropdownContainer}
@@ -343,7 +344,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             <Button
               className={classNames('flex-center px-1.5', buttonClassName)}
               data-testid="manage-button"
-              type="default">
+              color='secondary'>
               <IconDropdown className="anticon self-center manage-dropdown-icon" />
             </Button>
           </Tooltip>
@@ -410,9 +411,10 @@ const ManageButton: FC<ManageButtonProps> = ({
       {showReactiveModal && (
         // Used Button to stop click propagation event in the
         // TeamDetailsV1 and User.component collapsible panel.
-        <Button
+        (<Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+          onClick={(e) => e.stopPropagation()}
+          color='secondary'>
           <Modal
             centered
             cancelButtonProps={{
@@ -438,7 +440,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               })}
             </Typography>
           </Modal>
-        </Button>
+        </Button>)
       )}
     </>
   );

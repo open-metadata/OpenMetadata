@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Collapse,
-  Popover,
-  Radio,
-  RadioChangeEvent,
-  Space,
-  Spin,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Collapse, Popover, Radio, RadioChangeEvent, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
@@ -203,14 +194,14 @@ const TierCard = ({
                   className={`flex justify-end text-lg gap-2 mt-4 ${footerActionButtonsClassName}`}>
                   <Button
                     data-testid="close-tier-card"
-                    type="default"
-                    onClick={handleCloseTier}>
+                    onClick={handleCloseTier}
+                    color='secondary'>
                     <CloseOutlined />
                   </Button>
                   <Button
                     data-testid="update-tier-card"
-                    type="primary"
-                    onClick={() => updateTierData(selectedTier)}>
+                    onClick={() => updateTierData(selectedTier)}
+                    color='primary'>
                     <CheckOutlined />
                   </Button>
                 </div>

@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Empty,
-  Form,
-  Select,
-  SelectProps,
-  Space,
-  TagProps,
-  Tooltip,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Empty, Form, Select, SelectProps, Space, TagProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
@@ -189,17 +180,19 @@ const AsyncSelectList: FC<
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
-            disabled={isEmpty(tagOptions)}
-            htmlType="submit"
-            loading={isSubmitLoading}
-            size="small"
-            onClick={() => form.submit()}>
+            onClick={() => form.submit()}
+            color='secondary'
+            size='xs'
+            isDisabled={isEmpty(tagOptions)}
+            isLoading={isSubmitLoading}
+            type='submit'>
             {t('label.update')}
           </Button>
           <Button
             data-testid="cancelAssociatedTag"
-            size="small"
-            onClick={onCancel}>
+            onClick={onCancel}
+            color='secondary'
+            size='xs'>
             {t('label.cancel')}
           </Button>
         </Space>

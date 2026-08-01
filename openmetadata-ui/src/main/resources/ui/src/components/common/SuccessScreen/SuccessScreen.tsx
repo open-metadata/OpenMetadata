@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -133,10 +133,9 @@ const SuccessScreen = ({
       </div>
       <div className="mt-7 text-center">
         <Button
-          ghost
           data-testid="view-service-button"
-          type="primary"
-          onClick={handleViewServiceClick}>
+          onClick={handleViewServiceClick}
+          color='tertiary'>
           <span>
             {viewServiceText ??
               t('label.view-entity', { entity: t('label.service') })}
@@ -147,9 +146,9 @@ const SuccessScreen = ({
           <Button
             className="m-l-3.5"
             data-testid="add-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
-            onClick={handleIngestionClick}>
+            onClick={handleIngestionClick}
+            color='primary'
+            isDisabled={!isAirflowAvailable}>
             <span>
               {t('label.add-entity', { entity: t('label.ingestion') })}
             </span>
@@ -160,9 +159,9 @@ const SuccessScreen = ({
           <Button
             className="m-l-3.5"
             data-testid="deploy-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
-            onClick={handleDeployClick}>
+            onClick={handleDeployClick}
+            color='primary'
+            isDisabled={!isAirflowAvailable}>
             <span>{t('label.deploy')}</span>
           </Button>
         )}

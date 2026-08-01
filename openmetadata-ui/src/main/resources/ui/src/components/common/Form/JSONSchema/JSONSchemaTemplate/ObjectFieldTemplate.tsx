@@ -16,7 +16,8 @@ import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse, Space } from 'antd';
+import { Collapse, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -92,10 +93,7 @@ export const ObjectFieldTemplate: FunctionComponent<
 
           <Button
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
             onClick={() => {
               onAddClick(schema)();
             }}
@@ -104,6 +102,9 @@ export const ObjectFieldTemplate: FunctionComponent<
                 formContext.handleFocus(idSchema.$id);
               }
             }}
+            color='primary'
+            size='xs'
+            iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
           />
         </Space>
       )}

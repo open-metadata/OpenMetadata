@@ -13,6 +13,7 @@
 
 import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button as CoreButton } from '@openmetadata/ui-core-components';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
@@ -294,7 +295,7 @@ const DatePickerMenu = ({
       data-testid="date-picker-container">
       {datePickerMenu}
       {selectedTimeRangeKey && (
-        <Button
+        <CoreButton
           aria-label={t('label.clear')}
           className={classNames(
             'tw:absolute! tw:right-8 tw:top-1/2 tw:z-10 tw:inline-flex! tw:size-4!',
@@ -303,13 +304,13 @@ const DatePickerMenu = ({
             'tw:hover:bg-transparent tw:hover:text-secondary'
           )}
           data-testid="clear-date-picker"
-          icon={<CloseCircleFilled />}
-          size="small"
-          type="text"
           onClick={(event) => {
             event.stopPropagation();
             handleClear();
           }}
+          color='tertiary'
+          size='xs'
+          iconLeading={<CloseCircleFilled />}
         />
       )}
     </div>

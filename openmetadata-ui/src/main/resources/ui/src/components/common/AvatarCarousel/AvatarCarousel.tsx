@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Button, Carousel } from 'antd';
+import { Carousel } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from '../AvatarCarouselItem/AvatarCarouselItem';
@@ -69,14 +70,13 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
         <Button
           className="carousel-arrow"
           data-testid="prev-slide"
-          disabled={avatarList.length <= 1 || currentSlide <= 0}
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
           onClick={prevSlide}
+          color='tertiary'
+          size='xs'
+          isDisabled={avatarList.length <= 1 || currentSlide <= 0}
+          iconLeading={<LeftOutlined />}
         />
       )}
-
       <Carousel
         afterChange={(current) => setCurrentSlide(current)}
         dots={false}
@@ -93,18 +93,17 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
           />
         ))}
       </Carousel>
-
       {showArrows && (
         <Button
           className="carousel-arrow"
           data-testid="next-slide"
-          disabled={
+          onClick={nextSlide}
+          color='tertiary'
+          size='xs'
+          isDisabled={
             avatarList.length <= 1 || currentSlide === avatarList.length - 1
           }
-          icon={<RightOutlined />}
-          size="small"
-          type="text"
-          onClick={nextSlide}
+          iconLeading={<RightOutlined />}
         />
       )}
     </div>

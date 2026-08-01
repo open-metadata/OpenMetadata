@@ -12,7 +12,8 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Space, Tooltip } from 'antd';
+import { List, Space, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
@@ -100,8 +101,8 @@ export const SelectableList = ({
 
   const checkActiveSelectedItem = (item: EntityReference) => {
     return (
-      selectedItemsInternal.has(item.id) ||
-      selectedItemsInternal.has(item.name ?? '') // Name in case of Bulk Action, since we are using the name as the id
+      // Name in case of Bulk Action, since we are using the name as the id
+      (selectedItemsInternal.has(item.id) || selectedItemsInternal.has(item.name ?? ''))
     );
   };
 
@@ -255,25 +256,26 @@ export const SelectableList = ({
               className="p-0"
               color="primary"
               data-testid="clear-all-button"
-              size="small"
-              type="text"
-              onClick={handleClearAllClick}>
+              onClick={handleClearAllClick}
+              color='tertiary'
+              size='xs'>
               {t('label.clear-entity', { entity: t('label.all-lowercase') })}
             </Button>
             <Space className="m-l-auto text-right">
               <Button
                 color="primary"
                 data-testid="cancel-button"
-                size="small"
-                onClick={onCancel}>
+                onClick={onCancel}
+                color='secondary'
+                size='xs'>
                 {t('label.cancel')}
               </Button>
               <Button
                 data-testid="selectable-list-update-btn"
-                loading={updating}
-                size="small"
-                type="primary"
-                onClick={handleUpdateClick}>
+                onClick={handleUpdateClick}
+                color='primary'
+                size='xs'
+                isLoading={updating}>
                 {t('label.update')}
               </Button>
             </Space>

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover } from 'antd';
+import { Popover } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -168,8 +169,9 @@ const DomainSelectableList = ({
     return (
       <Button
         className="remove-button-default-styling flex-center"
-        disabled={disabled}
-        onClick={(e) => e.stopPropagation()}>
+        onClick={(e) => e.stopPropagation()}
+        color='secondary'
+        isDisabled={disabled}>
         {popoverContent}
       </Button>
     );

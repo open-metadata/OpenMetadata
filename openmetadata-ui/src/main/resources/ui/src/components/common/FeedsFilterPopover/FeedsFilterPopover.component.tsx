@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, List, Popover, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Checkbox, List, Popover, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
@@ -53,15 +53,16 @@ const FeedsFilterPopover = ({
             <Button
               color="primary"
               data-testid="cancel-button"
-              size="small"
-              onClick={() => setPopupVisible(false)}>
+              onClick={() => setPopupVisible(false)}
+              color='secondary'
+              size='xs'>
               {t('label.cancel')}
             </Button>
             <Button
               data-testid="selectable-list-update-btn"
-              size="small"
-              type="primary"
-              onClick={onFilterUpdate}>
+              onClick={onFilterUpdate}
+              color='primary'
+              size='xs'>
               {t('label.update')}
             </Button>
           </Space>
@@ -111,8 +112,8 @@ const FeedsFilterPopover = ({
         <Button
           className="feed-filter-icon"
           data-testid="filter-button"
-          icon={<FilterIcon height={16} />}
-        />
+          color='secondary'
+          iconLeading={<FilterIcon height={16} />} />
       </Tooltip>
     </Popover>
   );

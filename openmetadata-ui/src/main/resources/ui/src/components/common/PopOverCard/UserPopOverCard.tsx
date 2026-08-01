@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space } from 'antd';
+import { Popover, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get, isEmpty } from 'lodash';
 import React, {
@@ -207,7 +208,6 @@ export const PopoverTitle = React.memo(
         <div className="self-center">
           <Button
             className="text-info p-0"
-            type="link"
             onClick={(e) => {
               e.stopPropagation();
               onTitleClickHandler(
@@ -215,7 +215,8 @@ export const PopoverTitle = React.memo(
                   ? getTeamAndUserDetailsPath(name)
                   : getUserPath(name)
               );
-            }}>
+            }}
+            color='link-gray'>
             <span className="font-medium m-r-xs" data-testid="user-name">
               {displayName}
             </span>

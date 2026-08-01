@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseCircleIcon } from '../../../assets/svg/close-circle-white.svg';
@@ -37,8 +37,9 @@ const StatusAction = ({
       <Button
         className={`approve-btn ${isRejectHovered ? 'icon-only' : ''}`}
         data-testid={dataTestId + '-approve-btn'}
-        icon={<Icon component={TickCircleIcon} />}
-        onClick={onApprove}>
+        onClick={onApprove}
+        color='secondary'
+        iconLeading={<Icon component={TickCircleIcon} />}>
         {!isRejectHovered && (
           <span className="btn-text">{t('label.approve')}</span>
         )}
@@ -46,10 +47,11 @@ const StatusAction = ({
       <Button
         className={`reject-btn ${isRejectHovered ? 'show-text' : ''}`}
         data-testid={dataTestId + '-reject-btn'}
-        icon={<Icon component={CloseCircleIcon} />}
         onClick={onReject}
         onMouseEnter={() => setIsRejectHovered(true)}
-        onMouseLeave={() => setIsRejectHovered(false)}>
+        onMouseLeave={() => setIsRejectHovered(false)}
+        color='secondary'
+        iconLeading={<Icon component={CloseCircleIcon} />}>
         {isRejectHovered && (
           <span className="btn-text">{t('label.reject')}</span>
         )}

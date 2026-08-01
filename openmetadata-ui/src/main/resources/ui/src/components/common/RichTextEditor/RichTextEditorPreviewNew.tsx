@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -127,8 +127,8 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         <Button
           className="text-right view-more-less-button"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-          type="link"
-          onClick={handleReadMoreToggle}>
+          onClick={handleReadMoreToggle}
+          color='link-gray'>
           {readMore ? t('label.view-less') : t('label.view-more')}
         </Button>
       )}

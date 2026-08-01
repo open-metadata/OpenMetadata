@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
@@ -48,9 +48,9 @@ const CollapseHeader = ({
           <Button
             className="add-field-btn"
             data-testid={dataTestId}
-            icon={<Icon className="text-xs" component={PlusOutlined} />}
-            type="primary"
-            onClick={(e) => e.stopPropagation()}>
+            onClick={(e) => e.stopPropagation()}
+            color='primary'
+            iconLeading={<Icon className="text-xs" component={PlusOutlined} />}>
             {t('label.add')}
           </Button>
         </Dropdown>
@@ -58,12 +58,12 @@ const CollapseHeader = ({
         <Button
           className="add-field-btn"
           data-testid={dataTestId}
-          icon={<Icon className="text-xs" component={PlusOutlined} />}
-          type="primary"
           onClick={(e) => {
             e.stopPropagation();
             handleAddNewBoost?.();
-          }}>
+          }}
+          color='primary'
+          iconLeading={<Icon className="text-xs" component={PlusOutlined} />}>
           {t('label.add')}
         </Button>
       )}

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Tag, Tooltip } from 'antd';
+import { Card, Space, Tag, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
 import { lazy, useMemo } from 'react';
@@ -70,9 +71,9 @@ const QueryViewer = ({
               <Button
                 className="flex-center button-size bg-white"
                 data-testid="query-entity-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
                 onClick={onCopyToClipBoard}
-              />
+                color='secondary'
+                iconLeading={<CopyIcon height={16} width={16} />} />
             </Tooltip>
           </Space>
         ) : null

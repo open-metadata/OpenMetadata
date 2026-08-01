@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { isEmpty, omit } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import type { Column } from 'react-data-grid';
@@ -92,25 +92,26 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
           <div className="d-flex justify-between">
             <Button
               data-testid="add-new-row"
-              disabled={isUpdating}
-              type="primary"
-              onClick={handleAddRow}>
+              onClick={handleAddRow}
+              color='primary'
+              isDisabled={isUpdating}>
               {t('label.add-entity', { entity: t('label.row') })}
             </Button>
 
             <div className="d-flex gap-2">
               <Button
                 data-testid="cancel-update-table-type-property"
-                disabled={isUpdating}
-                onClick={onCancel}>
+                onClick={onCancel}
+                color='secondary'
+                isDisabled={isUpdating}>
                 {t('label.cancel')}
               </Button>
               <Button
                 data-testid="update-table-type-property"
-                disabled={isUpdating}
-                loading={isUpdating}
-                type="primary"
-                onClick={handleUpdate}>
+                onClick={handleUpdate}
+                color='primary'
+                isDisabled={isUpdating}
+                isLoading={isUpdating}>
                 {t('label.update')}
               </Button>
             </div>

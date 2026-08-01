@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Dropdown } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -99,15 +100,15 @@ const NextPrevious: FC<NextPreviousProps> = ({
       <Button
         className="pagination-button hover-button"
         data-testid="previous"
-        disabled={computePrevDisableState() || isLoading}
-        icon={
+        onClick={onPreviousHandler}
+        color='tertiary'
+        isDisabled={computePrevDisableState() || isLoading}
+        iconLeading={
           <Icon
             className="pagination-prev-icon"
             component={ArrowRightOutlined}
           />
-        }
-        type="text"
-        onClick={onPreviousHandler}>
+        }>
         <span>{t('label.previous')}</span>
       </Button>
       <span className="pagination-indicator" data-testid="page-indicator">{`${t(
@@ -116,9 +117,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
       <Button
         className="pagination-button hover-button"
         data-testid="next"
-        disabled={computeNextDisableState() || isLoading}
-        type="text"
-        onClick={onNextHandler}>
+        onClick={onNextHandler}
+        color='tertiary'
+        isDisabled={computeNextDisableState() || isLoading}>
         <span> {t('label.next')}</span>
         <Icon className="pagination-next-icon" component={ArrowRightOutlined} />
       </Button>
@@ -136,8 +137,8 @@ const NextPrevious: FC<NextPreviousProps> = ({
           <Button
             className="pagination-button"
             data-testid="page-size-selection-dropdown"
-            type="text"
-            onClick={(e) => e.preventDefault()}>
+            onClick={(e) => e.preventDefault()}
+            color='tertiary'>
             {`${pageSize} / ${t('label.page')}`}
             <Icon component={DownOutlined} style={ICON_DIMENSION} />
           </Button>

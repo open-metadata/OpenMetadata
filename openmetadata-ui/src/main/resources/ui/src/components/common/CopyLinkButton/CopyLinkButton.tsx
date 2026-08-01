@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
@@ -53,7 +54,6 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
       <Button
         className="cursor-pointer hover-cell-icon flex-center"
         data-testid={testId}
-        disabled={!fieldFqn}
         style={{
           color: DE_ACTIVE_COLOR,
           padding: 0,
@@ -62,7 +62,9 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
           width: '24px',
           height: '24px',
         }}
-        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}>
+        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}
+        color='secondary'
+        isDisabled={!fieldFqn}>
         <ShareIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
       </Button>
     </Tooltip>

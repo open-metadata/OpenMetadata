@@ -12,15 +12,8 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Empty,
-  Form,
-  Space,
-  TagProps,
-  TreeSelect,
-  TreeSelectProps,
-} from 'antd';
+import { Empty, Form, Space, TagProps, TreeSelect, TreeSelectProps } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
@@ -209,20 +202,21 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
-            disabled={isEmpty(glossaries)}
-            htmlType="button"
-            loading={isSubmitLoading}
-            size="small"
             tabIndex={0}
-            type="default"
-            onClick={() => handleSubmit()}>
+            onClick={() => handleSubmit()}
+            color='secondary'
+            size='xs'
+            isDisabled={isEmpty(glossaries)}
+            isLoading={isSubmitLoading}
+            type='button'>
             {t('label.update')}
           </Button>
           <Button
             data-testid="cancelAssociatedTag"
-            size="small"
             tabIndex={0}
-            onClick={onCancel}>
+            onClick={onCancel}
+            color='secondary'
+            size='xs'>
             {t('label.cancel')}
           </Button>
         </Space>

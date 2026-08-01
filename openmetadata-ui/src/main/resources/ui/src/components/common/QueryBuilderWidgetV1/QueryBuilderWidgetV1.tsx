@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import {
   Actions,
   Builder,
@@ -25,7 +25,7 @@ import {
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
 import '@react-awesome-query-builder/antd/css/styles.css';
-import { Alert, Button, Card, Col, Divider, Row, Skeleton } from 'antd';
+import { Alert, Card, Col, Divider, Row, Skeleton } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isEqual, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -322,10 +322,10 @@ const QueryBuilderWidgetV1: FC<{
                 <Button
                   className="w-full p-0 text-left h-auto"
                   data-testid="view-assets-banner-button"
-                  disabled={false}
                   href={queryURL}
                   target="_blank"
-                  type="link">
+                  color='link-gray'
+                  isDisabled={false}>
                   <Alert
                     closable
                     showIcon

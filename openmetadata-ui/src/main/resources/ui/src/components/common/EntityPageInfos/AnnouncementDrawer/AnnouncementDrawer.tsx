@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Drawer, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Drawer, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
@@ -111,14 +111,13 @@ const AnnouncementDrawer: FC<Props> = ({
           title={!createPermission && t('message.no-permission-to-view')}>
           <Button
             data-testid="add-announcement"
-            disabled={!createPermission}
-            type="primary"
-            onClick={handleOpenAnnouncementModal}>
+            onClick={handleOpenAnnouncementModal}
+            color='primary'
+            isDisabled={!createPermission}>
             {t('label.add-entity', { entity: t('label.announcement') })}
           </Button>
         </Tooltip>
       </div>
-
       <AnnouncementThreadBody
         deleteAnnouncementHandler={deletePostHandler}
         editPermission={createPermission}
@@ -126,7 +125,6 @@ const AnnouncementDrawer: FC<Props> = ({
         threadLink={getEntityFeedLink(entityType, entityFQN)}
         updateAnnouncementHandler={updateThreadHandler}
       />
-
       {isAddAnnouncementOpen && (
         <AddAnnouncementModal
           entityFQN={entityFQN || ''}

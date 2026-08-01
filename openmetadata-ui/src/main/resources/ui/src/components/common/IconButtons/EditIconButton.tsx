@@ -13,6 +13,7 @@
 import Icon, { PlusOutlined } from '@ant-design/icons';
 import type { ButtonProps } from 'antd';
 import { Button, Tooltip } from 'antd';
+import { Button as CoreButton } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -42,13 +43,12 @@ export const EditIconButton = ({
           {...props}
         />
       ) : (
-        <Button
+        <CoreButton
           className={className}
-          icon={<EditIcon className="table-action-icon" />}
-          size="small"
-          type="text"
           {...props}
-        />
+          color='tertiary'
+          size='xs'
+          iconLeading={<EditIcon className="table-action-icon" />} />
       )}
     </Tooltip>
   );
@@ -135,14 +135,13 @@ export const CardExpandCollapseIconButton = ({
   ...props
 }: IconButtonProps) => {
   const button = (
-    <Button
+    <CoreButton
       className={classNames('bordered', className)}
-      disabled={disabled}
-      icon={<CardExpandCollapseIcon />}
       tabIndex={0}
-      type="text"
       {...props}
-    />
+      color='tertiary'
+      isDisabled={disabled}
+      iconLeading={<CardExpandCollapseIcon />} />
   );
 
   return (

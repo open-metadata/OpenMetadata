@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Result } from 'antd';
+import { Result } from 'antd';
+
+import { Button } from '@openmetadata/ui-core-components';
 
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
@@ -56,8 +58,8 @@ const ErrorFallback: React.FC<FallbackProps> = ({
       extra={
         <Button
           className="ant-btn-primary-custom"
-          type="primary"
-          onClick={handleReset}>
+          onClick={handleReset}
+          color='primary'>
           {isChunkLoadError ? t('label.refresh') : t('label.home')}
         </Button>
       }

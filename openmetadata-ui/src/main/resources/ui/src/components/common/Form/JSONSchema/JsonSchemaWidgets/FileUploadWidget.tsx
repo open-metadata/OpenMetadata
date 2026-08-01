@@ -12,7 +12,8 @@
  */
 import { UploadOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { Button, UploadProps } from 'antd';
+import { UploadProps } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import Upload, { UploadChangeParam, UploadFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { FC, useMemo } from 'react';
@@ -86,10 +87,11 @@ const FileUploadWidget: FC<WidgetProps> = ({
       onChange={handleChange}>
       <Button
         data-testid="upload-file-widget-content"
-        disabled={disabled}
-        icon={<UploadOutlined />}
-        size="small"
-        onFocus={() => onFocus(rest.id, rest.value)}>
+        onFocus={() => onFocus(rest.id, rest.value)}
+        color='secondary'
+        size='xs'
+        isDisabled={disabled}
+        iconLeading={<UploadOutlined />}>
         {t('message.upload-file')}
       </Button>
     </Upload>
