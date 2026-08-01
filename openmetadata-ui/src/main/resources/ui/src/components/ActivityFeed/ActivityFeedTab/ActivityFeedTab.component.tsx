@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Dropdown, Menu, Segmented, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Divider, Dropdown, Menu, Segmented, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -799,7 +799,8 @@ export const ActivityFeedTab = ({
                   'cursor-pointer': !isMentionTabSelected,
                   disabled: isMentionTabSelected,
                 })}
-                data-testid="user-profile-page-task-filter-icon">
+                data-testid="user-profile-page-task-filter-icon"
+                color='secondary'>
                 <Space align="center" size={4}>
                   <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
                   <span

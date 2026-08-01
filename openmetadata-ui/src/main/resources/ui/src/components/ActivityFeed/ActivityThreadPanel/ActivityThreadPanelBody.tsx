@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Switch } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -327,9 +327,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Fragment>
             <Button
               className="m-b-sm p-0"
-              size="small"
-              type="link"
-              onClick={onBack}>
+              onClick={onBack}
+              color='link-gray'
+              size='xs'>
               {t('label.back')}
             </Button>
             <TaskTabNew
@@ -345,9 +345,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Fragment>
             <Button
               className="m-b-sm p-0"
-              size="small"
-              type="link"
-              onClick={onBack}>
+              onClick={onBack}
+              color='link-gray'
+              size='xs'>
               {t('label.back')}
             </Button>
             <ActivityThread

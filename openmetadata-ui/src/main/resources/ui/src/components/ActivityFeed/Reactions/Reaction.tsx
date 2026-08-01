@@ -12,7 +12,7 @@
  */
 
 import '@github/g-emoji-element';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import { createElement, FC } from 'react';
@@ -70,10 +70,10 @@ const Reaction: FC<ReactionProps> = ({
       })}
       data-testid="reaction-button"
       key={uniqueId()}
-      size="small"
       title={reaction.reaction}
-      type="text"
-      onClick={handleOnClick}>
+      onClick={handleOnClick}
+      color='tertiary'
+      size='xs'>
       {element}
     </Button>
   );

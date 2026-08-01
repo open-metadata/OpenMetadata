@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -122,8 +122,8 @@ const TaskFeedCard = ({
           <Button
             className="p-0 task-feed-message"
             data-testid="redirect-task-button-link"
-            type="link"
-            onClick={handleTaskLinkClick}>
+            onClick={handleTaskLinkClick}
+            color='link-gray'>
             <Typography className="p-0 text-primary">{`#${taskDetails.id} `}</Typography>
 
             <Typography className="p-xss">
@@ -153,11 +153,10 @@ const TaskFeedCard = ({
 
   return (
     <Button
-      block
-      className="remove-button-default-styling"
-      type="text"
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}>
+      onMouseLeave={handleMouseLeave}
+      color='tertiary'
+      className='remove-button-default-styling tw:w-full'>
       <div
         className={classNames(
           className,

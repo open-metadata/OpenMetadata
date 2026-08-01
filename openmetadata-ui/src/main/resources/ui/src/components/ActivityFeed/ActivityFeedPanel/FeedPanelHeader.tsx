@@ -12,7 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,12 +83,12 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             trigger="hover">
             <Button
               data-testid="add-new-conversation"
-              icon={<PlusOutlined />}
-              size="small"
-              type="primary"
               onClick={() => {
                 onShowNewConversation(true);
               }}
+              color='primary'
+              size='xs'
+              iconLeading={<PlusOutlined />}
             />
           </Tooltip>
         ) : null}
