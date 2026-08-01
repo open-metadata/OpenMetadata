@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 import { Card, Space, Tag, Typography } from 'antd';
-import { useCallback } from 'react';
+import { lazy, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewerV1'))
+);
 
 interface PersonaDetailsCardProps {
   persona: Persona;
