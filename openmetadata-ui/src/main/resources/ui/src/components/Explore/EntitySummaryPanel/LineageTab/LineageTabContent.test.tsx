@@ -35,6 +35,11 @@ jest.mock('@untitledui/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick }) => (
+      <button onClick={onClick}>{children}</button>
+    )),
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),

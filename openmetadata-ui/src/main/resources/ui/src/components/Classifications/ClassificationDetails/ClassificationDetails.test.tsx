@@ -24,6 +24,13 @@ import ClassificationDetails from './ClassificationDetails';
 const mockNavigate = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: ({
+    children,
+    onClick,
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+  }) => <button onClick={onClick}>{children}</button>,
   Tooltip: ({
     children,
     title,
