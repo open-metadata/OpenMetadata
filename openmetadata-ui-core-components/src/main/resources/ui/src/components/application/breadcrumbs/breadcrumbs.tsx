@@ -228,8 +228,7 @@ const EllipsisMenu = ({
         <DotsHorizontal className={cx('tw:shrink-0', sizes[size].dots)} />
       </AriaButton>
       <Dropdown.Popover>
-        <Dropdown.Menu
-          aria-label={t('label.hidden-breadcrumbs')}>
+        <Dropdown.Menu aria-label={t('label.hidden-breadcrumbs')}>
           {hidden.map((item, index) => (
             <Dropdown.Item
               href={onAction ? undefined : item.href}

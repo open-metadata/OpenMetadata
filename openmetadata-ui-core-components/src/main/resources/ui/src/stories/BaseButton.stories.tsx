@@ -250,10 +250,10 @@ export const AllVariants: Story = {
           States
         </h3>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button color="primary" isLoading>
+          <Button isLoading color="primary">
             Loading
           </Button>
-          <Button color="primary" isDisabled>
+          <Button isDisabled color="primary">
             Disabled
           </Button>
         </div>
