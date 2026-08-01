@@ -240,23 +240,58 @@ jobs:
       fail-fast: false
       matrix:
         py-version: ["3.10", "3.11", "3.12"]
+        # shard-3 is the catch-all, so a new directory always runs somewhere. Moving one
+        # OUT of shard-1 or shard-2 means removing its --ignore too, or it runs nowhere.
         shard:
           - name: "shard-1"
             nox-args: >-
-              tests/integration/ometa
-              tests/integration/postgres
-              tests/integration/mysql
-              tests/integration/profiler
+              tests/integration/trino
+              tests/integration/superset
               tests/integration/data_quality
-              tests/integration/sql_server
+              tests/integration/lineage
+              tests/integration/automations
+              tests/integration/great_expectations
+              tests/integration/sftp
+              tests/integration/usage
           - name: "shard-2"
             nox-args: >-
-              --ignore=tests/integration/ometa
-              --ignore=tests/integration/postgres
-              --ignore=tests/integration/mysql
-              --ignore=tests/integration/profiler
+              tests/integration/mysql
+              tests/integration/postgres
+              tests/integration/auto_classification
+              tests/integration/orm_profiler
+              tests/integration/cockroach
+              tests/integration/kafka
+              tests/integration/workflow
+              tests/integration/test_suite
+              tests/integration/cassandra
+              tests/integration/ssrs
+              tests/integration/atlas
+              tests/integration/amundsen
+              tests/integration/powerbi
+          - name: "shard-3"
+            needs-disk: true
+            nox-args: >-
+              --ignore=tests/integration/trino
+              --ignore=tests/integration/superset
               --ignore=tests/integration/data_quality
-              --ignore=tests/integration/sql_server
+              --ignore=tests/integration/lineage
+              --ignore=tests/integration/automations
+              --ignore=tests/integration/great_expectations
+              --ignore=tests/integration/sftp
+              --ignore=tests/integration/usage
+              --ignore=tests/integration/mysql
+              --ignore=tests/integration/postgres
+              --ignore=tests/integration/auto_classification
+              --ignore=tests/integration/orm_profiler
+              --ignore=tests/integration/cockroach
+              --ignore=tests/integration/kafka
+              --ignore=tests/integration/workflow
+              --ignore=tests/integration/test_suite
+              --ignore=tests/integration/cassandra
+              --ignore=tests/integration/ssrs
+              --ignore=tests/integration/atlas
+              --ignore=tests/integration/amundsen
+              --ignore=tests/integration/powerbi
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
@@ -276,7 +311,7 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Use runner data disk for Docker
-        if: matrix.shard.name == 'shard-2'
+        if: matrix.shard.needs-disk
         run: bash .github/scripts/configure_docker_storage.sh
 
       # Must precede the setup action, which builds the server image from this tarball.
@@ -293,7 +328,7 @@ jobs:
           args: ${{ inputs.compose-args }}
 
       - name: Reclaim unused disk for the Exasol shard
-        if: matrix.shard.name == 'shard-2'
+        if: matrix.shard.needs-disk
         continue-on-error: true
         run: |
           {
