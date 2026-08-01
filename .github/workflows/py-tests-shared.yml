@@ -240,58 +240,45 @@ jobs:
       fail-fast: false
       matrix:
         py-version: ["3.10", "3.11", "3.12"]
-        # shard-3 is the catch-all, so a new directory always runs somewhere. Moving one
-        # OUT of shard-1 or shard-2 means removing its --ignore too, or it runs nowhere.
+        # shard-3 is the catch-all and is deliberately the lightest, so new directories land
+        # in slack rather than on the critical path. Moving one OUT of shard-1 or shard-2
+        # means removing its --ignore too, or it runs nowhere.
         shard:
           - name: "shard-1"
             nox-args: >-
-              tests/integration/trino
-              tests/integration/superset
-              tests/integration/data_quality
-              tests/integration/lineage
               tests/integration/automations
-              tests/integration/great_expectations
-              tests/integration/sftp
-              tests/integration/usage
-          - name: "shard-2"
-            nox-args: >-
+              tests/integration/data_quality
               tests/integration/mysql
               tests/integration/postgres
-              tests/integration/auto_classification
-              tests/integration/orm_profiler
-              tests/integration/cockroach
-              tests/integration/kafka
-              tests/integration/workflow
-              tests/integration/test_suite
-              tests/integration/cassandra
-              tests/integration/ssrs
-              tests/integration/atlas
-              tests/integration/amundsen
               tests/integration/powerbi
-          - name: "shard-3"
+              tests/integration/sas
+              tests/integration/superset
+          - name: "shard-2"
             needs-disk: true
             nox-args: >-
-              --ignore=tests/integration/trino
-              --ignore=tests/integration/superset
-              --ignore=tests/integration/data_quality
-              --ignore=tests/integration/lineage
+              tests/integration/alationsink
+              tests/integration/auto_classification
+              tests/integration/datalake
+              tests/integration/profiler
+              tests/integration/sources
+              tests/integration/sql_server
+              tests/integration/ssrs
+          - name: "shard-3"
+            nox-args: >-
               --ignore=tests/integration/automations
-              --ignore=tests/integration/great_expectations
-              --ignore=tests/integration/sftp
-              --ignore=tests/integration/usage
+              --ignore=tests/integration/data_quality
               --ignore=tests/integration/mysql
               --ignore=tests/integration/postgres
-              --ignore=tests/integration/auto_classification
-              --ignore=tests/integration/orm_profiler
-              --ignore=tests/integration/cockroach
-              --ignore=tests/integration/kafka
-              --ignore=tests/integration/workflow
-              --ignore=tests/integration/test_suite
-              --ignore=tests/integration/cassandra
-              --ignore=tests/integration/ssrs
-              --ignore=tests/integration/atlas
-              --ignore=tests/integration/amundsen
               --ignore=tests/integration/powerbi
+              --ignore=tests/integration/sas
+              --ignore=tests/integration/superset
+              --ignore=tests/integration/alationsink
+              --ignore=tests/integration/auto_classification
+              --ignore=tests/integration/datalake
+              --ignore=tests/integration/profiler
+              --ignore=tests/integration/sources
+              --ignore=tests/integration/sql_server
+              --ignore=tests/integration/ssrs
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
