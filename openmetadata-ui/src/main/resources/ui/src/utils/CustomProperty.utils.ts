@@ -258,11 +258,11 @@ export const getCustomPropertyPageHeaderFromEntity = (
 };
 
 export const hasPopulatedTableRows = (value: unknown): boolean => {
-  if (!Array.isArray(value)) {
+  if (!isRecord(value) || !Array.isArray(value.rows)) {
     return false;
   }
 
-  return value.some(
+  return value.rows.some(
     (row) =>
       isRecord(row) && Object.values(row).some((v) => !isEmptyExtensionValue(v))
   );
@@ -302,10 +302,14 @@ export const serializeExtensionValue = (
 
       break;
     }
-    case 'entityReference':
-      serializedValue = unwrapEntityReference(raw);
+    case 'entityReference': {
+      // The user/team picker (MUIUserTeamSelect) always emits an array, even
+      // for a single reference, so unwrap the first element before serializing.
+      const singleRef = Array.isArray(raw) ? raw[0] : raw;
+      serializedValue = unwrapEntityReference(singleRef);
 
       break;
+    }
     case 'entityReferenceList': {
       const references = (Array.isArray(raw) ? raw : [raw])
         .map(unwrapEntityReference)
