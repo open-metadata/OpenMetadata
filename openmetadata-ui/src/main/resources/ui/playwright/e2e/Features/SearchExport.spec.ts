@@ -45,10 +45,10 @@ const startAsyncExport = async (page: Page) => {
   return jobId;
 };
 
-const fetchCompletedExportCsv = async (
+const waitForExportJobCompleted = async (
   apiContext: APIRequestContext,
   jobId: string
-): Promise<string> => {
+): Promise<void> => {
   await expect
     .poll(
       async () => {
@@ -63,6 +63,13 @@ const fetchCompletedExportCsv = async (
       { timeout: 90_000 }
     )
     .toBe('COMPLETED');
+};
+
+const fetchCompletedExportCsv = async (
+  apiContext: APIRequestContext,
+  jobId: string
+): Promise<string> => {
+  await waitForExportJobCompleted(apiContext, jobId);
 
   const resultResponse = await apiContext.get(
     `/api/v1/csvAsyncJobs/${jobId}/result`
@@ -440,11 +447,19 @@ test.describe(
       });
 
       await test.step('Download from the tray serves the job result CSV', async () => {
+        // The Download button only renders once the async job finishes, so waiting
+        // blind on it spent up to 90s of the test budget before the download waits
+        // even started -- the remainder then ran out mid-wait and surfaced as
+        // "Target page, context or browser has been closed". Poll the job over the
+        // API first (the same way fetchCompletedExportCsv does), so a stalled job is
+        // named as such and the UI waits that follow are short.
+        await waitForExportJobCompleted(page.request, jobId);
+
         const downloadButton = page
           .getByRole('button', { name: 'Download' })
           .first();
 
-        await expect(downloadButton).toBeVisible({ timeout: 90_000 });
+        await expect(downloadButton).toBeVisible();
 
         const resultResponsePromise = page.waitForResponse(
           (response) =>

@@ -868,18 +868,40 @@ export const verifyExportLineagePNG = async (
 
   await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
-  const [download] = await Promise.all([
-    // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
-    // render enough headroom before the download event fires.
-    page.waitForEvent('download', { timeout: 120_000 }),
-    page.click(
-      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
-    ),
-  ]);
+  // If the client-side render throws, no download event ever fires and the wait
+  // below expires with nothing to say. Capture page errors so a silent exception
+  // is reported as the cause instead of an anonymous 120s timeout; a genuinely
+  // slow render still surfaces the original timeout untouched.
+  const pageErrors: string[] = [];
+  const collectPageError = (error: Error) => pageErrors.push(error.message);
+  page.on('pageerror', collectPageError);
 
-  const filePath = await download.path();
+  try {
+    const [download] = await Promise.all([
+      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+      // render enough headroom before the download event fires.
+      page.waitForEvent('download', { timeout: 120_000 }),
+      page.click(
+        '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
+      ),
+    ]);
 
-  expect(filePath).not.toBeNull();
+    const filePath = await download.path();
+
+    expect(filePath).not.toBeNull();
+  } catch (error) {
+    if (pageErrors.length > 0) {
+      throw new Error(
+        `PNG export produced no download because the page threw:\n  ${pageErrors.join(
+          '\n  '
+        )}`
+      );
+    }
+
+    throw error;
+  } finally {
+    page.off('pageerror', collectPageError);
+  }
 };
 
 export const verifyColumnLineageInCSV = async (
