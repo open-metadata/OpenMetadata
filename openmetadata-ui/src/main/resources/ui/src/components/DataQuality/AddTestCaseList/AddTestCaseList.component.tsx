@@ -642,17 +642,15 @@ export const AddTestCaseList = ({
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
-                      {/* Typography's ellipsis+tooltip renders its content inside a
-                      react-aria TooltipTrigger `<button>`, whose usePress handler
-                      stops click propagation by default. That swallows this card's
-                      row-level onClick, so re-wire selection here directly instead of
-                      relying on bubbling to the <Space> above. */}
+                      {/* Selection is handled by the row-level onClick on the
+                      <Space> above. Do not re-wire it onto these Typography
+                      elements: `handleCardClick` toggles, so a second handler
+                      firing on the same click would cancel the first out. */}
                       <Typography
                         as="p"
                         className="m-0 font-medium text-base w-max-500"
                         data-testid={test.name}
-                        ellipsis={{ tooltip: true }}
-                        onClick={() => handleCardClick(test)}>
+                        ellipsis={{ tooltip: true }}>
                         {getEntityName(test)}
                       </Typography>
 
@@ -668,8 +666,7 @@ export const AddTestCaseList = ({
                     <Typography
                       as="p"
                       className="m-0 w-max-500"
-                      ellipsis={{ tooltip: true }}
-                      onClick={() => handleCardClick(test)}>
+                      ellipsis={{ tooltip: true }}>
                       {getEntityName(test.testDefinition)}
                     </Typography>
                     <Typography as="p" className="m-0">
