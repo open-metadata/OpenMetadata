@@ -97,8 +97,10 @@ jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
     .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
+    .mockImplementation(({ children, onClick, isDisabled, ...rest }) => (
+      <button disabled={isDisabled} onClick={onClick} {...rest}>
+        {children}
+      </button>
     )),
   Breadcrumbs: jest.fn(({ items = [] }) => (
     <nav data-testid="breadcrumbs">

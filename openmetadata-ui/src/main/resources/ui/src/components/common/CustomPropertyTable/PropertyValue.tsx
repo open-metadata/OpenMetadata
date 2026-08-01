@@ -266,8 +266,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -318,8 +318,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -371,8 +371,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -413,8 +413,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -461,8 +461,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -514,8 +514,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -590,8 +590,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -629,8 +629,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -704,8 +704,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}
@@ -808,8 +808,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
-              disabled: isLoading,
-              htmlType: 'submit',
+              isDisabled: isLoading,
+              type: 'submit',
               form: formId,
             }}
             onCancel={onHideInput}

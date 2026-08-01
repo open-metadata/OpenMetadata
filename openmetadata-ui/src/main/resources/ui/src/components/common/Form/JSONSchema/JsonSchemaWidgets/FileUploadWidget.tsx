@@ -85,15 +85,16 @@ const FileUploadWidget: FC<WidgetProps> = ({
       maxCount={1}
       multiple={false}
       onChange={handleChange}>
-      <Button
-        color="secondary"
-        data-testid="upload-file-widget-content"
-        iconLeading={<UploadOutlined />}
-        isDisabled={disabled}
-        size="xs"
-        onFocus={() => onFocus(rest.id, rest.value)}>
-        {t('message.upload-file')}
-      </Button>
+      <span onFocus={() => onFocus(rest.id, rest.value)}>
+        <Button
+          color="secondary"
+          data-testid="upload-file-widget-content"
+          iconLeading={<UploadOutlined />}
+          isDisabled={disabled}
+          size="xs">
+          {t('message.upload-file')}
+        </Button>
+      </span>
     </Upload>
   );
 };

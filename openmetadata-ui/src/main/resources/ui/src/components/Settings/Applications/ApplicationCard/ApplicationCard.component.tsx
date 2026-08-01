@@ -74,7 +74,11 @@ const ApplicationCard = ({
               markdown={description}
             />
           )}
-          <Button className="p-0" color="link-gray" data-testid="config-btn">
+          <Button
+            className="p-0"
+            color="link-gray"
+            data-testid="config-btn"
+            onClick={!isUnavailable ? onClick : undefined}>
             {linkTitle}
           </Button>
         </div>

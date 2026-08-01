@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonProps, SpaceProps } from 'antd';
+import { ButtonProps } from '@openmetadata/ui-core-components';
+import { SpaceProps } from 'antd';
 import { ReactNode } from 'react';
 
 export interface InlineEditProps {

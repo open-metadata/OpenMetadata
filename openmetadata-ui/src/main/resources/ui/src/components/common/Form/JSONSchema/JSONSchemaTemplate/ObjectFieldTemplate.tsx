@@ -91,23 +91,25 @@ export const ObjectFieldTemplate: FunctionComponent<
             {t('label.additional-property-plural')}
           </label>
 
-          <Button
-            color="primary"
-            data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
-            id={`${idSchema.$id}`}
-            size="xs"
-            onClick={() => {
-              onAddClick(schema)();
-            }}
+          <span
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
                 formContext.handleFocus(idSchema.$id);
               }
-            }}
-          />
+            }}>
+            <Button
+              color="primary"
+              data-testid={`add-item-${title}`}
+              iconLeading={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
+              id={`${idSchema.$id}`}
+              size="xs"
+              onClick={() => {
+                onAddClick(schema)();
+              }}
+            />
+          </span>
         </Space>
       )}
 

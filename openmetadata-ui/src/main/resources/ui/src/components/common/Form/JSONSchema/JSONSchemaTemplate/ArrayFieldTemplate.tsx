@@ -29,21 +29,23 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
       <div className="d-flex justify-between items-center">
         <label className="control-label">{title}</label>
         {canAdd && (
-          <Button
-            color="primary"
-            data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
-            id={`${idSchema.$id}`}
-            size="xs"
-            onClick={onAddClick}
+          <span
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
                 formContext.handleFocus(idSchema.$id);
               }
-            }}
-          />
+            }}>
+            <Button
+              color="primary"
+              data-testid={`add-item-${title}`}
+              iconLeading={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
+              id={`${idSchema.$id}`}
+              size="xs"
+              onClick={onAddClick}
+            />
+          </span>
         )}
       </div>
       {items.map((element, index) => (
