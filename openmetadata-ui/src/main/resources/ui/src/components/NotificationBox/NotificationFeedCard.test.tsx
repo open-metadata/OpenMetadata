@@ -65,7 +65,7 @@ jest.mock('../../utils/EntityNameUtils', () => ({
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
 }));
-jest.mock('../../utils/EntityBreadcrumbUtils', () => ({
+jest.mock('../../utils/EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
 }));
 
