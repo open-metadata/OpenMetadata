@@ -13,7 +13,7 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { CustomIconComponentProps } from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
@@ -21,7 +21,7 @@ import {
   RenderSettings,
   ValueSource,
 } from '@react-awesome-query-builder/antd';
-import { Button, Checkbox, MenuProps, Radio, Space } from 'antd';
+import { Checkbox, MenuProps, Radio, Space } from 'antd';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
@@ -63,12 +63,11 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
   } else if (type === 'addRule') {
     return (
       <Button
-        ghost
         className="action action--ADD-RULE"
         data-testid="advanced-search-add-rule"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={props?.onClick}>
+        onClick={props?.onClick}
+        color='tertiary'
+        iconLeading={<PlusOutlined />}>
         {t('label.add')}
       </Button>
     );
@@ -77,9 +76,9 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
       <Button
         className="action action--ADD-GROUP"
         data-testid="advanced-search-add-group"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={props?.onClick}>
+        onClick={props?.onClick}
+        color='primary'
+        iconLeading={<PlusOutlined />}>
         {t('label.add')}
       </Button>
     );

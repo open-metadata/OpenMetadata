@@ -11,13 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Toggle,
-  Tooltip as UTTooltip,
-  TooltipTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Toggle, Tooltip as UTTooltip, TooltipTrigger, Typography, Button } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
@@ -169,8 +164,13 @@ export const getTagsTableColumn = ({
               <Button
                 className="p-0 flex-center"
                 data-testid="edit-button"
-                disabled={disableEditButton}
-                icon={
+                onClick={() =>
+                  handleEditTagClick ? handleEditTagClick(record) : null
+                }
+                color='tertiary'
+                size='xs'
+                isDisabled={disableEditButton}
+                iconLeading={
                   <EditIcon
                     data-testid="editTagDescription"
                     height={14}
@@ -178,31 +178,25 @@ export const getTagsTableColumn = ({
                     width={14}
                   />
                 }
-                size="small"
-                type="text"
-                onClick={() =>
-                  handleEditTagClick ? handleEditTagClick(record) : null
-                }
               />
             </Tooltip>
-
             <Tooltip
               placement="topRight"
               title={disableDeleteButton && disabledDeleteMessage}>
               <Button
                 className="p-0 flex-center"
                 data-testid="delete-tag"
-                disabled={disableDeleteButton}
-                icon={getDeleteIcon({
+                onClick={() =>
+                  handleActionDeleteTag ? handleActionDeleteTag(record) : null
+                }
+                color='tertiary'
+                size='xs'
+                isDisabled={disableDeleteButton}
+                iconLeading={getDeleteIcon({
                   deleteTagId: deleteTags?.data?.id,
                   status: deleteTags?.data?.status,
                   id: record.id ?? '',
                 })}
-                size="small"
-                type="text"
-                onClick={() =>
-                  handleActionDeleteTag ? handleActionDeleteTag(record) : null
-                }
               />
             </Tooltip>
           </Space>

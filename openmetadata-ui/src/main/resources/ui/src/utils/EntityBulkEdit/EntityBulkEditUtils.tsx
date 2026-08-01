@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
@@ -79,9 +79,9 @@ export const getBulkEditButton = (
     <Button
       className="text-primary p-0 remove-button-background-hover"
       data-testid="bulk-edit-table"
-      icon={<Icon component={IconEdit} />}
-      type="text"
-      onClick={onClickHandler}>
+      onClick={onClickHandler}
+      color='tertiary'
+      iconLeading={<Icon component={IconEdit} />}>
       {t('label.edit')}
     </Button>
   ) : null;

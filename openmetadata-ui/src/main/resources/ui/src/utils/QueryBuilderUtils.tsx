@@ -12,7 +12,7 @@
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import type { RenderSettings } from '@react-awesome-query-builder/antd';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { t } from './i18next/LocalUtil';
 
 export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
@@ -25,26 +25,26 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
       <Button
         className="action action--DELETE"
         data-testid="delete-condition-button"
-        icon={<CloseOutlined />}
         onClick={props?.onClick}
-      />
+        color='secondary'
+        iconLeading={<CloseOutlined />} />
     );
   } else if (type === 'delRuleGroup') {
     return (
       <Button
         className="action action--DELETE-GROUP"
         data-testid="delete-group-condition-button"
-        icon={<CloseOutlined />}
         onClick={props?.onClick}
-      />
+        color='secondary'
+        iconLeading={<CloseOutlined />} />
     );
   } else if (type === 'addRule') {
     return (
       <Button
         className="action action--ADD-RULE"
         data-testid="add-condition-button"
-        type="primary"
-        onClick={props?.onClick}>
+        onClick={props?.onClick}
+        color='primary'>
         {t('label.add-entity', {
           entity: t('label.condition'),
         })}
@@ -64,27 +64,27 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
         <Button
           className="action action--DELETE ant-btn-sm"
           data-testid="delete-condition-button"
-          icon={<CloseOutlined width={14} />}
           onClick={props?.onClick}
-        />
+          color='secondary'
+          iconLeading={<CloseOutlined width={14} />} />
       );
     } else if (type === 'delRuleGroup') {
       return (
         <Button
           className="action action--DELETE-GROUP ant-btn-sm"
           data-testid="delete-group-condition-button"
-          icon={<CloseOutlined width={14} />}
           onClick={props?.onClick}
-        />
+          color='secondary'
+          iconLeading={<CloseOutlined width={14} />} />
       );
     } else if (type === 'addRule') {
       return (
         <Button
           className="action action--ADD-RULE ant-btn-sm"
           data-testid="add-condition-button"
-          icon={<PlusOutlined width={14} />}
-          type="primary"
           onClick={props?.onClick}
+          color='primary'
+          iconLeading={<PlusOutlined width={14} />}
         />
       );
     }

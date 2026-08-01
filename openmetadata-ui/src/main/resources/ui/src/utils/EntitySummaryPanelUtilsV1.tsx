@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Segmented, Table } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Segmented, Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -104,9 +104,9 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
             <Button
               className="d-flex p-0 h-auto m-b-xs"
               data-testid="expand-icon"
-              size="small"
-              type="link"
-              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
+              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}
+              color='link-gray'
+              size='xs'>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
                   ? t('label.show-less')
@@ -185,9 +185,9 @@ const NestedSchemaFieldCard: React.FC<{
             <Button
               className="d-flex p-0 h-auto m-b-xs"
               data-testid="expand-icon"
-              size="small"
-              type="link"
-              onClick={() => onToggleExpand(rowKey)}>
+              onClick={() => onToggleExpand(rowKey)}
+              color='link-gray'
+              size='xs'>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
                   ? t('label.show-less')
@@ -340,10 +340,10 @@ const SchemaFieldCardsV1: React.FC<{
 
     return (
       <Button
-        block
-        loading={isLoading && currentPage > 1}
-        type="link"
-        onClick={handleLoadMore}>
+        onClick={handleLoadMore}
+        color='link-gray'
+        isLoading={isLoading && currentPage > 1}
+        className='tw:w-full'>
         {t('label.show-more')}
       </Button>
     );
@@ -1100,7 +1100,7 @@ const APIEndpointSchemaV1: React.FC<{
             setViewType(value as 'request-schema' | 'response-schema')
           }
         />
-        <Button size="small" type="link" onClick={handleToggleExpandAll}>
+        <Button onClick={handleToggleExpandAll} color='link-gray' size='xs'>
           {expandedRowKeys.length < allRowKeys.length
             ? t('label.expand-all')
             : t('label.collapse-all')}

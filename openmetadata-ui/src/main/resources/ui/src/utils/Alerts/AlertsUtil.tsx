@@ -17,10 +17,9 @@ import {
   ExclamationCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import {
   AlertProps,
-  Button,
   Checkbox,
   Col,
   Collapse,
@@ -607,9 +606,9 @@ export const getDestinationConfigField = (
                                   <Col>
                                     <Button
                                       data-testid={`add-header-button-${fieldName}`}
-                                      icon={<PlusOutlined />}
-                                      type="primary"
                                       onClick={() => add({})}
+                                      color='primary'
+                                      iconLeading={<PlusOutlined />}
                                     />
                                   </Col>
                                 </Col>
@@ -666,9 +665,9 @@ export const getDestinationConfigField = (
                                   </div>
 
                                   <Button
-                                    icon={<CloseOutlined />}
                                     onClick={() => remove(name)}
-                                  />
+                                    color='secondary'
+                                    iconLeading={<CloseOutlined />} />
                                 </div>
                               </Col>
                             ))}
@@ -698,9 +697,9 @@ export const getDestinationConfigField = (
                                   <Col>
                                     <Button
                                       data-testid={`add-query-param-button-${fieldName}`}
-                                      icon={<PlusOutlined />}
-                                      type="primary"
                                       onClick={() => add({})}
+                                      color='primary'
+                                      iconLeading={<PlusOutlined />}
                                     />
                                   </Col>
                                 </Col>
@@ -757,9 +756,9 @@ export const getDestinationConfigField = (
                                   </div>
 
                                   <Button
-                                    icon={<CloseOutlined />}
                                     onClick={() => remove(name)}
-                                  />
+                                    color='secondary'
+                                    iconLeading={<CloseOutlined />} />
                                 </div>
                               </Col>
                             ))}
