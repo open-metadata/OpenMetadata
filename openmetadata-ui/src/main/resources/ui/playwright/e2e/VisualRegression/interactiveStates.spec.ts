@@ -113,9 +113,7 @@ test('explore entity summary panel (side panel) matches baseline', async ({
   // spinner (`data-testid="loader"`, src/components/common/Loader) while
   // in flight — wait for it to clear so the baseline captures the settled
   // "No lineage connections found" state rather than a mid-load spinner.
-  await summaryPanel
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await summaryPanel.getByTestId('loader').waitFor({ state: 'detached' });
 
   await expect(summaryPanel).toHaveScreenshot(
     'explore-entity-summary-panel.png',
@@ -123,9 +121,7 @@ test('explore entity summary panel (side panel) matches baseline', async ({
   );
 });
 
-test('add team form (form inside modal) matches baseline', async ({
-  page,
-}) => {
+test('add team form (form inside modal) matches baseline', async ({ page }) => {
   // The highest-value coupling case for this migration: Typography/Input
   // labels rendered by an antd <Form> nested inside an antd <Modal> —
   // AddTeamForm.tsx (src/pages/TeamsPage/AddTeamForm.tsx), opened from the
