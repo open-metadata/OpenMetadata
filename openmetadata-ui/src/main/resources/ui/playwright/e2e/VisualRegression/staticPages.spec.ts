@@ -53,12 +53,22 @@ import {
  *   (src/components/DataQuality/DataQualityDashboard/DataQualityDashboard.component.tsx),
  *   which moves as other specs create/delete tables and tests. Masking that
  *   one container covers all three aggregates in a single selector.
- * - incident-manager: test-case rows (name links, `DateTimeDisplay`
- *   timestamps) are seeded per-run, and the table
+ * - incident-manager: the table
  *   (src/components/IncidentManager/IncidentManagerTable.component.tsx)
- *   defines columns with no `width`, so a longer/shorter seeded name shifts
- *   every column after it. Masking individual cells wouldn't stop that
- *   shift, so the whole `test-case-incident-manager-table` is masked.
+ *   lists test cases that *other* e2e specs create and delete, so both its
+ *   row content and its row COUNT vary across CI runs (not just within a
+ *   run — the whole-table mask used to be sized to the element's bounding
+ *   box, and a different row count between runs shifts everything below
+ *   it, which is why an earlier CI-adopted baseline for this page later
+ *   failed at ~2.1% on an unrelated run). Critically, two attempts of the
+ *   *same* CI run share one database state (no reseed between retries), so
+ *   comparing retry vs. non-retry actuals can never surface this — it only
+ *   proves the same thing local-vs-local runs prove, one dataset compared
+ *   with itself. There's no existing/seeded fixture with a fixed row count
+ *   to key a mask off (tracked in OM#30783), so instead of masking, this
+ *   page is `clip`-ped to the deterministic chrome only (title, subheader,
+ *   filter toolbar) and the volatile table is excluded from the capture
+ *   entirely. Reduced coverage, but real coverage.
  * - teams: team/user/asset counts and the seeded team names inside
  *   `team-hierarchy-table`
  *   (src/components/Settings/Team/TeamDetails/TeamHierarchy.tsx) all vary
@@ -73,6 +83,14 @@ const PAGES: {
   route: string;
   mask?: string[];
   maxDiffPixelRatio?: number;
+  /**
+   * Crop the screenshot to `{ x, y, width, height }` CSS pixels instead of
+   * masking. Use this when the volatile region can't be bounded by a mask
+   * at all (its row count itself varies, so its bounding box varies) —
+   * cropping it out of the capture entirely is the only way to keep the
+   * rest of the page under real comparison.
+   */
+  clip?: { x: number; y: number; width: number; height: number };
 }[] = [
   {
     name: 'explore',
@@ -91,9 +109,11 @@ const PAGES: {
     mask: ['[data-testid="dq-dashboard-container"]'],
   },
   {
+    // Chrome-only: the table below y=250 is excluded via `clip`, not
+    // masked — see the file-header comment for why a mask can't work here.
     name: 'incident-manager',
     route: '/incident-manager',
-    mask: ['[data-testid="test-case-incident-manager-table"]'],
+    clip: { x: 0, y: 0, width: 1440, height: 250 },
   },
   { name: 'users', route: '/settings/members/users' },
   {
@@ -118,12 +138,13 @@ const PAGES: {
   { name: 'applications', route: '/marketplace' },
 ];
 
-for (const { name, route, mask, maxDiffPixelRatio } of PAGES) {
+for (const { name, route, mask, maxDiffPixelRatio, clip } of PAGES) {
   test(`${name} matches baseline`, async ({ page }) => {
     await gotoForScreenshot(page, route);
     await expect(page).toHaveScreenshot(`${name}.png`, {
       ...SCREENSHOT_OPTS,
       ...(maxDiffPixelRatio !== undefined && { maxDiffPixelRatio }),
+      ...(clip !== undefined && { clip }),
       mask: (mask ?? []).map((selector) => page.locator(selector)),
     });
   });
