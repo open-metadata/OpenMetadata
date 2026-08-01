@@ -42,8 +42,6 @@ import {
   ReactFlowInstance,
   useKeyPress,
 } from 'reactflow';
-import 'reactflow/dist/base.css';
-import 'reactflow/dist/style.css';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
