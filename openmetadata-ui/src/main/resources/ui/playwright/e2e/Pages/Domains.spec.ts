@@ -3123,7 +3123,7 @@ test.describe('Domain Access with noDomain() Rule', () => {
 test.describe('Domain Tree View Functionality', () => {
   let subDomain: SubDomain;
   const domain = new Domain();
-  const domainDisplayName = domain.responseData.displayName;
+  const domainDisplayName = domain.data.displayName;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
