@@ -224,6 +224,7 @@ const CustomiseLandingPageHeader = ({
               <CustomiseSearchBar disabled={!onHomePage} />
               <DomainSelectableList
                 hasPermission
+                showAllDomains
                 disabled={!onHomePage}
                 popoverProps={{
                   open: isDomainDropdownOpen,
