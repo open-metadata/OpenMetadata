@@ -125,11 +125,6 @@ const mockProps = {
   toggleTabExpanded: jest.fn(),
 };
 
-jest.mock('../../../utils/GlossaryTerm/GlossaryTermUtil', () => ({
-  getGlossaryTermDetailTabs: jest.fn().mockImplementation((items) => items),
-  getTabLabelMap: jest.fn().mockReturnValue({}),
-}));
-
 jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest
     .fn()

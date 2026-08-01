@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CacheLocation } from '@auth0/auth0-react';
+import type { CacheLocation } from '@auth0/auth0-react';
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import { lazy, ReactNode } from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
