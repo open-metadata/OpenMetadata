@@ -255,24 +255,24 @@ export const PersonaSelectableList = ({
           <div className="flex justify-end gap-2">
             <Button
               className="persona-profile-edit-save"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              onClick={handleCloseEditTeam}
-              color='primary'
-              size='xs'
               iconLeading={<ClosePopoverIcon height={24} />}
+              size="xs"
+              onClick={handleCloseEditTeam}
             />
             <Button
               className="persona-profile-edit-cancel"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              onClick={handlePersonaUpdate}
-              color='primary'
-              size='xs'
-              isLoading={isSaving}
               iconLeading={<SavePopoverIcon height={24} />}
+              isLoading={isSaving}
+              size="xs"
+              onClick={handlePersonaUpdate}
             />
           </div>
         </div>

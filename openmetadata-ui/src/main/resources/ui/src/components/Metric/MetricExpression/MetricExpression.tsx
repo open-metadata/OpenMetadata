@@ -106,12 +106,12 @@ const MetricExpression: FC = () => {
           })}>
           <Button
             className="flex-center p-0"
+            color="tertiary"
             data-testid="edit-expression-button"
-            onClick={() => setIsEditing(true)}
-            color='tertiary'
-            size='xs'
-            isLoading={isUpdating}
             iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            isLoading={isUpdating}
+            size="xs"
+            onClick={() => setIsEditing(true)}
           />
         </Tooltip>
       )}
@@ -147,19 +147,19 @@ const MetricExpression: FC = () => {
           <Row justify="end">
             <Col>
               <Button
+                color="link-gray"
                 data-testid="cancel-button"
-                onClick={() => setIsEditing(false)}
-                color='link-gray'
-                isDisabled={isUpdating}>
+                isDisabled={isUpdating}
+                onClick={() => setIsEditing(false)}>
                 {t('label.cancel')}
               </Button>
             </Col>
             <Col>
               <Button
+                color="primary"
                 data-testid="update-button"
-                color='primary'
                 isLoading={isUpdating}
-                type='submit'>
+                type="submit">
                 {t('label.update')}
               </Button>
             </Col>

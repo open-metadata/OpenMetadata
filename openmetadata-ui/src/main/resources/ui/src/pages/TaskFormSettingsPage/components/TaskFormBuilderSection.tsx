@@ -115,10 +115,10 @@ const TaskFormBuilderSection = ({
           ) : null}
         </div>
         <Button
+          color="secondary"
           data-testid={`${testIdPrefix}-add-field`}
-          onClick={() => onChange([...fields, createEmptyDesignerField()])}
-          color='secondary'
-          iconLeading={<PlusOutlined />}>
+          iconLeading={<PlusOutlined />}
+          onClick={() => onChange([...fields, createEmptyDesignerField()])}>
           Add field
         </Button>
       </div>
@@ -143,17 +143,17 @@ const TaskFormBuilderSection = ({
                   data-testid={`${testIdPrefix}-field-card-${index}`}
                   extra={
                     <Button
+                      color="tertiary-destructive"
                       data-testid={`${testIdPrefix}-field-remove-${index}`}
+                      iconLeading={<DeleteOutlined />}
+                      size="xs"
                       onClick={() =>
                         onChange(
                           fields.filter(
                             (_, currentIndex) => currentIndex !== index
                           )
                         )
-                      }
-                      color='tertiary-destructive'
-                      size='xs'
-                      iconLeading={<DeleteOutlined />}>
+                      }>
                       Remove
                     </Button>
                   }

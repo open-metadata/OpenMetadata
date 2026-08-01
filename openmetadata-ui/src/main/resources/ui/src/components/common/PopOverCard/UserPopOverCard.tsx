@@ -208,6 +208,7 @@ export const PopoverTitle = React.memo(
         <div className="self-center">
           <Button
             className="text-info p-0"
+            color="link-gray"
             onClick={(e) => {
               e.stopPropagation();
               onTitleClickHandler(
@@ -215,8 +216,7 @@ export const PopoverTitle = React.memo(
                   ? getTeamAndUserDetailsPath(name)
                   : getUserPath(name)
               );
-            }}
-            color='link-gray'>
+            }}>
             <span className="font-medium m-r-xs" data-testid="user-name">
               {displayName}
             </span>

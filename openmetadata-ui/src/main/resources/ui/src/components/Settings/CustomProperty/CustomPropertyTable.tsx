@@ -214,14 +214,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               }>
               <Button
                 className="cursor-pointer p-0"
+                color="tertiary"
                 data-testid="edit-button"
+                isDisabled={!hasAccess}
+                size="xs"
                 onClick={() => {
                   setSelectedProperty(record);
                   setOperation(OPERATION.UPDATE);
-                }}
-                color='tertiary'
-                size='xs'
-                isDisabled={!hasAccess}>
+                }}>
                 <IconEdit name={t('label.edit')} width={16} />
               </Button>
             </Tooltip>
@@ -235,14 +235,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               }>
               <Button
                 className="cursor-pointer p-0"
+                color="tertiary"
                 data-testid="delete-button"
+                isDisabled={!hasAccess}
+                size="xs"
                 onClick={() => {
                   setSelectedProperty(record);
                   setOperation(OPERATION.DELETE);
-                }}
-                color='tertiary'
-                size='xs'
-                isDisabled={!hasAccess}>
+                }}>
                 <IconDelete name={t('label.delete')} width={16} />
               </Button>
             </Tooltip>

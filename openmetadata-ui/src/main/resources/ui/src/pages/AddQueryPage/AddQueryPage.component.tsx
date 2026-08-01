@@ -284,9 +284,9 @@ const AddQueryPage = () => {
                 <Form.Item>
                   <Space className="w-full justify-end" size={16}>
                     <Button
+                      color="secondary"
                       data-testid="cancel-btn"
-                      onClick={handleCancelClick}
-                      color='secondary'>
+                      onClick={handleCancelClick}>
                       {t('label.cancel')}
                     </Button>
                     <Tooltip
@@ -296,11 +296,11 @@ const AddQueryPage = () => {
                         t(NO_PERMISSION_FOR_ACTION)
                       }>
                       <Button
+                        color="primary"
                         data-testid="save-btn"
-                        color='primary'
                         isDisabled={!permissions.query?.Create}
                         isLoading={isSaving}
-                        type='submit'>
+                        type="submit">
                         {t('label.save')}
                       </Button>
                     </Tooltip>

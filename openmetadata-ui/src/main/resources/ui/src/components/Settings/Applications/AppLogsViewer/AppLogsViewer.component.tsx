@@ -658,9 +658,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {failureLogs && (
         <div className="m-t-md">
           <Button
+            color="link-gray"
             data-testid="view-logs-button"
-            onClick={() => setShowLogsModal(true)}
-            color='link-gray'>
+            onClick={() => setShowLogsModal(true)}>
             {t('label.view-entity', { entity: t('label.log-plural') })}
           </Button>
         </div>
@@ -668,9 +668,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {hasFailures && (
         <div className="m-t-md">
           <Button
+            color="link-gray"
             data-testid="view-reindex-failures-button"
-            onClick={() => setShowFailuresDrawer(true)}
-            color='link-gray'>
+            onClick={() => setShowFailuresDrawer(true)}>
             {t('label.view-reindex-failure-plural')}
           </Button>
         </div>

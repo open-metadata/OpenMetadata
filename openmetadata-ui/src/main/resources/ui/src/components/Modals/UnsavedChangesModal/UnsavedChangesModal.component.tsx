@@ -67,17 +67,17 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
         <div className="unsaved-changes-modal-actions">
           <Button
             className="unsaved-changes-modal-discard"
+            color="secondary"
             data-testid="unsaved-changes-modal-discard"
-            onClick={onDiscard}
-            color='secondary'>
+            onClick={onDiscard}>
             {discardText || t('message.unsaved-changes-discard')}
           </Button>
           <Button
             className="unsaved-changes-modal-save"
+            color="primary"
             data-testid="unsaved-changes-modal-save"
-            onClick={onSave}
-            color='primary'
-            isLoading={loading}>
+            isLoading={loading}
+            onClick={onSave}>
             {saveText || t('message.unsaved-changes-save')}
           </Button>
         </div>

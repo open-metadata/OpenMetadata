@@ -121,9 +121,9 @@ const TaskFeedCard = ({
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
             className="p-0 task-feed-message"
+            color="link-gray"
             data-testid="redirect-task-button-link"
-            onClick={handleTaskLinkClick}
-            color='link-gray'>
+            onClick={handleTaskLinkClick}>
             <Typography className="p-0 text-primary">{`#${taskDetails.id} `}</Typography>
 
             <Typography className="p-xss">
@@ -153,10 +153,10 @@ const TaskFeedCard = ({
 
   return (
     <Button
+      className="remove-button-default-styling tw:w-full"
+      color="tertiary"
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      color='tertiary'
-      className='remove-button-default-styling tw:w-full'>
+      onMouseLeave={handleMouseLeave}>
       <div
         className={classNames(
           className,

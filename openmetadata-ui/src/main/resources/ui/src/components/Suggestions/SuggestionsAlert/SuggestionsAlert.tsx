@@ -81,21 +81,22 @@ const SuggestionsAlert = ({
         {hasEditAccess && (
           <div className="d-flex justify-end gap-2">
             <Button
+              color="tertiary"
               data-testid="reject-suggestion"
+              iconLeading={<CloseOutlined />}
+              size="xs"
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
               }
-              color='tertiary'
-              size='xs'
-              iconLeading={<CloseOutlined />} />
+            />
             <Button
+              color="primary"
               data-testid="accept-suggestion"
+              iconLeading={<CheckOutlined />}
+              size="xs"
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
               }
-              color='primary'
-              size='xs'
-              iconLeading={<CheckOutlined />}
             />
           </div>
         )}

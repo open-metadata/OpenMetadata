@@ -416,11 +416,12 @@ const EdgeInfoDrawer = ({
             <Button
               aria-label={t('label.close')}
               className="drawer-close-icon flex-center mr-2"
+              color="secondary"
               data-testid="drawer-close-icon"
+              iconLeading={<X height={16} width={16} />}
+              size="xs"
               onClick={onClose}
-              color='secondary'
-              size='xs'
-              iconLeading={<X height={16} width={16} />} />
+            />
           </div>
           <div className="edge-info-drawer-content">
             {isLoading ? (

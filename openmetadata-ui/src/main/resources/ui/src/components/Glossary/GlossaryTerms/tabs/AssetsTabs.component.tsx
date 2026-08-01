@@ -803,8 +803,8 @@ const AssetsTabs = forwardRef(
                         })}>
                         <Button
                           className={classNames('flex-center px-1.5')}
-                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                          color='tertiary'>
+                          color="tertiary"
+                          data-testid={`manage-button-${_source.fullyQualifiedName}`}>
                           <IconDropdown className="anticon self-center manage-dropdown-icon" />
                         </Button>
                       </Tooltip>
@@ -1042,9 +1042,10 @@ const AssetsTabs = forwardRef(
                     trigger={['click']}>
                     <Button
                       className={classNames('feed-filter-icon')}
+                      color="secondary"
                       data-testid="asset-filter-button"
-                      color='secondary'
-                      iconLeading={<FilterIcon height={16} />} />
+                      iconLeading={<FilterIcon height={16} />}
+                    />
                   </Dropdown>
                   <div className="flex-1">
                     <Searchbar
@@ -1150,10 +1151,10 @@ const AssetsTabs = forwardRef(
                 {selectedItems.size} {t('label.items-selected-lowercase')}
               </Typography>
               <Button
+                color="primary-destructive"
                 data-testid="delete-all-button"
-                onClick={handleBulkDeleteClick}
-                color='primary-destructive'
-                isLoading={assetRemoving}>
+                isLoading={assetRemoving}
+                onClick={handleBulkDeleteClick}>
                 {t('label.delete')}
               </Button>
             </div>

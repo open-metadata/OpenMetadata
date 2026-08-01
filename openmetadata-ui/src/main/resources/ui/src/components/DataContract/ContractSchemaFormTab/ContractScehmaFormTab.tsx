@@ -566,16 +566,16 @@ export const ContractSchemaFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          onClick={onPrev}
-          color='secondary'
-          iconLeading={<LeftOutlined height={22} width={20} />}>
+          color="secondary"
+          iconLeading={<LeftOutlined height={22} width={20} />}
+          onClick={onPrev}>
           {prevLabel ?? t('label.previous')}
         </Button>
         {isNextVisible && (
           <Button
             className="contract-next-button"
-            onClick={onNext}
-            color='primary'>
+            color="primary"
+            onClick={onNext}>
             {nextLabel ?? t('label.next')}
             <Icon component={RightIcon} />
           </Button>

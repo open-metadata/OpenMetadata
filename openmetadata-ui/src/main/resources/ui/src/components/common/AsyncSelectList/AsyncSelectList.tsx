@@ -12,7 +12,15 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import { Typography, Button } from '@openmetadata/ui-core-components';
-import { Empty, Form, Select, SelectProps, Space, TagProps, Tooltip } from 'antd';
+import {
+  Empty,
+  Form,
+  Select,
+  SelectProps,
+  Space,
+  TagProps,
+  Tooltip,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
@@ -179,20 +187,20 @@ const AsyncSelectList: FC<
         <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
           <Button
             className="update-btn"
+            color="secondary"
             data-testid="saveAssociatedTag"
-            onClick={() => form.submit()}
-            color='secondary'
-            size='xs'
             isDisabled={isEmpty(tagOptions)}
             isLoading={isSubmitLoading}
-            type='submit'>
+            size="xs"
+            type="submit"
+            onClick={() => form.submit()}>
             {t('label.update')}
           </Button>
           <Button
+            color="secondary"
             data-testid="cancelAssociatedTag"
-            onClick={onCancel}
-            color='secondary'
-            size='xs'>
+            size="xs"
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
         </Space>

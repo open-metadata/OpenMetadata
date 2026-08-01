@@ -51,14 +51,14 @@ const WidgetEmptyState = ({
   };
 
   const actionButton = showActionButton && (
-    <Button className="m-t-md" onClick={handleActionClick} color='primary'>
+    <Button className="m-t-md" color="primary" onClick={handleActionClick}>
       {actionButtonText || t('label.explore')}
     </Button>
   );
 
   const actionLink = actionButtonLink && (
     <Link to={actionButtonLink}>
-      <Button className="m-t-md" color='primary'>
+      <Button className="m-t-md" color="primary">
         {actionButtonText || t('label.explore')}
       </Button>
     </Link>

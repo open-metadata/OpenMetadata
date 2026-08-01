@@ -53,14 +53,14 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
             {headerBackgroundColors.map((value) => (
               <Button
                 className="option-color-container cursor-pointer"
+                color="secondary"
                 data-testid="option-color"
                 key={value.color}
                 style={{
                   backgroundColor: value.color,
                   borderColor: value.color,
                 }}
-                onClick={() => handleColorClick(value.color)}
-                color='secondary'>
+                onClick={() => handleColorClick(value.color)}>
                 <div
                   className={`option-color w-full h-full ${
                     selectedColor === value.color ? 'white-border' : ''

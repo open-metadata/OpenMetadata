@@ -52,10 +52,10 @@ const ConfirmationModal = ({
         <div className={classNames('justify-end', footerClassName)}>
           <Button
             className={classNames('mr-2', cancelButtonCss)}
+            color="tertiary"
             data-testid="cancel"
             key="remove-edge-btn"
-            onClick={onCancel}
-            color='tertiary'>
+            onClick={onCancel}>
             {cancelText}
           </Button>
           <Button

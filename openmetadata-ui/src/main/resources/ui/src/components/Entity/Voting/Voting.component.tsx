@@ -44,12 +44,12 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           className={classNames('ant-button-vote flex-center', {
             'ant-button-vote-active': voteStatus === QueryVoteType.votedUp,
           })}
+          color="secondary"
           data-testid="up-vote-btn"
-          onClick={() => handleVoteChange(QueryVoteType.votedUp)}
-          color='secondary'
+          iconLeading={<ThumbsUpOutline height={15} width={15} />}
           isDisabled={disabled}
           isLoading={loading === QueryVoteType.votedUp}
-          iconLeading={<ThumbsUpOutline height={15} width={15} />}>
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
           <Typography className="m-l-xs" data-testid="up-vote-count">
             {votes?.upVotes ?? 0}
           </Typography>
@@ -60,18 +60,18 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           className={classNames('ant-button-vote flex-center', {
             'ant-button-vote-active': voteStatus === QueryVoteType.votedDown,
           })}
+          color="secondary"
           data-testid="down-vote-btn"
-          onClick={() => handleVoteChange(QueryVoteType.votedDown)}
-          color='secondary'
-          isDisabled={disabled}
-          isLoading={loading === QueryVoteType.votedDown}
           iconLeading={
             <ThumbsUpOutline
               className="rotate-inverse"
               height={15}
               width={15}
             />
-          }>
+          }
+          isDisabled={disabled}
+          isLoading={loading === QueryVoteType.votedDown}
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
           <Typography className="m-l-xs" data-testid="down-vote-count">
             {votes?.downVotes ?? 0}
           </Typography>

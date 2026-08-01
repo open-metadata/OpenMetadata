@@ -301,14 +301,14 @@ const RolesDetailPage = () => {
           <Card>
             <div className="flex justify-end m-b-md">
               <Button
+                color="primary"
                 data-testid="add-policy"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
                     selectedData: role.policies || [],
                   })
-                }
-                color='primary'>
+                }>
                 {t('label.add-entity', {
                   entity: t('label.policy'),
                 })}
@@ -380,7 +380,10 @@ const RolesDetailPage = () => {
                   name: fqn,
                 })}
               </p>
-              <Button className="m-t-sm" onClick={() => navigate(rolesPath)} color='tertiary'>
+              <Button
+                className="m-t-sm"
+                color="tertiary"
+                onClick={() => navigate(rolesPath)}>
                 {t('label.go-back')}
               </Button>
             </div>

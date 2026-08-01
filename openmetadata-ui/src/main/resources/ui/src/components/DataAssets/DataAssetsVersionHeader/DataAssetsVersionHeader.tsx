@@ -132,10 +132,10 @@ function DataAssetsVersionHeader({
             <Tooltip title={t('label.exit-version-history')}>
               <Button
                 className="w-16 p-0"
+                color="secondary"
                 data-testid="version-button"
-                onClick={onVersionClick}
-                color='secondary'
-                iconLeading={<Icon component={VersionIcon} />}>
+                iconLeading={<Icon component={VersionIcon} />}
+                onClick={onVersionClick}>
                 <Typography>{version}</Typography>
               </Button>
             </Tooltip>

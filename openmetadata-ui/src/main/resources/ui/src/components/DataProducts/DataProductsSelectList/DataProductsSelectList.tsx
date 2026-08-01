@@ -133,18 +133,18 @@ const DataProductsSelectList = ({
         size={8}>
         <Button
           className="update-btn"
+          color="secondary"
           data-testid="saveAssociatedTag"
-          onClick={onSave}
-          color='secondary'
-          size='xs'
-          isLoading={isSubmitLoading}>
+          isLoading={isSubmitLoading}
+          size="xs"
+          onClick={onSave}>
           {t('label.update')}
         </Button>
         <Button
+          color="secondary"
           data-testid="cancelAssociatedTag"
-          onClick={onCancel}
-          color='secondary'
-          size='xs'>
+          size="xs"
+          onClick={onCancel}>
           {t('label.cancel')}
         </Button>
       </Space>

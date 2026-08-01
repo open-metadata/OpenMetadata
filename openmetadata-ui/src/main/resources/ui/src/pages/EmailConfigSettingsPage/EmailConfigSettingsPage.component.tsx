@@ -174,7 +174,7 @@ function EmailConfigSettingsPage() {
             </Col>
             <Col className="d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
-                <Button onClick={handleTestEmailModal} color='primary'>
+                <Button color="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}
                 </Button>
               )}
@@ -184,13 +184,13 @@ function EmailConfigSettingsPage() {
               ) : (
                 <Button
                   className="m-l-md"
-                  onClick={handleEditClick}
-                  color='secondary'
+                  color="secondary"
                   iconLeading={
                     !isUndefined(emailConfigValues) && (
                       <Icon component={IconEdit} size={12} />
                     )
-                  }>
+                  }
+                  onClick={handleEditClick}>
                   {isUndefined(emailConfigValues)
                     ? t('label.add')
                     : t('label.edit')}

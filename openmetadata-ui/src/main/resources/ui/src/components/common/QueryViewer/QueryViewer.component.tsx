@@ -70,10 +70,11 @@ const QueryViewer = ({
               title={t('message.copy-to-clipboard')}>
               <Button
                 className="flex-center button-size bg-white"
+                color="secondary"
                 data-testid="query-entity-copy-button"
+                iconLeading={<CopyIcon height={16} width={16} />}
                 onClick={onCopyToClipBoard}
-                color='secondary'
-                iconLeading={<CopyIcon height={16} width={16} />} />
+              />
             </Tooltip>
           </Space>
         ) : null

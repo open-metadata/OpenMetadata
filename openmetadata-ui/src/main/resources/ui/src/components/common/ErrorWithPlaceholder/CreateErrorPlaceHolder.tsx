@@ -91,10 +91,10 @@ const CreateErrorPlaceHolder = ({
               title={!permission && t('message.admin-only-action')}>
               <Button
                 className="p-x-lg"
+                color="tertiary"
                 data-testid={buttonId ?? 'add-placeholder-button'}
-                onClick={onClick}
-                color='tertiary'
-                iconLeading={<PlusOutlined />}>
+                iconLeading={<PlusOutlined />}
+                onClick={onClick}>
                 {t('label.add')}
               </Button>
             </Tooltip>

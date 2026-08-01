@@ -276,11 +276,12 @@ const ProfilerConfigurationPage = () => {
                               </Form.Item>
                               <Form.Item>
                                 <Button
+                                  color="secondary"
                                   data-testid={`remove-filter-${name}`}
+                                  iconLeading={<CloseOutlined />}
+                                  size="xs"
                                   onClick={() => remove(name)}
-                                  color='secondary'
-                                  size='xs'
-                                  iconLeading={<CloseOutlined />} />
+                                />
                               </Form.Item>
                             </Col>
                           </Fragment>
@@ -289,10 +290,10 @@ const ProfilerConfigurationPage = () => {
                           <div className="matrix-collapse-footer">
                             <Button
                               className="text-primary p-0"
+                              color="tertiary"
                               data-testid="add-fields"
-                              onClick={() => add()}
-                              color='tertiary'
-                              iconLeading={<PlusOutlined />}>
+                              iconLeading={<PlusOutlined />}
+                              onClick={() => add()}>
                               {t('label.add-new-field')}
                             </Button>
                           </div>
@@ -381,16 +382,16 @@ const ProfilerConfigurationPage = () => {
           <Col span={24}>
             <div className="d-flex justify-end gap-2">
               <Button
+                color="secondary"
                 data-testid="cancel-button"
-                onClick={() => navigate(-1)}
-                color='secondary'>
+                onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-button"
-                color='primary'
                 isLoading={isFormSubmitting}
-                type='submit'>
+                type="submit">
                 {t('label.save')}
               </Button>
             </div>

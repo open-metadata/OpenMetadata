@@ -141,37 +141,38 @@ export const CustomizablePageHeader = ({
         <Space>
           {showWidgetActions && (
             <Button
+              color="primary"
               data-testid="add-widget-button"
-              onClick={onAddWidget}
-              color='primary'
-              iconLeading={<PlusOutlined />}>
+              iconLeading={<PlusOutlined />}
+              onClick={onAddWidget}>
               {t('label.add-widget-plural')}
             </Button>
           )}
           <Button
+            color="secondary"
             data-testid="reset-button"
-            onClick={handleOpenResetModal}
-            color='secondary'
+            iconLeading={<RedoOutlined />}
             isDisabled={saving}
-            iconLeading={<RedoOutlined />}>
+            onClick={handleOpenResetModal}>
             {t('label.reset')}
           </Button>
           <Button
+            color="primary"
             data-testid="save-button"
-            onClick={handleSave}
-            color='primary'
+            iconLeading={<SaveOutlined />}
             isDisabled={disableSave}
             isLoading={saving}
-            iconLeading={<SaveOutlined />}>
+            onClick={handleSave}>
             {t('label.save')}
           </Button>
           <Button
             className="landing-page-cancel-button"
+            color="secondary"
             data-testid="cancel-button"
-            onClick={handleClose}
-            color='secondary'
+            iconLeading={<CloseOutlined />}
             isDisabled={saving}
-            iconLeading={<CloseOutlined />} />
+            onClick={handleClose}
+          />
         </Space>
       </div>
       <UnsavedChangesModal

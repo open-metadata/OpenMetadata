@@ -61,17 +61,17 @@ const SchemaModal: FC<SchemaModalProp> = ({
         isFooterVisible ? (
           <KeyDownStopPropagationWrapper>
             <Button
+              color="link-gray"
               data-testid="cancel"
               key="cancelButton"
-              onClick={onClose}
-              color='link-gray'>
+              onClick={onClose}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="save"
               key="saveButton"
-              onClick={onSave}
-              color='primary'>
+              onClick={onSave}>
               {t('label.save')}
             </Button>
           </KeyDownStopPropagationWrapper>

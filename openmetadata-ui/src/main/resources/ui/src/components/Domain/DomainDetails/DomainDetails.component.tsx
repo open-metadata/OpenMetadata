@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Avatar, Box, Typography, Button } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Typography,
+  Button,
+} from '@openmetadata/ui-core-components';
 import { Dropdown, Space, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -1025,7 +1030,7 @@ const DomainDetails = ({
                 }}
                 placement="bottomRight"
                 trigger={['click']}>
-                <Button data-testid="domain-details-add-button" color='primary'>
+                <Button color="primary" data-testid="domain-details-add-button">
                   <Space>
                     {t('label.add')}
                     <DownOutlined />
@@ -1056,10 +1061,10 @@ const DomainDetails = ({
                     className={classNames('', {
                       'text-primary border-primary': version,
                     })}
+                    color="secondary"
                     data-testid="version-button"
-                    onClick={handleVersionClick}
-                    color='secondary'
-                    iconLeading={<Icon component={VersionIcon} />}>
+                    iconLeading={<Icon component={VersionIcon} />}
+                    onClick={handleVersionClick}>
                     <Typography
                       className={classNames('', {
                         'text-primary': version,
@@ -1090,12 +1095,13 @@ const DomainDetails = ({
                     })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
+                      color="secondary"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}
-                      color='secondary'
                       iconLeading={
                         <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                      } />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}

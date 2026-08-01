@@ -484,10 +484,12 @@ const AddGlossaryTermForm = ({
       hasPermission: true,
       children: (
         <Button
+          color="primary"
           data-testid="add-owner"
-          color='primary'
-          size='xs'
-          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
       multiple: {
@@ -518,10 +520,12 @@ const AddGlossaryTermForm = ({
       label: t('label.reviewer-plural'),
       children: (
         <Button
+          color="primary"
           data-testid="add-reviewers"
-          color='primary'
-          size='xs'
-          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
     },
@@ -551,17 +555,17 @@ const AddGlossaryTermForm = ({
                 colon={false}
                 label={t('label.reference-plural')}>
                 <Button
+                  color="primary"
                   data-testid="add-reference"
-                  onClick={() => {
-                    add();
-                  }}
-                  color='primary'
-                  size='xs'
                   iconLeading={
                     <PlusOutlined
                       style={{ color: 'white', fontSize: '12px' }}
                     />
                   }
+                  size="xs"
+                  onClick={() => {
+                    add();
+                  }}
                 />
               </Form.Item>
 
@@ -605,12 +609,12 @@ const AddGlossaryTermForm = ({
                   </Col>
                   <Col span={2}>
                     <Button
+                      color="tertiary"
+                      iconLeading={<DeleteIcon width={16} />}
+                      size="xs"
                       onClick={() => {
                         remove(field.name);
                       }}
-                      color='tertiary'
-                      size='xs'
-                      iconLeading={<DeleteIcon width={16} />}
                     />
                   </Col>
                 </Row>

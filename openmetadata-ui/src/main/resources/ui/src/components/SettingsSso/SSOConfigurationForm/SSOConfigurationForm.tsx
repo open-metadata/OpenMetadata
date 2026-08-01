@@ -149,10 +149,10 @@ const MetadataUploadStatusCard = ({
         </Typography>
       </div>
       <Button
+        color="link-gray"
         data-testid="change-metadata-xml-btn"
-        onClick={onChangeFile}
-        color='link-gray'
-        size='xs'>
+        size="xs"
+        onClick={onChangeFile}>
         {t('label.change-entity', { entity: t('label.file') })}
       </Button>
     </div>
@@ -1118,38 +1118,38 @@ const SSOConfigurationFormRJSF = ({
         <div className="form-actions-bottom">
           <Button
             className="cancel-sso-configuration text-md"
+            color="link-gray"
             data-testid="cancel-sso-configuration"
-            onClick={handleCancelClick}
-            color='link-gray'>
+            onClick={handleCancelClick}>
             {t('label.cancel')}
           </Button>
           <Button
             className="test-sso-configuration text-md"
+            color="secondary"
             data-testid="test-sso-configuration"
-            onClick={handleTestConfiguration}
-            color='secondary'
             isDisabled={isLoading || isTesting || !currentProvider}
-            isLoading={isTesting}>
+            isLoading={isTesting}
+            onClick={handleTestConfiguration}>
             {t('label.test-entity', { entity: t('label.configuration') })}
           </Button>
           {isOidcPublicClientProvider && (
             <Button
               className="test-login-sso-configuration text-md"
+              color="secondary"
               data-testid="test-login-sso-configuration"
-              onClick={handleTestLogin}
-              color='secondary'
               isDisabled={isLoading || isTestingLogin || !currentProvider}
-              isLoading={isTestingLogin}>
+              isLoading={isTestingLogin}
+              onClick={handleTestLogin}>
               {t('label.test-login')}
             </Button>
           )}
           <Button
             className="save-sso-configuration text-md"
+            color="primary"
             data-testid="save-sso-configuration"
-            onClick={handleSave}
-            color='primary'
             isDisabled={isLoading}
-            isLoading={isLoading}>
+            isLoading={isLoading}
+            onClick={handleSave}>
             {t('label.save')}
           </Button>
         </div>
@@ -1217,8 +1217,8 @@ const SSOConfigurationFormRJSF = ({
                     {t('label.click-to')}{' '}
                     <Button
                       className="h-auto p-0 font-semibold"
-                      color='link-gray'
-                      size='xs'>
+                      color="link-gray"
+                      size="xs">
                       {t('label.upload-lowercase')}
                     </Button>{' '}
                     {t('label.or-drag-and-drop-an-xml-file-here')}
@@ -1348,9 +1348,9 @@ const SSOConfigurationFormRJSF = ({
           </div>
           {hasExistingConfig && onChangeProvider && (
             <Button
+              color="link-gray"
               data-testid="change-provider-button"
-              onClick={onChangeProvider}
-              color='link-gray'>
+              onClick={onChangeProvider}>
               {t('label.change-provider')}
             </Button>
           )}

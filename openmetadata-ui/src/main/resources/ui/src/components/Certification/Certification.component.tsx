@@ -283,17 +283,15 @@ const Certification = ({
               {certificationCardData}
               <div className="flex justify-end text-lg gap-2 mt-4">
                 <Button
+                  color="secondary"
                   data-testid="close-certification"
-                  onClick={handleCloseCertification}
-                  color='secondary'>
+                  onClick={handleCloseCertification}>
                   <CloseOutlined />
                 </Button>
                 <Button
+                  color="primary"
                   data-testid="update-certification"
-                  onClick={() =>
-                    updateCertificationData(selectedCertification)
-                  }
-                  color='primary'>
+                  onClick={() => updateCertificationData(selectedCertification)}>
                   <CheckOutlined />
                 </Button>
               </div>

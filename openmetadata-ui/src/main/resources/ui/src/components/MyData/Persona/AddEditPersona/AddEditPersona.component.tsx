@@ -162,10 +162,12 @@ export const AddEditPersonaForm = ({
         hasPermission: true,
         children: (
           <Button
+            color="primary"
             data-testid="add-users"
-            color='primary'
-            size='xs'
-            iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
+            size="xs"
           />
         ),
       },

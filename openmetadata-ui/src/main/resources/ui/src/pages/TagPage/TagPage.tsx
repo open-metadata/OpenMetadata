@@ -834,9 +834,9 @@ const TagPage = () => {
   const addAssetsButton =
     !isCertificationClassification && !tagItem.disabled ? (
       <Button
+        color="primary"
         data-testid="data-classification-add-button"
-        onClick={() => setAssetModalVisible(true)}
-        color='primary'>
+        onClick={() => setAssetModalVisible(true)}>
         {t('label.add-entity', {
           entity: t('label.asset-plural'),
         })}
@@ -863,10 +863,11 @@ const TagPage = () => {
           })}>
           <Button
             className="flex-center"
+            color="secondary"
             data-testid="manage-button"
+            iconLeading={<IconDropdown className="manage-dropdown-icon" />}
             onClick={() => setShowActions(true)}
-            color='secondary'
-            iconLeading={<IconDropdown className="manage-dropdown-icon" />} />
+          />
         </Tooltip>
       </Dropdown>
     ) : null;

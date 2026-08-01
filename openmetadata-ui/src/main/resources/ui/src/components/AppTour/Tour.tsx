@@ -57,9 +57,8 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
             inViewThreshold={200}
             lastStepNextButton={
               <Button
+                color="tertiary"
                 data-testid="last-step-button"
-                onClick={() => setShowTourEndModal(true)}
-                color='tertiary'
                 iconLeading={
                   <svg viewBox="0 0 18.4 14.4" width={16}>
                     <path
@@ -72,6 +71,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
                     />
                   </svg>
                 }
+                onClick={() => setShowTourEndModal(true)}
               />
             }
             maskColor="#302E36"

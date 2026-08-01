@@ -403,9 +403,9 @@ export const CustomizeTabWidget = () => {
           data-testid="customize-tab-card"
           extra={
             <Button
-              onClick={() => setShowAddTabModal(true)}
-              color='primary'
-              iconLeading={<PlusOutlined />}>
+              color="primary"
+              iconLeading={<PlusOutlined />}
+              onClick={() => setShowAddTabModal(true)}>
               {t('label.add-entity', {
                 entity: t('label.tab'),
               })}
@@ -441,8 +441,8 @@ export const CustomizeTabWidget = () => {
                 trigger={['click']}>
                 <Button
                   className="draggable-hidden-tab-item bg-grey"
-                  data-testid={`tab-${item.name}`}
-                  color='secondary'>
+                  color="secondary"
+                  data-testid={`tab-${item.name}`}>
                   <Space>
                     {getTabDisplayName(item)}
                     <MoreOutlined />
@@ -459,9 +459,9 @@ export const CustomizeTabWidget = () => {
           bordered={false}
           extra={
             <Button
-              onClick={handleOpenAddWidgetModal}
-              color='primary'
-              iconLeading={<PlusOutlined />}>
+              color="primary"
+              iconLeading={<PlusOutlined />}
+              onClick={handleOpenAddWidgetModal}>
               {t('label.add-entity', {
                 entity: t('label.widget'),
               })}

@@ -69,11 +69,11 @@ const FileAttachment = ({
                 <span className="separator">|</span>
                 <Button
                   className="file-percentage"
-                  onClick={onFileClick}
-                  color='tertiary'
-                  size='xs'
-                  isLoading={isFileLoading}
+                  color="tertiary"
                   iconLeading={<DownloadOutlined />}
+                  isLoading={isFileLoading}
+                  size="xs"
+                  onClick={onFileClick}
                 />
               </>
             )}

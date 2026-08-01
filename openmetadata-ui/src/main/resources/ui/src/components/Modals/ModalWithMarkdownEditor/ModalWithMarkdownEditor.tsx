@@ -63,19 +63,19 @@ export const ModalWithMarkdownEditor: FunctionComponent<
       footer={
         <KeyDownStopPropagationWrapper>
           <Button
+            color="link-gray"
             data-testid="cancel"
+            isDisabled={isLoading}
             key="cancelButton"
-            onClick={onCancel}
-            color='link-gray'
-            isDisabled={isLoading}>
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="save"
+            isLoading={isLoading}
             key="saveButton"
-            onClick={handleSaveData}
-            color='primary'
-            isLoading={isLoading}>
+            onClick={handleSaveData}>
             {t('label.save')}
           </Button>
         </KeyDownStopPropagationWrapper>

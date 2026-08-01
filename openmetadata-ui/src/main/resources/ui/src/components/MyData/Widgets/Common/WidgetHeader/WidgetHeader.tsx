@@ -116,11 +116,12 @@ const WidgetHeader = ({
               {onEditClick && (
                 <Button
                   className="widget-header-options widget-header-edit-button"
+                  color="secondary"
                   data-testid="edit-widget-button"
-                  onClick={onEditClick}
-                  color='secondary'
+                  iconLeading={<EditIcon height={20} width={20} />}
                   isDisabled={disableEdit}
-                  iconLeading={<EditIcon height={20} width={20} />} />
+                  onClick={onEditClick}
+                />
               )}
 
               <WidgetMoreOptions

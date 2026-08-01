@@ -27,13 +27,13 @@ const PopoverContent = ({
       {Object.entries(CALLOUT_CONTENT).map(([key, CalloutIcon]) => {
         return (
           <Button
+            color="tertiary"
             data-testid={`callout-${key}`}
-            key={key}
-            onClick={() => onSelect(key)}
-            color='tertiary'
             iconLeading={
               <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
-            }>
+            }
+            key={key}
+            onClick={() => onSelect(key)}>
             {startCase(key)}
           </Button>
         );
@@ -83,8 +83,8 @@ const CalloutComponent: FC<NodeViewProps> = ({
           onOpenChange={handlePopoverVisibleChange}>
           <Button
             className="callout-type-btn"
-            data-testid={`callout-${calloutType}-btn`}
-            color='tertiary'>
+            color="tertiary"
+            data-testid={`callout-${calloutType}-btn`}>
             <CallOutIcon width={28} />
           </Button>
         </Popover>

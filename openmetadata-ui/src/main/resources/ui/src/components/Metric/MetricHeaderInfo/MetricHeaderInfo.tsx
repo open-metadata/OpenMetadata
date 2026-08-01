@@ -167,11 +167,13 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
                   })}>
                   <Button
                     className="flex-center edit-metrics p-0"
+                    color="tertiary"
                     data-testid={`edit-${modiFiedLabel}-button`}
-                    color='tertiary'
-                    size='xs'
+                    iconLeading={
+                      <EditIcon color={DE_ACTIVE_COLOR} width="12px" />
+                    }
                     isLoading={isUpdating}
-                    iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+                    size="xs"
                   />
                 </Tooltip>
               </Popover>

@@ -137,10 +137,12 @@ const GithubStarCard = () => {
           </Space>
           <Button
             className="flex-center m--t-xss"
+            color="tertiary"
             data-testid="close-github-star-popup-card"
+            iconLeading={
+              <CloseIcon color={BLACK_COLOR} height={12} width={12} />
+            }
             onClick={handleClosePopup}
-            color='tertiary'
-            iconLeading={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
           />
         </Space>
 
@@ -152,14 +154,14 @@ const GithubStarCard = () => {
           <Typography as="a" href={OMD_REPOSITORY_LINK} target="_blank">
             <Button
               className="github-star-button github-modal-action-button"
-              color='secondary'
+              color="secondary"
               iconLeading={<Icon component={StarGithubIcon} size={12} />}>
               {t('label.star')}
             </Button>
           </Typography>
 
           <Typography as="a" href={OMD_REPOSITORY_LINK} target="_blank">
-            <Button className="github-modal-action-button" color='secondary'>
+            <Button className="github-modal-action-button" color="secondary">
               {isLoading ? (
                 <div data-testid="skeleton-loader">
                   <Skeleton.Button active size="small" />

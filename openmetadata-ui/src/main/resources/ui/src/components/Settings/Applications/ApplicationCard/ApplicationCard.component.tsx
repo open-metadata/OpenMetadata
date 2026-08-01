@@ -74,7 +74,7 @@ const ApplicationCard = ({
               markdown={description}
             />
           )}
-          <Button className="p-0" data-testid="config-btn" color='link-gray'>
+          <Button className="p-0" color="link-gray" data-testid="config-btn">
             {linkTitle}
           </Button>
         </div>

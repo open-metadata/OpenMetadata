@@ -1112,11 +1112,12 @@ export default function EntitySummaryPanel({
           <Button
             aria-label={t('label.close')}
             className="drawer-close-icon flex-center mr-2"
+            color="secondary"
             data-testid="drawer-close-icon"
+            iconLeading={<XClose />}
+            size="xs"
             onClick={handleClosePanel}
-            color='secondary'
-            size='xs'
-            iconLeading={<XClose />} />
+          />
         </div>
       )}
       <div className="d-flex gap-2 w-full h-full">

@@ -14,7 +14,15 @@
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography, Button } from '@openmetadata/ui-core-components';
-import { Form, FormItemProps, Input, InputNumber, Select, Switch, Tooltip } from 'antd';
+import {
+  Form,
+  FormItemProps,
+  Input,
+  InputNumber,
+  Select,
+  Switch,
+  Tooltip,
+} from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
@@ -239,10 +247,10 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                       <span>{data.displayName}</span>
                       <Button
                         className="m-x-sm list-add-btn"
-                        onClick={() => add()}
-                        color='primary'
-                        size='xs'
+                        color="primary"
                         iconLeading={<PlusOutlined />}
+                        size="xs"
+                        onClick={() => add()}
                       />
                     </>
                   }
@@ -271,8 +279,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                         )}
                       </Form.Item>
                       <Button
-                        onClick={() => remove(name)}
-                        color='tertiary'
+                        color="tertiary"
                         iconLeading={
                           <Icon
                             className="align-middle"
@@ -280,6 +287,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                             style={{ fontSize: '16px' }}
                           />
                         }
+                        onClick={() => remove(name)}
                       />
                     </div>
                   ))}

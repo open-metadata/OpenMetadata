@@ -147,20 +147,20 @@ const BotDetails: FC<BotsDetailProps> = ({
                       <div className="flex justify-end" data-testid="buttons">
                         <Button
                           className="text-sm mr-1"
+                          color="primary"
                           data-testid="cancel-displayName"
-                          onMouseDown={() => setIsDisplayNameEdit(false)}
-                          color='primary'
-                          size='xs'
                           iconLeading={<CloseOutlined />}
+                          size="xs"
+                          onMouseDown={() => setIsDisplayNameEdit(false)}
                         />
 
                         <Button
                           className="text-sm mr-1"
+                          color="primary"
                           data-testid="save-displayName"
-                          onClick={handleDisplayNameChange}
-                          color='primary'
-                          size='xs'
                           iconLeading={<CheckOutlined />}
+                          size="xs"
+                          onClick={handleDisplayNameChange}
                         />
                       </div>
                     </>

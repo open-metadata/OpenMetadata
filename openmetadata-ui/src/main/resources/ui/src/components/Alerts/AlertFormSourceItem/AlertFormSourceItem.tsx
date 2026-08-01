@@ -129,7 +129,7 @@ function AlertFormSourceItem({
               }}
               placement="bottomRight"
               trigger={['click']}>
-              <Button data-testid="add-source-button" color='primary'>
+              <Button color="primary" data-testid="add-source-button">
                 {t('label.add-entity', {
                   entity: t('label.source'),
                 })}

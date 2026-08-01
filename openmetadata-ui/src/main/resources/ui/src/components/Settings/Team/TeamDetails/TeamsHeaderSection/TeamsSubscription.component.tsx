@@ -149,13 +149,14 @@ const TeamsSubscription = ({
               className="flex-center teams-info-email-edit-button p-0"
               data-testid="edit-team-subscription"
               {...ICON_DIMENSION}
+              color="secondary"
+              iconLeading={<EditIcon {...ICON_DIMENSION} width="12px" />}
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 setEditSubscription(true);
               }}
-              color='secondary'
-              iconLeading={<EditIcon {...ICON_DIMENSION} width="12px" />} />
+            />
           </Tooltip>
         )}
         {isEmpty(subscription) && hasEditPermission && (
@@ -165,30 +166,31 @@ const TeamsSubscription = ({
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
+              color="secondary"
               data-testid="edit-team-subscription"
-              onClick={(e) => {
-                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                e.stopPropagation();
-                setEditSubscription(true);
-              }}
-              color='secondary'
               iconLeading={
                 <EditIcon
                   color={DE_ACTIVE_COLOR}
                   {...ICON_DIMENSION}
                   width="12px"
                 />
-              } />
+              }
+              onClick={(e) => {
+                // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                e.stopPropagation();
+                setEditSubscription(true);
+              }}
+            />
           </Tooltip>
         )}
       </div>
       {subscriptionRenderElement}
       {editSubscription && (
         // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
-        (<Button
+        <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}
-          color='secondary'>
+          color="secondary"
+          onClick={(e) => e.stopPropagation()}>
           <Modal
             centered
             open
@@ -243,7 +245,7 @@ const TeamsSubscription = ({
               </Form.Item>
             </Form>
           </Modal>
-        </Button>)
+        </Button>
       )}
     </Space>
   );

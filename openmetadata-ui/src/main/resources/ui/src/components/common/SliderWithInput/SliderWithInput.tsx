@@ -53,9 +53,9 @@ const SliderWithInput = ({
           <Tooltip title={t('label.clear')}>
             <Button
               className="p-0"
+              color="tertiary"
               data-testid="clear-slider-input"
-              onClick={() => onChange(null)}
-              color='tertiary'>
+              onClick={() => onChange(null)}>
               <CloseOutlined />
             </Button>
           </Tooltip>

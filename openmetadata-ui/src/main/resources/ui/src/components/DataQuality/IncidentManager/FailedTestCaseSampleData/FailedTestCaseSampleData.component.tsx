@@ -255,7 +255,7 @@ const FailedTestCaseSampleData = ({
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
               )}>
-              <Button data-testid="explore-with-query" color='primary'>
+              <Button color="primary" data-testid="explore-with-query">
                 {t('label.explore-with-query')}
               </Button>
             </Link>
@@ -278,9 +278,9 @@ const FailedTestCaseSampleData = ({
                 })}>
                 <Button
                   className="flex-center px-1.5"
+                  color="secondary"
                   data-testid="sample-data-manage-button"
-                  onClick={() => setShowActions(true)}
-                  color='secondary'>
+                  onClick={() => setShowActions(true)}>
                   <IconDropdown className="anticon self-center " />
                 </Button>
               </Tooltip>

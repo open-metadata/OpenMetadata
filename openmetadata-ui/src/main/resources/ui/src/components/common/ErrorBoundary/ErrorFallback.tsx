@@ -58,8 +58,8 @@ const ErrorFallback: React.FC<FallbackProps> = ({
       extra={
         <Button
           className="ant-btn-primary-custom"
-          onClick={handleReset}
-          color='primary'>
+          color="primary"
+          onClick={handleReset}>
           {isChunkLoadError ? t('label.refresh') : t('label.home')}
         </Button>
       }

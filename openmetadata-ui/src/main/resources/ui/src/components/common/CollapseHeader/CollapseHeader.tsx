@@ -47,23 +47,23 @@ const CollapseHeader = ({
           trigger={['click']}>
           <Button
             className="add-field-btn"
+            color="primary"
             data-testid={dataTestId}
-            onClick={(e) => e.stopPropagation()}
-            color='primary'
-            iconLeading={<Icon className="text-xs" component={PlusOutlined} />}>
+            iconLeading={<Icon className="text-xs" component={PlusOutlined} />}
+            onClick={(e) => e.stopPropagation()}>
             {t('label.add')}
           </Button>
         </Dropdown>
       ) : (
         <Button
           className="add-field-btn"
+          color="primary"
           data-testid={dataTestId}
+          iconLeading={<Icon className="text-xs" component={PlusOutlined} />}
           onClick={(e) => {
             e.stopPropagation();
             handleAddNewBoost?.();
-          }}
-          color='primary'
-          iconLeading={<Icon className="text-xs" component={PlusOutlined} />}>
+          }}>
           {t('label.add')}
         </Button>
       )}

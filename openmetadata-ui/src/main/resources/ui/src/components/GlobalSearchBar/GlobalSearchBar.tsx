@@ -211,9 +211,8 @@ export const GlobalSearchBar = () => {
               className={classNames('nav-search-button', 'w-6', 'h-6', {
                 active: isNLPActive,
               })}
+              color="tertiary"
               data-testid="nlp-suggestions-button"
-              onClick={() => setNLPActive(!isNLPActive)}
-              color='tertiary'
               iconLeading={
                 <Icon
                   component={
@@ -221,6 +220,7 @@ export const GlobalSearchBar = () => {
                   }
                 />
               }
+              onClick={() => setNLPActive(!isNLPActive)}
             />
           </Tooltip>
           <Divider className="h-5" type="vertical" />

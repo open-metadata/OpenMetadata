@@ -337,7 +337,10 @@ const KPIChart: FC<Props> = ({
           direction="vertical">
           <ErrorPlaceHolder
             button={
-              <Button onClick={handleAddKpi} color='tertiary' iconLeading={<PlusOutlined />}>
+              <Button
+                color="tertiary"
+                iconLeading={<PlusOutlined />}
+                onClick={handleAddKpi}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
                 })}

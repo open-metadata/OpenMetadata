@@ -326,8 +326,8 @@ const ManageButton: FC<ManageButtonProps> = ({
     return (
       <Button
         className="remove-button-default-styling p-0"
-        onClick={(e) => e.stopPropagation()}
-        color='secondary'>
+        color="secondary"
+        onClick={(e) => e.stopPropagation()}>
         <Dropdown
           align={{ targetOffset: [-12, 0] }}
           dropdownRender={renderDropdownContainer}
@@ -343,8 +343,8 @@ const ManageButton: FC<ManageButtonProps> = ({
             })}>
             <Button
               className={classNames('flex-center px-1.5', buttonClassName)}
-              data-testid="manage-button"
-              color='secondary'>
+              color="secondary"
+              data-testid="manage-button">
               <IconDropdown className="anticon self-center manage-dropdown-icon" />
             </Button>
           </Tooltip>
@@ -411,10 +411,10 @@ const ManageButton: FC<ManageButtonProps> = ({
       {showReactiveModal && (
         // Used Button to stop click propagation event in the
         // TeamDetailsV1 and User.component collapsible panel.
-        (<Button
+        <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}
-          color='secondary'>
+          color="secondary"
+          onClick={(e) => e.stopPropagation()}>
           <Modal
             centered
             cancelButtonProps={{
@@ -440,7 +440,7 @@ const ManageButton: FC<ManageButtonProps> = ({
               })}
             </Typography>
           </Modal>
-        </Button>)
+        </Button>
       )}
     </>
   );

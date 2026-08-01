@@ -64,8 +64,8 @@ const DomainSelectableListNew = ({
   return (
     <Button
       className="remove-button-default-styling"
-      onClick={(e) => e.stopPropagation()}
-      color='secondary'>
+      color="secondary"
+      onClick={(e) => e.stopPropagation()}>
       <Popover
         destroyTooltipOnHide
         content={

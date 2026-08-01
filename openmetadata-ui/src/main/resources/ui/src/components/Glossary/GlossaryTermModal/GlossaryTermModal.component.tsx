@@ -126,15 +126,15 @@ const GlossaryTermModal: FC<Props> = ({
       closable={false}
       data-testid="edit-glossary-modal"
       footer={[
-        <Button key="cancel-btn" onClick={onCancel} color='link-gray'>
+        <Button color="link-gray" key="cancel-btn" onClick={onCancel}>
           {t('label.cancel')}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-glossary-term"
+          isLoading={saving}
           key="save-btn"
-          onClick={form.submit}
-          color='primary'
-          isLoading={saving}>
+          onClick={form.submit}>
           {t('label.save')}
         </Button>,
       ]}

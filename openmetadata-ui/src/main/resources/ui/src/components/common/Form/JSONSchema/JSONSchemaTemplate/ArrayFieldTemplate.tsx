@@ -30,17 +30,19 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
         <label className="control-label">{title}</label>
         {canAdd && (
           <Button
+            color="primary"
             data-testid={`add-item-${title}`}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
+            size="xs"
             onClick={onAddClick}
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
                 formContext.handleFocus(idSchema.$id);
               }
             }}
-            color='primary'
-            size='xs'
-            iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
           />
         )}
       </div>

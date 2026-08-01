@@ -116,10 +116,11 @@ function ObservabilityFormTriggerItem({
                       </div>
                       {!isViewMode && (
                         <Button
+                          color="secondary"
                           data-testid={`remove-trigger-${name}`}
+                          iconLeading={<CloseOutlined />}
                           onClick={() => remove(name)}
-                          color='secondary'
-                          iconLeading={<CloseOutlined />} />
+                        />
                       )}
                     </div>
                     <Form.Item
@@ -141,15 +142,15 @@ function ObservabilityFormTriggerItem({
               {showAddTriggerButton && (
                 <Col span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-trigger"
+                    isDisabled={
+                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
+                    }
                     onClick={() =>
                       add({
                         effect: Effect.Include,
                       })
-                    }
-                    color='primary'
-                    isDisabled={
-                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
                     }>
                     {t('label.add-entity', {
                       entity: t('label.trigger'),

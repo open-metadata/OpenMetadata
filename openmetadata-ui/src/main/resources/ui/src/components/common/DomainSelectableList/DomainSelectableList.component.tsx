@@ -169,9 +169,9 @@ const DomainSelectableList = ({
     return (
       <Button
         className="remove-button-default-styling flex-center"
-        onClick={(e) => e.stopPropagation()}
-        color='secondary'
-        isDisabled={disabled}>
+        color="secondary"
+        isDisabled={disabled}
+        onClick={(e) => e.stopPropagation()}>
         {popoverContent}
       </Button>
     );

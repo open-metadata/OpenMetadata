@@ -174,10 +174,10 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
               className={classNames('', {
                 'text-primary border-primary': version,
               })}
+              color="secondary"
               data-testid="version-button"
-              onClick={handleVersionClick}
-              color='secondary'
-              iconLeading={<Icon component={VersionIcon} />}>
+              iconLeading={<Icon component={VersionIcon} />}
+              onClick={handleVersionClick}>
               <Typography
                 className={classNames('', {
                   'text-primary': version,

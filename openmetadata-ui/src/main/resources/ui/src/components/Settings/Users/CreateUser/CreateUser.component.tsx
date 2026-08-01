@@ -111,10 +111,12 @@ const CreateUser = ({
       multiple: true,
       children: (
         <Button
+          color="primary"
           data-testid="add-domain"
-          color='primary'
-          size='xs'
-          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
     },
@@ -567,15 +569,15 @@ const CreateUser = ({
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
       <Space className="w-full justify-end" size={4}>
-        <Button data-testid="cancel-user" onClick={onCancel} color='link-gray'>
+        <Button color="link-gray" data-testid="cancel-user" onClick={onCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          color="primary"
           data-testid="save-user"
           form="create-user-bot-form"
-          color='primary'
           isLoading={isLoading}
-          type='submit'>
+          type="submit">
           {t('label.create')}
         </Button>
       </Space>

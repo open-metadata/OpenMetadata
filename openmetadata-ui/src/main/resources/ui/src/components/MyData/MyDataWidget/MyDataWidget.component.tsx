@@ -205,7 +205,7 @@ const MyDataWidgetInternal = ({
                     )}>
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
-                      color='tertiary'
+                      color="tertiary"
                       iconLeading={
                         <div className="d-flex items-center justify-center flex-shrink">
                           {getEntityIcon(item, EntityIconSize.Size24)}

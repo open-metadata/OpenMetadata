@@ -285,18 +285,18 @@ const TableConstraintsModal = ({
       data-testid="table-constraint-modal"
       footer={[
         <Button
+          color="link-gray"
+          isDisabled={isLoading}
           key="cancel-btn"
-          onClick={onClose}
-          color='link-gray'
-          isDisabled={isLoading}>
+          onClick={onClose}>
           {t('label.cancel')}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-btn"
+          isLoading={isLoading}
           key="save-btn"
-          onClick={form.submit}
-          color='primary'
-          isLoading={isLoading}>
+          onClick={form.submit}>
           {t('label.save')}
         </Button>,
       ]}
@@ -545,10 +545,8 @@ const TableConstraintsModal = ({
                     </Form.Item>
                     <Button
                       className="delete-constraint-button"
+                      color="tertiary"
                       data-testid={`${key}-delete-constraint-button`}
-                      onClick={() => remove(name)}
-                      color='tertiary'
-                      size='xs'
                       iconLeading={
                         <Icon
                           className="align-middle text-grey-muted"
@@ -556,16 +554,18 @@ const TableConstraintsModal = ({
                           style={{ fontSize: '16px' }}
                         />
                       }
+                      size="xs"
+                      onClick={() => remove(name)}
                     />
                   </div>
                 ))}
                 <Button
                   className="text-primary d-flex items-center m-t-md"
+                  color="secondary"
                   data-testid="add-constraint-button"
-                  onClick={() => add()}
-                  color='secondary'
-                  size='xs'
-                  iconLeading={<PlusIcon className="anticon" />}>
+                  iconLeading={<PlusIcon className="anticon" />}
+                  size="xs"
+                  onClick={() => add()}>
                   {t('label.add-entity', {
                     entity: t('label.constraint-plural'),
                   })}

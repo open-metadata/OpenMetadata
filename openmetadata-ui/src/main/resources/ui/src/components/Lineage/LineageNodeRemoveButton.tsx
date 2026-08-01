@@ -24,9 +24,8 @@ const LineageNodeRemoveButton = ({
   return (
     <Button
       className="lineage-node-remove-btn bg-body-hover"
+      color="link-gray"
       data-testid="lineage-node-remove-btn"
-      onClick={onRemove}
-      color='link-gray'
       iconLeading={
         <Icon
           alt="times-circle"
@@ -35,6 +34,7 @@ const LineageNodeRemoveButton = ({
           style={{ fontSize: '16px' }}
         />
       }
+      onClick={onRemove}
     />
   );
 };

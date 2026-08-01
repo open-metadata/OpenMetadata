@@ -35,10 +35,10 @@ function ToggleExpandButton({
   return (
     <Button
       className="text-primary rounded-4"
+      color="tertiary"
       data-testid="toggle-expand-button"
-      onClick={toggleExpandAll}
-      color='tertiary'
-      size='xs'>
+      size="xs"
+      onClick={toggleExpandAll}>
       <Space align="center" size={4}>
         {showCollapseAllText ? (
           <DownUpArrowIcon

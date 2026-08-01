@@ -83,9 +83,9 @@ const SqlQueryTab = () => {
       {permissions.query?.Create && !isVersionPage && (
         <Col className="d-flex justify-end" span={24}>
           <Button
+            color="primary"
             data-testid="add-to-table-button"
-            onClick={() => setIsOpen(true)}
-            color='primary'>
+            onClick={() => setIsOpen(true)}>
             {t('label.add-to-table')}
           </Button>
         </Col>

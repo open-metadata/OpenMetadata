@@ -430,9 +430,9 @@ const AddNotificationPage = () => {
                       <Col span={24}>
                         <div className="flex justify-end gap-2">
                           <Button
+                            color="tertiary"
                             data-testid="cancel-button"
-                            onClick={() => navigate(-1)}
-                            color='tertiary'>
+                            onClick={() => navigate(-1)}>
                             {t('label.cancel')}
                           </Button>
 
@@ -450,10 +450,10 @@ const AddNotificationPage = () => {
                             )
                           )}
                           <Button
+                            color="primary"
                             data-testid="save-button"
-                            color='primary'
                             isLoading={isButtonLoading}
-                            type='submit'>
+                            type="submit">
                             {t('label.save')}
                           </Button>
                         </div>

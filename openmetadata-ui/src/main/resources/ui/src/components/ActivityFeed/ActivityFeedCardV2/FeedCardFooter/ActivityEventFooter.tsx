@@ -57,9 +57,9 @@ function ActivityEventFooter({
           <div className="flex items-center gap-2 w-full rounded-8">
             <Button
               className="p-0 flex-center"
+              color="tertiary"
               data-testid="comment-button"
-              onClick={isForFeedTab ? handleCommentClick : undefined}
-              color='tertiary'>
+              onClick={isForFeedTab ? handleCommentClick : undefined}>
               <ThreadIcon data-testid="comment-icon" height={18} width={18} />
             </Button>
             <Reactions

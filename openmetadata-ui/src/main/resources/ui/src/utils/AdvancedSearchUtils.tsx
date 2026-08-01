@@ -64,10 +64,10 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--ADD-RULE"
+        color="tertiary"
         data-testid="advanced-search-add-rule"
-        onClick={props?.onClick}
-        color='tertiary'
-        iconLeading={<PlusOutlined />}>
+        iconLeading={<PlusOutlined />}
+        onClick={props?.onClick}>
         {t('label.add')}
       </Button>
     );
@@ -75,10 +75,10 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--ADD-GROUP"
+        color="primary"
         data-testid="advanced-search-add-group"
-        onClick={props?.onClick}
-        color='primary'
-        iconLeading={<PlusOutlined />}>
+        iconLeading={<PlusOutlined />}
+        onClick={props?.onClick}>
         {t('label.add')}
       </Button>
     );

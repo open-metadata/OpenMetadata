@@ -12,7 +12,15 @@
  */
 
 import { Typography, Button } from '@openmetadata/ui-core-components';
-import { Card, Collapse, Popover, Radio, RadioChangeEvent, Space, Spin } from 'antd';
+import {
+  Card,
+  Collapse,
+  Popover,
+  Radio,
+  RadioChangeEvent,
+  Space,
+  Spin,
+} from 'antd';
 import { AxiosError } from 'axios';
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
@@ -193,15 +201,15 @@ const TierCard = ({
                 <div
                   className={`flex justify-end text-lg gap-2 mt-4 ${footerActionButtonsClassName}`}>
                   <Button
+                    color="secondary"
                     data-testid="close-tier-card"
-                    onClick={handleCloseTier}
-                    color='secondary'>
+                    onClick={handleCloseTier}>
                     <CloseOutlined />
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="update-tier-card"
-                    onClick={() => updateTierData(selectedTier)}
-                    color='primary'>
+                    onClick={() => updateTierData(selectedTier)}>
                     <CheckOutlined />
                   </Button>
                 </div>

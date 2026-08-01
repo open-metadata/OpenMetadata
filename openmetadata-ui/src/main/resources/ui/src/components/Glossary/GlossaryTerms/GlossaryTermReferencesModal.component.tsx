@@ -66,15 +66,15 @@ const GlossaryTermReferencesModal = ({
       destroyOnClose
       data-testid="glossary-term-references-modal"
       footer={[
-        <Button key="cancel-btn" onClick={onClose} color='link-gray'>
+        <Button color="link-gray" key="cancel-btn" onClick={onClose}>
           {t('label.cancel')}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-btn"
+          isLoading={saving}
           key="save-btn"
-          onClick={form.submit}
-          color='primary'
-          isLoading={saving}>
+          onClick={form.submit}>
           {t('label.save')}
         </Button>,
       ]}
@@ -129,10 +129,8 @@ const GlossaryTermReferencesModal = ({
 
                   <Col span={1}>
                     <Button
+                      color="tertiary"
                       data-testid="delete-ref-btn"
-                      onClick={() => remove(name)}
-                      color='tertiary'
-                      size='xs'
                       iconLeading={
                         <Icon
                           className="align-middle"
@@ -140,6 +138,8 @@ const GlossaryTermReferencesModal = ({
                           style={{ fontSize: '16px' }}
                         />
                       }
+                      size="xs"
+                      onClick={() => remove(name)}
                     />
                   </Col>
                 </Row>
@@ -147,11 +147,11 @@ const GlossaryTermReferencesModal = ({
               <Form.Item>
                 <Button
                   className="text-primary d-flex items-center"
+                  color="secondary"
                   data-testid="add-references-button"
-                  onClick={() => add()}
-                  color='secondary'
-                  size='xs'
-                  iconLeading={<PlusIcon className="anticon" />}>
+                  iconLeading={<PlusIcon className="anticon" />}
+                  size="xs"
+                  onClick={() => add()}>
                   {t('label.add')}
                 </Button>
               </Form.Item>

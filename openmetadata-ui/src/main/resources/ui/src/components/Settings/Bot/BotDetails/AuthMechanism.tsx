@@ -91,21 +91,21 @@ const AuthMechanism: FC<Props> = ({
         <Space>
           {JWTToken ? (
             <Button
+              color="secondary-destructive"
               data-testid="revoke-button"
-              onClick={onTokenRevoke}
-              color='secondary-destructive'
-              size='xs'
-              isDisabled={!hasPermission}>
+              isDisabled={!hasPermission}
+              size="xs"
+              onClick={onTokenRevoke}>
               {t('label.revoke-token')}
             </Button>
           ) : (
             <Button
               className="text-sm"
+              color="primary"
               data-testid="auth-mechanism"
-              onClick={onEdit}
-              color='primary'
-              size='xs'
-              isDisabled={!hasPermission}>
+              isDisabled={!hasPermission}
+              size="xs"
+              onClick={onEdit}>
               {t('label.generate-new-token')}
             </Button>
           )}

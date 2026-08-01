@@ -92,8 +92,13 @@ export const ObjectFieldTemplate: FunctionComponent<
           </label>
 
           <Button
+            color="primary"
             data-testid={`add-item-${title}`}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
+            size="xs"
             onClick={() => {
               onAddClick(schema)();
             }}
@@ -102,9 +107,6 @@ export const ObjectFieldTemplate: FunctionComponent<
                 formContext.handleFocus(idSchema.$id);
               }
             }}
-            color='primary'
-            size='xs'
-            iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
           />
         </Space>
       )}

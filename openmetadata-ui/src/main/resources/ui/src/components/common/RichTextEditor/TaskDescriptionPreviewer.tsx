@@ -87,10 +87,10 @@ const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
       {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (
         <Button
           className="text-xs text-right"
+          color="link-gray"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
           style={{ fontSize: '14px', color: '#175CD3 !important' }}
-          onClick={handleReadMoreToggle}
-          color='link-gray'>
+          onClick={handleReadMoreToggle}>
           {readMore ? t('label.view-less') : t('label.view-more')}
         </Button>
       )}

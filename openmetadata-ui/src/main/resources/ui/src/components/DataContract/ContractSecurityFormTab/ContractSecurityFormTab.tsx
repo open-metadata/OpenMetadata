@@ -194,11 +194,11 @@ export const ContractSecurityFormTab: React.FC<{
 
               <Button
                 className="add-policy-button"
+                color="link-gray"
                 data-testid="add-policy-button"
-                onClick={handleAddPolicy}
-                color='link-gray'
+                iconLeading={<Icon className="anticon" component={PlusIcon} />}
                 isDisabled={!isNull(editingKey) || !addFunctionRef.current}
-                iconLeading={<Icon className="anticon" component={PlusIcon} />}>
+                onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>
             </div>
@@ -246,13 +246,13 @@ export const ContractSecurityFormTab: React.FC<{
 
                                   <Button
                                     className="delete-expand-button"
+                                    color="secondary-destructive"
                                     data-testid={`delete-policy-${policyField.key}`}
+                                    iconLeading={<DeleteIcon />}
+                                    size="sm"
                                     onClick={() => {
                                       handleDeletePolicy(policyField.key);
                                     }}
-                                    color='secondary-destructive'
-                                    size='sm'
-                                    iconLeading={<DeleteIcon />}
                                   />
                                 </div>
                               </div>
@@ -328,10 +328,12 @@ export const ContractSecurityFormTab: React.FC<{
 
                                           <Button
                                             className="add-row-filter-button"
+                                            color="link-gray"
                                             data-testid={`add-row-filter-button-${policyIndex}`}
-                                            onClick={() => addRowFilter()}
-                                            color='link-gray'
-                                            iconLeading={<Icon component={PlusIcon} />}>
+                                            iconLeading={
+                                              <Icon component={PlusIcon} />
+                                            }
+                                            onClick={() => addRowFilter()}>
                                             {t('label.add-entity', {
                                               entity: t('label.row-filter'),
                                             })}
@@ -407,18 +409,18 @@ export const ContractSecurityFormTab: React.FC<{
                                                   <Col span={2}>
                                                     <Button
                                                       className="contract-consumer-security-card-rule-delete-button"
-                                                      onClick={() => {
-                                                        removeRowFilter(
-                                                          rowFilterField.name
-                                                        );
-                                                      }}
-                                                      color='tertiary'
-                                                      size='xs'
+                                                      color="tertiary"
                                                       iconLeading={
                                                         <Icon
                                                           component={CloseIcon}
                                                         />
                                                       }
+                                                      size="xs"
+                                                      onClick={() => {
+                                                        removeRowFilter(
+                                                          rowFilterField.name
+                                                        );
+                                                      }}
                                                     />
                                                   </Col>
                                                 </Row>
@@ -428,16 +430,16 @@ export const ContractSecurityFormTab: React.FC<{
                                         </div>
                                         <div className="contract-consumer-security-card-form-actions-items">
                                           <Button
+                                            color="secondary"
                                             data-testid="cancel-policy-button"
-                                            onClick={() => setEditingKey(null)}
-                                            color='secondary'>
+                                            onClick={() => setEditingKey(null)}>
                                             {t('label.cancel')}
                                           </Button>
                                           <Button
                                             className="m-l-md"
+                                            color="primary"
                                             data-testid="save-policy-button"
-                                            onClick={() => setEditingKey(null)}
-                                            color='primary'>
+                                            onClick={() => setEditingKey(null)}>
                                             {t('label.save')}
                                           </Button>
                                         </div>
@@ -449,16 +451,16 @@ export const ContractSecurityFormTab: React.FC<{
                             ) : (
                               <div className="contract-consumer-security-card-form-actions-items">
                                 <Button
+                                  color="secondary"
                                   data-testid="cancel-policy-button"
-                                  onClick={() => setEditingKey(null)}
-                                  color='secondary'>
+                                  onClick={() => setEditingKey(null)}>
                                   {t('label.cancel')}
                                 </Button>
                                 <Button
                                   className="m-l-md"
+                                  color="primary"
                                   data-testid="save-policy-button"
-                                  onClick={() => setEditingKey(null)}
-                                  color='primary'>
+                                  onClick={() => setEditingKey(null)}>
                                   {t('label.save')}
                                 </Button>
                               </div>
@@ -541,15 +543,15 @@ export const ContractSecurityFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          onClick={onPrev}
-          color='secondary'
-          iconLeading={<LeftOutlined height={22} width={20} />}>
+          color="secondary"
+          iconLeading={<LeftOutlined height={22} width={20} />}
+          onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
-          onClick={onNext}
-          color='primary'>
+          color="primary"
+          onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>

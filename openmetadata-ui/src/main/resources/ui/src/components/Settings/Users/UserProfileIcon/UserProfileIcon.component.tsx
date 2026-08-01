@@ -373,8 +373,8 @@ export const UserProfileIcon = () => {
         label: (
           <Button
             className="text-primary d-flex items-center gap-2 p-0 font-medium"
-            onClick={onLogoutHandler}
-            color='tertiary'>
+            color="tertiary"
+            onClick={onLogoutHandler}>
             <LogoutIcon height={20} width={20} />
             {t('label.logout')}
           </Button>
@@ -409,9 +409,8 @@ export const UserProfileIcon = () => {
       onOpenChange={setIsDropdownOpen}>
       <Button
         className="user-profile-btn flex-center"
+        color="tertiary"
         data-testid="dropdown-profile"
-        color='tertiary'
-        size='md'
         iconLeading={
           isImgUrlValid ? (
             <img
@@ -429,7 +428,8 @@ export const UserProfileIcon = () => {
               width="40"
             />
           )
-        }>
+        }
+        size="md">
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
             <Typography className="font-semibold" data-testid="nav-user-name">

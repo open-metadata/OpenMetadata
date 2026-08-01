@@ -189,9 +189,9 @@ export const DiffViewNew = ({
               <div className="mt-2">
                 <Button
                   className="view-more-less-button cursor-pointer remove-button-default-styling"
+                  color="secondary"
                   data-testid="view-more-button"
-                  onClick={() => setExpanded(!expanded)}
-                  color='secondary'>
+                  onClick={() => setExpanded(!expanded)}>
                   {expanded ? t('label.view-less') : t('label.view-more')}
                 </Button>
               </div>

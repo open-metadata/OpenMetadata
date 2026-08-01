@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger, Typography, Button } from '@openmetadata/ui-core-components';
+import {
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+  Button,
+} from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -149,12 +154,12 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'upstream' ? 'active' : ''
           }`}
+          color="secondary"
           data-testid={`upstream-button-${
             filter === 'upstream' ? 'active' : ''
           }`}
-          onClick={() => onFilterChange('upstream')}
-          color='secondary'
-          size='xs'>
+          size="xs"
+          onClick={() => onFilterChange('upstream')}>
           <span
             className="lineage-filter-button-text"
             data-testid="upstream-button-text">
@@ -171,12 +176,12 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'downstream' ? 'active' : ''
           }`}
+          color="secondary"
           data-testid={`downstream-button-${
             filter === 'downstream' ? 'active' : ''
           }`}
-          onClick={() => onFilterChange('downstream')}
-          color='secondary'
-          size='xs'>
+          size="xs"
+          onClick={() => onFilterChange('downstream')}>
           <span
             className="lineage-filter-button-text"
             data-testid="downstream-button-text">

@@ -151,8 +151,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
             <Space>
               <Dropdown menu={statusMenuItems} placement="bottom">
                 <Button
+                  color="tertiary"
                   data-testid="status-button"
-                  color='tertiary'
                   iconLeading={<Icon component={FilterIcon} size={12} />}>
                   {status === MenuOptions.all ? t('label.status') : status}
                 </Button>
@@ -164,12 +164,12 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                       'range-picker-button-width delay-100':
                         !datesSelected && !isClickedCalendar,
                     })}
+                    color="tertiary"
                     data-testid="data-range-picker-button"
+                    iconLeading={<Icon component={Calendar} size={12} />}
                     onClick={() => {
                       setIsClickedCalendar(true);
-                    }}
-                    color='tertiary'
-                    iconLeading={<Icon component={Calendar} size={12} />}>
+                    }}>
                     <span className="date-container">
                       {!datesSelected && (
                         <label>{t('label.date-filter')}</label>

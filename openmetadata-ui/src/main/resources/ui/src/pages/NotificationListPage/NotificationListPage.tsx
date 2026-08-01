@@ -297,10 +297,12 @@ const NotificationListPage = () => {
                   <Link to={getNotificationAlertsEditPath(fullyQualifiedName)}>
                     <Button
                       className="flex flex-center"
+                      color="tertiary"
                       data-testid={`alert-edit-${record.name}`}
-                      color='tertiary'
+                      iconLeading={
+                        <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                      }
                       isDisabled={record.provider === ProviderType.System}
-                      iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                     />
                   </Link>
                 </Tooltip>
@@ -309,11 +311,11 @@ const NotificationListPage = () => {
                 <Tooltip placement="bottom" title={t('label.delete')}>
                   <Button
                     className="flex flex-center"
+                    color="tertiary"
                     data-testid={`alert-delete-${record.name}`}
-                    onClick={() => setSelectedAlert(record)}
-                    color='tertiary'
-                    isDisabled={record.provider === ProviderType.System}
                     iconLeading={<DeleteIcon height={16} />}
+                    isDisabled={record.provider === ProviderType.System}
+                    onClick={() => setSelectedAlert(record)}
                   />
                 </Tooltip>
               )}
@@ -345,6 +347,7 @@ const NotificationListPage = () => {
               alertResourcePermission?.All) && (
               <LimitWrapper resource="eventsubscription">
                 <Button
+                  color="primary"
                   data-testid="create-notification"
                   onClick={() =>
                     navigate(
@@ -353,8 +356,7 @@ const NotificationListPage = () => {
                         GlobalSettingOptions.ADD_NOTIFICATION
                       )
                     )
-                  }
-                  color='primary'>
+                  }>
                   {t('label.add-entity', { entity: t('label.alert') })}
                 </Button>
               </LimitWrapper>

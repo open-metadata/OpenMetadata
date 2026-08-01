@@ -518,17 +518,17 @@ const AddDataContract: React.FC<{
         <div>
           <Button
             className="add-contract-cancel-button"
-            onClick={onCancel}
-            color='secondary'>
+            color="secondary"
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
             className="add-contract-save-button"
+            color="primary"
             data-testid="save-contract-btn"
-            onClick={handleSave}
-            color='primary'
             isDisabled={isSaveDisabled}
-            isLoading={isSubmitting}>
+            isLoading={isSubmitting}
+            onClick={handleSave}>
             {t('label.save')}
           </Button>
         </div>

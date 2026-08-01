@@ -146,8 +146,8 @@ const AnnouncementFeedCardBody = ({
         {dropdownItems.length > 0 && (
           <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
             <Button
+              color="tertiary"
               data-testid="announcement-actions"
-              color='tertiary'
               iconLeading={<MoreOutlined />}
             />
           </Dropdown>

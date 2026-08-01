@@ -60,18 +60,18 @@ export const ModalWithFunctionEditor = ({
       data-testid="function-editor-modal"
       footer={[
         <Button
+          color="link-gray"
           data-testid="cancel"
+          isDisabled={isLoading}
           key="cancelButton"
-          onClick={onCancel}
-          color='link-gray'
-          isDisabled={isLoading}>
+          onClick={onCancel}>
           {t('label.cancel')}
         </Button>,
         <Button
+          color="primary"
           data-testid="save"
           key="saveButton"
-          onClick={() => form.submit()}
-          color='primary'>
+          onClick={() => form.submit()}>
           {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
         </Button>,
       ]}

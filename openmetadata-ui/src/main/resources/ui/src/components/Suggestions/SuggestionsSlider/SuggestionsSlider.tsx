@@ -57,10 +57,10 @@ const SuggestionsSlider = () => {
       {suggestionPendingCount > 0 && (
         <Button
           className="suggestion-pending-btn"
+          color="primary"
           data-testid="more-suggestion-button"
-          onClick={() => fetchSuggestions()}
-          color='primary'
-          isLoading={loading}>
+          isLoading={loading}
+          onClick={() => fetchSuggestions()}>
           {t('label.plus-count-more', {
             count: suggestionPendingCount,
           })}
@@ -70,29 +70,29 @@ const SuggestionsSlider = () => {
         <Space className="slider-btn-container m-l-xs">
           <Button
             className="text-xs text-primary font-medium"
+            color="tertiary"
             data-testid="accept-all-suggestions"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}
-            color='tertiary'
+            iconLeading={<CheckOutlined />}
             isDisabled={loadingAccept}
             isLoading={loadingAccept}
-            iconLeading={<CheckOutlined />}>
+            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
             {t('label.accept-all')}
           </Button>
           <Button
             className="text-xs text-primary font-medium"
+            color="tertiary"
             data-testid="reject-all-suggestions"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}
-            color='tertiary'
+            iconLeading={<CloseOutlined />}
             isDisabled={loadingReject}
             isLoading={loadingReject}
-            iconLeading={<CloseOutlined />}>
+            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
             {t('label.reject-all')}
           </Button>
           <Button
             className="text-xs text-primary font-medium close-suggestion-btn flex-center"
+            color="tertiary"
             data-testid="close-suggestion"
-            onClick={() => onUpdateActiveUser()}
-            color='tertiary'>
+            onClick={() => onUpdateActiveUser()}>
             <ExitIcon />
             {t('label.close')}
           </Button>

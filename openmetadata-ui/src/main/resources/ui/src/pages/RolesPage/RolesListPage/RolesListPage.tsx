@@ -206,11 +206,13 @@ const RolesListPage = () => {
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
+                color="tertiary"
                 data-testid={`delete-action-${getEntityName(record)}`}
-                onClick={() => setSelectedRole(record)}
-                color='tertiary'
+                iconLeading={
+                  <IconDelete name={t('label.delete')} width="16px" />
+                }
                 isDisabled={!deleteRolePermission}
-                iconLeading={<IconDelete name={t('label.delete')} width="16px" />}
+                onClick={() => setSelectedRole(record)}
               />
             </Tooltip>
           );
@@ -307,9 +309,9 @@ const RolesListPage = () => {
 
             {addRolePermission && (
               <Button
+                color="primary"
                 data-testid="add-role"
-                onClick={handleAddRole}
-                color='primary'>
+                onClick={handleAddRole}>
                 {t('label.add-entity', { entity: t('label.role').toString() })}
               </Button>
             )}

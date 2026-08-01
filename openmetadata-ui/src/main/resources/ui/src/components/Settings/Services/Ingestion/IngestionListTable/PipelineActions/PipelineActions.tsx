@@ -99,15 +99,15 @@ function PipelineActions({
                   : t('message.pipeline-not-deployed')
               }>
               <Button
+                color="secondary"
                 data-testid="pause-button"
-                onClick={() => onPauseUnpauseClick(pipelineId)}
-                color='secondary'
-                isDisabled={!pipeline.deployed}
                 iconLeading={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
                   <PauseIcon height={12} width={12} />
-                )}>
+                )}
+                isDisabled={!pipeline.deployed}
+                onClick={() => onPauseUnpauseClick(pipelineId)}>
                 {t('label.pause')}
               </Button>
             </Tooltip>
@@ -119,15 +119,15 @@ function PipelineActions({
                   : t('message.pipeline-not-deployed')
               }>
               <Button
+                color="secondary"
                 data-testid="resume-button"
-                onClick={() => onPauseUnpauseClick(pipelineId)}
-                color='secondary'
-                isDisabled={!pipeline.deployed}
                 iconLeading={getLoadingStatus(
                   currPauseId,
                   pipeline.id,
                   <ResumeIcon height={12} width={12} />
-                )}>
+                )}
+                isDisabled={!pipeline.deployed}
+                onClick={() => onPauseUnpauseClick(pipelineId)}>
                 {t('label.resume')}
               </Button>
             </Tooltip>
@@ -152,10 +152,10 @@ function PipelineActions({
         <Row align="middle" gutter={[8, 8]} wrap={false}>
           <Col>
             <Button
+              color="secondary"
               data-testid="logs-button"
-              onClick={handleLogsClick}
-              color='secondary'
-              iconLeading={<LogsIcon height={12} width={12} />}>
+              iconLeading={<LogsIcon height={12} width={12} />}
+              onClick={handleLogsClick}>
               {t('label.log-plural')}
             </Button>
           </Col>

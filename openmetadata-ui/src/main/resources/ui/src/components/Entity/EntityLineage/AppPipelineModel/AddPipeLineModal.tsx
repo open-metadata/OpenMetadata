@@ -127,20 +127,20 @@ const AddPipeLineModal = ({
       data-testid="add-edge-modal"
       footer={[
         <Button
+          color="primary-destructive"
           data-testid="remove-edge-button"
           key="remove-edge-btn"
-          onClick={onRemoveEdgeClick}
-          color='primary-destructive'>
+          onClick={onRemoveEdgeClick}>
           {t('label.remove-entity', {
             entity: t('label.edge-lowercase'),
           })}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-button"
+          isLoading={loading}
           key="save-btn"
-          onClick={() => onSave(edgeSelection)}
-          color='primary'
-          isLoading={loading}>
+          onClick={() => onSave(edgeSelection)}>
           {t('label.save')}
         </Button>,
       ]}

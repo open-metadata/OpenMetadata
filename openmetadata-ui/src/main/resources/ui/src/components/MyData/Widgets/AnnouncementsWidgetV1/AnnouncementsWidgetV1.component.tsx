@@ -92,11 +92,11 @@ const AnnouncementsWidgetV1 = ({
           </div>
           <Button
             className="close-button"
+            color="tertiary"
             data-testid="announcements-widget-v1-close"
-            onClick={handleClose}
-            color='tertiary'
-            isDisabled={disabled}
             iconLeading={<CloseOutlined />}
+            isDisabled={disabled}
+            onClick={handleClose}
           />
         </div>
 

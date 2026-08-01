@@ -661,11 +661,11 @@ const TeamDetailsV1 = ({
         </Typography>
         <Tooltip placement="top" title={addTeamButtonTitle}>
           <Button
+            color="tertiary"
             data-testid="add-placeholder-button"
-            onClick={handleAddTeamButtonClick}
-            color='tertiary'
+            iconLeading={<PlusOutlined />}
             isDisabled={!entityPermissions.Create || isTeamDeleted}
-            iconLeading={<PlusOutlined />}>
+            onClick={handleAddTeamButtonClick}>
             {t('label.add')}
           </Button>
         </Tooltip>
@@ -778,16 +778,16 @@ const TeamDetailsV1 = ({
                 className={classNames({
                   'p-x-lg': entityPermissions.EditAll && !isTeamDeleted,
                 })}
+                color="tertiary"
                 data-testid="add-placeholder-button"
+                iconLeading={<PlusOutlined />}
+                isDisabled={isTeamDeleted}
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }
-                color='tertiary'
-                isDisabled={isTeamDeleted}
-                iconLeading={<PlusOutlined />}>
+                }>
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -798,14 +798,14 @@ const TeamDetailsV1 = ({
           {entityPermissions.EditAll && !isTeamDeleted && (
             <Col className="d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-role"
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
-                }
-                color='primary'>
+                }>
                 {addRole}
               </Button>
             </Col>
@@ -849,16 +849,16 @@ const TeamDetailsV1 = ({
                 className={classNames({
                   'p-x-lg': entityPermissions.EditAll && !isTeamDeleted,
                 })}
+                color="tertiary"
                 data-testid="add-placeholder-button"
+                iconLeading={<PlusOutlined />}
+                isDisabled={isTeamDeleted}
                 onClick={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }
-                color='tertiary'
-                isDisabled={isTeamDeleted}
-                iconLeading={<PlusOutlined />}>
+                }>
                 {t('label.add')}
               </Button>
             </Tooltip>
@@ -869,6 +869,7 @@ const TeamDetailsV1 = ({
           {entityPermissions.EditAll && !isTeamDeleted && (
             <Col className="d-flex justify-end" span={24}>
               <Button
+                color="primary"
                 data-testid="add-policy"
                 title={
                   entityPermissions.EditAll
@@ -880,8 +881,7 @@ const TeamDetailsV1 = ({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
-                }
-                color='primary'>
+                }>
                 {addPolicy}
               </Button>
             </Col>
@@ -909,18 +909,18 @@ const TeamDetailsV1 = ({
       isGroupType &&
       (isAlreadyJoinedTeam ? (
         <Button
+          color="tertiary"
           data-testid="leave-team-button"
           onClick={(e) => {
             // Used to stop click propagation event to the header collapsible panel
             e.stopPropagation();
             deleteUserHandler(currentUser.id, true);
-          }}
-          color='tertiary'>
+          }}>
           {t('label.leave-team')}
         </Button>
       ) : (
         (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-          <Button data-testid="join-teams" onClick={joinTeam} color='primary'>
+          <Button color="primary" data-testid="join-teams" onClick={joinTeam}>
             {t('label.join-team')}
           </Button>
         )

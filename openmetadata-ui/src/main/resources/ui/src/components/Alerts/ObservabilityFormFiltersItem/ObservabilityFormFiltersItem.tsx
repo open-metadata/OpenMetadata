@@ -119,10 +119,11 @@ function ObservabilityFormFiltersItem({
 
                       {!isViewMode && (
                         <Button
+                          color="secondary"
                           data-testid={`remove-filter-${name}`}
+                          iconLeading={<CloseOutlined />}
                           onClick={() => remove(name)}
-                          color='secondary'
-                          iconLeading={<CloseOutlined />} />
+                        />
                       )}
                     </div>
                     <Form.Item
@@ -142,15 +143,15 @@ function ObservabilityFormFiltersItem({
               {showAddFilterButton ? (
                 <Col span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-filters"
+                    isDisabled={
+                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
+                    }
                     onClick={() =>
                       add({
                         effect: Effect.Include,
                       })
-                    }
-                    color='primary'
-                    isDisabled={
-                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
                     }>
                     {t('label.add-entity', {
                       entity: t('label.filter'),

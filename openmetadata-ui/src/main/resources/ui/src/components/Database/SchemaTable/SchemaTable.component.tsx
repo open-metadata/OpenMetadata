@@ -724,6 +724,7 @@ const SchemaTable = () => {
                 <Tooltip placement="top" title={t('label.edit')}>
                   <Button
                     className="cursor-pointer hover-cell-icon flex-center"
+                    color="secondary"
                     data-testid="edit-displayName-button"
                     style={{
                       color: DE_ACTIVE_COLOR,
@@ -733,8 +734,7 @@ const SchemaTable = () => {
                       width: '24px',
                       height: '24px',
                     }}
-                    onClick={() => handleEditDisplayNameClick(record)}
-                    color='secondary'>
+                    onClick={() => handleEditDisplayNameClick(record)}>
                     <IconEdit
                       style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                     />
@@ -787,9 +787,9 @@ const SchemaTable = () => {
         title: (
           <Button
             className="d-flex items-center cursor-pointer bg-transparent border-none p-0 h-auto hover:bg-transparent"
+            color="tertiary"
             data-testid="name-column-header"
-            onClick={handleColumnHeaderSortToggle}
-            color='tertiary'>
+            onClick={handleColumnHeaderSortToggle}>
             <span
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
@@ -1014,10 +1014,10 @@ const SchemaTable = () => {
                 trigger={['click']}>
                 <Button
                   className="flex-center gap-2"
+                  color="tertiary"
                   data-testid="sort-dropdown"
-                  color='tertiary'
-                  size='xs'
-                  iconLeading={<IconSort height={14} width={14} />}>
+                  iconLeading={<IconSort height={14} width={14} />}
+                  size="xs">
                   {t('label.sort')}
                 </Button>
               </Dropdown>

@@ -211,19 +211,19 @@ const FeedCardBodyNew = ({
             <div className="d-flex justify-end gap-2 m-r-xss">
               <Button
                 className="border border-primary text-primary rounded-4"
+                color="secondary"
                 data-testid="cancel-button"
-                onClick={onEditCancel}
-                color='secondary'
-                size='xs'>
+                size="xs"
+                onClick={onEditCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
                 className="rounded-4"
+                color="primary"
                 data-testid="save-button"
-                onClick={handleSave}
-                color='primary'
-                size='xs'
-                isDisabled={!message.length}>
+                isDisabled={!message.length}
+                size="xs"
+                onClick={handleSave}>
                 {t('label.save')}
               </Button>
             </div>

@@ -176,18 +176,18 @@ const EditLoginConfiguration = () => {
         <Row justify="end">
           <Col>
             <Button
+              color="link-gray"
               data-testid="cancel-button"
-              onClick={handleGoBack}
-              color='link-gray'>
+              onClick={handleGoBack}>
               {t('label.cancel')}
             </Button>
           </Col>
           <Col>
             <Button
+              color="primary"
               data-testid="save-button"
-              color='primary'
               isLoading={updating}
-              type='submit'>
+              type="submit">
               {t('label.save')}
             </Button>
           </Col>

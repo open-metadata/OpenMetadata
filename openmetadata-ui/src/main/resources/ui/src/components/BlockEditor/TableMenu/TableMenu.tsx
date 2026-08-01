@@ -162,48 +162,48 @@ const TableMenu = (props: TableMenuProps) => {
       <Space size="middle">
         <Tooltip showArrow={false} title="Add row after current row">
           <Button
+            color="tertiary"
             data-testid="Add row after current row"
-            onClick={() => editor.chain().focus().addRowAfter().run()}
-            color='tertiary'>
+            onClick={() => editor.chain().focus().addRowAfter().run()}>
             <IconAddRowAfter style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
 
         <Tooltip showArrow={false} title="Add column after current column">
           <Button
+            color="tertiary"
             data-testid="Add column after current column"
-            onClick={() => editor.chain().focus().addColumnAfter().run()}
-            color='tertiary'>
+            onClick={() => editor.chain().focus().addColumnAfter().run()}>
             <IconAddColumnAfter style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
 
         <Tooltip showArrow={false} title="Delete current row">
           <Button
+            color="tertiary"
             data-testid="Delete current row"
-            onClick={() => editor.chain().focus().deleteRow().run()}
-            color='tertiary'>
+            onClick={() => editor.chain().focus().deleteRow().run()}>
             <IconDeleteRow style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
 
         <Tooltip showArrow={false} title="Delete current column">
           <Button
+            color="tertiary"
             data-testid="Delete current col"
-            onClick={() => editor.chain().focus().deleteColumn().run()}
-            color='tertiary'>
+            onClick={() => editor.chain().focus().deleteColumn().run()}>
             <IconDeleteColumn style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
 
         <Tooltip showArrow={false} title="Delete table">
           <Button
+            color="tertiary"
             data-testid="Delete table"
             onClick={() => {
               editor.chain().focus().deleteTable().run();
               tableMenuPopup.current?.hide();
-            }}
-            color='tertiary'>
+            }}>
             <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
           </Button>
         </Tooltip>

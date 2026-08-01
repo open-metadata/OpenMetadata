@@ -101,13 +101,13 @@ const RelatedMetrics: FC = () => {
                 )}>
                 <Button
                   className="metric-entity-button flex-center p-0 m--ml-1"
-                  title={getEntityName(item)}
-                  color='tertiary'
+                  color="tertiary"
                   iconLeading={
                     <div className="entity-button-icon m-r-xs">
                       {getEntityIcon(item.type)}
                     </div>
-                  }>
+                  }
+                  title={getEntityName(item)}>
                   <Typography
                     className="w-72 text-left text-xs"
                     ellipsis={{ tooltip: true }}>

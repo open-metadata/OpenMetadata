@@ -29,10 +29,10 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
       data-testid="modal-container"
       footer={
         <Button
+          color="primary"
           data-testid="saveButton"
-          onClick={onSave}
-          color='primary'
-          size='md'>
+          size="md"
+          onClick={onSave}>
           {t('label.explore-now')}
         </Button>
       }

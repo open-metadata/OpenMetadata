@@ -48,9 +48,9 @@ function ObservabilityAlertsHeader({
           {canCreate && (
             <LimitWrapper resource="eventsubscription">
               <Button
+                color="primary"
                 data-testid="create-observability"
-                onClick={onAddAlert}
-                color='primary'>
+                onClick={onAddAlert}>
                 {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
             </LimitWrapper>

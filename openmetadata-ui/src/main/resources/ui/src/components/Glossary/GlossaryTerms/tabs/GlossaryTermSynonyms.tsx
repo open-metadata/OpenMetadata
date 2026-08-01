@@ -209,19 +209,20 @@ const GlossaryTermSynonyms = () => {
           <Space className="justify-end w-full m-b-xs" size={8}>
             <Button
               className="w-6 p-x-05"
+              color="secondary"
               data-testid="cancel-synonym-btn"
+              iconLeading={<CloseOutlined size={12} />}
+              size="xs"
               onClick={handleCancel}
-              color='secondary'
-              size='xs'
-              iconLeading={<CloseOutlined size={12} />} />
+            />
             <Button
               className="w-6 p-x-05"
+              color="primary"
               data-testid="save-synonym-btn"
-              onClick={handleSynonymsSave}
-              color='primary'
-              size='xs'
-              isLoading={saving}
               iconLeading={<CheckOutlined size={12} />}
+              isLoading={saving}
+              size="xs"
+              onClick={handleSynonymsSave}
             />
           </Space>
 

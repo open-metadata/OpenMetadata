@@ -31,10 +31,10 @@ export const SendButton: FC<SendButtonProp> = ({
 }) => (
   <Button
     className={classNames('send-button', className)}
+    color="tertiary"
     data-testid="send-button"
-    onClick={onSaveHandler}
-    color='tertiary'
-    isDisabled={editorValue.length === 0}
     iconLeading={<Icon component={IconPaperPlanePrimary} />}
+    isDisabled={editorValue.length === 0}
+    onClick={onSaveHandler}
   />
 );

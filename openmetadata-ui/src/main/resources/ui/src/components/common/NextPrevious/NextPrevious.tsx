@@ -99,16 +99,16 @@ const NextPrevious: FC<NextPreviousProps> = ({
       data-testid="pagination">
       <Button
         className="pagination-button hover-button"
+        color="tertiary"
         data-testid="previous"
-        onClick={onPreviousHandler}
-        color='tertiary'
-        isDisabled={computePrevDisableState() || isLoading}
         iconLeading={
           <Icon
             className="pagination-prev-icon"
             component={ArrowRightOutlined}
           />
-        }>
+        }
+        isDisabled={computePrevDisableState() || isLoading}
+        onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
       </Button>
       <span className="pagination-indicator" data-testid="page-indicator">{`${t(
@@ -116,10 +116,10 @@ const NextPrevious: FC<NextPreviousProps> = ({
       )} ${currentPage} ${t('label.of')} ${displayTotalPages} `}</span>
       <Button
         className="pagination-button hover-button"
+        color="tertiary"
         data-testid="next"
-        onClick={onNextHandler}
-        color='tertiary'
-        isDisabled={computeNextDisableState() || isLoading}>
+        isDisabled={computeNextDisableState() || isLoading}
+        onClick={onNextHandler}>
         <span> {t('label.next')}</span>
         <Icon className="pagination-next-icon" component={ArrowRightOutlined} />
       </Button>
@@ -136,9 +136,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
           }}>
           <Button
             className="pagination-button"
+            color="tertiary"
             data-testid="page-size-selection-dropdown"
-            onClick={(e) => e.preventDefault()}
-            color='tertiary'>
+            onClick={(e) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
             <Icon component={DownOutlined} style={ICON_DIMENSION} />
           </Button>

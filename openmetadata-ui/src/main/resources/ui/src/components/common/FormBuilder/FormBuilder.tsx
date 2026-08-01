@@ -117,18 +117,18 @@ const FormBuilder = forwardRef<Form, Props>(
       if (status === 'waiting') {
         return (
           <Button
+            isDisabled
             className="p-x-md p-y-xxs h-auto rounded-6"
-            color='primary'
-            isDisabled>
+            color="primary">
             <Loader size="small" type="white" />
           </Button>
         );
       } else if (status === 'success') {
         return (
           <Button
+            isDisabled
             className="p-x-md p-y-xxs h-auto rounded-6"
-            color='primary'
-            isDisabled>
+            color="primary">
             <CheckOutlined />
           </Button>
         );
@@ -136,11 +136,11 @@ const FormBuilder = forwardRef<Form, Props>(
         return (
           <Button
             className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+            color="primary"
             data-testid="submit-btn"
-            color='primary'
             isDisabled={isSubmitDisabled}
             isLoading={isLoading}
-            type='submit'>
+            type="submit">
             {okText}
           </Button>
         );
@@ -180,7 +180,7 @@ const FormBuilder = forwardRef<Form, Props>(
           className="m-t-lg d-flex justify-end text-right"
           data-testid="buttons">
           {!hideCancelButton && (
-            <Button onClick={handleCancel} color='link-gray'>
+            <Button color="link-gray" onClick={handleCancel}>
               {cancelText}
             </Button>
           )}

@@ -177,10 +177,10 @@ const DomainsWidget = ({
                 'domain-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              color="secondary"
               data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
-              onClick={() => handleDomainClick(domain)}
-              color='secondary'>
+              onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (
                 <div className="d-flex gap-2">
                   <div

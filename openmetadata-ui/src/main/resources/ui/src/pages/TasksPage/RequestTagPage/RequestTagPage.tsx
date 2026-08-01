@@ -274,14 +274,17 @@ const RequestTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button data-testid="cancel-btn" onClick={back} color='link-gray'>
+                    <Button
+                      color="link-gray"
+                      data-testid="cancel-btn"
+                      onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
+                      color="primary"
                       data-testid="submit-tag-request"
-                      color='primary'
                       isLoading={isLoading}
-                      type='submit'>
+                      type="submit">
                       {(payload.tagsToAdd as TagLabel[] | undefined)?.length
                         ? t('label.suggest')
                         : t('label.save')}

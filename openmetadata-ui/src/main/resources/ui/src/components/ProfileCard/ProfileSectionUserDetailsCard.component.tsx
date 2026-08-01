@@ -147,12 +147,12 @@ const ProfileSectionUserDetailsCard = ({
       {isLoggedInUser && (
         <Button
           className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+          color="secondary"
           data-testid="edit-displayname"
           onClick={() => {
             setEditProfile(!editProfile);
             setisPopoverVisible(false);
-          }}
-          color='secondary'>
+          }}>
           <EditProfileIcon
             className="m-r-xss"
             style={{ marginRight: '10px' }}
@@ -168,12 +168,12 @@ const ProfileSectionUserDetailsCard = ({
       {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
         <Button
           className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+          color="secondary"
           data-testid="change-password-button"
           onClick={() => {
             setIsChangePassword(true);
             setisPopoverVisible(false);
-          }}
-          color='secondary'>
+          }}>
           <ChangePassword
             className="m-r-xss"
             style={{ marginRight: '10px' }}
@@ -189,11 +189,11 @@ const ProfileSectionUserDetailsCard = ({
       {userData?.deleted ? (
         <Button
           className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+          color="secondary"
           onClick={() => {
             setShowRestoreModal(true);
             setisPopoverVisible(false);
-          }}
-          color='secondary'>
+          }}>
           <DeleteIcon
             className="m-r-xss"
             style={{ marginRight: '10px' }}
@@ -207,11 +207,11 @@ const ProfileSectionUserDetailsCard = ({
         isAdminUser && (
           <Button
             className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+            color="secondary"
             onClick={() => {
               setIsDelete(true);
               setisPopoverVisible(false);
-            }}
-            color='secondary'>
+            }}>
             <DeleteIcon
               className="m-r-xss"
               style={{ marginRight: '10px' }}
@@ -317,8 +317,8 @@ const ProfileSectionUserDetailsCard = ({
       {showRestoreModal && (
         <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}
-          color='secondary'>
+          color="secondary"
+          onClick={(e) => e.stopPropagation()}>
           <Modal
             centered
             cancelButtonProps={{

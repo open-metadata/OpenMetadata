@@ -107,20 +107,20 @@ const WhatsNewAlert = () => {
                 <div className="whats-new-alert-links">
                   <Button
                     className="p-0"
+                    color="link-gray"
                     href={releaseLink}
                     rel="noopener noreferrer"
-                    target="_blank"
-                    color='link-gray'>
+                    target="_blank">
                     {t('label.release-notes')}
                   </Button>
                   {/* Only show the blog link for major releases */}
                   {isMajorRelease && (
                     <Button
                       className="p-0"
+                      color="link-gray"
                       href={blogLink}
                       rel="noopener noreferrer"
-                      target="_blank"
-                      color='link-gray'>
+                      target="_blank">
                       {t('label.blog')}
                     </Button>
                   )}

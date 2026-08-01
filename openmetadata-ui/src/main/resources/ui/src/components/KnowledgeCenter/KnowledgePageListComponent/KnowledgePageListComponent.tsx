@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { EmptyPlaceholder, Typography, Button } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Typography,
+  Button,
+} from '@openmetadata/ui-core-components';
 import { Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -556,7 +560,10 @@ const KnowledgePageListComponent = forwardRef<
                 {permissions.Create && !hideAddButton && (
                   <LimitWrapper resource="knowledgeCenter">
                     <Dropdown menu={{ items }} trigger={['click']}>
-                      <Button className="p-x-lg" data-testid="add-knowledge-page-btn" color='tertiary'>
+                      <Button
+                        className="p-x-lg"
+                        color="tertiary"
+                        data-testid="add-knowledge-page-btn">
                         <PlusOutlined />
                         {t('label.add')}
                       </Button>

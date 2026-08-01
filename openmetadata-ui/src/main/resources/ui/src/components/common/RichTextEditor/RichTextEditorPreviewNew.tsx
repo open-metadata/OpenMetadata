@@ -126,9 +126,9 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       {isContentLoaded && isOverflowing && enableSeeMoreVariant && (
         <Button
           className="text-right view-more-less-button"
+          color="link-gray"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-          onClick={handleReadMoreToggle}
-          color='link-gray'>
+          onClick={handleReadMoreToggle}>
           {readMore ? t('label.view-less') : t('label.view-more')}
         </Button>
       )}

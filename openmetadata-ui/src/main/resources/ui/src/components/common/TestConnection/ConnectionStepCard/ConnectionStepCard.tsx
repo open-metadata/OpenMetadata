@@ -159,10 +159,11 @@ const ConnectionStepCard = ({
                     <Tooltip title={t('message.copy-to-clipboard')}>
                       <Button
                         className="flex-center bg-white"
+                        color="secondary"
                         data-testid="query-entity-copy-button"
+                        iconLeading={<CopyIcon height={16} width={16} />}
                         onClick={handleCopyToClipBoard}
-                        color='secondary'
-                        iconLeading={<CopyIcon height={16} width={16} />} />
+                      />
                     </Tooltip>
                   }
                   header={t('label.show-log-plural')}

@@ -127,9 +127,9 @@ export const ContractDetailFormTab: React.FC<{
         <div className="d-flex justify-end m-t-md">
           <Button
             className="contract-next-button"
-            onClick={onNext}
-            color='primary'
-            type='submit'>
+            color="primary"
+            type="submit"
+            onClick={onNext}>
             {nextLabel ?? t('label.next')}
             <Icon component={RightIcon} />
           </Button>

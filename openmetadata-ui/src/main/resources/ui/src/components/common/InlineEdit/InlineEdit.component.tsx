@@ -49,18 +49,20 @@ const InlineEdit = ({
           data-testid="inline-cancel-btn"
           onClick={onCancel}
           {...cancelButtonProps}
-          color='primary'
-          size='xs'
+          color="primary"
+          iconLeading={<CloseOutlined />}
           isDisabled={isLoading}
-          iconLeading={<CloseOutlined />} />
+          size="xs"
+        />
         <Button
           data-testid="inline-save-btn"
           onClick={onSave}
           {...saveButtonProps}
-          color='primary'
-          size='xs'
+          color="primary"
+          iconLeading={<CheckOutlined />}
           isLoading={isLoading}
-          iconLeading={<CheckOutlined />} />
+          size="xs"
+        />
       </Space>
     </Space>
   );

@@ -417,16 +417,16 @@ const Suggestions = ({
         </Typography>
         {aiQueries.map((query) => (
           <Button
+            className="m-b-md w-100 text-left d-flex items-center p-0 tw:w-full"
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            key={query}
-            onClick={() => onSearchTextUpdate?.(query)}
-            color='tertiary'
             iconLeading={
               <div className="nlp-button w-6 h-6 flex-center m-r-md">
                 <IconSuggestionsBlue />
               </div>
             }
-            className='m-b-md w-100 text-left d-flex items-center p-0 tw:w-full'>
+            key={query}
+            onClick={() => onSearchTextUpdate?.(query)}>
             {query}
           </Button>
         ))}

@@ -45,17 +45,20 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
         <Space className="justify-between w-full">
           <Button
             className="float-right"
+            color="secondary"
             data-testid="reset-btn"
-            onClick={onReset}
-            color='secondary'
-            size='xs'>
+            size="xs"
+            onClick={onReset}>
             {t('label.reset')}
           </Button>
           <div>
-            <Button data-testid="cancel-btn" onClick={onCancel} color='secondary'>
+            <Button
+              color="secondary"
+              data-testid="cancel-btn"
+              onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            <Button data-testid="apply-btn" onClick={onSubmit} color='primary'>
+            <Button color="primary" data-testid="apply-btn" onClick={onSubmit}>
               {t('label.apply')}
             </Button>
           </div>

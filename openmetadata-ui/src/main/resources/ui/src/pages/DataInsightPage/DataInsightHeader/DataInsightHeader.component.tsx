@@ -88,9 +88,9 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
           <div className="d-flex gap-2">
             {createKPIPermission && (
               <Button
+                color="primary"
                 data-testid="add-kpi-btn"
-                onClick={handleAddKPI}
-                color='primary'>
+                onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
                 })}

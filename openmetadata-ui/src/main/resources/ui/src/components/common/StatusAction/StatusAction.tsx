@@ -36,22 +36,22 @@ const StatusAction = ({
     <div className="flex items-center gap-2">
       <Button
         className={`approve-btn ${isRejectHovered ? 'icon-only' : ''}`}
+        color="secondary"
         data-testid={dataTestId + '-approve-btn'}
-        onClick={onApprove}
-        color='secondary'
-        iconLeading={<Icon component={TickCircleIcon} />}>
+        iconLeading={<Icon component={TickCircleIcon} />}
+        onClick={onApprove}>
         {!isRejectHovered && (
           <span className="btn-text">{t('label.approve')}</span>
         )}
       </Button>
       <Button
         className={`reject-btn ${isRejectHovered ? 'show-text' : ''}`}
+        color="secondary"
         data-testid={dataTestId + '-reject-btn'}
+        iconLeading={<Icon component={CloseCircleIcon} />}
         onClick={onReject}
         onMouseEnter={() => setIsRejectHovered(true)}
-        onMouseLeave={() => setIsRejectHovered(false)}
-        color='secondary'
-        iconLeading={<Icon component={CloseCircleIcon} />}>
+        onMouseLeave={() => setIsRejectHovered(false)}>
         {isRejectHovered && (
           <span className="btn-text">{t('label.reject')}</span>
         )}

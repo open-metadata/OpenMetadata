@@ -34,12 +34,10 @@ const PageNotFound = () => {
         </Typography>
         <Space data-testid="route-links" size="middle">
           <Link to={ROUTES.HOME}>
-            <Button color='primary'>{t('label.go-to-home-page')}</Button>
+            <Button color="primary">{t('label.go-to-home-page')}</Button>
           </Link>
           <Link to={ROUTES.EXPLORE}>
-            <Button color='tertiary'>
-              {t('label.explore')}
-            </Button>
+            <Button color="tertiary">{t('label.explore')}</Button>
           </Link>
         </Space>
       </Col>

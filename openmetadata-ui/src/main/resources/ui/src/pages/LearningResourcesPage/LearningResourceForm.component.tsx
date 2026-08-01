@@ -155,14 +155,14 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
   const drawerFooter = (
     <div className="drawer-footer">
-      <Button data-testid="cancel-resource" onClick={onClose} color='secondary'>
+      <Button color="secondary" data-testid="cancel-resource" onClick={onClose}>
         {t('label.cancel')}
       </Button>
       <Button
+        color="primary"
         data-testid="save-resource"
-        onClick={handleSubmit}
-        color='primary'
-        isLoading={isSubmitting}>
+        isLoading={isSubmitting}
+        onClick={handleSubmit}>
         {t('label.save')}
       </Button>
     </div>

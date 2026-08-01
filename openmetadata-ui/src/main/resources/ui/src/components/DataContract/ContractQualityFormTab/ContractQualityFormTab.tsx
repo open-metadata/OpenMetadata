@@ -234,10 +234,10 @@ export const ContractQualityFormTab: React.FC<{
 
         <Button
           className="contract-export-button"
+          color="secondary"
           data-testid="add-test-button"
-          onClick={handleOpenTestCaseDrawer}
-          color='secondary'
-          iconLeading={<Icon className="anticon" component={PlusIcon} />}>
+          iconLeading={<Icon className="anticon" component={PlusIcon} />}
+          onClick={handleOpenTestCaseDrawer}>
           {t('label.add-entity', {
             entity: t('label.test'),
           })}
@@ -250,7 +250,7 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown menu={filterMenu}>
-              <Button color='secondary' iconLeading={<DownOutlined />}>
+              <Button color="secondary" iconLeading={<DownOutlined />}>
                 {t('label.filter-plural')}
               </Button>
             </Dropdown>
@@ -282,15 +282,15 @@ export const ContractQualityFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          onClick={onPrev}
-          color='secondary'
-          iconLeading={<LeftOutlined height={22} width={20} />}>
+          color="secondary"
+          iconLeading={<LeftOutlined height={22} width={20} />}
+          onClick={onPrev}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
-          onClick={onNext}
-          color='primary'>
+          color="primary"
+          onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>

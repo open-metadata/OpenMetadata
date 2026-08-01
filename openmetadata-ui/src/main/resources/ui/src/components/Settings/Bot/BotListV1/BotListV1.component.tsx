@@ -323,10 +323,8 @@ const BotListV1 = ({
           return (
             <Tooltip placement="topRight" title={title}>
               <Button
+                color="tertiary"
                 data-testid={`bot-delete-${record.name}`}
-                onClick={() => setSelectedUser(record)}
-                color='tertiary'
-                isDisabled={isDisabled}
                 iconLeading={
                   <Icon
                     className="align-middle"
@@ -334,6 +332,8 @@ const BotListV1 = ({
                     style={{ fontSize: '16px' }}
                   />
                 }
+                isDisabled={isDisabled}
+                onClick={() => setSelectedUser(record)}
               />
             </Tooltip>
           );
@@ -491,10 +491,10 @@ const BotListV1 = ({
             title={!isAdminUser && t('message.admin-only-action')}>
             <LimitWrapper resource="bot">
               <Button
+                color="primary"
                 data-testid="add-bot"
-                onClick={handleAddBotClick}
-                color='primary'
-                isDisabled={!isAdminUser}>
+                isDisabled={!isAdminUser}
+                onClick={handleAddBotClick}>
                 {addBotLabel}
               </Button>
             </LimitWrapper>

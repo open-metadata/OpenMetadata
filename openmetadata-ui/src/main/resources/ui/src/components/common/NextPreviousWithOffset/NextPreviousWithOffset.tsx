@@ -72,11 +72,11 @@ const NextPreviousWithOffset = ({
     <div className="flex-center gap-3" data-testid="pagination">
       <Button
         className="hover-button text-sm flex-center"
+        color="tertiary"
         data-testid="previous"
-        onClick={onPreviousHandler}
-        color='tertiary'
+        iconLeading={<ArrowLeftOutlined />}
         isDisabled={currentPage === 1 || isLoading}
-        iconLeading={<ArrowLeftOutlined />}>
+        onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
       </Button>
       <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
@@ -84,10 +84,10 @@ const NextPreviousWithOffset = ({
       )}`}</span>
       <Button
         className="hover-button text-sm flex-center"
+        color="tertiary"
         data-testid="next"
-        onClick={onNextHandler}
-        color='tertiary'
-        isDisabled={nextButtonDisabled || isLoading}>
+        isDisabled={nextButtonDisabled || isLoading}
+        onClick={onNextHandler}>
         <span> {t('label.next')}</span>
         <ArrowRightOutlined />
       </Button>
@@ -103,9 +103,9 @@ const NextPreviousWithOffset = ({
             })),
           }}>
           <Button
+            color="secondary"
             data-testid="page-size-change-button"
-            onClick={(e) => e.preventDefault()}
-            color='secondary'>
+            onClick={(e) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>

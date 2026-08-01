@@ -273,8 +273,9 @@ function PipelineActionsDropdown({
           data-testid="more-actions"
           onClick={() => setIsOpen((value) => !value)}
           {...moreActionButtonProps}
-          color='link-gray'
-          iconLeading={<MoreIcon />} />
+          color="link-gray"
+          iconLeading={<MoreIcon />}
+        />
       </Dropdown>
       {isKillModalOpen && selectedPipeline && id === selectedPipeline?.id && (
         <KillIngestionModal

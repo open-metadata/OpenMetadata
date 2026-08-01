@@ -212,11 +212,11 @@ export const UserSelectableList = ({
           title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
           <Button
             className="p-0 flex-center"
+            color="tertiary"
             data-testid="add-user"
-            color='tertiary'
-            size='xs'
-            isDisabled={!hasPermission}
             iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            isDisabled={!hasPermission}
+            size="xs"
           />
         </Tooltip>
       )}

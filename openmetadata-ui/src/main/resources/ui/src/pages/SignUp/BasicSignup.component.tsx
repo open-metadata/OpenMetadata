@@ -174,7 +174,11 @@ const BasicSignUp = () => {
                   />
                 </Form.Item>
 
-                <Button color='primary' size='md' type='submit' className='login-btn tw:w-full'>
+                <Button
+                  className="login-btn tw:w-full"
+                  color="primary"
+                  size="md"
+                  type="submit">
                   {t('label.create-entity', {
                     entity: t('label.account'),
                   })}
@@ -184,9 +188,9 @@ const BasicSignUp = () => {
                   <Typography>{t('message.already-a-user')}</Typography>
                   <Button
                     className="link-btn"
+                    color="tertiary"
                     data-testid="login"
-                    onClick={handleLogin}
-                    color='tertiary'>
+                    onClick={handleLogin}>
                     {t('label.login')}
                   </Button>
                 </div>

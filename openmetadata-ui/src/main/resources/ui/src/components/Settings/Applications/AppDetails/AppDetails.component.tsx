@@ -529,10 +529,10 @@ const AppDetails = () => {
         <Col className="d-flex" flex="auto">
           <Button
             className="p-0"
-            onClick={onBrowseAppsClick}
-            color='tertiary'
-            size='xs'
-            iconLeading={<LeftOutlined />}>
+            color="tertiary"
+            iconLeading={<LeftOutlined />}
+            size="xs"
+            onClick={onBrowseAppsClick}>
             <Typography className="font-medium">
               {t('label.browse-app-plural')}
             </Typography>
@@ -559,12 +559,13 @@ const AppDetails = () => {
                 })}>
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
+                  color="secondary"
                   data-testid="manage-button"
-                  onClick={() => setShowActions(true)}
-                  color='secondary'
                   iconLeading={
                     <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                  } />
+                  }
+                  onClick={() => setShowActions(true)}
+                />
               </Tooltip>
             </Dropdown>
           </div>
@@ -628,15 +629,15 @@ const AppDetails = () => {
         <Col className="app-details-page-tabs" span={24}>
           {pluginAppDetailsComponent ? (
             // Render plugin's custom app details component
-            (React.createElement(pluginAppDetailsComponent))
+            React.createElement(pluginAppDetailsComponent)
           ) : (
             // Render default tabs interface
-            (<Tabs
+            <Tabs
               destroyInactiveTabPane
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
-            />)
+            />
           )}
         </Col>
       </Row>

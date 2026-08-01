@@ -37,10 +37,10 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       isFooterVisible ? (
         <Button
           className="d-flex  p-0 items-center"
+          color="link-gray"
           data-testid="reply-count"
-          onClick={() => onThreadSelect?.(threadId as string)}
-          color='link-gray'
-          size='xs'>
+          size="xs"
+          onClick={() => onThreadSelect?.(threadId as string)}>
           {repliedUsers?.map((u, i) => (
             <ProfilePicture
               avatarType="outlined"

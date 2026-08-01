@@ -65,10 +65,10 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
           </Typography>
           {onCancel && (
             <Button
+              color="tertiary"
               data-testid="close-drawer-button"
-              onClick={onCancel}
-              color='tertiary'
               iconLeading={<CloseOutlined />}
+              onClick={onCancel}
             />
           )}
         </Space>

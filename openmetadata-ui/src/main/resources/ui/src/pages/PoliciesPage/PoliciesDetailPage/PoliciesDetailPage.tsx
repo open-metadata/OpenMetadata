@@ -335,13 +335,15 @@ const PoliciesDetailPage = () => {
               entity: t('label.rule'),
             })}>
             <Button
+              color="tertiary"
               data-testid={`manage-button-${rule.name}`}
+              iconLeading={
+                <EllipsisOutlined className="text-grey-body" rotate={90} />
+              }
+              size="xs"
               onClick={(e) => {
                 e.stopPropagation();
               }}
-              color='tertiary'
-              size='xs'
-              iconLeading={<EllipsisOutlined className="text-grey-body" rotate={90} />}
             />
           </Tooltip>
         </Dropdown>
@@ -369,9 +371,9 @@ const PoliciesDetailPage = () => {
           <>
             <div className="flex justify-end m-b-md">
               <Button
+                color="primary"
                 data-testid="add-rule"
-                onClick={() => navigate(getAddPolicyRulePath(fqn))}
-                color='primary'>
+                onClick={() => navigate(getAddPolicyRulePath(fqn))}>
                 {t('label.add-entity', {
                   entity: t('label.rule'),
                 })}
@@ -531,9 +533,9 @@ const PoliciesDetailPage = () => {
                   })}
                 </p>
                 <Button
-                  onClick={() => navigate(policiesPath)}
-                  color='primary'
-                  size='xs'>
+                  color="primary"
+                  size="xs"
+                  onClick={() => navigate(policiesPath)}>
                   {t('label.go-back')}
                 </Button>
               </div>

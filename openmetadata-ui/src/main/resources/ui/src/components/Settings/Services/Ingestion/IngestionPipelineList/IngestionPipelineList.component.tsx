@@ -250,11 +250,11 @@ export const IngestionPipelineList = ({
     <Row className={className} gutter={[16, 16]}>
       <Col className="text-right" span={24}>
         <Button
+          color="primary"
           data-testid="bulk-re-deploy-button"
-          onClick={handleBulkRedeploy}
-          color='primary'
           isDisabled={selectedPipelines?.length === 0}
-          isLoading={deploying}>
+          isLoading={deploying}
+          onClick={handleBulkRedeploy}>
           {t('label.re-deploy')}
         </Button>
       </Col>

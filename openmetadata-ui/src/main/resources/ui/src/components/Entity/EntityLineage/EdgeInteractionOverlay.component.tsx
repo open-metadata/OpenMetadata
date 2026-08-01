@@ -70,9 +70,8 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
       <div key={`edit-${edge.id}`} style={buttonPosition}>
         <Button
           className="cursor-pointer d-flex"
+          color="link-gray"
           data-testid="add-pipeline"
-          onClick={() => onPipelineClick?.()}
-          color='link-gray'
           iconLeading={
             <Icon
               alt="edit-circle"
@@ -81,6 +80,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
               style={{ fontSize: '16px' }}
             />
           }
+          onClick={() => onPipelineClick?.()}
         />
       </div>
     );
@@ -97,9 +97,8 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
       <div key={`delete-${edge.id}`} style={buttonPosition}>
         <Button
           className="cursor-pointer d-flex"
+          color="link-gray"
           data-testid="delete-button"
-          onClick={() => onEdgeRemove?.()}
-          color='link-gray'
           iconLeading={
             <Icon
               alt="times-circle"
@@ -108,6 +107,7 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
               style={{ fontSize: '16px' }}
             />
           }
+          onClick={() => onEdgeRemove?.()}
         />
       </div>
     );

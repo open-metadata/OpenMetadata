@@ -212,9 +212,8 @@ const QueryCard: FC<QueryCardProp> = ({
           <Space className="query-entity-button" size={8}>
             <Button
               className="flex-center bg-white"
+              color="secondary"
               data-testid="query-entity-expand-button"
-              onClick={handleExpandClick}
-              color='secondary'
               iconLeading={
                 isExpanded ? (
                   <Tooltip title={t('label.exit-fit-to-screen')}>
@@ -225,14 +224,17 @@ const QueryCard: FC<QueryCardProp> = ({
                     <FullScreen height={16} width={16} />
                   </Tooltip>
                 )
-              } />
+              }
+              onClick={handleExpandClick}
+            />
             <Tooltip title={t('message.copy-to-clipboard')}>
               <Button
                 className="flex-center bg-white"
+                color="secondary"
                 data-testid="query-entity-copy-button"
+                iconLeading={<CopyIcon height={16} width={16} />}
                 onClick={onCopyToClipBoard}
-                color='secondary'
-                iconLeading={<CopyIcon height={16} width={16} />} />
+              />
             </Tooltip>
           </Space>
 
@@ -274,21 +276,21 @@ const QueryCard: FC<QueryCardProp> = ({
                   className="w-full justify-end p-r-md"
                   size={16}>
                   <Button
+                    color="secondary"
                     data-testid="cancel-query-btn"
                     key="cancel"
-                    onClick={() => setIsEditMode(false)}
-                    color='secondary'
-                    size='xs'>
+                    size="xs"
+                    onClick={() => setIsEditMode(false)}>
                     {t('label.cancel')}
                   </Button>
 
                   <Button
+                    color="primary"
                     data-testid="save-query-btn"
+                    isLoading={sqlQuery.isLoading}
                     key="save"
-                    onClick={updateSqlQuery}
-                    color='primary'
-                    size='xs'
-                    isLoading={sqlQuery.isLoading}>
+                    size="xs"
+                    onClick={updateSqlQuery}>
                     {t('label.save')}
                   </Button>
                 </Space>

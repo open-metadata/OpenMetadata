@@ -53,7 +53,9 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
       }>
       <Button
         className="cursor-pointer hover-cell-icon flex-center"
+        color="secondary"
         data-testid={testId}
+        isDisabled={!fieldFqn}
         style={{
           color: DE_ACTIVE_COLOR,
           padding: 0,
@@ -62,9 +64,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
           width: '24px',
           height: '24px',
         }}
-        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}
-        color='secondary'
-        isDisabled={!fieldFqn}>
+        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}>
         <ShareIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
       </Button>
     </Tooltip>

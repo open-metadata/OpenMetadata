@@ -321,18 +321,18 @@ const CustomiseHomeModal = ({
         <Col className="d-flex items-center gap-4">
           <Button
             className="cancel-btn border-radius-xs font-medium text-md bg-white"
+            color="secondary"
             data-testid="cancel-btn"
-            onClick={onClose}
-            color='secondary'>
+            onClick={onClose}>
             {t('label.cancel')}
           </Button>
           <Button
             className="apply-btn border-radius-xs font-semibold text-white text-md"
+            color="primary"
             data-testid="apply-btn"
-            onClick={handleApply}
-            color='primary'
             isDisabled={!hasChanges}
-            isLoading={isLoading}>
+            isLoading={isLoading}
+            onClick={handleApply}>
             {t('label.apply')}
           </Button>
         </Col>

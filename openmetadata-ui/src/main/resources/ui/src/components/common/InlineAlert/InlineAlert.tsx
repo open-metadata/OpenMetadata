@@ -121,9 +121,9 @@ function InlineAlert({
             {combinedText.length >= 200 && (
               <Button
                 className="text-xs p-0 m-0 w-fit-content h-auto"
+                color="link-gray"
                 data-testid={`read-${showMore ? 'less' : 'more'}-button`}
-                onClick={handleToggleShowMore}
-                color='link-gray'>
+                onClick={handleToggleShowMore}>
                 {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
               </Button>
             )}

@@ -154,29 +154,26 @@ const QueryCardExtraOption = ({
       <Tooltip title={t('label.up-vote')}>
         <Button
           className="vote-button"
+          color="secondary"
           data-testid="up-vote-btn"
-          onClick={() => handleVoteChange(QueryVoteType.votedUp)}
-          color='secondary'
-          size='xs'
-          isLoading={loading === QueryVoteType.votedUp}
           iconLeading={
             voteStatus === QueryVoteType.votedUp ? (
               <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
               <ThumbsUpOutline height={15} width={15} />
             )
-          }>
+          }
+          isLoading={loading === QueryVoteType.votedUp}
+          size="xs"
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
           {query.votes?.upVotes || 0}
         </Button>
       </Tooltip>
       <Tooltip title={t('label.down-vote')}>
         <Button
           className="vote-button"
+          color="secondary"
           data-testid="down-vote-btn"
-          onClick={() => handleVoteChange(QueryVoteType.votedDown)}
-          color='secondary'
-          size='xs'
-          isLoading={loading === QueryVoteType.votedDown}
           iconLeading={
             voteStatus === QueryVoteType.votedDown ? (
               <ThumbsUpFilled
@@ -191,7 +188,10 @@ const QueryCardExtraOption = ({
                 width={15}
               />
             )
-          }>
+          }
+          isLoading={loading === QueryVoteType.votedDown}
+          size="xs"
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
           {query.votes?.downVotes || 0}
         </Button>
       </Tooltip>
@@ -212,10 +212,10 @@ const QueryCardExtraOption = ({
           })}>
           <Button
             className="flex-center button-size"
+            color="tertiary"
             data-testid="query-btn"
-            color='tertiary'
-            size='xs'
             iconLeading={<IconDropdown />}
+            size="xs"
           />
         </Tooltip>
       </Dropdown>

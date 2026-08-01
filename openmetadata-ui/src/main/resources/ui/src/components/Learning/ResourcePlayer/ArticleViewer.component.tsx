@@ -85,12 +85,12 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
             showIcon
             action={
               <Button
+                color="link-gray"
                 href={resource.source.url}
+                iconLeading={<LinkOutlined />}
                 rel="noopener noreferrer"
-                target="_blank"
-                color='link-gray'
-                size='xs'
-                iconLeading={<LinkOutlined />}>
+                size="xs"
+                target="_blank">
                 {t('label.open-original')}
               </Button>
             }

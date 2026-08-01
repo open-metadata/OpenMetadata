@@ -747,12 +747,12 @@ const DataProductsDetailsPage = ({
             'data-contract-latest-result-button',
             toLower(dataContract.latestResult.status)
           )}
+          color="secondary"
           data-testid="data-contract-latest-result-btn"
+          iconLeading={icon ? <Icon component={icon} /> : null}
           onClick={() => {
             handleTabChange(EntityTabs.CONTRACT);
-          }}
-          color='secondary'
-          iconLeading={icon ? <Icon component={icon} /> : null}>
+          }}>
           {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
             entity: t('label.contract'),
           })}
@@ -846,9 +846,9 @@ const DataProductsDetailsPage = ({
 
                 {!isVersionsView && dataProductPermission.Create && (
                   <Button
+                    color="primary"
                     data-testid="data-product-details-add-button"
-                    onClick={openAssetDrawer}
-                    color='primary'>
+                    onClick={openAssetDrawer}>
                     {t('label.add-entity', {
                       entity: t('label.asset-plural'),
                     })}
@@ -879,10 +879,10 @@ const DataProductsDetailsPage = ({
                         className={classNames('', {
                           'text-primary border-primary': version,
                         })}
+                        color="secondary"
                         data-testid="version-button"
-                        onClick={handleVersionClick}
-                        color='secondary'
-                        iconLeading={<Icon component={VersionIcon} />}>
+                        iconLeading={<Icon component={VersionIcon} />}
+                        onClick={handleVersionClick}>
                         <Typography
                           className={classNames('', {
                             'text-primary': version,
@@ -913,12 +913,13 @@ const DataProductsDetailsPage = ({
                         })}>
                         <Button
                           className="domain-manage-dropdown-button tw-px-1.5"
+                          color="secondary"
                           data-testid="manage-button"
-                          onClick={() => setShowActions(true)}
-                          color='secondary'
                           iconLeading={
                             <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                          } />
+                          }
+                          onClick={() => setShowActions(true)}
+                        />
                       </Tooltip>
                     </Dropdown>
                   )}

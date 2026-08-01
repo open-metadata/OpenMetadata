@@ -34,10 +34,10 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
           open={hasCopied || undefined}
           title={hasCopied ? t('label.copied') : t('label.copy')}>
           <Button
+            color="tertiary"
             data-testid="code-block-copy-icon"
-            onClick={handleCopy}
-            color='tertiary'
             iconLeading={<CopyIcon height={24} width={24} />}
+            onClick={handleCopy}
           />
         </Tooltip>
       </span>

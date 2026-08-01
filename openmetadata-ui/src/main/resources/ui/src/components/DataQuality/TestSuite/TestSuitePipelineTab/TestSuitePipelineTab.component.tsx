@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Table, TableCard, Tooltip, TooltipTrigger, Button } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Table,
+  TableCard,
+  Tooltip,
+  TooltipTrigger,
+  Button,
+} from '@openmetadata/ui-core-components';
 import { Dataflow03, HelpCircle, Plus } from '@untitledui/icons';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
@@ -414,9 +422,9 @@ const TestSuitePipelineTab = ({
       {dataSource.length > 0 && (
         <Col className="d-flex justify-end" span={24}>
           <Button
+            color="primary"
             data-testid="add-pipeline-button"
-            onClick={handleAddPipelineRedirection}
-            color='primary'>
+            onClick={handleAddPipelineRedirection}>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>
         </Col>

@@ -337,8 +337,8 @@ const DataProductsPage = () => {
           </p>
           <Button
             className="m-t-sm"
-            onClick={() => navigate(getDomainPath())}
-            color='tertiary'>
+            color="tertiary"
+            onClick={() => navigate(getDomainPath())}>
             {t('label.go-back')}
           </Button>
         </div>

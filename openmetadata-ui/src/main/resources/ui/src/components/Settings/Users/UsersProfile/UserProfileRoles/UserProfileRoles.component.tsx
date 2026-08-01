@@ -301,7 +301,10 @@ const UserProfileRoles = ({
                 <div className="flex justify-end gap-2 mt-4">
                   <Button
                     className="profile-edit-save"
+                    color="primary"
                     data-testid="user-profile-edit-roles-cancel-button"
+                    iconLeading={<ClosePopoverIcon height={24} />}
+                    size="xs"
                     style={{
                       width: '30px',
                       height: '30px',
@@ -311,13 +314,14 @@ const UserProfileRoles = ({
                       right: '38px',
                     }}
                     onClick={handleCloseEditRole}
-                    color='primary'
-                    size='xs'
-                    iconLeading={<ClosePopoverIcon height={24} />}
                   />
                   <Button
                     className="profile-edit-cancel"
+                    color="primary"
                     data-testid="user-profile-edit-roles-save-button"
+                    iconLeading={<SavePopoverIcon height={24} />}
+                    isLoading={isLoading}
+                    size="xs"
                     style={{
                       width: '30px',
                       height: '30px',
@@ -326,10 +330,6 @@ const UserProfileRoles = ({
                       bottom: '0px',
                     }}
                     onClick={handleRolesSave}
-                    color='primary'
-                    size='xs'
-                    isLoading={isLoading}
-                    iconLeading={<SavePopoverIcon height={24} />}
                   />
                 </div>
               </div>

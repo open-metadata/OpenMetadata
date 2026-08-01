@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Card, Typography, Button } from '@openmetadata/ui-core-components';
+import {
+  Breadcrumbs,
+  Card,
+  Typography,
+  Button,
+} from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Checkbox, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
@@ -447,7 +452,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             }${source.name}`}
             span={24}>
             {isTourOpen ? (
-              <Button data-testid={source.fullyQualifiedName} color='link-gray'>
+              <Button color="link-gray" data-testid={source.fullyQualifiedName}>
                 <Typography
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">

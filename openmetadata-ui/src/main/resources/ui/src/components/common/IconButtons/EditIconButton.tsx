@@ -60,9 +60,10 @@ export const EditIconButton = ({
         <Button
           className={className}
           {...props}
-          color='tertiary'
-          size='xs'
-          iconLeading={<EditIcon className="table-action-icon" />} />
+          color="tertiary"
+          iconLeading={<EditIcon className="table-action-icon" />}
+          size="xs"
+        />
       )}
     </Tooltip>
   );
@@ -155,9 +156,10 @@ export const CardExpandCollapseIconButton = ({
       className={classNames('bordered', className)}
       tabIndex={0}
       {...props}
-      color='tertiary'
+      color="tertiary"
+      iconLeading={<CardExpandCollapseIcon />}
       isDisabled={disabled}
-      iconLeading={<CardExpandCollapseIcon />} />
+    />
   );
 
   return (

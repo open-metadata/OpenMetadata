@@ -75,10 +75,10 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         render: (failures: StepSummary['failures'], record: StepSummary) =>
           (failures?.length ?? 0) > 0 ? (
             <Button
+              color="link-gray"
               data-testid={`log-${record.name}`}
-              onClick={() => setExpandedKeys([record.name])}
-              color='link-gray'
-              size='xs'>
+              size="xs"
+              onClick={() => setExpandedKeys([record.name])}>
               {t('label.log-plural')}
             </Button>
           ) : (

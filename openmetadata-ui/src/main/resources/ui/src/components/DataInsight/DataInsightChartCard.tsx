@@ -553,7 +553,7 @@ export const DataInsightChartCard = ({
             </Col>
             {activeKeys.length > 0 && (
               <Col className="flex justify-end" span={24}>
-                <Button onClick={() => setActiveKeys([])} color='link-gray'>
+                <Button color="link-gray" onClick={() => setActiveKeys([])}>
                   {t('label.clear')}
                 </Button>
               </Col>
@@ -582,8 +582,8 @@ export const DataInsightChartCard = ({
               })}>
               <Button
                 className="text-primary d-flex items-center gap-1"
-                color='tertiary'
-                size='xs'>
+                color="tertiary"
+                size="xs">
                 {t('label.explore-asset-plural-with-type', {
                   type:
                     type ===

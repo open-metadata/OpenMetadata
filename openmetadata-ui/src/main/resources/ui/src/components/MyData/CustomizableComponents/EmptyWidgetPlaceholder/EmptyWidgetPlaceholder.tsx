@@ -88,10 +88,10 @@ function EmptyWidgetPlaceholder({
                 </Typography>
                 <Button
                   className="add-button"
+                  color="tertiary"
                   data-testid="add-widget-button"
-                  onClick={handleAddClick}
-                  color='tertiary'
-                  iconLeading={<PlusOutlined />}>
+                  iconLeading={<PlusOutlined />}
+                  onClick={handleAddClick}>
                   {t('label.add')}
                 </Button>
               </Space>

@@ -106,14 +106,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       value: entity.fullyQualifiedName,
       label: (
         <Button
+          className="d-flex items-center node-suggestion-option-btn tw:w-full"
+          color="tertiary"
           data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
           key={entity.fullyQualifiedName}
           onClick={(e) => {
             e.stopPropagation(); // Prevent select from closing
             onSelectHandler?.(entity as EntityReference);
-          }}
-          color='tertiary'
-          className='d-flex items-center node-suggestion-option-btn tw:w-full'>
+          }}>
           <div className="d-flex items-center w-full overflow-hidden">
             <img
               alt={get(entity, 'serviceType', '') || entity.name}

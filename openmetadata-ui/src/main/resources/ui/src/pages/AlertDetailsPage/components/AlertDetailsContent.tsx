@@ -115,11 +115,12 @@ function AlertDetailsContent({
                   })}>
                   <Button
                     className="flex flex-center"
+                    color="secondary"
                     data-testid="sync-button"
-                    onClick={handleAlertSync}
-                    color='secondary'
+                    iconLeading={<SyncOutlined height={16} width={16} />}
                     isLoading={isSyncing}
-                    iconLeading={<SyncOutlined height={16} width={16} />} />
+                    onClick={handleAlertSync}
+                  />
                 </Tooltip>
                 {editPermission &&
                   alertDetails?.provider !== ProviderType.System && (
@@ -129,16 +130,17 @@ function AlertDetailsContent({
                       })}>
                       <Button
                         className="flex flex-center"
+                        color="secondary"
                         data-testid="edit-button"
-                        onClick={handleAlertEdit}
-                        color='secondary'
                         iconLeading={
                           <EditIcon
                             color={DE_ACTIVE_COLOR}
                             height={16}
                             width={16}
                           />
-                        } />
+                        }
+                        onClick={handleAlertEdit}
+                      />
                     </Tooltip>
                   )}
                 {deletePermission &&
@@ -149,10 +151,11 @@ function AlertDetailsContent({
                       })}>
                       <Button
                         className="flex flex-center"
+                        color="secondary"
                         data-testid="delete-button"
+                        iconLeading={<DeleteIcon height={16} width={16} />}
                         onClick={() => setShowDeleteModal(true)}
-                        color='secondary'
-                        iconLeading={<DeleteIcon height={16} width={16} />} />
+                      />
                     </Tooltip>
                   )}
               </Space>

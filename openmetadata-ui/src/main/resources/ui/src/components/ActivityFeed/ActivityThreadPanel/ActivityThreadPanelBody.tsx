@@ -327,9 +327,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Fragment>
             <Button
               className="m-b-sm p-0"
-              onClick={onBack}
-              color='link-gray'
-              size='xs'>
+              color="link-gray"
+              size="xs"
+              onClick={onBack}>
               {t('label.back')}
             </Button>
             <TaskTabNew
@@ -345,9 +345,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Fragment>
             <Button
               className="m-b-sm p-0"
-              onClick={onBack}
-              color='link-gray'
-              size='xs'>
+              color="link-gray"
+              size="xs"
+              onClick={onBack}>
               {t('label.back')}
             </Button>
             <ActivityThread

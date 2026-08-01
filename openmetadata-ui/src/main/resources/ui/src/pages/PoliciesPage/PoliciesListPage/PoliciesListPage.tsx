@@ -209,11 +209,13 @@ const PoliciesListPage = () => {
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
+                color="tertiary"
                 data-testid={`delete-action-${getEntityName(record)}`}
-                onClick={() => setSelectedPolicy(record)}
-                color='tertiary'
+                iconLeading={
+                  <IconDelete name={t('label.delete')} width="16px" />
+                }
                 isDisabled={!deletePolicyPermission}
-                iconLeading={<IconDelete name={t('label.delete')} width="16px" />}
+                onClick={() => setSelectedPolicy(record)}
               />
             </Tooltip>
           );
@@ -309,9 +311,9 @@ const PoliciesListPage = () => {
 
             {addPolicyPermission && (
               <Button
+                color="primary"
                 data-testid="add-policy"
-                onClick={handleAddPolicy}
-                color='primary'>
+                onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>
             )}

@@ -134,11 +134,11 @@ const CodeEditor = ({
               }>
               <Button
                 className="flex-center"
+                color="tertiary"
                 data-testid="query-copy-button"
-                onClick={onCopyToClipBoard}
-                color='tertiary'
-                size='xs'
                 iconLeading={<CopyIcon height={16} width={16} />}
+                size="xs"
+                onClick={onCopyToClipBoard}
               />
             </Tooltip>
           </div>

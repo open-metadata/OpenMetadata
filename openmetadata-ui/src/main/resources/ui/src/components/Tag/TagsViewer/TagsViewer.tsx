@@ -122,10 +122,10 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         {hasMoreElement && (
           <Button
             className="show-more-tags-button"
+            color="link-gray"
             data-testid="read-button"
-            onClick={() => setIsOpen(!isOpen)}
-            color='link-gray'
-            size='xs'>
+            size="xs"
+            onClick={() => setIsOpen(!isOpen)}>
             {isOpen
               ? t('label.less')
               : t('label.plus-count-more', {

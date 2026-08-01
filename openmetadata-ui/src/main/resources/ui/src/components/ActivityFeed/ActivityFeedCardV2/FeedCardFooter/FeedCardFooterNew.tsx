@@ -83,13 +83,13 @@ function FeedCardFooterNew({
                 {repliedUniqueUsersList.map((user, index) => (
                   <Button
                     className="p-0"
+                    color="tertiary"
                     key={user}
                     style={{
                       marginLeft: index === 0 ? '0px' : '-8px',
                       zIndex: repliedUniqueUsersList.length - index,
                     }}
-                    onClick={isForFeedTab ? showReplies : undefined}
-                    color='tertiary'>
+                    onClick={isForFeedTab ? showReplies : undefined}>
                     <UserPopOverCard userName={user}>
                       <div className="d-flex items-center">
                         <ProfilePicture name={user} width="20" />
@@ -103,9 +103,9 @@ function FeedCardFooterNew({
             {!isPost && (
               <Button
                 className="p-0 flex-center"
+                color="tertiary"
                 data-testid="reply-button"
-                onClick={isForFeedTab ? showReplies : undefined}
-                color='tertiary'>
+                onClick={isForFeedTab ? showReplies : undefined}>
                 <ThreadIcon data-testid="reply-count" height={18} width={18} />
               </Button>
             )}

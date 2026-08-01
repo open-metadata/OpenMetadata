@@ -102,7 +102,8 @@ export const SelectableList = ({
   const checkActiveSelectedItem = (item: EntityReference) => {
     return (
       // Name in case of Bulk Action, since we are using the name as the id
-      (selectedItemsInternal.has(item.id) || selectedItemsInternal.has(item.name ?? ''))
+      selectedItemsInternal.has(item.id) ||
+      selectedItemsInternal.has(item.name ?? '')
     );
   };
 
@@ -255,27 +256,27 @@ export const SelectableList = ({
             <Button
               className="p-0"
               color="primary"
+              color="tertiary"
               data-testid="clear-all-button"
-              onClick={handleClearAllClick}
-              color='tertiary'
-              size='xs'>
+              size="xs"
+              onClick={handleClearAllClick}>
               {t('label.clear-entity', { entity: t('label.all-lowercase') })}
             </Button>
             <Space className="m-l-auto text-right">
               <Button
                 color="primary"
+                color="secondary"
                 data-testid="cancel-button"
-                onClick={onCancel}
-                color='secondary'
-                size='xs'>
+                size="xs"
+                onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="selectable-list-update-btn"
-                onClick={handleUpdateClick}
-                color='primary'
-                size='xs'
-                isLoading={updating}>
+                isLoading={updating}
+                size="xs"
+                onClick={handleUpdateClick}>
                 {t('label.update')}
               </Button>
             </Space>

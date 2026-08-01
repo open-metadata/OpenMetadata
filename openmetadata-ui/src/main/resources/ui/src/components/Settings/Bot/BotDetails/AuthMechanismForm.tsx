@@ -134,10 +134,10 @@ const AuthMechanismForm: FC<Props> = ({
       </div>
       <Button
         className="text-sm generate-scim-token-btn"
+        color="primary"
         data-testid="generate-scim-token"
-        onClick={handleGenerateSCIMToken}
-        color='primary'
-        size='xs'>
+        size="xs"
+        onClick={handleGenerateSCIMToken}>
         {t('label.generate-token')}
       </Button>
     </div>
@@ -174,16 +174,19 @@ const AuthMechanismForm: FC<Props> = ({
 
       <Space className="w-full justify-end" size={4}>
         {!isEmpty(authenticationMechanism) && (
-          <Button data-testid="cancel-edit" onClick={onCancel} color='link-gray'>
+          <Button
+            color="link-gray"
+            data-testid="cancel-edit"
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
         )}
         <Button
+          color="primary"
           data-testid="save-edit"
           form="update-auth-mechanism-form"
-          color='primary'
           isLoading={isUpdating}
-          type='submit'>
+          type="submit">
           {t('label.generate')}
         </Button>
       </Space>

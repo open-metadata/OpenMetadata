@@ -95,10 +95,12 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       multiple: true,
       children: (
         <Button
+          color="primary"
           data-testid="add-domain"
-          color='primary'
-          size='xs'
-          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
     },

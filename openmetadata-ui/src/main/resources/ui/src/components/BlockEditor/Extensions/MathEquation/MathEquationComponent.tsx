@@ -62,16 +62,16 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
             />
             <Space direction="horizontal" size={8}>
               <Button
-                onClick={() => setIsEditing(false)}
-                color='secondary'
-                size='xs'
+                color="secondary"
                 iconLeading={<CloseOutlined />}
+                size="xs"
+                onClick={() => setIsEditing(false)}
               />
               <Button
-                onClick={handleSaveEquation}
-                color='primary'
-                size='xs'
+                color="primary"
                 iconLeading={<CheckOutlined />}
+                size="xs"
+                onClick={handleSaveEquation}
               />
             </Space>
           </div>
@@ -84,10 +84,10 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
             title={t('label.edit-entity', { entity: t('label.equation') })}>
             <Button
               className="edit-button"
-              onClick={() => setIsEditing(true)}
-              color='tertiary'
-              size='xs'
+              color="tertiary"
               iconLeading={<EditIcon width={16} />}
+              size="xs"
+              onClick={() => setIsEditing(true)}
             />
           </Tooltip>
         )}

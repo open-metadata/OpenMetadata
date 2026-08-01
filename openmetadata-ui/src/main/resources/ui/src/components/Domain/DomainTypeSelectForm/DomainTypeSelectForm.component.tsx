@@ -44,20 +44,21 @@ const DomainTypeSelectForm = ({
           <Space align="center">
             <Button
               className="p-x-05"
+              color="secondary"
               data-testid="cancelAssociatedTag"
-              onClick={onCancel}
-              color='secondary'
-              size='xs'
+              iconLeading={<CloseOutlined size={12} />}
               isDisabled={isSubmitLoading}
-              iconLeading={<CloseOutlined size={12} />} />
+              size="xs"
+              onClick={onCancel}
+            />
             <Button
               className="p-x-05"
+              color="primary"
               data-testid="saveAssociatedTag"
-              color='primary'
-              size='xs'
-              isLoading={isSubmitLoading}
               iconLeading={<CheckOutlined size={12} />}
-              type='submit'
+              isLoading={isSubmitLoading}
+              size="xs"
+              type="submit"
             />
           </Space>
         </Col>

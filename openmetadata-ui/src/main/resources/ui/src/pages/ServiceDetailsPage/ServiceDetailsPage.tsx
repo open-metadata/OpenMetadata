@@ -1727,10 +1727,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
                   : t('message.no-permission-for-action')
               }>
               <Button
+                color="tertiary"
                 data-testid="edit-connection-button"
-                onClick={goToEditConnection}
-                color='tertiary'
-                isDisabled={!servicePermission.EditAll}>
+                isDisabled={!servicePermission.EditAll}
+                onClick={goToEditConnection}>
                 {t('label.edit-entity', {
                   entity: t('label.connection'),
                 })}

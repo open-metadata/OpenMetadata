@@ -99,11 +99,11 @@ function AddWidgetTabContent({
                 title={widgetAddable ? '' : t('message.can-not-add-widget')}>
                 <Button
                   className="p-x-lg m-t-md"
+                  color="primary"
                   data-testid="add-widget-button"
-                  onClick={getAddWidgetHandler(widget, selectedWidgetSize)}
-                  color='primary'
+                  iconLeading={<PlusOutlined />}
                   isDisabled={!widgetAddable}
-                  iconLeading={<PlusOutlined />}>
+                  onClick={getAddWidgetHandler(widget, selectedWidgetSize)}>
                   {t('label.add')}
                 </Button>
               </Tooltip>

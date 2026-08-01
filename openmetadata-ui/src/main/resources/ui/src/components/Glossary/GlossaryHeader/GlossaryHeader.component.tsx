@@ -460,10 +460,10 @@ const GlossaryHeader = ({
       return isGlossary ? (
         <Button
           className="m-l-xs"
+          color="primary"
           data-testid="add-new-tag-button-header"
-          onClick={handleAddGlossaryTermClick}
-          color='primary'
-          size='sm'>
+          size="sm"
+          onClick={handleAddGlossaryTermClick}>
           {t('label.add-entity', { entity: t('label.term-lowercase') })}
         </Button>
       ) : (
@@ -478,8 +478,8 @@ const GlossaryHeader = ({
                 placement="bottomRight"
                 trigger={['click']}>
                 <Button
-                  data-testid="glossary-term-add-button-menu"
-                  color='primary'>
+                  color="primary"
+                  data-testid="glossary-term-add-button-menu">
                   <Space>
                     {t('label.add')}
                     <DownOutlined />
@@ -587,10 +587,10 @@ const GlossaryHeader = ({
                     className={classNames('', {
                       'text-primary border-primary': version,
                     })}
+                    color="secondary"
                     data-testid="version-button"
-                    onClick={handleVersionClick}
-                    color='secondary'
-                    iconLeading={<Icon component={VersionIcon} />}>
+                    iconLeading={<Icon component={VersionIcon} />}
+                    onClick={handleVersionClick}>
                     <Typography
                       className={classNames('', {
                         'text-primary': version,
@@ -623,16 +623,17 @@ const GlossaryHeader = ({
                     })}>
                     <Button
                       className="glossary-manage-dropdown-button"
+                      color="secondary"
                       data-testid="manage-button"
-                      onClick={() => setShowActions(true)}
-                      color='secondary'
                       iconLeading={
                         <IconDropdown
                           className="vertical-align-inherit manage-dropdown-icon"
                           height={16}
                           width={16}
                         />
-                      } />
+                      }
+                      onClick={() => setShowActions(true)}
+                    />
                   </Tooltip>
                 </Dropdown>
               )}

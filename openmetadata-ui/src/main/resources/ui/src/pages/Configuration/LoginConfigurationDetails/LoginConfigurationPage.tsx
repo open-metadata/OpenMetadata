@@ -106,10 +106,10 @@ const LoginConfigurationPage = () => {
             </Col>
             <Col>
               <Button
+                color="secondary"
                 data-testid="edit-button"
-                onClick={handleEditClick}
-                color='secondary'
-                iconLeading={<Icon component={IconEdit} size={12} />}>
+                iconLeading={<Icon component={IconEdit} size={12} />}
+                onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>
             </Col>

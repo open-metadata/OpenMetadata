@@ -82,21 +82,23 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       extra={
         props.handleRemoveWidget ? (
           <Button
+            color="secondary"
             data-testid="remove-widget-button"
+            iconLeading={<MinusCircleOutlined size={16} />}
+            size="xs"
             onClick={handleRemoveClick}
-            color='secondary'
-            size='xs'
-            iconLeading={<MinusCircleOutlined size={16} />} />
+          />
         ) : undefined
       }
       title={
         <Space>
           <Button
             className="drag-widget-icon"
+            color="secondary"
             data-testid="drag-widget-button"
-            color='secondary'
-            size='xs'
-            iconLeading={<HolderOutlined size={16} />} />
+            iconLeading={<HolderOutlined size={16} />}
+            size="xs"
+          />
           {widgetName}
         </Space>
       }

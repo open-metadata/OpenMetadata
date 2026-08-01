@@ -240,18 +240,18 @@ const AddCustomMetricPage = () => {
                 />
                 <Space className="w-full justify-end">
                   <Button
+                    color="secondary"
                     data-testid="cancel-button"
-                    onClick={handleBackClick}
-                    color='secondary'
-                    isDisabled={isActionLoading}>
+                    isDisabled={isActionLoading}
+                    onClick={handleBackClick}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-button"
-                    onClick={() => form.submit()}
-                    color='primary'
                     isLoading={isActionLoading}
-                    type='submit'>
+                    type="submit"
+                    onClick={() => form.submit()}>
                     {t('label.create')}
                   </Button>
                 </Space>

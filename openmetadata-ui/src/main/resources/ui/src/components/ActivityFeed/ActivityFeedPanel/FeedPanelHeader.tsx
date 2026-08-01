@@ -82,13 +82,13 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             })}
             trigger="hover">
             <Button
+              color="primary"
               data-testid="add-new-conversation"
+              iconLeading={<PlusOutlined />}
+              size="xs"
               onClick={() => {
                 onShowNewConversation(true);
               }}
-              color='primary'
-              size='xs'
-              iconLeading={<PlusOutlined />}
             />
           </Tooltip>
         ) : null}

@@ -114,13 +114,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               </div>
               <Button
                 className="delete-search-field"
+                color="secondary"
                 data-testid="delete-search-field"
+                iconLeading={<Icon className="text-md" component={Delete} />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);
                 }}
-                color='secondary'
-                iconLeading={<Icon className="text-md" component={Delete} />} />
+              />
             </div>
 
             <div className="d-flex items-center justify-between gap-2 m-y-xss">

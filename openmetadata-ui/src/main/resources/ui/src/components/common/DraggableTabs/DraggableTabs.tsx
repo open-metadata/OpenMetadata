@@ -119,9 +119,9 @@ export const TabItem = ({
         trigger={['click']}>
         <Button
           className="draggable-tab-item"
+          color="secondary"
           data-testid={`tab-${item.name}`}
-          onClick={() => onItemClick?.(item.id)}
-          color='secondary'>
+          onClick={() => onItemClick?.(item.id)}>
           <Space>
             {getTabDisplayName(item)}
             <MoreOutlined />

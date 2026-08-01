@@ -406,18 +406,18 @@ const EditKPIPage = () => {
               </EntityAttachmentProvider>
               <Space align="center" className="w-full justify-end">
                 <Button
+                  color="link-gray"
                   data-testid="cancel-btn"
-                  onClick={handleCancel}
-                  color='link-gray'>
+                  onClick={handleCancel}>
                   {t('label.go-back')}
                 </Button>
                 {isAdminUser ? (
                   <Tooltip title={t('label.save')}>
                     <Button
+                      color="primary"
                       data-testid="submit-btn"
-                      color='primary'
                       isLoading={isUpdatingKPI}
-                      type='submit'>
+                      type="submit">
                       {t('label.save')}
                     </Button>
                   </Tooltip>

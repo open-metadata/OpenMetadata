@@ -258,13 +258,13 @@ const SignInPage = () => {
                 </Form.Item>
 
                 <Button
+                  className="login-btn tw:w-full"
+                  color="primary"
                   data-testid="login"
-                  color='primary'
-                  size='md'
                   isDisabled={loading}
                   isLoading={loading}
-                  type='submit'
-                  className='login-btn tw:w-full'>
+                  size="md"
+                  type="submit">
                   {t('label.sign-in')}
                 </Button>
               </Form>
@@ -277,9 +277,9 @@ const SignInPage = () => {
                       </Typography>
                       <Button
                         className="link-btn"
+                        color="link-gray"
                         data-testid="signup"
-                        onClick={onClickSignUp}
-                        color='link-gray'>
+                        onClick={onClickSignUp}>
                         {t('label.create-entity', {
                           entity: t('label.account'),
                         })}

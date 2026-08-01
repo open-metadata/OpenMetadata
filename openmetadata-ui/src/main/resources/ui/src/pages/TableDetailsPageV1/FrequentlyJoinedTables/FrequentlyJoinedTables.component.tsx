@@ -95,10 +95,10 @@ export const FrequentlyJoinedTables = ({
       {hasMoreElement ? (
         <Button
           className="show-more-tags-button"
+          color="link-gray"
           data-testid="read-button"
-          onClick={handleShowMore}
-          color='link-gray'
-          size='xs'>
+          size="xs"
+          onClick={handleShowMore}>
           {visibleCount === joinedTables.length
             ? t('label.less')
             : t('label.plus-count-more', {

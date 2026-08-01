@@ -72,21 +72,21 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           editAction={
             <div className="d-flex">
               <Button
+                color="secondary"
                 data-testid="cancel-button"
-                onClick={handleCancel}
-                color='secondary'
-                size='xs'>
+                size="xs"
+                onClick={handleCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-button"
+                isDisabled={!postMessage.length}
+                size="xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSave();
-                }}
-                color='primary'
-                size='xs'
-                isDisabled={!postMessage.length}>
+                }}>
                 {t('label.save')}
               </Button>
             </div>

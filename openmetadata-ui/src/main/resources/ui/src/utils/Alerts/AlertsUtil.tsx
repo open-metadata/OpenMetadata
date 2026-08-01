@@ -605,10 +605,10 @@ export const getDestinationConfigField = (
                                 <Col>
                                   <Col>
                                     <Button
+                                      color="primary"
                                       data-testid={`add-header-button-${fieldName}`}
-                                      onClick={() => add({})}
-                                      color='primary'
                                       iconLeading={<PlusOutlined />}
+                                      onClick={() => add({})}
                                     />
                                   </Col>
                                 </Col>
@@ -665,9 +665,10 @@ export const getDestinationConfigField = (
                                   </div>
 
                                   <Button
+                                    color="secondary"
+                                    iconLeading={<CloseOutlined />}
                                     onClick={() => remove(name)}
-                                    color='secondary'
-                                    iconLeading={<CloseOutlined />} />
+                                  />
                                 </div>
                               </Col>
                             ))}
@@ -696,10 +697,10 @@ export const getDestinationConfigField = (
                                 <Col>
                                   <Col>
                                     <Button
+                                      color="primary"
                                       data-testid={`add-query-param-button-${fieldName}`}
-                                      onClick={() => add({})}
-                                      color='primary'
                                       iconLeading={<PlusOutlined />}
+                                      onClick={() => add({})}
                                     />
                                   </Col>
                                 </Col>
@@ -756,9 +757,10 @@ export const getDestinationConfigField = (
                                   </div>
 
                                   <Button
+                                    color="secondary"
+                                    iconLeading={<CloseOutlined />}
                                     onClick={() => remove(name)}
-                                    color='secondary'
-                                    iconLeading={<CloseOutlined />} />
+                                  />
                                 </div>
                               </Col>
                             ))}

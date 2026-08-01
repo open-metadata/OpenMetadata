@@ -117,11 +117,11 @@ const ForgotPassword = () => {
             </Col>
             <Col className="m-t-md" span={24}>
               <Button
-                color='primary'
-                size='md'
+                className="tw:w-full"
+                color="primary"
                 isLoading={loading}
-                type='submit'
-                className='tw:w-full'>
+                size="md"
+                type="submit">
                 {t('label.send-login-link')}
               </Button>
             </Col>
@@ -129,9 +129,9 @@ const ForgotPassword = () => {
           <Col className="d-flex flex-center" span={24}>
             <Button
               className="p-0"
+              color="link-gray"
               data-testid="go-back-button"
-              onClick={handleLogin}
-              color='link-gray'>
+              onClick={handleLogin}>
               {t('message.go-back-to-login-page')}
             </Button>
           </Col>

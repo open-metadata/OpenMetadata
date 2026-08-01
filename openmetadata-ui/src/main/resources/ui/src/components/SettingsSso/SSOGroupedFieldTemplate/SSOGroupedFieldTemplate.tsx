@@ -314,8 +314,13 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
           {schema.additionalProperties && (
             <Button
+              color="primary"
               data-testid={`add-item-${title}`}
+              iconLeading={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
               id={`${idSchema.$id}`}
+              size="xs"
               onClick={() => {
                 onAddClick(schema)();
               }}
@@ -324,11 +329,6 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
                   formContext.handleFocus(idSchema.$id);
                 }
               }}
-              color='primary'
-              size='xs'
-              iconLeading={
-                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-              }
             />
           )}
         </Space>

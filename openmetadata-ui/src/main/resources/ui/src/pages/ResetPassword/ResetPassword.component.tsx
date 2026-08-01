@@ -147,9 +147,9 @@ const ResetPassword = () => {
 
               <Button
                 className="w-full m-t-lg"
+                color="primary"
                 data-testid="submit-button"
-                color='primary'
-                type='submit'>
+                type="submit">
                 {t('label.save')}
               </Button>
             </Form>

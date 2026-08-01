@@ -91,10 +91,10 @@ const ListEntities = ({
                 hasAccess ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
+                color="tertiary"
                 data-testid={`remove-action-${getEntityName(record)}`}
-                onClick={() => onDelete(record)}
-                color='tertiary'
-                isDisabled={!hasAccess}>
+                isDisabled={!hasAccess}
+                onClick={() => onDelete(record)}>
                 <Icon
                   className="align-middle"
                   component={IconRemove}

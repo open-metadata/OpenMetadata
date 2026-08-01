@@ -269,7 +269,7 @@ const NotificationBox = ({
           className="notification-content-container"
           dataSource={notificationDropDownList}
           footer={
-            <Button href={viewAllPath} color='link-gray' className='tw:w-full'>
+            <Button className="tw:w-full" color="link-gray" href={viewAllPath}>
               <span>
                 {t('label.view-entity', {
                   entity: t('label.all-lowercase'),

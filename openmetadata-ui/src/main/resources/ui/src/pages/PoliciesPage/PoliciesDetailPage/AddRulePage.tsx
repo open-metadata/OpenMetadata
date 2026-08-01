@@ -161,14 +161,17 @@ const AddRulePage = () => {
           onFinish={handleSubmit}>
           <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
           <Space align="center" className="w-full justify-end">
-            <Button data-testid="cancel-btn" onClick={handleBack} color='link-gray'>
+            <Button
+              color="link-gray"
+              data-testid="cancel-btn"
+              onClick={handleBack}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="submit-btn"
               form="rule-form"
-              color='primary'
-              type='submit'>
+              type="submit">
               {t('label.create')}
             </Button>
           </Space>

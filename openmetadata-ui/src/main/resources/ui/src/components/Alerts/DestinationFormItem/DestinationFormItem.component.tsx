@@ -145,12 +145,12 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                   <Row gutter={[16, 16]}>
                     <Col>
                       <Button
+                        color="primary"
                         data-testid="add-destination-button"
-                        onClick={() => add({})}
-                        color='primary'
                         isDisabled={
                           isEmpty(selectedSource) || isNil(selectedSource)
-                        }>
+                        }
+                        onClick={() => add({})}>
                         {t('label.add-entity', {
                           entity: t('label.destination'),
                         })}
@@ -161,10 +161,10 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                         placement="right"
                         title={t('message.external-destination-selection')}>
                         <Button
+                          color="secondary"
                           data-testid="test-destination-button"
-                          onClick={handleTestDestinationClick}
-                          color='secondary'
-                          isDisabled={disableTestDestinationButton}>
+                          isDisabled={disableTestDestinationButton}
+                          onClick={handleTestDestinationClick}>
                           {t('label.test-entity', {
                             entity: t('label.destination-plural'),
                           })}

@@ -74,8 +74,8 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       />
       <Button
         className="draggable-menu-item-button"
-        onClick={() => onSelect(value, !isItemSelected)}
-        color='tertiary'>
+        color="tertiary"
+        onClick={() => onSelect(value, !isItemSelected)}>
         <Typography className="draggable-menu-item-button-label">
           {label}
         </Typography>

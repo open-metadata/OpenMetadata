@@ -99,19 +99,19 @@ export const ModalWithCustomPropertyEditor = ({
       footer={
         <KeyDownStopPropagationWrapper>
           <Button
+            color="link-gray"
             data-testid="cancel"
+            isDisabled={isSaveLoading}
             key="cancelButton"
-            onClick={onCancel}
-            color='link-gray'
-            isDisabled={isSaveLoading}>
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="save"
+            isLoading={isSaveLoading}
             key="saveButton"
-            onClick={handleSaveData}
-            color='primary'
-            isLoading={isSaveLoading}>
+            onClick={handleSaveData}>
             {t('label.save')}
           </Button>
         </KeyDownStopPropagationWrapper>

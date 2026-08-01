@@ -68,12 +68,12 @@ const Reaction: FC<ReactionProps> = ({
       className={classNames('ant-btn-popover-reaction', {
         'ant-btn-popover-isReacted': isReacted,
       })}
+      color="tertiary"
       data-testid="reaction-button"
       key={uniqueId()}
+      size="xs"
       title={reaction.reaction}
-      onClick={handleOnClick}
-      color='tertiary'
-      size='xs'>
+      onClick={handleOnClick}>
       {element}
     </Button>
   );

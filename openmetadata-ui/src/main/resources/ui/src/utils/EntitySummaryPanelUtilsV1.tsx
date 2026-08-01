@@ -103,10 +103,10 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
             )}
             <Button
               className="d-flex p-0 h-auto m-b-xs"
+              color="link-gray"
               data-testid="expand-icon"
-              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}
-              color='link-gray'
-              size='xs'>
+              size="xs"
+              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
                   ? t('label.show-less')
@@ -184,10 +184,10 @@ const NestedSchemaFieldCard: React.FC<{
             )}
             <Button
               className="d-flex p-0 h-auto m-b-xs"
+              color="link-gray"
               data-testid="expand-icon"
-              onClick={() => onToggleExpand(rowKey)}
-              color='link-gray'
-              size='xs'>
+              size="xs"
+              onClick={() => onToggleExpand(rowKey)}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
                 {isExpanded
                   ? t('label.show-less')
@@ -340,10 +340,10 @@ const SchemaFieldCardsV1: React.FC<{
 
     return (
       <Button
-        onClick={handleLoadMore}
-        color='link-gray'
+        className="tw:w-full"
+        color="link-gray"
         isLoading={isLoading && currentPage > 1}
-        className='tw:w-full'>
+        onClick={handleLoadMore}>
         {t('label.show-more')}
       </Button>
     );
@@ -1100,7 +1100,7 @@ const APIEndpointSchemaV1: React.FC<{
             setViewType(value as 'request-schema' | 'response-schema')
           }
         />
-        <Button onClick={handleToggleExpandAll} color='link-gray' size='xs'>
+        <Button color="link-gray" size="xs" onClick={handleToggleExpandAll}>
           {expandedRowKeys.length < allRowKeys.length
             ? t('label.expand-all')
             : t('label.collapse-all')}

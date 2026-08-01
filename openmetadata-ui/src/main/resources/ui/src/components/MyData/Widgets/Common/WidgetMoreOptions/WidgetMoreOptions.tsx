@@ -54,9 +54,10 @@ const WidgetMoreOptions = ({
         trigger={['click']}>
         <Button
           className="widget-more-options-button"
+          color="secondary"
           data-testid="more-options-button"
-          color='secondary'
-          iconLeading={<MoreOutlined size={20} />} />
+          iconLeading={<MoreOutlined size={20} />}
+        />
       </Dropdown>
     </div>
   );

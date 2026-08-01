@@ -52,17 +52,17 @@ const FeedsFilterPopover = ({
           <Space className="w-full justify-end">
             <Button
               color="primary"
+              color="secondary"
               data-testid="cancel-button"
-              onClick={() => setPopupVisible(false)}
-              color='secondary'
-              size='xs'>
+              size="xs"
+              onClick={() => setPopupVisible(false)}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="selectable-list-update-btn"
-              onClick={onFilterUpdate}
-              color='primary'
-              size='xs'>
+              size="xs"
+              onClick={onFilterUpdate}>
               {t('label.update')}
             </Button>
           </Space>
@@ -111,9 +111,10 @@ const FeedsFilterPopover = ({
       <Tooltip title={t('label.feed-filter-plural')}>
         <Button
           className="feed-filter-icon"
+          color="secondary"
           data-testid="filter-button"
-          color='secondary'
-          iconLeading={<FilterIcon height={16} />} />
+          iconLeading={<FilterIcon height={16} />}
+        />
       </Tooltip>
     </Popover>
   );

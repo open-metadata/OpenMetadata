@@ -226,17 +226,17 @@ const LineageConfigPage = () => {
                   <Row className="m-b-xl" justify="end">
                     <Col className="d-flex justify-end gap-2" span={24}>
                       <Button
+                        color="secondary"
                         data-testid="cancel-button"
-                        onClick={() => navigate(-1)}
-                        color='secondary'>
+                        onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button
+                        color="primary"
                         data-testid="save-button"
                         form="lineage-config"
-                        color='primary'
                         isLoading={isUpdating}
-                        type='submit'>
+                        type="submit">
                         {t('label.save')}
                       </Button>
                     </Col>

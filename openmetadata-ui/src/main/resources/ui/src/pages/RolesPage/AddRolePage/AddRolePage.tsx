@@ -186,17 +186,17 @@ const AddRolePage = () => {
 
                 <Space align="center" className="w-full justify-end">
                   <Button
+                    color="link-gray"
                     data-testid="cancel-btn"
-                    onClick={handleCancel}
-                    color='link-gray'>
+                    onClick={handleCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-btn"
                     form="role-form"
-                    color='primary'
                     isLoading={isSaveLoading}
-                    type='submit'>
+                    type="submit">
                     {t('label.create')}
                   </Button>
                 </Space>

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Table, TableCard, Button } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Table,
+  TableCard,
+  Button,
+} from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
   Bell01,
@@ -105,9 +111,9 @@ function ObservabilityAlertsTable({
           {onViewAlert ? (
             <Button
               className="tw:h-auto tw:p-0"
+              color="link-gray"
               data-testid="alert-name"
-              onClick={() => onViewAlert(record)}
-              color='link-gray'>
+              onClick={() => onViewAlert(record)}>
               {alertName}
             </Button>
           ) : (

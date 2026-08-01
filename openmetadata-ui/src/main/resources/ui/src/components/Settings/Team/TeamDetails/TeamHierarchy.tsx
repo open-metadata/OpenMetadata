@@ -266,9 +266,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
 
             {createTeamPermission && !isTeamDeleted && (
               <Button
+                color="primary"
                 data-testid="add-team"
-                onClick={handleAddTeamButtonClick}
-                color='primary'>
+                onClick={handleAddTeamButtonClick}>
                 {t('label.add-entity', { entity: t('label.team') })}
               </Button>
             )}

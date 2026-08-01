@@ -69,12 +69,12 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
       {showArrows && (
         <Button
           className="carousel-arrow"
+          color="tertiary"
           data-testid="prev-slide"
-          onClick={prevSlide}
-          color='tertiary'
-          size='xs'
-          isDisabled={avatarList.length <= 1 || currentSlide <= 0}
           iconLeading={<LeftOutlined />}
+          isDisabled={avatarList.length <= 1 || currentSlide <= 0}
+          size="xs"
+          onClick={prevSlide}
         />
       )}
       <Carousel
@@ -96,14 +96,14 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
       {showArrows && (
         <Button
           className="carousel-arrow"
+          color="tertiary"
           data-testid="next-slide"
-          onClick={nextSlide}
-          color='tertiary'
-          size='xs'
+          iconLeading={<RightOutlined />}
           isDisabled={
             avatarList.length <= 1 || currentSlide === avatarList.length - 1
           }
-          iconLeading={<RightOutlined />}
+          size="xs"
+          onClick={nextSlide}
         />
       )}
     </div>

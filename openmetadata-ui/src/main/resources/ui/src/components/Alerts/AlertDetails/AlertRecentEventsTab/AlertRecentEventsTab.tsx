@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Typography, Button } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+  Button,
+} from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import { Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -344,8 +349,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               trigger={['click']}>
               <Button
                 className="flex-center"
+                color="secondary"
                 data-testid="filter-button"
-                color='secondary'
                 iconLeading={<FilterIcon height={16} />}>
                 {filter !== AlertRecentEventFilters.ALL && (
                   <Typography

@@ -265,13 +265,7 @@ const DatePickerMenu = ({
         )}
         color="secondary"
         data-testid="date-picker-menu"
-        size={
-          size === 'small'
-            ? 'xs'
-            : size === 'large'
-            ? 'md'
-            : 'sm'
-        }>
+        size={size === 'small' ? 'xs' : size === 'large' ? 'md' : 'sm'}>
         <Space align="center" size={8}>
           <span
             className={classNames(
@@ -310,14 +304,14 @@ const DatePickerMenu = ({
             'tw:border-0 tw:bg-transparent tw:p-0! tw:text-disabled tw:shadow-none',
             'tw:hover:bg-transparent tw:hover:text-secondary'
           )}
+          color="tertiary"
           data-testid="clear-date-picker"
+          iconLeading={<CloseCircleFilled />}
+          size="xs"
           onClick={(event) => {
             event.stopPropagation();
             handleClear();
           }}
-          color='tertiary'
-          size='xs'
-          iconLeading={<CloseCircleFilled />}
         />
       )}
     </div>

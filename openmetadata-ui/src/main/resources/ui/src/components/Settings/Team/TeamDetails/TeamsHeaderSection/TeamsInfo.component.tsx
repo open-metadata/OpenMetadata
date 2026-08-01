@@ -185,14 +185,8 @@ const TeamsInfo = ({
               })}>
               <Button
                 className="flex-center teams-info-email-edit-button p-0"
+                color="tertiary"
                 data-testid="edit-email"
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                  e.stopPropagation();
-                  setIsEmailEdit(true);
-                }}
-                color='tertiary'
-                size='xs'
                 iconLeading={
                   <EditIcon
                     color={DE_ACTIVE_COLOR}
@@ -200,6 +194,12 @@ const TeamsInfo = ({
                     width="12px"
                   />
                 }
+                size="xs"
+                onClick={(e) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setIsEmailEdit(true);
+                }}
               />
             </Tooltip>
           )}
@@ -235,20 +235,20 @@ const TeamsInfo = ({
               <Space size={4}>
                 <Button
                   className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="cancel-edit-email"
-                  onClick={() => setIsEmailEdit(false)}
-                  color='primary'
-                  size='xs'
-                  isDisabled={isLoading}>
+                  isDisabled={isLoading}
+                  size="xs"
+                  onClick={() => setIsEmailEdit(false)}>
                   <CloseOutlined />
                 </Button>
                 <Button
                   className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="save-edit-email"
-                  color='primary'
-                  size='xs'
                   isLoading={isLoading}
-                  type='submit'>
+                  size="xs"
+                  type="submit">
                   <CheckOutlined />
                 </Button>
               </Space>
@@ -289,14 +289,8 @@ const TeamsInfo = ({
                 })}>
                 <Button
                   className="flex-center edit-team-type-icon p-0"
+                  color="tertiary"
                   data-testid="edit-team-type-icon"
-                  onClick={(e) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setShowTypeSelector(true);
-                  }}
-                  color='tertiary'
-                  size='xs'
                   iconLeading={
                     <EditIcon
                       color={DE_ACTIVE_COLOR}
@@ -304,6 +298,12 @@ const TeamsInfo = ({
                       width={12}
                     />
                   }
+                  size="xs"
+                  onClick={(e) => {
+                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                    e.stopPropagation();
+                    setShowTypeSelector(true);
+                  }}
                 />
               </Tooltip>
             )}

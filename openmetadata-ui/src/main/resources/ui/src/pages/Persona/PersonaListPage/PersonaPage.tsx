@@ -185,9 +185,9 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
             </div>
             <div>
               <Button
+                color="primary"
                 data-testid="add-persona-button"
-                onClick={handleAddNewPersona}
-                color='primary'>
+                onClick={handleAddNewPersona}>
                 {t('label.add-entity', { entity: t('label.persona') })}
               </Button>
             </div>

@@ -212,10 +212,12 @@ const AddGlossary = ({
       },
       children: (
         <Button
+          color="primary"
           data-testid="add-owner"
-          color='primary'
-          size='xs'
-          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
       multiple: {
@@ -244,10 +246,12 @@ const AddGlossary = ({
       },
       children: (
         <Button
+          color="primary"
           data-testid="add-reviewers"
-          color='primary'
-          size='xs'
-          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
       multiple: { user: true, team: false },
@@ -277,10 +281,12 @@ const AddGlossary = ({
       },
       children: (
         <Button
+          color="primary"
           data-testid="add-domain"
-          color='primary'
-          size='xs'
-          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
       multiple: entityRules.canAddMultipleDomains,
@@ -347,17 +353,17 @@ const AddGlossary = ({
                   data-testid="cta-buttons"
                   size={16}>
                   <Button
+                    color="link-gray"
                     data-testid="cancel-glossary"
-                    onClick={onCancel}
-                    color='link-gray'>
+                    onClick={onCancel}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="save-glossary"
-                    color='primary'
                     isDisabled={!allowAccess}
                     isLoading={isLoading}
-                    type='submit'>
+                    type="submit">
                     {t('label.save')}
                   </Button>
                 </Space>

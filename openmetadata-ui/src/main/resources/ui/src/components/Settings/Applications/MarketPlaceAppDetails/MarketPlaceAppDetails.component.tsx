@@ -155,10 +155,10 @@ const MarketPlaceAppDetails = () => {
       <div className="p-x-md p-t-md ">
         <Button
           className="p-0"
-          onClick={onBrowseAppsClick}
-          color='tertiary'
-          size='xs'
-          iconLeading={<LeftOutlined />}>
+          color="tertiary"
+          iconLeading={<LeftOutlined />}
+          size="xs"
+          onClick={onBrowseAppsClick}>
           <Typography className="font-medium">
             {t('label.browse-app-plural')}
           </Typography>
@@ -168,11 +168,11 @@ const MarketPlaceAppDetails = () => {
         </div>
         <Tooltip placement="top" title={tooltipTitle} trigger="hover">
           <Button
+            className="m-t-md tw:w-full"
+            color="primary"
             data-testid="install-application"
-            onClick={installApp}
-            color='primary'
             isDisabled={isInstalled || isAppDisabled}
-            className='m-t-md tw:w-full'>
+            onClick={installApp}>
             {t('label.install')}
           </Button>
         </Tooltip>

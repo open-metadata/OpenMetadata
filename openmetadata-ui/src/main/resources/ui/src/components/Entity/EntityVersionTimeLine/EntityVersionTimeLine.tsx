@@ -80,9 +80,9 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </Typography>
 
               <Button
-                href="/settings/billing/plans"
-                color='primary'
-                className='m-t-lg tw:w-full'>
+                className="m-t-lg tw:w-full"
+                color="primary"
+                href="/settings/billing/plans">
                 See Upgrade Options
               </Button>
             </div>

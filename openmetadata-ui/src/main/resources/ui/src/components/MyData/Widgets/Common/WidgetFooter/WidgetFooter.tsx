@@ -44,8 +44,8 @@ const WidgetFooter = ({
           <Divider className="mb-0 mt-0" />
           <Button
             className="text-primary hover:underline w-full footer-view-more-button"
-            href={moreButtonLink}
-            color='link-gray'>
+            color="link-gray"
+            href={moreButtonLink}>
             {moreButtonText || t('label.view-more')}
             <ArrowRightOutlined data-testid="arrow-right-icon" />
           </Button>

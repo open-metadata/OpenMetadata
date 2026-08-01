@@ -14,7 +14,15 @@
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography, Button } from '@openmetadata/ui-core-components';
-import { Drawer, Input, InputNumber, Select, Space, Switch, TreeSelect } from 'antd';
+import {
+  Drawer,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  Switch,
+  TreeSelect,
+} from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -442,14 +450,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const drawerFooter = (
     <div className="drawer-footer-actions">
       <Space size={16}>
-        <Button onClick={handleCancel} color='link-gray'>
+        <Button color="link-gray" onClick={handleCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          color="primary"
           form="profiler-setting-form"
-          color='primary'
           isLoading={isLoading}
-          type='submit'>
+          type="submit">
           {t('label.save')}
         </Button>
       </Space>
@@ -597,10 +605,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     </p>
                     <Button
                       className="include-columns-add-button flex-center"
-                      onClick={() => add({ metrics: ['all'] })}
-                      color='primary'
-                      size='xs'
+                      color="primary"
                       iconLeading={<PlusOutlined />}
+                      size="xs"
+                      onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
                   <div
@@ -644,8 +652,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           </Form.Item>
                           <Button
                             className="delete-btn"
-                            onClick={() => remove(name)}
-                            color='tertiary'
+                            color="tertiary"
                             iconLeading={
                               <Icon
                                 className="align-middle"
@@ -653,6 +660,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 style={{ fontSize: '16px' }}
                               />
                             }
+                            onClick={() => remove(name)}
                           />
                         </Col>
                       </Row>
@@ -880,10 +888,10 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           </p>
                           <Button
                             className="include-columns-add-button flex-center"
-                            onClick={() => add()}
-                            color='primary'
-                            size='xs'
+                            color="primary"
                             iconLeading={<PlusOutlined />}
+                            size="xs"
+                            onClick={() => add()}
                           />
                         </div>
 
@@ -916,8 +924,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               </Form.Item>
                               <Button
                                 className="delete-btn"
-                                onClick={() => remove(name)}
-                                color='tertiary'
+                                color="tertiary"
                                 iconLeading={
                                   <Icon
                                     className="align-middle"
@@ -925,6 +932,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                     style={{ fontSize: '16px' }}
                                   />
                                 }
+                                onClick={() => remove(name)}
                               />
                             </Col>
                           </Row>
@@ -950,9 +958,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       extra={
         <Button
           className="drawer-close-icon flex-center"
-          onClick={handleCancel}
-          color='link-gray'
+          color="link-gray"
           iconLeading={<CloseIcon />}
+          onClick={handleCancel}
         />
       }
       footer={drawerFooter}

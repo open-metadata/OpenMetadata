@@ -129,7 +129,7 @@ const TotalEntityInsightSummary = ({
       </Col>
       {activeKeys && activeKeys.length > 0 && allowFilter && (
         <Col className="flex justify-end" span={24}>
-          <Button onClick={() => onActiveKeysUpdate?.([])} color='link-gray'>
+          <Button color="link-gray" onClick={() => onActiveKeysUpdate?.([])}>
             {t('label.clear')}
           </Button>
         </Col>

@@ -172,10 +172,11 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         <Col className="d-flex items-center justify-end gap-2">
           <Button
             className="delete-term-boost"
+            color="secondary"
             data-testid="delete-term-boost"
+            iconLeading={<Icon className="text-md" component={Delete} />}
             onClick={() => onDeleteBoost(termBoost.value)}
-            color='secondary'
-            iconLeading={<Icon className="text-md" component={Delete} />} />
+          />
         </Col>
       </Row>
     </div>

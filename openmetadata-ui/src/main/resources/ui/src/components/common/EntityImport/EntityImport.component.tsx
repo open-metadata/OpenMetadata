@@ -234,10 +234,10 @@ export const EntityImport = ({
               <Affix className="bg-white p-md import-preview-footer">
                 <Space className="justify-end w-full p-r-md">
                   <Button
+                    color="tertiary"
                     data-testid="cancel-button"
                     // as we need to redirect back, from where we enter import screen
-                    onClick={onCancel}
-                    color='tertiary'>
+                    onClick={onCancel}>
                     {t('label.cancel')}
                   </Button>
                 </Space>
@@ -261,7 +261,10 @@ export const EntityImport = ({
                     {csvImportResult.abortReason}
                   </Typography>
                   <Space size={16}>
-                    <Button data-testid="cancel-button" onClick={handleCancel} color='tertiary'>
+                    <Button
+                      color="tertiary"
+                      data-testid="cancel-button"
+                      onClick={handleCancel}>
                       {t('label.back')}
                     </Button>
                   </Space>
@@ -269,7 +272,7 @@ export const EntityImport = ({
               </Card>
             ) : (
               // added extra margin to prevent data lost due to fixed footer at bottom
-              (<div className="mb-16 m-t-lg">
+              <div className="mb-16 m-t-lg">
                 <Row data-testid="import-results" gutter={[16, 16]}>
                   <Col span={24}>{importStartedBanner}</Col>
                   <Col span={24}>
@@ -280,24 +283,24 @@ export const EntityImport = ({
                 <Affix className="bg-white p-md import-preview-footer">
                   <Space className="justify-end w-full p-r-md">
                     <Button
+                      color="tertiary"
                       data-testid="preview-cancel-button"
-                      onClick={handleCancel}
-                      color='tertiary'
-                      isDisabled={isImporting}>
+                      isDisabled={isImporting}
+                      onClick={handleCancel}>
                       {t('label.back')}
                     </Button>
                     {!isFailure && (
                       <Button
+                        color="primary"
                         data-testid="import-button"
-                        onClick={handleImport}
-                        color='primary'
-                        isDisabled={isImporting}>
+                        isDisabled={isImporting}
+                        onClick={handleImport}>
                         {t('label.import')}
                       </Button>
                     )}
                   </Space>
                 </Affix>
-              </div>)
+              </div>
             )}
           </Col>
         )}
@@ -318,9 +321,9 @@ export const EntityImport = ({
                 </Typography>
                 <Space size={16}>
                   <Button
+                    color="primary"
                     data-testid="preview-button"
-                    onClick={onSuccess}
-                    color='primary'>
+                    onClick={onSuccess}>
                     {t('label.view')}
                   </Button>
                 </Space>

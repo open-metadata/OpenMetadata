@@ -363,9 +363,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               <Divider className="m-t-xs m-b-0" />
               <Button
                 className="p-0 m-l-sm"
+                color="link-gray"
                 data-testid="clear-button"
-                onClick={handleClear}
-                color='link-gray'>
+                onClick={handleClear}>
                 {t('label.clear-entity', {
                   entity: t('label.all'),
                 })}
@@ -419,17 +419,17 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             <Space className="p-sm p-t-xss">
               <Button
                 className="update-btn"
+                color="secondary"
                 data-testid="update-btn"
-                onClick={handleUpdate}
-                color='secondary'
-                size='xs'>
+                size="xs"
+                onClick={handleUpdate}>
                 {t('label.update')}
               </Button>
               <Button
+                color="link-gray"
                 data-testid="close-btn"
-                onClick={handleDropdownClose}
-                color='link-gray'
-                size='xs'>
+                size="xs"
+                onClick={handleDropdownClose}>
                 {t('label.close')}
               </Button>
             </Space>

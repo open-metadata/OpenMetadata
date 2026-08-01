@@ -320,18 +320,18 @@ const AddMetricPage = () => {
                   <Row justify="end">
                     <Col>
                       <Button
+                        color="link-gray"
                         data-testid="back-button"
-                        onClick={() => navigate(ROUTES.METRICS)}
-                        color='link-gray'>
+                        onClick={() => navigate(ROUTES.METRICS)}>
                         {t('label.back')}
                       </Button>
                     </Col>
                     <Col>
                       <Button
+                        color="primary"
                         data-testid="create-button"
-                        color='primary'
                         isLoading={isCreating}
-                        type='submit'>
+                        type="submit">
                         {t('label.create')}
                       </Button>
                     </Col>

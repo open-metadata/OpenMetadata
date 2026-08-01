@@ -108,18 +108,18 @@ const AppInstallVerifyCard = ({
         <Divider />
         <div className="d-flex justify-end gap-2">
           <Button
+            className="tw:w-full"
+            color="secondary"
             data-testid="cancel"
-            onClick={onCancel}
-            color='secondary'
-            className='tw:w-full'>
+            onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            className="tw:w-full"
+            color="primary"
             data-testid="save-button"
             key="save-btn"
-            onClick={onSave}
-            color='primary'
-            className='tw:w-full'>
+            onClick={onSave}>
             {nextButtonLabel}
           </Button>
         </div>

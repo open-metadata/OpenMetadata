@@ -90,10 +90,10 @@ const RolesDetailPageList = ({
                   : t('message.no-permission-for-action')
               }>
               <Button
+                color="tertiary"
                 data-testid={`remove-action-${getEntityName(record)}`}
-                onClick={() => onDelete(record)}
-                color='tertiary'
-                isDisabled={!hasAccess}>
+                isDisabled={!hasAccess}
+                onClick={() => onDelete(record)}>
                 <Icon
                   className="align-middle"
                   component={IconRemove}

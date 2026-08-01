@@ -49,7 +49,9 @@ function ObservabilityAlertActions({
   const editButton = (
     <Button
       className="flex flex-center"
+      color="tertiary"
       data-testid={`alert-edit-${record.name}`}
+      iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
       onClick={
         onEditAlert
           ? (event) => {
@@ -59,8 +61,6 @@ function ObservabilityAlertActions({
             }
           : undefined
       }
-      color='tertiary'
-      iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
     />
   );
 
@@ -84,11 +84,11 @@ function ObservabilityAlertActions({
         <Tooltip placement="bottom" title={t('label.delete')}>
           <Button
             className="flex flex-center"
+            color="tertiary"
             data-testid={`alert-delete-${record.name}`}
-            onClick={() => onSelectAlert(record)}
-            color='tertiary'
-            isDisabled={record.provider === ProviderType.System}
             iconLeading={<DeleteIcon height={16} width={16} />}
+            isDisabled={record.provider === ProviderType.System}
+            onClick={() => onSelectAlert(record)}
           />
         </Tooltip>
       )}

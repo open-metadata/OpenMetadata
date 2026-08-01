@@ -12,7 +12,17 @@
  */
 
 import { Typography, Button } from '@openmetadata/ui-core-components';
-import { Col, Form, FormProps, Input, InputNumber, Row, Select, Slider, Space } from 'antd';
+import {
+  Col,
+  Form,
+  FormProps,
+  Input,
+  InputNumber,
+  Row,
+  Select,
+  Slider,
+  Space,
+} from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
@@ -358,17 +368,17 @@ const AddKPIPage = () => {
 
               <Space align="center" className="w-full justify-end">
                 <Button
+                  color="link-gray"
                   data-testid="cancel-btn"
-                  onClick={handleCancel}
-                  color='link-gray'>
+                  onClick={handleCancel}>
                   {t('label.cancel')}
                 </Button>
                 <Button
+                  color="primary"
                   data-testid="submit-btn"
                   form="kpi-form"
-                  color='primary'
                   isLoading={isCreatingKPI}
-                  type='submit'>
+                  type="submit">
                   {t('label.create')}
                 </Button>
               </Space>

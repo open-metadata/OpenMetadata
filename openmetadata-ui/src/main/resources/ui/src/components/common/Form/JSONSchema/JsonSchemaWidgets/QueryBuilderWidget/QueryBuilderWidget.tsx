@@ -283,11 +283,11 @@ const QueryBuilderWidget: FC<
               <div className="m-t-sm">
                 <Button
                   className="w-full p-0 text-left h-auto"
+                  color="link-gray"
                   data-testid="view-assets-banner-button"
                   href={queryURL}
-                  target="_blank"
-                  color='link-gray'
-                  isDisabled={false}>
+                  isDisabled={false}
+                  target="_blank">
                   <Alert
                     closable
                     showIcon

@@ -44,10 +44,10 @@ function EmptyWidgetPlaceholderV1({
       </Typography>
       <Button
         className="add-widgets-button"
+        color="primary"
         data-testid="add-widget-button"
-        onClick={handleAddClick}
-        color='primary'
-        iconLeading={<PlusOutlined />}>
+        iconLeading={<PlusOutlined />}
+        onClick={handleAddClick}>
         {t('label.add-widget-plural')}
       </Button>
     </div>

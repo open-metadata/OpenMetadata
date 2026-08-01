@@ -171,9 +171,9 @@ const DataQualityPage = () => {
                 {activeTab === DataQualityPageTabs.TEST_SUITES &&
                   testSuitePermission?.Create && (
                     <Button
+                      color="primary"
                       data-testid="add-test-suite-btn"
-                      onClick={handleOpenBundleSuiteModal}
-                      color='primary'>
+                      onClick={handleOpenBundleSuiteModal}>
                       {t('label.add-a-entity', {
                         entity: t('label.bundle-suite'),
                       })}
@@ -181,9 +181,9 @@ const DataQualityPage = () => {
                   )}
                 {activeTab === DataQualityPageTabs.TEST_CASES && (
                   <Button
+                    color="primary"
                     data-testid="add-test-case-btn"
-                    onClick={handleOpenTestCaseModal}
-                    color='primary'>
+                    onClick={handleOpenTestCaseModal}>
                     {t('label.add-a-entity', {
                       entity: t('label.test-case'),
                     })}
@@ -201,8 +201,8 @@ const DataQualityPage = () => {
                       placement="bottomRight"
                       trigger={['click']}>
                       <Button
-                        data-testid="data-quality-add-button-menu"
-                        color='primary'>
+                        color="primary"
+                        data-testid="data-quality-add-button-menu">
                         <Space>
                           {t('label.add')}
                           <DownOutlined />

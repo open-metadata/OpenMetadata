@@ -49,9 +49,9 @@ const LoginButton = ({
   return (
     <Button
       className="signin-button m-x-auto"
-      onClick={onClick}
-      color='secondary'
-      iconLeading={svgIcon}>
+      color="secondary"
+      iconLeading={svgIcon}
+      onClick={onClick}>
       <span className="font-medium text-grey-muted text-xl m-l-0">
         {t('label.sign-in-with-sso', { sso: ssoBrandName })}
       </span>

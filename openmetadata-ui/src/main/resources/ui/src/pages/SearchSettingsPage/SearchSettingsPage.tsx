@@ -393,10 +393,10 @@ const SearchSettingsPage = () => {
             </Typography>
             {isAdminUser && (
               <Button
+                color="secondary"
                 data-testid="reset-search-settings-btn"
-                onClick={() => setShowResetModal(true)}
-                color='secondary'
-                isDisabled={isUpdating}>
+                isDisabled={isUpdating}
+                onClick={() => setShowResetModal(true)}>
                 {t('label.reset')}
               </Button>
             )}
@@ -449,11 +449,11 @@ const SearchSettingsPage = () => {
                     {t('label.hybrid-search-weight-plural')}
                   </Typography>
                   <Button
+                    color="primary"
                     data-testid="hybrid-weights-save-btn"
-                    onClick={onHybridWeightSave}
-                    color='primary'
                     isDisabled={!hybridWeightsChanged || isUpdating}
-                    isLoading={isUpdating}>
+                    isLoading={isUpdating}
+                    onClick={onHybridWeightSave}>
                     {t('label.save')}
                   </Button>
                 </Row>
@@ -529,21 +529,21 @@ const SearchSettingsPage = () => {
                     <Col className="d-flex items-center gap-2">
                       <Button
                         className="term-boost-save-btn"
+                        color="secondary"
                         data-testid="term-boost-save-btn"
-                        onClick={handleSaveTermBoost}
-                        color='secondary'
-                        isDisabled={!termBoostsChanged}>
+                        isDisabled={!termBoostsChanged}
+                        onClick={handleSaveTermBoost}>
                         {t('label.save')}
                       </Button>
                       <Button
                         className="term-boost-add-btn"
+                        color="primary"
                         data-testid="term-boost-add-btn"
-                        onClick={handleAddNewTermBoost}
-                        color='primary'
-                        isDisabled={isUpdating || showNewTermBoost}
                         iconLeading={
                           <Icon className="text-sm" component={PlusOutlined} />
-                        }>
+                        }
+                        isDisabled={isUpdating || showNewTermBoost}
+                        onClick={handleAddNewTermBoost}>
                         {t('label.add')}
                       </Button>
                     </Col>
@@ -576,13 +576,13 @@ const SearchSettingsPage = () => {
                     <Col className="d-flex items-center gap-2">
                       <Button
                         className="field-value-boost-add-btn"
+                        color="secondary"
                         data-testid="add-field-value-boost-btn"
-                        onClick={handleAddFieldValueBoost}
-                        color='secondary'
-                        isDisabled={isUpdating || showFieldValueBoostModal}
                         iconLeading={
                           <Icon className="text-sm" component={PlusOutlined} />
-                        }>
+                        }
+                        isDisabled={isUpdating || showFieldValueBoostModal}
+                        onClick={handleAddFieldValueBoost}>
                         {t('label.add')}
                       </Button>
                     </Col>

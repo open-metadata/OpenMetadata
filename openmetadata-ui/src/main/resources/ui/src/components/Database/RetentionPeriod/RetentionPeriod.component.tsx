@@ -124,10 +124,12 @@ const RetentionPeriod = ({
                   })}>
                   <Button
                     className="remove-button-default-styling  flex-center edit-retention-period-button p-0"
+                    color="tertiary"
                     data-testid="edit-retention-period-button"
+                    iconLeading={
+                      <EditIcon color={DE_ACTIVE_COLOR} width="12px" />
+                    }
                     onClick={() => setIsEdit(true)}
-                    color='tertiary'
-                    iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
                   />
                 </Tooltip>
               )}

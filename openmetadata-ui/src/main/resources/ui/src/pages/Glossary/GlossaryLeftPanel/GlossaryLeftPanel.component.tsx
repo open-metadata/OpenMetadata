@@ -116,10 +116,10 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
           {createGlossaryPermission && (
             <Col className="p-x-sm" span={24}>
               <Button
+                className="text-primary tw:w-full"
+                color="secondary"
                 data-testid="add-glossary"
-                onClick={handleAddGlossaryClick}
-                color='secondary'
-                className='text-primary tw:w-full'>
+                onClick={handleAddGlossaryClick}>
                 <div className="flex-center">
                   <PlusIcon className="anticon m-r-xss" />
                   {t('label.add')}

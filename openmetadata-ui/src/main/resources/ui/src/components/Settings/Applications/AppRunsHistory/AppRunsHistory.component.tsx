@@ -196,20 +196,20 @@ const AppRunsHistory = forwardRef(
           <>
             <Button
               className="p-0"
+              color="link-gray"
               data-testid="logs"
-              onClick={() => handleRowExpandable(record.id, record)}
-              color='link-gray'
-              size='xs'
-              isDisabled={showLogAction(record)}>
+              isDisabled={showLogAction(record)}
+              size="xs"
+              onClick={() => handleRowExpandable(record.id, record)}>
               {t('label.log-plural')}
             </Button>
             <Button
               className="m-l-xs p-0"
+              color="link-gray"
               data-testid="app-historical-config"
-              onClick={() => showAppRunConfig(record)}
-              color='link-gray'
-              size='xs'
-              isDisabled={!jsonSchema}>
+              isDisabled={!jsonSchema}
+              size="xs"
+              onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
             {!record.isSynthetic &&
@@ -221,16 +221,16 @@ const AppRunsHistory = forwardRef(
               Boolean(appData?.supportsInterrupt) && (
                 <Button
                   className="m-l-xs p-0"
+                  color="link-gray"
                   data-testid="stop-button"
+                  size="xs"
                   onClick={() => {
                     const rawRunId = record.properties?.pipelineRunId;
                     setSelectedRunId(
                       typeof rawRunId === 'string' ? rawRunId : undefined
                     );
                     setIsStopModalOpen(true);
-                  }}
-                  color='link-gray'
-                  size='xs'>
+                  }}>
                   {t('label.stop')}
                 </Button>
               )}
@@ -525,9 +525,9 @@ const AppRunsHistory = forwardRef(
           footer={
             <Space className="w-full justify-end">
               <Button
+                color="primary"
                 data-testid="app-run-config-close"
-                onClick={() => setShowConfigModal(false)}
-                color='primary'>
+                onClick={() => setShowConfigModal(false)}>
                 {t('label.close')}
               </Button>
             </Space>

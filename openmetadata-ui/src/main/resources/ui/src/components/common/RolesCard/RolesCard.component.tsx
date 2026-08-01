@@ -121,19 +121,19 @@ const RolesCard = ({
               <div className="flex justify-end" data-testid="buttons">
                 <Button
                   className="text-sm mr-1"
+                  color="primary"
                   data-testid="cancel-roles"
-                  onMouseDown={() => setIsRolesEdit(false)}
-                  color='primary'
-                  size='xs'
                   iconLeading={<CloseOutlined />}
+                  size="xs"
+                  onMouseDown={() => setIsRolesEdit(false)}
                 />
                 <Button
                   className="text-sm"
+                  color="primary"
                   data-testid="save-roles"
-                  onClick={handleRolesChange}
-                  color='primary'
-                  size='xs'
                   iconLeading={<CheckOutlined />}
+                  size="xs"
+                  onClick={handleRolesChange}
                 />
               </div>
             </Space>

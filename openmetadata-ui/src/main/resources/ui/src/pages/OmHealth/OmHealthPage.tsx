@@ -79,7 +79,7 @@ const OmHealthPage = () => {
               />
             </Col>
             <Col>
-              <Button onClick={getHealthData} color='primary'>
+              <Button color="primary" onClick={getHealthData}>
                 {t('label.refresh')}
               </Button>
             </Col>

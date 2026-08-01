@@ -333,14 +333,16 @@ const UserListPageV1 = () => {
                     : t(ADMIN_ONLY_ACTION)
                 }>
                 <Button
+                  color="tertiary"
                   data-testid={`restore-user-btn-${record.name}`}
+                  iconLeading={
+                    <IconRestore name={t('label.restore')} width="16px" />
+                  }
+                  isDisabled={!isAdminUser}
                   onClick={() => {
                     setSelectedUser(record);
                     setShowReactiveModal(true);
                   }}
-                  color='tertiary'
-                  isDisabled={!isAdminUser}
-                  iconLeading={<IconRestore name={t('label.restore')} width="16px" />}
                 />
               </Tooltip>
             )}
@@ -354,13 +356,7 @@ const UserListPageV1 = () => {
                   : t(ADMIN_ONLY_ACTION)
               }>
               <Button
-                onClick={() => {
-                  setSelectedUser(record);
-                  setShowDeleteModal(true);
-                }}
-                color='tertiary'
-                size='xs'
-                isDisabled={!isAdminUser}
+                color="tertiary"
                 iconLeading={
                   <IconDelete
                     data-testid={`delete-user-btn-${record.name}`}
@@ -368,6 +364,12 @@ const UserListPageV1 = () => {
                     width="16px"
                   />
                 }
+                isDisabled={!isAdminUser}
+                size="xs"
+                onClick={() => {
+                  setSelectedUser(record);
+                  setShowDeleteModal(true);
+                }}
               />
             </Tooltip>
           </Space>
@@ -504,9 +506,9 @@ const UserListPageV1 = () => {
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
+                  color="primary"
                   data-testid="add-user"
-                  onClick={handleAddNewUser}
-                  color='primary'>
+                  onClick={handleAddNewUser}>
                   {t('label.add-entity', {
                     entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),
                   })}

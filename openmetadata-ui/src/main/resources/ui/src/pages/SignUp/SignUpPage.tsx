@@ -210,10 +210,10 @@ const SignUp = () => {
 
           <Space align="center" className="w-full justify-end d-flex">
             <Button
+              color="primary"
               data-testid="create-button"
-              color='primary'
               isLoading={loading}
-              type='submit'>
+              type="submit">
               {t('label.create')}
             </Button>
           </Space>

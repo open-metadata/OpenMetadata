@@ -234,10 +234,11 @@ const SchemaEditor = ({
             }>
             <Button
               className="query-editor-copy-button"
+              color="secondary"
               data-testid="query-copy-button"
+              iconLeading={<Icon component={CopyIcon} />}
               onClick={() => onCopyToClipBoard(internalValue)}
-              color='secondary'
-              iconLeading={<Icon component={CopyIcon} />} />
+            />
           </Tooltip>
         </div>
       )}

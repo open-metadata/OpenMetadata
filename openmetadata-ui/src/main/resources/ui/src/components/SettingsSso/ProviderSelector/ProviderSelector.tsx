@@ -46,9 +46,9 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           {t('label.choose-provider')}
         </Typography>
         <Button
-          onClick={handleConfigureClick}
-          color='primary'
-          isDisabled={!selectedProvider}>
+          color="primary"
+          isDisabled={!selectedProvider}
+          onClick={handleConfigureClick}>
           {t('label.configure')}
           <ArrowUpOutlined className="configure-arrow" height={12} width={12} />
         </Button>

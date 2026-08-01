@@ -235,10 +235,10 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                         trigger={['click']}>
                         <Button
                           className="flex-center"
+                          color="tertiary"
                           data-testid={`port-actions-${port.id}`}
-                          color='tertiary'
-                          size='xs'
                           iconLeading={<IconDropdown height={14} width={14} />}
+                          size="xs"
                         />
                       </Dropdown>
                     ) : undefined

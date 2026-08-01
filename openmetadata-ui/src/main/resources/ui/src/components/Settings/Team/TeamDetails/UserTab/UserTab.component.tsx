@@ -227,13 +227,13 @@ export const UserTab = ({
                   : t('message.no-permission-for-action')
               }>
               <Button
+                color="tertiary"
                 data-testid="remove-user-btn"
-                onClick={() => handleRemoveClick(record.id)}
-                color='tertiary'
-                isDisabled={!editUserPermission}
                 iconLeading={
                   <IconRemove height={16} name={t('label.remove')} width={16} />
                 }
+                isDisabled={!editUserPermission}
+                onClick={() => handleRemoveClick(record.id)}
               />
             </Tooltip>
           </Space>
@@ -341,10 +341,10 @@ export const UserTab = ({
                   className={classNames({
                     'p-x-lg': editUserPermission && !isTeamDeleted,
                   })}
+                  color="tertiary"
                   data-testid="add-new-user"
-                  color='tertiary'
-                  isDisabled={!editUserPermission || isTeamDeleted}
-                  iconLeading={<PlusOutlined />}>
+                  iconLeading={<PlusOutlined />}
+                  isDisabled={!editUserPermission || isTeamDeleted}>
                   {t('label.add')}
                 </Button>
               </Tooltip>
@@ -404,7 +404,7 @@ export const UserTab = ({
                     includeBot
                     selectedUsers={currentTeam?.users ?? []}
                     onUpdate={onAddUser}>
-                    <Button data-testid="add-new-user" color='primary'>
+                    <Button color="primary" data-testid="add-new-user">
                       {t('label.add-entity', { entity: t('label.user') })}
                     </Button>
                   </UserSelectableList>

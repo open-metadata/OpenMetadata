@@ -94,19 +94,23 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       key: 'id',
       width: 90,
       render: (_: string, record: User) => {
-        return (onRemoveUser && (<Tooltip
-          title={t('label.remove-entity', {
-            entity: t('label.user'),
-          })}>
-          <Button
-            data-testid="remove-user-btn"
-            onClick={() => handleRemoveButtonClick(record)}
-            color='tertiary'
-            iconLeading={
-              <IconRemove height={16} name={t('label.remove')} width={16} />
-            }
-          />
-        </Tooltip>));
+        return (
+          onRemoveUser && (
+            <Tooltip
+              title={t('label.remove-entity', {
+                entity: t('label.user'),
+              })}>
+              <Button
+                color="tertiary"
+                data-testid="remove-user-btn"
+                iconLeading={
+                  <IconRemove height={16} name={t('label.remove')} width={16} />
+                }
+                onClick={() => handleRemoveButtonClick(record)}
+              />
+            </Tooltip>
+          )
+        );
       },
     };
   }, [onRemoveUser]);

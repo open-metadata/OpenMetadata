@@ -78,10 +78,10 @@ export const getBulkEditButton = (
   return hasPermission ? (
     <Button
       className="text-primary p-0 remove-button-background-hover"
+      color="tertiary"
       data-testid="bulk-edit-table"
-      onClick={onClickHandler}
-      color='tertiary'
-      iconLeading={<Icon component={IconEdit} />}>
+      iconLeading={<Icon component={IconEdit} />}
+      onClick={onClickHandler}>
       {t('label.edit')}
     </Button>
   ) : null;

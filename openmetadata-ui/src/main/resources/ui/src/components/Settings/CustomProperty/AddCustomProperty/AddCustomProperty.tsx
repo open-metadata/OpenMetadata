@@ -588,18 +588,18 @@ const AddCustomProperty = ({
         <Row justify="end">
           <Col>
             <Button
+              color="link-gray"
               data-testid="back-button"
-              onClick={handleCancel}
-              color='link-gray'>
+              onClick={handleCancel}>
               {t('label.back')}
             </Button>
           </Col>
           <Col>
             <Button
+              color="primary"
               data-testid="create-button"
-              color='primary'
               isLoading={isCreating || loading}
-              type='submit'>
+              type="submit">
               {t('label.create')}
             </Button>
           </Col>

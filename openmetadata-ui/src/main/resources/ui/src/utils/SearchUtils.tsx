@@ -192,9 +192,9 @@ export const getSuggestionElement = (
 
   return (
     <Button
+      className="text-left truncate p-y-0 p-x-lg tw:w-full"
+      color="tertiary"
       data-testid={dataTestId}
-      key={fqdn}
-      color='tertiary'
       iconLeading={
         <img
           alt={serviceType}
@@ -204,7 +204,7 @@ export const getSuggestionElement = (
           width="16px"
         />
       }
-      className='text-left truncate p-y-0 p-x-lg tw:w-full'>
+      key={fqdn}>
       <Link
         className="text-sm no-underline"
         data-testid="data-name"

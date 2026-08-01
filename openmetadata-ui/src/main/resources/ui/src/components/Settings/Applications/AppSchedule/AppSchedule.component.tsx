@@ -231,32 +231,32 @@ const AppSchedule = ({
             <Space>
               {appData.appType === AppType.External && (
                 <Button
+                  color="primary"
                   data-testid="deploy-button"
-                  onClick={onDeployTrigger}
-                  color='primary'
                   isDisabled={isAppDisabled}
-                  isLoading={isDeployLoading}>
+                  isLoading={isDeployLoading}
+                  onClick={onDeployTrigger}>
                   {t('label.deploy')}
                 </Button>
               )}
 
               {!appData.system && (
                 <Button
+                  color="primary"
                   data-testid="edit-button"
-                  onClick={() => setShowModal(true)}
-                  color='primary'
-                  isDisabled={isAppDisabled}>
+                  isDisabled={isAppDisabled}
+                  onClick={() => setShowModal(true)}>
                   {t('label.edit')}
                 </Button>
               )}
 
               {showRunNowButton && (
                 <Button
+                  color="primary"
                   data-testid="run-now-button"
-                  onClick={onAppTrigger}
-                  color='primary'
                   isDisabled={isAppDisabled}
-                  isLoading={isRunLoading}>
+                  isLoading={isRunLoading}
+                  onClick={onAppTrigger}>
                   {t('label.run-now')}
                 </Button>
               )}

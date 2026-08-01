@@ -158,10 +158,10 @@ const DataProductsWidget = ({
                 'data-product-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              color="secondary"
               data-testid={`data-product-card-${dataProduct.id}`}
               key={dataProduct.id}
-              onClick={() => handleDataProductClick(dataProduct)}
-              color='secondary'>
+              onClick={() => handleDataProductClick(dataProduct)}>
               {isFullSize ? (
                 <div className="d-flex gap-2">
                   <div

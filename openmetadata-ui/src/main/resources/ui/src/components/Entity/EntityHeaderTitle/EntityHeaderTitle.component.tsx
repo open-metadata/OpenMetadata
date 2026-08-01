@@ -184,9 +184,10 @@ const EntityHeaderTitle = ({
             }>
             <Button
               className="remove-button-default-styling copy-button flex-center p-xss "
+              color="secondary"
+              iconLeading={<Icon component={ShareIcon} />}
               onClick={handleShareButtonClick}
-              color='secondary'
-              iconLeading={<Icon component={ShareIcon} />} />
+            />
           </Tooltip>
           {(isEmpty(displayName) || !showName) && suffix}
           {!excludeEntityService &&
@@ -200,12 +201,12 @@ const EntityHeaderTitle = ({
                 })}>
                 <Button
                   className="entity-follow-button flex-center gap-1 text-sm "
+                  color="secondary"
                   data-testid="entity-follow-button"
-                  onClick={handleFollowingClick}
-                  color='secondary'
+                  iconLeading={<Icon component={StarFilledIcon} />}
                   isDisabled={deleted}
                   isLoading={isFollowingLoading}
-                  iconLeading={<Icon component={StarFilledIcon} />}>
+                  onClick={handleFollowingClick}>
                   <Typography>
                     {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
                   </Typography>

@@ -152,9 +152,9 @@ const TaskFeedCard = ({
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
         <Button
           className="p-0 task-feed-header"
+          color="link-gray"
           data-testid="redirect-task-button-link"
-          onClick={handleTaskLinkClick}
-          color='link-gray'>
+          onClick={handleTaskLinkClick}>
           <Typography className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography>
 
           <Typography className="m-r-xss  m-r-xss task-details-entity-link">
@@ -291,7 +291,9 @@ const TaskFeedCard = ({
   }, [showDrawer, feed]);
 
   return (
-    <Button color='tertiary' className='remove-button-default-styling tw:w-full'>
+    <Button
+      className="remove-button-default-styling tw:w-full"
+      color="tertiary">
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
@@ -382,9 +384,9 @@ const TaskFeedCard = ({
                   {feed?.postsCount && feed?.postsCount > 0 ? (
                     <Button
                       className="posts-length m-r-xss p-0 remove-button-default-styling"
+                      color="link-gray"
                       data-testid="replies-count"
-                      onClick={isForFeedTab ? showReplies : undefined}
-                      color='link-gray'>
+                      onClick={isForFeedTab ? showReplies : undefined}>
                       {t(
                         feed.postsCount === 1
                           ? 'label.one-reply'
@@ -414,20 +416,20 @@ const TaskFeedCard = ({
                   {feed.task?.status === ThreadTaskStatus.Open && (
                     <Button
                       className="task-card-approve-btn d-flex items-center"
+                      color="secondary"
                       data-testid="approve-button"
-                      onClick={onTaskResolve}
-                      color='secondary'
-                      iconLeading={<CheckCircleFilled />}>
+                      iconLeading={<CheckCircleFilled />}
+                      onClick={onTaskResolve}>
                       {t('label.approve')}
                     </Button>
                   )}
                   {feed.task?.status === ThreadTaskStatus.Open && (
                     <Button
                       className="task-card-reject-btn d-flex items-center"
+                      color="secondary"
                       data-testid="reject-button"
-                      onClick={onTaskReject}
-                      color='secondary'
-                      iconLeading={<CloseCircleFilled />}>
+                      iconLeading={<CloseCircleFilled />}
+                      onClick={onTaskReject}>
                       {t('label.reject')}
                     </Button>
                   )}

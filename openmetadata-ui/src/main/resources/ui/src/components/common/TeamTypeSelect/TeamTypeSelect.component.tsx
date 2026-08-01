@@ -68,18 +68,18 @@ function TeamTypeSelect({
       <Space className="m-l-xs" size={4}>
         <Button
           className="h-8 p-x-xss"
+          color="primary"
           data-testid="cancel-btn"
-          onClick={handleCancel}
-          color='primary'
-          size='xs'>
+          size="xs"
+          onClick={handleCancel}>
           <CloseOutlined />
         </Button>
         <Button
           className="h-8 p-x-xss"
+          color="primary"
           data-testid="save-btn"
-          onClick={handleSubmit}
-          color='primary'
-          size='xs'>
+          size="xs"
+          onClick={handleSubmit}>
           <CheckOutlined />
         </Button>
       </Space>

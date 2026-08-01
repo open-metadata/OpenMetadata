@@ -91,27 +91,27 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
         <KeyDownStopPropagationWrapper>
           <div className="d-flex justify-between">
             <Button
+              color="primary"
               data-testid="add-new-row"
-              onClick={handleAddRow}
-              color='primary'
-              isDisabled={isUpdating}>
+              isDisabled={isUpdating}
+              onClick={handleAddRow}>
               {t('label.add-entity', { entity: t('label.row') })}
             </Button>
 
             <div className="d-flex gap-2">
               <Button
+                color="secondary"
                 data-testid="cancel-update-table-type-property"
-                onClick={onCancel}
-                color='secondary'
-                isDisabled={isUpdating}>
+                isDisabled={isUpdating}
+                onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="update-table-type-property"
-                onClick={handleUpdate}
-                color='primary'
                 isDisabled={isUpdating}
-                isLoading={isUpdating}>
+                isLoading={isUpdating}
+                onClick={handleUpdate}>
                 {t('label.update')}
               </Button>
             </div>

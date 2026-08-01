@@ -12,7 +12,17 @@
  */
 
 import { Typography, Button } from '@openmetadata/ui-core-components';
-import { Card, Checkbox, Col, Dropdown, Form, Input, MenuItemProps, Row, Tag } from 'antd';
+import {
+  Card,
+  Checkbox,
+  Col,
+  Dropdown,
+  Form,
+  Input,
+  MenuItemProps,
+  Row,
+  Tag,
+} from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import {
@@ -226,10 +236,10 @@ function TeamAndUserSelectItem({
       trigger={['click']}>
       <Button
         className="select-trigger"
+        color="secondary"
         data-testid="dropdown-trigger-button"
         ref={triggerRef}
-        onClick={handleTriggerClick}
-        color='secondary'>
+        onClick={handleTriggerClick}>
         <Row gutter={[4, 4]}>
           {isEmpty(selectedOptions) ? (
             <Typography

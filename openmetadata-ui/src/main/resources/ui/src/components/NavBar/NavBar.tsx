@@ -510,18 +510,18 @@ const NavBar = () => {
               }>
               <Button
                 className="w-6 h-6 p-0 flex-center"
+                color="tertiary"
                 data-testid="sidebar-toggle"
-                onClick={() =>
-                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
-                }
-                color='tertiary'
-                size='sm'
                 iconLeading={
                   isSidebarCollapsed ? (
                     <SidebarCollapsedIcon height={20} width={20} />
                   ) : (
                     <SidebarExpandedIcon height={20} width={20} />
                   )
+                }
+                size="sm"
+                onClick={() =>
+                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
               />
             </Tooltip>
@@ -559,11 +559,11 @@ const NavBar = () => {
                             activeDomain !== DEFAULT_DOMAIN_VALUE,
                         }
                       )}
+                      color="secondary"
                       data-testid="domain-dropdown"
                       onClick={() =>
                         setIsDomainDropdownOpen(!isDomainDropdownOpen)
-                      }
-                      color='secondary'>
+                      }>
                       <DomainIcon
                         className="d-flex"
                         height={20}
@@ -592,8 +592,8 @@ const NavBar = () => {
               trigger={['click']}>
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
-                data-testid="language-selector-button"
-                color='tertiary'>
+                color="tertiary"
+                data-testid="language-selector-button">
                 {currentLanguage}
                 <DropDownIcon width={12} />
               </Button>
@@ -622,8 +622,7 @@ const NavBar = () => {
               onOpenChange={handleBellClick}>
               <Button
                 className="flex-center"
-                title={t('label.notification-plural')}
-                color='tertiary'
+                color="tertiary"
                 iconLeading={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
@@ -631,6 +630,7 @@ const NavBar = () => {
                     <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
+                title={t('label.notification-plural')}
               />
             </Dropdown>
             <Dropdown
@@ -642,10 +642,10 @@ const NavBar = () => {
               trigger={['click']}>
               <Button
                 className="flex-center"
+                color="tertiary"
                 data-testid="help-icon"
-                title={t('label.need-help')}
-                color='tertiary'
                 iconLeading={<Help width={20} />}
+                title={t('label.need-help')}
               />
             </Dropdown>
             <UserProfileIcon />
@@ -657,11 +657,11 @@ const NavBar = () => {
           showIcon
           action={
             <Button
+              color="link-gray"
+              size="xs"
               onClick={() => {
                 navigate(0);
-              }}
-              color='link-gray'
-              size='xs'>
+              }}>
               {t('label.refresh')}
             </Button>
           }

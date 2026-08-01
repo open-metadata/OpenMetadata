@@ -90,11 +90,11 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
               <Tooltip placement="right" title={t('label.expand')}>
                 <Button
                   className="mr-2"
+                  color="tertiary"
                   data-testid="sidebar-toggle"
-                  onClick={handleCollapse}
-                  color='tertiary'
-                  size='sm'
                   iconLeading={<SidebarCollapsedIcon height={20} width={20} />}
+                  size="sm"
+                  onClick={handleCollapse}
                 />
               </Tooltip>
             </Card>

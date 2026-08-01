@@ -326,12 +326,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
               <Grid.Item className="tw:flex tw:items-center" span={1}>
                 <Button
+                  color="tertiary"
                   data-testid={`remove-mapping-btn-${mapping.id}`}
-                  onClick={() => handleRemoveMapping(mapping.id)}
-                  color='tertiary'
-                  size='md'
-                  isDisabled={disabled || readonly}
                   iconLeading={<DeleteIcon height={20} width={20} />}
+                  isDisabled={disabled || readonly}
+                  size="md"
+                  onClick={() => handleRemoveMapping(mapping.id)}
                 />
               </Grid.Item>
             </Grid>
@@ -340,12 +340,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
         {!readonly && (
           <Button
+            className="add-mapping-btn tw:w-full"
+            color="secondary"
             data-testid="add-mapping-btn"
-            onClick={handleAddMapping}
-            color='secondary'
-            isDisabled={disabled}
             iconLeading={<PlusOutlined />}
-            className='add-mapping-btn tw:w-full'>
+            isDisabled={disabled}
+            onClick={handleAddMapping}>
             {t('label.add-entity', {
               entity: t('label.ldap-group-mapping'),
             })}

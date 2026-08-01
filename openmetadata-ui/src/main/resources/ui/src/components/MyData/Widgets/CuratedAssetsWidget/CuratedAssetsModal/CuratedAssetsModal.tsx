@@ -134,18 +134,18 @@ const CuratedAssetsModal = ({
   const modalFooter = useMemo(
     () => [
       <Button
+        color="tertiary"
         data-testid="cancelButton"
         key="cancelButton"
-        onClick={handleCancel}
-        color='tertiary'>
+        onClick={handleCancel}>
         {t('label.cancel')}
       </Button>,
       <Button
+        color="primary"
         data-testid="saveButton"
+        isDisabled={disableSave}
         key="saveButton"
-        onClick={() => form.submit()}
-        color='primary'
-        isDisabled={disableSave}>
+        onClick={() => form.submit()}>
         {t('label.save')}
       </Button>,
     ],

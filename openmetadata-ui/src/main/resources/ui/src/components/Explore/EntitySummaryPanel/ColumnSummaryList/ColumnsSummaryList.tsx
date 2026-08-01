@@ -103,10 +103,10 @@ export const ColumnSummaryList = ({
 
     return (
       <Button
-        onClick={handleLoadMore}
-        color='link-gray'
+        className="tw:w-full"
+        color="link-gray"
         isLoading={loading && currentPage > 1}
-        className='tw:w-full'>
+        onClick={handleLoadMore}>
         {t('label.show-more')}
       </Button>
     );

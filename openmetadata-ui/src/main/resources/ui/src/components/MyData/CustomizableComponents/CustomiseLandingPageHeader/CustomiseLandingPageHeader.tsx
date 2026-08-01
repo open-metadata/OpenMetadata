@@ -161,15 +161,16 @@ const CustomiseLandingPageHeader = ({
             {!hideCustomiseButton && (
               <Button
                 className="customise-header-btn"
+                color="secondary"
                 data-testid="customise-header-btn"
-                onClick={handleOpenCustomiseHomeModal}
-                color='secondary'
                 iconLeading={
                   <Icon
                     component={FilterIcon}
                     style={{ fontSize: '16px', color: 'white' }}
                   />
-                } />
+                }
+                onClick={handleOpenCustomiseHomeModal}
+              />
             )}
           </div>
           <div className="mb-9 customise-search-container">

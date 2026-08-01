@@ -96,9 +96,9 @@ function ObservabilityAlertForm({
             <Col span={24}>
               <div className="flex justify-end gap-2">
                 <Button
+                  color="tertiary"
                   data-testid="cancel-button"
-                  onClick={handleCancel}
-                  color='tertiary'>
+                  onClick={handleCancel}>
                   {t('label.cancel')}
                 </Button>
 
@@ -114,10 +114,10 @@ function ObservabilityAlertForm({
                   )
                 )}
                 <Button
+                  color="primary"
                   data-testid="save-button"
-                  color='primary'
                   isLoading={saving}
-                  type='submit'>
+                  type="submit">
                   {t('label.save')}
                 </Button>
               </div>

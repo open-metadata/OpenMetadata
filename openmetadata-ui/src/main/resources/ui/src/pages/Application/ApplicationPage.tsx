@@ -178,9 +178,9 @@ const ApplicationPage = () => {
             </div>
             <LimitWrapper resource="app">
               <Button
+                color="primary"
                 data-testid="add-application"
-                onClick={handleAddApplication}
-                color='primary'>
+                onClick={handleAddApplication}>
                 {t('label.add-entity', {
                   entity: t('label.app-plural'),
                 })}

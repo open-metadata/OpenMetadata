@@ -388,10 +388,10 @@ export const useSemanticsRuleList = ({
           </Typography>
           <Button
             className="add-button"
+            color="tertiary"
             data-testid="add-widget-button"
-            onClick={handleAddDataAssetRule}
-            color='tertiary'
-            iconLeading={<PlusOutlined />}>
+            iconLeading={<PlusOutlined />}
+            onClick={handleAddDataAssetRule}>
             {t('label.add')}
           </Button>
         </Space>

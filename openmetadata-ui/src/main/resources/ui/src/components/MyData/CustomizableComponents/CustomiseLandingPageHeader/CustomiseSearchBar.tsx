@@ -201,9 +201,8 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
             className={classNames('nlp-search-button w-6 h-6', {
               active: isNLPActive,
             })}
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            onClick={() => setNLPActive(!isNLPActive)}
-            color='tertiary'
             iconLeading={
               <Icon
                 component={
@@ -211,6 +210,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
                 }
               />
             }
+            onClick={() => setNLPActive(!isNLPActive)}
           />
         </Tooltip>
       )}

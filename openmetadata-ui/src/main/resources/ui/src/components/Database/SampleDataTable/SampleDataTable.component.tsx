@@ -334,9 +334,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
             })}>
             <Button
               className="flex-center px-1.5"
+              color="secondary"
               data-testid="sample-data-manage-button"
-              onClick={() => setShowActions(true)}
-              color='secondary'>
+              onClick={() => setShowActions(true)}>
               <IconDropdown className="anticon self-center " />
             </Button>
           </Tooltip>

@@ -35,25 +35,25 @@ const LinkPopup: FC<LinkPopupProps> = ({
     <Space className="link-popup">
       <Button
         className="p-0"
+        color="tertiary"
         data-testid="link-popup-edit"
-        onClick={handleLinkToggle}
-        color='tertiary'
         iconLeading={<EditIcon width={iconSize} />}
+        onClick={handleLinkToggle}
       />
       <Button
         className="p-0"
+        color="link-gray"
         data-testid="link-popup-open"
         href={href}
-        target="_blank"
-        color='link-gray'
         iconLeading={<ExternalLinkIcon width={iconSize + 2} />}
+        target="_blank"
       />
       <Button
         className="p-0"
+        color="tertiary"
         data-testid="link-popup-unlink"
-        onClick={handleUnlink}
-        color='tertiary'
         iconLeading={<UnlinkIcon width={iconSize} />}
+        onClick={handleUnlink}
       />
     </Space>
   );

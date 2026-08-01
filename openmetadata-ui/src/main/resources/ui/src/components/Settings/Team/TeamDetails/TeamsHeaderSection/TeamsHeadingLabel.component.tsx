@@ -92,7 +92,7 @@ const TeamsHeadingLabel = ({
       isHeadingEditing ? (
         // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel
-        (<div
+        <div
           className="d-flex gap-2 items-center teams-heading-label-edit-row w-full w-min-0"
           onClick={(e) => e.stopPropagation()}>
           <Input
@@ -108,22 +108,22 @@ const TeamsHeadingLabel = ({
           <Space className="flex-none" data-testid="buttons" size={4}>
             <Button
               className="rounded-4 text-sm p-xss"
+              color="primary"
               data-testid="cancelAssociatedTag"
-              onMouseDown={handleClose}
-              color='primary'
-              isDisabled={isLoading}>
+              isDisabled={isLoading}
+              onMouseDown={handleClose}>
               <CloseOutlined />
             </Button>
             <Button
               className="rounded-4 text-sm p-xss"
+              color="primary"
               data-testid="saveAssociatedTag"
-              onMouseDown={onHeadingSave}
-              color='primary'
-              isLoading={isLoading}>
+              isLoading={isLoading}
+              onMouseDown={onHeadingSave}>
               <CheckOutlined />
             </Button>
           </Space>
-        </div>)
+        </div>
       ) : (
         <>
           <>
@@ -157,16 +157,18 @@ const TeamsHeadingLabel = ({
                 }>
                 <Button
                   className="p-0 edit-team-name flex-center"
+                  color="tertiary"
                   data-testid="edit-team-name"
+                  iconLeading={
+                    <EditIcon color={DE_ACTIVE_COLOR} width="12px" />
+                  }
+                  isDisabled={!hasEditDisplayNamePermission}
+                  size="xs"
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     setIsHeadingEditing(true);
                   }}
-                  color='tertiary'
-                  size='xs'
-                  isDisabled={!hasEditDisplayNamePermission}
-                  iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
                 />
               </Tooltip>
             )}

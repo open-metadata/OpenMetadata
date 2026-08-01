@@ -225,18 +225,18 @@ const SearchPreview = ({
           </span>
           <Button
             className="restore-defaults-btn font-semibold"
+            color="secondary"
             data-testid="restore-defaults-btn"
-            onClick={handleRestoreDefaults}
-            color='secondary'>
+            onClick={handleRestoreDefaults}>
             {t('label.restore-default-plural')}
           </Button>
           <Button
             className="save-btn font-semibold"
+            color="secondary"
             data-testid="save-btn"
-            onClick={handleSaveChanges}
-            color='secondary'
             isDisabled={disabledSave}
-            isLoading={isSaving}>
+            isLoading={isSaving}
+            onClick={handleSaveChanges}>
             {t('label.save')}
           </Button>
         </Col>

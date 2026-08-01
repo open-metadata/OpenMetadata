@@ -118,12 +118,12 @@ function EmailConfigForm({
       </Item>
       <Row justify="end">
         <Col>
-          <Button onClick={onCancel} color='link-gray'>
+          <Button color="link-gray" onClick={onCancel}>
             {t('label.cancel')}
           </Button>
         </Col>
         <Col>
-          <Button color='primary' isLoading={isLoading} type='submit'>
+          <Button color="primary" isLoading={isLoading} type="submit">
             {t('label.save')}
           </Button>
         </Col>

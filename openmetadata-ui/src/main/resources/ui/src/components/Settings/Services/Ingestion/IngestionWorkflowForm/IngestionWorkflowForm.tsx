@@ -340,11 +340,11 @@ const IngestionWorkflowForm = forwardRef<
         {!hideFooter && (
           <div className="d-flex w-full justify-end">
             <Space>
-              <Button onClick={onCancel} color='link-gray'>
+              <Button color="link-gray" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" color='primary' type='submit'>
+              <Button color="primary" data-testid="submit-btn" type="submit">
                 {okText ?? t('label.save')}
               </Button>
             </Space>

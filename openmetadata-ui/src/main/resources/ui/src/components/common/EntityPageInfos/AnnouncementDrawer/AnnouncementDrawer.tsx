@@ -110,10 +110,10 @@ const AnnouncementDrawer: FC<Props> = ({
         <Tooltip
           title={!createPermission && t('message.no-permission-to-view')}>
           <Button
+            color="primary"
             data-testid="add-announcement"
-            onClick={handleOpenAnnouncementModal}
-            color='primary'
-            isDisabled={!createPermission}>
+            isDisabled={!createPermission}
+            onClick={handleOpenAnnouncementModal}>
             {t('label.add-entity', { entity: t('label.announcement') })}
           </Button>
         </Tooltip>

@@ -50,10 +50,10 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       extra={
         <Button
           className="flex-center welcome-screen-close-btn"
+          color="tertiary"
           data-testid="welcome-screen-close-btn"
-          onClick={onClose}
-          color='tertiary'
           iconLeading={<CloseIcon height={12} width={12} />}
+          onClick={onClose}
         />
       }>
       <Row className="p-md welcome-screen-full-height">

@@ -101,14 +101,17 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
             <Tooltip placement="top" title={t('label.edit')}>
               <Button
                 className="hover-cell-icon flex-center"
+                color="tertiary"
                 data-testid="edit-displayName-button"
+                iconLeading={
+                  <IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />
+                }
                 style={{
                   width: '24px',
                   height: '24px',
                 }}
                 onClick={() => setIsDisplayNameEditing(true)}
-                color='tertiary'
-                iconLeading={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />} />
+              />
             </Tooltip>
           ) : null}
 

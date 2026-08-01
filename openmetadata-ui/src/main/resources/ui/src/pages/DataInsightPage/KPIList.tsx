@@ -153,11 +153,11 @@ const KPIList = () => {
                 }>
                 <Button
                   className="flex-center"
+                  color="tertiary"
                   data-testid={`edit-action-${getEntityName(record)}`}
-                  onClick={() => navigate(getKpiPath(record.name))}
-                  color='tertiary'
-                  isDisabled={!isAdminUser}
                   iconLeading={<EditIcon width="16px" />}
+                  isDisabled={!isAdminUser}
+                  onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
               <Tooltip
@@ -168,13 +168,13 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <Button
+                  color="tertiary"
                   data-testid={`delete-action-${getEntityName(record)}`}
-                  onClick={() => setSelectedKpi(record)}
-                  color='tertiary'
-                  isDisabled={!isAdminUser}
                   iconLeading={
                     <Icon component={IconDelete} style={{ fontSize: '16px' }} />
                   }
+                  isDisabled={!isAdminUser}
+                  onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>
             </div>

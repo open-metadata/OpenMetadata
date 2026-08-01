@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Skeleton, Table, Typography, Button } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Table,
+  Typography,
+  Button,
+} from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
 import { Space, Switch, Tooltip } from 'antd';
 import { useMemo } from 'react';
@@ -150,20 +157,20 @@ const TestDefinitionTable = ({
       <Space size={0}>
         <Tooltip title={editTooltip}>
           <Button
+            color="tertiary"
             data-testid={`edit-test-definition-${record.name}`}
-            onClick={() => onEdit(record)}
-            color='tertiary'
-            isDisabled={isSystemProvider || !hasEditPermission}
             iconLeading={<IconEdit height={16} width={16} />}
+            isDisabled={isSystemProvider || !hasEditPermission}
+            onClick={() => onEdit(record)}
           />
         </Tooltip>
         <Tooltip title={deleteTooltip}>
           <Button
+            color="tertiary"
             data-testid={`delete-test-definition-${record.name}`}
-            onClick={() => onDelete(record)}
-            color='tertiary'
-            isDisabled={isSystemProvider || !hasDeletePermission}
             iconLeading={<IconDelete height={16} width={16} />}
+            isDisabled={isSystemProvider || !hasDeletePermission}
+            onClick={() => onDelete(record)}
           />
         </Tooltip>
       </Space>

@@ -799,8 +799,8 @@ export const ActivityFeedTab = ({
                   'cursor-pointer': !isMentionTabSelected,
                   disabled: isMentionTabSelected,
                 })}
-                data-testid="user-profile-page-task-filter-icon"
-                color='secondary'>
+                color="secondary"
+                data-testid="user-profile-page-task-filter-icon">
                 <Space align="center" size={4}>
                   <FilterIcon height={16} style={{ verticalAlign: 'middle' }} />
                   <span

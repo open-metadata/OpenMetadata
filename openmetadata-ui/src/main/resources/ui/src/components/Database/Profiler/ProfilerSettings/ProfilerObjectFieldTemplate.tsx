@@ -39,14 +39,16 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
 
         {schema.additionalProperties && (
           <Button
+            color="primary"
             data-testid={`add-item-${title}`}
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
             id={`${idSchema.$id}`}
+            size="xs"
             onClick={() => {
               onAddClick(schema)();
             }}
-            color='primary'
-            size='xs'
-            iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
           />
         )}
       </Space>

@@ -174,15 +174,15 @@ const LeftSidebar = () => {
           <div className="d-flex gap-2 w-full m-t-md justify-center">
             <Button
               className="confirm-btn"
-              onClick={hideConfirmLogoutModal}
-              color='secondary'>
+              color="secondary"
+              onClick={hideConfirmLogoutModal}>
               {t('label.cancel')}
             </Button>
             <Button
               className="confirm-btn"
+              color="primary"
               data-testid="confirm-logout"
-              onClick={onLogoutHandler}
-              color='primary'>
+              onClick={onLogoutHandler}>
               {t('label.logout')}
             </Button>
           </div>

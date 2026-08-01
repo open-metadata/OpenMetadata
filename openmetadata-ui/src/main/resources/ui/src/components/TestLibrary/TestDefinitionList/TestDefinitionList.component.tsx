@@ -116,9 +116,9 @@ const TestDefinitionList = () => {
               {createPermission && (
                 <Col>
                   <Button
+                    color="primary"
                     data-testid="add-test-definition-button"
-                    onClick={openCreateForm}
-                    color='primary'>
+                    onClick={openCreateForm}>
                     {t('label.add-entity', {
                       entity: t('label.test-definition'),
                     })}

@@ -157,9 +157,9 @@ const Table = <T extends object>(
               </Typography>
               <Button
                 className="text-primary text-sm p-0"
+                color="tertiary"
                 data-testid="column-dropdown-action-button"
-                onClick={handleBulkColumnAction}
-                color='tertiary'>
+                onClick={handleBulkColumnAction}>
                 {dropdownColumnList.length === columnDropdownSelections.length
                   ? t('label.hide-all')
                   : t('label.view-all')}
@@ -291,11 +291,11 @@ const Table = <T extends object>(
                   onOpenChange={setIsDropdownVisible}>
                   <Button
                     className="remove-button-background-hover"
+                    color="tertiary"
                     data-testid="column-dropdown"
-                    title={t('label.show-or-hide-column-plural')}
-                    color='tertiary'
-                    size='xs'
-                    iconLeading={<ColumnIcon />}>
+                    iconLeading={<ColumnIcon />}
+                    size="xs"
+                    title={t('label.show-or-hide-column-plural')}>
                     {t('label.customize')}
                   </Button>
                 </Dropdown>

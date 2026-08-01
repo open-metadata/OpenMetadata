@@ -497,10 +497,10 @@ const TableQueries: FC<TableQueriesProp> = ({
       placement="top"
       title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
       <Button
+        color="primary"
         data-testid="add-query-btn"
-        onClick={handleAddQueryClick}
-        color='primary'
-        isDisabled={!permissions?.query.Create}>
+        isDisabled={!permissions?.query.Create}
+        onClick={handleAddQueryClick}>
         {t('label.add')}
       </Button>
     </Tooltip>
@@ -605,10 +605,10 @@ const TableQueries: FC<TableQueriesProp> = ({
                       />
                       <Button
                         className="p-x-0"
+                        color="tertiary"
                         onClick={() => {
                           setIsClickedCalendar(true);
-                        }}
-                        color='tertiary'>
+                        }}>
                         <span>
                           <label>{t('label.created-date')}</label>
                           <DatePicker.RangePicker
@@ -636,13 +636,13 @@ const TableQueries: FC<TableQueriesProp> = ({
                       />
                       <Button
                         className="p-0"
+                        color="tertiary"
                         data-testid="sort-order-button"
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
-                        }
-                        color='tertiary'>
+                        }>
                         {isAscSortOrder ? (
                           <SortAscendingOutlined
                             className="text-base text-grey-muted"

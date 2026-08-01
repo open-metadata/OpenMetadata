@@ -66,8 +66,8 @@ const WidgetSortFilter = ({
       onOpenChange={(open) => setIsOpen(open)}>
       <Button
         className="widget-sort-by-dropdown"
-        data-testid="widget-sort-by-dropdown"
-        color='secondary'>
+        color="secondary"
+        data-testid="widget-sort-by-dropdown">
         {sortOptions.find((option) => option.key === selectedSortBy)?.label}
         {isOpen ? (
           <UpOutlined className="widget-sort-filter-icon" />

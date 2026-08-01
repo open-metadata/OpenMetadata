@@ -157,9 +157,9 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
               }}
             />
             <Button
-              onClick={handleAddCustomUnit}
-              color='tertiary'
-              iconLeading={<PlusOutlined />}>
+              color="tertiary"
+              iconLeading={<PlusOutlined />}
+              onClick={handleAddCustomUnit}>
               {t('label.add')}
             </Button>
           </div>

@@ -57,13 +57,13 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
       {options.map((option) => (
         <Button
           className="d-flex justify-between text-sm w-full p-x-0"
+          color="tertiary"
           data-testid="InPage"
           key={option}
           onClick={() => {
             selectOption(searchText);
             setIsOpen(false);
-          }}
-          color='tertiary'>
+          }}>
           {searchText}
           <Typography>{option}</Typography>
         </Button>

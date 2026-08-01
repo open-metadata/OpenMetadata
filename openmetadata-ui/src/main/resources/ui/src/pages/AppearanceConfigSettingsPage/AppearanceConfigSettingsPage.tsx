@@ -431,10 +431,10 @@ const AppearanceConfigSettingsPage = () => {
                   }}
                 />
                 <Button
+                  color="primary"
                   data-testid="reset-button"
-                  onClick={handleReset}
-                  color='primary'
-                  isLoading={resetting}>
+                  isLoading={resetting}
+                  onClick={handleReset}>
                   {t('label.reset')}
                 </Button>
               </Space>
@@ -497,32 +497,33 @@ const AppearanceConfigSettingsPage = () => {
                           <Col style={{ placeSelf: 'center' }}>
                             <Card className="theme-preview">
                               <Button
+                                color="secondary"
                                 style={{
                                   background: currentColor,
                                   color: 'white',
                                   width: '86px',
-                                }}
-                                color='secondary'>
+                                }}>
                                 {startCase(
                                   toString(field.name).replace('Color', '')
                                 )}
                               </Button>
 
                               <Button
+                                color="secondary"
+                                iconLeading={<Icon component={ShareIcon} />}
                                 style={{
                                   width: '56px',
                                   color: currentColor,
                                   borderColor: currentColor,
                                 }}
-                                color='secondary'
-                                iconLeading={<Icon component={ShareIcon} />} />
+                              />
                               <Button
+                                color="secondary"
                                 style={{
                                   color: currentColor,
                                   borderColor: currentColor,
                                   width: '86px',
-                                }}
-                                color='secondary'>
+                                }}>
                                 {startCase(
                                   toString(field.name).replace('Color', '')
                                 )}
@@ -534,11 +535,11 @@ const AppearanceConfigSettingsPage = () => {
                                 width={32}
                               />
                               <Button
+                                color="link-gray"
                                 style={{
                                   color: currentColor,
                                   padding: 0,
-                                }}
-                                color='link-gray'>
+                                }}>
                                 {t('label.link')}
                               </Button>
                             </Card>
@@ -556,16 +557,16 @@ const AppearanceConfigSettingsPage = () => {
               data-testid="cta-buttons"
               size={16}>
               <Button
+                color="link-gray"
                 data-testid="cancel-btn"
-                onClick={() => navigate(-1)}
-                color='link-gray'>
+                onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-btn"
-                color='primary'
                 isLoading={loading}
-                type='submit'>
+                type="submit">
                 {t('label.save')}
               </Button>
             </Space>
