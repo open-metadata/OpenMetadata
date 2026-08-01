@@ -98,6 +98,44 @@ def test_common_assignment_stays_within_the_execution_ceiling():
     )
 
 
+def test_full_mode_chromium_converges_at_the_shard_ceiling():
+    # Regression guard for the merge-queue outage: a lane of this shape exhausted
+    # COMMON_MAX_SHARDS under the old 19m budget and aborted planning outright.
+    # The allocator must converge at or before the ceiling, and the resulting
+    # plan genuinely needs the window above 19m -- so quietly reverting the
+    # budget to 19m fails on the final assertion rather than only in CI.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium", f"heavy-{index}.spec.ts", str(index), weight_ms=13 * 60 * 1000
+        )
+        for index in range(96)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "chromium", "full")
+
+    workers = planner.LANE_WORKERS.get("chromium", 3)
+    heaviest_ms = max(
+        planner.predicted_execution_ms(shard, workers) for shard in shards
+    )
+    assert len(shards) <= planner.COMMON_MAX_SHARDS
+    assert heaviest_ms <= planner.COMMON_SHARD_BUDGET_MS
+    assert heaviest_ms > 19 * 60 * 1000
+
+
+def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium", f"huge-{index}.spec.ts", str(index), weight_ms=19 * 60 * 1000
+        )
+        for index in range(120)
+    ]
+
+    with pytest.raises(SystemExit, match=r"needs more than 24 shards"):
+        planner.assign_lane_within_budget(units, "chromium", "full")
+
+
 def test_shard_pattern_includes_project_and_file():
     planner = load_script("build_playwright_shards")
     unit = planner.Unit(
