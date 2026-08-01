@@ -299,16 +299,18 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await mainEntity.prepareCustomProperty(apiContext);
 
         if (key === 'entity_table') {
-          for (let i = 0; i < 5; i++) {
-            const user = new UserClass();
-            await user.create(apiContext);
-            users.push(user);
-          }
+          // Created concurrently: sequential round-trips in this hook
+          // accumulate enough latency under load to exhaust its 60s budget.
+          const newUsers = Array.from({ length: 5 }, () => new UserClass());
+          await Promise.all(newUsers.map((user) => user.create(apiContext)));
+          users.push(...newUsers);
         } else if (key === 'entity_dashboard') {
           dashboardTopic1 = new TopicClass();
           dashboardTopic2 = new TopicClass();
-          await dashboardTopic1.create(apiContext);
-          await dashboardTopic2.create(apiContext);
+          await Promise.all([
+            dashboardTopic1.create(apiContext),
+            dashboardTopic2.create(apiContext),
+          ]);
           await setupCustomPropertyAdvancedSearchTest(
             page,
             cpasTestData,
