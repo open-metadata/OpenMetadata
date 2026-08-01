@@ -134,7 +134,8 @@ for (const entity of searchRBACEntities) {
       await searchForEntityShouldWorkShowNoResult(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
         entityObj.entityResponseData?.displayName ?? '',
-        userWithoutPermissionPage
+        userWithoutPermissionPage,
+        entity.name
       );
     });
   });
@@ -258,7 +259,8 @@ test.describe(`Table Column`, () => {
     await searchForEntityShouldWorkShowNoResult(
       column.fullyQualifiedName ?? '',
       column.displayName ?? column.name ?? '',
-      userWithoutPermissionPage
+      userWithoutPermissionPage,
+      'Columns'
     );
   });
 });
