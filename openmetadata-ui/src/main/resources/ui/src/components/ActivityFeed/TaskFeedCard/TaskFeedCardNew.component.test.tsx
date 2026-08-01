@@ -80,11 +80,15 @@ jest.mock('../../../pages/TasksPage/shared/DescriptionTaskNew', () => {
   return jest.fn().mockImplementation(() => <p>DescriptionTaskNew</p>);
 });
 
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
-  getTaskDetailPath: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskActionUtils'),
   isTagsTask: jest.fn().mockReturnValue(true),
   isDescriptionTask: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskNavigationUtils'),
+  getTaskDetailPath: jest.fn().mockReturnValue('/tasks/1'),
 }));
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
@@ -122,8 +126,10 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
 }));
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  updateTask: jest.fn().mockResolvedValue({}),
+jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
+  resolveTask: jest.fn().mockResolvedValue({}),
+  closeTask: jest.fn().mockResolvedValue({}),
 }));
 
 const mockProps = {
@@ -181,7 +187,7 @@ describe('TaskFeedCardNew Component', () => {
     const {
       isTagsTask,
       isDescriptionTask,
-    } = require('../../../utils/TasksUtils');
+    } = require('../../../utils/TaskActionUtils');
     isTagsTask.mockReturnValue(false);
     isDescriptionTask.mockReturnValue(true);
 
@@ -209,7 +215,7 @@ describe('TaskFeedCardNew Component', () => {
   });
 
   it('should handle approve button click', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const { useAuth } = require('../../../hooks/authHooks');
     useAuth.mockReturnValue({ isAdminUser: true });
 
@@ -224,11 +230,11 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(approveButton);
     });
 
-    expect(updateTask).toHaveBeenCalled();
+    expect(resolveTask).toHaveBeenCalled();
   });
 
   it('should handle reject button click', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const { useAuth } = require('../../../hooks/authHooks');
     useAuth.mockReturnValue({ isAdminUser: true });
 
@@ -243,7 +249,12 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(rejectButton);
     });
 
-    expect(updateTask).toHaveBeenCalled();
+    expect(resolveTask).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        resolutionType: 'Rejected',
+      })
+    );
   });
 
   it('should display replies count when posts are available', async () => {
@@ -299,7 +310,7 @@ describe('TaskFeedCardNew Component', () => {
   });
 
   it('should handle recognizer feedback approval', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const {
       useApplicationStore,
     } = require('../../../hooks/useApplicationStore');
@@ -327,8 +338,7 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(approveButton);
     });
 
-    expect(updateTask).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(resolveTask).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         newValue: 'approved',
@@ -337,7 +347,7 @@ describe('TaskFeedCardNew Component', () => {
   });
 
   it('should handle recognizer feedback rejection', async () => {
-    const { updateTask } = require('../../../rest/feedsAPI');
+    const { resolveTask } = require('../../../rest/tasksAPI');
     const {
       useApplicationStore,
     } = require('../../../hooks/useApplicationStore');
@@ -365,8 +375,7 @@ describe('TaskFeedCardNew Component', () => {
       fireEvent.click(rejectButton);
     });
 
-    expect(updateTask).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(resolveTask).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         newValue: 'Rejected',

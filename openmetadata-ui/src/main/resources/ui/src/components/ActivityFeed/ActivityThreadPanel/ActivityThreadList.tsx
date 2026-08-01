@@ -28,7 +28,7 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
-import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { getTaskDetailPath } from '../../../utils/TaskNavigationUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
