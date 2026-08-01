@@ -96,7 +96,8 @@ describe('EntityExportModalProvider CSV export job correlation', () => {
 
     fireEvent.click(await screen.findByText('Manage'));
     await act(async () => {
-      fireEvent.click(await screen.findByText('label.export'));
+      // by role, not text: the modal title also renders 'label.export'
+      fireEvent.click(screen.getByRole('button', { name: 'label.export' }));
     });
 
     // This job id is not ours; the payload must be discarded rather than
@@ -108,6 +109,74 @@ describe('EntityExportModalProvider CSV export job correlation', () => {
     expect(mockDownloadFile).not.toHaveBeenCalled();
   });
 
+  it('parks a result that arrives before the jobId, then replays it', async () => {
+    // The window this covers is the reason the pending buffer exists:
+    // handleExport seeds the ref with only a fileName before awaiting
+    // onExport, so a websocket result can land while there is still no jobId
+    // to compare against. It must be held and replayed, not discarded.
+    let resolveExport: (value: typeof mockExportJob) => void = () => undefined;
+    const deferredShowModal: ExportData = {
+      ...mockShowModal,
+      onExport: jest.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveExport = resolve;
+          })
+      ),
+    };
+
+    const DeferredComponent = () => {
+      const { showModal, onUpdateCSVExportJob } = useEntityExportModalProvider();
+
+      return (
+        <>
+          <button onClick={() => showModal(deferredShowModal)}>Manage</button>
+          <button
+            onClick={() =>
+              onUpdateCSVExportJob({
+                jobId: mockExportJob.jobId,
+                status: 'COMPLETED',
+                data: 'EARLY,CSV',
+              })
+            }>
+            emit-early
+          </button>
+        </>
+      );
+    };
+
+    render(
+      <EntityExportModalProvider>
+        <DeferredComponent />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Manage'));
+    // Let the submit run as far as its await on onExport: by then the provider
+    // has seeded the ref with a fileName but has no jobId. onExport is
+    // deferred, so it stays suspended there.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.export' }));
+    });
+
+    // onExport has not resolved, so the provider has no jobId yet.
+    await act(async () => {
+      fireEvent.click(screen.getByText('emit-early'));
+    });
+
+    expect(mockDownloadFile).not.toHaveBeenCalled();
+
+    // The jobId now arrives; the parked result must be replayed.
+    await act(async () => {
+      resolveExport(mockExportJob);
+    });
+
+    expect(mockDownloadFile).toHaveBeenCalledWith(
+      'EARLY,CSV',
+      expect.stringContaining('.csv')
+    );
+  });
+
   it('downloads the export matching its own job id', async () => {
     render(
       <EntityExportModalProvider>
@@ -117,7 +186,8 @@ describe('EntityExportModalProvider CSV export job correlation', () => {
 
     fireEvent.click(await screen.findByText('Manage'));
     await act(async () => {
-      fireEvent.click(await screen.findByText('label.export'));
+      // by role, not text: the modal title also renders 'label.export'
+      fireEvent.click(screen.getByRole('button', { name: 'label.export' }));
     });
 
     await act(async () => {

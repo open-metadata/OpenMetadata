@@ -242,10 +242,16 @@ export const EntityExportModalProvider = ({
       if (!activeJob.jobId) {
         const pendingResponse =
           pendingCSVExportResponsesRef.current.get(responseJobId);
-        pendingCSVExportResponsesRef.current.set(responseJobId, {
-          ...pendingResponse,
-          ...response,
-        });
+        // Frames can arrive out of order. A COMPLETED result carries the data
+        // we ultimately need, so never let a later IN_PROGRESS overwrite it —
+        // replaying that would take the "still downloading" branch and hang.
+        const merged =
+          pendingResponse?.status === 'COMPLETED' &&
+          response.status !== 'COMPLETED'
+            ? { ...response, ...pendingResponse }
+            : { ...pendingResponse, ...response };
+
+        pendingCSVExportResponsesRef.current.set(responseJobId, merged);
 
         return;
       }
