@@ -19,9 +19,57 @@ import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
+import { waitForIncidentToBeIndexed } from './dataQuality';
+import { getCurrentMillis } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { waitForTaskResolveResponse } from './task';
+
+/**
+ * Seeds `count` failing test cases on `table`, each of which produces an
+ * incident, WITHOUT deploying or running an ingestion pipeline. A failed test
+ * case result is posted directly via the API, which is what actually creates an
+ * incident — the pipeline is only one way to produce that result.
+ *
+ * Use this for tests that just need incidents to exist (UI, pagination,
+ * filters). It is deterministic and takes seconds, so those tests no longer
+ * depend on Airflow or queue behaviour. Tests that verify pipeline behaviour
+ * (e.g. re-running a pipeline resolves an incident) must still use a real
+ * pipeline via triggerTestSuitePipelineAndWaitForSuccess.
+ *
+ * Returns the created test cases (in creation order).
+ */
+export const seedFailedIncidents = async (data: {
+  apiContext: APIRequestContext;
+  table: TableClass;
+  count: number;
+}): Promise<ResponseDataType[]> => {
+  const { apiContext, table, count } = data;
+  const failTimestamp = getCurrentMillis();
+  const testCases: ResponseDataType[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const testCase = await table.createTestCase(apiContext);
+    await table.addTestCaseResult(apiContext, testCase['fullyQualifiedName'], {
+      result: 'Seeded failing result to create an incident.',
+      testResultValue: [{ name: 'seeded', value: '0' }],
+      testCaseStatus: 'Failed',
+      timestamp: failTimestamp,
+    });
+    testCases.push(testCase);
+  }
+
+  // Confirm the last incident is indexed so UI assertions don't race the write.
+  if (testCases.length > 0) {
+    await waitForIncidentToBeIndexed(
+      apiContext,
+      testCases[testCases.length - 1]['fullyQualifiedName'],
+      failTimestamp
+    );
+  }
+
+  return testCases;
+};
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await page.goto(
@@ -254,12 +302,24 @@ const NEW_RUN_APPEARANCE_TIMEOUT = 60_000;
 const NEW_RUN_POLL_INTERVAL = 2_000;
 const TRIGGER_ATTEMPTS = 3;
 
+// Default budget the poll waits for a triggered run to reach `success`. Heavier
+// suites (many test cases) validate for longer and queue behind other pipelines
+// under load, so callers can raise it. The calling test's own timeout must
+// exceed whatever is used here, or the test dies before the poll can finish.
+const DEFAULT_PIPELINE_SUCCESS_TIMEOUT = 300_000;
+
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
   pipeline: ResponseDataType;
+  successTimeout?: number;
 }) => {
-  const { page, apiContext, pipeline } = data;
+  const {
+    page,
+    apiContext,
+    pipeline,
+    successTimeout = DEFAULT_PIPELINE_SUCCESS_TIMEOUT,
+  } = data;
   const encodedPipelineFqn = encodeURIComponent(
     pipeline?.['fullyQualifiedName']
   );
@@ -443,7 +503,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
         } to be successful (run recorded before trigger: ${
           previousRun?.runId ?? 'none'
         })`,
-        timeout: 300_000,
+        timeout: successTimeout,
         intervals: [2_000, 5_000, 10_000],
       }
     )
