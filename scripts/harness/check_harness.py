@@ -289,7 +289,11 @@ def check_dead_references():
     if os.path.isdir(rp(RULES_DIR)):
         files += [f"{RULES_DIR}/{n}" for n in sorted(os.listdir(rp(RULES_DIR))) if n.endswith(".md")]
     for dirpath, dirs, filenames in os.walk(rp("skills")):
-        dirs[:] = [d for d in dirs if d not in PRUNE_DIRS]
+        # skills/vendor/** is third-party, copied verbatim from upstream. Its
+        # paths and commands refer to the projects it came from, so checking
+        # them against this repo produces only noise, and we must not "fix" a
+        # vendored file anyway — edits are lost on the next refresh.
+        dirs[:] = [d for d in dirs if d not in PRUNE_DIRS and d != "vendor"]
         for name in filenames:
             if name == "SKILL.md":
                 files.append(os.path.relpath(os.path.join(dirpath, name), REPO))
