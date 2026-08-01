@@ -13,17 +13,16 @@
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { Button, Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
-import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import customizeGlossaryTermPageClassBase from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { EntityUnion } from '../../Explore/ExplorePage.interface';
+import type { EntityUnion } from '../../Explore/ExplorePage.interface';
 import { useGlossaryStore } from '../../Glossary/useGlossary.store';
 import { GenericProvider } from '../GenericProvider/GenericProvider';
 import './generic-widget.less';
@@ -39,17 +38,30 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   const { setGlossaryChildTerms } = useGlossaryStore();
   const data = getDummyDataByPage(currentPageType as PageType);
 
-  useMemo(() => {
-    // Only set dummy data if we're in edit/preview mode
+  useEffect(() => {
+    let isMounted = true;
+
     if (
       props.isEditView &&
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
     ) {
-      setGlossaryChildTerms(
-        customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
-      );
+      import(
+        '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass'
+      )
+        .then(({ default: customizeGlossaryTermPageClassBase }) => {
+          if (isMounted) {
+            setGlossaryChildTerms(
+              customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
+            );
+          }
+        })
+        .catch(noop);
     }
-  }, [props.widgetKey, props.isEditView]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [props.widgetKey, props.isEditView, setGlossaryChildTerms]);
 
   const widgetName = startCase(
     props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')
