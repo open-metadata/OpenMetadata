@@ -44,7 +44,7 @@ import {
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
 import { addToRecentViewed } from '../../utils/CommonUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TablePureUtils';

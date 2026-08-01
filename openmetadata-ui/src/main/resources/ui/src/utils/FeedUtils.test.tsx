@@ -50,14 +50,14 @@ jest.mock('./StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => decodeURIComponent(fqn)),
 }));
 
-jest.mock('./EntityDisplayUtils', () => ({
-  getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
-}));
-
 jest.mock('./FeedUtils', () => ({
   ...jest.requireActual('./FeedUtils'),
   buildMentionLink: jest.fn().mockReturnValue('buildMentionLink'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
+}));
+
+jest.mock('./EntityDisplayPureUtils', () => ({
+  getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
 }));
 
 describe('Feed Utils', () => {

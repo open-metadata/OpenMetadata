@@ -32,7 +32,7 @@ import {
   deleteTestCaseFailedSampleData,
   getTestCaseFailedSampleData,
 } from '../../../../rest/testAPI';
-import { getEntityDeleteMessage } from '../../../../utils/EntityDisplayUtils';
+import { getEntityDeleteMessage } from '../../../../utils/EntityDisplayPureUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
