@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Form,
-  FormProps,
-  Input,
-  InputNumber,
-  Row,
-  Select,
-  Slider,
-  Space,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Form, FormProps, Input, InputNumber, Row, Select, Slider, Space } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
@@ -370,16 +359,16 @@ const AddKPIPage = () => {
               <Space align="center" className="w-full justify-end">
                 <Button
                   data-testid="cancel-btn"
-                  type="link"
-                  onClick={handleCancel}>
+                  onClick={handleCancel}
+                  color='link-gray'>
                   {t('label.cancel')}
                 </Button>
                 <Button
                   data-testid="submit-btn"
                   form="kpi-form"
-                  htmlType="submit"
-                  loading={isCreatingKPI}
-                  type="primary">
+                  color='primary'
+                  isLoading={isCreatingKPI}
+                  type='submit'>
                   {t('label.create')}
                 </Button>
               </Space>

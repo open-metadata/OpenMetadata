@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Form, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -189,14 +189,14 @@ const EditRulePage = () => {
             setRuleData={setRuleData}
           />
           <Space align="center" className="w-full justify-end">
-            <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
+            <Button data-testid="cancel-btn" onClick={handleBack} color='link-gray'>
               {t('label.cancel')}
             </Button>
             <Button
               data-testid="submit-btn"
               form="rule-form"
-              htmlType="submit"
-              type="primary">
+              color='primary'
+              type='submit'>
               {t('label.save')}
             </Button>
           </Space>

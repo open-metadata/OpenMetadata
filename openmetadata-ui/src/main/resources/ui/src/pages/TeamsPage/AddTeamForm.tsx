@@ -12,7 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Modal, Select } from 'antd';
+import { Form, Input, Modal, Select } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
@@ -95,9 +96,9 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       children: (
         <Button
           data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          color='primary'
+          size='xs'
+          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
         />
       ),
     },

@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Form, Input, Select, Space } from 'antd';
+import { Drawer, Form, Input, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -154,14 +155,14 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
   const drawerFooter = (
     <div className="drawer-footer">
-      <Button data-testid="cancel-resource" onClick={onClose}>
+      <Button data-testid="cancel-resource" onClick={onClose} color='secondary'>
         {t('label.cancel')}
       </Button>
       <Button
         data-testid="save-resource"
-        loading={isSubmitting}
-        type="primary"
-        onClick={handleSubmit}>
+        onClick={handleSubmit}
+        color='primary'
+        isLoading={isSubmitting}>
         {t('label.save')}
       </Button>
     </div>

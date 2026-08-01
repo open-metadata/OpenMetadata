@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import { Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
@@ -333,13 +334,13 @@ const UserListPageV1 = () => {
                 }>
                 <Button
                   data-testid={`restore-user-btn-${record.name}`}
-                  disabled={!isAdminUser}
-                  icon={<IconRestore name={t('label.restore')} width="16px" />}
-                  type="text"
                   onClick={() => {
                     setSelectedUser(record);
                     setShowReactiveModal(true);
                   }}
+                  color='tertiary'
+                  isDisabled={!isAdminUser}
+                  iconLeading={<IconRestore name={t('label.restore')} width="16px" />}
                 />
               </Tooltip>
             )}
@@ -353,20 +354,20 @@ const UserListPageV1 = () => {
                   : t(ADMIN_ONLY_ACTION)
               }>
               <Button
-                disabled={!isAdminUser}
-                icon={
+                onClick={() => {
+                  setSelectedUser(record);
+                  setShowDeleteModal(true);
+                }}
+                color='tertiary'
+                size='xs'
+                isDisabled={!isAdminUser}
+                iconLeading={
                   <IconDelete
                     data-testid={`delete-user-btn-${record.name}`}
                     name={t('label.delete')}
                     width="16px"
                   />
                 }
-                size="small"
-                type="text"
-                onClick={() => {
-                  setSelectedUser(record);
-                  setShowDeleteModal(true);
-                }}
               />
             </Tooltip>
           </Space>
@@ -504,8 +505,8 @@ const UserListPageV1 = () => {
               <LimitWrapper resource="user">
                 <Button
                   data-testid="add-user"
-                  type="primary"
-                  onClick={handleAddNewUser}>
+                  onClick={handleAddNewUser}
+                  color='primary'>
                   {t('label.add-entity', {
                     entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),
                   })}

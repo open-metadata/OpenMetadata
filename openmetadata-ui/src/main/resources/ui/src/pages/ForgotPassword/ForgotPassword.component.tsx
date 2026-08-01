@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, Input, Row } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Form, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -117,11 +117,11 @@ const ForgotPassword = () => {
             </Col>
             <Col className="m-t-md" span={24}>
               <Button
-                block
-                htmlType="submit"
-                loading={loading}
-                size="large"
-                type="primary">
+                color='primary'
+                size='md'
+                isLoading={loading}
+                type='submit'
+                className='tw:w-full'>
                 {t('label.send-login-link')}
               </Button>
             </Col>
@@ -130,8 +130,8 @@ const ForgotPassword = () => {
             <Button
               className="p-0"
               data-testid="go-back-button"
-              type="link"
-              onClick={handleLogin}>
+              onClick={handleLogin}
+              color='link-gray'>
               {t('message.go-back-to-login-page')}
             </Button>
           </Col>

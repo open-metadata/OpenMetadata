@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Switch } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -178,8 +179,8 @@ const ApplicationPage = () => {
             <LimitWrapper resource="app">
               <Button
                 data-testid="add-application"
-                type="primary"
-                onClick={handleAddApplication}>
+                onClick={handleAddApplication}
+                color='primary'>
                 {t('label.add-entity', {
                   entity: t('label.app-plural'),
                 })}

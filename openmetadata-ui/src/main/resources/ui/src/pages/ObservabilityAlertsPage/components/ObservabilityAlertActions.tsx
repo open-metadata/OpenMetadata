@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Skeleton, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Skeleton, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -50,8 +50,6 @@ function ObservabilityAlertActions({
     <Button
       className="flex flex-center"
       data-testid={`alert-edit-${record.name}`}
-      icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
-      type="text"
       onClick={
         onEditAlert
           ? (event) => {
@@ -61,6 +59,8 @@ function ObservabilityAlertActions({
             }
           : undefined
       }
+      color='tertiary'
+      iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
     />
   );
 
@@ -85,10 +85,10 @@ function ObservabilityAlertActions({
           <Button
             className="flex flex-center"
             data-testid={`alert-delete-${record.name}`}
-            disabled={record.provider === ProviderType.System}
-            icon={<DeleteIcon height={16} width={16} />}
-            type="text"
             onClick={() => onSelectAlert(record)}
+            color='tertiary'
+            isDisabled={record.provider === ProviderType.System}
+            iconLeading={<DeleteIcon height={16} width={16} />}
           />
         </Tooltip>
       )}

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Col,
   Form,
   FormProps,
@@ -408,17 +407,17 @@ const EditKPIPage = () => {
               <Space align="center" className="w-full justify-end">
                 <Button
                   data-testid="cancel-btn"
-                  type="link"
-                  onClick={handleCancel}>
+                  onClick={handleCancel}
+                  color='link-gray'>
                   {t('label.go-back')}
                 </Button>
                 {isAdminUser ? (
                   <Tooltip title={t('label.save')}>
                     <Button
                       data-testid="submit-btn"
-                      htmlType="submit"
-                      loading={isUpdatingKPI}
-                      type="primary">
+                      color='primary'
+                      isLoading={isUpdatingKPI}
+                      type='submit'>
                       {t('label.save')}
                     </Button>
                   </Tooltip>

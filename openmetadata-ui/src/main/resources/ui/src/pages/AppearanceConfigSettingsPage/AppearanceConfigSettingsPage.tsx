@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, FormProps, Row, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Form, FormProps, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -432,9 +432,9 @@ const AppearanceConfigSettingsPage = () => {
                 />
                 <Button
                   data-testid="reset-button"
-                  loading={resetting}
-                  type="primary"
-                  onClick={handleReset}>
+                  onClick={handleReset}
+                  color='primary'
+                  isLoading={resetting}>
                   {t('label.reset')}
                 </Button>
               </Space>
@@ -501,27 +501,28 @@ const AppearanceConfigSettingsPage = () => {
                                   background: currentColor,
                                   color: 'white',
                                   width: '86px',
-                                }}>
+                                }}
+                                color='secondary'>
                                 {startCase(
                                   toString(field.name).replace('Color', '')
                                 )}
                               </Button>
 
                               <Button
-                                icon={<Icon component={ShareIcon} />}
                                 style={{
                                   width: '56px',
                                   color: currentColor,
                                   borderColor: currentColor,
                                 }}
-                              />
+                                color='secondary'
+                                iconLeading={<Icon component={ShareIcon} />} />
                               <Button
                                 style={{
                                   color: currentColor,
                                   borderColor: currentColor,
                                   width: '86px',
                                 }}
-                                type="default">
+                                color='secondary'>
                                 {startCase(
                                   toString(field.name).replace('Color', '')
                                 )}
@@ -537,7 +538,7 @@ const AppearanceConfigSettingsPage = () => {
                                   color: currentColor,
                                   padding: 0,
                                 }}
-                                type="link">
+                                color='link-gray'>
                                 {t('label.link')}
                               </Button>
                             </Card>
@@ -556,15 +557,15 @@ const AppearanceConfigSettingsPage = () => {
               size={16}>
               <Button
                 data-testid="cancel-btn"
-                type="link"
-                onClick={() => navigate(-1)}>
+                onClick={() => navigate(-1)}
+                color='link-gray'>
                 {t('label.cancel')}
               </Button>
               <Button
                 data-testid="save-btn"
-                htmlType="submit"
-                loading={loading}
-                type="primary">
+                color='primary'
+                isLoading={loading}
+                type='submit'>
                 {t('label.save')}
               </Button>
             </Space>

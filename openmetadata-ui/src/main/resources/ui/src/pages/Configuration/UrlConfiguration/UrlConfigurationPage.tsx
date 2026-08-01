@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -107,8 +107,9 @@ const UrlConfigurationPage = () => {
             <Col>
               <Button
                 data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
-                onClick={handleEditClick}>
+                onClick={handleEditClick}
+                color='secondary'
+                iconLeading={<Icon component={IconEdit} size={12} />}>
                 {t('label.edit')}
               </Button>
             </Col>

@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,9 +91,9 @@ const RolesDetailPageList = ({
               }>
               <Button
                 data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={!hasAccess}
-                type="text"
-                onClick={() => onDelete(record)}>
+                onClick={() => onDelete(record)}
+                color='tertiary'
+                isDisabled={!hasAccess}>
                 <Icon
                   className="align-middle"
                   component={IconRemove}

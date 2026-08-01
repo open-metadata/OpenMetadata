@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Collapse,
-  Form,
-  Row,
-  Select,
-  Switch,
-  TreeSelect,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Collapse, Form, Row, Select, Switch, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -286,23 +277,22 @@ const ProfilerConfigurationPage = () => {
                               <Form.Item>
                                 <Button
                                   data-testid={`remove-filter-${name}`}
-                                  icon={<CloseOutlined />}
-                                  size="small"
                                   onClick={() => remove(name)}
-                                />
+                                  color='secondary'
+                                  size='xs'
+                                  iconLeading={<CloseOutlined />} />
                               </Form.Item>
                             </Col>
                           </Fragment>
                         ))}
-
                         <Col span={24}>
                           <div className="matrix-collapse-footer">
                             <Button
                               className="text-primary p-0"
                               data-testid="add-fields"
-                              icon={<PlusOutlined />}
-                              type="text"
-                              onClick={() => add()}>
+                              onClick={() => add()}
+                              color='tertiary'
+                              iconLeading={<PlusOutlined />}>
                               {t('label.add-new-field')}
                             </Button>
                           </div>
@@ -390,14 +380,17 @@ const ProfilerConfigurationPage = () => {
 
           <Col span={24}>
             <div className="d-flex justify-end gap-2">
-              <Button data-testid="cancel-button" onClick={() => navigate(-1)}>
+              <Button
+                data-testid="cancel-button"
+                onClick={() => navigate(-1)}
+                color='secondary'>
                 {t('label.cancel')}
               </Button>
               <Button
                 data-testid="save-button"
-                htmlType="submit"
-                loading={isFormSubmitting}
-                type="primary">
+                color='primary'
+                isLoading={isFormSubmitting}
+                type='submit'>
                 {t('label.save')}
               </Button>
             </div>

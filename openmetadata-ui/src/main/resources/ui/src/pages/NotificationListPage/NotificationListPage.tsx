@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Skeleton, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -298,9 +298,9 @@ const NotificationListPage = () => {
                     <Button
                       className="flex flex-center"
                       data-testid={`alert-edit-${record.name}`}
-                      disabled={record.provider === ProviderType.System}
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      type="text"
+                      color='tertiary'
+                      isDisabled={record.provider === ProviderType.System}
+                      iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                     />
                   </Link>
                 </Tooltip>
@@ -310,10 +310,10 @@ const NotificationListPage = () => {
                   <Button
                     className="flex flex-center"
                     data-testid={`alert-delete-${record.name}`}
-                    disabled={record.provider === ProviderType.System}
-                    icon={<DeleteIcon height={16} />}
-                    type="text"
                     onClick={() => setSelectedAlert(record)}
+                    color='tertiary'
+                    isDisabled={record.provider === ProviderType.System}
+                    iconLeading={<DeleteIcon height={16} />}
                   />
                 </Tooltip>
               )}
@@ -346,7 +346,6 @@ const NotificationListPage = () => {
               <LimitWrapper resource="eventsubscription">
                 <Button
                   data-testid="create-notification"
-                  type="primary"
                   onClick={() =>
                     navigate(
                       getSettingPath(
@@ -354,7 +353,8 @@ const NotificationListPage = () => {
                         GlobalSettingOptions.ADD_NOTIFICATION
                       )
                     )
-                  }>
+                  }
+                  color='primary'>
                   {t('label.add-entity', { entity: t('label.alert') })}
                 </Button>
               </LimitWrapper>

@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Col, Divider, Dropdown, Row, Space, Tabs, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -843,8 +835,8 @@ const TagPage = () => {
     !isCertificationClassification && !tagItem.disabled ? (
       <Button
         data-testid="data-classification-add-button"
-        type="primary"
-        onClick={() => setAssetModalVisible(true)}>
+        onClick={() => setAssetModalVisible(true)}
+        color='primary'>
         {t('label.add-entity', {
           entity: t('label.asset-plural'),
         })}
@@ -872,9 +864,9 @@ const TagPage = () => {
           <Button
             className="flex-center"
             data-testid="manage-button"
-            icon={<IconDropdown className="manage-dropdown-icon" />}
             onClick={() => setShowActions(true)}
-          />
+            color='secondary'
+            iconLeading={<IconDropdown className="manage-dropdown-icon" />} />
         </Tooltip>
       </Dropdown>
     ) : null;

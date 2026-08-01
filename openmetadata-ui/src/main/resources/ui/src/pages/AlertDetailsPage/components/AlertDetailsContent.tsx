@@ -12,7 +12,8 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -115,10 +116,10 @@ function AlertDetailsContent({
                   <Button
                     className="flex flex-center"
                     data-testid="sync-button"
-                    icon={<SyncOutlined height={16} width={16} />}
-                    loading={isSyncing}
                     onClick={handleAlertSync}
-                  />
+                    color='secondary'
+                    isLoading={isSyncing}
+                    iconLeading={<SyncOutlined height={16} width={16} />} />
                 </Tooltip>
                 {editPermission &&
                   alertDetails?.provider !== ProviderType.System && (
@@ -129,15 +130,15 @@ function AlertDetailsContent({
                       <Button
                         className="flex flex-center"
                         data-testid="edit-button"
-                        icon={
+                        onClick={handleAlertEdit}
+                        color='secondary'
+                        iconLeading={
                           <EditIcon
                             color={DE_ACTIVE_COLOR}
                             height={16}
                             width={16}
                           />
-                        }
-                        onClick={handleAlertEdit}
-                      />
+                        } />
                     </Tooltip>
                   )}
                 {deletePermission &&
@@ -149,9 +150,9 @@ function AlertDetailsContent({
                       <Button
                         className="flex flex-center"
                         data-testid="delete-button"
-                        icon={<DeleteIcon height={16} width={16} />}
                         onClick={() => setShowDeleteModal(true)}
-                      />
+                        color='secondary'
+                        iconLeading={<DeleteIcon height={16} width={16} />} />
                     </Tooltip>
                   )}
               </Space>

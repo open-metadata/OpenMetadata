@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, Row } from 'antd';
+import { Col, Menu, MenuProps, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -115,10 +116,10 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
           {createGlossaryPermission && (
             <Col className="p-x-sm" span={24}>
               <Button
-                block
-                className="text-primary"
                 data-testid="add-glossary"
-                onClick={handleAddGlossaryClick}>
+                onClick={handleAddGlossaryClick}
+                color='secondary'
+                className='text-primary tw:w-full'>
                 <div className="flex-center">
                   <PlusIcon className="anticon m-r-xss" />
                   {t('label.add')}

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, InputNumber, Row, Select } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Form, InputNumber, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -227,15 +227,16 @@ const LineageConfigPage = () => {
                     <Col className="d-flex justify-end gap-2" span={24}>
                       <Button
                         data-testid="cancel-button"
-                        onClick={() => navigate(-1)}>
+                        onClick={() => navigate(-1)}
+                        color='secondary'>
                         {t('label.cancel')}
                       </Button>
                       <Button
                         data-testid="save-button"
                         form="lineage-config"
-                        htmlType="submit"
-                        loading={isUpdating}
-                        type="primary">
+                        color='primary'
+                        isLoading={isUpdating}
+                        type='submit'>
                         {t('label.save')}
                       </Button>
                     </Col>

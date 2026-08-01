@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Input, Row } from 'antd';
+import { Col, Form, Input, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -150,17 +151,17 @@ const EditUrlConfigurationPage = () => {
           <Col>
             <Button
               data-testid="cancel-button"
-              type="link"
-              onClick={handleGoBack}>
+              onClick={handleGoBack}
+              color='link-gray'>
               {t('label.cancel')}
             </Button>
           </Col>
           <Col>
             <Button
               data-testid="save-button"
-              htmlType="submit"
-              loading={updating}
-              type="primary">
+              color='primary'
+              isLoading={updating}
+              type='submit'>
               {t('label.save')}
             </Button>
           </Col>

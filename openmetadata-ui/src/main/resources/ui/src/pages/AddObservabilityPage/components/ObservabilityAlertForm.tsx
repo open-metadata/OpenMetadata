@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Form, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
@@ -97,8 +97,8 @@ function ObservabilityAlertForm({
               <div className="flex justify-end gap-2">
                 <Button
                   data-testid="cancel-button"
-                  type="text"
-                  onClick={handleCancel}>
+                  onClick={handleCancel}
+                  color='tertiary'>
                   {t('label.cancel')}
                 </Button>
 
@@ -115,9 +115,9 @@ function ObservabilityAlertForm({
                 )}
                 <Button
                   data-testid="save-button"
-                  htmlType="submit"
-                  loading={saving}
-                  type="primary">
+                  color='primary'
+                  isLoading={saving}
+                  type='submit'>
                   {t('label.save')}
                 </Button>
               </div>

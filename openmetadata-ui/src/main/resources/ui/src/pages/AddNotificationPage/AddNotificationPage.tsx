@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Divider, Form, Input, Row, Skeleton } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Form, Input, Row, Skeleton } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -431,8 +431,8 @@ const AddNotificationPage = () => {
                         <div className="flex justify-end gap-2">
                           <Button
                             data-testid="cancel-button"
-                            type="text"
-                            onClick={() => navigate(-1)}>
+                            onClick={() => navigate(-1)}
+                            color='tertiary'>
                             {t('label.cancel')}
                           </Button>
 
@@ -451,9 +451,9 @@ const AddNotificationPage = () => {
                           )}
                           <Button
                             data-testid="save-button"
-                            htmlType="submit"
-                            loading={isButtonLoading}
-                            type="primary">
+                            color='primary'
+                            isLoading={isButtonLoading}
+                            type='submit'>
                             {t('label.save')}
                           </Button>
                         </div>

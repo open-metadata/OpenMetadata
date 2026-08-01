@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -89,8 +89,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
             {createKPIPermission && (
               <Button
                 data-testid="add-kpi-btn"
-                type="primary"
-                onClick={handleAddKPI}>
+                onClick={handleAddKPI}
+                color='primary'>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
                 })}

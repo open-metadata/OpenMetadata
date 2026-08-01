@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Skeleton } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -174,7 +174,7 @@ function EmailConfigSettingsPage() {
             </Col>
             <Col className="d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
-                <Button type="primary" onClick={handleTestEmailModal}>
+                <Button onClick={handleTestEmailModal} color='primary'>
                   {t('label.test-email')}
                 </Button>
               )}
@@ -184,12 +184,13 @@ function EmailConfigSettingsPage() {
               ) : (
                 <Button
                   className="m-l-md"
-                  icon={
+                  onClick={handleEditClick}
+                  color='secondary'
+                  iconLeading={
                     !isUndefined(emailConfigValues) && (
                       <Icon component={IconEdit} size={12} />
                     )
-                  }
-                  onClick={handleEditClick}>
+                  }>
                   {isUndefined(emailConfigValues)
                     ? t('label.add')
                     : t('label.edit')}
@@ -200,7 +201,6 @@ function EmailConfigSettingsPage() {
         </Col>
         <Col span={24}>{configValuesContainer}</Col>
       </Row>
-
       {isTeamEmailOpen && <TestEmail onCancel={handleTestEmailModal} />}
     </PageLayoutV1>
   );

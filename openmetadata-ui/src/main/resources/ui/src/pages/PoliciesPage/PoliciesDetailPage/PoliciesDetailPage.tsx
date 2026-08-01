@@ -13,18 +13,8 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Modal,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Dropdown, Modal, Row, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -346,12 +336,12 @@ const PoliciesDetailPage = () => {
             })}>
             <Button
               data-testid={`manage-button-${rule.name}`}
-              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-              size="small"
-              type="text"
               onClick={(e) => {
                 e.stopPropagation();
               }}
+              color='tertiary'
+              size='xs'
+              iconLeading={<EllipsisOutlined className="text-grey-body" rotate={90} />}
             />
           </Tooltip>
         </Dropdown>
@@ -380,8 +370,8 @@ const PoliciesDetailPage = () => {
             <div className="flex justify-end m-b-md">
               <Button
                 data-testid="add-rule"
-                type="primary"
-                onClick={() => navigate(getAddPolicyRulePath(fqn))}>
+                onClick={() => navigate(getAddPolicyRulePath(fqn))}
+                color='primary'>
                 {t('label.add-entity', {
                   entity: t('label.rule'),
                 })}
@@ -541,9 +531,9 @@ const PoliciesDetailPage = () => {
                   })}
                 </p>
                 <Button
-                  size="small"
-                  type="primary"
-                  onClick={() => navigate(policiesPath)}>
+                  onClick={() => navigate(policiesPath)}
+                  color='primary'
+                  size='xs'>
                   {t('label.go-back')}
                 </Button>
               </div>

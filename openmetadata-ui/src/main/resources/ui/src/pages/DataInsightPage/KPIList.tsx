@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -154,10 +154,10 @@ const KPIList = () => {
                 <Button
                   className="flex-center"
                   data-testid={`edit-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={<EditIcon width="16px" />}
-                  type="text"
                   onClick={() => navigate(getKpiPath(record.name))}
+                  color='tertiary'
+                  isDisabled={!isAdminUser}
+                  iconLeading={<EditIcon width="16px" />}
                 />
               </Tooltip>
               <Tooltip
@@ -169,12 +169,12 @@ const KPIList = () => {
                 }>
                 <Button
                   data-testid={`delete-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={
+                  onClick={() => setSelectedKpi(record)}
+                  color='tertiary'
+                  isDisabled={!isAdminUser}
+                  iconLeading={
                     <Icon component={IconDelete} style={{ fontSize: '16px' }} />
                   }
-                  type="text"
-                  onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>
             </div>

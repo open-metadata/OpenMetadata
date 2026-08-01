@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Collapse, Row, Slider, Switch } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Collapse, Row, Slider, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -394,8 +394,9 @@ const SearchSettingsPage = () => {
             {isAdminUser && (
               <Button
                 data-testid="reset-search-settings-btn"
-                disabled={isUpdating}
-                onClick={() => setShowResetModal(true)}>
+                onClick={() => setShowResetModal(true)}
+                color='secondary'
+                isDisabled={isUpdating}>
                 {t('label.reset')}
               </Button>
             )}
@@ -449,10 +450,10 @@ const SearchSettingsPage = () => {
                   </Typography>
                   <Button
                     data-testid="hybrid-weights-save-btn"
-                    disabled={!hybridWeightsChanged || isUpdating}
-                    loading={isUpdating}
-                    type="primary"
-                    onClick={onHybridWeightSave}>
+                    onClick={onHybridWeightSave}
+                    color='primary'
+                    isDisabled={!hybridWeightsChanged || isUpdating}
+                    isLoading={isUpdating}>
                     {t('label.save')}
                   </Button>
                 </Row>
@@ -529,19 +530,20 @@ const SearchSettingsPage = () => {
                       <Button
                         className="term-boost-save-btn"
                         data-testid="term-boost-save-btn"
-                        disabled={!termBoostsChanged}
-                        onClick={handleSaveTermBoost}>
+                        onClick={handleSaveTermBoost}
+                        color='secondary'
+                        isDisabled={!termBoostsChanged}>
                         {t('label.save')}
                       </Button>
                       <Button
                         className="term-boost-add-btn"
                         data-testid="term-boost-add-btn"
-                        disabled={isUpdating || showNewTermBoost}
-                        icon={
+                        onClick={handleAddNewTermBoost}
+                        color='primary'
+                        isDisabled={isUpdating || showNewTermBoost}
+                        iconLeading={
                           <Icon className="text-sm" component={PlusOutlined} />
-                        }
-                        type="primary"
-                        onClick={handleAddNewTermBoost}>
+                        }>
                         {t('label.add')}
                       </Button>
                     </Col>
@@ -575,11 +577,12 @@ const SearchSettingsPage = () => {
                       <Button
                         className="field-value-boost-add-btn"
                         data-testid="add-field-value-boost-btn"
-                        disabled={isUpdating || showFieldValueBoostModal}
-                        icon={
+                        onClick={handleAddFieldValueBoost}
+                        color='secondary'
+                        isDisabled={isUpdating || showFieldValueBoostModal}
+                        iconLeading={
                           <Icon className="text-sm" component={PlusOutlined} />
-                        }
-                        onClick={handleAddFieldValueBoost}>
+                        }>
                         {t('label.add')}
                       </Button>
                     </Col>

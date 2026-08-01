@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Table,
-  TableCard,
-} from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Table, TableCard, Button } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
   Bell01,
@@ -24,7 +19,6 @@ import {
   Plus,
   ZapFast,
 } from '@untitledui/icons';
-import { Button } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -112,8 +106,8 @@ function ObservabilityAlertsTable({
             <Button
               className="tw:h-auto tw:p-0"
               data-testid="alert-name"
-              type="link"
-              onClick={() => onViewAlert(record)}>
+              onClick={() => onViewAlert(record)}
+              color='link-gray'>
               {alertName}
             </Button>
           ) : (

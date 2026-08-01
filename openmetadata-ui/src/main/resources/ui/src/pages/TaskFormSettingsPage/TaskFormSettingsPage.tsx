@@ -25,18 +25,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Button,
-  Card,
-  Form,
-  Input,
-  Select,
-  Space,
-  Spin,
-  Tabs,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Alert, Card, Form, Input, Select, Space, Spin, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -538,11 +528,10 @@ const TaskFormSettingsPage = () => {
                 )}
 
                 <Button
-                  block
-                  className="task-form-settings-sidebar-action"
                   data-testid="task-form-add-button"
-                  type="primary"
-                  onClick={handleCreateNew}>
+                  onClick={handleCreateNew}
+                  color='primary'
+                  className='task-form-settings-sidebar-action tw:w-full'>
                   {t('label.add')}
                 </Button>
               </Card>
@@ -576,14 +565,15 @@ const TaskFormSettingsPage = () => {
                   size="middle">
                   <Button
                     data-testid="task-form-cancel-button"
-                    onClick={handleDiscardChanges}>
+                    onClick={handleDiscardChanges}
+                    color='secondary'>
                     {t('label.cancel')}
                   </Button>
                   <Button
                     data-testid="task-form-save-button"
-                    htmlType="submit"
-                    loading={saving}
-                    type="primary">
+                    color='primary'
+                    isLoading={saving}
+                    type='submit'>
                     {t('label.save')}
                   </Button>
                 </Space>
@@ -655,7 +645,8 @@ const TaskFormSettingsPage = () => {
                     </Form.Item>
                     <Button
                       data-testid="task-form-load-template-button"
-                      onClick={handleLoadTemplate}>
+                      onClick={handleLoadTemplate}
+                      color='secondary'>
                       Load built-in template
                     </Button>
                   </div>
@@ -746,13 +737,14 @@ const TaskFormSettingsPage = () => {
                                       </div>
                                       <Button
                                         data-testid="task-form-transition-add-button"
-                                        icon={<PlusOutlined />}
                                         onClick={() =>
                                           syncTransitionDesigner([
                                             ...transitionBuilders,
                                             createEmptyDesignerTransition(),
                                           ])
-                                        }>
+                                        }
+                                        color='secondary'
+                                        iconLeading={<PlusOutlined />}>
                                         Add transition form
                                       </Button>
                                     </div>
@@ -765,10 +757,7 @@ const TaskFormSettingsPage = () => {
                                               data-testid={`task-form-transition-card-${index}`}
                                               extra={
                                                 <Button
-                                                  danger
                                                   data-testid={`task-form-transition-remove-${index}`}
-                                                  size="small"
-                                                  type="text"
                                                   onClick={() =>
                                                     syncTransitionDesigner(
                                                       transitionBuilders.filter(
@@ -776,7 +765,9 @@ const TaskFormSettingsPage = () => {
                                                           currentIndex !== index
                                                       )
                                                     )
-                                                  }>
+                                                  }
+                                                  color='tertiary-destructive'
+                                                  size='xs'>
                                                   Remove
                                                 </Button>
                                               }
@@ -883,13 +874,14 @@ const TaskFormSettingsPage = () => {
                                       </div>
                                       <Button
                                         data-testid="task-form-stage-mapping-add-button"
-                                        icon={<PlusOutlined />}
                                         onClick={() =>
                                           syncStageMappings([
                                             ...stageMappings,
                                             createEmptyStageMapping(),
                                           ])
-                                        }>
+                                        }
+                                        color='secondary'
+                                        iconLeading={<PlusOutlined />}>
                                         Add stage mapping
                                       </Button>
                                     </div>
@@ -901,10 +893,7 @@ const TaskFormSettingsPage = () => {
                                             data-testid={`task-form-stage-mapping-card-${index}`}
                                             extra={
                                               <Button
-                                                danger
                                                 data-testid={`task-form-stage-mapping-remove-${index}`}
-                                                size="small"
-                                                type="text"
                                                 onClick={() =>
                                                   syncStageMappings(
                                                     stageMappings.filter(
@@ -912,7 +901,9 @@ const TaskFormSettingsPage = () => {
                                                         currentIndex !== index
                                                     )
                                                   )
-                                                }>
+                                                }
+                                                color='tertiary-destructive'
+                                                size='xs'>
                                                 Remove
                                               </Button>
                                             }
