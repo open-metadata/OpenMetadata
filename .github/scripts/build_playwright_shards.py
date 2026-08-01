@@ -57,7 +57,12 @@ LANE_WORKERS = {
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
-COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
+# The chromium lane has outgrown a 19-minute shard: at the COMMON_MAX_SHARDS
+# ceiling the heaviest shard is predicted at 19.2m, so full-mode planning aborts
+# and every merge-queue run fails before a single test runs. 21m keeps the plan
+# inside the 25m `timeout` wrapper around `npx playwright test` and the 35m
+# playwright-ci-postgresql job clock, which together leave ~4m of headroom.
+COMMON_SHARD_BUDGET_MS = 21 * 60 * 1000
 EFFICIENCY = 0.85
 COMMON_MAX_SHARDS = 24
 FALLBACK_TEST_MS = 20_000
