@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Col,
   Divider,
   Dropdown,
@@ -264,9 +263,9 @@ const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
       {hasOverflow && (
         <Button
           className="p-0 text-xs font-medium"
-          size="small"
-          type="link"
-          onClick={() => setExpanded((prev) => !prev)}>
+          onClick={() => setExpanded((prev) => !prev)}
+          color='link-gray'
+          size='xs'>
           {expanded ? t('label.show-less') : t('label.show-more')}
         </Button>
       )}
@@ -654,8 +653,8 @@ export const TaskTabNew = ({
           <Button
             className="p-0 task-feed-message font-medium text-md"
             data-testid="task-title"
-            type="link"
-            onClick={handleTaskLinkClick}>
+            onClick={handleTaskLinkClick}
+            color='link-gray'>
             <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
             <Typography className="p-xss task-details">
@@ -1141,9 +1140,9 @@ export const TaskTabNew = ({
     return (
       <Button
         data-testid="comment-button"
-        disabled={isEmpty(comment)}
-        type="primary"
-        onClick={onSave}>
+        onClick={onSave}
+        color='primary'
+        isDisabled={isEmpty(comment)}>
         {t('label.comment')}
       </Button>
     );
@@ -1200,12 +1199,12 @@ export const TaskTabNew = ({
           <Button
             className="task-action-button"
             data-testid="workflow-task-action-primary"
-            disabled={!hasWorkflowAccess}
-            loading={isActionLoading}
-            type="primary"
             onClick={() =>
               handleWorkflowTransitionSelect(selectedTransition.id)
-            }>
+            }
+            color='primary'
+            isDisabled={!hasWorkflowAccess}
+            isLoading={isActionLoading}>
             {selectedTransition.label}
           </Button>
         </Space>
@@ -1356,7 +1355,7 @@ export const TaskTabNew = ({
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
-          <Button data-testid="close-button" onClick={onTaskClose}>
+          <Button data-testid="close-button" onClick={onTaskClose} color='secondary'>
             {t('label.close')}
           </Button>
         )}
@@ -1668,15 +1667,16 @@ export const TaskTabNew = ({
         onClick={() => {
           form.resetFields();
           setShowEditTaskModel(false);
-        }}>
+        }}
+        color='secondary'>
         {t('label.cancel')}
       </Button>,
       showRejectInEditModal ? (
-        <Button key="reject" onClick={onTaskReject}>
+        <Button key="reject" onClick={onTaskReject} color='secondary'>
           {t('label.reject')}
         </Button>
       ) : null,
-      <Button key="submit" type="primary" onClick={() => form.submit()}>
+      <Button key="submit" onClick={() => form.submit()} color='primary'>
         {t('label.ok')}
       </Button>,
     ],

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholderAction, Button } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
-import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
+import { Col, Dropdown, Form, Row, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -117,11 +117,7 @@ export const TestCases = () => {
                   onClick: handleMenuClick,
                 }}
                 trigger={['click']}>
-                <Button
-                  ghost
-                  className="expand-btn"
-                  data-testid="advanced-filter"
-                  type="primary">
+                <Button className="expand-btn" data-testid="advanced-filter" color='tertiary'>
                   {t('label.advanced')}
                   <RightOutlined />
                 </Button>

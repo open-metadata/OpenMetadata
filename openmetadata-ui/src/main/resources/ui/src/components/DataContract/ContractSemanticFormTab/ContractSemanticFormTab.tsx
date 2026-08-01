@@ -12,9 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
-import { Button, Col, Form, FormListFieldData, Input, Row, Switch } from 'antd';
+import { Col, Form, FormListFieldData, Input, Row, Switch } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
@@ -188,10 +188,10 @@ export const ContractSemanticFormTab: React.FC<{
           <Button
             className="add-semantic-button"
             data-testid="add-semantic-button"
-            disabled={!isNull(editingKey) || !addFunctionRef.current}
-            icon={<Icon className="anticon" component={PlusIcon} />}
-            type="link"
-            onClick={handleAddSemantic}>
+            onClick={handleAddSemantic}
+            color='link-gray'
+            isDisabled={!isNull(editingKey) || !addFunctionRef.current}
+            iconLeading={<Icon className="anticon" component={PlusIcon} />}>
             {t('label.add-entity', {
               entity: t('label.semantic-plural'),
             })}
@@ -252,14 +252,14 @@ export const ContractSemanticFormTab: React.FC<{
                                 />
 
                                 <Button
-                                  danger
                                   className="delete-expand-button"
                                   data-testid={`delete-semantic-${field.key}`}
-                                  icon={<DeleteIcon />}
-                                  size="middle"
                                   onClick={() => {
                                     handleDeleteSemantic(field.key);
                                   }}
+                                  color='secondary-destructive'
+                                  size='sm'
+                                  iconLeading={<DeleteIcon />}
                                 />
                               </div>
                             </div>
@@ -346,24 +346,24 @@ export const ContractSemanticFormTab: React.FC<{
                           <Button
                             className="add-semantic-button"
                             data-testid="add-new-rule-btn"
-                            disabled={!queryBuilderAddRule?.addRule}
-                            icon={<Icon component={PlusIcon} />}
-                            type="link"
-                            onClick={handleAddNewRule}>
+                            onClick={handleAddNewRule}
+                            color='link-gray'
+                            isDisabled={!queryBuilderAddRule?.addRule}
+                            iconLeading={<Icon component={PlusIcon} />}>
                             {t('label.add-new-entity', {
                               entity: t('label.rule'),
                             })}
                           </Button>
 
                           <div className="d-flex items-center">
-                            <Button onClick={() => setEditingKey(null)}>
+                            <Button onClick={() => setEditingKey(null)} color='secondary'>
                               {t('label.cancel')}
                             </Button>
                             <Button
                               className="m-l-md"
                               data-testid="save-semantic-button"
-                              type="primary"
-                              onClick={handleSaveRule}>
+                              onClick={handleSaveRule}
+                              color='primary'>
                               {t('label.save')}
                             </Button>
                           </div>
@@ -399,16 +399,17 @@ export const ContractSemanticFormTab: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
-          onClick={onPrev}>
+          onClick={onPrev}
+          color='secondary'
+          iconLeading={<LeftOutlined height={22} width={20} />}>
           {prevLabel ?? t('label.previous')}
         </Button>
 
         {isNextVisible && (
           <Button
             className="contract-next-button"
-            type="primary"
-            onClick={onNext}>
+            onClick={onNext}
+            color='primary'>
             {nextLabel ?? t('label.next')}
             <Icon component={RightIcon} />
           </Button>

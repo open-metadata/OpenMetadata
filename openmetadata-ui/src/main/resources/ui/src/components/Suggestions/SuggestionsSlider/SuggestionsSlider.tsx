@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { Space } from 'antd';
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,9 +58,9 @@ const SuggestionsSlider = () => {
         <Button
           className="suggestion-pending-btn"
           data-testid="more-suggestion-button"
-          loading={loading}
-          type="primary"
-          onClick={() => fetchSuggestions()}>
+          onClick={() => fetchSuggestions()}
+          color='primary'
+          isLoading={loading}>
           {t('label.plus-count-more', {
             count: suggestionPendingCount,
           })}
@@ -69,33 +69,30 @@ const SuggestionsSlider = () => {
       {selectedUserSuggestions?.combinedData.length > 0 && (
         <Space className="slider-btn-container m-l-xs">
           <Button
-            ghost
             className="text-xs text-primary font-medium"
             data-testid="accept-all-suggestions"
-            disabled={loadingAccept}
-            icon={<CheckOutlined />}
-            loading={loadingAccept}
-            type="primary"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
+            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}
+            color='tertiary'
+            isDisabled={loadingAccept}
+            isLoading={loadingAccept}
+            iconLeading={<CheckOutlined />}>
             {t('label.accept-all')}
           </Button>
           <Button
-            ghost
             className="text-xs text-primary font-medium"
             data-testid="reject-all-suggestions"
-            disabled={loadingReject}
-            icon={<CloseOutlined />}
-            loading={loadingReject}
-            type="primary"
-            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
+            onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}
+            color='tertiary'
+            isDisabled={loadingReject}
+            isLoading={loadingReject}
+            iconLeading={<CloseOutlined />}>
             {t('label.reject-all')}
           </Button>
           <Button
-            ghost
             className="text-xs text-primary font-medium close-suggestion-btn flex-center"
             data-testid="close-suggestion"
-            type="primary"
-            onClick={() => onUpdateActiveUser()}>
+            onClick={() => onUpdateActiveUser()}
+            color='tertiary'>
             <ExitIcon />
             {t('label.close')}
           </Button>

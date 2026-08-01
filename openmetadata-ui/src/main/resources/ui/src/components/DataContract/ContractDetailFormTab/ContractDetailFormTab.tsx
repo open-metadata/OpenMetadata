@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Form } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
@@ -127,9 +127,9 @@ export const ContractDetailFormTab: React.FC<{
         <div className="d-flex justify-end m-t-md">
           <Button
             className="contract-next-button"
-            htmlType="submit"
-            type="primary"
-            onClick={onNext}>
+            onClick={onNext}
+            color='primary'
+            type='submit'>
             {nextLabel ?? t('label.next')}
             <Icon component={RightIcon} />
           </Button>

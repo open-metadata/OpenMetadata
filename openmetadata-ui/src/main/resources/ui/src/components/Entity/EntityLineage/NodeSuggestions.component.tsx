@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Select } from 'antd';
+import { Col, Row, Select } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
@@ -105,15 +106,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       value: entity.fullyQualifiedName,
       label: (
         <Button
-          block
-          className="d-flex items-center node-suggestion-option-btn"
           data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
           key={entity.fullyQualifiedName}
-          type="text"
           onClick={(e) => {
             e.stopPropagation(); // Prevent select from closing
             onSelectHandler?.(entity as EntityReference);
-          }}>
+          }}
+          color='tertiary'
+          className='d-flex items-center node-suggestion-option-btn tw:w-full'>
           <div className="d-flex items-center w-full overflow-hidden">
             <img
               alt={get(entity, 'serviceType', '') || entity.name}

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { FunctionComponent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -60,11 +59,11 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
           className="d-flex justify-between text-sm w-full p-x-0"
           data-testid="InPage"
           key={option}
-          type="text"
           onClick={() => {
             selectOption(searchText);
             setIsOpen(false);
-          }}>
+          }}
+          color='tertiary'>
           {searchText}
           <Typography>{option}</Typography>
         </Button>

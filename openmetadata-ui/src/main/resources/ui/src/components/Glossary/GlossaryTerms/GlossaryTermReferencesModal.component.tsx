@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Form, Input, Modal, Row } from 'antd';
+import { Col, Form, Input, Modal, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
@@ -65,15 +66,15 @@ const GlossaryTermReferencesModal = ({
       destroyOnClose
       data-testid="glossary-term-references-modal"
       footer={[
-        <Button key="cancel-btn" type="link" onClick={onClose}>
+        <Button key="cancel-btn" onClick={onClose} color='link-gray'>
           {t('label.cancel')}
         </Button>,
         <Button
           data-testid="save-btn"
           key="save-btn"
-          loading={saving}
-          type="primary"
-          onClick={form.submit}>
+          onClick={form.submit}
+          color='primary'
+          isLoading={saving}>
           {t('label.save')}
         </Button>,
       ]}
@@ -129,16 +130,16 @@ const GlossaryTermReferencesModal = ({
                   <Col span={1}>
                     <Button
                       data-testid="delete-ref-btn"
-                      icon={
+                      onClick={() => remove(name)}
+                      color='tertiary'
+                      size='xs'
+                      iconLeading={
                         <Icon
                           className="align-middle"
                           component={IconDelete}
                           style={{ fontSize: '16px' }}
                         />
                       }
-                      size="small"
-                      type="text"
-                      onClick={() => remove(name)}
                     />
                   </Col>
                 </Row>
@@ -147,9 +148,10 @@ const GlossaryTermReferencesModal = ({
                 <Button
                   className="text-primary d-flex items-center"
                   data-testid="add-references-button"
-                  icon={<PlusIcon className="anticon" />}
-                  size="small"
-                  onClick={() => add()}>
+                  onClick={() => add()}
+                  color='secondary'
+                  size='xs'
+                  iconLeading={<PlusIcon className="anticon" />}>
                   {t('label.add')}
                 </Button>
               </Form.Item>

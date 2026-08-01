@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Alert, Badge, Dropdown, InputRef, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -511,17 +511,17 @@ const NavBar = () => {
               <Button
                 className="w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
-                icon={
+                onClick={() =>
+                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
+                }
+                color='tertiary'
+                size='sm'
+                iconLeading={
                   isSidebarCollapsed ? (
                     <SidebarCollapsedIcon height={20} width={20} />
                   ) : (
                     <SidebarExpandedIcon height={20} width={20} />
                   )
-                }
-                size="middle"
-                type="text"
-                onClick={() =>
-                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
               />
             </Tooltip>
@@ -562,7 +562,8 @@ const NavBar = () => {
                       data-testid="domain-dropdown"
                       onClick={() =>
                         setIsDomainDropdownOpen(!isDomainDropdownOpen)
-                      }>
+                      }
+                      color='secondary'>
                       <DomainIcon
                         className="d-flex"
                         height={20}
@@ -592,7 +593,7 @@ const NavBar = () => {
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
                 data-testid="language-selector-button"
-                type="text">
+                color='tertiary'>
                 {currentLanguage}
                 <DropDownIcon width={12} />
               </Button>
@@ -621,15 +622,15 @@ const NavBar = () => {
               onOpenChange={handleBellClick}>
               <Button
                 className="flex-center"
-                icon={
+                title={t('label.notification-plural')}
+                color='tertiary'
+                iconLeading={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
                     offset={[-3, 3]}>
                     <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
-                title={t('label.notification-plural')}
-                type="text"
               />
             </Dropdown>
             <Dropdown
@@ -642,9 +643,9 @@ const NavBar = () => {
               <Button
                 className="flex-center"
                 data-testid="help-icon"
-                icon={<Help width={20} />}
                 title={t('label.need-help')}
-                type="text"
+                color='tertiary'
+                iconLeading={<Help width={20} />}
               />
             </Dropdown>
             <UserProfileIcon />
@@ -656,11 +657,11 @@ const NavBar = () => {
           showIcon
           action={
             <Button
-              size="small"
-              type="link"
               onClick={() => {
                 navigate(0);
-              }}>
+              }}
+              color='link-gray'
+              size='xs'>
               {t('label.refresh')}
             </Button>
           }

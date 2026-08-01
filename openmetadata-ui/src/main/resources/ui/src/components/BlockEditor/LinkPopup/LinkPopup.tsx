@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
+import { Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as UnlinkIcon } from '../../../assets/svg/ic-format-unlink.svg';
@@ -35,24 +36,24 @@ const LinkPopup: FC<LinkPopupProps> = ({
       <Button
         className="p-0"
         data-testid="link-popup-edit"
-        icon={<EditIcon width={iconSize} />}
-        type="text"
         onClick={handleLinkToggle}
+        color='tertiary'
+        iconLeading={<EditIcon width={iconSize} />}
       />
       <Button
         className="p-0"
         data-testid="link-popup-open"
         href={href}
-        icon={<ExternalLinkIcon width={iconSize + 2} />}
         target="_blank"
-        type="link"
+        color='link-gray'
+        iconLeading={<ExternalLinkIcon width={iconSize + 2} />}
       />
       <Button
         className="p-0"
         data-testid="link-popup-unlink"
-        icon={<UnlinkIcon width={iconSize} />}
-        type="text"
         onClick={handleUnlink}
+        color='tertiary'
+        iconLeading={<UnlinkIcon width={iconSize} />}
       />
     </Space>
   );

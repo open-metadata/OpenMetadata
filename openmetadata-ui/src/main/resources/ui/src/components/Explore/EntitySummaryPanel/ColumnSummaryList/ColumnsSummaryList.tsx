@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Skeleton } from 'antd';
+import { Skeleton } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
@@ -102,10 +103,10 @@ export const ColumnSummaryList = ({
 
     return (
       <Button
-        block
-        loading={loading && currentPage > 1}
-        type="link"
-        onClick={handleLoadMore}>
+        onClick={handleLoadMore}
+        color='link-gray'
+        isLoading={loading && currentPage > 1}
+        className='tw:w-full'>
         {t('label.show-more')}
       </Button>
     );

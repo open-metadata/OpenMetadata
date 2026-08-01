@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -213,7 +213,9 @@ const QueryCard: FC<QueryCardProp> = ({
             <Button
               className="flex-center bg-white"
               data-testid="query-entity-expand-button"
-              icon={
+              onClick={handleExpandClick}
+              color='secondary'
+              iconLeading={
                 isExpanded ? (
                   <Tooltip title={t('label.exit-fit-to-screen')}>
                     <ExitFullScreen height={16} width={16} />
@@ -223,16 +225,14 @@ const QueryCard: FC<QueryCardProp> = ({
                     <FullScreen height={16} width={16} />
                   </Tooltip>
                 )
-              }
-              onClick={handleExpandClick}
-            />
+              } />
             <Tooltip title={t('message.copy-to-clipboard')}>
               <Button
                 className="flex-center bg-white"
                 data-testid="query-entity-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
                 onClick={onCopyToClipBoard}
-              />
+                color='secondary'
+                iconLeading={<CopyIcon height={16} width={16} />} />
             </Tooltip>
           </Space>
 
@@ -276,18 +276,19 @@ const QueryCard: FC<QueryCardProp> = ({
                   <Button
                     data-testid="cancel-query-btn"
                     key="cancel"
-                    size="small"
-                    onClick={() => setIsEditMode(false)}>
+                    onClick={() => setIsEditMode(false)}
+                    color='secondary'
+                    size='xs'>
                     {t('label.cancel')}
                   </Button>
 
                   <Button
                     data-testid="save-query-btn"
                     key="save"
-                    loading={sqlQuery.isLoading}
-                    size="small"
-                    type="primary"
-                    onClick={updateSqlQuery}>
+                    onClick={updateSqlQuery}
+                    color='primary'
+                    size='xs'
+                    isLoading={sqlQuery.isLoading}>
                     {t('label.save')}
                   </Button>
                 </Space>

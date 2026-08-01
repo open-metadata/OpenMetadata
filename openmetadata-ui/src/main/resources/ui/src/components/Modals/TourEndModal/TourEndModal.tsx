@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Modal, Row } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Modal, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { TourEndModalProps } from './TourEndModal.interface';
@@ -30,9 +30,9 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
       footer={
         <Button
           data-testid="saveButton"
-          size="large"
-          type="primary"
-          onClick={onSave}>
+          onClick={onSave}
+          color='primary'
+          size='md'>
           {t('label.explore-now')}
         </Button>
       }

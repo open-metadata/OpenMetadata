@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,18 +100,18 @@ export const ModalWithCustomPropertyEditor = ({
         <KeyDownStopPropagationWrapper>
           <Button
             data-testid="cancel"
-            disabled={isSaveLoading}
             key="cancelButton"
-            type="link"
-            onClick={onCancel}>
+            onClick={onCancel}
+            color='link-gray'
+            isDisabled={isSaveLoading}>
             {t('label.cancel')}
           </Button>
           <Button
             data-testid="save"
             key="saveButton"
-            loading={isSaveLoading}
-            type="primary"
-            onClick={handleSaveData}>
+            onClick={handleSaveData}
+            color='primary'
+            isLoading={isSaveLoading}>
             {t('label.save')}
           </Button>
         </KeyDownStopPropagationWrapper>

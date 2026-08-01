@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Form, Space } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { isArray } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -213,9 +213,9 @@ const AddGlossary = ({
       children: (
         <Button
           data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          color='primary'
+          size='xs'
+          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
         />
       ),
       multiple: {
@@ -245,9 +245,9 @@ const AddGlossary = ({
       children: (
         <Button
           data-testid="add-reviewers"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          color='primary'
+          size='xs'
+          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
         />
       ),
       multiple: { user: true, team: false },
@@ -278,9 +278,9 @@ const AddGlossary = ({
       children: (
         <Button
           data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          color='primary'
+          size='xs'
+          iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
         />
       ),
       multiple: entityRules.canAddMultipleDomains,
@@ -348,16 +348,16 @@ const AddGlossary = ({
                   size={16}>
                   <Button
                     data-testid="cancel-glossary"
-                    type="link"
-                    onClick={onCancel}>
+                    onClick={onCancel}
+                    color='link-gray'>
                     {t('label.cancel')}
                   </Button>
                   <Button
                     data-testid="save-glossary"
-                    disabled={!allowAccess}
-                    htmlType="submit"
-                    loading={isLoading}
-                    type="primary">
+                    color='primary'
+                    isDisabled={!allowAccess}
+                    isLoading={isLoading}
+                    type='submit'>
                     {t('label.save')}
                   </Button>
                 </Space>

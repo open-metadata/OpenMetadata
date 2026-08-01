@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -336,10 +336,9 @@ const DataProductsPage = () => {
             })}
           </p>
           <Button
-            ghost
             className="m-t-sm"
-            type="primary"
-            onClick={() => navigate(getDomainPath())}>
+            onClick={() => navigate(getDomainPath())}
+            color='tertiary'>
             {t('label.go-back')}
           </Button>
         </div>

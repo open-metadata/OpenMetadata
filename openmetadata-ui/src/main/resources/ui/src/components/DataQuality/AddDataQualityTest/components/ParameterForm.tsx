@@ -13,17 +13,8 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  Tooltip,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Form, FormItemProps, Input, InputNumber, Select, Switch, Tooltip } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
@@ -248,10 +239,10 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                       <span>{data.displayName}</span>
                       <Button
                         className="m-x-sm list-add-btn"
-                        icon={<PlusOutlined />}
-                        size="small"
-                        type="primary"
                         onClick={() => add()}
+                        color='primary'
+                        size='xs'
+                        iconLeading={<PlusOutlined />}
                       />
                     </>
                   }
@@ -280,15 +271,15 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                         )}
                       </Form.Item>
                       <Button
-                        icon={
+                        onClick={() => remove(name)}
+                        color='tertiary'
+                        iconLeading={
                           <Icon
                             className="align-middle"
                             component={IconDelete}
                             style={{ fontSize: '16px' }}
                           />
                         }
-                        type="text"
-                        onClick={() => remove(name)}
                       />
                     </div>
                   ))}

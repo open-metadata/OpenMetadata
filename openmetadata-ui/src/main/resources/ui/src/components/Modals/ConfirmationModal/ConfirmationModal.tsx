@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button as CoreButton } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
@@ -51,14 +51,14 @@ const ConfirmationModal = ({
       data-testid="confirmation-modal"
       footer={
         <div className={classNames('justify-end', footerClassName)}>
-          <Button
+          <CoreButton
             className={classNames('mr-2', cancelButtonCss)}
             data-testid="cancel"
             key="remove-edge-btn"
-            type="text"
-            onClick={onCancel}>
+            onClick={onCancel}
+            color='tertiary'>
             {cancelText}
-          </Button>
+          </CoreButton>
           <Button
             className={confirmButtonCss}
             danger={confirmText === t('label.delete')}

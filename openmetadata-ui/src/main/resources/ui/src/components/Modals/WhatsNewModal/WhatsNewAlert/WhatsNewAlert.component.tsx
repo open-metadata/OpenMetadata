@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card, Col, Row } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Affix, Card, Col, Row } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -110,7 +110,7 @@ const WhatsNewAlert = () => {
                     href={releaseLink}
                     rel="noopener noreferrer"
                     target="_blank"
-                    type="link">
+                    color='link-gray'>
                     {t('label.release-notes')}
                   </Button>
                   {/* Only show the blog link for major releases */}
@@ -120,7 +120,7 @@ const WhatsNewAlert = () => {
                       href={blogLink}
                       rel="noopener noreferrer"
                       target="_blank"
-                      type="link">
+                      color='link-gray'>
                       {t('label.blog')}
                     </Button>
                   )}

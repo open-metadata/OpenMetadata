@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import { Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -147,34 +148,36 @@ const QueryCardExtraOption = ({
       {QueryHeaderButton && (
         <QueryHeaderButton onClickHandler={onExpandClick} />
       )}
-
       <Tag className="query-lines" data-testid="query-line">
         {queryLine}
       </Tag>
-
       <Tooltip title={t('label.up-vote')}>
         <Button
           className="vote-button"
           data-testid="up-vote-btn"
-          icon={
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}
+          color='secondary'
+          size='xs'
+          isLoading={loading === QueryVoteType.votedUp}
+          iconLeading={
             voteStatus === QueryVoteType.votedUp ? (
               <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
               <ThumbsUpOutline height={15} width={15} />
             )
-          }
-          loading={loading === QueryVoteType.votedUp}
-          size="small"
-          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
+          }>
           {query.votes?.upVotes || 0}
         </Button>
       </Tooltip>
-
       <Tooltip title={t('label.down-vote')}>
         <Button
           className="vote-button"
           data-testid="down-vote-btn"
-          icon={
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}
+          color='secondary'
+          size='xs'
+          isLoading={loading === QueryVoteType.votedDown}
+          iconLeading={
             voteStatus === QueryVoteType.votedDown ? (
               <ThumbsUpFilled
                 className="rotate-inverse text-warning-7"
@@ -188,14 +191,10 @@ const QueryCardExtraOption = ({
                 width={15}
               />
             )
-          }
-          loading={loading === QueryVoteType.votedDown}
-          size="small"
-          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
+          }>
           {query.votes?.downVotes || 0}
         </Button>
       </Tooltip>
-
       <Dropdown
         destroyPopupOnHide
         arrow={{ pointAtCenter: true }}
@@ -214,9 +213,9 @@ const QueryCardExtraOption = ({
           <Button
             className="flex-center button-size"
             data-testid="query-btn"
-            icon={<IconDropdown />}
-            size="small"
-            type="text"
+            color='tertiary'
+            size='xs'
+            iconLeading={<IconDropdown />}
           />
         </Tooltip>
       </Dropdown>

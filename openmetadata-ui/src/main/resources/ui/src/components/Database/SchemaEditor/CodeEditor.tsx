@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Tooltip } from 'antd';
+import { Card, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
 import 'codemirror/addon/edit/closebrackets.js';
@@ -134,10 +135,10 @@ const CodeEditor = ({
               <Button
                 className="flex-center"
                 data-testid="query-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
-                size="small"
-                type="text"
                 onClick={onCopyToClipBoard}
+                color='tertiary'
+                size='xs'
+                iconLeading={<CopyIcon height={16} width={16} />}
               />
             </Tooltip>
           </div>

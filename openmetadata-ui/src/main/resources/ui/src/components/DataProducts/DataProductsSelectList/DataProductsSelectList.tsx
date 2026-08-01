@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Select, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Select, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -134,15 +134,17 @@ const DataProductsSelectList = ({
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
-          loading={isSubmitLoading}
-          size="small"
-          onClick={onSave}>
+          onClick={onSave}
+          color='secondary'
+          size='xs'
+          isLoading={isSubmitLoading}>
           {t('label.update')}
         </Button>
         <Button
           data-testid="cancelAssociatedTag"
-          size="small"
-          onClick={onCancel}>
+          onClick={onCancel}
+          color='secondary'
+          size='xs'>
           {t('label.cancel')}
         </Button>
       </Space>

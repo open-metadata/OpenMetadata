@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button, Space } from 'antd';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -40,13 +40,13 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         {schema.additionalProperties && (
           <Button
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
             onClick={() => {
               onAddClick(schema)();
             }}
+            color='primary'
+            size='xs'
+            iconLeading={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
           />
         )}
       </Space>

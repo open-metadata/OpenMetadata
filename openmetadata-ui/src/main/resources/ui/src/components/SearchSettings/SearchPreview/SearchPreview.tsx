@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Input, Row } from 'antd';
+import { Toggle, Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -226,15 +226,17 @@ const SearchPreview = ({
           <Button
             className="restore-defaults-btn font-semibold"
             data-testid="restore-defaults-btn"
-            onClick={handleRestoreDefaults}>
+            onClick={handleRestoreDefaults}
+            color='secondary'>
             {t('label.restore-default-plural')}
           </Button>
           <Button
             className="save-btn font-semibold"
             data-testid="save-btn"
-            disabled={disabledSave}
-            loading={isSaving}
-            onClick={handleSaveChanges}>
+            onClick={handleSaveChanges}
+            color='secondary'
+            isDisabled={disabledSave}
+            isLoading={isSaving}>
             {t('label.save')}
           </Button>
         </Col>

@@ -12,7 +12,8 @@
  */
 
 import { XClose } from '@untitledui/icons';
-import { Button, Card } from 'antd';
+import { Card } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
@@ -1112,10 +1113,10 @@ export default function EntitySummaryPanel({
             aria-label={t('label.close')}
             className="drawer-close-icon flex-center mr-2"
             data-testid="drawer-close-icon"
-            icon={<XClose />}
-            size="small"
             onClick={handleClosePanel}
-          />
+            color='secondary'
+            size='xs'
+            iconLeading={<XClose />} />
         </div>
       )}
       <div className="d-flex gap-2 w-full h-full">

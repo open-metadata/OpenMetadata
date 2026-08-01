@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button as CoreButton } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -362,15 +362,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           {showClearAllBtn && (
             <>
               <Divider className="m-t-xs m-b-0" />
-              <Button
+              <CoreButton
                 className="p-0 m-l-sm"
                 data-testid="clear-button"
-                type="link"
-                onClick={handleClear}>
+                onClick={handleClear}
+                color='link-gray'>
                 {t('label.clear-entity', {
                   entity: t('label.all'),
                 })}
-              </Button>
+              </CoreButton>
             </>
           )}
           {!hideSearchBar && (
@@ -418,20 +418,21 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             ) : null
           ) : (
             <Space className="p-sm p-t-xss">
-              <Button
+              <CoreButton
                 className="update-btn"
                 data-testid="update-btn"
-                size="small"
-                onClick={handleUpdate}>
+                onClick={handleUpdate}
+                color='secondary'
+                size='xs'>
                 {t('label.update')}
-              </Button>
-              <Button
+              </CoreButton>
+              <CoreButton
                 data-testid="close-btn"
-                size="small"
-                type="link"
-                onClick={handleDropdownClose}>
+                onClick={handleDropdownClose}
+                color='link-gray'
+                size='xs'>
                 {t('label.close')}
-              </Button>
+              </CoreButton>
             </Space>
           )}
         </Space>

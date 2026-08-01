@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
+import { Divider, Input, Popover, Select, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -211,15 +212,15 @@ export const GlobalSearchBar = () => {
                 active: isNLPActive,
               })}
               data-testid="nlp-suggestions-button"
-              icon={
+              onClick={() => setNLPActive(!isNLPActive)}
+              color='tertiary'
+              iconLeading={
                 <Icon
                   component={
                     isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
                   }
                 />
               }
-              type="text"
-              onClick={() => setNLPActive(!isNLPActive)}
             />
           </Tooltip>
           <Divider className="h-5" type="vertical" />
@@ -284,7 +285,6 @@ export const GlobalSearchBar = () => {
           onKeyDown={handleKeyDown}
         />
       </Popover>
-
       {entitiesSelect}
       <Divider className="h-5 m-r-md" type="vertical" />
       {searchValue ? (

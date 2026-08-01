@@ -12,7 +12,8 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Segmented, Space } from 'antd';
+import { Col, Dropdown, MenuProps, Row, Segmented, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
@@ -150,27 +151,25 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
             <Space>
               <Dropdown menu={statusMenuItems} placement="bottom">
                 <Button
-                  ghost
                   data-testid="status-button"
-                  icon={<Icon component={FilterIcon} size={12} />}
-                  type="primary">
+                  color='tertiary'
+                  iconLeading={<Icon component={FilterIcon} size={12} />}>
                   {status === MenuOptions.all ? t('label.status') : status}
                 </Button>
               </Dropdown>
               {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
                 <>
                   <Button
-                    ghost
                     className={classNames('range-picker-button delay-100', {
                       'range-picker-button-width delay-100':
                         !datesSelected && !isClickedCalendar,
                     })}
                     data-testid="data-range-picker-button"
-                    icon={<Icon component={Calendar} size={12} />}
-                    type="primary"
                     onClick={() => {
                       setIsClickedCalendar(true);
-                    }}>
+                    }}
+                    color='tertiary'
+                    iconLeading={<Icon component={Calendar} size={12} />}>
                     <span className="date-container">
                       {!datesSelected && (
                         <label>{t('label.date-filter')}</label>

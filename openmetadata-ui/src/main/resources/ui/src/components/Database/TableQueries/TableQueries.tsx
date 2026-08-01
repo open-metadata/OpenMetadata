@@ -16,8 +16,8 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -498,9 +498,9 @@ const TableQueries: FC<TableQueriesProp> = ({
       title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
       <Button
         data-testid="add-query-btn"
-        disabled={!permissions?.query.Create}
-        type="primary"
-        onClick={handleAddQueryClick}>
+        onClick={handleAddQueryClick}
+        color='primary'
+        isDisabled={!permissions?.query.Create}>
         {t('label.add')}
       </Button>
     </Tooltip>
@@ -605,10 +605,10 @@ const TableQueries: FC<TableQueriesProp> = ({
                       />
                       <Button
                         className="p-x-0"
-                        type="text"
                         onClick={() => {
                           setIsClickedCalendar(true);
-                        }}>
+                        }}
+                        color='tertiary'>
                         <span>
                           <label>{t('label.created-date')}</label>
                           <DatePicker.RangePicker
@@ -637,12 +637,12 @@ const TableQueries: FC<TableQueriesProp> = ({
                       <Button
                         className="p-0"
                         data-testid="sort-order-button"
-                        type="text"
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
-                        }>
+                        }
+                        color='tertiary'>
                         {isAscSortOrder ? (
                           <SortAscendingOutlined
                             className="text-base text-grey-muted"

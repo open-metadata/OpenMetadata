@@ -10,12 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Button, Checkbox, Col, Divider, List, Row, Space } from 'antd';
+import { Box, EmptyPlaceholder, Typography, Button } from '@openmetadata/ui-core-components';
+import { Checkbox, Col, Divider, List, Row, Space } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
@@ -823,8 +819,8 @@ export const AddTestCaseList = ({
                 <Button
                   className="h-auto p-0 font-normal"
                   data-testid="select-all-total-test-cases"
-                  type="link"
-                  onClick={handleSelectAllMatchingTotal}>
+                  onClick={handleSelectAllMatchingTotal}
+                  color='link-gray'>
                   {t('label.select-all-count-test-cases', {
                     count: totalCount,
                   })}
@@ -837,14 +833,14 @@ export const AddTestCaseList = ({
       {renderList}
       {showButton && (
         <Col className="d-flex justify-end items-center p-y-sm gap-4" span={24}>
-          <Button data-testid="cancel" type="link" onClick={onCancel}>
+          <Button data-testid="cancel" onClick={onCancel} color='link-gray'>
             {cancelText ?? t('label.cancel')}
           </Button>
           <Button
             data-testid="submit"
-            loading={isLoading}
-            type="primary"
-            onClick={handleSubmit}>
+            onClick={handleSubmit}
+            color='primary'
+            isLoading={isLoading}>
             {submitText ?? t('label.create')}
           </Button>
         </Col>

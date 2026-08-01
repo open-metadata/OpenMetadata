@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal } from 'antd';
+import { Modal } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -125,15 +126,15 @@ const GlossaryTermModal: FC<Props> = ({
       closable={false}
       data-testid="edit-glossary-modal"
       footer={[
-        <Button key="cancel-btn" type="link" onClick={onCancel}>
+        <Button key="cancel-btn" onClick={onCancel} color='link-gray'>
           {t('label.cancel')}
         </Button>,
         <Button
           data-testid="save-glossary-term"
           key="save-btn"
-          loading={saving}
-          type="primary"
-          onClick={form.submit}>
+          onClick={form.submit}
+          color='primary'
+          isLoading={saving}>
           {t('label.save')}
         </Button>,
       ]}

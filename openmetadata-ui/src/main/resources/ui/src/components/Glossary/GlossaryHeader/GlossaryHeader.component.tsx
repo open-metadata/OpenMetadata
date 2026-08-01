@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Dropdown, Space, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -462,9 +462,9 @@ const GlossaryHeader = ({
         <Button
           className="m-l-xs"
           data-testid="add-new-tag-button-header"
-          size="middle"
-          type="primary"
-          onClick={handleAddGlossaryTermClick}>
+          onClick={handleAddGlossaryTermClick}
+          color='primary'
+          size='sm'>
           {t('label.add-entity', { entity: t('label.term-lowercase') })}
         </Button>
       ) : (
@@ -480,7 +480,7 @@ const GlossaryHeader = ({
                 trigger={['click']}>
                 <Button
                   data-testid="glossary-term-add-button-menu"
-                  type="primary">
+                  color='primary'>
                   <Space>
                     {t('label.add')}
                     <DownOutlined />
@@ -589,8 +589,9 @@ const GlossaryHeader = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
+                    onClick={handleVersionClick}
+                    color='secondary'
+                    iconLeading={<Icon component={VersionIcon} />}>
                     <Typography
                       className={classNames('', {
                         'text-primary': version,
@@ -624,15 +625,15 @@ const GlossaryHeader = ({
                     <Button
                       className="glossary-manage-dropdown-button"
                       data-testid="manage-button"
-                      icon={
+                      onClick={() => setShowActions(true)}
+                      color='secondary'
+                      iconLeading={
                         <IconDropdown
                           className="vertical-align-inherit manage-dropdown-icon"
                           height={16}
                           width={16}
                         />
-                      }
-                      onClick={() => setShowActions(true)}
-                    />
+                      } />
                   </Tooltip>
                 </Dropdown>
               )}

@@ -12,7 +12,8 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Input, Space, Tooltip } from 'antd';
+import { Input, Space, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
@@ -61,16 +62,16 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
             />
             <Space direction="horizontal" size={8}>
               <Button
-                icon={<CloseOutlined />}
-                size="small"
-                type="default"
                 onClick={() => setIsEditing(false)}
+                color='secondary'
+                size='xs'
+                iconLeading={<CloseOutlined />}
               />
               <Button
-                icon={<CheckOutlined />}
-                size="small"
-                type="primary"
                 onClick={handleSaveEquation}
+                color='primary'
+                size='xs'
+                iconLeading={<CheckOutlined />}
               />
             </Space>
           </div>
@@ -83,10 +84,10 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
             title={t('label.edit-entity', { entity: t('label.equation') })}>
             <Button
               className="edit-button"
-              icon={<EditIcon width={16} />}
-              size="small"
-              type="text"
               onClick={() => setIsEditing(true)}
+              color='tertiary'
+              size='xs'
+              iconLeading={<EditIcon width={16} />}
             />
           </Tooltip>
         )}

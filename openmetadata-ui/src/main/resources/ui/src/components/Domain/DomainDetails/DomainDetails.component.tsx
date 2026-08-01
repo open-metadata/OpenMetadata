@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tabs, Tooltip } from 'antd';
+import { Avatar, Box, Typography, Button } from '@openmetadata/ui-core-components';
+import { Dropdown, Space, Tabs, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -1026,7 +1026,7 @@ const DomainDetails = ({
                 }}
                 placement="bottomRight"
                 trigger={['click']}>
-                <Button data-testid="domain-details-add-button" type="primary">
+                <Button data-testid="domain-details-add-button" color='primary'>
                   <Space>
                     {t('label.add')}
                     <DownOutlined />
@@ -1058,8 +1058,9 @@ const DomainDetails = ({
                       'text-primary border-primary': version,
                     })}
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
+                    onClick={handleVersionClick}
+                    color='secondary'
+                    iconLeading={<Icon component={VersionIcon} />}>
                     <Typography
                       className={classNames('', {
                         'text-primary': version,
@@ -1091,11 +1092,11 @@ const DomainDetails = ({
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
                       data-testid="manage-button"
-                      icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                      }
                       onClick={() => setShowActions(true)}
-                    />
+                      color='secondary'
+                      iconLeading={
+                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                      } />
                   </Tooltip>
                 </Dropdown>
               )}

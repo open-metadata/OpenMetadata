@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import classNames from 'classnames';
 
 import { clone } from 'lodash';
@@ -63,15 +63,15 @@ const SchemaModal: FC<SchemaModalProp> = ({
             <Button
               data-testid="cancel"
               key="cancelButton"
-              type="link"
-              onClick={onClose}>
+              onClick={onClose}
+              color='link-gray'>
               {t('label.cancel')}
             </Button>
             <Button
               data-testid="save"
               key="saveButton"
-              type="primary"
-              onClick={onSave}>
+              onClick={onSave}
+              color='primary'>
               {t('label.save')}
             </Button>
           </KeyDownStopPropagationWrapper>

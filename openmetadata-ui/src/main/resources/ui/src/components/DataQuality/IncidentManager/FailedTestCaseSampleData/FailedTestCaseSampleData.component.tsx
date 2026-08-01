@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
+import { Table, Typography, Button } from '@openmetadata/ui-core-components';
+import { Dropdown, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -255,7 +255,7 @@ const FailedTestCaseSampleData = ({
                 testCaseData?.fullyQualifiedName ?? '',
                 TestCasePageTabs.SQL_QUERY
               )}>
-              <Button data-testid="explore-with-query" type="primary">
+              <Button data-testid="explore-with-query" color='primary'>
                 {t('label.explore-with-query')}
               </Button>
             </Link>
@@ -279,7 +279,8 @@ const FailedTestCaseSampleData = ({
                 <Button
                   className="flex-center px-1.5"
                   data-testid="sample-data-manage-button"
-                  onClick={() => setShowActions(true)}>
+                  onClick={() => setShowActions(true)}
+                  color='secondary'>
                   <IconDropdown className="anticon self-center " />
                 </Button>
               </Tooltip>

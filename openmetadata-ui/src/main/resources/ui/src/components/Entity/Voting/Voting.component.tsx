@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,10 +45,11 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
             'ant-button-vote-active': voteStatus === QueryVoteType.votedUp,
           })}
           data-testid="up-vote-btn"
-          disabled={disabled}
-          icon={<ThumbsUpOutline height={15} width={15} />}
-          loading={loading === QueryVoteType.votedUp}
-          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
+          onClick={() => handleVoteChange(QueryVoteType.votedUp)}
+          color='secondary'
+          isDisabled={disabled}
+          isLoading={loading === QueryVoteType.votedUp}
+          iconLeading={<ThumbsUpOutline height={15} width={15} />}>
           <Typography className="m-l-xs" data-testid="up-vote-count">
             {votes?.upVotes ?? 0}
           </Typography>
@@ -60,16 +61,17 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
             'ant-button-vote-active': voteStatus === QueryVoteType.votedDown,
           })}
           data-testid="down-vote-btn"
-          disabled={disabled}
-          icon={
+          onClick={() => handleVoteChange(QueryVoteType.votedDown)}
+          color='secondary'
+          isDisabled={disabled}
+          isLoading={loading === QueryVoteType.votedDown}
+          iconLeading={
             <ThumbsUpOutline
               className="rotate-inverse"
               height={15}
               width={15}
             />
-          }
-          loading={loading === QueryVoteType.votedDown}
-          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
+          }>
           <Typography className="m-l-xs" data-testid="down-vote-count">
             {votes?.downVotes ?? 0}
           </Typography>

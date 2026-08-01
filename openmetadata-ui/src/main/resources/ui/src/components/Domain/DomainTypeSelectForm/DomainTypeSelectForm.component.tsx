@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Space } from 'antd';
+import { Col, Form, Row, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { useState } from 'react';
 import { DomainType } from '../../../generated/api/domains/createDomain';
@@ -44,19 +45,19 @@ const DomainTypeSelectForm = ({
             <Button
               className="p-x-05"
               data-testid="cancelAssociatedTag"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
               onClick={onCancel}
-            />
+              color='secondary'
+              size='xs'
+              isDisabled={isSubmitLoading}
+              iconLeading={<CloseOutlined size={12} />} />
             <Button
               className="p-x-05"
               data-testid="saveAssociatedTag"
-              htmlType="submit"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
+              color='primary'
+              size='xs'
+              isLoading={isSubmitLoading}
+              iconLeading={<CheckOutlined size={12} />}
+              type='submit'
             />
           </Space>
         </Col>

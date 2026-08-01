@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Empty, Popover, Radio, Space, Spin } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Empty, Popover, Radio, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -284,16 +284,16 @@ const Certification = ({
               <div className="flex justify-end text-lg gap-2 mt-4">
                 <Button
                   data-testid="close-certification"
-                  type="default"
-                  onClick={handleCloseCertification}>
+                  onClick={handleCloseCertification}
+                  color='secondary'>
                   <CloseOutlined />
                 </Button>
                 <Button
                   data-testid="update-certification"
-                  type="primary"
                   onClick={() =>
                     updateCertificationData(selectedCertification)
-                  }>
+                  }
+                  color='primary'>
                   <CheckOutlined />
                 </Button>
               </div>

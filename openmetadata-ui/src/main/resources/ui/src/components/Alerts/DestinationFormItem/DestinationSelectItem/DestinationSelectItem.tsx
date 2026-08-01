@@ -12,19 +12,8 @@
  */
 
 import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Button,
-  Col,
-  Form,
-  Input,
-  Row,
-  Select,
-  Skeleton,
-  Switch,
-  Tabs,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Alert, Col, Form, Input, Row, Select, Skeleton, Switch, Tabs } from 'antd';
 import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -440,9 +429,9 @@ function DestinationSelectItem({
         {!isViewMode && (
           <Button
             data-testid={`remove-destination-${id}`}
-            icon={<CloseOutlined />}
             onClick={() => remove(id)}
-          />
+            color='secondary'
+            iconLeading={<CloseOutlined />} />
         )}
       </div>
     </Col>

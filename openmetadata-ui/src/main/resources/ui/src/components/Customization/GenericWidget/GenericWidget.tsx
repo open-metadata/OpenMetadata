@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { Button, Card, Space } from 'antd';
+import { Card, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { noop, startCase } from 'lodash';
 import { useLayoutEffect, useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -82,10 +83,10 @@ export const GenericWidget = (props: WidgetCommonProps) => {
         props.handleRemoveWidget ? (
           <Button
             data-testid="remove-widget-button"
-            icon={<MinusCircleOutlined size={16} />}
-            size="small"
             onClick={handleRemoveClick}
-          />
+            color='secondary'
+            size='xs'
+            iconLeading={<MinusCircleOutlined size={16} />} />
         ) : undefined
       }
       title={
@@ -93,9 +94,9 @@ export const GenericWidget = (props: WidgetCommonProps) => {
           <Button
             className="drag-widget-icon"
             data-testid="drag-widget-button"
-            icon={<HolderOutlined size={16} />}
-            size="small"
-          />
+            color='secondary'
+            size='xs'
+            iconLeading={<HolderOutlined size={16} />} />
           {widgetName}
         </Space>
       }

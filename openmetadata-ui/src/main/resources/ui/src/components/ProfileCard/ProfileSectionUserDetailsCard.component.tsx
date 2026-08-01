@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Modal, Popover } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Badge, Modal, Popover } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -151,7 +151,8 @@ const ProfileSectionUserDetailsCard = ({
           onClick={() => {
             setEditProfile(!editProfile);
             setisPopoverVisible(false);
-          }}>
+          }}
+          color='secondary'>
           <EditProfileIcon
             className="m-r-xss"
             style={{ marginRight: '10px' }}
@@ -171,7 +172,8 @@ const ProfileSectionUserDetailsCard = ({
           onClick={() => {
             setIsChangePassword(true);
             setisPopoverVisible(false);
-          }}>
+          }}
+          color='secondary'>
           <ChangePassword
             className="m-r-xss"
             style={{ marginRight: '10px' }}
@@ -190,7 +192,8 @@ const ProfileSectionUserDetailsCard = ({
           onClick={() => {
             setShowRestoreModal(true);
             setisPopoverVisible(false);
-          }}>
+          }}
+          color='secondary'>
           <DeleteIcon
             className="m-r-xss"
             style={{ marginRight: '10px' }}
@@ -207,7 +210,8 @@ const ProfileSectionUserDetailsCard = ({
             onClick={() => {
               setIsDelete(true);
               setisPopoverVisible(false);
-            }}>
+            }}
+            color='secondary'>
             <DeleteIcon
               className="m-r-xss"
               style={{ marginRight: '10px' }}
@@ -313,7 +317,8 @@ const ProfileSectionUserDetailsCard = ({
       {showRestoreModal && (
         <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+          onClick={(e) => e.stopPropagation()}
+          color='secondary'>
           <Modal
             centered
             cancelButtonProps={{

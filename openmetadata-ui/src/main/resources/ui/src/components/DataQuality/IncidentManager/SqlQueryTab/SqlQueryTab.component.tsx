@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -83,8 +84,8 @@ const SqlQueryTab = () => {
         <Col className="d-flex justify-end" span={24}>
           <Button
             data-testid="add-to-table-button"
-            type="primary"
-            onClick={() => setIsOpen(true)}>
+            onClick={() => setIsOpen(true)}
+            color='primary'>
             {t('label.add-to-table')}
           </Button>
         </Col>

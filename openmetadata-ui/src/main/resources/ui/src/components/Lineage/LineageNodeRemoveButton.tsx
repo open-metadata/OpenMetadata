@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { ReactComponent as IconTimesCircle } from '../../assets/svg/ic-times-circle.svg';
 
 interface LineageNodeRemoveButtonProps {
@@ -25,7 +25,9 @@ const LineageNodeRemoveButton = ({
     <Button
       className="lineage-node-remove-btn bg-body-hover"
       data-testid="lineage-node-remove-btn"
-      icon={
+      onClick={onRemove}
+      color='link-gray'
+      iconLeading={
         <Icon
           alt="times-circle"
           className="align-middle"
@@ -33,8 +35,6 @@ const LineageNodeRemoveButton = ({
           style={{ fontSize: '16px' }}
         />
       }
-      type="link"
-      onClick={onRemove}
     />
   );
 };

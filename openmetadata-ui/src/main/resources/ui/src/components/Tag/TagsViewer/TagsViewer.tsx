@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button, Popover, Tag } from 'antd';
+import { Tooltip, Typography, Button } from '@openmetadata/ui-core-components';
+import { Popover, Tag } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
@@ -123,9 +123,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           <Button
             className="show-more-tags-button"
             data-testid="read-button"
-            size="small"
-            type="link"
-            onClick={() => setIsOpen(!isOpen)}>
+            onClick={() => setIsOpen(!isOpen)}
+            color='link-gray'
+            size='xs'>
             {isOpen
               ? t('label.less')
               : t('label.plus-count-more', {

@@ -12,7 +12,8 @@
  */
 
 import { LinkOutlined } from '@ant-design/icons';
-import { Alert, Button, Spin } from 'antd';
+import { Alert, Spin } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,11 +86,11 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
             action={
               <Button
                 href={resource.source.url}
-                icon={<LinkOutlined />}
                 rel="noopener noreferrer"
-                size="small"
                 target="_blank"
-                type="link">
+                color='link-gray'
+                size='xs'
+                iconLeading={<LinkOutlined />}>
                 {t('label.open-original')}
               </Button>
             }

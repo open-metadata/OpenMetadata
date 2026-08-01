@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Row, Slider } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Divider, Row, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
@@ -173,9 +173,9 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
           <Button
             className="delete-term-boost"
             data-testid="delete-term-boost"
-            icon={<Icon className="text-md" component={Delete} />}
             onClick={() => onDeleteBoost(termBoost.value)}
-          />
+            color='secondary'
+            iconLeading={<Icon className="text-md" component={Delete} />} />
         </Col>
       </Row>
     </div>

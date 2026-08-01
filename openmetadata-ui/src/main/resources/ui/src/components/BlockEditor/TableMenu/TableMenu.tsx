@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import type { Editor } from '@tiptap/react';
-import { Button, Space, Tooltip } from 'antd';
+import { Space, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
@@ -162,8 +163,8 @@ const TableMenu = (props: TableMenuProps) => {
         <Tooltip showArrow={false} title="Add row after current row">
           <Button
             data-testid="Add row after current row"
-            type="text"
-            onClick={() => editor.chain().focus().addRowAfter().run()}>
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            color='tertiary'>
             <IconAddRowAfter style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
@@ -171,8 +172,8 @@ const TableMenu = (props: TableMenuProps) => {
         <Tooltip showArrow={false} title="Add column after current column">
           <Button
             data-testid="Add column after current column"
-            type="text"
-            onClick={() => editor.chain().focus().addColumnAfter().run()}>
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            color='tertiary'>
             <IconAddColumnAfter style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
@@ -180,8 +181,8 @@ const TableMenu = (props: TableMenuProps) => {
         <Tooltip showArrow={false} title="Delete current row">
           <Button
             data-testid="Delete current row"
-            type="text"
-            onClick={() => editor.chain().focus().deleteRow().run()}>
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            color='tertiary'>
             <IconDeleteRow style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
@@ -189,8 +190,8 @@ const TableMenu = (props: TableMenuProps) => {
         <Tooltip showArrow={false} title="Delete current column">
           <Button
             data-testid="Delete current col"
-            type="text"
-            onClick={() => editor.chain().focus().deleteColumn().run()}>
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            color='tertiary'>
             <IconDeleteColumn style={{ verticalAlign: 'middle' }} />
           </Button>
         </Tooltip>
@@ -198,11 +199,11 @@ const TableMenu = (props: TableMenuProps) => {
         <Tooltip showArrow={false} title="Delete table">
           <Button
             data-testid="Delete table"
-            type="text"
             onClick={() => {
               editor.chain().focus().deleteTable().run();
               tableMenuPopup.current?.hide();
-            }}>
+            }}
+            color='tertiary'>
             <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
           </Button>
         </Tooltip>

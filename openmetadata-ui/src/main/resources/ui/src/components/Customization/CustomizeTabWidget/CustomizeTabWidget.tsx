@@ -12,7 +12,8 @@
  */
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
+import { Card, Col, Dropdown, Input, Modal, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -402,9 +403,9 @@ export const CustomizeTabWidget = () => {
           data-testid="customize-tab-card"
           extra={
             <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={() => setShowAddTabModal(true)}>
+              onClick={() => setShowAddTabModal(true)}
+              color='primary'
+              iconLeading={<PlusOutlined />}>
               {t('label.add-entity', {
                 entity: t('label.tab'),
               })}
@@ -440,7 +441,8 @@ export const CustomizeTabWidget = () => {
                 trigger={['click']}>
                 <Button
                   className="draggable-hidden-tab-item bg-grey"
-                  data-testid={`tab-${item.name}`}>
+                  data-testid={`tab-${item.name}`}
+                  color='secondary'>
                   <Space>
                     {getTabDisplayName(item)}
                     <MoreOutlined />
@@ -457,9 +459,9 @@ export const CustomizeTabWidget = () => {
           bordered={false}
           extra={
             <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleOpenAddWidgetModal}>
+              onClick={handleOpenAddWidgetModal}
+              color='primary'
+              iconLeading={<PlusOutlined />}>
               {t('label.add-entity', {
                 entity: t('label.widget'),
               })}
@@ -490,7 +492,6 @@ export const CustomizeTabWidget = () => {
           </ReactGridLayout>
         </Card>
       </Col>
-
       {currentPageType && (
         <AddDetailsPageWidgetModal
           handleAddWidget={handleMainPanelAddWidget}

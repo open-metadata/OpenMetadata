@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -418,17 +417,16 @@ const Suggestions = ({
         </Typography>
         {aiQueries.map((query) => (
           <Button
-            block
-            className="m-b-md w-100 text-left d-flex items-center p-0"
             data-testid="nlp-suggestions-button"
-            icon={
+            key={query}
+            onClick={() => onSearchTextUpdate?.(query)}
+            color='tertiary'
+            iconLeading={
               <div className="nlp-button w-6 h-6 flex-center m-r-md">
                 <IconSuggestionsBlue />
               </div>
             }
-            key={query}
-            type="text"
-            onClick={() => onSearchTextUpdate?.(query)}>
+            className='m-b-md w-100 text-left d-flex items-center p-0 tw:w-full'>
             {query}
           </Button>
         ))}

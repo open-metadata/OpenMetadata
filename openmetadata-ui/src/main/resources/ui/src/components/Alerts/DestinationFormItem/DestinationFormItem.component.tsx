@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
+import { Col, Divider, Form, Row, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { Fragment, useMemo, useState } from 'react';
@@ -139,18 +140,17 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                   )}
                 </Fragment>
               ))}
-
               {!isViewMode && (
                 <Col span={24}>
                   <Row gutter={[16, 16]}>
                     <Col>
                       <Button
                         data-testid="add-destination-button"
-                        disabled={
+                        onClick={() => add({})}
+                        color='primary'
+                        isDisabled={
                           isEmpty(selectedSource) || isNil(selectedSource)
-                        }
-                        type="primary"
-                        onClick={() => add({})}>
+                        }>
                         {t('label.add-entity', {
                           entity: t('label.destination'),
                         })}
@@ -162,8 +162,9 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                         title={t('message.external-destination-selection')}>
                         <Button
                           data-testid="test-destination-button"
-                          disabled={disableTestDestinationButton}
-                          onClick={handleTestDestinationClick}>
+                          onClick={handleTestDestinationClick}
+                          color='secondary'
+                          isDisabled={disableTestDestinationButton}>
                           {t('label.test-entity', {
                             entity: t('label.destination-plural'),
                           })}
@@ -173,7 +174,6 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                   </Row>
                 </Col>
               )}
-
               <Col span={24}>
                 <Form.ErrorList errors={errors} />
               </Col>

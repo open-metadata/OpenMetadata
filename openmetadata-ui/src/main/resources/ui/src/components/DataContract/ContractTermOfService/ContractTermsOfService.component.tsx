@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
@@ -87,15 +87,15 @@ export const ContractTermsOfService: React.FC<{
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
-          type="default"
-          onClick={onPrev}>
+          onClick={onPrev}
+          color='secondary'
+          iconLeading={<LeftOutlined height={22} width={20} />}>
           {buttonProps.prevLabel ?? t('label.previous')}
         </Button>
         <Button
           className="contract-next-button"
-          type="primary"
-          onClick={onNext}>
+          onClick={onNext}
+          color='primary'>
           {buttonProps.nextLabel ?? t('label.next')}
           <Icon component={RightIcon} />
         </Button>

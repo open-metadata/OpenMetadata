@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
@@ -34,9 +35,9 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
           title={hasCopied ? t('label.copied') : t('label.copy')}>
           <Button
             data-testid="code-block-copy-icon"
-            icon={<CopyIcon height={24} width={24} />}
-            type="text"
             onClick={handleCopy}
+            color='tertiary'
+            iconLeading={<CopyIcon height={24} width={24} />}
           />
         </Tooltip>
       </span>

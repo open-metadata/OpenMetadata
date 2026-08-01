@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Collapse, Divider, Select, Slider, Switch } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Badge, Collapse, Divider, Select, Slider, Switch } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -115,12 +115,12 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <Button
                 className="delete-search-field"
                 data-testid="delete-search-field"
-                icon={<Icon className="text-md" component={Delete} />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);
                 }}
-              />
+                color='secondary'
+                iconLeading={<Icon className="text-md" component={Delete} />} />
             </div>
 
             <div className="d-flex items-center justify-between gap-2 m-y-xss">

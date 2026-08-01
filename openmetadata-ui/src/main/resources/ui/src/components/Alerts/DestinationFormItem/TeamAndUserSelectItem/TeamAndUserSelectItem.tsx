@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Dropdown,
-  Form,
-  Input,
-  MenuItemProps,
-  Row,
-  Tag,
-} from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Checkbox, Col, Dropdown, Form, Input, MenuItemProps, Row, Tag } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import {
@@ -239,7 +228,8 @@ function TeamAndUserSelectItem({
         className="select-trigger"
         data-testid="dropdown-trigger-button"
         ref={triggerRef}
-        onClick={handleTriggerClick}>
+        onClick={handleTriggerClick}
+        color='secondary'>
         <Row gutter={[4, 4]}>
           {isEmpty(selectedOptions) ? (
             <Typography

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { Builder, Query } from '@react-awesome-query-builder/antd';
-import { Button, Modal, Space } from 'antd';
+import { Modal, Space } from 'antd';
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import './advanced-search-modal.less';
@@ -46,15 +46,16 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
           <Button
             className="float-right"
             data-testid="reset-btn"
-            size="small"
-            onClick={onReset}>
+            onClick={onReset}
+            color='secondary'
+            size='xs'>
             {t('label.reset')}
           </Button>
           <div>
-            <Button data-testid="cancel-btn" onClick={onCancel}>
+            <Button data-testid="cancel-btn" onClick={onCancel} color='secondary'>
               {t('label.cancel')}
             </Button>
-            <Button data-testid="apply-btn" type="primary" onClick={onSubmit}>
+            <Button data-testid="apply-btn" onClick={onSubmit} color='primary'>
               {t('label.apply')}
             </Button>
           </div>

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
 import { includes, startCase, toLower } from 'lodash';
@@ -126,10 +127,9 @@ const TotalEntityInsightSummary = ({
           })}
         </Row>
       </Col>
-
       {activeKeys && activeKeys.length > 0 && allowFilter && (
         <Col className="flex justify-end" span={24}>
-          <Button type="link" onClick={() => onActiveKeysUpdate?.([])}>
+          <Button onClick={() => onActiveKeysUpdate?.([])} color='link-gray'>
             {t('label.clear')}
           </Button>
         </Col>

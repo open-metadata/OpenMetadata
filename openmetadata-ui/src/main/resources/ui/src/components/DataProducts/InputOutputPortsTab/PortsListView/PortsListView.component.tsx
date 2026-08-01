@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Row, Skeleton } from 'antd';
+import { Col, Dropdown, Row, Skeleton } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import {
   forwardRef,
@@ -235,9 +236,9 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                         <Button
                           className="flex-center"
                           data-testid={`port-actions-${port.id}`}
-                          icon={<IconDropdown height={14} width={14} />}
-                          size="small"
-                          type="text"
+                          color='tertiary'
+                          size='xs'
+                          iconLeading={<IconDropdown height={14} width={14} />}
                         />
                       </Dropdown>
                     ) : undefined
@@ -251,7 +252,6 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             ))}
           </Row>
         </div>
-
         {showPagination && (
           <div style={{ flexShrink: 0, paddingTop: '12px' }}>
             <NextPrevious
@@ -264,7 +264,6 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             />
           </div>
         )}
-
         <ConfirmationModal
           bodyText={t('message.are-you-sure-you-want-to-remove-entity', {
             entity: getEntityName(portToDelete),

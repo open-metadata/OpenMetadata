@@ -11,13 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Typography, Button } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { Card, Col, Row, Space, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -430,9 +426,9 @@ const ClassificationDetails = forwardRef(
                   <Tooltip title={addTagButtonToolTip}>
                     <Button
                       data-testid="add-new-tag-button"
-                      disabled={isClassificationDisabled}
-                      type="primary"
-                      onClick={handleAddNewTagClick}>
+                      onClick={handleAddNewTagClick}
+                      color='primary'
+                      isDisabled={isClassificationDisabled}>
                       {t('label.add-entity', {
                         entity: t('label.tag'),
                       })}
@@ -452,8 +448,9 @@ const ClassificationDetails = forwardRef(
                     <Button
                       className="w-16 p-0"
                       data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={versionHandler}>
+                      onClick={versionHandler}
+                      color='secondary'
+                      iconLeading={<Icon component={VersionIcon} />}>
                       <Typography>{currentVersion}</Typography>
                     </Button>
                   </Tooltip>

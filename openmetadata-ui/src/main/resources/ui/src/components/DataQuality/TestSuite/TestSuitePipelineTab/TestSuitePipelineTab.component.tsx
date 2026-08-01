@@ -11,16 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Table,
-  TableCard,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Table, TableCard, Tooltip, TooltipTrigger, Button } from '@openmetadata/ui-core-components';
 import { Dataflow03, HelpCircle, Plus } from '@untitledui/icons';
-import { Button, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
@@ -422,8 +415,8 @@ const TestSuitePipelineTab = ({
         <Col className="d-flex justify-end" span={24}>
           <Button
             data-testid="add-pipeline-button"
-            type="primary"
-            onClick={handleAddPipelineRedirection}>
+            onClick={handleAddPipelineRedirection}
+            color='primary'>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>
         </Col>
@@ -566,7 +559,6 @@ const TestSuitePipelineTab = ({
           )}
         </TableCard.Root>
       </Col>
-
       <DeleteModal
         entityTitle={getEntityName(deleteSelection)}
         isDeleting={deleteSelection.state === 'waiting'}

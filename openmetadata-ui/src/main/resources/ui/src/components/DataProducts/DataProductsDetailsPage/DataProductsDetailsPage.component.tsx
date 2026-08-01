@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip } from 'antd';
+import { Avatar, Typography, Button } from '@openmetadata/ui-core-components';
+import { Dropdown, Tabs, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -749,10 +749,11 @@ const DataProductsDetailsPage = ({
             toLower(dataContract.latestResult.status)
           )}
           data-testid="data-contract-latest-result-btn"
-          icon={icon ? <Icon component={icon} /> : null}
           onClick={() => {
             handleTabChange(EntityTabs.CONTRACT);
-          }}>
+          }}
+          color='secondary'
+          iconLeading={icon ? <Icon component={icon} /> : null}>
           {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
             entity: t('label.contract'),
           })}
@@ -847,8 +848,8 @@ const DataProductsDetailsPage = ({
                 {!isVersionsView && dataProductPermission.Create && (
                   <Button
                     data-testid="data-product-details-add-button"
-                    type="primary"
-                    onClick={openAssetDrawer}>
+                    onClick={openAssetDrawer}
+                    color='primary'>
                     {t('label.add-entity', {
                       entity: t('label.asset-plural'),
                     })}
@@ -880,8 +881,9 @@ const DataProductsDetailsPage = ({
                           'text-primary border-primary': version,
                         })}
                         data-testid="version-button"
-                        icon={<Icon component={VersionIcon} />}
-                        onClick={handleVersionClick}>
+                        onClick={handleVersionClick}
+                        color='secondary'
+                        iconLeading={<Icon component={VersionIcon} />}>
                         <Typography
                           className={classNames('', {
                             'text-primary': version,
@@ -913,11 +915,11 @@ const DataProductsDetailsPage = ({
                         <Button
                           className="domain-manage-dropdown-button tw-px-1.5"
                           data-testid="manage-button"
-                          icon={
-                            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                          }
                           onClick={() => setShowActions(true)}
-                        />
+                          color='secondary'
+                          iconLeading={
+                            <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                          } />
                       </Tooltip>
                     </Dropdown>
                   )}
