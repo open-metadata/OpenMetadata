@@ -87,6 +87,27 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   rel?: string;
 }
 
+// `styles/typography.css` applies its real typographic rules through a
+// *descendant* selector (`.prose :not(...)`), and every rule inside it is
+// gated on an element type — `p`, `h1`-`h6`, `ol`, `ul`, `li`, `blockquote`,
+// `a`, `code`, `pre`, `img`, `figure`, table elements. For those, the wrapper
+// is load-bearing: moving `prose` onto the element itself would stop the rule
+// matching (e.g. a `p` would silently lose its margins).
+//
+// `span` and `div` are targeted by no such rule, so the wrapper contributes
+// only the element-level `.prose` layer — `--tw-prose-*` vars plus `color`,
+// `font-size` and `line-height`, all of which are inherited properties. Setting
+// `prose` directly on the element therefore yields an identical computed style
+// on the text, while dropping a block-level `<div>` that otherwise breaks
+// inline flow and produces invalid `<div>`-inside-`<span>` nesting when
+// Typography is nested. Kept as a deliberately small allowlist: anything not
+// listed here keeps the wrapper.
+//
+// Typed as `unknown` so membership can be tested without a `typeof Component
+// === 'string'` guard: that guard narrows `Component` to `string` in the JSX
+// below, which TypeScript then resolves to an arbitrary intrinsic element.
+const UNWRAPPED_ELEMENTS = new Set<unknown>(['span', 'div']);
+
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
   default: '',
   'centered-quote': 'prose-centered-quote',
@@ -187,6 +208,27 @@ export const Typography = (props: TypographyProps) => {
           </div>
         </TooltipTrigger>
       </Tooltip>
+    );
+  }
+
+  // Render the element directly when the wrapper would contribute nothing but
+  // a block-level box (see UNWRAPPED_ELEMENTS). Ellipsis needs the wrapper to
+  // carry its truncation classes, and a non-default quote variant styles its
+  // content through `.prose.prose-*-quote :not(...)` — also a descendant
+  // selector — so both keep the wrapper.
+  const canUnwrap =
+    !isEllipsis &&
+    quoteVariant === 'default' &&
+    UNWRAPPED_ELEMENTS.has(Component);
+
+  if (canUnwrap) {
+    return (
+      <Component
+        {...otherProps}
+        className={cx('prose', innerClassName)}
+        style={style}>
+        {children}
+      </Component>
     );
   }
 
