@@ -252,7 +252,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
     for (const filter of this.tableFilter) {
       await expect(
-        tableIncludes.getByTestId(`include-chip-contains:${filter}`)
+        tableIncludes.getByTestId(`include-chip-contains:.*${filter}.*`)
       ).toBeVisible();
     }
 
