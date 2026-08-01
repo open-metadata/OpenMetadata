@@ -16,8 +16,8 @@ import {
   RedoOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Space } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -142,35 +142,36 @@ export const CustomizablePageHeader = ({
           {showWidgetActions && (
             <Button
               data-testid="add-widget-button"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={onAddWidget}>
+              onClick={onAddWidget}
+              color='primary'
+              iconLeading={<PlusOutlined />}>
               {t('label.add-widget-plural')}
             </Button>
           )}
           <Button
             data-testid="reset-button"
-            disabled={saving}
-            icon={<RedoOutlined />}
-            onClick={handleOpenResetModal}>
+            onClick={handleOpenResetModal}
+            color='secondary'
+            isDisabled={saving}
+            iconLeading={<RedoOutlined />}>
             {t('label.reset')}
           </Button>
           <Button
             data-testid="save-button"
-            disabled={disableSave}
-            icon={<SaveOutlined />}
-            loading={saving}
-            type="primary"
-            onClick={handleSave}>
+            onClick={handleSave}
+            color='primary'
+            isDisabled={disableSave}
+            isLoading={saving}
+            iconLeading={<SaveOutlined />}>
             {t('label.save')}
           </Button>
           <Button
             className="landing-page-cancel-button"
             data-testid="cancel-button"
-            disabled={saving}
-            icon={<CloseOutlined />}
             onClick={handleClose}
-          />
+            color='secondary'
+            isDisabled={saving}
+            iconLeading={<CloseOutlined />} />
         </Space>
       </div>
       <UnsavedChangesModal

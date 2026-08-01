@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { headerBackgroundColors } from '../../../constants/Mydata.constants';
 import CustomiseLandingPageHeader from '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
@@ -60,7 +59,8 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
                   backgroundColor: value.color,
                   borderColor: value.color,
                 }}
-                onClick={() => handleColorClick(value.color)}>
+                onClick={() => handleColorClick(value.color)}
+                color='secondary'>
                 <div
                   className={`option-color w-full h-full ${
                     selectedColor === value.color ? 'white-border' : ''

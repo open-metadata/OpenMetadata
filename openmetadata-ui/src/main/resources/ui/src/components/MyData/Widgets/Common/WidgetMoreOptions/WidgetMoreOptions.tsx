@@ -12,7 +12,8 @@
  */
 
 import { MoreOutlined } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Dropdown } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { getVisiblePopupContainer } from '../../../../../utils/LandingPageWidget/WidgetsUtils';
@@ -54,8 +55,8 @@ const WidgetMoreOptions = ({
         <Button
           className="widget-more-options-button"
           data-testid="more-options-button"
-          icon={<MoreOutlined size={20} />}
-        />
+          color='secondary'
+          iconLeading={<MoreOutlined size={20} />} />
       </Dropdown>
     </div>
   );

@@ -12,7 +12,8 @@
  */
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Dropdown } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useState } from 'react';
 import './widget-sort-filter.less';
@@ -65,7 +66,8 @@ const WidgetSortFilter = ({
       onOpenChange={(open) => setIsOpen(open)}>
       <Button
         className="widget-sort-by-dropdown"
-        data-testid="widget-sort-by-dropdown">
+        data-testid="widget-sort-by-dropdown"
+        color='secondary'>
         {sortOptions.find((option) => option.key === selectedSortBy)?.label}
         {isOpen ? (
           <UpOutlined className="widget-sort-filter-icon" />

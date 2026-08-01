@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -163,14 +162,14 @@ const CustomiseLandingPageHeader = ({
               <Button
                 className="customise-header-btn"
                 data-testid="customise-header-btn"
-                icon={
+                onClick={handleOpenCustomiseHomeModal}
+                color='secondary'
+                iconLeading={
                   <Icon
                     component={FilterIcon}
                     style={{ fontSize: '16px', color: 'white' }}
                   />
-                }
-                onClick={handleOpenCustomiseHomeModal}
-              />
+                } />
             )}
           </div>
           <div className="mb-9 customise-search-container">

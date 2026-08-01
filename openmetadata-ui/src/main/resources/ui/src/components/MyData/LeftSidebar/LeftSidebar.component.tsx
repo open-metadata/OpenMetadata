@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Layout, Menu, MenuProps } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Layout, Menu, MenuProps } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -172,14 +172,17 @@ const LeftSidebar = () => {
           </Typography>
 
           <div className="d-flex gap-2 w-full m-t-md justify-center">
-            <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
+            <Button
+              className="confirm-btn"
+              onClick={hideConfirmLogoutModal}
+              color='secondary'>
               {t('label.cancel')}
             </Button>
             <Button
               className="confirm-btn"
               data-testid="confirm-logout"
-              type="primary"
-              onClick={onLogoutHandler}>
+              onClick={onLogoutHandler}
+              color='primary'>
               {t('label.logout')}
             </Button>
           </div>

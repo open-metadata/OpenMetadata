@@ -12,8 +12,8 @@
  */
 
 import { DragOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
@@ -117,10 +117,10 @@ const WidgetHeader = ({
                 <Button
                   className="widget-header-options widget-header-edit-button"
                   data-testid="edit-widget-button"
-                  disabled={disableEdit}
-                  icon={<EditIcon height={20} width={20} />}
                   onClick={onEditClick}
-                />
+                  color='secondary'
+                  isDisabled={disableEdit}
+                  iconLeading={<EditIcon height={20} width={20} />} />
               )}
 
               <WidgetMoreOptions

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Modal, Row } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Col, Divider, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -322,16 +322,17 @@ const CustomiseHomeModal = ({
           <Button
             className="cancel-btn border-radius-xs font-medium text-md bg-white"
             data-testid="cancel-btn"
-            onClick={onClose}>
+            onClick={onClose}
+            color='secondary'>
             {t('label.cancel')}
           </Button>
           <Button
             className="apply-btn border-radius-xs font-semibold text-white text-md"
             data-testid="apply-btn"
-            disabled={!hasChanges}
-            loading={isLoading}
-            type="primary"
-            onClick={handleApply}>
+            onClick={handleApply}
+            color='primary'
+            isDisabled={!hasChanges}
+            isLoading={isLoading}>
             {t('label.apply')}
           </Button>
         </Col>

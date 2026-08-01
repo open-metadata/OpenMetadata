@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Typography, Button } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -206,12 +205,12 @@ const MyDataWidgetInternal = ({
                     )}>
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
-                      icon={
+                      color='tertiary'
+                      iconLeading={
                         <div className="d-flex items-center justify-center flex-shrink">
                           {getEntityIcon(item, EntityIconSize.Size24)}
                         </div>
-                      }
-                      type="text">
+                      }>
                       <div className="d-flex w-max-full w-min-0 flex-column">
                         {'serviceType' in item && item.serviceType && (
                           <Typography

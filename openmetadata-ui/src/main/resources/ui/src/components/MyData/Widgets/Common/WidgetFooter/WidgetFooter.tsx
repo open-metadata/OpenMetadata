@@ -12,7 +12,8 @@
  */
 
 import { ArrowRightOutlined } from '@ant-design/icons';
-import { Button, Divider, Row } from 'antd';
+import { Divider, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import './widget-footer.less';
 
@@ -44,7 +45,7 @@ const WidgetFooter = ({
           <Button
             className="text-primary hover:underline w-full footer-view-more-button"
             href={moreButtonLink}
-            type="link">
+            color='link-gray'>
             {moreButtonText || t('label.view-more')}
             <ArrowRightOutlined data-testid="arrow-right-icon" />
           </Button>
