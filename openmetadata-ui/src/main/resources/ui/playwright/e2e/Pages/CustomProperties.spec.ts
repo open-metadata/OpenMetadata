@@ -308,11 +308,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           const created = await Promise.allSettled(
             newUsers.map((user) => user.create(apiContext))
           );
-          created.forEach((result, index) => {
-            if (result.status === 'fulfilled') {
-              users.push(newUsers[index]);
-            }
-          });
+          // create() persists the user via /users/signup and only then assigns
+          // roles, so a rejection can still leave a real user behind. Register
+          // by "did it get an id", not by "did the promise settle happily".
+          users.push(...newUsers.filter((user) => user.responseData?.id));
           const failed = created.find((result) => result.status === 'rejected');
           if (failed) {
             throw failed.reason;
