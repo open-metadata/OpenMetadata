@@ -127,7 +127,7 @@ export const DateRangePicker = ({
 
   return (
     <AriaDateRangePicker
-      aria-label={t('date-range-picker.aria-label', 'Date range picker')}
+      aria-label={t('label.date-range-picker')}
       shouldCloseOnSelect={false}
       {...props}
       value={value}
@@ -136,7 +136,7 @@ export const DateRangePicker = ({
         <Button color="secondary" iconLeading={CalendarIcon} size="md">
           {!value ? (
             <span className="tw:text-placeholder">
-              {t('date-range-picker.placeholder', 'Select dates')}
+              {t('label.select-dates')}
             </span>
           ) : (
             `${formattedStartDate} – ${formattedEndDate}`

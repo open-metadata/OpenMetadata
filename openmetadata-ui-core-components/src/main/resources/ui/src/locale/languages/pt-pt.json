@@ -1,49 +1,26 @@
 {
-  "breadcrumbs": {
-    "hidden": "Hidden breadcrumbs",
-    "show-hidden": "Show hidden breadcrumbs"
-  },
-  "calendar": {
-    "today": "Today"
-  },
-  "common": {
-    "close": "Close"
-  },
-  "date-range-picker": {
-    "aria-label": "Date range picker",
-    "placeholder": "Select dates"
-  },
-  "dropdown": {
-    "open-menu": "Open menu"
-  },
-  "filter-bar": {
-    "remove": "Remove filter"
-  },
-  "form": {
-    "field-documentation": "Field documentation"
-  },
-  "navigation": {
-    "close-menu": "Close navigation menu",
-    "expand-menu": "Expand navigation menu"
-  },
-  "pagination": {
-    "aria-label": "Pagination",
+  "label": {
+    "close": "Close",
+    "close-navigation-menu": "Close navigation menu",
+    "copy-link": "Copy link",
     "current-page": "Current page",
-    "navigation-aria-label": "Pagination Navigation",
+    "date-range-picker": "Date range picker",
+    "delete": "Delete",
+    "edit": "Edit",
+    "expand-navigation-menu": "Expand navigation menu",
+    "field-documentation": "Field documentation",
+    "hidden-breadcrumbs": "Hidden breadcrumbs",
+    "loading": "Loading…",
     "next-page": "Go to next page",
-    "page-label": "Page",
+    "open-menu": "Open menu",
+    "page": "Page",
+    "pagination": "Pagination",
+    "pagination-navigation": "Pagination Navigation",
     "previous-page": "Go to previous page",
-    "records-aria-label": "Records",
-    "records-label": "Records"
-  },
-  "table": {
-    "action": {
-      "copy-link": "Copy link",
-      "delete": "Delete",
-      "edit": "Edit"
-    }
-  },
-  "tree": {
-    "loading": "Loading…"
+    "records": "Records",
+    "remove-filter": "Remove filter",
+    "select-dates": "Select dates",
+    "show-hidden-breadcrumbs": "Show hidden breadcrumbs",
+    "today": "Today"
   }
 }

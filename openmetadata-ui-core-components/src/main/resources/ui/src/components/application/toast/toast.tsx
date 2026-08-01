@@ -99,7 +99,7 @@ export const Toast = ({ toast }: ToastProps) => {
       </span>
       {showClose && state && (
         <Button
-          aria-label={t('common.close', 'Close')}
+          aria-label={t('label.close')}
           className="tw:-mr-1 tw:mt-0.5 tw:ml-1 tw:flex tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-fg-white/60 tw:outline-none tw:transition tw:hover:bg-white/10 tw:hover:text-fg-white"
           data-testid="alert-icon-close"
           slot="close"

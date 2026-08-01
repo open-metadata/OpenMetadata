@@ -323,7 +323,7 @@ const TreeLoadMoreItemComponent = ({
             aria-hidden="true"
             className="tw:h-4 tw:w-4 tw:animate-spin"
           />
-          {children ?? t('tree.loading', 'Loading…')}
+          {children ?? t('label.loading')}
         </span>
       ) : (
         children ?? 'Load more'

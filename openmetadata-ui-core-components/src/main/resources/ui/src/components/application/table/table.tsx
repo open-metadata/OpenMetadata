@@ -50,13 +50,13 @@ export const TableRowActionsDropdown = () => {
       <Dropdown.Popover className="tw:w-min">
         <Dropdown.Menu>
           <Dropdown.Item icon={Edit01}>
-            <span className="tw:pr-4">{t('table.action.edit', 'Edit')}</span>
+            <span className="tw:pr-4">{t('label.edit')}</span>
           </Dropdown.Item>
           <Dropdown.Item icon={Copy01}>
-            <span className="tw:pr-4">{t('table.action.copy-link', 'Copy link')}</span>
+            <span className="tw:pr-4">{t('label.copy-link')}</span>
           </Dropdown.Item>
           <Dropdown.Item icon={Trash01}>
-            <span className="tw:pr-4">{t('table.action.delete', 'Delete')}</span>
+            <span className="tw:pr-4">{t('label.delete')}</span>
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
