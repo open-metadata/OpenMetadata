@@ -12,7 +12,7 @@
  */
 import { Input } from '@openmetadata/ui-core-components';
 import type { NumberWidgetProps } from '@react-awesome-query-builder/ui';
-import { type FC, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FC } from 'react';
 
 const OMNumberWidget: FC<NumberWidgetProps> = ({
   value,
@@ -20,7 +20,8 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
   placeholder,
   readonly,
 }) => {
-  const externalStr = value !== null && value !== undefined ? String(value) : '';
+  const externalStr =
+    value !== null && value !== undefined ? String(value) : '';
   const [localValue, setLocalValue] = useState(externalStr);
   // Prevent external value sync from overwriting the user's in-progress input
   // (e.g. typing "1." would round to 1, which would then reset the display to
@@ -44,9 +45,6 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
       onBlur={() => {
         isFocusedRef.current = false;
       }}
-      onFocus={() => {
-        isFocusedRef.current = true;
-      }}
       onChange={(v: string) => {
         setLocalValue(v);
         if (v === '') {
@@ -57,6 +55,9 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
             setValue(num);
           }
         }
+      }}
+      onFocus={() => {
+        isFocusedRef.current = true;
       }}
     />
   );

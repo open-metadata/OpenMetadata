@@ -72,8 +72,8 @@ const OMMultiSelectWidget = ({
         selectedItems.remove(item.id);
       }
     }
-  // Also re-sync when the async catalogue loads — values saved before the
-  // fetch completes won't appear until allItems is populated.
+    // Also re-sync when the async catalogue loads — values saved before the
+    // fetch completes won't appear until allItems is populated.
   }, [valueArray.join(','), allItems]);
 
   const requestIdRef = useRef(0);
