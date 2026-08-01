@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { initCoreI18n, loadCoreLocale } from '@openmetadata/ui-core-components';
+import { initCoreI18n } from '@openmetadata/ui-core-components';
 import i18next, { t as i18nextT } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { ReactNode } from 'react';
@@ -32,7 +32,6 @@ i18next
 
 i18next.on('languageChanged', async (lng) => {
   await localUtilClassBase.loadLocales(lng);
-  await loadCoreLocale(i18next, lng);
 });
 
 export const t = (key: string, options?: Record<string, unknown>): string => {

@@ -12,84 +12,76 @@
  */
 
 import type { i18n as I18n, ResourceKey } from 'i18next';
+import arSA from './languages/ar-sa.json';
+import deDE from './languages/de-de.json';
 import enUS from './languages/en-us.json';
+import esES from './languages/es-es.json';
+import frFR from './languages/fr-fr.json';
+import glES from './languages/gl-es.json';
+import heHE from './languages/he-he.json';
+import jaJP from './languages/ja-jp.json';
+import koKR from './languages/ko-kr.json';
+import mrIN from './languages/mr-in.json';
+import nlNL from './languages/nl-nl.json';
+import prPR from './languages/pr-pr.json';
+import ptBR from './languages/pt-br.json';
+import ptPT from './languages/pt-pt.json';
+import ruRU from './languages/ru-ru.json';
+import svSE from './languages/sv-se.json';
+import thTH from './languages/th-th.json';
+import trTR from './languages/tr-tr.json';
+import zhCN from './languages/zh-cn.json';
+import zhTW from './languages/zh-tw.json';
 
 export const CORE_NS = 'core';
 
-// Filename → i18next locale code map. Kept next to the loaders so a new
-// language is one line: add the file + add the entry here.
-//
-// Each loaded JSON module is one namespace's flat key→string bundle (i18next's
-// `ResourceKey`), not a full multi-language `Resource` tree — that's the shape
-// `addResourceBundle(lng, ns, resources)` itself expects for `resources`.
-const CORE_LOCALE_LOADERS: Record<
-  string,
-  () => Promise<{ default: ResourceKey }>
-> = {
-  'ar-SA': () => import('./languages/ar-sa.json'),
-  'de-DE': () => import('./languages/de-de.json'),
-  'es-ES': () => import('./languages/es-es.json'),
-  'fr-FR': () => import('./languages/fr-fr.json'),
-  'gl-ES': () => import('./languages/gl-es.json'),
-  'he-HE': () => import('./languages/he-he.json'),
-  'ja-JP': () => import('./languages/ja-jp.json'),
-  'ko-KR': () => import('./languages/ko-kr.json'),
-  'mr-IN': () => import('./languages/mr-in.json'),
-  'nl-NL': () => import('./languages/nl-nl.json'),
-  'pr-PR': () => import('./languages/pr-pr.json'),
-  'pt-BR': () => import('./languages/pt-br.json'),
-  'pt-PT': () => import('./languages/pt-pt.json'),
-  'ru-RU': () => import('./languages/ru-ru.json'),
-  'sv-SE': () => import('./languages/sv-se.json'),
-  'th-TH': () => import('./languages/th-th.json'),
-  'tr-TR': () => import('./languages/tr-tr.json'),
-  'zh-CN': () => import('./languages/zh-cn.json'),
-  'zh-TW': () => import('./languages/zh-tw.json'),
+// Eager bundles. The library's total translation payload is small enough
+// (~a few tens of KB across 20 languages) that loading all up-front is cheaper
+// than the alternative — a lazy import inside `languageChanged` races React's
+// re-render and causes migrated strings to flash their key on the first paint
+// after a language switch. Add one entry per language JSON.
+const CORE_BUNDLES: Record<string, ResourceKey> = {
+  'en-US': enUS,
+  'ar-SA': arSA,
+  'de-DE': deDE,
+  'es-ES': esES,
+  'fr-FR': frFR,
+  'gl-ES': glES,
+  'he-HE': heHE,
+  'ja-JP': jaJP,
+  'ko-KR': koKR,
+  'mr-IN': mrIN,
+  'nl-NL': nlNL,
+  'pr-PR': prPR,
+  'pt-BR': ptBR,
+  'pt-PT': ptPT,
+  'ru-RU': ruRU,
+  'sv-SE': svSE,
+  'th-TH': thTH,
+  'tr-TR': trTR,
+  'zh-CN': zhCN,
+  'zh-TW': zhTW,
 };
 
 /**
- * Register the library's `core` namespace on the host i18next instance.
- * Eagerly loads only `en-US` (small); other locales are lazy via `loadCoreLocale`.
- * Safe to call multiple times — resource-bundle registration is idempotent when
- * `overwrite=false`.
+ * Register the library's `core` namespace on the host i18next instance for
+ * every supported language. Safe to call multiple times — resource-bundle
+ * registration is idempotent when `overwrite=false`. Call once after the
+ * host's own `i18next.init(...)` resolves.
  */
 export function initCoreI18n(i18n: I18n): void {
-  if (i18n.hasResourceBundle('en-US', CORE_NS)) {
-    return;
+  for (const [lng, bundle] of Object.entries(CORE_BUNDLES)) {
+    if (i18n.hasResourceBundle(lng, CORE_NS)) {
+      continue;
+    }
+    i18n.addResourceBundle(
+      lng,
+      CORE_NS,
+      bundle,
+      /* deep */ true,
+      /* overwrite */ false
+    );
   }
-  i18n.addResourceBundle(
-    'en-US',
-    CORE_NS,
-    enUS,
-    /* deep */ true,
-    /* overwrite */ false
-  );
 }
 
-/**
- * Lazy-load the `core` namespace for one non-en-US locale. Host apps should
- * call this from their existing `languageChanged` handler.
- */
-export async function loadCoreLocale(i18n: I18n, lng: string): Promise<void> {
-  if (i18n.hasResourceBundle(lng, CORE_NS)) {
-    return;
-  }
-  const loader = CORE_LOCALE_LOADERS[lng];
-  if (!loader) {
-    return;
-  }
-  const mod = await loader();
-  i18n.addResourceBundle(
-    lng,
-    CORE_NS,
-    mod.default,
-    /* deep */ true,
-    /* overwrite */ false
-  );
-}
-
-// Storybook / eager-mode consumers use this.
-export const CORE_LOCALES: readonly string[] = [
-  'en-US',
-  ...Object.keys(CORE_LOCALE_LOADERS),
-];
+export const CORE_LOCALES: readonly string[] = Object.keys(CORE_BUNDLES);

@@ -27,7 +27,7 @@ import './index.css';
 
 type ThemeMode = 'light' | 'dark' | 'both';
 
-const RTL_LOCALES = new Set(['ar-SA', 'he-HE']);
+const RTL_LOCALES = new Set(['ar-SA', 'he-HE', 'pr-PR']);
 
 const renderInTheme = (
   Story: StoryFn,
