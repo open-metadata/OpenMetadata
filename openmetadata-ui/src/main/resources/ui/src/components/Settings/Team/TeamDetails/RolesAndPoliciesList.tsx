@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

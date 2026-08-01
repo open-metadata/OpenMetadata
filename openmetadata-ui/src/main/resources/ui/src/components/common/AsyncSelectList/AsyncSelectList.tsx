@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Empty,
   Form,

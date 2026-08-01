@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Select, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Select, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';

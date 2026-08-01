@@ -12,8 +12,8 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { List, Space, Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { List, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
@@ -255,7 +255,6 @@ export const SelectableList = ({
           <div className="d-flex justify-between">
             <Button
               className="p-0"
-              color="primary"
               color="tertiary"
               data-testid="clear-all-button"
               size="xs"
@@ -264,7 +263,6 @@ export const SelectableList = ({
             </Button>
             <Space className="m-l-auto text-right">
               <Button
-                color="primary"
                 color="secondary"
                 data-testid="cancel-button"
                 size="xs"

@@ -15,11 +15,11 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Divider, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -195,7 +195,7 @@ const TeamsInfo = ({
                   />
                 }
                 size="xs"
-                onClick={(e) => {
+                onClick={(e: MouseEvent<HTMLButtonElement>) => {
                   // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                   e.stopPropagation();
                   setIsEmailEdit(true);
@@ -299,7 +299,7 @@ const TeamsInfo = ({
                     />
                   }
                   size="xs"
-                  onClick={(e) => {
+                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     setShowTypeSelector(true);

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Skeleton, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
+import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -54,7 +55,7 @@ function ObservabilityAlertActions({
       iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
       onClick={
         onEditAlert
-          ? (event) => {
+          ? (event: MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               event.stopPropagation();
               onEditAlert(record);

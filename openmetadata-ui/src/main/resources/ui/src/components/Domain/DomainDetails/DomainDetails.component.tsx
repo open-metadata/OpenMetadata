@@ -14,8 +14,8 @@ import Icon, { DownOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Box,
-  Typography,
   Button,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Dropdown, Space, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Badge } from 'antd';
 import classNames from 'classnames';
 import { RefObject, useCallback, useRef } from 'react';
 import { EntityReference } from '../../../generated/entity/type';

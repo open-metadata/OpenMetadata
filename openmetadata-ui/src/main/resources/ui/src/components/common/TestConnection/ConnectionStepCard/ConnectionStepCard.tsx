@@ -13,7 +13,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Collapse, Divider, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';

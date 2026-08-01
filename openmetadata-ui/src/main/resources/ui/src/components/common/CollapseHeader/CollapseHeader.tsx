@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Dropdown } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
 import './collapse-header.less';
@@ -50,7 +51,7 @@ const CollapseHeader = ({
             color="primary"
             data-testid={dataTestId}
             iconLeading={<Icon className="text-xs" component={PlusOutlined} />}
-            onClick={(e) => e.stopPropagation()}>
+            onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
             {t('label.add')}
           </Button>
         </Dropdown>
@@ -60,7 +61,7 @@ const CollapseHeader = ({
           color="primary"
           data-testid={dataTestId}
           iconLeading={<Icon className="text-xs" component={PlusOutlined} />}
-          onClick={(e) => {
+          onClick={(e: MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
             handleAddNewBoost?.();
           }}>

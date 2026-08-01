@@ -25,7 +25,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Alert, Card, Form, Input, Select, Space, Spin, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useMemo, useState } from 'react';

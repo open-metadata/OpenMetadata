@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Badge, Modal, Popover } from 'antd';
 import { AxiosError } from 'axios';
-import { useMemo, useState } from 'react';
+import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
@@ -318,7 +318,7 @@ const ProfileSectionUserDetailsCard = ({
         <Button
           className="remove-button-default-styling"
           color="secondary"
-          onClick={(e) => e.stopPropagation()}>
+          onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
           <Modal
             centered
             cancelButtonProps={{

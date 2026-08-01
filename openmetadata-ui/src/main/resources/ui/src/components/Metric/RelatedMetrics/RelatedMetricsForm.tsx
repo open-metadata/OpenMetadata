@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Col, Form, Row, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Space } from 'antd';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';

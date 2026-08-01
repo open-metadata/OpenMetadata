@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Empty, Popover, Radio, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -291,7 +291,9 @@ const Certification = ({
                 <Button
                   color="primary"
                   data-testid="update-certification"
-                  onClick={() => updateCertificationData(selectedCertification)}>
+                  onClick={() =>
+                    updateCertificationData(selectedCertification)
+                  }>
                   <CheckOutlined />
                 </Button>
               </div>

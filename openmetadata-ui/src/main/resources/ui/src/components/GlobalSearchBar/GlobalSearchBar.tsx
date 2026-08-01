@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider, Input, Popover, Select, Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';

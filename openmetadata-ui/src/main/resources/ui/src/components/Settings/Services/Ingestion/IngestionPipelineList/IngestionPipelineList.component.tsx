@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, TablePaginationConfig } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, TablePaginationConfig } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { FilterValue, TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';

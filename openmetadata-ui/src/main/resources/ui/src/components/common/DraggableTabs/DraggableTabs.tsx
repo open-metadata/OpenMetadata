@@ -16,8 +16,8 @@ import {
   EditOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
-import { Dropdown, MenuProps, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps, Space } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';

@@ -12,9 +12,9 @@
  */
 import {
   Breadcrumbs,
+  Button,
   Card,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Checkbox, Col, Row, Space } from 'antd';

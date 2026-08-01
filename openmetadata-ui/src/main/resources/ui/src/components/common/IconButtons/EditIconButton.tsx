@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
-import type { ButtonProps } from 'antd';
-import { Tooltip } from 'antd';
+import type { ButtonProps as CoreButtonProps } from '@openmetadata/ui-core-components';
 import { Button } from '@openmetadata/ui-core-components';
+import type { ButtonProps as AntdButtonProps } from 'antd';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -22,13 +23,17 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 
-export type IconButtonProps = ButtonProps & {
+// `size` keeps antd's caller-facing union (many call sites still pass
+// size="small" / "middle") and is translated to core's size via
+// `toCoreSize` below; every other prop passes through to the core `Button`.
+export type IconButtonProps = Omit<CoreButtonProps, 'size'> & {
+  size?: AntdButtonProps['size'];
   newLook?: boolean;
 };
 
 // antd `size` (large | middle | small | undefined) -> core `size`.
 // Approved 2026-07-30 mapping (docs/antd-migration/button.md).
-const toCoreSize = (size?: ButtonProps['size']) => {
+const toCoreSize = (size?: AntdButtonProps['size']) => {
   if (size === 'small') {
     return 'xs';
   }

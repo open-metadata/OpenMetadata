@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Alert, Badge, Dropdown, InputRef, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';

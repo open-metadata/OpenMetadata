@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { kebabCase } from 'lodash';

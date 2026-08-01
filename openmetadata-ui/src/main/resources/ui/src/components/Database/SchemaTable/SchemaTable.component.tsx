@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Label, Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Label, Typography } from '@openmetadata/ui-core-components';
 import { Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';

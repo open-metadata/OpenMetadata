@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { Popover, Tag } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';

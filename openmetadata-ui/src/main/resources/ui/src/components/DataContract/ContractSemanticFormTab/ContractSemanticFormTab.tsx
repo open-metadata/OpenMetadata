@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
 import { Col, Form, FormListFieldData, Input, Row, Switch } from 'antd';
 import Card from 'antd/lib/card/Card';

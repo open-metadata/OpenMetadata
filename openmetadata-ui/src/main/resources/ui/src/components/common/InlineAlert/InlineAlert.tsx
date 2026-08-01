@@ -14,7 +14,7 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';

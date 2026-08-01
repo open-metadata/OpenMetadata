@@ -12,9 +12,9 @@
  */
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { Checkbox, Col, Divider, List, Row, Space } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';

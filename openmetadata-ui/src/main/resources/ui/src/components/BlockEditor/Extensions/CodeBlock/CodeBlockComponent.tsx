@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Tooltip } from 'antd';
-import { Button } from '@openmetadata/ui-core-components';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';

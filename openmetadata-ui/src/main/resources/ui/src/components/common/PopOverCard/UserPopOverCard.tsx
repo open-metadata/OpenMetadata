@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty } from 'lodash';
 import React, {
@@ -209,7 +209,7 @@ export const PopoverTitle = React.memo(
           <Button
             className="text-info p-0"
             color="link-gray"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               onTitleClickHandler(
                 type === OwnerType.TEAM

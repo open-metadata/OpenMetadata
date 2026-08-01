@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Card, Select, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Card, Select, Space } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Builder, Query } from '@react-awesome-query-builder/antd';
 import { Modal, Space } from 'antd';
 import { FunctionComponent } from 'react';

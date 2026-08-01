@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Popover, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Popover } from 'antd';
-import { Button } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import { FC, useState } from 'react';
 import { CALLOUT_CONTENT } from '../../../../constants/BlockEditor.constants';

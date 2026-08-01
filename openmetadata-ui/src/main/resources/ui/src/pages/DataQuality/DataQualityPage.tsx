@@ -12,8 +12,8 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

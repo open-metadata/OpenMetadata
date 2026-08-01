@@ -13,11 +13,11 @@
 
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Skeleton,
   Table,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
 import { Space, Switch, Tooltip } from 'antd';

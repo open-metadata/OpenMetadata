@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Col, Form, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';

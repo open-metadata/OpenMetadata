@@ -12,15 +12,15 @@
  */
 
 import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
-import { Dropdown, MenuProps, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps, Space } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
@@ -308,7 +308,7 @@ const DatePickerMenu = ({
           data-testid="clear-date-picker"
           iconLeading={<CloseCircleFilled />}
           size="xs"
-          onClick={(event) => {
+          onClick={(event: MouseEvent<HTMLButtonElement>) => {
             event.stopPropagation();
             handleClear();
           }}

@@ -13,8 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Form, FormProps, Input, Radio, Select, Space, Switch } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input, Radio, Select, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import {
   compact,

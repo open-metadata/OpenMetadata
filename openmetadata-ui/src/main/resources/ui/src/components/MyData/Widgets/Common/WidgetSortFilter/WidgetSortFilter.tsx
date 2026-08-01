@@ -12,8 +12,8 @@
  */
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Dropdown } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { useState } from 'react';
 import './widget-sort-filter.less';

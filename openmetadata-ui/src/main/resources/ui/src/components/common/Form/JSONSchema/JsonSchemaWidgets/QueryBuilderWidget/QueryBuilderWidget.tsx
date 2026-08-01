@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Actions,
   Builder,

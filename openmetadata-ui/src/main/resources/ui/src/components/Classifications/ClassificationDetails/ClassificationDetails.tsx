@@ -13,9 +13,9 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
 import { Card, Col, Row, Space, Tooltip } from 'antd';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';

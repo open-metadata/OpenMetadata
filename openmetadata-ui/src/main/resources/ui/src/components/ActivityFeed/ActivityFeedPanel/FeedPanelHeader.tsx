@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, pick, uniqBy } from 'lodash';

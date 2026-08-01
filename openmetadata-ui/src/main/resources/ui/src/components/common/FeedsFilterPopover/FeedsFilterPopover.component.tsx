@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Checkbox, List, Popover, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +51,6 @@ const FeedsFilterPopover = ({
         footer={
           <Space className="w-full justify-end">
             <Button
-              color="primary"
               color="secondary"
               data-testid="cancel-button"
               size="xs"

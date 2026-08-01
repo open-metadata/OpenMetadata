@@ -12,10 +12,10 @@
  */
 
 import {
+  Button,
   Tooltip,
   TooltipTrigger,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';

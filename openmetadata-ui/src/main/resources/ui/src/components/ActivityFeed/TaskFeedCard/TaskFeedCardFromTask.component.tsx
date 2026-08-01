@@ -12,7 +12,7 @@
  */
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

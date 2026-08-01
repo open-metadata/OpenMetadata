@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
 import { Modal, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';

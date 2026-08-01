@@ -12,7 +12,7 @@
  */
 
 import { DragOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Col, Row } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';

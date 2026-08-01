@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Input, Row, Select, Switch } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Form, Input, Row, Select, Switch } from 'antd';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';

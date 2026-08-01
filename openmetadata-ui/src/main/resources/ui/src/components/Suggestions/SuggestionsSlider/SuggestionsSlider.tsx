@@ -13,7 +13,7 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Space } from 'antd';
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

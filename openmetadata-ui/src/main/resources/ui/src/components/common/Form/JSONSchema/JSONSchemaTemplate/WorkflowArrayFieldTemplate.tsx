@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Tooltip } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
@@ -159,7 +159,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
             color="tertiary"
             iconLeading={<CopyLeft height={20} />}
             size="xs"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               handleCopy(e);
             }}

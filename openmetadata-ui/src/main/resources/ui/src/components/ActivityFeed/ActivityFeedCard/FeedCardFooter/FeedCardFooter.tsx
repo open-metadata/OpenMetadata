@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Divider } from 'antd';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';

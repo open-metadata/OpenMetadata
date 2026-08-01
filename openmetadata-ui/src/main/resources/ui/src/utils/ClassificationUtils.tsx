@@ -12,11 +12,11 @@
  */
 
 import {
+  Button,
   Toggle,
   Tooltip as UTTooltip,
   TooltipTrigger,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';

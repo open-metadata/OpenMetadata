@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Typography, Button } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import { Dropdown, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';

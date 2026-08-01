@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Col, Form, Row, Select, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Select, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useState } from 'react';
 import { DomainType } from '../../../generated/api/domains/createDomain';

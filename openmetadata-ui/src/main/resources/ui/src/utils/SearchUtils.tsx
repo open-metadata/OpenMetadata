@@ -12,7 +12,7 @@
  */
 
 import { SearchOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {

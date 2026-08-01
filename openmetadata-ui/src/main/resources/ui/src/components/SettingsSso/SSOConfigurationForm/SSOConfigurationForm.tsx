@@ -12,7 +12,7 @@
  */
 
 import { removeSession } from '@analytics/session-utils';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
   CustomValidator,

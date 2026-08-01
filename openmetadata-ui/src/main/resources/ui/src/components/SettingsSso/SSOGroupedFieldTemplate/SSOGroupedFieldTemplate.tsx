@@ -12,12 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
 import { Collapse, Space } from 'antd';
-import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';

@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Col, Form, FormProps, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table, Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Table, Typography } from '@openmetadata/ui-core-components';
 import { Dropdown, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';

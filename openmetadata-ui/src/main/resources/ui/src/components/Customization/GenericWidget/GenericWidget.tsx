@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { Card, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
 import { useLayoutEffect, useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';

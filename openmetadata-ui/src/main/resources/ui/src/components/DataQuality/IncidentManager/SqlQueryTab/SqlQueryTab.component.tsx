@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Form, Row, Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Divider, Form, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { Fragment, useMemo, useState } from 'react';

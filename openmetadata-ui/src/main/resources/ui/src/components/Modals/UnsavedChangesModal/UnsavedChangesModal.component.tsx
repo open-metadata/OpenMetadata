@@ -12,7 +12,7 @@
  */
 
 import { SaveOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Modal } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';

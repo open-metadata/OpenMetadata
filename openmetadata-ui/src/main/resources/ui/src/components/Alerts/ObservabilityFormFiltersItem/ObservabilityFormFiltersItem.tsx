@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Col, Form, Row, Select, Switch } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import { useMemo } from 'react';

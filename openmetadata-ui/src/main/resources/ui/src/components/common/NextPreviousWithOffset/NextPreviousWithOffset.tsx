@@ -16,9 +16,9 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { Dropdown } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
-import { useCallback, useMemo } from 'react';
+import { Dropdown } from 'antd';
+import { MouseEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
@@ -105,7 +105,7 @@ const NextPreviousWithOffset = ({
           <Button
             color="secondary"
             data-testid="page-size-change-button"
-            onClick={(e) => e.preventDefault()}>
+            onClick={(e: MouseEvent<HTMLButtonElement>) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>

@@ -25,7 +25,7 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Checkbox, Empty, Form, Input, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';

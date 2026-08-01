@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as UnlinkIcon } from '../../../assets/svg/ic-format-unlink.svg';

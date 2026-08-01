@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Menu, MenuProps, Row } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Menu, MenuProps, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';

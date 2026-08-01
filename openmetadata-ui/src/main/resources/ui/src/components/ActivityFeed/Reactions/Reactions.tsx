@@ -12,10 +12,10 @@
  */
 
 import '@github/g-emoji-element';
-import { Popover } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
-import { FC, useState } from 'react';
+import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
@@ -120,7 +120,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
           title={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
         />
       </Popover>
     </div>

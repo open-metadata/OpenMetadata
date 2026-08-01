@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Divider, Input, Space } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';

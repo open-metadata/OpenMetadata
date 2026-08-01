@@ -12,8 +12,8 @@
  */
 
 import Icon, { PlusOutlined } from '@ant-design/icons';
-import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Button } from '@openmetadata/ui-core-components';
+import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { Fragment, FunctionComponent } from 'react';

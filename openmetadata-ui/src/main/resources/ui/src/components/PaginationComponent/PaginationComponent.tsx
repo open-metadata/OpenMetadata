@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Pagination, PaginationProps } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Pagination, PaginationProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
 import {

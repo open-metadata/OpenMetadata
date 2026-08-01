@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Divider, Input, Select } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Divider, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';

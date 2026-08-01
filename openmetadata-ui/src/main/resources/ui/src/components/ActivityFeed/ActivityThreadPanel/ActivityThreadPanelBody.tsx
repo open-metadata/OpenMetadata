@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

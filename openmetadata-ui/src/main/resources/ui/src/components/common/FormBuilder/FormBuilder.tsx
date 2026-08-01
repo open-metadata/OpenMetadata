@@ -12,9 +12,9 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { WidgetProps } from '@rjsf/utils';
-import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
 import { forwardRef, useEffect, useMemo, useState } from 'react';

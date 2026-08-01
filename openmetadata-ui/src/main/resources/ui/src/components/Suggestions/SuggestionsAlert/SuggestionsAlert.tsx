@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';

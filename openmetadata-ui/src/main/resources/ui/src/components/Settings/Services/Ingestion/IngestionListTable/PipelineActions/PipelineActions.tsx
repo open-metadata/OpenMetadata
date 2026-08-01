@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Tooltip } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';

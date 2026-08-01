@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Select } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
   FC,
   HTMLAttributes,
+  MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -110,7 +111,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           color="tertiary"
           data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
           key={entity.fullyQualifiedName}
-          onClick={(e) => {
+          onClick={(e: MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation(); // Prevent select from closing
             onSelectHandler?.(entity as EntityReference);
           }}>

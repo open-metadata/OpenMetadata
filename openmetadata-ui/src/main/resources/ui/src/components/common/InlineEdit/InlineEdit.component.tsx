@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import './inline-edit.less';
 import { InlineEditProps } from './InlineEdit.interface';

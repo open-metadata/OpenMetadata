@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Col, Row, Space } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';

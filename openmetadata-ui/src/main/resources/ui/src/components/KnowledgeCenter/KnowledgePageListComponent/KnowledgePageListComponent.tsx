@@ -12,9 +12,9 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import {
+  Button,
   EmptyPlaceholder,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';

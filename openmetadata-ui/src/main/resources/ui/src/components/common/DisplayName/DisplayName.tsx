@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';

@@ -12,8 +12,8 @@
  */
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
-import { Card, Col, Dropdown, Input, Modal, Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Dropdown, Input, Modal, Space } from 'antd';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';

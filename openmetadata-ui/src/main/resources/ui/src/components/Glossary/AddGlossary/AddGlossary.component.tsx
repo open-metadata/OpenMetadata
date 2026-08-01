@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Form, Space } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { isArray } from 'lodash';

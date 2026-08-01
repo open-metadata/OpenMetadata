@@ -13,9 +13,9 @@
 
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
 import { Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';

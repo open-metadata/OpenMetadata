@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { UploadOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { UploadProps } from 'antd';
-import { Button } from '@openmetadata/ui-core-components';
 import Upload, { UploadChangeParam, UploadFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { FC, useMemo } from 'react';

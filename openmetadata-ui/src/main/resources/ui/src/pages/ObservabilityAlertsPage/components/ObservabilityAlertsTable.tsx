@@ -13,10 +13,10 @@
 
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Table,
   TableCard,
-  Button,
 } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,

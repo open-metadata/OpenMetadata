@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Input, Modal } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 

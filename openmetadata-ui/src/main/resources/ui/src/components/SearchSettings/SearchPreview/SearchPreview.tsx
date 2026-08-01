@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Toggle, Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Col, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';

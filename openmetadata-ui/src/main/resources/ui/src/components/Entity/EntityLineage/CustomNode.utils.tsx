@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
 import { Skeleton } from 'antd';
 import classNames from 'classnames';
@@ -162,7 +162,7 @@ export const getCollapseHandle = (
         <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
       }
       size="xs"
-      onClick={(e) => {
+      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();
       }}

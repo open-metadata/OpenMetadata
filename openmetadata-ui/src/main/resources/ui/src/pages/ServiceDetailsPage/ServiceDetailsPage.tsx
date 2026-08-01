@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';

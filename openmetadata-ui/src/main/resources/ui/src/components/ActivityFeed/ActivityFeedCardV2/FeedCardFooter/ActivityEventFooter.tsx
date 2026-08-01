@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback } from 'react';

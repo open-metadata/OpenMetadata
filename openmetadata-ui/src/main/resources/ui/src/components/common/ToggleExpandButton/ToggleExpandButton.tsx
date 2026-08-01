@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';

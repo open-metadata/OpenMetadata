@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Space } from 'antd';
-import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, omit, omitBy } from 'lodash';
 import {

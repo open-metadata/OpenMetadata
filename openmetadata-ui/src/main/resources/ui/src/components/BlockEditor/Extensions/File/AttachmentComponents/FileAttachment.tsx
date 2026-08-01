@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownloadOutlined, FileOutlined } from '@ant-design/icons';
-import { NodeViewProps } from '@tiptap/react';
 import { Button } from '@openmetadata/ui-core-components';
+import { NodeViewProps } from '@tiptap/react';
 import React from 'react';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import { bytesToSize } from '../../../../../utils/StringUtils';

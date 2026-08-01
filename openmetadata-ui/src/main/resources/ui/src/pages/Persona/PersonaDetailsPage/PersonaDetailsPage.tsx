@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
+  Button,
   FeaturedIcon,
   Tabs,
   Typography,
-  Button,
 } from '@openmetadata/ui-core-components';
 import { User03 } from '@untitledui/icons';
 import { Col, Modal, Row } from 'antd';

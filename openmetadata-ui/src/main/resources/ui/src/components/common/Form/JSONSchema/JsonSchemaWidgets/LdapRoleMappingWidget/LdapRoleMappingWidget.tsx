@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Grid, Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Card, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';

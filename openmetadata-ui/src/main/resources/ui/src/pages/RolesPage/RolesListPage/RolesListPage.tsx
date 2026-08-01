@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';

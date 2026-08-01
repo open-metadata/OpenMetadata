@@ -12,8 +12,8 @@
  */
 
 import {
-  Typography as CoreTypography,
   Button,
+  Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import { Card, Col, Divider, Row, Space } from 'antd';
 import { isArray } from 'lodash';

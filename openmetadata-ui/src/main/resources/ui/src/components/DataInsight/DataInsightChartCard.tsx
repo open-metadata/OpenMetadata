@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,

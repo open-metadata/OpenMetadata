@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Divider, Form, Input, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';

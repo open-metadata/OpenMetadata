@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import type { RenderSettings } from '@react-awesome-query-builder/antd';
 import { Button } from '@openmetadata/ui-core-components';
+import type { RenderSettings } from '@react-awesome-query-builder/antd';
 import { t } from './i18next/LocalUtil';
 
 export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (

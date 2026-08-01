@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Card, Col, Row, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
@@ -233,7 +233,7 @@ const QueryCard: FC<QueryCardProp> = ({
                 color="secondary"
                 data-testid="query-entity-copy-button"
                 iconLeading={<CopyIcon height={16} width={16} />}
-                onClick={onCopyToClipBoard}
+                onClick={() => onCopyToClipBoard()}
               />
             </Tooltip>
           </Space>

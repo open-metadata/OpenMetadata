@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Input, Space, Tooltip } from 'antd';
-import { Button } from '@openmetadata/ui-core-components';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';

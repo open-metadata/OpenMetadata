@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { LeftOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Alert, Carousel, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';

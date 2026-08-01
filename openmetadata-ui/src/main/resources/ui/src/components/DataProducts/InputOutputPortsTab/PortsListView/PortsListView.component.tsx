@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Dropdown, Row, Skeleton } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Dropdown, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import {
   forwardRef,

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tag } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Tag } from 'antd';
 import classNames from 'classnames';
 import { get } from 'lodash';
 import { FC, useMemo } from 'react';

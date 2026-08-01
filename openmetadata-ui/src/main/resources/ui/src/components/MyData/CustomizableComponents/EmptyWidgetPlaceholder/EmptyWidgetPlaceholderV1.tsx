@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography, Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import WidgetWrapper from '../../Widgets/Common/WidgetWrapper/WidgetWrapper';

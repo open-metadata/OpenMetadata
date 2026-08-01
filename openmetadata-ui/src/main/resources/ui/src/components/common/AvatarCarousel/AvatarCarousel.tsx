@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Carousel } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Carousel } from 'antd';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from '../AvatarCarouselItem/AvatarCarouselItem';

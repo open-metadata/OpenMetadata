@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
 import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
 import classNames from 'classnames';
 import { includes, startCase, toLower } from 'lodash';
