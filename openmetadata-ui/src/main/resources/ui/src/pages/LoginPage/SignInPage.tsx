@@ -193,11 +193,15 @@ const SignInPage = () => {
     <CarouselLayout pageTitle={t('label.sign-in')}>
       <div className="login-form-container" data-testid="login-form-container">
         <div
-          className={classNames('login-box', {
+          className={classNames('login-box tw:gap-6 md:tw:gap-10', {
             'sso-container': !isAuthProviderBasic,
           })}>
           <BrandImage isMonoGram height={50} width={50} />
-          <Typography as="h3" className="header-text display-sm" size="text-xl">
+          <Typography
+            as="h3"
+            className="tw:text-primary"
+            size="display-sm"
+            weight="semibold">
             {t('label.welcome-to')} {brandName}
           </Typography>
           {isAuthProviderBasic ? (
