@@ -16,8 +16,11 @@ package org.openmetadata.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.codahale.metrics.MetricRegistry;
+import io.dropwizard.core.server.DefaultServerFactory;
 import io.dropwizard.http2.Http2CConnectorFactory;
+import io.dropwizard.jetty.ConnectorFactory;
 import java.net.URI;
+import java.util.List;
 import org.eclipse.jetty.client.ContentResponse;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.http.HttpStatus;
@@ -38,7 +41,13 @@ class OpenMetadataApplicationTest {
   void acceptsEncodedPercentOverHttp2() throws Exception {
     final Http2CConnectorFactory applicationConnector = new Http2CConnectorFactory();
     applicationConnector.setPort(0);
-    applicationConnector.setUriCompliance(UriCompliance.UNSAFE);
+
+    // Mirror the production sequence: run() configures the connector beans, Dropwizard then builds
+    // the connectors, and the server-started listener reconfigures the built connection factories.
+    final OpenMetadataApplication application = new OpenMetadataApplication();
+    application.configureUriCompliance(configurationWith(applicationConnector));
+    assertEquals(UriCompliance.UNSAFE, applicationConnector.getUriCompliance());
+
     final Server server = new Server();
     final ServerConnector connector =
         (ServerConnector)
@@ -46,9 +55,9 @@ class OpenMetadataApplicationTest {
                 server, new MetricRegistry(), "http2-test", server.getThreadPool());
     server.addConnector(connector);
     server.setHandler(new OkHandler());
-    new OpenMetadataApplication().configureUriCompliance(server.getConnectors());
 
     server.start();
+    application.configureUriCompliance(server.getConnectors());
     final HTTP2Client http2Client = new HTTP2Client();
     try (final HttpClient client = new HttpClient(new HttpClientTransportOverHTTP2(http2Client))) {
       client.start();
@@ -64,6 +73,15 @@ class OpenMetadataApplicationTest {
     } finally {
       server.stop();
     }
+  }
+
+  private static OpenMetadataApplicationConfig configurationWith(final ConnectorFactory connector) {
+    final DefaultServerFactory serverFactory = new DefaultServerFactory();
+    serverFactory.setApplicationConnectors(List.of(connector));
+    final OpenMetadataApplicationConfig configuration = new OpenMetadataApplicationConfig();
+    configuration.setServerFactory(serverFactory);
+
+    return configuration;
   }
 
   private static final class OkHandler extends Handler.Abstract {

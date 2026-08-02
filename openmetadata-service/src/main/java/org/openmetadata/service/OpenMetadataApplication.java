@@ -26,6 +26,7 @@ import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.jetty.ConnectorFactory;
+import io.dropwizard.jetty.HttpConnectorFactory;
 import io.dropwizard.jetty.HttpsConnectorFactory;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.lifecycle.Managed;
@@ -252,7 +253,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
-    configureUriCompliance(environment.getApplicationContext().getServer().getConnectors());
+    configureUriCompliance(catalogConfig);
+    environment
+        .lifecycle()
+        .addServerLifecycleListener(server -> configureUriCompliance(server.getConnectors()));
 
     // Configure ServletHandler to preserve encoded slashes in paths
     // This is needed for entity names containing slashes (e.g., "domain.name/with-slash")
@@ -559,8 +563,33 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
-   * Dropwizard builds HTTP/2 from a different HttpConfiguration than HTTP/1.1, so changing the
-   * connector config bean in Application.run() cannot affect the already-built h2 factory.
+   * Jetty 12 defaults to strict URI compliance, which rejects encoded characters Jetty 11 allowed
+   * and that OpenMetadata entity names depend on (for example {@code %22} for a double quote).
+   * This configures the connector beans, which Dropwizard reads when it builds the server.
+   */
+  void configureUriCompliance(final OpenMetadataApplicationConfig configuration) {
+    if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
+      applyUnsafeUriCompliance(serverFactory.getApplicationConnectors());
+      applyUnsafeUriCompliance(serverFactory.getAdminConnectors());
+    }
+  }
+
+  private void applyUnsafeUriCompliance(final List<ConnectorFactory> connectors) {
+    for (final ConnectorFactory connector : connectors) {
+      if (connector instanceof HttpConnectorFactory httpConnector) {
+        httpConnector.setUriCompliance(UriCompliance.UNSAFE);
+        LOG.info("Set URI compliance to UNSAFE for {}", httpConnector.getClass().getSimpleName());
+      }
+    }
+  }
+
+  /**
+   * The connector beans above only reach HTTP/1.1: {@code HttpConnectorFactory} applies compliance
+   * to a defensive copy of the HttpConfiguration that it hands to the HTTP/1.1 connection factory,
+   * while an h2/h2c connector keeps the original and so retains Jetty's strict default — which
+   * rejects entity names containing {@code %} with "400 Ambiguous URI path encoding". Jetty
+   * connectors do not exist until Dropwizard builds the server, after {@link #run} returns, so the
+   * built connection factories are reconfigured once the server starts.
    */
   void configureUriCompliance(final Connector[] connectors) {
     int configuredFactories = 0;
@@ -581,6 +610,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
     http2Factories.forEach(
         factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
+
     return httpFactories.size() + http2Factories.size();
   }
 
