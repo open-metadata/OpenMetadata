@@ -76,9 +76,10 @@ logger = ingestion_logger()
 
 PREFECT_TAG_CATEGORY = "PrefectTags"
 
-# Map Prefect run states to OpenMetadata status types. An unrecognized state
-# (including "UNKNOWN") defaults to Pending rather than Failed: seeing a state
-# we don't understand is not evidence the run failed.
+# Map Prefect run states (https://docs.prefect.io/v3/concepts/states) to
+# OpenMetadata status types. An unrecognized state (including "UNKNOWN")
+# defaults to Pending rather than Failed: seeing a state we don't understand
+# is not evidence the run failed.
 PREFECT_STATE_MAP = {
     "COMPLETED": StatusType.Successful,
     "FAILED": StatusType.Failed,
@@ -180,6 +181,7 @@ class PrefectSource(PipelineServiceSource):
         sorts newest-created first). Prefect 3.x deployments carry a
         ``schedules`` list — each entry wraps one of cron/interval/rrule plus
         an ``active`` flag — there is no singular ``schedule`` field.
+        See https://docs.prefect.io/v3/concepts/schedules
         """
         result = None
         if deployments:
@@ -408,7 +410,6 @@ class PrefectSource(PipelineServiceSource):
             flow_name = pipeline_details.name
             logger.info(f"Processing flow: {flow_name}")
 
-            # Get deployments to collect all tags
             deployments = self.client.get_deployments(flow_id)
             logger.debug(f"Found {len(deployments)} deployments for {flow_name}")
 
@@ -432,7 +433,6 @@ class PrefectSource(PipelineServiceSource):
             # re-fetching the same latest run's tasks a second time.
             self.context.get().task_names = {task.name for task in tasks}  # pyright: ignore[reportAttributeAccessIssue]
 
-            # Build sourceUrl dynamically based on mode
             auth = self.service_connection.authType
             if isinstance(auth, PrefectCloudAuthentication):
                 source_url = (
@@ -446,7 +446,6 @@ class PrefectSource(PipelineServiceSource):
                 ui_host = clean_uri(str(self.service_connection.hostPort)).removesuffix("/api")
                 source_url = f"{ui_host}/flows/flow/{flow_id}"
 
-            # Get the service FQN from context
             service_fqn = self.context.get().pipeline_service  # pyright: ignore[reportAttributeAccessIssue]
 
             create_request = CreatePipelineRequest(  # pyright: ignore[reportCallIssue]
@@ -503,11 +502,12 @@ class PrefectSource(PipelineServiceSource):
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Cloud-only lineage: exact upstream/downstream asset pairs for one flow
-        run, from Prefect's native Assets API. Unlike tags this is scoped to a
-        single run — no cross-deployment mixing — and needs no user-authored
-        convention, just normal ``@materialize``/``asset_deps`` usage. Yields
-        nothing if this run has no materializations, so the caller falls back
-        to tag-based lineage.
+        run, from Prefect's native Assets API
+        (https://docs.prefect.io/v3/concepts/assets). Unlike tags this is
+        scoped to a single run — no cross-deployment mixing — and needs no
+        user-authored convention, just normal ``@materialize``/``asset_deps``
+        usage. Yields nothing if this run has no materializations, so the
+        caller falls back to tag-based lineage.
         """
         materializations = self.client.get_asset_materializations(flow_run_id)
         if not materializations:

@@ -9,7 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Client to interact with the Prefect REST API (Cloud or self-hosted Server)
+Client to interact with the Prefect REST API (Cloud or self-hosted Server).
+https://docs.prefect.io/v3/api-ref/rest-api
 """
 
 import base64
