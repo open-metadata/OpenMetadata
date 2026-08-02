@@ -402,10 +402,7 @@ const IntakeFormDesignerModal = ({
           <SlideoutMenu.Content
             className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-hidden! tw:p-0!"
             data-testid="intake-form-designer-modal">
-            {/* Content is absolutely positioned so it stays out of flow: its
-                intrinsic height can't feed back into the flex-sized panel, so a
-                row re-render (toggling a checkbox) can never move the footer. */}
-            <div className="tw:absolute tw:inset-0 tw:flex tw:flex-col tw:gap-6 tw:overflow-y-auto tw:px-4 tw:py-6 tw:md:px-6">
+            <div className="tw:absolute tw:inset-0 tw:flex tw:flex-col tw:gap-6 tw:overflow-y-auto tw:px-4 tw:py-6 tw:pt-0 tw:md:px-6">
               <Alert
                 title={t('message.intake-form-one-per-type-help', {
                   entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
@@ -476,7 +473,8 @@ const IntakeFormDesignerModal = ({
                 {renderFieldTable(
                   customRows,
                   t('message.no-custom-properties-defined'),
-                  loadingProps
+                  loadingProps,
+                  true
                 )}
               </Box>
             </div>
