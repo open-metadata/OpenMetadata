@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MultiSelect, SelectItemType } from '@openmetadata/ui-core-components';
+import { Autocomplete, SelectItemType } from '@openmetadata/ui-core-components';
 import type {
   ListItem,
   MultiSelectWidgetProps,
 } from '@react-awesome-query-builder/ui';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
-import { useListData } from 'react-stately';
 
 const toSelectItems = (
   listValues: MultiSelectWidgetProps['listValues']
@@ -48,33 +47,36 @@ const OMMultiSelectWidget = ({
   useAsyncSearch,
 }: MultiSelectWidgetProps) => {
   const valueArray = Array.isArray(value) ? value.map(String) : [];
-  const staticItems = toSelectItems(listValues);
-  const [allItems, setAllItems] = useState<SelectItemType[]>(staticItems);
+  const isAsync = Boolean(useAsyncSearch && asyncFetch);
 
-  const selectedItems = useListData<SelectItemType>({
-    initialItems: staticItems.filter((i) => valueArray.includes(i.id)),
-  });
+  // Static options come straight from the current field's `listValues`. RAQB
+  // reuses this widget instance when the rule's field changes (Owners -> Tier),
+  // so deriving the options from props each render — instead of caching them in
+  // state on mount — is what makes the dropdown reflect the newly selected
+  // field instead of the previous one. Keyed on serialized content so the
+  // memoized reference stays stable across content-equal renders (a new array
+  // each render would retrigger Autocomplete's selectedItems effect in a loop).
+  const staticItems = useMemo(
+    () => toSelectItems(listValues),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(listValues ?? null)]
+  );
 
-  useEffect(() => {
-    const currentIds = new Set(selectedItems.items.map((i) => i.id));
-    const targetIds = new Set(valueArray);
+  // Async fields fetch their catalogue on demand; kept separate from the static
+  // list so switching between async and static fields can't cross-contaminate.
+  const [asyncItems, setAsyncItems] = useState<SelectItemType[]>([]);
+  const allItems = isAsync ? asyncItems : staticItems;
 
-    for (const id of targetIds) {
-      if (!currentIds.has(id)) {
-        const item = allItems.find((i) => i.id === id);
-        if (item) {
-          selectedItems.append(item);
-        }
-      }
-    }
-    for (const item of selectedItems.items) {
-      if (!targetIds.has(item.id)) {
-        selectedItems.remove(item.id);
-      }
-    }
-    // Also re-sync when the async catalogue loads — values saved before the
-    // fetch completes won't appear until allItems is populated.
-  }, [valueArray.join(','), allItems]);
+  // Resolve the selected ids into items using the current catalogue; ids not
+  // yet present (async results still loading) fall back to the raw id.
+  const selectedItems = useMemo(
+    () =>
+      valueArray.map(
+        (id) => allItems.find((item) => item.id === id) ?? { id, label: id }
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [valueArray.join(','), allItems]
+  );
 
   const requestIdRef = useRef(0);
 
@@ -88,7 +90,7 @@ const OMMultiSelectWidget = ({
       const requestId = ++requestIdRef.current;
       const result = await asyncFetch(search);
       if (requestId === requestIdRef.current) {
-        setAllItems(
+        setAsyncItems(
           (result.values as ListItem[]).map((item) => ({
             id: String(item.value),
             label: String(item.title ?? item.value),
@@ -99,17 +101,22 @@ const OMMultiSelectWidget = ({
     [asyncFetch]
   );
 
+  // (Re)load whenever the async field changes. Clear the previous field's
+  // results first so a stale catalogue never shows while the fetch is in
+  // flight; the requestId guard drops any late response from the old field.
   useEffect(() => {
-    if (useAsyncSearch && asyncFetch) {
+    if (isAsync) {
+      setAsyncItems([]);
       loadAsync('');
     }
-  }, [useAsyncSearch, loadAsync]);
+  }, [isAsync, loadAsync]);
 
   const handleItemInserted = useCallback(
     (key: Key) => {
       setValue([...valueArray, String(key)]);
     },
-    [valueArray, setValue]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [valueArray.join(','), setValue]
   );
 
   const handleItemCleared = useCallback(
@@ -117,25 +124,29 @@ const OMMultiSelectWidget = ({
       const next = valueArray.filter((v) => v !== String(key));
       setValue(next.length > 0 ? next : null);
     },
-    [valueArray, setValue]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [valueArray.join(','), setValue]
   );
 
   return (
-    <MultiSelect
+    <Autocomplete
       isDisabled={readonly}
       items={allItems}
       placeholder={placeholder ?? 'Select'}
       selectedItems={selectedItems}
-      size="sm"
-      onInputChange={(search: string) => loadAsync(search)}
       onItemCleared={handleItemCleared}
-      onItemInserted={handleItemInserted}>
+      onItemInserted={handleItemInserted}
+      // For async catalogues the results are already filtered server-side, so
+      // skip the built-in client filter and drive fetches from the search box.
+      {...(isAsync
+        ? { filterOption: () => true, onSearchChange: loadAsync }
+        : {})}>
       {(item) => (
-        <MultiSelect.Item id={item.id} key={item.id}>
+        <Autocomplete.Item id={item.id} key={item.id}>
           {item.label}
-        </MultiSelect.Item>
+        </Autocomplete.Item>
       )}
-    </MultiSelect>
+    </Autocomplete>
   );
 };
 

@@ -15,6 +15,48 @@ import type { FieldProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 import { useMemo, useRef, useState } from 'react';
 
+type FieldNode = {
+  key?: string;
+  path?: string;
+  label?: string;
+  items?: FieldNode[];
+};
+
+const flattenFieldLeaves = (nodes: FieldNode[]): SelectItemType[] => {
+  const leaves: SelectItemType[] = [];
+  const walk = (list: FieldNode[]) => {
+    list.forEach((node) => {
+      if (node.items && node.items.length > 0) {
+        walk(node.items);
+
+        return;
+      }
+      const id = node.path ?? node.key;
+      if (id) {
+        leaves.push({ id, label: node.label ?? id });
+      }
+    });
+  };
+  walk(nodes);
+
+  return leaves;
+};
+
+const buildItemsKey = (nodes: FieldNode[]): string => {
+  const parts: string[] = [];
+  const walk = (list: FieldNode[]) => {
+    list.forEach((node) => {
+      parts.push(`${node.path ?? node.key ?? ''} ${node.label ?? ''}`);
+      if (node.items) {
+        walk(node.items);
+      }
+    });
+  };
+  walk(nodes);
+
+  return parts.join('|');
+};
+
 const OMFieldSelect: FC<FieldProps> = ({
   items,
   selectedKey,
@@ -26,19 +68,10 @@ const OMFieldSelect: FC<FieldProps> = ({
   // stable across content-equal renders: react-aria rebuilds the ComboBox
   // collection when the items identity changes, which resets an uncontrolled
   // input back to the selected item's label and closes the open popup.
-  const itemsKey = items
-    .map((item) => `${item.path ?? item.key} ${item.label}`)
-    .join('');
+  const itemsKey = buildItemsKey(items as FieldNode[]);
   const selectItems: SelectItemType[] = useMemo(
-    () =>
-      items.map((item) => ({
-        // For nested fields (e.g. custom properties) `key` is only the leaf
-        // segment — setField needs the full dotted path or the selection is
-        // silently ignored and the cascade never advances to the next level.
-        id: item.path ?? item.key,
-        label: item.label,
-      })),
-
+    () => flattenFieldLeaves(items as FieldNode[]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [itemsKey]
   );
 
@@ -86,9 +119,18 @@ const OMFieldSelect: FC<FieldProps> = ({
       size="sm"
       onInputChange={setInputValue}
       onSelectionChange={(key) => {
-        if (key) {
-          setField(String(key));
+        if (key == null) {
+          return;
         }
+        const id = String(key);
+        // Reflect the choice immediately: update the label and the sync ref so
+        // the render-time sync doesn't clobber it before RAQB propagates the
+        // new selectedKey back through props.
+        lastSelectedKeyRef.current = id;
+        setInputValue(
+          selectItems.find((item) => item.id === id)?.label ?? id
+        );
+        setField(id);
       }}>
       {(item) => (
         <Select.Item id={item.id} key={item.id}>
