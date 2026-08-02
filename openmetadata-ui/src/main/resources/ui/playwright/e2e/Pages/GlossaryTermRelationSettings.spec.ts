@@ -146,19 +146,16 @@ const findRowAcrossPages = async (
       throw new Error(`testId "${testId}" not found on any page`);
     }
 
-    const nextPageResponse = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes('/glossaryTermRelationSettings/relationTypes') &&
-        response.request().method() === 'GET'
-    );
+    const currentPage = page.getByLabel('Current page');
+    const pageNumber = Number(await currentPage.inputValue());
     await nextBtn.click();
-    await nextPageResponse;
+    await expect(currentPage).toHaveValue(String(pageNumber + 1));
   }
 };
 
 test.describe('Glossary Term Relation Settings', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeEach(async ({ page }) => {
     await authenticateAdminPage(page);
   });
@@ -232,7 +229,7 @@ test.describe('Glossary Term Relation Settings', () => {
     }
   });
 
-  test('rejects duplicate relation-type names with an inline error', async ({
+  test('rejects duplicate relation-type names and keeps the drawer open', async ({
     page,
   }) => {
     await goToRelationSettings(page);
@@ -240,11 +237,16 @@ test.describe('Glossary Term Relation Settings', () => {
     await page.getByTestId('add-relation-type-btn').click();
     await fillInput(page, 'name-input', SYSTEM_DEFINED_RELATION);
     await fillInput(page, 'display-name-input', 'PW Duplicate Copy');
+    await fillInput(
+      page,
+      'rdf-predicate-input',
+      `https://example.org/duplicate-${uuid()}`
+    );
     await selectOption(page, 'cardinality-select', 'Many to Many');
 
     await page.getByTestId('save-btn').click();
 
-    await expect(page.getByText('Relation Type already exists.')).toBeVisible();
+    await toastNotification(page, /already exists/i);
     await expect(page.getByTestId('relation-type-drawer')).toBeVisible();
   });
 

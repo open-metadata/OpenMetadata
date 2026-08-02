@@ -20,8 +20,6 @@ import {
   disposeApiContext,
   navigateAndFilterByGlossary,
   readNodePositions,
-  waitForNodeAbsent,
-  waitForNodePresent,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -55,71 +53,32 @@ test.afterAll(async ({ browser }) => {
   await disposeApiContext(page, apiContext);
 });
 
-test.describe('Ontology Explorer — isolated nodes toggle', () => {
-  test('isolated term is visible by default (showIsolatedNodes = true)', async ({
+test.describe('Ontology Studio — isolated concepts', () => {
+  test('shows isolated concepts in the graph, health panel, and header count', async ({
     page,
   }) => {
     test.slow();
     await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
 
-    const positions = await readNodePositions(page);
+    await expect
+      .poll(
+        async () => {
+          const positions = await readNodePositions(page);
 
-    expect(
-      positions[toggleTermIso.responseData.id],
-      'isolated term must be visible because showIsolatedNodes defaults to true'
-    ).toBeDefined();
-    expect(
-      positions[toggleTermA.responseData.id],
-      'connected term A must also be visible'
-    ).toBeDefined();
-    expect(
-      positions[toggleTermB.responseData.id],
-      'connected term B must also be visible'
-    ).toBeDefined();
-  });
-
-  test('toggling isolated nodes OFF hides the isolated term', async ({
-    page,
-  }) => {
-    test.slow();
-    await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
-
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, toggleTermIso.responseData.id);
-
-    const positions = await readNodePositions(page);
-
-    expect(
-      positions[toggleTermIso.responseData.id],
-      'isolated term must be hidden after toggling showIsolatedNodes OFF'
-    ).toBeUndefined();
-    expect(
-      positions[toggleTermA.responseData.id],
-      'connected term A must still be visible'
-    ).toBeDefined();
-    expect(
-      positions[toggleTermB.responseData.id],
-      'connected term B must still be visible'
-    ).toBeDefined();
-  });
-
-  test('toggling isolated nodes back ON restores the isolated term', async ({
-    page,
-  }) => {
-    test.slow();
-    await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
-
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodeAbsent(page, toggleTermIso.responseData.id);
-
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await waitForNodePresent(page, toggleTermIso.responseData.id);
-
-    const positions = await readNodePositions(page);
-
-    expect(
-      positions[toggleTermIso.responseData.id],
-      'isolated term must be restored after toggling showIsolatedNodes back ON'
-    ).toBeDefined();
+          return [toggleTermIso, toggleTermA, toggleTermB].every(
+            (term) => positions[term.responseData.id]
+          );
+        },
+        { message: 'all scoped concepts must be visible in the graph' }
+      )
+      .toBe(true);
+    await expect(page.getByTestId('ontology-health-panel')).toBeVisible();
+    await expect(
+      page.getByTestId(`ontology-connect-${toggleTermIso.responseData.id}`)
+    ).toBeVisible();
+    await expect(page.getByTestId('ontology-isolated-count')).toHaveText('1');
+    await expect(
+      page.getByTestId('ontology-header-isolated-count')
+    ).toContainText(/1\s*isolated/i);
   });
 });

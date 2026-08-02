@@ -20,6 +20,7 @@ import {
   applyGlossaryFilter,
   createApiContext,
   deleteEntities,
+  deleteRelationTypeByName,
   disposeApiContext,
   navigateToOntologyExplorer,
   readCardinalityMap,
@@ -28,6 +29,7 @@ import {
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+test.describe.configure({ mode: 'serial' });
 
 // Unique suffix per worker/repeat so parallel runs don't share relation type names.
 const RUN_ID = Math.random().toString(36).slice(2, 8);
@@ -156,6 +158,11 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       relDst,
       glossary
     );
+    await Promise.all(
+      Object.values(CUSTOM_RELATION_NAMES).map((name) =>
+        deleteRelationTypeByName(apiContext, name)
+      )
+    );
 
     await disposeApiContext(page, apiContext);
   });
@@ -211,21 +218,17 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       });
     });
 
-    test('MANY_TO_MANY relation type should have label "M" on both ends', async ({
+    test('unconstrained MANY_TO_MANY relation type should omit endpoint labels', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(
-        page,
-        CUSTOM_RELATION_NAMES.MANY_TO_MANY
-      );
+      const cardinalityMap = await readCardinalityMap(page);
 
-      expect(cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_MANY]).toEqual({
-        startLabelText: 'M',
-        endLabelText: 'M',
-      });
+      expect(
+        cardinalityMap[CUSTOM_RELATION_NAMES.MANY_TO_MANY]
+      ).toBeUndefined();
     });
 
-    test('CUSTOM relation type with sourceMax=1 and no targetMax should produce "1" → "M"', async ({
+    test('CUSTOM relation type with sourceMax=1 and no targetMax should produce "M" → "1"', async ({
       page,
     }) => {
       const cardinalityMap = await readCardinalityMap(
@@ -234,20 +237,17 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       );
 
       expect(cardinalityMap[CUSTOM_RELATION_NAMES.CUSTOM_1_M]).toEqual({
-        startLabelText: '1',
-        endLabelText: 'M',
+        startLabelText: 'M',
+        endLabelText: '1',
       });
     });
 
-    test('built-in relation type shows M:M cardinality in the cardinality map', async ({
+    test('unconstrained built-in relation type omits endpoint labels', async ({
       page,
     }) => {
-      const cardinalityMap = await readCardinalityMap(page, 'relatedTo');
+      const cardinalityMap = await readCardinalityMap(page);
 
-      expect(cardinalityMap['relatedTo']).toEqual({
-        startLabelText: 'M',
-        endLabelText: 'M',
-      });
+      expect(cardinalityMap.relatedTo).toBeUndefined();
     });
   });
 
@@ -280,37 +280,18 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       const stats = page.getByTestId('ontology-explorer-stats');
       await expect(stats).toBeVisible();
       const text = await stats.textContent();
-      const match = text?.match(/(\d+)\s+Relations?/);
+      const match = text?.match(/(\d+)\s+relations?/i);
       const relationCount = match ? Number(match[1]) : 0;
 
       expect(relationCount).toBeGreaterThan(0);
     });
   });
 
-  test.describe('Edge labels toggle with cardinality edges', () => {
-    test('cardinality map is populated when edge labels are on (default)', async ({
-      page,
-    }) => {
+  test.describe('Cardinality labels in Studio graph', () => {
+    test('cardinality map is populated by default', async ({ page }) => {
       const cardinalityMap = await readCardinalityMap(page);
 
       expect(Object.keys(cardinalityMap).length).toBeGreaterThan(0);
-    });
-
-    test('graph remains stable after toggling edge labels off and back on', async ({
-      page,
-    }) => {
-      await page.getByTestId('ontology-graph-settings').click();
-      await expect(page.getByTestId('graph-settings-close')).toBeVisible();
-
-      const toggle = page.getByTestId('graph-settings-edge-labels-toggle');
-      await toggle.click();
-      await expect(toggle).not.toHaveAttribute('data-selected', 'true');
-
-      await toggle.click();
-      await expect(toggle).toHaveAttribute('data-selected', 'true');
-
-      await page.getByTestId('graph-settings-close').click();
-      await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     });
   });
 });

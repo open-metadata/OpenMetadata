@@ -408,6 +408,7 @@ const OntologyExplorerPage: React.FC = () => {
                 'tw:font-medium tw:text-secondary tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1',
                 'tw:focus-visible:outline-brand-600'
               )}
+              data-selected-glossary-id={selectedGlossaryId ?? ''}
               data-testid="ontology-glossary-menu-trigger"
               type="button"
               onClick={() =>
@@ -443,7 +444,7 @@ const OntologyExplorerPage: React.FC = () => {
                   <div
                     aria-label={t('label.glossary-plural')}
                     className={classNames(
-                      'tw:fixed tw:z-[80] tw:w-60 tw:rounded-lg',
+                      'tw:fixed tw:z-[80] tw:max-h-[calc(100vh-5rem)] tw:w-60 tw:overflow-y-auto tw:rounded-lg',
                       'tw:border tw:border-secondary tw:bg-primary tw:p-1.5 tw:shadow-lg'
                     )}
                     ref={glossaryMenuPanelRef}
@@ -487,6 +488,7 @@ const OntologyExplorerPage: React.FC = () => {
                               ? 'tw:bg-brand-primary tw:text-brand-secondary'
                               : 'tw:bg-primary tw:text-secondary hover:tw:bg-secondary'
                           )}
+                          data-testid={glossary.id}
                           key={glossary.id}
                           role="menuitemradio"
                           type="button"
@@ -558,7 +560,8 @@ const OntologyExplorerPage: React.FC = () => {
               'tw:flex tw:shrink-0 tw:items-center tw:gap-1.5 tw:rounded-full tw:border',
               'tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-[11px] tw:py-[5px] tw:font-body',
               'tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-utility-warning-700'
-            )}>
+            )}
+            data-testid="ontology-header-isolated-count">
             <span
               aria-hidden="true"
               className="tw:size-[7px] tw:rounded-full tw:bg-utility-warning-500"

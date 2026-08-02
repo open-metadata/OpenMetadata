@@ -12,11 +12,9 @@
  */
 
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
-import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
-import { sidebarClick } from '../utils/sidebar';
 
 export interface GraphTermRef {
   id: string;
@@ -26,7 +24,22 @@ export interface GraphTermRef {
 export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
-  await page.getByTestId('search-dropdown-Glossary').click();
+  const studioGlossaryMenu = page.getByTestId('ontology-glossary-menu-trigger');
+  if (await studioGlossaryMenu.isVisible()) {
+    await studioGlossaryMenu.click();
+    const glossaryOption = page.getByTestId(glossaryId);
+    await glossaryOption.scrollIntoViewIfNeeded();
+    await glossaryOption.click();
+    await expect(studioGlossaryMenu).toHaveAttribute('aria-expanded', 'false');
+    await expect(studioGlossaryMenu).toHaveAttribute(
+      'data-selected-glossary-id',
+      glossaryId
+    );
+
+    return;
+  }
+
+  await page.getByTestId('search-dropdown-glossaryIds').click();
   await page.getByTestId(glossaryId).click();
   const termsResponse = page
     .waitForResponse(
@@ -41,10 +54,15 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
 }
 
 export async function navigateToOntologyExplorer(page: Page) {
-  await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse('/api/v1/glossaries*');
-  await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
-  await glossaryResponse;
+  const glossaryResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/glossaries') &&
+      response.status() === 200,
+    { timeout: 30000 }
+  );
+
+  await Promise.all([page.goto('/governance/ontology'), glossaryResponse]);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
 }
 
 export async function waitForGraphLoaded(page: Page) {
@@ -299,7 +317,7 @@ export async function navigateAndFilterByGlossary(
 }
 
 export async function applyRelationTypeFilter(page: Page, typeName: string) {
-  await page.getByTestId('search-dropdown-Relationship Type').click();
+  await page.getByTestId('search-dropdown-relationTypes').click();
   await page.getByTestId('drop-down-menu').getByText(typeName).click();
   await page.getByTestId('update-btn').click();
   await waitForGraphLoaded(page);
@@ -311,25 +329,6 @@ export async function readGraphZoom(page: Page): Promise<number> {
 
     return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   });
-}
-
-const DATA_MODE_BADGE_CANVAS_OFFSET_X_PX = 23;
-const DATA_MODE_BADGE_CANVAS_OFFSET_Y_PX = -8;
-
-export async function clickDataModeAssetBadge(
-  page: Page,
-  termId: string
-): Promise<void> {
-  const positions = await readNodePositions(page);
-  const termPos = positions[termId];
-  if (!termPos) {
-    throw new Error(`Term node ${termId} not found in node positions`);
-  }
-  const zoom = await readGraphZoom(page);
-  await page.mouse.click(
-    termPos.x + DATA_MODE_BADGE_CANVAS_OFFSET_X_PX * zoom,
-    termPos.y + DATA_MODE_BADGE_CANVAS_OFFSET_Y_PX * zoom
-  );
 }
 
 export type CardinalityLabels = {
@@ -375,102 +374,90 @@ export async function readCardinalityMap(
     );
 }
 
-// The relation types live in a single global `glossaryTermRelationSettings`
-// document that only supports a full-document PUT. Parallel Playwright workers
-// each read-modify-write that document, so a stale snapshot can drop a peer's
-// concurrent change or be rejected by the backend's "relation type in use"
-// validation. Every mutation below therefore reads fresh, applies only its own
-// delta, writes, and verifies the result — retrying on conflict until it lands.
-const RELATION_SETTINGS_KEY = 'glossaryTermRelationSettings';
-const MAX_RELATION_SETTINGS_ATTEMPTS = 10;
+const RELATIONSHIP_TYPES_API = '/api/v1/relationshipTypes';
 
-interface RelationTypeConfig {
-  name: string;
-  [key: string]: unknown;
-}
-
-async function getRelationTypes(
-  apiContext: APIRequestContext
-): Promise<RelationTypeConfig[]> {
-  const res = await apiContext.get(
-    `/api/v1/system/settings/${RELATION_SETTINGS_KEY}`
-  );
-  const settings = await res.json();
-
-  return settings.config_value?.relationTypes ?? [];
-}
-
-async function putRelationTypes(
-  apiContext: APIRequestContext,
-  relationTypes: RelationTypeConfig[]
-) {
-  return apiContext.put('/api/v1/system/settings', {
-    data: {
-      config_type: RELATION_SETTINGS_KEY,
-      config_value: { relationTypes },
-    },
-  });
-}
-
-async function backoffBeforeRetry(attempt: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 100 + attempt * 100));
-}
-
-function buildRelationTypeEntry(relationType: {
+interface TestRelationType {
   name: string;
   displayName: string;
   cardinality: string;
   sourceMax?: number | null;
   targetMax?: number | null;
-}): RelationTypeConfig {
-  return {
-    name: relationType.name,
-    displayName: relationType.displayName,
-    category: 'associative',
-    cardinality: relationType.cardinality,
-    ...(relationType.sourceMax === undefined
-      ? {}
-      : { sourceMax: relationType.sourceMax }),
-    ...(relationType.targetMax === undefined
-      ? {}
-      : { targetMax: relationType.targetMax }),
-  };
+}
+
+function buildCardinality(relationType: TestRelationType) {
+  switch (relationType.cardinality) {
+    case 'ONE_TO_ONE':
+      return { sourceMax: 1, targetMax: 1 };
+    case 'ONE_TO_MANY':
+      return { targetMax: 1 };
+    case 'MANY_TO_ONE':
+      return { sourceMax: 1 };
+    case 'CUSTOM': {
+      const cardinality: { sourceMax?: number; targetMax?: number } = {};
+      if (relationType.sourceMax != null) {
+        cardinality.sourceMax = relationType.sourceMax;
+      }
+      if (relationType.targetMax != null) {
+        cardinality.targetMax = relationType.targetMax;
+      }
+
+      return cardinality;
+    }
+    default:
+      return undefined;
+  }
 }
 
 export async function addRelationTypeWithCardinality(
   apiContext: APIRequestContext,
-  relationType: {
-    name: string;
-    displayName: string;
-    cardinality: string;
-    sourceMax?: number | null;
-    targetMax?: number | null;
-  }
+  relationType: TestRelationType
 ): Promise<void> {
-  for (let attempt = 0; attempt < MAX_RELATION_SETTINGS_ATTEMPTS; attempt++) {
-    const existing = await getRelationTypes(apiContext);
-    if (existing.some((rt) => rt.name === relationType.name)) {
-      return;
-    }
+  const cardinality = buildCardinality(relationType);
+  const response = await apiContext.post(RELATIONSHIP_TYPES_API, {
+    data: {
+      name: relationType.name,
+      displayName: relationType.displayName,
+      description: '',
+      rdfPredicate: `https://example.org/relations/${relationType.name}`,
+      category: 'CUSTOM',
+      paletteKey: 'BLUE',
+      ...(cardinality ? { cardinality } : {}),
+    },
+  });
+  if (!response.ok()) {
+    throw new Error(
+      `Failed to create relationship type "${
+        relationType.name
+      }": ${response.status()} ${await response.text()}`
+    );
+  }
+}
 
-    const res = await putRelationTypes(apiContext, [
-      ...existing,
-      buildRelationTypeEntry(relationType),
-    ]);
-
-    if (res.ok()) {
-      const updated = await getRelationTypes(apiContext);
-      if (updated.some((rt) => rt.name === relationType.name)) {
-        return;
-      }
-    }
-
-    await backoffBeforeRetry(attempt);
+export async function deleteRelationTypeByName(
+  apiContext: APIRequestContext,
+  name: string
+): Promise<void> {
+  const lookup = await apiContext.get(
+    `${RELATIONSHIP_TYPES_API}/name/${encodeURIComponent(name)}`
+  );
+  if (lookup.status() === 404) {
+    return;
+  }
+  if (!lookup.ok()) {
+    throw new Error(
+      `Failed to look up relationship type "${name}": ${lookup.status()} ${await lookup.text()}`
+    );
   }
 
-  throw new Error(
-    `addRelationTypeWithCardinality: failed to add "${relationType.name}" after ${MAX_RELATION_SETTINGS_ATTEMPTS} attempts`
+  const relationType = (await lookup.json()) as { id: string };
+  const response = await apiContext.delete(
+    `${RELATIONSHIP_TYPES_API}/${relationType.id}`
   );
+  if (!response.ok() && response.status() !== 404) {
+    throw new Error(
+      `Failed to delete relationship type "${name}": ${response.status()} ${await response.text()}`
+    );
+  }
 }
 
 export async function waitForMoreNodesThan(
@@ -498,7 +485,7 @@ export async function applyMultiGlossaryFilter(
   page: Page,
   ...glossaryIds: string[]
 ): Promise<void> {
-  await page.getByTestId('search-dropdown-Glossary').click();
+  await page.getByTestId('search-dropdown-glossaryIds').click();
   for (const id of glossaryIds) {
     await page.getByTestId(id).click();
   }

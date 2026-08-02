@@ -269,6 +269,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const showConceptInspector = Boolean(
     scope === 'global' && surface === 'graph' && isTermConcept && !selectedEdge
   );
+  const showEntityPanel = Boolean(
+    surface !== 'term' &&
+      selectedNode &&
+      !isAuthoringMode &&
+      (scope !== 'global' || isDataAssetLikeNode(selectedNode))
+  );
   // Editing authors concepts, not the read-only data projection. Entering Edit
   // while viewing Data returns the graph to the concept Model view. Guarded on
   // the false->true transition so mid-edit filter changes (which re-create
@@ -498,6 +504,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     });
     const hasNoMatchingRelationEdges =
       hasRelationFilter && termToTermEdges.length === 0;
+    const hasNoSearchMatches = Boolean(
+      graphSearchHighlight?.active &&
+        graphSearchHighlight.highlightedNodeIds.length === 0 &&
+        graphSearchHighlight.highlightedEdgeKeys.length === 0 &&
+        graphSearchHighlight.highlightedGlossaryIds.length === 0
+    );
 
     if (fetchError && !loading && !graphDataToShow) {
       return (
@@ -538,6 +550,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           testId="ontology-graph-hierarchy-empty"
         />
       );
+    }
+
+    if (hasNoSearchMatches && !loading) {
+      return <SearchGraphEmptyState />;
     }
 
     if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
@@ -984,10 +1000,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             />
           )}
 
-          {surface !== 'term' &&
-          selectedNode &&
-          isDataAssetLikeNode(selectedNode) &&
-          !isAuthoringMode ? (
+          {showEntityPanel && selectedNode ? (
             <OntologyEntityPanel
               afterEntityUpdate={
                 selectedNode

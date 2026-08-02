@@ -243,6 +243,44 @@ describe('OntologyExplorer Studio data controls', () => {
     expect(onSelectedNodeChange).toHaveBeenCalledWith(termNode);
   });
 
+  it('opens the entity slideout for a concept in an embedded graph', () => {
+    const state = createExplorerState({ selectedNode: termNode });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer scope="glossary" />);
+
+    expect(screen.getByTestId('ontology-entity-panel')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-authoring-inspector')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the search empty state when the query has no graph matches', () => {
+    const state = createExplorerState({
+      filters: {
+        glossaryIds: [],
+        relationTypes: [],
+        searchQuery: 'missing concept',
+        showCrossGlossaryOnly: false,
+        showIsolatedNodes: true,
+        viewMode: 'overview',
+      },
+      graphSearchHighlight: {
+        active: true,
+        highlightedEdgeKeys: [],
+        highlightedGlossaryIds: [],
+        highlightedNodeIds: [],
+      },
+    });
+    mockUseOntologyExplorer.mockReturnValue(state);
+
+    render(<OntologyExplorer scope="global" />);
+
+    expect(
+      screen.getByTestId('ontology-graph-search-empty')
+    ).toBeInTheDocument();
+  });
+
   it('offers keyboard-accessible paging for an expanded asset cluster', () => {
     const state = createExplorerState({
       expandedTermIds: new Set([termNode.id]),

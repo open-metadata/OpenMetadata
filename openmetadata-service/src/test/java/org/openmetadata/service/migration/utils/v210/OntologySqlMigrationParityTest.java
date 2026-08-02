@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v200;
+package org.openmetadata.service.migration.utils.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,7 +51,7 @@ class OntologySqlMigrationParityTest {
     assertEquals(CANONICAL_MYSQL_TABLE_COLLATIONS, tableCollations(read(mysql.schemaChanges())));
   }
 
-  @ParameterizedTest(name = "{0} clean and 2.0 upgrade schemas stay aligned")
+  @ParameterizedTest(name = "{0} clean and 2.1 upgrade schemas stay aligned")
   @MethodSource("dialects")
   void cleanAndUpgradeSchemasStayAligned(final DialectSql dialect) throws IOException {
     final String clean = read(dialect.cleanSchema());
@@ -59,7 +59,7 @@ class OntologySqlMigrationParityTest {
 
     for (final String table : ONTOLOGY_TABLES) {
       assertContains(clean, table, dialect.name() + " clean schema");
-      assertContains(upgrade, table, dialect.name() + " 2.0 migration");
+      assertContains(upgrade, table, dialect.name() + " 2.1 migration");
     }
     assertRelationshipColumns(clean, dialect);
     assertRelationshipColumns(upgrade, dialect);
@@ -67,7 +67,7 @@ class OntologySqlMigrationParityTest {
 
   @ParameterizedTest(name = "{0} upgrade backfills typed relationships and RDF rebuild")
   @MethodSource("dialects")
-  void upgradeBackfillsRelationshipIdentityAndRdfRebuild(final DialectSql dialect)
+  void upgradeBackfillsRelationshipIdentityAndInvalidatesProjectionStatus(final DialectSql dialect)
       throws IOException {
     final String postData = read(dialect.postDataMigration());
 
@@ -76,12 +76,10 @@ class OntologySqlMigrationParityTest {
             "relationshipid",
             "relationshiptypeid",
             "relationship_type_entity",
-            "recreateindex",
             "appconfiguration",
             "entities",
             "apps_extension_time_series",
-            "searchindexingapplication",
-            "0 0 * * 6")) {
+            "searchindexingapplication")) {
       assertContains(postData, token, dialect.name() + " post-data migration");
     }
   }
@@ -111,7 +109,7 @@ class OntologySqlMigrationParityTest {
 
   private static Stream<DialectSql> dialects() {
     final Path root = repositoryRoot();
-    final Path migrations = root.resolve("bootstrap/sql/migrations/native/2.0.0");
+    final Path migrations = root.resolve("bootstrap/sql/migrations/native/2.1.0");
     return Stream.of(
         dialect(root, migrations, "mysql", "relationship_type_id_index"),
         dialect(root, migrations, "postgres", "entity_relationship_type_id_index"));
