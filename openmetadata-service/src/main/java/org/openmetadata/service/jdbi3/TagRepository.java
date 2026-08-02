@@ -357,7 +357,19 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntities(List<Tag> entities) {
+    // Today every caller of this bulk path is create-only and applies setInheritedFields() after
+    // the store, so no inherited value can be present here. Strip it anyway: a future bulk update
+    // path would otherwise silently persist it and strand the Tags, which is the exact failure
+    // storeEntity() guards against. Tags are almost never created disabled, so the guard costs
+    // nothing on the common path.
+    entities.forEach(this::clearInheritedDisabled);
     storeMany(entities);
+  }
+
+  private void clearInheritedDisabled(Tag tag) {
+    if (Boolean.TRUE.equals(tag.getDisabled()) && isParentClassificationDisabled(tag)) {
+      tag.setDisabled(Boolean.FALSE);
+    }
   }
 
   @Override
