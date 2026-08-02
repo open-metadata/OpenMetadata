@@ -17,10 +17,10 @@ import { EDataContractTab } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
+  EntityStatus,
   SemanticsRule,
 } from '../../../generated/entity/data/dataContract';
 import { Column, Table } from '../../../generated/entity/data/table';
-import { EntityStatus } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { createContract, updateContract } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -95,6 +95,9 @@ jest.mock('../ContractDetailFormTab/ContractDetailFormTab', () => ({
         <h2>Contract Details</h2>
         <button onClick={() => onChange({ name: 'Test Contract Change' })}>
           Change
+        </button>
+        <button onClick={() => onChange({ entityStatus: 'In Review' })}>
+          Change Status
         </button>
         <button onClick={onNext}>Next</button>
       </div>
@@ -442,7 +445,7 @@ describe('AddDataContract', () => {
             type: EntityType.TABLE,
           },
           semantics: undefined, // validSemantics - undefined when no semantics provided
-          entityStatus: EntityStatus.Approved,
+          entityStatus: EntityStatus.Draft,
         })
       );
       expect(showSuccessToast).toHaveBeenCalledWith(
@@ -474,13 +477,39 @@ describe('AddDataContract', () => {
             type: EntityType.TABLE,
           },
           semantics: undefined, // validSemantics - undefined when no semantics provided
-          entityStatus: EntityStatus.Approved,
+          entityStatus: EntityStatus.Draft,
         })
       );
       expect(showSuccessToast).toHaveBeenCalledWith(
         'message.data-contract-saved-successfully'
       );
       expect(mockOnSave).toHaveBeenCalled();
+    });
+
+    it('should use selected entity status when creating a contract', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const statusButton = screen.getByText('Change Status');
+      await act(async () => {
+        fireEvent.click(statusButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      expect(createContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityStatus: EntityStatus.InReview,
+        })
+      );
     });
 
     it('should call updateContract for existing contract with JSON patch', async () => {

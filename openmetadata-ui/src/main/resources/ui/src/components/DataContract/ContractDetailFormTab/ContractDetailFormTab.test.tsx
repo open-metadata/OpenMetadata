@@ -12,7 +12,11 @@
  */
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  EntityStatus,
+} from '../../../generated/entity/data/dataContract';
+import { FieldTypes } from '../../../interface/FormUtils.interface';
 import { EntityReference } from '../../../generated/entity/type';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
 
@@ -47,6 +51,7 @@ jest.mock('react-i18next', () => ({
       const translations: Record<string, string> = {
         'label.contract-title': 'Contract Title',
         'label.owner-plural': 'Owners',
+        'label.status': 'Status',
         'label.description': 'Description',
         'label.contract-detail-plural': 'Contract Details',
         'message.contract-detail-plural-description': 'Enter contract details',
@@ -99,6 +104,7 @@ describe('ContractDetailFormTab', () => {
 
       expect(screen.getByText('Enter contract details')).toBeInTheDocument();
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
+      expect(screen.getByText('Status')).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
     });
@@ -127,6 +133,7 @@ describe('ContractDetailFormTab', () => {
       render(<ContractDetailFormTab {...commonProps} />);
 
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
+      expect(screen.getByText('Status')).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
     });
@@ -260,6 +267,21 @@ describe('ContractDetailFormTab', () => {
           expect.objectContaining({
             name: 'owners',
             label: 'Owners',
+          }),
+          expect.objectContaining({
+            formItemProps: {
+              initialValue: EntityStatus.Draft,
+            },
+            name: 'entityStatus',
+            label: 'Status',
+            props: expect.objectContaining({
+              options: [
+                { label: EntityStatus.Draft, value: EntityStatus.Draft },
+                { label: EntityStatus.InReview, value: EntityStatus.InReview },
+                { label: EntityStatus.Approved, value: EntityStatus.Approved },
+              ],
+            }),
+            type: FieldTypes.SELECT,
           }),
           expect.objectContaining({
             name: 'description',
