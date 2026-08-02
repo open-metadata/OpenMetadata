@@ -90,6 +90,8 @@ async function renderPlaywrightSummary({ github, context, core }) {
   const performanceMetrics = performance?.metrics ?? {};
   const performanceTargets = performance?.targets ?? {};
   const convergenceTargets = performance?.convergenceTargets ?? {};
+  const failedBlockingTargetDetails =
+    performance?.failedBlockingTargetDetails ?? {};
   if (performance) {
     try {
       const workflowRun = await github.rest.actions.getWorkflowRun({
@@ -131,6 +133,36 @@ async function renderPlaywrightSummary({ github, context, core }) {
       `Application boot ratio was ${displayMetric(performanceMetrics.appBootsPerUIScenario)} per UI scenario ` +
       `(${displayMetric(performanceMetrics.appBoots)} boots / ` +
       `${displayMetric(performanceMetrics.uiScenarios)} scenarios; convergence target: at most 1).`
+    );
+  }
+
+  // Surface each failed BLOCKING performance target as its own infrastructure
+  // issue — the perf script wrote per-target detail (label, threshold, and
+  // the shards that exceeded) into failedBlockingTargetDetails on the
+  // performance JSON. Without this, the summary previously said only
+  // "1 CI/reporting failure(s)" with no signal on which target or which
+  // shard tripped the gate.
+  for (const [name, detail] of Object.entries(failedBlockingTargetDetails)) {
+    const label = detail?.label ?? name;
+    const threshold = detail?.threshold;
+    // Older/malformed payloads may omit `unit`. Guard the space so the
+    // rendered message doesn't carry trailing whitespace (e.g. "1500 " when
+    // `unit` is missing).
+    const unitSuffix = detail?.unit ? ` ${detail.unit}` : '';
+    const offending = Array.isArray(detail?.offendingShards)
+      ? detail.offendingShards
+      : [];
+    const shardText = offending.length > 0
+      ? ` — exceeded on ${offending.length} shard(s): ${
+          offending
+            .slice(0, 5)
+            .map(shard => `${shard.shardId ?? 'unknown'} ${shard.value ?? '?'}${unitSuffix}`)
+            .join(', ')
+        }${offending.length > 5 ? ` (+${offending.length - 5} more)` : ''}`
+      : '';
+    const targetText = Number.isFinite(threshold) ? ` (target ≤ ${threshold}${unitSuffix})` : '';
+    addInfrastructureIssue(
+      `Playwright performance gate \`${label}\` failed${targetText}${shardText}.`
     );
   }
 
@@ -449,8 +481,8 @@ async function renderPlaywrightSummary({ github, context, core }) {
         classification: 'Blocking',
         metric: 'Maximum shard execution',
         observed: `${displayMetric(performanceMetrics.maxExecutionSeconds)} s`,
-        target: '≤ 1,260 s',
-        passed: performanceTargets.executionAtMostTwentyOneMinutes,
+        target: '≤ 1,500 s',
+        passed: performanceTargets.executionAtMostTwentyFiveMinutes,
       },
       {
         classification: 'Blocking',
