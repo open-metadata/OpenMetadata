@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -23,7 +24,6 @@ import {
   Row,
   Select,
   Space,
-  Typography,
 } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -275,12 +275,12 @@ function ScheduleIntervalInner<T>(
                 onClick={() => handleSelectedSchedular(value)}>
                 <Radio value={value}>
                   <Space direction="vertical" size={6}>
-                    <Typography.Text className="font-medium text-md">
+                    <Typography className="font-medium text-md">
                       {title}
-                    </Typography.Text>
-                    <Typography.Text className="text-grey-muted">
+                    </Typography>
+                    <Typography className="text-grey-muted">
                       {description}
-                    </Typography.Text>
+                    </Typography>
                   </Space>
                 </Radio>
               </Card>

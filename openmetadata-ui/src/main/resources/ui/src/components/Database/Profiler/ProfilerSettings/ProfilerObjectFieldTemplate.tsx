@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button, Space, Typography } from 'antd';
+import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, Fragment } from 'react';

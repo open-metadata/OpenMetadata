@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { TourEndModalProps } from './TourEndModal.interface';

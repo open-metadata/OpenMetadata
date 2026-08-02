@@ -76,6 +76,71 @@ describe('Typography', () => {
     expect(el).toHaveClass('tw:text-tertiary');
     expect(el.className).not.toMatch(/tw:text-error-primary/);
   });
+
+  // `.prose` styles descendants through `.prose :not(...)`, and no rule in that
+  // block targets `span`/`div`. Dropping the wrapper for those keeps the
+  // computed text style identical (the element-level `.prose` layer sets only
+  // inherited properties) while restoring inline flow and avoiding invalid
+  // `<div>`-inside-`<span>` nesting. Elements the descendant rules *do* target
+  // must keep the wrapper or they silently lose their styling.
+  describe('prose wrapper', () => {
+    it('renders no wrapper for the default span, carrying prose itself', () => {
+      render(<Typography>Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el.tagName).toBe('SPAN');
+      expect(el).toHaveClass('prose');
+      expect(el.parentElement).not.toHaveClass('prose');
+    });
+
+    it('renders no wrapper for as="div"', () => {
+      render(<Typography as="div">Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el.tagName).toBe('DIV');
+      expect(el).toHaveClass('prose');
+      expect(el.parentElement).not.toHaveClass('prose');
+    });
+
+    it.each(['p', 'h1', 'a', 'blockquote', 'li'] as const)(
+      'keeps the wrapper for as="%s" so descendant prose rules still match',
+      (as) => {
+        render(<Typography as={as}>Hello</Typography>);
+
+        const el = screen.getByText('Hello');
+
+        expect(el).not.toHaveClass('prose');
+        expect(el.parentElement).toHaveClass('prose');
+      }
+    );
+
+    it('keeps the wrapper when ellipsis is set', () => {
+      render(<Typography ellipsis={{ rows: 2 }}>Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el).not.toHaveClass('prose');
+      expect(el.parentElement).toHaveClass('prose');
+    });
+
+    it('keeps the wrapper for a non-default quote variant', () => {
+      render(<Typography quoteVariant="centered-quote">Hello</Typography>);
+
+      const el = screen.getByText('Hello');
+
+      expect(el).not.toHaveClass('prose');
+      expect(el.parentElement).toHaveClass('prose');
+      expect(el.parentElement).toHaveClass('prose-centered-quote');
+    });
+
+    it('still forwards other props to an unwrapped element', () => {
+      render(<Typography data-testid="unwrapped">Hello</Typography>);
+
+      expect(screen.getByTestId('unwrapped')).toHaveTextContent('Hello');
+    });
+  });
 });
 
 describe('Typography ellipsis tooltip', () => {

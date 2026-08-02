@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Modal, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -406,7 +407,6 @@ const ManageButton: FC<ManageButtonProps> = ({
           onSave={handleDisplayNameUpdate}
         />
       )}
-
       {showReactiveModal && (
         // Used Button to stop click propagation event in the
         // TeamDetailsV1 and User.component collapsible panel.
@@ -432,11 +432,11 @@ const ManageButton: FC<ManageButtonProps> = ({
               setShowReactiveModal(false);
             }}
             onOk={handleRestore}>
-            <Typography.Text data-testid="restore-modal-body">
+            <Typography data-testid="restore-modal-body">
               {t('message.are-you-want-to-restore', {
                 entity: entityName,
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         </Button>
       )}

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { DataQualityLegendItemProps } from './DataQualitySection.interface';
 
@@ -27,8 +27,8 @@ export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
     <div className="legend-item">
       <span className={`legend-dot ${type}`} />
       <span className="legend-text">
-        <Typography.Text className="legend-text-label">{label}</Typography.Text>
-        <Typography.Text className="legend-text-value">{count}</Typography.Text>
+        <Typography className="legend-text-label">{label}</Typography>
+        <Typography className="legend-text-value">{count}</Typography>
       </span>
     </div>
   );

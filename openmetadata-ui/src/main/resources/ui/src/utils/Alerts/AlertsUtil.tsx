@@ -17,6 +17,7 @@ import {
   ExclamationCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   AlertProps,
   Button,
@@ -32,7 +33,6 @@ import {
   Skeleton,
   Switch,
   Tooltip,
-  Typography,
 } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
@@ -369,9 +369,9 @@ export const getDestinationConfigField = (
                         <ConfigIcon className="configuration-icon" />
                       </Col>
                       <Col>
-                        <Typography.Text>
+                        <Typography>
                           {t('label.advanced-configuration')}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                   }
@@ -380,9 +380,9 @@ export const getDestinationConfigField = (
                     <Col data-testid="auth-type" span={24}>
                       <Form.Item
                         label={
-                          <Typography.Text>{`${t(
+                          <Typography>{`${t(
                             'label.authentication-type'
-                          )}:`}</Typography.Text>
+                          )}:`}</Typography>
                         }
                         labelCol={{ span: 24 }}
                         name={[fieldName, 'config', 'authType', 'type']}>
@@ -433,9 +433,9 @@ export const getDestinationConfigField = (
                             <Col data-testid="secret-key" span={24}>
                               <Form.Item
                                 label={
-                                  <Typography.Text>{`${t(
+                                  <Typography>{`${t(
                                     'label.secret-key'
-                                  )}:`}</Typography.Text>
+                                  )}:`}</Typography>
                                 }
                                 labelCol={{ span: 24 }}
                                 name={[
@@ -470,9 +470,9 @@ export const getDestinationConfigField = (
                               <Col span={24}>
                                 <Form.Item
                                   label={
-                                    <Typography.Text>{`${t(
+                                    <Typography>{`${t(
                                       'label.token-url'
-                                    )}:`}</Typography.Text>
+                                    )}:`}</Typography>
                                   }
                                   labelCol={{ span: 24 }}
                                   name={[
@@ -501,9 +501,9 @@ export const getDestinationConfigField = (
                               <Col span={12}>
                                 <Form.Item
                                   label={
-                                    <Typography.Text>{`${t(
+                                    <Typography>{`${t(
                                       'label.client-id'
-                                    )}:`}</Typography.Text>
+                                    )}:`}</Typography>
                                   }
                                   labelCol={{ span: 24 }}
                                   name={[
@@ -532,9 +532,9 @@ export const getDestinationConfigField = (
                               <Col span={12}>
                                 <Form.Item
                                   label={
-                                    <Typography.Text>{`${t(
+                                    <Typography>{`${t(
                                       'label.client-secret'
-                                    )}:`}</Typography.Text>
+                                    )}:`}</Typography>
                                   }
                                   labelCol={{ span: 24 }}
                                   name={[
@@ -563,9 +563,9 @@ export const getDestinationConfigField = (
                               <Col span={24}>
                                 <Form.Item
                                   label={
-                                    <Typography.Text>{`${t(
+                                    <Typography>{`${t(
                                       'label.scope'
-                                    )}:`}</Typography.Text>
+                                    )}:`}</Typography>
                                   }
                                   labelCol={{ span: 24 }}
                                   name={[
@@ -599,9 +599,9 @@ export const getDestinationConfigField = (
                             <Col span={24}>
                               <Row align="middle" justify="space-between">
                                 <Col>
-                                  <Typography.Text>
+                                  <Typography>
                                     {`${t('label.header-plural')}:`}
-                                  </Typography.Text>
+                                  </Typography>
                                 </Col>
                                 <Col>
                                   <Col>
@@ -690,9 +690,9 @@ export const getDestinationConfigField = (
                             <Col span={24}>
                               <Row align="middle" justify="space-between">
                                 <Col>
-                                  <Typography.Text>
+                                  <Typography>
                                     {`${t('label.query-parameter-plural')}:`}
-                                  </Typography.Text>
+                                  </Typography>
                                 </Col>
                                 <Col>
                                   <Col>
@@ -774,9 +774,9 @@ export const getDestinationConfigField = (
                     <Col data-testid="http-method" span={24}>
                       <Form.Item
                         label={
-                          <Typography.Text>{`${t(
+                          <Typography>{`${t(
                             'label.http-method'
-                          )}:`}</Typography.Text>
+                          )}:`}</Typography>
                         }
                         labelCol={{ span: 24 }}
                         name={[fieldName, 'config', 'httpMethod']}>
@@ -1266,7 +1266,7 @@ export const getAlertRecentEventsFilterOptions = () => {
     const label = getAlertEventsFilterLabels(status);
 
     return {
-      label: <Typography.Text>{label}</Typography.Text>,
+      label: <Typography>{label}</Typography>,
       key: status,
     };
   });

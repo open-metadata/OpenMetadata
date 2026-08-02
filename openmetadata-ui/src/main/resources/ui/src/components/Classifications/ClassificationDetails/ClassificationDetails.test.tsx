@@ -76,6 +76,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: ({ title }: { title?: string }) => (
     <div data-testid="empty-tags-placeholder">{title}</div>
   ),
+  Typography: jest
+    .fn()
+    .mockImplementation(
+      ({
+        as: Component = 'span',
+        children,
+        ...props
+      }: {
+        as?: React.ElementType;
+        children: React.ReactNode;
+        [key: string]: unknown;
+      }) => <Component {...props}>{children}</Component>
+    ),
 }));
 
 jest.mock('react-router-dom', () => ({

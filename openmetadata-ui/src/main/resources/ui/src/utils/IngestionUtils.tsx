@@ -16,7 +16,6 @@ import {
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import { Code01 } from '@untitledui/icons';
-import { Typography } from 'antd';
 import { startCase } from 'lodash';
 import {
   LogViewerModalProps,
@@ -187,12 +186,12 @@ export const getSuccessMessage = (
       });
 
   return (
-    <Typography.Text>
-      <Typography.Text className="font-medium break-word">{`"${ingestionName}"`}</Typography.Text>
-      <Typography.Text>
+    <CoreTypography>
+      <CoreTypography className="font-medium break-word">{`"${ingestionName}"`}</CoreTypography>
+      <CoreTypography>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
-      </Typography.Text>
-    </Typography.Text>
+      </CoreTypography>
+    </CoreTypography>
   );
 };
 

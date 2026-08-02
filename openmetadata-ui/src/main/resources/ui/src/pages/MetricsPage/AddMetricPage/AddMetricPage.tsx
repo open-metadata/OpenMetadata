@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { omit, startCase } from 'lodash';
 import { FocusEvent, lazy, useCallback, useMemo, useState } from 'react';
@@ -273,12 +274,13 @@ const AddMetricPage = () => {
               </Col>
 
               <Col span={24}>
-                <Typography.Title
+                <Typography
+                  as="h5"
                   className="m-b-0"
                   data-testid="heading"
-                  level={5}>
+                  size="text-md">
                   {title}
-                </Typography.Title>
+                </Typography>
               </Col>
               <Col span={24}>
                 <Form

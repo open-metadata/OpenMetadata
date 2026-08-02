@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
@@ -148,11 +149,11 @@ const KnowledgeCenterWidget = ({
                             ),
                           }
                     }>
-                    <Typography.Text
+                    <Typography
                       className="article-header text-sm font-regular text-left cursor-pointer ellipsis-text"
                       ellipsis={{ tooltip: true }}>
                       {getEntityName(knowledgePage)}
-                    </Typography.Text>
+                    </Typography>
                   </Link>
                 </Col>
               </Row>

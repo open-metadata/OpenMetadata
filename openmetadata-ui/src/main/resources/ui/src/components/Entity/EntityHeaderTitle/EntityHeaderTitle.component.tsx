@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button, Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
@@ -137,7 +138,7 @@ const EntityHeaderTitle = ({
             <Tooltip
               placement="bottom"
               title={stringToHTML(displayName ?? name)}>
-              <Typography.Text
+              <Typography
                 ellipsis
                 className={classNames(
                   'entity-header-name',
@@ -146,7 +147,7 @@ const EntityHeaderTitle = ({
                 )}
                 data-testid="entity-header-display-name">
                 {stringToHTML(displayName ?? name)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
             {badges}
             {suffix}
@@ -157,7 +158,7 @@ const EntityHeaderTitle = ({
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
           <Tooltip placement="bottom" title={entityName}>
-            <Typography.Text
+            <Typography
               ellipsis
               className={classNames(displayNameClassName, 'm-b-0', {
                 'display-xs entity-header-name font-semibold': !displayName,
@@ -172,7 +173,7 @@ const EntityHeaderTitle = ({
                   width={14}
                 />
               )}
-            </Typography.Text>
+            </Typography>
           </Tooltip>
 
           <Tooltip
@@ -204,9 +205,9 @@ const EntityHeaderTitle = ({
                   icon={<Icon component={StarFilledIcon} />}
                   loading={isFollowingLoading}
                   onClick={handleFollowingClick}>
-                  <Typography.Text>
+                  <Typography>
                     {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  </Typography.Text>
+                  </Typography>
                 </Button>
               </Tooltip>
             )}

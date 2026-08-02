@@ -110,6 +110,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ as: Component = 'span', children, ...props }) => (
+      <Component {...props}>{children}</Component>
+    )),
 }));
 
 jest.mock('@ant-design/icons', () => ({

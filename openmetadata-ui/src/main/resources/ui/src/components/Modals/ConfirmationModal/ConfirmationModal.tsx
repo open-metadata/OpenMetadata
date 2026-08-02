@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -73,16 +74,16 @@ const ConfirmationModal = ({
       maskClosable={false}
       open={visible}
       title={
-        <Typography.Text
-          strong
+        <Typography
           className={headerClassName}
-          data-testid="modal-header">
+          data-testid="modal-header"
+          weight="bold">
           {header}
-        </Typography.Text>
+        </Typography>
       }
       onCancel={onCancel}>
       <div className={classNames('h-20', bodyClassName)}>
-        <Typography.Text data-testid="body-text">{bodyText}</Typography.Text>
+        <Typography data-testid="body-text">{bodyText}</Typography>
       </div>
     </Modal>
   );

@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Select, Tooltip } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';

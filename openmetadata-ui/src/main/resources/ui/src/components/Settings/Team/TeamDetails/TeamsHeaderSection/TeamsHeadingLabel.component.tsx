@@ -15,7 +15,8 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Button, Input, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Input, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -127,21 +128,22 @@ const TeamsHeadingLabel = ({
         <>
           <>
             {heading ? (
-              <Typography.Title
+              <Typography
+                as="h5"
                 className="m-b-0 flex-1 w-min-0"
                 data-testid="team-heading"
                 ellipsis={{ tooltip: true }}
-                level={5}>
+                size="text-md">
                 {heading}
-              </Typography.Title>
+              </Typography>
             ) : (
-              <Typography.Text
+              <Typography
                 className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
                 data-testid="team-heading">
                 {t('label.no-entity', {
                   entity: t('label.display-name'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
             {(hasAccess || isCurrentTeamOwner) && !currentTeam.deleted && (
               <Tooltip

@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Col, Row, Tag, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Tag } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
@@ -32,11 +33,11 @@ import { stringToHTML } from './StringUtils';
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
     (
-      <Typography.Text
+      <Typography
         className="m-b-0 d-block break-word"
         data-testid="pipeline-name">
         {stringToHTML(highlightSearchText(getEntityName(record), searchText))}
-      </Typography.Text>
+      </Typography>
     );
 
 export const renderTypeField =
@@ -47,11 +48,11 @@ export const renderTypeField =
         : startCase(record.pipelineType);
 
     return (
-      <Typography.Text
+      <Typography
         className="m-b-0 d-block break-word"
         data-testid="pipeline-type">
         {stringToHTML(highlightSearchText(typeText, searchText))}
-      </Typography.Text>
+      </Typography>
     );
   };
 
@@ -87,20 +88,20 @@ const ScheduleFieldCell = ({
       <Col className="tw:min-w-0" flex="auto">
         <Row className="line-height-16">
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="font-medium"
               data-testid="schedule-primary-details"
               ellipsis={{ tooltip: descriptionFirstPart }}>
               {descriptionFirstPart}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="text-xs text-grey-muted"
               data-testid="schedule-secondary-details"
               ellipsis={{ tooltip: descriptionSecondPart }}>
               {descriptionSecondPart}
-            </Typography.Text>
+            </Typography>
           </Col>
         </Row>
       </Col>
@@ -111,9 +112,9 @@ const ScheduleFieldCell = ({
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {
     return (
-      <Typography.Text data-testid="scheduler-no-data">
+      <Typography data-testid="scheduler-no-data">
         {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
+      </Typography>
     );
   }
 

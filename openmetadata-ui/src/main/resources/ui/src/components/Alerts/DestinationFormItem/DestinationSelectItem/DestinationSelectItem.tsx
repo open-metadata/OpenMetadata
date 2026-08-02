@@ -12,6 +12,7 @@
  */
 
 import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -23,7 +24,6 @@ import {
   Skeleton,
   Switch,
   Tabs,
-  Typography,
 } from 'antd';
 import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
@@ -318,7 +318,7 @@ function DestinationSelectItem({
                         className="destination-warning-status"
                         icon={<InfoCircleOutlined height={14} />}
                         message={
-                          <Typography.Text className="text-sm">
+                          <Typography className="text-sm">
                             <Transi18next
                               i18nKey={
                                 destinationType ===
@@ -333,7 +333,7 @@ function DestinationSelectItem({
                                 subscriptionType,
                               }}
                             />
-                          </Typography.Text>
+                          </Typography>
                         }
                         type="warning"
                       />
@@ -345,9 +345,7 @@ function DestinationSelectItem({
               <Col span={24}>
                 <Form.Item
                   label={
-                    <Typography.Text>
-                      {t('label.notify-downstream')}
-                    </Typography.Text>
+                    <Typography>{t('label.notify-downstream')}</Typography>
                   }
                   labelAlign="left"
                   labelCol={{ span: 6 }}
@@ -420,16 +418,16 @@ function DestinationSelectItem({
                     icon={alertIcon}
                     message={
                       <>
-                        <Typography.Text className="text-sm">
+                        <Typography className="text-sm">
                           {`${t('label.status')}:`}
-                        </Typography.Text>
-                        <Typography.Text className="font-medium text-sm m-l-xss">
+                        </Typography>
+                        <Typography className="font-medium text-sm m-l-xss">
                           {`${
                             destinationStatusDetails?.statusCode
                           } ${statusLabel} ${
                             destinationStatusDetails?.reason ?? ''
                           }`}
-                        </Typography.Text>
+                        </Typography>
                       </>
                     }
                     type={alertType}

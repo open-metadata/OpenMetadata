@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -17,7 +18,6 @@ import {
   Row,
   SpinProps,
   Table as AntdTable,
-  Typography,
 } from 'antd';
 import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
@@ -157,11 +157,11 @@ const Table = <T extends object>(
           key: 'header',
           label: (
             <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-              <Typography.Text
+              <Typography
                 className="text-sm text-grey-muted font-medium"
                 data-testid="column-dropdown-title">
                 {t('label.column')}
-              </Typography.Text>
+              </Typography>
               <Button
                 className="text-primary text-sm p-0"
                 data-testid="column-dropdown-action-button"

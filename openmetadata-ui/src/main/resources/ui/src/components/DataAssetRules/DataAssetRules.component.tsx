@@ -12,6 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -22,7 +23,6 @@ import {
   Space,
   Switch,
   Table,
-  Typography,
 } from 'antd';
 import { FormInstance } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
@@ -391,11 +391,11 @@ export const useSemanticsRuleList = ({
             height={SIZE.MEDIUM}
             width={SIZE.MEDIUM}
           />
-          <Typography.Text>
+          <Typography>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
               entity: t('label.data-asset-rules'),
             })}
-          </Typography.Text>
+          </Typography>
           <Button
             ghost
             className="add-button"

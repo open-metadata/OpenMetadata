@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Drawer, Select, Space, Table, Tooltip, Typography } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Drawer, Select, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -22,6 +23,7 @@ import {
 } from '../../../../rest/searchAPI';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { CopyToClipboardButton } from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import { ReindexFailuresProps } from './ReindexFailures.interface';
 
 const PAGE_SIZE = 20;
@@ -95,7 +97,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         key: 'entityType',
         width: 120,
         render: (text: string) => (
-          <Typography.Text className="font-medium">{text}</Typography.Text>
+          <CoreTypography className="font-medium">{text}</CoreTypography>
         ),
       },
       {
@@ -105,9 +107,12 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         width: 150,
         ellipsis: true,
         render: (text: string) => (
-          <Typography.Text copyable={Boolean(text)}>
-            {text || '-'}
-          </Typography.Text>
+          <div className="d-flex items-center gap-1">
+            <CoreTypography ellipsis={{ tooltip: true }}>
+              {text || '-'}
+            </CoreTypography>
+            {text && <CopyToClipboardButton copyText={text} />}
+          </div>
         ),
       },
       {
@@ -116,7 +121,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
         key: 'failureStage',
         width: 100,
         render: (text: string) => (
-          <Typography.Text>{text || '-'}</Typography.Text>
+          <CoreTypography>{text || '-'}</CoreTypography>
         ),
       },
       {
@@ -130,12 +135,12 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
               overlayStyle={{ maxWidth: 500 }}
               placement="topLeft"
               title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}>
-              <Typography.Paragraph
-                copyable
-                className="m-b-0"
-                ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}>
-                {text}
-              </Typography.Paragraph>
+              <div className="d-flex items-start gap-1">
+                <CoreTypography as="p" className="m-b-0" ellipsis={{ rows: 2 }}>
+                  {text}
+                </CoreTypography>
+                <CopyToClipboardButton copyText={text} />
+              </div>
             </Tooltip>
           ) : (
             '-'
@@ -162,7 +167,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
       onClose={onClose}>
       <Space className="w-full m-b-md" direction="vertical" size="small">
         <Space>
-          <Typography.Text>{t('label.filter-by-entity-type')}:</Typography.Text>
+          <CoreTypography>{t('label.filter-by-entity-type')}:</CoreTypography>
           <Select
             allowClear
             placeholder={t('label.all')}
@@ -177,7 +182,6 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
           </Select>
         </Space>
       </Space>
-
       <Table
         columns={columns}
         dataSource={data}

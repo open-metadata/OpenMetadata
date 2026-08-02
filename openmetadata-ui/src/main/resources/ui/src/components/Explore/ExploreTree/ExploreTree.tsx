@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Tree, TreeProps, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip, Tree, TreeProps } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -78,24 +79,32 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   return (
     <Tooltip
       title={
-        <Typography.Text className="text-white">
+        <Typography className="text-white">
           {tooltipText}
           {node.type && (
             <span className="text-grey-400">{` (${node.type})`}</span>
           )}
-        </Typography.Text>
+        </Typography>
       }>
       <div
         className={classNames('d-flex justify-between', {
           'tw:opacity-50': node.disabled,
         })}>
-        <Typography.Text
+        {/*
+         * Plain span (not Typography) so the testid element's parent stays
+         * the `d-flex justify-between` row above — core Typography always
+         * wraps its children in an extra `div.prose`, which would otherwise
+         * land between this node and the `.explore-node-count` sibling that
+         * e2e specs reach via `getByTestId(...).locator('..')`.
+         * See https://github.com/open-metadata/OpenMetadata/issues/30779.
+         */}
+        <span
           className={classNames({
             'm-l-xss': node.data?.isRoot,
           })}
           data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
-          {node.title}
-        </Typography.Text>
+          <Typography>{node.title}</Typography>
+        </span>
         {!isUndefined(node.count) && (
           <span className="explore-node-count">
             {getCountBadge(node.count)}
@@ -704,15 +713,16 @@ const ExploreTree = ({
         className="h-min-80 d-flex flex-col justify-center border-none"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph
+        <Typography
+          as="p"
           className="font-medium"
           style={{ marginBottom: '0' }}>
           {t('message.no-data-yet')}
-        </Typography.Paragraph>
-        <Typography.Paragraph style={{ marginBottom: '0' }}>
+        </Typography>
+        <Typography as="p" style={{ marginBottom: '0' }}>
           {t('message.add-service-and-data-assets')}
-        </Typography.Paragraph>
-        <Typography.Paragraph>
+        </Typography>
+        <Typography as="p">
           <Transi18next
             i18nKey="message.need-help-message"
             renderElement={
@@ -728,7 +738,7 @@ const ExploreTree = ({
               doc: t('message.see-how-to-get-started'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }

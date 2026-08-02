@@ -15,8 +15,9 @@ import {
   Toggle,
   Tooltip as UTTooltip,
   TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
@@ -107,9 +108,7 @@ export const getCommonColumns = (options?: {
       dataIndex: 'displayName',
       key: 'displayName',
       width: 200,
-      render: (text) => (
-        <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
-      ),
+      render: (text) => <Typography>{text || NO_DATA_PLACEHOLDER}</Typography>,
     },
     ...descriptionTableObject<Tag>({ width: 300 })
   );

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Select, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Select, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import moment from 'moment';
@@ -191,11 +192,7 @@ const OnlineUsersPage = () => {
         const activityTime = lastActivityTime || record.lastLoginTime;
 
         if (!activityTime) {
-          return (
-            <Typography.Text type="secondary">
-              {t('label.never')}
-            </Typography.Text>
-          );
+          return <Typography color="secondary">{t('label.never')}</Typography>;
         }
 
         const lastActivityMoment = moment(activityTime);
@@ -223,12 +220,10 @@ const OnlineUsersPage = () => {
 
         return (
           <Space direction="vertical" size={0}>
-            <Typography.Text style={{ color: statusColor }}>
-              {statusText}
-            </Typography.Text>
-            <Typography.Text style={{ fontSize: '12px' }} type="secondary">
+            <Typography style={{ color: statusColor }}>{statusText}</Typography>
+            <Typography color="secondary" style={{ fontSize: '12px' }}>
               {formatDateTime(activityTime)}
-            </Typography.Text>
+            </Typography>
           </Space>
         );
       },
@@ -271,7 +266,7 @@ const OnlineUsersPage = () => {
             dataSource={userList}
             extraTableFilters={
               <Space>
-                <Typography.Text>{t('label.time-window')}:</Typography.Text>
+                <Typography>{t('label.time-window')}:</Typography>
                 <Select
                   data-testid="time-window-select"
                   options={TIME_WINDOWS}

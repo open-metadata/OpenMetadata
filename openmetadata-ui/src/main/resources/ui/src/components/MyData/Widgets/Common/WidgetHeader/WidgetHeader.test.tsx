@@ -122,10 +122,8 @@ describe('WidgetHeader', () => {
       title: 'Very Long Widget Title That Should Be Truncated',
     });
 
-    const title = screen.getByText(
-      'Very Long Widget Title That Should Be Truncated'
-    );
+    const title = screen.getByTestId('widget-title');
 
-    expect(title).toHaveClass('ant-typography-ellipsis');
+    expect(title).toHaveClass('tw:truncate');
   });
 });

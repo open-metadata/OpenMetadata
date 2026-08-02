@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -49,8 +50,6 @@ import { QueryCardProp } from './TableQueries.interface';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../SchemaEditor/SchemaEditor'))
 );
-
-const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -194,13 +193,17 @@ const QueryCard: FC<QueryCardProp> = ({
           }
           title={
             <Space className="font-normal p-y-xs" size={8}>
-              <Text className="text-sm">{queryDate}</Text>
+              <Typography className="text-sm">{queryDate}</Typography>
               {duration && (
                 <>
-                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-                  <Text className="text-sm" data-testid="query-run-duration">
+                  <Typography className="text-gray-400">
+                    {PIPE_SYMBOL}
+                  </Typography>
+                  <Typography
+                    className="text-sm"
+                    data-testid="query-run-duration">
                     {duration}
-                  </Text>
+                  </Typography>
                 </>
               )}
             </Space>

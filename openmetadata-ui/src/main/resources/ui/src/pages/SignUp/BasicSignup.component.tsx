@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,9 +78,9 @@ const BasicSignUp = () => {
         data-testid="signin-page">
         <div className="login-box">
           <BrandImage isMonoGram height="auto" width={50} />
-          <Typography.Title className="header-text display-sm" level={3}>
+          <Typography as="h3" className="header-text display-sm" size="text-xl">
             {t('label.welcome-to')} {brandName}
-          </Typography.Title>
+          </Typography>
 
           {isAuthProviderBasic ? (
             <div className="login-form">
@@ -185,9 +186,7 @@ const BasicSignUp = () => {
                 </Button>
 
                 <div className="mt-4 d-flex flex-center signup-text">
-                  <Typography.Text>
-                    {t('message.already-a-user')}
-                  </Typography.Text>
+                  <Typography>{t('message.already-a-user')}</Typography>
                   <Button
                     ghost
                     className="link-btn"

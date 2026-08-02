@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, FormProps, Input, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { useMemo, useState } from 'react';
@@ -122,10 +123,11 @@ const SignUp = () => {
             name={t('label.brand-name-logo')}
             width={50}
           />
-          <Typography.Title
+          <Typography
+            as="h3"
             className="text-center"
             data-testid="om-heading"
-            level={3}>
+            size="text-xl">
             <Transi18next
               i18nKey="label.join-entity"
               renderElement={<span className="text-primary" />}
@@ -133,7 +135,7 @@ const SignUp = () => {
                 entity: t('label.brand-name'),
               }}
             />
-          </Typography.Title>
+          </Typography>
         </Space>
 
         <Form

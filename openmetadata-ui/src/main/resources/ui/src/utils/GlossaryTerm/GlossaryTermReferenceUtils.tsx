@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import { ReactComponent as IconTerm } from '../../assets/svg/book.svg';
 import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import type { EntityReference } from '../../generated/entity/data/table';
@@ -39,7 +40,7 @@ export const GlossaryTermListItemRenderer = (props: EntityReference) => {
         name="doc"
         width={16}
       />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
+      <Typography>{getEntityName(props)}</Typography>
     </Space>
   );
 };

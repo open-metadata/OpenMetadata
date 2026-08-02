@@ -365,7 +365,35 @@ module.exports = function transformer(file, api) {
   }
 
   const fullyConvertedFile = skips.length === 0 && !bareUsageFound;
-  const finalCoreName = fullyConvertedFile ? 'Typography' : CORE_LOCAL_ALIAS;
+
+  const coreImports = root.find(j.ImportDeclaration, {
+    source: { value: CORE_MODULE },
+  });
+
+  // If the core module is already imported under *some* local name — plain
+  // `Typography` or an existing `Typography as X` alias — converted elements
+  // must reuse that exact name. Ignoring an existing alias (as opposed to
+  // only checking for the plain name) is what produced the duplicate-import
+  // bug in utils/IngestionUtils.tsx: the file already had
+  // `Typography as CoreTypography`, the old code only checked for a *plain*
+  // `Typography` specifier, didn't find one, and pushed a second `Typography`
+  // specifier onto the same import. Only introduce a brand-new specifier
+  // when no existing one is found at all.
+  let existingCoreTypographyLocalName = null;
+  coreImports.forEach((path) => {
+    path.node.specifiers.forEach((spec) => {
+      if (
+        spec.type === 'ImportSpecifier' &&
+        spec.imported.name === 'Typography'
+      ) {
+        existingCoreTypographyLocalName = spec.local.name;
+      }
+    });
+  });
+
+  const finalCoreName =
+    existingCoreTypographyLocalName ||
+    (fullyConvertedFile ? 'Typography' : CORE_LOCAL_ALIAS);
 
   convertedElements.forEach((node) => {
     node.openingElement.name = j.jsxIdentifier(finalCoreName);
@@ -409,10 +437,6 @@ module.exports = function transformer(file, api) {
     }
   });
 
-  const coreImports = root.find(j.ImportDeclaration, {
-    source: { value: CORE_MODULE },
-  });
-
   function replaceImportPreservingHeader(path, newDecl) {
     newDecl.comments = path.node.comments;
     j(path).replaceWith(newDecl);
@@ -439,16 +463,7 @@ module.exports = function transformer(file, api) {
         !(spec.type === 'ImportSpecifier' && spec.imported.name === 'Typography')
     );
 
-    const hasCoreTypographyAlready = coreImports
-      .nodes()
-      .some((n) =>
-        n.specifiers.some(
-          (s) =>
-            s.type === 'ImportSpecifier' &&
-            s.imported.name === 'Typography' &&
-            s.local.name === 'Typography'
-        )
-      );
+    const hasCoreTypographyAlready = existingCoreTypographyLocalName !== null;
 
     if (remainingSpecifiers.length) {
       typographyImportPath.node.specifiers = remainingSpecifiers;
@@ -480,16 +495,7 @@ module.exports = function transformer(file, api) {
       }
     }
   } else {
-    const hasAlias = coreImports
-      .nodes()
-      .some((n) =>
-        n.specifiers.some(
-          (s) =>
-            s.type === 'ImportSpecifier' &&
-            s.imported.name === 'Typography' &&
-            s.local.name === CORE_LOCAL_ALIAS
-        )
-      );
+    const hasAlias = existingCoreTypographyLocalName !== null;
     if (!hasAlias) {
       if (coreImports.size()) {
         coreImports.at(0).get().node.specifiers.push(

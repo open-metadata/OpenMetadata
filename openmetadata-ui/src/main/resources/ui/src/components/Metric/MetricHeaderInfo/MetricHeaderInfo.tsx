@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, List, Popover, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { FC, useMemo, useState } from 'react';
@@ -128,7 +129,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
               e.stopPropagation();
               handleUpdate(item.value);
             }}>
-            <Typography.Text>{item.label}</Typography.Text>
+            <Typography>{item.label}</Typography>
           </List.Item>
         );
       }}
@@ -145,7 +146,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
       className="d-flex metric-header-info-container align-start"
       data-testid={modiFiedLabel}>
       <div className="d-flex extra-info-container align-start ">
-        <Typography.Text
+        <Typography
           className="whitespace-nowrap text-sm d-flex flex-col gap-2"
           data-testid={modiFiedLabel}>
           <div className="d-flex items-center gap-1">
@@ -179,7 +180,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
           <div className={classNames('font-medium extra-info-value')}>
             {value ?? NO_DATA_PLACEHOLDER}
           </div>
-        </Typography.Text>
+        </Typography>
       </div>
     </Space>
   );

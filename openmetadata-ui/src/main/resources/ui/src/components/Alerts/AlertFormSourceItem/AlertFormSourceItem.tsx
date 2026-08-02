@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -19,7 +20,6 @@ import {
   MenuItemProps,
   MenuProps,
   Select,
-  Typography,
 } from 'antd';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
@@ -66,9 +66,9 @@ function AlertFormSourceItem({
         bodyStyle={{ padding: 0 }}
         className="source-dropdown-card"
         data-testid="drop-down-menu">
-        <Typography.Text className="p-l-md text-grey-muted">
+        <Typography className="p-l-md text-grey-muted">
           {t('label.data-asset-plural')}
-        </Typography.Text>
+        </Typography>
         <div className="p-t-xss">{menuNode}</div>
       </Card>
     );

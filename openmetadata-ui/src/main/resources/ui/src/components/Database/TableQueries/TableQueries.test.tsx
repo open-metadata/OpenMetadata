@@ -56,6 +56,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )),
   },
+  Typography: jest
+    .fn()
+    .mockImplementation(({ as: Component = 'span', children, ...props }) => (
+      <Component {...props}>{children}</Component>
+    )),
 }));
 
 jest.mock('@untitledui/icons', () => ({

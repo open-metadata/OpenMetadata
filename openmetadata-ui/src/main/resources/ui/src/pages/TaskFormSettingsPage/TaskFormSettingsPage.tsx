@@ -25,6 +25,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -35,7 +36,6 @@ import {
   Space,
   Spin,
   Tabs,
-  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useMemo, useState } from 'react';
@@ -530,9 +530,9 @@ const TaskFormSettingsPage = () => {
                         );
                       })
                     ) : (
-                      <Typography.Text className="text-grey-muted">
+                      <Typography className="text-grey-muted">
                         No task forms found yet.
-                      </Typography.Text>
+                      </Typography>
                     )}
                   </div>
                 )}
@@ -551,21 +551,24 @@ const TaskFormSettingsPage = () => {
             <section className="task-form-settings-main">
               <div className="task-form-settings-hero">
                 <div className="task-form-settings-hero__copy">
-                  <Typography.Text className="task-form-settings-hero__eyebrow">
+                  <Typography className="task-form-settings-hero__eyebrow">
                     Form Builder
-                  </Typography.Text>
-                  <Typography.Title
+                  </Typography>
+                  <Typography
+                    as="h2"
                     className="task-form-settings-hero__title"
-                    level={2}>
+                    size="display-xs">
                     {pageTitle}
-                  </Typography.Title>
-                  <Typography.Paragraph className="task-form-settings-hero__description">
+                  </Typography>
+                  <Typography
+                    as="p"
+                    className="task-form-settings-hero__description">
                     {pageDescription}
-                  </Typography.Paragraph>
+                  </Typography>
                   {schemaSubtitle ? (
-                    <Typography.Text className="task-form-settings-hero__meta">
+                    <Typography className="task-form-settings-hero__meta">
                       {schemaSubtitle}
-                    </Typography.Text>
+                    </Typography>
                   ) : null}
                 </div>
                 <Space
@@ -727,16 +730,19 @@ const TaskFormSettingsPage = () => {
                                   <div className="task-form-settings-transition-pane">
                                     <div className="task-form-settings-section-header">
                                       <div>
-                                        <Typography.Title
+                                        <Typography
+                                          as="h5"
                                           className="m-b-xs"
-                                          level={5}>
+                                          size="text-md">
                                           Transition Forms
-                                        </Typography.Title>
-                                        <Typography.Paragraph className="m-b-0 text-grey-muted">
+                                        </Typography>
+                                        <Typography
+                                          as="p"
+                                          className="m-b-0 text-grey-muted">
                                           Configure additional fields for
                                           specific workflow transitions like
                                           approve, reject, or reassign.
-                                        </Typography.Paragraph>
+                                        </Typography>
                                       </div>
                                       <Button
                                         data-testid="task-form-transition-add-button"
@@ -847,9 +853,9 @@ const TaskFormSettingsPage = () => {
                                         )}
                                       </div>
                                     ) : (
-                                      <Typography.Text className="text-grey-muted">
+                                      <Typography className="text-grey-muted">
                                         No transition forms configured yet.
-                                      </Typography.Text>
+                                      </Typography>
                                     )}
                                   </div>
                                 ),
@@ -861,16 +867,19 @@ const TaskFormSettingsPage = () => {
                                   <div className="task-form-settings-stage-pane">
                                     <div className="task-form-settings-section-header">
                                       <div>
-                                        <Typography.Title
+                                        <Typography
+                                          as="h5"
                                           className="m-b-xs"
-                                          level={5}>
+                                          size="text-md">
                                           Stage to Status Mapping
-                                        </Typography.Title>
-                                        <Typography.Paragraph className="m-b-0 text-grey-muted">
+                                        </Typography>
+                                        <Typography
+                                          as="p"
+                                          className="m-b-0 text-grey-muted">
                                           Map workflow stage ids to the coarse
                                           task status exposed in APIs and
                                           counts.
-                                        </Typography.Paragraph>
+                                        </Typography>
                                       </div>
                                       <Button
                                         data-testid="task-form-stage-mapping-add-button"
@@ -980,9 +989,9 @@ const TaskFormSettingsPage = () => {
                                         ))}
                                       </div>
                                     ) : (
-                                      <Typography.Text className="text-grey-muted">
+                                      <Typography className="text-grey-muted">
                                         No stage mappings configured yet.
-                                      </Typography.Text>
+                                      </Typography>
                                     )}
                                   </div>
                                 ),
@@ -997,9 +1006,9 @@ const TaskFormSettingsPage = () => {
                       label: 'Advanced JSON',
                       children: (
                         <div className="task-form-settings-json-pane">
-                          <Typography.Title className="m-b-sm" level={5}>
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Resolve Form Schema
-                          </Typography.Title>
+                          </Typography>
                           <CodeEditor
                             editorClass="task-form-schema-editor"
                             value={formSchemaValue}
@@ -1020,9 +1029,9 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography.Title className="m-b-sm" level={5}>
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Resolve UI Schema
-                          </Typography.Title>
+                          </Typography>
                           <CodeEditor
                             editorClass="task-form-ui-schema-editor"
                             value={uiSchemaValue}
@@ -1043,9 +1052,9 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography.Title className="m-b-sm" level={5}>
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Create Form Schema
-                          </Typography.Title>
+                          </Typography>
                           <CodeEditor
                             editorClass="task-form-create-schema-editor"
                             value={createFormSchemaValue}
@@ -1066,9 +1075,9 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography.Title className="m-b-sm" level={5}>
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Create UI Schema
-                          </Typography.Title>
+                          </Typography>
                           <CodeEditor
                             editorClass="task-form-create-ui-schema-editor"
                             value={createUiSchemaValue}
@@ -1090,9 +1099,9 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography.Title className="m-b-sm" level={5}>
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Transition Forms
-                          </Typography.Title>
+                          </Typography>
                           <CodeEditor
                             editorClass="task-form-transition-forms-editor"
                             value={transitionFormsValue}
@@ -1111,9 +1120,9 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography.Title className="m-b-sm" level={5}>
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Default Stage Mappings
-                          </Typography.Title>
+                          </Typography>
                           <CodeEditor
                             editorClass="task-form-stage-mappings-editor"
                             value={defaultStageMappingsValue}
@@ -1131,9 +1140,9 @@ const TaskFormSettingsPage = () => {
                             }}
                           />
 
-                          <Typography.Title className="m-b-sm" level={5}>
+                          <Typography as="h5" className="m-b-sm" size="text-md">
                             Workflow Definition JSON
-                          </Typography.Title>
+                          </Typography>
                           <CodeEditor
                             editorClass="task-form-workflow-definition-editor"
                             value={workflowDefinitionValue}

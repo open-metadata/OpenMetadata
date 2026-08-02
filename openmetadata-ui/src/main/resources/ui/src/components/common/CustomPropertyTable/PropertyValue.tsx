@@ -12,16 +12,8 @@
  */
 
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import {
-  Card,
-  Form,
-  Input,
-  Select,
-  Tag,
-  TimePicker,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Form, Input, Select, Tag, TimePicker, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -899,11 +891,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           searchClassBase.getEntityIcon(item.type)
         )}
       </div>
-      <Typography.Text
+      <Typography
         className="text-left text-primary truncate w-max-full"
         ellipsis={{ tooltip: true }}>
         {getEntityName(item)}
-      </Typography.Text>
+      </Typography>
     </Link>
   );
 
@@ -1001,15 +993,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             data-testid="time-interval-value">
             <div className="d-flex flex-column gap-2 items-center">
               <StartTimeIcon height={30} width={30} />
-              <Typography.Text className="property-value">{`${t(
+              <Typography className="property-value">{`${t(
                 'label.start-entity',
                 {
                   entity: t('label.time'),
                 }
-              )}`}</Typography.Text>
-              <Typography.Text className="text-sm text-grey-body property-value">
+              )}`}</Typography>
+              <Typography className="text-sm text-grey-body property-value">
                 {timeInterval.start}
-              </Typography.Text>
+              </Typography>
             </div>
             <div className="d-flex items-center">
               <EndTimeArrowIcon />
@@ -1020,15 +1012,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             </div>
             <div className="d-flex flex-column gap-2 items-center">
               <EndTimeIcon height={30} width={30} />
-              <Typography.Text className="property-value">{`${t(
-                'label.end-entity',
-                {
-                  entity: t('label.time'),
-                }
-              )}`}</Typography.Text>
-              <Typography.Text className="text-sm text-grey-body property-value">
+              <Typography className="property-value">{`${t('label.end-entity', {
+                entity: t('label.time'),
+              })}`}</Typography>
+              <Typography className="text-sm text-grey-body property-value">
                 {timeInterval.end}
-              </Typography.Text>
+              </Typography>
             </div>
           </div>
         );
@@ -1064,14 +1053,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           : '#';
 
         return (
-          <Typography.Link
+          <Typography
+            as="a"
             className="break-all property-value"
             data-testid="hyperlink-value"
             href={safeHref}
             rel="noopener noreferrer"
             target="_blank">
             {hyperlinkValue.displayText || hyperlinkValue.url}
-          </Typography.Link>
+          </Typography>
         );
       }
 
@@ -1086,11 +1076,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'dateTime-cp':
       default:
         return (
-          <Typography.Text
+          <Typography
             className="break-all text-grey-body property-value"
             data-testid="value">
             {value}
-          </Typography.Text>
+          </Typography>
         );
     }
   };
@@ -1155,12 +1145,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const customPropertyElement = (
     <div className="tw:flex tw:flex-col tw:gap-2" data-testid={propertyName}>
       <div className="d-flex items-center gap-1">
-        <Typography.Text
+        <Typography
           className="text-grey-body property-name"
           data-testid="property-name">
           {getEntityName(property)}
           {propertyCountSuffix}
-        </Typography.Text>
+        </Typography>
         {property.description && (
           <Tooltip
             destroyTooltipOnHide

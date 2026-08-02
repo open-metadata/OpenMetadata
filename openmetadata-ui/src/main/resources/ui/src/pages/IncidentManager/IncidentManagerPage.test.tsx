@@ -39,7 +39,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
   Typography: jest
     .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
+    .mockImplementation(({ as: Component = 'span', children, ...props }) => (
+      <Component {...props}>{children}</Component>
+    )),
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
 

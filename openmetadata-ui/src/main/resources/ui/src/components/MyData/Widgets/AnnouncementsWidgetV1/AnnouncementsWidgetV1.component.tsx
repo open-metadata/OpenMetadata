@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { Badge, Button, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Badge, Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
@@ -75,12 +76,13 @@ const AnnouncementsWidgetV1 = ({
             <div className="header-icon">
               <MegaphoneIcon />
             </div>
-            <Typography.Title
+            <Typography
+              as="h5"
               className="header-title"
               data-testid="announcements-widget-v1-title"
-              level={5}>
+              size="text-md">
               {t('label.recent-announcement-plural')}
-            </Typography.Title>
+            </Typography>
             <Badge
               className="announcement-count-badge"
               count={announcements.length}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { FC, useMemo } from 'react';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { Task, TaskComment } from '../../../rest/tasksAPI';
@@ -56,16 +57,16 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
         />
         <div className="flex-1">
           <Space className="w-full" size={4}>
-            <Typography.Text className="font-medium" data-testid="author-name">
+            <Typography className="font-medium" data-testid="author-name">
               {authorName}
-            </Typography.Text>
+            </Typography>
             {comment.createdAt && (
               <Tooltip title={formatDateTime(comment.createdAt)}>
-                <Typography.Text
+                <Typography
                   className="text-grey-muted text-xs"
                   data-testid="comment-time">
                   {getRelativeTime(comment.createdAt)}
-                </Typography.Text>
+                </Typography>
               </Tooltip>
             )}
           </Space>

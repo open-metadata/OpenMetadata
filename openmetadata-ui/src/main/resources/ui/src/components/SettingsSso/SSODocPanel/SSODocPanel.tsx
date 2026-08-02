@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
@@ -80,13 +80,16 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
             />
           </div>
         )}
-        <Typography.Title className="sso-provider-title text-md">
+        <Typography
+          as="h1"
+          className="sso-provider-title text-md"
+          size="display-sm">
           {serviceName === AuthProvider.Basic
             ? t('label.basic-configuration')
             : `${getProviderDisplayName(serviceName)} ${t(
                 'label.sso-configuration'
               )}`}
-        </Typography.Title>
+        </Typography>
       </div>
       <ServiceDocPanel
         activeField={resolvedField}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
@@ -171,9 +172,9 @@ const MlModelFeaturesList = () => {
             <Divider className="m-y-md" />
           </Col>
           <Col span={24}>
-            <Typography.Title level={5}>
+            <Typography as="h5" size="text-md">
               {t('label.feature-plural-used')}
-            </Typography.Title>
+            </Typography>
           </Col>
 
           {mlFeatures?.map((feature: MlFeature, index) => {
@@ -185,7 +186,7 @@ const MlModelFeaturesList = () => {
                   key={feature.fullyQualifiedName}>
                   <Row gutter={[0, 8]}>
                     <Col span={24}>
-                      <Typography.Text
+                      <Typography
                         className="font-semibold"
                         data-testid="column-name"
                         style={{
@@ -193,26 +194,24 @@ const MlModelFeaturesList = () => {
                         }}
                         onClick={(event) => handleColumnClick(feature, event)}>
                         {feature.name}
-                      </Typography.Text>
+                      </Typography>
                     </Col>
                     <Col span={24}>
                       <Space align="start">
                         <Space>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography className="text-grey-muted">
                             {`${t('label.type')} :`}
-                          </Typography.Text>{' '}
-                          <Typography.Text>
-                            {feature.dataType || '--'}
-                          </Typography.Text>
+                          </Typography>{' '}
+                          <Typography>{feature.dataType || '--'}</Typography>
                         </Space>
                         <Divider className="border-gray" type="vertical" />
                         <Space>
-                          <Typography.Text className="text-grey-muted">
+                          <Typography className="text-grey-muted">
                             {`${t('label.algorithm')} :`}
-                          </Typography.Text>{' '}
-                          <Typography.Text>
+                          </Typography>{' '}
+                          <Typography>
                             {feature.featureAlgorithm || '--'}
-                          </Typography.Text>
+                          </Typography>
                         </Space>
                       </Space>
                     </Col>
@@ -220,9 +219,9 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography.Text className="text-grey-muted">
+                          <Typography className="text-grey-muted">
                             {`${t('label.glossary-term-plural')} :`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
 
                         <Col flex="auto">
@@ -244,9 +243,9 @@ const MlModelFeaturesList = () => {
                     <Col span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography.Text className="text-grey-muted">
+                          <Typography className="text-grey-muted">
                             {`${t('label.tag-plural')} :`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col flex="auto">
                           <TableTags<MlFeature>
@@ -267,9 +266,9 @@ const MlModelFeaturesList = () => {
                     <Col className="m-t-xs" span={24}>
                       <Row gutter={8} wrap={false}>
                         <Col flex="130px">
-                          <Typography.Text className="text-grey-muted">
+                          <Typography className="text-grey-muted">
                             {`${t('label.description')} :`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col flex="auto">
                           <TableDescription

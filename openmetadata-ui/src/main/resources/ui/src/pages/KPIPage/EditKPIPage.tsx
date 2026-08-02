@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -23,7 +24,6 @@ import {
   Slider,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -226,13 +226,11 @@ const EditKPIPage = () => {
         children: (
           <div data-testid="edit-kpi-container">
             <TitleBreadcrumb className="m-t-0 my-4" titleLinks={breadcrumb} />
-            <Typography.Paragraph
-              className="text-base"
-              data-testid="form-title">
+            <Typography as="p" className="text-base" data-testid="form-title">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
-            </Typography.Paragraph>
+            </Typography>
             <Form
               data-testid="kpi-form"
               form={form}
@@ -438,12 +436,12 @@ const EditKPIPage = () => {
       secondPanel={{
         children: (
           <div data-testid="right-panel">
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
+            </Typography>
+            <Typography>{t('message.add-kpi-message')}</Typography>
           </div>
         ),
         className: 'content-resizable-panel-container',

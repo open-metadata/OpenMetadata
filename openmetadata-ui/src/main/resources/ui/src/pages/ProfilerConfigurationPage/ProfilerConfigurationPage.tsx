@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -20,7 +21,6 @@ import {
   Select,
   Switch,
   TreeSelect,
-  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
@@ -338,12 +338,12 @@ const ProfilerConfigurationPage = () => {
                   <Col span={24}>
                     <Row align="middle" justify="space-between" wrap={false}>
                       <Col flex="auto">
-                        <Typography.Text strong>
+                        <Typography weight="bold">
                           {t('label.enable-storing-of-sample-data')}
-                        </Typography.Text>
-                        <Typography.Paragraph className="text-grey-muted m-b-0">
+                        </Typography>
+                        <Typography as="p" className="text-grey-muted m-b-0">
                           {t('message.enable-storing-sample-data-description')}
-                        </Typography.Paragraph>
+                        </Typography>
                       </Col>
                       <Col className="p-l-lg" flex="none">
                         <Form.Item
@@ -367,12 +367,12 @@ const ProfilerConfigurationPage = () => {
                   <Col span={24}>
                     <Row align="middle" justify="space-between" wrap={false}>
                       <Col flex="auto">
-                        <Typography.Text strong>
+                        <Typography weight="bold">
                           {t('label.enable-reading-of-sample-data')}
-                        </Typography.Text>
-                        <Typography.Paragraph className="text-grey-muted m-b-0">
+                        </Typography>
+                        <Typography as="p" className="text-grey-muted m-b-0">
                           {t('message.enable-reading-sample-data-description')}
-                        </Typography.Paragraph>
+                        </Typography>
                       </Col>
                       <Col className="p-l-lg" flex="none">
                         <Form.Item

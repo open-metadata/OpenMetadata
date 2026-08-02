@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
-import { Button, Skeleton, Typography } from 'antd';
+import { Button, Skeleton } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -187,13 +188,13 @@ const getColumnNameContent = (
           })}
         </div>
       )}
-      <Typography.Text
+      <Typography
         className="custom-node-column-label"
         ellipsis={{
           tooltip: true,
         }}>
         {getEntityName(column)}
-      </Typography.Text>
+      </Typography>
     </>
   );
 };

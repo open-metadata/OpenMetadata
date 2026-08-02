@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -20,7 +21,6 @@ import {
   Select,
   TimePicker,
   Tooltip,
-  Typography,
 } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
@@ -159,12 +159,12 @@ export const ContractSLAFormTab: React.FC<{
     <>
       <Card className="sla-container container bg-grey p-box">
         <div>
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.sla')}
-          </Typography.Text>
-          <Typography.Paragraph className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-sla-description')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
 
         <Form
@@ -175,12 +175,12 @@ export const ContractSLAFormTab: React.FC<{
           <Row gutter={[12, 12]}>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.refresh-frequency')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.refresh-frequency-contract-description')}
-                </Typography.Text>
+                </Typography>
                 <Row gutter={12}>
                   <Col span={12}>
                     <Form.Item
@@ -225,12 +225,12 @@ export const ContractSLAFormTab: React.FC<{
             </Col>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.max-latency')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.max-latency-contract-description')}
-                </Typography.Text>
+                </Typography>
                 <Row gutter={24}>
                   <Col span={12}>
                     <Form.Item
@@ -275,13 +275,13 @@ export const ContractSLAFormTab: React.FC<{
             </Col>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.availability-time')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.availability-time-contract-description')}
-                </Typography.Text>
-                <Typography.Text className="text-grey-muted text-xs m-b-xs" />
+                </Typography>
+                <Typography className="text-grey-muted text-xs m-b-xs" />
 
                 <Row gutter={24}>
                   <Col span={12}>
@@ -326,12 +326,12 @@ export const ContractSLAFormTab: React.FC<{
             </Col>
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.retention')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.time-line-data-retention-description')}
-                </Typography.Text>
+                </Typography>
                 <Row gutter={24}>
                   <Col span={12}>
                     <Form.Item
@@ -377,12 +377,12 @@ export const ContractSLAFormTab: React.FC<{
 
             <Col span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.column')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.contract-sla-column-name-description')}
-                </Typography.Text>
+                </Typography>
 
                 <Form.Item label={t('label.column-name')} name="columnName">
                   <Select

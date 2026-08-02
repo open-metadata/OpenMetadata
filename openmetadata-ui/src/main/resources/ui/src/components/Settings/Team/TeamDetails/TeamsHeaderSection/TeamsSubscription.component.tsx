@@ -10,16 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -66,9 +58,9 @@ const TeamsSubscription = ({
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
-      <Typography.Link href={value.endpoint} target="_blank">
+      <Typography as="a" href={value.endpoint} target="_blank">
         {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
-      </Typography.Link>
+      </Typography>
     ),
     []
   );
@@ -80,21 +72,21 @@ const TeamsSubscription = ({
       if (hasEditPermission) {
         return (
           <div className="d-flex gap-2">
-            <Typography.Text
+            <Typography
               className="font-medium text-sm text-secondary-new "
               data-testid="subscription-no-data">
               {t('label.none')}
-            </Typography.Text>
+            </Typography>
           </div>
         );
       }
 
       return (
-        <Typography.Text
+        <Typography
           className="font-medium text-sm text-secondary-new"
           data-testid="subscription-no-data">
           {NO_DATA_PLACEHOLDER}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -145,9 +137,9 @@ const TeamsSubscription = ({
       className="teams-subscription-container d-flex flex-col gap-2"
       data-testid="teams-subscription">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
-        <Typography.Text className="right-panel-label text-sm font-medium subscription-label">
+        <Typography className="right-panel-label text-sm font-medium subscription-label">
           {`${t('label.subscription')}`}
-        </Typography.Text>
+        </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
           <Tooltip
             title={t('label.edit-entity', {
@@ -190,9 +182,7 @@ const TeamsSubscription = ({
           </Tooltip>
         )}
       </div>
-
       {subscriptionRenderElement}
-
       {editSubscription && (
         // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
         <Button

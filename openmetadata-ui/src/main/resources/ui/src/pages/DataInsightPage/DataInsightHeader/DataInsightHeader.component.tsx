@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -75,13 +76,13 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
         <Space className="w-full justify-between items-start">
           <div data-testid="data-insight-header">
             <div className="flex gap-2 items-center">
-              <Typography.Title level={5}>
+              <Typography as="h5" size="text-md">
                 {t('label.data-insight-plural')}
-              </Typography.Title>
+              </Typography>
             </div>
-            <Typography.Text className="data-insight-label-text">
+            <Typography className="data-insight-label-text">
               {t('message.data-insight-subtitle')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <div className="d-flex gap-2">
@@ -136,7 +137,6 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
           </Space>
         </Space>
       </Col>
-
       {/* Do not show summary for KPIs */}
       {showDataInsightSummary && (
         <Col span={24}>
@@ -146,7 +146,6 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
           />
         </Col>
       )}
-
       {/* Do not show KPIChart for app analytics */}
       {showKpiChart && (
         <Col span={24}>

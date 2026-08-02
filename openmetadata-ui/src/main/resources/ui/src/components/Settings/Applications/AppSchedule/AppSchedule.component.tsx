@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Modal, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Modal, Row, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -147,17 +148,13 @@ const AppSchedule = ({
 
     if (isAppDisabled) {
       return (
-        <Typography.Text>
+        <Typography>
           {disabledReason ?? t('message.application-disabled-message')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
-    return (
-      <Typography.Text>
-        {t('message.no-ingestion-pipeline-found')}
-      </Typography.Text>
-    );
+    return <Typography>{t('message.no-ingestion-pipeline-found')}</Typography>;
   }, [
     appData,
     disabledReason,
@@ -207,27 +204,23 @@ const AppSchedule = ({
           {appData.appSchedule && (
             <>
               <div className="d-flex items-center gap-2">
-                <Typography.Text className="right-panel-label">
+                <Typography className="right-panel-label">
                   {t('label.schedule-type')}
-                </Typography.Text>
-                <Typography.Text
-                  className="font-medium"
-                  data-testid="schedule-type">
+                </Typography>
+                <Typography className="font-medium" data-testid="schedule-type">
                   {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
                     ''}
-                </Typography.Text>
+                </Typography>
               </div>
 
               {!isEmpty(cronString) && (
                 <div className="d-flex items-center gap-2">
-                  <Typography.Text className="right-panel-label">
+                  <Typography className="right-panel-label">
                     {t('label.schedule-interval')}
-                  </Typography.Text>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="cron-string">
+                  </Typography>
+                  <Typography className="font-medium" data-testid="cron-string">
                     {cronString}
-                  </Typography.Text>
+                  </Typography>
                 </div>
               )}
             </>

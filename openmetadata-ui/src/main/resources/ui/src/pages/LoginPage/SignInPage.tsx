@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input } from 'antd';
 import classNames from 'classnames';
 import {
   useCallback,
@@ -192,13 +193,17 @@ const SignInPage = () => {
     <CarouselLayout pageTitle={t('label.sign-in')}>
       <div className="login-form-container" data-testid="login-form-container">
         <div
-          className={classNames('login-box', {
+          className={classNames('login-box tw:gap-6 tw:md:gap-10', {
             'sso-container': !isAuthProviderBasic,
           })}>
           <BrandImage isMonoGram height={50} width={50} />
-          <Typography.Title className="header-text display-sm" level={3}>
+          <Typography
+            as="h3"
+            className="tw:text-primary"
+            size="display-sm"
+            weight="semibold">
             {t('label.welcome-to')} {brandName}
-          </Typography.Title>
+          </Typography>
           {isAuthProviderBasic ? (
             <div className="login-form ">
               <Form
@@ -230,17 +235,20 @@ const SignInPage = () => {
                 <Form.Item
                   data-testid="password"
                   label={
-                    <>
-                      <Typography.Text className="mr-1">
-                        {t('label.password')}
-                      </Typography.Text>
-                      <Typography.Link
+                    // Core Typography wraps `as="a"` in a block-level
+                    // `div.prose`, so `.forgot-password-link`'s `flex: 1` no
+                    // longer applies to a direct flex child of antd's label.
+                    // Own the row layout here instead of relying on it.
+                    <div className="tw:flex tw:w-full tw:items-center tw:justify-between">
+                      <Typography>{t('label.password')}</Typography>
+                      <Typography
+                        as="a"
                         className="forgot-password-link"
                         data-testid="forgot-password"
                         onClick={onClickForgotPassword}>
                         {t('label.forgot-password')}
-                      </Typography.Link>
-                    </>
+                      </Typography>
+                    </div>
                   }
                   name="password"
                   rules={[{ required: true }]}>
@@ -267,9 +275,9 @@ const SignInPage = () => {
                 <>
                   {authConfig?.enableSelfSignup && (
                     <div className="mt-4 d-flex flex-center signup-text">
-                      <Typography.Text>
+                      <Typography>
                         {t('message.new-to-the-platform')}
-                      </Typography.Text>
+                      </Typography>
                       <Button
                         className="link-btn"
                         data-testid="signup"
@@ -286,9 +294,9 @@ const SignInPage = () => {
             </div>
           ) : (
             <div className=" login-form">
-              <Typography.Text className="text-xl text-grey-muted m-t-lg">
+              <Typography className="text-xl text-grey-muted m-t-lg">
                 {t('message.om-description')}
-              </Typography.Text>
+              </Typography>
               <div className="sso-signup">{signInButton}</div>
             </div>
           )}

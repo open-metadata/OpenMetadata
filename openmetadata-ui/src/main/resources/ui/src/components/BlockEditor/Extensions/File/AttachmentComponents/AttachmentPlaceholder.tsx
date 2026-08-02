@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFileIcon } from '../../../../../utils/BlockEditorUtils';

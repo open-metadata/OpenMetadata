@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Toggle } from '@openmetadata/ui-core-components';
-import { Button, Col, Input, Row, Typography } from 'antd';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -209,17 +209,13 @@ const SearchPreview = ({
     <div className="search-preview">
       <Row className="d-flex justify-between items-center m-b-sm search-preview-header">
         <Col>
-          <Typography.Text
-            className="header-title"
-            data-testid="search-preview">
+          <Typography className="header-title" data-testid="search-preview">
             {t('label.preview')}
-          </Typography.Text>
+          </Typography>
         </Col>
         <Col className="search-preview-actions">
           <span className="ranking-details-control">
-            <Typography.Text>
-              {t('label.ranking-detail-plural')}
-            </Typography.Text>
+            <Typography>{t('label.ranking-detail-plural')}</Typography>
             <Toggle
               aria-label={t('label.ranking-detail-plural')}
               data-testid="ranking-details-switch"
@@ -243,7 +239,6 @@ const SearchPreview = ({
           </Button>
         </Col>
       </Row>
-
       <Input
         allowClear
         className="search-box"

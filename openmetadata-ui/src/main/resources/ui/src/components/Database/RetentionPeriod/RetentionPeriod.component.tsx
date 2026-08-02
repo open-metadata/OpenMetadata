@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Button,
@@ -19,7 +20,6 @@ import {
   Modal,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -121,7 +121,7 @@ const RetentionPeriod = ({
         className="d-flex retention-period-container align-start"
         data-testid="retention-period-container">
         <div className="d-flex ">
-          <Typography.Text className="text-sm d-flex flex-col gap-2">
+          <Typography className="text-sm d-flex flex-col gap-2">
             <div className="d-flex items-center gap-1">
               <span className="extra-info-label-heading">
                 {t('label.retention-period')}
@@ -145,10 +145,9 @@ const RetentionPeriod = ({
             <span className={`font-medium extra-info-value `}>
               {formatRetentionPeriod(retentionPeriod) ?? NO_DATA_PLACEHOLDER}
             </span>
-          </Typography.Text>
+          </Typography>
         </div>
       </Space>
-
       <Modal
         centered
         destroyOnClose

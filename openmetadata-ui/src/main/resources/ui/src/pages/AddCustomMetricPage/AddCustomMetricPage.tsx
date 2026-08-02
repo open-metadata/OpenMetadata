@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Form, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -217,16 +218,17 @@ const AddCustomMetricPage = () => {
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Col>
               <Col span={24}>
-                <Typography.Title
+                <Typography
+                  as="h5"
                   className="m-b-0"
                   data-testid="heading"
-                  level={5}>
+                  size="text-md">
                   {t('label.add-entity-metric', {
                     entity: isColumnMetric
                       ? t('label.column')
                       : t('label.table'),
                   })}
-                </Typography.Title>
+                </Typography>
               </Col>
               <Col span={24}>
                 <CustomMetricForm

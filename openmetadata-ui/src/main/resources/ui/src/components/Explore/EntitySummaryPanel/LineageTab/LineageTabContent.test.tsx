@@ -74,6 +74,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         );
       }
     ),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ as: Component = 'span', children, ...props }) => (
+      <Component {...props}>{children}</Component>
+    )),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -124,20 +129,6 @@ jest.mock('antd', () => ({
         {children}
       </button>
     )),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-    Paragraph: jest
-      .fn()
-      .mockImplementation(({ children, className, ...props }) => (
-        <p className={className} data-testid="typography-paragraph" {...props}>
-          {children}
-        </p>
-      )),
-  },
 }));
 
 // Mock SVG components with unique implementations
@@ -546,9 +537,9 @@ describe('LineageTabContent', () => {
         downstreamNodes: [],
       });
 
-      render(<LineageTabContent {...defaultProps} />);
+      const { container } = render(<LineageTabContent {...defaultProps} />);
 
-      const paragraph = screen.getByTestId('typography-paragraph');
+      const paragraph = container.querySelector('.no-data-placeholder');
 
       expect(paragraph).toBeInTheDocument();
       expect(paragraph).toHaveClass('text-center');

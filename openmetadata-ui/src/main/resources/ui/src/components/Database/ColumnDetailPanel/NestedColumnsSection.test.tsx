@@ -450,7 +450,9 @@ describe('NestedColumnsSection', () => {
 
       const link = screen.getByText('Simple Column');
 
-      expect(link.closest('a')).toBeInTheDocument();
+      // A native <button>, not <a> — keyboard-accessible without the
+      // anchor-as-button a11y violation (no href, click-only navigation).
+      expect(link.closest('button')).toBeInTheDocument();
     });
 
     it('should render column icons for all columns', () => {

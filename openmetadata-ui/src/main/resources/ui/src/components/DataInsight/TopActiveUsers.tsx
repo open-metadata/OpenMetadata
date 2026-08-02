@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -81,16 +82,14 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         title: t('label.team'),
         dataIndex: 'team',
         key: 'team',
-        render: (team: string) => (
-          <Typography.Text>{team ?? '--'}</Typography.Text>
-        ),
+        render: (team: string) => <Typography>{team ?? '--'}</Typography>,
       },
       {
         title: t('label.most-recent-session'),
         dataIndex: 'lastSession',
         key: 'lastSession',
         render: (lastSession: number) => (
-          <Typography.Text>{formatDateTime(lastSession)}</Typography.Text>
+          <Typography>{formatDateTime(lastSession)}</Typography>
         ),
       },
       {
@@ -99,18 +98,16 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         }),
         dataIndex: 'sessions',
         key: 'sessions',
-        render: (sessions: number) => (
-          <Typography.Text>{sessions}</Typography.Text>
-        ),
+        render: (sessions: number) => <Typography>{sessions}</Typography>,
       },
       {
         title: t('label.average-session'),
         dataIndex: 'avgSessionDuration',
         key: 'avgSessionDuration',
         render: (avgSessionDuration: number) => (
-          <Typography.Text>
+          <Typography>
             {formatTimeDurationFromSeconds(avgSessionDuration)}
-          </Typography.Text>
+          </Typography>
         ),
       },
     ],

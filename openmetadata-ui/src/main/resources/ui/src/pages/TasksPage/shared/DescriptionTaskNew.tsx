@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -58,9 +58,9 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="p-xs rounded-4 m-y-xss m-b-sm">
-          <Typography.Text className="text-grey-muted">
+          <Typography className="text-grey-muted">
             {t('label.no-entity', { entity: t('label.description') })}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else {
@@ -90,9 +90,9 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
 
     return !newDescription && !oldDescription ? (
       <div className="no-description-suggestion-card w-full">
-        <Typography.Text className="text-grey-muted p-xs">
+        <Typography className="text-grey-muted p-xs">
           {t('label.no-entity', { entity: t('label.suggestion') })}
-        </Typography.Text>
+        </Typography>
       </div>
     ) : (
       <DiffViewNew

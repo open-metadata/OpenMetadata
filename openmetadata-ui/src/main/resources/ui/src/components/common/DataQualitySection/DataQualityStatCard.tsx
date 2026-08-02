@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { DataQualityStatCardProps } from './DataQualitySection.interface';
 
@@ -28,15 +28,15 @@ export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
     data-testid={`data-quality-stat-card-${type}`}
     type="button"
     onClick={onClick}>
-    <Typography.Text
+    <Typography
       className={`stat-count ${type}`}
       data-testid={`data-quality-stat-card-count-${type}`}>
       {count}
-    </Typography.Text>
-    <Typography.Text
+    </Typography>
+    <Typography
       className={`stat-label ${type}`}
       data-testid={`data-quality-stat-card-label-${type}`}>
       {label}
-    </Typography.Text>
+    </Typography>
   </button>
 );

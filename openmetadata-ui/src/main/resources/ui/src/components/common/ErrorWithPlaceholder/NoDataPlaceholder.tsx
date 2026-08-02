@@ -23,7 +23,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/no-data-placeholder.svg';
@@ -46,11 +46,10 @@ const NoDataPlaceholder = ({
         height={size}
         width={size}
       />
-
       <div className="m-t-xss text-center text-sm font-normal">
-        <Typography.Text className="text-sm">
+        <Typography className="text-sm">
           {placeholderText ?? t('message.no-data-available')}
-        </Typography.Text>
+        </Typography>
         {children ? children : ''}
       </div>
     </div>

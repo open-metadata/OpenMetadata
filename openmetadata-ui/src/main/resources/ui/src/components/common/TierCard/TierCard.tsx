@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -20,7 +21,6 @@ import {
   RadioChangeEvent,
   Space,
   Spin,
-  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 
@@ -133,10 +133,10 @@ const TierCard = ({
               data-testid="cards"
               title={
                 <Space className="w-full p-xs justify-between">
-                  <Typography.Text className="m-b-0 font-medium text-md">
+                  <Typography className="m-b-0 font-medium text-md">
                     {t('label.edit-entity', { entity: t('label.tier') })}
-                  </Typography.Text>
-                  <Typography.Text
+                  </Typography>
+                  <Typography
                     className="m-b-0 font-normal text-primary cursor-pointer"
                     data-testid="clear-tier"
                     tabIndex={0}
@@ -149,7 +149,7 @@ const TierCard = ({
                       }
                     }}>
                     {t('label.clear')}
-                  </Typography.Text>
+                  </Typography>
                 </Space>
               }>
               <Spin
@@ -173,14 +173,17 @@ const TierCard = ({
                             data-testid={`radio-btn-${card.title}`}
                             value={card.id}>
                             <Space direction="vertical" size={0}>
-                              <Typography.Paragraph
+                              <Typography
+                                as="p"
                                 className="m-b-0 font-regular text-grey-body"
                                 style={{ color: card.style?.color }}>
                                 {card.title}
-                              </Typography.Paragraph>
-                              <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                              </Typography>
+                              <Typography
+                                as="p"
+                                className="m-b-0 font-regular text-xs text-grey-muted">
                                 {card.description.replace(/\*/g, '')}
-                              </Typography.Paragraph>
+                              </Typography>
                             </Space>
                           </Radio>
                         }

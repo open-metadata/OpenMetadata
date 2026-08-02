@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
@@ -25,7 +26,6 @@ import {
   Row,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
@@ -321,13 +321,13 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       ) : (
         <Row align="middle" className="m-y-sm" justify="center">
           <Col>
-            <Typography.Text className="m-x-sm">
+            <Typography className="m-x-sm">
               {isDomainKey && entityLabel
                 ? t('message.no-domain-assigned-to-entity', {
                     entity: entityLabel,
                   })
                 : t('message.no-data-available')}
-            </Typography.Text>
+            </Typography>
           </Col>
         </Row>
       );
@@ -411,9 +411,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               <div
                 className="p-x-sm p-y-xss search-dropdown-helper-text"
                 data-testid="search-dropdown-helper-text">
-                <Typography.Text className="text-xs" type="secondary">
+                <Typography className="text-xs" color="secondary">
                   {helperText}
-                </Typography.Text>
+                </Typography>
               </div>
             ) : null
           ) : (
@@ -491,17 +491,17 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 active: selectedKeys.length > 0,
               })}
               size={0}>
-              <Typography.Text className="filters-label font-medium">
+              <Typography className="filters-label font-medium">
                 {label}
-              </Typography.Text>
+              </Typography>
               {selectedKeys.length > 0 && (
                 <span>
                   {': '}
-                  <Typography.Text className="text-primary font-medium">
+                  <Typography className="text-primary font-medium">
                     {showSelectedCounts
                       ? `(${selectedKeys.length})`
                       : getSelectedOptionLabelString(selectedKeys)}
-                  </Typography.Text>
+                  </Typography>
                 </span>
               )}
             </Space>

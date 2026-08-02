@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,11 +44,11 @@ const DataProductSummary = ({
       <div className="d-flex flex-col gap-5">
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="domain-header">
               {t('label.domain-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <DomainLabel
@@ -71,11 +72,11 @@ const DataProductSummary = ({
 
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="owner-header">
               {t('label.owner-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             <OwnerLabel owners={entityDetails.owners ?? []} />
@@ -84,11 +85,11 @@ const DataProductSummary = ({
 
         <Row className="p-md border-radius-card" gutter={[0, 8]}>
           <Col span={24}>
-            <Typography.Text
+            <Typography
               className="summary-panel-section-title"
               data-testid="expert-header">
               {t('label.expert-plural')}
-            </Typography.Text>
+            </Typography>
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
@@ -96,13 +97,13 @@ const DataProductSummary = ({
                 <OwnerLabel owners={experts} />
               </Space>
             ) : (
-              <Typography.Text
+              <Typography
                 className="text-grey-body"
                 data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
         </Row>

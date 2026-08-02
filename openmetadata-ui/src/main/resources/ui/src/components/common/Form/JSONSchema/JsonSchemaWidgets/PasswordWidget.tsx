@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Col, Input, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { Col, Input, Radio, RadioChangeEvent, Row } from 'antd';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
@@ -80,7 +81,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
               className="widget-radio-option"
               data-testid={`radio-${CertificationInputType.FILE_UPLOAD}`}
               value={CertificationInputType.FILE_UPLOAD}>
-              <Typography.Text>{t('message.upload-file')}</Typography.Text>
+              <Typography>{t('message.upload-file')}</Typography>
               <FileUploadWidget
                 {...props}
                 disabled={inputType === CertificationInputType.FILE_PATH}
@@ -92,7 +93,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
               className="widget-radio-option"
               data-testid={`radio-${CertificationInputType.FILE_PATH}`}
               value={CertificationInputType.FILE_PATH}>
-              <Typography.Text>{t('label.enter-file-content')}</Typography.Text>
+              <Typography>{t('label.enter-file-content')}</Typography>
               {getPasswordInput(
                 inputType === CertificationInputType.FILE_UPLOAD
               )}

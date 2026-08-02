@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Tag, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Tag, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -66,9 +67,9 @@ export const convertGlossaryTermsToTreeOptions = (
       value: option.fullyQualifiedName,
       name: option.name,
       title: (
-        <Typography.Text ellipsis style={{ color: option?.style?.color }}>
+        <Typography ellipsis style={{ color: option?.style?.color }}>
           {getEntityName(option)}
-        </Typography.Text>
+        </Typography>
       ),
       'data-testid': `tag-${option.fullyQualifiedName}`,
       checkable: allowParentSelection || isGlossaryTerm,

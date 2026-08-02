@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
+import { Button, Card, Col, Divider, Row, Space } from 'antd';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,20 +82,26 @@ export const AlertDetailsComponent = ({
       <Col span={24}>
         <Card>
           <Space direction="vertical" size={8}>
-            <Typography.Title className="m-0" level={5}>
+            <CoreTypography as="h5" className="m-0" size="text-md">
               {t('label.trigger')}
-            </Typography.Title>
-            <Typography.Text data-testid="display-name-entities">
+            </CoreTypography>
+            <CoreTypography data-testid="display-name-entities">
               {alerts?.filteringRules?.resources
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
-            </Typography.Text>
+            </CoreTypography>
           </Space>
           <Divider />
-          <Typography.Title level={5}>
+          <CoreTypography as="h5" size="text-md">
             {t('label.filter-plural')}
-          </Typography.Title>
-          <Typography.Paragraph>
+          </CoreTypography>
+          {/*
+            Not `as='p'`: core Typography always wraps its content in an
+            outer `<div className="prose">` regardless of `as`, so nesting
+            the `as="code"` Typography below inside a `p`-rendered Typography
+            produced an invalid `<div>`-in-`<p>` (validateDOMNesting warning).
+          */}
+          <CoreTypography as="div">
             {alerts?.filteringRules?.rules?.map((filter) => {
               const conditions = isArray(filter.condition)
                 ? filter.condition.join(', ')
@@ -106,18 +113,20 @@ export const AlertDetailsComponent = ({
 
               return (
                 <Fragment key={filter.name}>
-                  <Typography.Text code>
+                  <CoreTypography
+                    as="code"
+                    className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary">
                     {`${conditionName} ${effect} ${conditions}`}
-                  </Typography.Text>
+                  </CoreTypography>
                   <br />
                 </Fragment>
               );
             })}
-          </Typography.Paragraph>
+          </CoreTypography>
           <Divider />
-          <Typography.Title level={5}>
+          <CoreTypography as="h5" size="text-md">
             {t('label.destination')}
-          </Typography.Title>
+          </CoreTypography>
           <Row gutter={[16, 16]} />
         </Card>
       </Col>

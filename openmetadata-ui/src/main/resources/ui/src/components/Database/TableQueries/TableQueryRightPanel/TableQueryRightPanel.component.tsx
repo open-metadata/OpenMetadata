@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Col, Drawer, Row, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Drawer, Row, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
@@ -86,9 +87,9 @@ const TableQueryRightPanel = ({
               cardProps={{
                 title: (
                   <Space align="center" className="w-full" size={0}>
-                    <Typography.Text className="right-panel-label">
+                    <Typography className="right-panel-label">
                       {t('label.owner-plural')}
-                    </Typography.Text>
+                    </Typography>
 
                     {(EditAll || EditOwners) && (
                       <UserTeamSelectableList
@@ -147,11 +148,9 @@ const TableQueryRightPanel = ({
             <ExpandableCard
               cardProps={{
                 title: (
-                  <Typography.Text
-                    className="right-panel-label"
-                    data-testid="users">
+                  <Typography className="right-panel-label" data-testid="users">
                     {t('label.user-plural')}
-                  </Typography.Text>
+                  </Typography>
                 ),
               }}>
               {query.users && query.users.length ? (
@@ -170,11 +169,11 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography.Paragraph className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0 text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.user-plural'),
                   })}
-                </Typography.Paragraph>
+                </Typography>
               )}
             </ExpandableCard>
           </Col>
@@ -182,11 +181,11 @@ const TableQueryRightPanel = ({
             <ExpandableCard
               cardProps={{
                 title: (
-                  <Typography.Text
+                  <Typography
                     className="right-panel-label"
                     data-testid="used-by">
                     {t('label.used-by')}
-                  </Typography.Text>
+                  </Typography>
                 ),
               }}>
               {query.usedBy && query.usedBy.length ? (
@@ -199,11 +198,11 @@ const TableQueryRightPanel = ({
                   ))}
                 </Space>
               ) : (
-                <Typography.Paragraph className="m-b-0 text-grey-muted">
+                <Typography as="p" className="m-b-0 text-grey-muted">
                   {t('label.no-entity', {
                     entity: t('label.used-by'),
                   })}
-                </Typography.Paragraph>
+                </Typography>
               )}
             </ExpandableCard>
           </Col>
