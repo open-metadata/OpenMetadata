@@ -128,6 +128,22 @@ export const redirectToExplorePage = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+/**
+ * Dismiss the optional welcome screen without waiting for it to appear.
+ *
+ * Storage-state-backed pages may already have dismissed onboarding. Check the button itself (not
+ * the parent screen) so a different first-login variant cannot turn this optional cleanup into a
+ * 30-second click timeout. If the button disappears between the visibility check and the click,
+ * the desired state has already been reached.
+ */
+export const closeWelcomeScreenIfVisible = async (page: Page) => {
+  const closeButton = page.getByTestId('welcome-screen-close-btn');
+
+  if (await closeButton.isVisible()) {
+    await closeButton.click().catch(() => undefined);
+  }
+};
+
 export const removeLandingBanner = async (page: Page) => {
   try {
     const welcomePageCloseButton = page.getByTestId('welcome-screen-close-btn');
