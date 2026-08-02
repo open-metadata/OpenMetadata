@@ -33,7 +33,10 @@ import SupersetIngestionClass from '../../support/entity/ingestion/SupersetInges
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { getAgentCard } from '../../utils/serviceIngestion';
+import {
+  getAgentCard,
+  waitForIngestionWorkflowForm,
+} from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const table = new TableClass();
@@ -547,6 +550,130 @@ test.describe.serial(
 
       // Verify the run was triggered by checking the card shows a status pill
       await expect(agentCard.getByTestId('pipeline-status')).toBeVisible();
+    });
+  }
+);
+
+const wizardService = new MysqlIngestionClass({
+  shouldTestConnection: false,
+  shouldAddIngestion: false,
+});
+
+test.describe.serial(
+  'Edit agent wizard step navigation',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    test.beforeEach('Redirect to home page', async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    test.beforeAll(
+      'Create MySQL service and metadata pipeline via API',
+      async ({ browser }) => {
+        const { afterAction, apiContext } = await createNewPage(browser);
+
+        const serviceResponse = await apiContext.post(
+          '/api/v1/services/databaseServices',
+          {
+            data: {
+              name: wizardService.getServiceName(),
+              serviceType: 'Mysql',
+              connection: {
+                config: {
+                  type: 'Mysql',
+                  scheme: 'mysql+pymysql',
+                  username: 'username',
+                  authType: { password: 'password' },
+                  hostPort: 'mysql:3306',
+                },
+              },
+            },
+          }
+        );
+
+        expect(serviceResponse.status()).toBe(201);
+        const service = await serviceResponse.json();
+        wizardService.serviceResponseData = service;
+
+        const createPipelineResponse = await apiContext.post(
+          '/api/v1/services/ingestionPipelines',
+          {
+            data: {
+              airflowConfig: {},
+              loggerLevel: 'INFO',
+              name: `${wizardService.getServiceName()}-metadata`,
+              pipelineType: 'metadata',
+              service: {
+                id: service.id,
+                type: 'databaseService',
+              },
+              sourceConfig: {
+                config: {
+                  type: 'DatabaseMetadata',
+                },
+              },
+            },
+          }
+        );
+
+        expect(createPipelineResponse.status()).toBe(201);
+        const createdPipeline = await createPipelineResponse.json();
+
+        await apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+        );
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Delete service via API', async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      await wizardService.deleteServiceByAPI(apiContext);
+      await afterAction();
+    });
+
+    /**
+     * Regression guard for the nightly `Update schedule options` failures: the
+     * Configure Ingestion form loads its RJSF templates lazily while the wizard
+     * footer renders immediately, so advancing used to be a silent no-op that
+     * stranded the wizard on step 1 with no error.
+     */
+    test('Next advances to the schedule step right after opening the edit wizard', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await visitServiceDetailsPage(
+        page,
+        {
+          type: wizardService.category,
+          name: wizardService.getServiceName(),
+        },
+        false,
+        false
+      );
+
+      await page.getByTestId('data-assets-header').waitFor();
+      await page.getByTestId('agents').click();
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+
+      await page
+        .getByLabel('agents')
+        .getByTestId('loader')
+        .waitFor({ state: 'detached' });
+
+      await page.getByTestId('more-actions').first().click();
+      await page.getByTestId('edit-button').click();
+
+      await waitForIngestionWorkflowForm(page);
+      await page.getByTestId('next-button').click();
+
+      await expect(page.getByTestId('schedular-schedule')).toBeVisible();
     });
   }
 );
