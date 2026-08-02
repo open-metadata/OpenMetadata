@@ -43,6 +43,7 @@ public final class SearchTestImages {
                     builder
                         .from(baseImage)
                         .run(PLUGIN_INSTALL + "analysis-kuromoji")
+                        .run(PLUGIN_INSTALL + "analysis-nori")
                         .run(PLUGIN_INSTALL + ikPluginUrl)
                         .build())
             .get();

@@ -294,7 +294,7 @@ class IndexMappingVersionTrackerTest {
     assertFalse(realMappings.isEmpty(), "indexMapping.json should not be empty");
 
     List<String> missingMappings = new ArrayList<>();
-    String[] languages = {"en", "jp", "ru", "zh"};
+    String[] languages = {"en", "jp", "ko", "ru", "zh"};
 
     for (Map.Entry<String, IndexMapping> entry : realMappings.entrySet()) {
       String entityType = entry.getKey();
