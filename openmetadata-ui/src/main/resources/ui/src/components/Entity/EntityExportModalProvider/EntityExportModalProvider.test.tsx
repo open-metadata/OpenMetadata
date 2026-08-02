@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -277,7 +278,9 @@ describe('EntityExportModalProvider component', () => {
     expect(await screen.findByTestId('file-name-input')).toBeInTheDocument();
   });
 
-  it('uses the export utility options so customized labels are preserved', async () => {
+  it('preserves requested export type order with customized labels', async () => {
+    const originalExportTypes = mockShowModal.exportTypes;
+    mockShowModal.exportTypes = [ExportTypes.PNG, ExportTypes.CSV];
     const optionsSpy = jest
       .spyOn(exportUtilClassBase, 'getExportTypeOptions')
       .mockReturnValue([
@@ -294,9 +297,17 @@ describe('EntityExportModalProvider component', () => {
 
       fireEvent.click(await screen.findByText('Manage'));
 
-      expect(await screen.findAllByText('Customized CSV')).not.toHaveLength(0);
+      const exportTypeSelect = await screen.findByTestId('export-type-select');
+      fireEvent.click(within(exportTypeSelect).getByRole('button'));
+
+      const options = await screen.findAllByRole('option');
+
+      expect(options).toHaveLength(2);
+      expect(options[0]).toHaveTextContent('Customized PNG');
+      expect(options[1]).toHaveTextContent('Customized CSV');
       expect(optionsSpy).toHaveBeenCalled();
     } finally {
+      mockShowModal.exportTypes = originalExportTypes;
       optionsSpy.mockRestore();
     }
   });

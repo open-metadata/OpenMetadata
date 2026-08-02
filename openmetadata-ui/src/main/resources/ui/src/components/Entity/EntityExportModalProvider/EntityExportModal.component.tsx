@@ -71,14 +71,16 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
   const { t } = useTranslation();
   const exportLabel = t('label.export');
   const dialogTitle = exportData.title ?? exportLabel;
-  const exportTypeItems = useMemo(
-    () =>
-      exportUtilClassBase
-        .getExportTypeOptions()
-        .filter((option) => exportData.exportTypes.includes(option.value))
-        .map((option) => ({ id: option.value, label: option.label })),
-    [exportData]
-  );
+  const exportTypeItems = useMemo(() => {
+    const options = exportUtilClassBase.getExportTypeOptions();
+
+    return exportData.exportTypes
+      .map((exportType) =>
+        options.find((option) => option.value === exportType)
+      )
+      .filter((option): option is NonNullable<typeof option> => Boolean(option))
+      .map((option) => ({ id: option.value, label: option.label }));
+  }, [exportData.exportTypes]);
   const isExportInProgress =
     csvExportJob?.status === 'IN_PROGRESS' && !csvExportJob.statusUnavailable;
 
