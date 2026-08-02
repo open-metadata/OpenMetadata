@@ -66,7 +66,15 @@ TARGET_MS = 20 * 60 * 1000
 COMMON_SHARD_BUDGET_MS = 21 * 60 * 1000
 EFFICIENCY = 0.85
 COMMON_MAX_SHARDS = 24
-FALLBACK_TEST_MS = 20_000
+# Weight assigned to a test that has no timing evidence in `timing-baseline.json`
+# (or in any additional history payloads). Bumped from 20 s → 30 s alongside the
+# all-zero-history fix in `load_history`: a suite re-enabled after being
+# `test.skip`'d at baseline capture (e.g. Pages/Domains.spec.ts in #30451) now
+# falls through to this fallback until the next full-run baseline refresh, and
+# 20 s was noticeably below the observed per-test average of ~25 s on that
+# suite. 30 s preserves a reasonable margin so the first plan after re-enable
+# does not silently over-pack the shard.
+FALLBACK_TEST_MS = 30_000
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
@@ -288,7 +296,19 @@ def load_history(
             elif test_id and test.get("outcome") == "skipped":
                 durations[test_id].append(0)
 
-    weights = {test_id: percentile_75(values) for test_id, values in durations.items()}
+    # If every recorded run for a test was `outcome: skipped` (all-zero) the
+    # test has no actual timing evidence — treat it as missing so the planner
+    # falls through to the identity match or FALLBACK_TEST_MS instead of
+    # pinning the weight at 0 ms. Otherwise a suite that was `test.skip`'d at
+    # baseline capture (see Pages/Domains.spec.ts before #30451 re-enabled it)
+    # keeps a "zero-weight" record after re-enable, the planner packs the
+    # newly-live suite as free content, and the shard blows past the wall
+    # timeout at run time (chromium-12 in run 30716060441).
+    weights = {
+        test_id: percentile_75(values)
+        for test_id, values in durations.items()
+        if any(v > 0 for v in values)
+    }
     identity_weights = {
         identity: percentile_75(values)
         for identity, values in identity_durations.items()
