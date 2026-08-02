@@ -41,13 +41,29 @@ import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import './lineage-layers.less';
 import { LineageLayersProps } from './LineageLayers.interface';
 
 const LAYER_BUTTON_CLASSES = [
   'tw:flex-col tw:gap-1 tw:px-4 tw:py-2 tw:text-[10px] tw:font-medium tw:text-primary',
   'tw:whitespace-normal tw:break-words tw:hover:after:outline-brand tw:hover:z-10',
   'tw:selected:bg-brand-primary tw:selected:text-primary',
+].join(' ');
+
+const SCENE_LAYER_MENU_OPTION_CLASSES = [
+  'lineage-scene-layer-menu-option tw:grid! tw:w-full! tw:grid-cols-[34px_minmax(0,1fr)_16px]',
+  'tw:items-center tw:justify-start! tw:gap-2.5! tw:rounded-lg! tw:px-3! tw:py-2! tw:text-left',
+  'tw:whitespace-normal! tw:after:outline-transparent tw:selected:bg-brand-primary tw:selected:text-brand-tertiary',
+  'tw:[&[data-selected]_.lineage-scene-layer-menu-icon]:bg-brand-solid',
+  'tw:[&[data-selected]_.lineage-scene-layer-menu-icon]:text-fg-white',
+].join(' ');
+
+const SCENE_LAYER_MENU_ICON_CLASSES =
+  'lineage-scene-layer-menu-icon tw:size-[34px] tw:rounded-lg tw:bg-tertiary tw:p-2 tw:text-fg-secondary';
+
+const SCENE_LAYER_TRIGGER_CLASSES = [
+  'lineage-scene-layer-trigger tw:flex! tw:min-h-[62px] tw:min-w-[248px] tw:items-center',
+  'tw:justify-start! tw:gap-2.5! tw:rounded-xl! tw:bg-primary tw:px-3! tw:py-2! tw:text-left tw:shadow-lg',
+  'tw:[&>[data-text]]:min-w-0 tw:[&>[data-text]]:flex-1 tw:[&>[data-text]]:p-0',
 ].join(' ');
 
 const getSceneLensLabelKey = (lens: LineageLens) => {
@@ -291,76 +307,76 @@ const LineageLayers = ({
     ];
 
     return (
-      <div className="lineage-scene-layer-menu">
-        <div className="lineage-scene-layer-menu-section">
-          <span className="lineage-scene-layer-menu-title">
+      <div className="lineage-scene-layer-menu tw:flex tw:min-w-[320px] tw:flex-col tw:gap-2.5 tw:px-2.5 tw:pt-3.5 tw:pb-2.5">
+        <div className="lineage-scene-layer-menu-section tw:flex tw:flex-col tw:gap-1.5">
+          <span className="lineage-scene-layer-menu-title tw:px-3.5 tw:text-xs tw:font-bold tw:leading-4 tw:text-quaternary tw:uppercase">
             {t('label.lineage-layer')}
           </span>
           <ButtonGroup
             disallowEmptySelection
             aria-label={t('label.lineage-layer')}
-            className="lineage-scene-layer-menu-options"
+            className="lineage-scene-layer-menu-options tw:m-0 tw:flex! tw:w-full! tw:flex-col! tw:gap-1.5! tw:space-x-0! tw:shadow-none!"
             selectedKeys={new Set([sceneLens])}
             size="sm"
             onSelectionChange={handleSceneLensSelection}>
             {sceneLensOptions.map((lens) => (
               <ButtonGroupItem
-                className="lineage-scene-layer-menu-option"
+                className={SCENE_LAYER_MENU_OPTION_CLASSES}
                 data-testid={`lineage-layer-lens-${lens}`}
                 id={lens}
                 key={lens}>
                 {lens === LineageLens.Domain ? (
-                  <DomainIcon className="lineage-scene-layer-menu-icon" />
+                  <DomainIcon className={SCENE_LAYER_MENU_ICON_CLASSES} />
                 ) : lens === LineageLens.DataProduct ? (
-                  <DataProductIcon className="lineage-scene-layer-menu-icon" />
+                  <DataProductIcon className={SCENE_LAYER_MENU_ICON_CLASSES} />
                 ) : (
-                  <ServiceView className="lineage-scene-layer-menu-icon" />
+                  <ServiceView className={SCENE_LAYER_MENU_ICON_CLASSES} />
                 )}
-                <span className="lineage-scene-layer-menu-copy">
-                  <span className="lineage-scene-layer-menu-option-title">
+                <span className="lineage-scene-layer-menu-copy tw:flex tw:min-w-0 tw:flex-col">
+                  <span className="lineage-scene-layer-menu-option-title tw:text-sm tw:font-bold tw:leading-5 tw:text-primary">
                     {t(getSceneLensLabelKey(lens))}
                   </span>
-                  <span className="lineage-scene-layer-menu-option-description">
+                  <span className="lineage-scene-layer-menu-option-description tw:text-xs tw:font-medium tw:leading-4.5 tw:text-tertiary">
                     {t(getSceneLensDescriptionKey(lens))}
                   </span>
                 </span>
                 {sceneLens === lens && (
-                  <CheckIcon className="lineage-scene-layer-menu-check" />
+                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-fg-brand-primary" />
                 )}
               </ButtonGroupItem>
             ))}
           </ButtonGroup>
         </div>
 
-        <div className="lineage-scene-layer-menu-section">
-          <span className="lineage-scene-layer-menu-title">
+        <div className="lineage-scene-layer-menu-section tw:flex tw:flex-col tw:gap-1.5 tw:border-t tw:border-secondary tw:pt-2.5">
+          <span className="lineage-scene-layer-menu-title tw:px-3.5 tw:text-xs tw:font-bold tw:leading-4 tw:text-quaternary tw:uppercase">
             {t('label.level')}
           </span>
           <ButtonGroup
             disallowEmptySelection
             aria-label={t('label.level')}
-            className="lineage-scene-layer-menu-options"
+            className="lineage-scene-layer-menu-options tw:m-0 tw:flex! tw:w-full! tw:flex-col! tw:gap-1.5! tw:space-x-0! tw:shadow-none!"
             selectedKeys={new Set([sceneBand])}
             size="sm"
             onSelectionChange={handleSceneBandSelection}>
             {sceneBandOptions.map((band) => (
               <ButtonGroupItem
-                className="lineage-scene-layer-menu-option"
+                className={SCENE_LAYER_MENU_OPTION_CLASSES}
                 data-testid={`lineage-layer-band-${band}`}
                 id={band}
                 key={band}>
                 {band === LineageBand.Layer ? (
-                  <Layers className="lineage-scene-layer-menu-icon" />
+                  <Layers className={SCENE_LAYER_MENU_ICON_CLASSES} />
                 ) : (
-                  <TableIcon className="lineage-scene-layer-menu-icon" />
+                  <TableIcon className={SCENE_LAYER_MENU_ICON_CLASSES} />
                 )}
-                <span className="lineage-scene-layer-menu-copy">
-                  <span className="lineage-scene-layer-menu-option-title">
+                <span className="lineage-scene-layer-menu-copy tw:flex tw:min-w-0 tw:flex-col">
+                  <span className="lineage-scene-layer-menu-option-title tw:text-sm tw:font-bold tw:leading-5 tw:text-primary">
                     {t(getSceneBandLabelKey(band))}
                   </span>
                 </span>
                 {sceneBand === band && (
-                  <CheckIcon className="lineage-scene-layer-menu-check" />
+                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-fg-brand-primary" />
                 )}
               </ButtonGroupItem>
             ))}
@@ -380,21 +396,23 @@ const LineageLayers = ({
   const trigger =
     hasSceneControls && sceneLens ? (
       <Button
-        className={classNames('lineage-scene-layer-trigger', {
+        className={classNames(SCENE_LAYER_TRIGGER_CLASSES, {
           'tw:after:outline-brand': isLayersOpen,
         })}
         color="secondary"
         data-testid="lineage-layer-btn"
-        iconLeading={<Layers className="lineage-scene-layer-trigger-icon" />}
+        iconLeading={
+          <Layers className="lineage-scene-layer-trigger-icon tw:size-[42px] tw:shrink-0 tw:rounded-xl tw:bg-brand-primary tw:p-2.5 tw:text-fg-brand-primary" />
+        }
         iconTrailing={
-          <DropdownIcon className="lineage-scene-layer-trigger-caret" />
+          <DropdownIcon className="lineage-scene-layer-trigger-caret tw:ml-auto tw:size-3" />
         }
         size="sm">
-        <span className="lineage-scene-layer-trigger-label">
-          <span className="lineage-scene-layer-trigger-eyebrow">
+        <span className="lineage-scene-layer-trigger-label tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+          <span className="lineage-scene-layer-trigger-eyebrow tw:text-xs tw:font-bold tw:leading-4 tw:text-quaternary tw:uppercase">
             {t('label.layer-plural')}
           </span>
-          <span className="lineage-scene-layer-trigger-value">
+          <span className="lineage-scene-layer-trigger-value tw:text-sm tw:font-bold tw:leading-5 tw:text-primary">
             {t(sceneLevelLabelKey ?? getSceneLensLabelKey(sceneLens))}
           </span>
         </span>
@@ -417,10 +435,7 @@ const LineageLayers = ({
     <PopoverTrigger isOpen={isLayersOpen} onOpenChange={setIsLayersOpen}>
       {trigger}
       <Popover
-        className="lineage-layers-popover"
-        containerClassName={
-          hasSceneControls ? 'lineage-scene-layer-popover-content' : undefined
-        }
+        className="lineage-layers-popover tw:z-50"
         placement={hasSceneControls ? 'top' : 'right'}>
         {sceneControls ?? (
           <ButtonGroup

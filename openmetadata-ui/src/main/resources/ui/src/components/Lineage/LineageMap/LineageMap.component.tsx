@@ -21,7 +21,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
+import { ArrowsUp, Home02, LayersThree01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
@@ -99,7 +99,6 @@ import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapp
 import { LineageNodeType, LineageProps } from '../Lineage.interface';
 import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
-import './lineage-map.less';
 import {
   buildLineagePathHighlightIndex,
   getBandLabelKey,
@@ -139,6 +138,17 @@ const SCENE_FIELD_FIT_VIEW_MIN_ZOOM = 0.9;
 const SCENE_FIT_VIEW_MAX_ZOOM = 1;
 const SCENE_LAYER_NODE_WIDTH = 262;
 const SCENE_LAYER_NODE_HEIGHT = 66;
+const LINEAGE_MAP_EMPTY_CLASSES =
+  'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
+const LINEAGE_MAP_RAIL_CLASSES = [
+  'lineage-map-rail tw:absolute tw:top-1/2 tw:right-6 tw:z-10 tw:flex tw:w-8 tw:-translate-y-1/2',
+  'tw:flex-col tw:items-center tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:py-1.5 tw:shadow-lg',
+].join(' ');
+const LINEAGE_MAP_RAIL_LABEL_CLASSES = [
+  'lineage-map-rail-label tw:absolute tw:right-10 tw:max-w-[164px] tw:whitespace-nowrap tw:rounded-full',
+  'tw:border tw:border-brand tw:bg-primary tw:px-2.5 tw:py-1 tw:text-sm tw:font-semibold tw:leading-normal',
+  'tw:text-brand-tertiary',
+].join(' ');
 const FIELD_NODE_HEIGHT =
   NODE_HEIGHT_WITH_CHILDREN +
   LINEAGE_CHILD_ITEMS_PER_PAGE * COLUMN_NODE_HEIGHT +
@@ -575,54 +585,52 @@ const LineageMapOnboardingDialog = ({
           data-testid="lineage-map-onboarding-dialog"
           width={560}
           onClose={onClose}>
-          <Dialog.Content className="lineage-map-onboarding-content">
-            <div className="lineage-map-onboarding-header">
-              <span className="lineage-map-onboarding-eyebrow">
+          <Dialog.Content className="lineage-map-onboarding-content tw:gap-0! tw:p-0!">
+            <div className="lineage-map-onboarding-header tw:bg-linear-to-br tw:from-bg-brand-section tw:to-bg-brand-solid tw:px-8 tw:pt-7 tw:pb-6 tw:text-primary_on-brand">
+              <span className="lineage-map-onboarding-eyebrow tw:mb-2 tw:block tw:text-xs tw:font-bold tw:leading-normal tw:tracking-widest tw:text-secondary_on-brand tw:uppercase">
                 {t('label.lineage-map-onboarding-eyebrow')}
               </span>
-              <span className="lineage-map-onboarding-title">
+              <span className="lineage-map-onboarding-title tw:block tw:text-display-xs tw:font-bold tw:leading-snug tw:text-primary_on-brand">
                 {t('label.lineage-map-onboarding-title')}
               </span>
-              <span className="lineage-map-onboarding-description">
+              <span className="lineage-map-onboarding-description tw:mt-2 tw:block tw:text-sm tw:leading-relaxed tw:text-secondary_on-brand">
                 {t('message.lineage-map-onboarding-description')}
               </span>
             </div>
-            <div className="lineage-map-onboarding-body">
-              <div className="lineage-map-onboarding-row">
-                <span
-                  aria-hidden="true"
-                  className="lineage-map-onboarding-icon altitude"
-                />
+            <div className="lineage-map-onboarding-body tw:bg-primary tw:px-8 tw:pt-5 tw:pb-1">
+              <div className="lineage-map-onboarding-row tw:grid tw:grid-cols-[44px_1fr] tw:gap-4 tw:border-b tw:border-secondary tw:pt-3 tw:pb-5">
+                <span className="lineage-map-onboarding-icon tw:flex tw:size-9 tw:items-center tw:justify-center tw:rounded-xl tw:bg-brand-primary tw:text-fg-brand-primary">
+                  <ArrowsUp aria-hidden="true" className="tw:size-5" />
+                </span>
                 <div>
-                  <span className="lineage-map-onboarding-row-title">
+                  <span className="lineage-map-onboarding-row-title tw:block tw:text-md tw:font-bold tw:leading-snug tw:text-primary">
                     {t('label.altitude')}
                   </span>
-                  <span className="lineage-map-onboarding-row-description">
+                  <span className="lineage-map-onboarding-row-description tw:mt-0.5 tw:block tw:text-sm tw:leading-relaxed tw:text-tertiary">
                     {t('message.lineage-map-onboarding-altitude-description')}
                   </span>
                 </div>
               </div>
-              <div className="lineage-map-onboarding-row">
-                <span
-                  aria-hidden="true"
-                  className="lineage-map-onboarding-icon layer"
-                />
+              <div className="lineage-map-onboarding-row tw:grid tw:grid-cols-[44px_1fr] tw:gap-4 tw:pt-3 tw:pb-5">
+                <span className="lineage-map-onboarding-icon tw:flex tw:size-9 tw:items-center tw:justify-center tw:rounded-xl tw:bg-brand-primary tw:text-fg-brand-primary">
+                  <LayersThree01 aria-hidden="true" className="tw:size-5" />
+                </span>
                 <div>
-                  <span className="lineage-map-onboarding-row-title">
+                  <span className="lineage-map-onboarding-row-title tw:block tw:text-md tw:font-bold tw:leading-snug tw:text-primary">
                     {t('label.layer')}
                   </span>
-                  <span className="lineage-map-onboarding-row-description">
+                  <span className="lineage-map-onboarding-row-description tw:mt-0.5 tw:block tw:text-sm tw:leading-relaxed tw:text-tertiary">
                     {t('message.lineage-map-onboarding-layer-description')}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="lineage-map-onboarding-footer">
-              <span className="lineage-map-onboarding-hint">
+            <div className="lineage-map-onboarding-footer tw:flex tw:items-center tw:justify-between tw:gap-5 tw:bg-primary tw:px-8 tw:pt-5 tw:pb-7">
+              <span className="lineage-map-onboarding-hint tw:text-sm tw:leading-normal tw:text-quaternary">
                 {t('message.lineage-map-onboarding-hint')}
               </span>
               <Button
-                className="lineage-map-onboarding-action"
+                className="lineage-map-onboarding-action tw:min-w-[112px] tw:font-bold"
                 color="primary"
                 onClick={onClose}>
                 {t('label.explore')}
@@ -650,7 +658,11 @@ const LineageMapControls = ({
   const bandOptions = [LineageBand.Layer, LineageBand.Asset, LineageBand.Field];
 
   return (
-    <div className="lineage-map-rail">
+    <div className={LINEAGE_MAP_RAIL_CLASSES}>
+      <span
+        aria-hidden="true"
+        className="tw:absolute tw:top-5 tw:bottom-5 tw:left-1/2 tw:w-px tw:-translate-x-1/2 tw:bg-border-secondary"
+      />
       {bandOptions.map((band) => {
         const isDeeperBandUnavailable =
           isDeeperBand(scene.band, band) && !canDrill;
@@ -658,16 +670,18 @@ const LineageMapControls = ({
 
         return (
           <ButtonUtility
-            className="lineage-map-rail-button"
+            className="lineage-map-rail-button tw:z-1 tw:h-[30px] tw:w-6 tw:p-0!"
             color="tertiary"
             data-testid={`lineage-map-band-${band}`}
             icon={
               <span
-                className={
-                  scene.band === band
-                    ? 'lineage-map-rail-dot active'
-                    : 'lineage-map-rail-dot'
-                }
+                className={classNames(
+                  'lineage-map-rail-dot tw:size-2 tw:rounded-full tw:border-2 tw:border-primary tw:bg-primary tw:transition-all tw:duration-150',
+                  {
+                    'active tw:size-3.5 tw:border-brand tw:bg-brand-solid':
+                      scene.band === band,
+                  }
+                )}
               />
             }
             isDisabled={isDisabled}
@@ -685,7 +699,7 @@ const LineageMapControls = ({
           />
         );
       })}
-      <span className="lineage-map-rail-label">
+      <span className={LINEAGE_MAP_RAIL_LABEL_CLASSES}>
         {t(getSceneLevelLabelKey(scene))}
       </span>
     </div>
@@ -728,11 +742,11 @@ const LineageMapBreadcrumbs = ({
   });
 
   return (
-    <Panel className="lineage-map-breadcrumb-panel" position="top-left">
+    <Panel className="lineage-map-breadcrumb-panel tw:z-10" position="top-left">
       <Breadcrumbs
         autoCollapse
         aria-label={t('label.navigation')}
-        className="lineage-map-breadcrumbs"
+        className="lineage-map-breadcrumbs tw:max-w-[min(760px,calc(100vw-520px))] tw:rounded-full tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-lg"
         data-testid="lineage-map-breadcrumbs"
         items={items}
         maxItemWidth={180}
@@ -1981,7 +1995,7 @@ const LineageMapCanvas = ({
 
   if (sceneError && !scene) {
     return (
-      <div className="lineage-map-empty">
+      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <span>{t('message.something-went-wrong')}</span>
           <Button
@@ -2000,7 +2014,7 @@ const LineageMapCanvas = ({
 
   if (!scene) {
     return (
-      <div className="lineage-map-empty">
+      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
         <span>{t('message.no-lineage-data-available')}</span>
       </div>
     );
@@ -2008,7 +2022,7 @@ const LineageMapCanvas = ({
 
   if (scene.nodes.length === 0) {
     return (
-      <div className="lineage-map-empty">
+      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
         <ErrorPlaceHolder
           placeholderText={t('message.no-lineage-data-available')}
           type={ERROR_PLACEHOLDER_TYPE.FILTER}
@@ -2023,20 +2037,20 @@ const LineageMapCanvas = ({
 
   return (
     <div
-      className="lineage-map-canvas"
+      className="lineage-map-canvas tw:relative tw:h-full tw:min-h-[640px] tw:w-full tw:overflow-hidden tw:bg-primary"
       data-testid="lineage-map-canvas"
       ref={wrapperRef}
       onMouseLeave={handleCanvasMouseLeave}
       onMouseMove={handleCanvasMouseMove}>
       {loading && (
-        <div className="lineage-map-loading">
+        <div className="lineage-map-loading tw:absolute tw:inset-0 tw:z-30 tw:grid tw:place-items-center tw:bg-primary/60">
           <Loader size="small" />
         </div>
       )}
       <ReactFlow
         fitView
         onlyRenderVisibleElements
-        className="custom-react-flow lineage-map-react-flow"
+        className="custom-react-flow lineage-map-react-flow tw:h-full tw:w-full"
         data-testid="react-flow-component"
         deleteKeyCode={null}
         edgeTypes={{}}
@@ -2067,6 +2081,7 @@ const LineageMapCanvas = ({
           <MiniMap
             pannable
             zoomable
+            className="tw:right-4! tw:bottom-[88px]! tw:rounded-lg tw:border tw:border-secondary tw:shadow-lg"
             nodeStrokeWidth={2}
             position="bottom-right"
           />
@@ -2095,7 +2110,9 @@ const LineageMapCanvas = ({
           onBreadcrumbFocus={handleBreadcrumbFocus}
         />
         {(scene.hiddenNodeCount ?? 0) > 0 || scene.sampled || sceneError ? (
-          <Panel className="lineage-map-status-panel" position="top-right">
+          <Panel
+            className="lineage-map-status-panel tw:z-10"
+            position="top-right">
             {(scene.hiddenNodeCount ?? 0) > 0 && (
               <Badge color="gray" size="sm" type="color">
                 {t('label.plus-count-more', {
@@ -2141,9 +2158,12 @@ const LineageMapCanvas = ({
         </Panel>
       </ReactFlow>
       <div
-        className={classNames('lineage-map-layer-control', {
-          'edit-mode': isEditMode,
-        })}>
+        className={classNames(
+          'lineage-map-layer-control tw:absolute tw:bottom-4 tw:left-4 tw:z-10',
+          {
+            'edit-mode tw:pointer-events-none tw:opacity-60': isEditMode,
+          }
+        )}>
         <LineageLayers
           entity={entity}
           entityType={entityType}
