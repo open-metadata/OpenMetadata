@@ -15,6 +15,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 
 const MAX_EMITTED_JS_FILES = 635;
 const MAX_SMALL_JS_FILES = 450;
@@ -56,15 +57,22 @@ const htmlBootstrapJsFiles = [
     )
   ),
 ];
-const htmlBootstrapJsBrotliBytes = htmlBootstrapJsFiles.reduce(
-  (totalBytes, fileName) => {
-    const jsPath = path.join(assetsDirectory, fileName);
-    const brotliPath = `${jsPath}.br`;
+// vite-plugin-compression only emits a `.br` sibling above its 1 KiB threshold. Substituting the
+// raw size for the files it skips would mix uncompressed bytes into a budget compared as Brotli,
+// so compress those here instead.
+const brotliBytesOf = (fileName) => {
+  const jsPath = path.join(assetsDirectory, fileName);
+  const brotliPath = `${jsPath}.br`;
 
-    return (
-      totalBytes + statSync(existsSync(brotliPath) ? brotliPath : jsPath).size
-    );
-  },
+  return existsSync(brotliPath)
+    ? statSync(brotliPath).size
+    : brotliCompressSync(readFileSync(jsPath), {
+        params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11 },
+      }).length;
+};
+
+const htmlBootstrapJsBrotliBytes = htmlBootstrapJsFiles.reduce(
+  (totalBytes, fileName) => totalBytes + brotliBytesOf(fileName),
   0
 );
 
@@ -85,9 +93,7 @@ if (htmlBootstrapJsFiles.length > MAX_HTML_BOOTSTRAP_JS_FILES) {
     `index.html references ${htmlBootstrapJsFiles.length} JavaScript files (maximum ${MAX_HTML_BOOTSTRAP_JS_FILES})`
   );
 }
-if (
-  htmlBootstrapJsBrotliBytes > MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES
-) {
+if (htmlBootstrapJsBrotliBytes > MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES) {
   failures.push(
     `index.html JavaScript is ${htmlBootstrapJsBrotliBytes} Brotli bytes (maximum ${MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES})`
   );
