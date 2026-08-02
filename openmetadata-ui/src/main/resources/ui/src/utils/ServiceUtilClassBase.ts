@@ -12,6 +12,7 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import type { ComponentType } from 'react';
@@ -35,6 +36,7 @@ import {
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
   SecurityServiceTypeSmallCaseType,
+  ServiceCategory,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
@@ -108,6 +110,8 @@ class ServiceUtilClassBase {
     DatabaseServiceType.MicrosoftAccess,
     DashboardServiceType.SapS4Hana,
     DatabaseServiceType.SapSuccessFactors,
+    DatabaseServiceType.SapBw4Hana,
+    PipelineServiceType.SapBw4HanaPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -535,6 +539,15 @@ class ServiceUtilClassBase {
     ComponentType<Record<string, unknown>>
   > {
     return {};
+  }
+
+  public getExtraIngestionMenuItems(
+    _serviceCategory: ServiceCategory,
+    _serviceName?: string,
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
+  ): MenuProps['items'] {
+    return [];
   }
 
   public getSearchIndexFromEntityType(entityType: EntityType | string) {
