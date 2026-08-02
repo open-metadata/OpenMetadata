@@ -168,6 +168,7 @@
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Pages/TestSuite*.spec.ts"
