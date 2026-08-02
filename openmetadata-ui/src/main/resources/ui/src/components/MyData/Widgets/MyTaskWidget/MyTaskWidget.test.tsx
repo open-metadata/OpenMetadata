@@ -24,9 +24,11 @@ import { useActivityFeedProvider as mockUseActivityFeedProvider } from '../../..
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import MyTaskWidget from './MyTaskWidget';
 
+const mockCurrentUser = { ...mockUserData };
+
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
-    currentUser: mockUserData,
+    currentUser: mockCurrentUser,
   })),
 }));
 
@@ -104,6 +106,7 @@ const renderMyTaskWidget = (props = {}) => {
 describe('MyTaskWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCurrentUser.name = mockUserData.name;
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
       getFeedData: jest.fn(),
