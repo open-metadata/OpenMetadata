@@ -58,7 +58,7 @@ const OMMultiSelectWidget = ({
   // each render would retrigger Autocomplete's selectedItems effect in a loop).
   const staticItems = useMemo(
     () => toSelectItems(listValues),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [JSON.stringify(listValues ?? null)]
   );
 
@@ -74,7 +74,7 @@ const OMMultiSelectWidget = ({
       valueArray.map(
         (id) => allItems.find((item) => item.id === id) ?? { id, label: id }
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [valueArray.join(','), allItems]
   );
 
@@ -115,7 +115,7 @@ const OMMultiSelectWidget = ({
     (key: Key) => {
       setValue([...valueArray, String(key)]);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [valueArray.join(','), setValue]
   );
 
@@ -124,7 +124,7 @@ const OMMultiSelectWidget = ({
       const next = valueArray.filter((v) => v !== String(key));
       setValue(next.length > 0 ? next : null);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [valueArray.join(','), setValue]
   );
 

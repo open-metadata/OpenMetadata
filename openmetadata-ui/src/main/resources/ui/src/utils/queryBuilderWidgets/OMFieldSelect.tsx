@@ -71,7 +71,7 @@ const OMFieldSelect: FC<FieldProps> = ({
   const itemsKey = buildItemsKey(items as FieldNode[]);
   const selectItems: SelectItemType[] = useMemo(
     () => flattenFieldLeaves(items as FieldNode[]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [itemsKey]
   );
 
@@ -127,9 +127,7 @@ const OMFieldSelect: FC<FieldProps> = ({
         // the render-time sync doesn't clobber it before RAQB propagates the
         // new selectedKey back through props.
         lastSelectedKeyRef.current = id;
-        setInputValue(
-          selectItems.find((item) => item.id === id)?.label ?? id
-        );
+        setInputValue(selectItems.find((item) => item.id === id)?.label ?? id);
         setField(id);
       }}>
       {(item) => (
