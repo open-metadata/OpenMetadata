@@ -17,7 +17,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   copyAndGetClipboardText,
   testCopyLinkButton,
@@ -55,8 +55,16 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    table1 = new TableClass();
-    table2 = new TableClass();
+    // Explore tree's service bucket is capped and sorted alphabetically
+    // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
+    // with a digit guarantees these services land within that bucket
+    // regardless of how many other `pw-*` services have accumulated.
+    table1 = new TableClass(undefined, undefined, {
+      name: `0-pw-database-service-${uuid()}`,
+    });
+    table2 = new TableClass(undefined, undefined, {
+      name: `0-pw-database-service-${uuid()}`,
+    });
 
     await table1.create(apiContext);
     await table2.create(apiContext);
