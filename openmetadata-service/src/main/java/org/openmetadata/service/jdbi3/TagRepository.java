@@ -303,8 +303,11 @@ public class TagRepository extends EntityRepository<Tag> {
     // forever. Store the Tag's own flag, then restore the effective value for the response.
     Boolean effectiveDisabled = tag.getDisabled();
     tag.setDisabled(getOwnDisabled(tag, update, effectiveDisabled));
-    store(tag, update);
-    tag.setDisabled(effectiveDisabled);
+    try {
+      store(tag, update);
+    } finally {
+      tag.setDisabled(effectiveDisabled);
+    }
   }
 
   /**
@@ -337,7 +340,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (classificationRef != null && classificationRef.getId() != null) {
       try {
         Classification classification =
-            Entity.getEntity(CLASSIFICATION, classificationRef.getId(), "", ALL);
+            Entity.getEntity(CLASSIFICATION, classificationRef.getId(), "", ALL, false);
         isDisabled = Boolean.TRUE.equals(classification.getDisabled());
       } catch (EntityNotFoundException e) {
         LOG.debug(
