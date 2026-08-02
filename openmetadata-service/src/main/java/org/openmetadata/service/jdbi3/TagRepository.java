@@ -297,7 +297,57 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntity(Tag tag, boolean update) {
+    // setInheritedFields() sets disabled=true on the in-memory Tag whenever the parent
+    // Classification is disabled. That inherited value must never be persisted: once it is
+    // stored, re-enabling the Classification can no longer clear it and the Tag stays disabled
+    // forever. Store the Tag's own flag, then restore the effective value for the response.
+    Boolean effectiveDisabled = tag.getDisabled();
+    tag.setDisabled(getOwnDisabled(tag, update, effectiveDisabled));
     store(tag, update);
+    tag.setDisabled(effectiveDisabled);
+  }
+
+  /**
+   * Returns the Tag's own {@code disabled} setting, with any value inherited from a disabled parent
+   * Classification removed. While the parent Classification is disabled the Tag always reads as
+   * disabled, so a user cannot express "disable this Tag individually" during that window - the
+   * stored value is therefore authoritative.
+   */
+  private Boolean getOwnDisabled(Tag tag, boolean update, Boolean effectiveDisabled) {
+    Boolean ownDisabled = effectiveDisabled;
+    if (Boolean.TRUE.equals(effectiveDisabled) && isParentClassificationDisabled(tag)) {
+      ownDisabled = update ? getStoredDisabled(tag.getId()) : Boolean.FALSE;
+    }
+    return ownDisabled;
+  }
+
+  private Boolean getStoredDisabled(UUID tagId) {
+    Boolean storedDisabled = Boolean.FALSE;
+    try {
+      storedDisabled = dao.findEntityById(tagId, ALL).getDisabled();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Tag {} not found while reading its stored disabled flag", tagId, e);
+    }
+    return storedDisabled;
+  }
+
+  private boolean isParentClassificationDisabled(Tag tag) {
+    boolean isDisabled = false;
+    EntityReference classificationRef = tag.getClassification();
+    if (classificationRef != null && classificationRef.getId() != null) {
+      try {
+        Classification classification =
+            Entity.getEntity(CLASSIFICATION, classificationRef.getId(), "", ALL);
+        isDisabled = Boolean.TRUE.equals(classification.getDisabled());
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Classification {} not found while checking the disabled flag of tag {}",
+            classificationRef.getId(),
+            tag.getId(),
+            e);
+      }
+    }
+    return isDisabled;
   }
 
   @Override
