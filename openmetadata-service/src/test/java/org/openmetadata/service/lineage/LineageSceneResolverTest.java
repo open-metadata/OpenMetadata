@@ -41,6 +41,9 @@ import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TempLineageTable;
@@ -434,73 +437,78 @@ class LineageSceneResolverTest {
   }
 
   @Test
-  void aggregationCountParserReadsPlainAndTypedBucketKeys() {
-    String plainResponse =
-        """
-        {
-          "aggregations": {
-            "database.fullyQualifiedName": {
-              "buckets": [
-                { "key": "snowflake.shop", "doc_count": 40 },
-                { "key": "snowflake.finance", "doc_count": 3 }
-              ]
-            }
-          }
-        }
-        """;
-    String typedResponse =
-        """
-        {
-          "aggregations": {
-            "sterms#databaseSchema.fullyQualifiedName.keyword": {
-              "buckets": [
-                { "key": "snowflake.shop.shopify", "doc_count": 8 },
-                { "key": "snowflake.shop.analytics", "doc_count": 12 }
-              ]
-            }
-          }
-        }
-        """;
+  void subjectAwareAggregationReportProducesNormalizedRootCounts() {
+    String rootField = "service.fullyQualifiedName.keyword";
+    DataQualityReport report =
+        new DataQualityReport()
+            .withData(
+                List.of(
+                    new Datum()
+                        .withAdditionalProperty(rootField, "Snowflake")
+                        .withAdditionalProperty("entityType", "TABLE")
+                        .withAdditionalProperty("document_count", "7"),
+                    new Datum()
+                        .withAdditionalProperty(rootField, "Snowflake")
+                        .withAdditionalProperty("entityType", "TOPIC")
+                        .withAdditionalProperty("document_count", "2")));
 
-    assertEquals(
-        Map.of("snowflake.shop", 40, "snowflake.finance", 3),
-        LineageSceneResolver.parseAggregationCounts(plainResponse, "database.fullyQualifiedName"));
-    assertEquals(
-        Map.of("snowflake.shop.shopify", 8, "snowflake.shop.analytics", 12),
-        LineageSceneResolver.parseAggregationCounts(
-            typedResponse, "databaseSchema.fullyQualifiedName.keyword"));
+    LineageSceneResolver.RootAssetCounts result =
+        LineageSceneResolver.rootAssetCounts(report, rootField);
+
+    assertEquals(Map.of("snowflake", Map.of(Entity.TABLE, 7, Entity.TOPIC, 2)), result.counts());
+    assertFalse(result.truncated());
   }
 
   @Test
-  void nestedAggregationParserNormalizesKeysAndDetectsOverflow() {
-    String response =
-        """
-        {
-          "sterms#roots": {
-            "sum_other_doc_count": 3,
-            "buckets": [
-              {
-                "key": "Snowflake.ANALYTICS",
-                "doc_count": 12,
-                "sterms#types": {
-                  "sum_other_doc_count": 1,
-                  "buckets": [
-                    { "key": "TABLE", "doc_count": 10 },
-                    { "key": "storedProcedure", "doc_count": 2 }
-                  ]
-                }
-              }
-            ]
-          }
-        }
-        """;
+  void subjectAwareAggregationReportProducesNormalizedContainerCounts() {
+    String bucketField = "databaseSchema.fullyQualifiedName.keyword";
+    DataQualityReport report =
+        new DataQualityReport()
+            .withData(
+                List.of(
+                    new Datum()
+                        .withAdditionalProperty(bucketField, "Snowflake.Shop.Shopify")
+                        .withAdditionalProperty("document_count", "8")));
 
     assertEquals(
-        Map.of(
-            "snowflake.analytics",
-            Map.of(Entity.TABLE, 10, Entity.STORED_PROCEDURE.toLowerCase(), 2)),
-        LineageSceneResolver.parseNestedAggregationCounts(response));
-    assertTrue(LineageSceneResolver.isNestedAggregationTruncated(response));
+        Map.of("snowflake.shop.shopify", 8),
+        LineageSceneResolver.aggregationCounts(report, bucketField));
+  }
+
+  @Test
+  void sceneAssetSearchRequestRetainsPolicyAwareFieldFilter() {
+    SubjectContext subjectContext =
+        new SubjectContext(
+            new User()
+                .withName("restricted-user")
+                .withRoles(List.of(new EntityReference().withName("DomainOnlyAccessRole")))
+                .withDomains(List.of(new EntityReference().withFullyQualifiedName("Engineering"))),
+            null);
+    String queryFilter =
+        LineageSceneResolver.fieldQuery(
+            "service.fullyQualifiedName.keyword",
+            "snowflake",
+            "upstreamLineage.docId",
+            subjectContext);
+
+    SearchRequest request =
+        LineageSceneResolver.sceneAssetSearchRequest(
+            Entity.TABLE, false, 25, List.of("id", "fullyQualifiedName"), queryFilter);
+    JsonNode must = JsonUtils.readTree(request.getQueryFilter()).at("/query/bool/must");
+
+    assertEquals(Entity.TABLE, request.getIndex());
+    assertEquals(25, request.getSize());
+    assertTrue(Boolean.TRUE.equals(request.getTrackTotalHits()));
+    assertFalse(Boolean.TRUE.equals(request.getIncludeAggregations()));
+    assertEquals(
+        "snowflake", must.get(0).at("/wildcard/service.fullyQualifiedName.keyword/value").asText());
+    assertTrue(
+        must.get(0)
+            .at("/wildcard/service.fullyQualifiedName.keyword/case_insensitive")
+            .asBoolean());
+    assertEquals("upstreamLineage.docId", must.get(1).at("/exists/field").asText());
+    assertEquals(
+        "Engineering", must.get(2).at("/bool/should/1/term/domains.fullyQualifiedName").asText());
   }
 
   @Test
