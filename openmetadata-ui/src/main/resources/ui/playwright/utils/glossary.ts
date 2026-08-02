@@ -2051,17 +2051,24 @@ export const expandToGlossaryTermChildren = async (
     timeout: 10000,
   });
 
+  // Always narrow the tree to the glossary first. It is virtualized, so on an instance with
+  // enough glossaries a freshly created one is simply not among the rendered rows and the
+  // lookup below fails with "element(s) not found" - which is exactly what happens on a loaded
+  // AUT where parallel specs have created many glossaries.
+  //
+  // Only search at the top level: searching re-queries the API and returns matched terms one
+  // level deep, so a nested term found that way looks like a leaf and its expand chevron never
+  // becomes interactive. The parent term is resolved from the glossary's already-loaded subtree.
+  const searchResponse = page.waitForResponse(
+    /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
+  );
+  await glossaryField.fill(glossaryDisplayName);
+  await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+  await expandTreeNodeByName(page, glossaryDisplayName);
+
   if (parentTermDisplayName) {
-    await expandTreeNodeByName(page, glossaryDisplayName);
     await expandTreeNodeByName(page, parentTermDisplayName);
-  } else {
-    const searchResponse = page.waitForResponse(
-      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
-    );
-    await glossaryField.fill(glossaryDisplayName);
-    await searchResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expandTreeNodeByName(page, glossaryDisplayName);
   }
 };
 
