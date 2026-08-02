@@ -25,6 +25,22 @@ import {
   searchForEntityShouldWorkShowNoResult,
 } from '../../utils/searchRBAC';
 
+test.beforeAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await enableDisableSearchRBAC(apiContext, true);
+  await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  await enableDisableSearchRBAC(apiContext, false);
+
+  await afterAction();
+});
+
+test.describe.configure({ mode: 'default' });
+
 for (const entity of searchRBACEntities) {
   const entityObj = new entity.class();
 
@@ -39,8 +55,6 @@ for (const entity of searchRBACEntities) {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entityObj.create(apiContext);
-
-      await enableDisableSearchRBAC(apiContext, true);
 
       const promises = [user1.create(apiContext), user2.create(apiContext)];
 
@@ -102,14 +116,6 @@ for (const entity of searchRBACEntities) {
           },
         ],
       });
-      await afterAction();
-    });
-
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await enableDisableSearchRBAC(apiContext, false);
-
       await afterAction();
     });
 
