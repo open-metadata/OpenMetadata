@@ -13,8 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 
 SCRIPTS = Path(__file__).parents[1]
 

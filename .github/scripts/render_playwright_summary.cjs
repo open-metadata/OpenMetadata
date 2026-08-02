@@ -145,7 +145,10 @@ async function renderPlaywrightSummary({ github, context, core }) {
   for (const [name, detail] of Object.entries(failedBlockingTargetDetails)) {
     const label = detail?.label ?? name;
     const threshold = detail?.threshold;
-    const unit = detail?.unit ?? '';
+    // Older/malformed payloads may omit `unit`. Guard the space so the
+    // rendered message doesn't carry trailing whitespace (e.g. "1500 " when
+    // `unit` is missing).
+    const unitSuffix = detail?.unit ? ` ${detail.unit}` : '';
     const offending = Array.isArray(detail?.offendingShards)
       ? detail.offendingShards
       : [];
@@ -153,11 +156,11 @@ async function renderPlaywrightSummary({ github, context, core }) {
       ? ` — exceeded on ${offending.length} shard(s): ${
           offending
             .slice(0, 5)
-            .map(shard => `${shard.shardId ?? 'unknown'} ${shard.value ?? '?'} ${unit}`)
+            .map(shard => `${shard.shardId ?? 'unknown'} ${shard.value ?? '?'}${unitSuffix}`)
             .join(', ')
         }${offending.length > 5 ? ` (+${offending.length - 5} more)` : ''}`
       : '';
-    const targetText = Number.isFinite(threshold) ? ` (target ≤ ${threshold} ${unit})` : '';
+    const targetText = Number.isFinite(threshold) ? ` (target ≤ ${threshold}${unitSuffix})` : '';
     addInfrastructureIssue(
       `Playwright performance gate \`${label}\` failed${targetText}${shardText}.`
     );
