@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Typography as CoreTypography,
