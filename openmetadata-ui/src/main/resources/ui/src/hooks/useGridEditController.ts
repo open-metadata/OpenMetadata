@@ -135,9 +135,15 @@ function useClipboardHandlers(
         textarea.value = tsv.join('\n');
         document.body.appendChild(textarea);
         textarea.select();
-        const success = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        previouslyFocused?.focus();
+        let success = false;
+        try {
+          success = document.execCommand('copy');
+        } finally {
+          // execCommand can throw in some browsers rather than returning false; clean up and
+          // hand focus back either way, so a failed copy cannot leave the grid unusable.
+          document.body.removeChild(textarea);
+          previouslyFocused?.focus();
+        }
 
         return success;
       }
