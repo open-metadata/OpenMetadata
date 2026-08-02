@@ -127,12 +127,17 @@ function useClipboardHandlers(
 
         return undefined;
       } else {
+        // Selecting the textarea moves focus off the grid cell. Restore it afterwards,
+        // otherwise every subsequent key (arrow navigation, Ctrl+V) is delivered to <body>
+        // and the grid stops responding until the user clicks a cell again.
+        const previouslyFocused = document.activeElement as HTMLElement | null;
         const textarea = document.createElement('textarea');
         textarea.value = tsv.join('\n');
         document.body.appendChild(textarea);
         textarea.select();
         const success = document.execCommand('copy');
         document.body.removeChild(textarea);
+        previouslyFocused?.focus();
 
         return success;
       }
