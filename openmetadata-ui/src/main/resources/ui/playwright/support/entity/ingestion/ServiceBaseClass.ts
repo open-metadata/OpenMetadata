@@ -48,6 +48,7 @@ import {
   selectServiceConnector,
   Services,
   testConnection,
+  waitForIngestionWorkflowForm,
   waitForServiceConnectionForm,
 } from '../../../utils/serviceIngestion';
 import { ResponseDataType } from '../Entity.interface';
@@ -214,13 +215,14 @@ class ServiceBaseClass {
     await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
 
     // Add ingestion page
-    await page.getByTestId('add-ingestion-container').waitFor();
+    await waitForIngestionWorkflowForm(page);
     await this.fillIngestionDetails(page);
 
     await page.click('[data-testid="next-button"]');
 
     // Go back and data should persist
     await page.click('[data-testid="previous-button"]');
+    await waitForIngestionWorkflowForm(page);
     await this.validateIngestionDetails(page);
 
     // Go Next
@@ -446,6 +448,13 @@ class ServiceBaseClass {
     await this.updateDescriptionForIngestedTables(page);
   }
 
+  async openAgentScheduleStep(page: Page) {
+    await page.getByTestId('more-actions').first().click();
+    await page.click('[data-testid="edit-button"]');
+    await waitForIngestionWorkflowForm(page);
+    await page.click('[data-testid="next-button"]');
+  }
+
   async updateScheduleOptions(page: Page) {
     await visitServiceDetailsPage(
       page,
@@ -460,10 +469,7 @@ class ServiceBaseClass {
     }
 
     // click and edit pipeline schedule for Hours
-
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="next-button"]');
+    await this.openAgentScheduleStep(page);
 
     // select schedule
     await selectScheduleType(page);
@@ -482,9 +488,7 @@ class ServiceBaseClass {
     );
 
     // click and edit pipeline schedule for Day
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="next-button"]');
+    await this.openAgentScheduleStep(page);
     await selectScheduleFrequency(page, 'day');
     await setScheduleTime(page, { hour: '04', minute: '04', period: 'AM' });
 
@@ -505,9 +509,7 @@ class ServiceBaseClass {
     await expect(page.getByTestId('agent-schedule')).toContainText('Every day');
 
     // click and edit pipeline schedule for Week
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="next-button"]');
+    await this.openAgentScheduleStep(page);
     await selectScheduleFrequency(page, 'week');
     await selectScheduleDayOfWeek(page, 'Wednesday');
     await setScheduleTime(page, { hour: '05', minute: '05', period: 'AM' });
@@ -524,9 +526,7 @@ class ServiceBaseClass {
     );
 
     // click and edit pipeline schedule for Custom
-    await page.getByTestId('more-actions').first().click();
-    await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="next-button"]');
+    await this.openAgentScheduleStep(page);
     await selectScheduleFrequency(page, 'custom');
 
     // Schedule & Deploy
@@ -596,13 +596,21 @@ class ServiceBaseClass {
       false
     );
 
+    await page
+      .getByTestId('table-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+
     await page.click('[data-testid="agents"]');
     const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
 
-    await waitForAllLoadersToDisappear(page);
+    await page
+      .getByLabel('agents')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await page.getByTestId('logs-button').first().waitFor({ state: 'visible' });
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
