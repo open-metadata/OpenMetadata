@@ -71,6 +71,17 @@ import {
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { t } from './i18next/LocalUtil';
 
+// These moved to EntityIconUtils/EntityServiceIconUtils so that importing TableUtils no longer
+// drags the entity-icon graph into every consumer. Re-exported because downstream repos (Collate)
+// still import them from here; they tree-shake away for callers that do not use them.
+export {
+  EntityIconSize,
+  ENTITY_ICON_SIZE_CLASS_MAP,
+  getEntityIcon,
+  getEntityTypeIcon,
+} from './EntityIconUtils';
+export { getServiceIcon } from './EntityServiceIconUtils';
+
 export const getConstraintIcon = ({
   constraint = '',
   className = '',
