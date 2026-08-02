@@ -56,6 +56,8 @@ import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
 import org.openmetadata.schema.api.lineage.LineageLevelKind;
 import org.openmetadata.schema.api.lineage.LineageScene;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -69,12 +71,16 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ContainerDataModel;
@@ -85,6 +91,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.SchemaType;
@@ -1202,6 +1209,149 @@ public class LineageResourceIT {
     admin.domains().delete(blockedDomain.getId().toString());
   }
 
+  @Test
+  void testRootLineageSceneFiltersAssetsDeniedByPolicy() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Domain allowedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("allowed_policy_scene_domain"))
+                    .withDescription("Allowed domain for lineage scene authorization testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    Domain deniedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("denied_policy_scene_domain"))
+                    .withDescription("Denied domain for lineage scene authorization testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    DatabaseService deniedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database deniedDatabase = createDatabase(admin, namespace, deniedService, "denied_scene_db");
+    DatabaseSchema deniedSchema =
+        createSchema(admin, namespace, deniedDatabase, "denied_scene_schema");
+    Table deniedTable =
+        createTableInSchema(
+            admin,
+            namespace,
+            deniedSchema,
+            "denied_scene_table",
+            columns("id"),
+            List.of(deniedDomain.getFullyQualifiedName()));
+    DatabaseService allowedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database allowedDatabase = createDatabase(admin, namespace, allowedService, "allowed_scene_db");
+    DatabaseSchema allowedSchema =
+        createSchema(admin, namespace, allowedDatabase, "allowed_scene_schema");
+    Table allowedTable =
+        createTableInSchema(
+            admin,
+            namespace,
+            allowedSchema,
+            "allowed_scene_table",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+    addLineage(admin, deniedTable, allowedTable);
+
+    getLineageSceneWithRetry(
+        admin,
+        deniedTable.getFullyQualifiedName(),
+        Entity.TABLE,
+        LineageBand.ASSET,
+        scene ->
+            hasSceneEdge(
+                scene, deniedTable.getFullyQualifiedName(), allowedTable.getFullyQualifiedName()));
+    getRootLineageSceneWithFreshCacheKeyRetry(
+        admin,
+        LineageLens.SERVICE,
+        LineageBand.LAYER,
+        scene ->
+            hasSceneEdge(
+                scene,
+                deniedService.getFullyQualifiedName(),
+                allowedService.getFullyQualifiedName()));
+    LineageScene adminAssetScene =
+        getRootLineageScene(admin, LineageLens.SERVICE, LineageBand.ASSET, 990);
+    assertTrue(hasSceneNode(adminAssetScene, deniedService.getFullyQualifiedName()));
+    assertTrue(hasSceneNode(adminAssetScene, allowedService.getFullyQualifiedName()));
+    LineageScene adminLayerScene =
+        getRootLineageScene(admin, LineageLens.SERVICE, LineageBand.LAYER, 990);
+    assertTrue(
+        hasSceneEdge(
+            adminLayerScene,
+            deniedService.getFullyQualifiedName(),
+            allowedService.getFullyQualifiedName()));
+
+    Rule denyForeignDomainView =
+        new Rule()
+            .withName(namespace.prefix("deny_table_view"))
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("!hasDomain()");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(namespace.prefix("deny_table_scene_policy"))
+                    .withRules(List.of(denyForeignDomainView)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(namespace.prefix("deny_table_scene_role"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = "lineage-policy-" + allowedDomain.getId();
+    String email = userName + "@test.openmetadata.org";
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(email)
+                    .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+                    .withRoles(List.of(role.getId())));
+
+    try {
+      OpenMetadataClient restrictedClient = SdkClients.createClient(email, email, new String[] {});
+      LineageScene scene =
+          getRootLineageScene(restrictedClient, LineageLens.SERVICE, LineageBand.ASSET, 990);
+
+      assertFalse(hasSceneNode(scene, deniedService.getFullyQualifiedName()));
+      assertFalse(hasSceneNode(scene, deniedTable.getFullyQualifiedName()));
+      assertTrue(scene.getSampled());
+
+      LineageScene layerScene =
+          getRootLineageScene(restrictedClient, LineageLens.SERVICE, LineageBand.LAYER, 990);
+      assertFalse(hasSceneNode(layerScene, deniedService.getFullyQualifiedName()));
+      assertTrue(hasSceneNode(layerScene, allowedService.getFullyQualifiedName()));
+      assertFalse(
+          hasSceneEdge(
+              layerScene,
+              deniedService.getFullyQualifiedName(),
+              allowedService.getFullyQualifiedName()));
+      assertEquals(
+          1,
+          sceneNodeCount(
+              layerScene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE));
+      assertTrue(layerScene.getSampled());
+    } finally {
+      admin.users().delete(user.getId().toString());
+      admin.roles().delete(role.getId().toString());
+      admin.policies().delete(policy.getId().toString());
+      deleteLineage(admin, deniedTable.getEntityReference(), allowedTable.getEntityReference());
+      cleanupDatabaseService(admin, deniedService);
+      cleanupDatabaseService(admin, allowedService);
+      admin.domains().delete(allowedDomain.getId().toString());
+      admin.domains().delete(deniedDomain.getId().toString());
+    }
+  }
+
   private Table createTable(OpenMetadataClient client, TestNamespace namespace, String tableName)
       throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
@@ -1403,6 +1553,30 @@ public class LineageResourceIT {
         .until(
             () -> {
               LineageScene scene = getRootLineageScene(client, lens, band, size);
+              if (predicate.test(scene)) {
+                holder[0] = scene;
+                return true;
+              }
+              return false;
+            });
+    return holder[0];
+  }
+
+  private LineageScene getRootLineageSceneWithFreshCacheKeyRetry(
+      OpenMetadataClient client,
+      LineageLens lens,
+      LineageBand band,
+      Predicate<LineageScene> predicate) {
+    LineageScene[] holder = {null};
+    int[] size = {900};
+    Awaitility.await("Uncached root lineage scene for " + lens.value())
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              LineageScene scene = getRootLineageScene(client, lens, band, size[0]++);
               if (predicate.test(scene)) {
                 holder[0] = scene;
                 return true;

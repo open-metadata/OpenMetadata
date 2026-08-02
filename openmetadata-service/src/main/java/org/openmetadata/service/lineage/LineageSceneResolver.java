@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -139,6 +141,15 @@ public class LineageSceneResolver {
   private static final int FIELD_EDGE_LIMIT = 120;
   private static final int ROOT_LINEAGE_HYDRATION_BATCH_SIZE = 1000;
   private static final long LOOKUP_TIMEOUT_SECONDS = 15;
+  private final LineageHydrator hydrator;
+
+  LineageSceneResolver() {
+    this(null);
+  }
+
+  public LineageSceneResolver(LineageHydrator hydrator) {
+    this.hydrator = hydrator;
+  }
 
   public LineageScene getScene(
       String focusFqn,
@@ -150,11 +161,13 @@ public class LineageSceneResolver {
       int size,
       String queryFilter,
       boolean includeDeleted,
+      SecurityContext securityContext,
       SubjectContext subjectContext)
       throws IOException {
     LineageLens sceneLens = lens == null ? LineageLens.SERVICE : lens;
     LineageBand sceneBand = defaultBand(band);
-    boolean cacheable = nullOrEmpty(focusFqn) && !LineageDomainFilter.shouldApply(subjectContext);
+    boolean authorizeRoot = shouldAuthorizeRoot(focusFqn, subjectContext);
+    boolean cacheable = canUseSharedRootCache(focusFqn, subjectContext);
     LineageSceneCache.Key cacheKey =
         new LineageSceneCache.Key(
             sceneLens,
@@ -206,6 +219,11 @@ public class LineageSceneResolver {
           includeDeleted,
           subjectContext);
     }
+    if (authorizeRoot) {
+      Include include = includeDeleted ? Include.DELETED : Include.NON_DELETED;
+      hydrator.pruneUnauthorizedLineage(securityContext, lineage, include);
+      sampled = true;
+    }
     pruneLineage(lineage, subjectContext, focusFqn);
     LineageScene scene =
         resolveScene(focusFqn, entityType, sceneLens, sceneBand, lineage, size, sampled);
@@ -213,6 +231,18 @@ public class LineageSceneResolver {
       LineageSceneCache.getInstance().put(cacheKey, scene);
     }
     return scene;
+  }
+
+  private static boolean shouldAuthorizeRoot(String focusFqn, SubjectContext subjectContext) {
+    return nullOrEmpty(focusFqn) && requiresEntityAuthorization(subjectContext);
+  }
+
+  private static boolean canUseSharedRootCache(String focusFqn, SubjectContext subjectContext) {
+    return nullOrEmpty(focusFqn) && (subjectContext == null || subjectContext.isAdmin());
+  }
+
+  private static boolean requiresEntityAuthorization(SubjectContext subjectContext) {
+    return subjectContext != null && !subjectContext.isAdmin();
   }
 
   LineageScene resolveScene(
@@ -285,7 +315,7 @@ public class LineageSceneResolver {
       SubjectContext subjectContext)
       throws IOException {
     if (nullOrEmpty(focusFqn)) {
-      if (LineageDomainFilter.shouldApply(subjectContext)) {
+      if (requiresEntityAuthorization(subjectContext)) {
         SearchLineageResult lineage =
             Entity.getSearchRepository()
                 .searchPlatformLineage(

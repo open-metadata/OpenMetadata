@@ -108,7 +108,7 @@ public class LineageResource {
     this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
     this.hydrator = new LineageHydrator(authorizer);
-    this.sceneResolver = new LineageSceneResolver();
+    this.sceneResolver = new LineageSceneResolver(hydrator);
   }
 
   private static void validateTemporalBounds(Long startTime, Long endTime) {
@@ -334,6 +334,7 @@ public class LineageResource {
         size,
         queryFilter,
         includeDeleted,
+        securityContext,
         getSubjectContext(securityContext));
   }
 

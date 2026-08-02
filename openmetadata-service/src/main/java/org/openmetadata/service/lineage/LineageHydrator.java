@@ -18,21 +18,29 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageResponse;
+import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -65,7 +73,15 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * <p>This class is stateless apart from the injected {@link Authorizer}; safe to share across
  * threads.
  */
+@Slf4j
 public class LineageHydrator {
+  private static final String AUTHORIZATION_FIELDS =
+      String.join(
+          ",",
+          Entity.FIELD_OWNERS,
+          Entity.FIELD_TAGS,
+          Entity.FIELD_DOMAINS,
+          Entity.FIELD_REVIEWERS);
 
   private final Authorizer authorizer;
 
@@ -96,7 +112,7 @@ public class LineageHydrator {
               securityContext,
               entry.getKey(),
               entry.getValue(),
-              request.getFields(),
+              Entity.getEntityRepository(entry.getKey()).getFields(request.getFields()),
               include,
               Entity.getEntityRepository(entry.getKey()));
       if (!hydrated.isEmpty()) {
@@ -107,6 +123,30 @@ public class LineageHydrator {
     return new HydrateLineageResponse()
         .withEntitiesByType(entitiesByType)
         .withDroppedCount(requestedCount - returnedCount);
+  }
+
+  /**
+   * Removes lineage nodes the caller cannot VIEW_BASIC and every edge touching a removed node.
+   * Nodes without a resolvable entity identity are also removed so synthetic aggregate counts
+   * cannot reveal assets hidden by policy.
+   */
+  public SearchLineageResult pruneUnauthorizedLineage(
+      SecurityContext securityContext, SearchLineageResult lineage, Include include) {
+    if (lineage == null || nullOrEmpty(lineage.getNodes())) {
+      return lineage;
+    }
+    List<LineageNode> candidates = lineageNodes(lineage.getNodes());
+    Set<EntityKey> authorized = authorizeLineageNodes(securityContext, candidates, include);
+    Set<String> visibleNodeKeys = new HashSet<>();
+    for (LineageNode candidate : candidates) {
+      if (authorized.contains(candidate.entityKey())) {
+        visibleNodeKeys.add(candidate.nodeKey());
+      }
+    }
+    lineage.getNodes().keySet().retainAll(visibleNodeKeys);
+    retainAuthorizedEdges(lineage.getUpstreamEdges(), authorized);
+    retainAuthorizedEdges(lineage.getDownstreamEdges(), authorized);
+    return lineage;
   }
 
   private static Map<String, List<UUID>> groupIdsByType(List<EntityReference> refs) {
@@ -122,15 +162,44 @@ public class LineageHydrator {
     return idsByType;
   }
 
+  private Set<EntityKey> authorizeLineageNodes(
+      SecurityContext securityContext, List<LineageNode> nodes, Include include) {
+    Map<String, List<UUID>> idsByType = groupLineageIdsByType(nodes);
+    Set<EntityKey> authorized = new HashSet<>();
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      authorizeLineageType(securityContext, include, authorized, entry);
+    }
+    return authorized;
+  }
+
+  private void authorizeLineageType(
+      SecurityContext securityContext,
+      Include include,
+      Set<EntityKey> authorized,
+      Map.Entry<String, List<UUID>> entry) {
+    try {
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getEntityRepository(entry.getKey());
+      Fields fields = repository.getOnlySupportedFields(AUTHORIZATION_FIELDS);
+      List<? extends EntityInterface> entities =
+          hydrateAndAuthorize(
+              null, securityContext, entry.getKey(), entry.getValue(), fields, include, repository);
+      for (EntityInterface entity : entities) {
+        authorized.add(new EntityKey(entry.getKey(), entity.getId()));
+      }
+    } catch (EntityNotFoundException exception) {
+      LOG.warn("Skipping lineage nodes with unsupported entity type '{}'.", entry.getKey());
+    }
+  }
+
   private <T extends EntityInterface> List<T> hydrateAndAuthorize(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String entityType,
       List<UUID> ids,
-      String fieldsParam,
+      Fields fields,
       Include include,
       EntityRepository<T> repo) {
-    Fields fields = repo.getFields(fieldsParam);
     List<T> entities = repo.get(uriInfo, ids, fields, include);
     String userName = securityContext.getUserPrincipal().getName();
     List<T> authorized = new ArrayList<>(entities.size());
@@ -145,11 +214,88 @@ public class LineageHydrator {
     return authorized;
   }
 
+  private static List<LineageNode> lineageNodes(Map<String, NodeInformation> nodes) {
+    List<LineageNode> lineageNodes = new ArrayList<>(nodes.size());
+    for (Map.Entry<String, NodeInformation> entry : nodes.entrySet()) {
+      Map<String, Object> entity = entry.getValue() == null ? null : entry.getValue().getEntity();
+      LineageNode node = lineageNode(entry.getKey(), entity);
+      if (node != null) {
+        lineageNodes.add(node);
+      }
+    }
+    return lineageNodes;
+  }
+
+  private static LineageNode lineageNode(String nodeKey, Map<String, Object> entity) {
+    if (entity == null) {
+      return null;
+    }
+    String type = stringValue(entity, "entityType");
+    if (nullOrEmpty(type)) {
+      type = stringValue(entity, "type");
+    }
+    String fqn = stringValue(entity, "fullyQualifiedName");
+    UUID id = uuidValue(entity.get("id"));
+    return nullOrEmpty(type) || nullOrEmpty(fqn) || id == null
+        ? null
+        : new LineageNode(nodeKey, new EntityKey(type, id));
+  }
+
+  private static Map<String, List<UUID>> groupLineageIdsByType(List<LineageNode> nodes) {
+    Map<String, LinkedHashSet<UUID>> uniqueIdsByType = new LinkedHashMap<>();
+    for (LineageNode node : nodes) {
+      uniqueIdsByType
+          .computeIfAbsent(node.entityKey().type(), ignored -> new LinkedHashSet<>())
+          .add(node.entityKey().id());
+    }
+    Map<String, List<UUID>> idsByType = new LinkedHashMap<>(uniqueIdsByType.size());
+    uniqueIdsByType.forEach((type, ids) -> idsByType.put(type, new ArrayList<>(ids)));
+    return idsByType;
+  }
+
+  private static void retainAuthorizedEdges(
+      Map<String, EsLineageData> edges, Set<EntityKey> authorized) {
+    if (edges != null) {
+      edges.values().removeIf(edge -> !isAuthorizedEdge(edge, authorized));
+    }
+  }
+
+  private static boolean isAuthorizedEdge(EsLineageData edge, Set<EntityKey> authorized) {
+    return edge != null
+        && authorized.contains(entityKey(edge.getFromEntity()))
+        && authorized.contains(entityKey(edge.getToEntity()));
+  }
+
+  private static EntityKey entityKey(RelationshipRef ref) {
+    return ref == null || nullOrEmpty(ref.getType()) || ref.getId() == null
+        ? null
+        : new EntityKey(ref.getType(), ref.getId());
+  }
+
+  private static String stringValue(Map<String, Object> entity, String field) {
+    Object value = entity.get(field);
+    return value == null ? null : value.toString();
+  }
+
+  private static UUID uuidValue(Object value) {
+    if (value instanceof UUID id) {
+      return id;
+    }
+    try {
+      return value == null ? null : UUID.fromString(value.toString());
+    } catch (IllegalArgumentException ignored) {
+      return null;
+    }
+  }
+
   /**
    * Return {@code true} when the resolved permission set explicitly allows VIEW_BASIC on the
    * resource (either unconditionally or conditionally — both let the caller read the entity).
    */
   private static boolean isViewBasicAllowed(ResourcePermission permission) {
+    if (permission == null || nullOrEmpty(permission.getPermissions())) {
+      return false;
+    }
     for (Permission p : permission.getPermissions()) {
       if (p.getOperation() == MetadataOperation.VIEW_BASIC) {
         Access access = p.getAccess();
@@ -158,4 +304,8 @@ public class LineageHydrator {
     }
     return false;
   }
+
+  private record EntityKey(String type, UUID id) {}
+
+  private record LineageNode(String nodeKey, EntityKey entityKey) {}
 }
