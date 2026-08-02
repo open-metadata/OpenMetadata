@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import math
 import re
 import statistics
@@ -333,6 +334,42 @@ def apply_history_weights(
         )
 
 
+# Emit a GitHub Actions ::warning:: for any file where enough tests fall through
+# to FALLBACK_TEST_MS that the plan is at real risk of under-budgeting the shard
+# holding them (see fix #30812 for the failure mode). The gate is intentionally
+# quiet: files with a handful of new tests trip nothing; a re-enabled suite of
+# 10+ tests, or a smaller suite whose fallback allocation crosses one minute,
+# gets an annotation the re-enabling PR author will see on the plan step.
+UNWEIGHTED_WARN_MIN_TESTS = 10
+UNWEIGHTED_WARN_MIN_MS = 60_000
+
+
+def emit_unweighted_warnings(
+    units: list[Unit],
+    test_weights: dict[str, int],
+    identity_weights: dict[tuple[str, str], int],
+) -> None:
+    stats: dict[str, dict[str, int]] = defaultdict(lambda: {"count": 0})
+    for unit in units:
+        for test_id in unit.test_ids:
+            if test_id in test_weights:
+                continue
+            if (unit.file, unit.test_names[test_id]) in identity_weights:
+                continue
+            stats[unit.file]["count"] += 1
+    for file, entry in sorted(stats.items()):
+        reserved_ms = entry["count"] * FALLBACK_TEST_MS
+        if entry["count"] < UNWEIGHTED_WARN_MIN_TESTS and reserved_ms < UNWEIGHTED_WARN_MIN_MS:
+            continue
+        message = (
+            f"{entry['count']} test(s) in {file} have no timing history; "
+            f"planner reserved {reserved_ms / 60_000:.1f} min via FALLBACK_TEST_MS. "
+            "If this suite was recently re-enabled, refresh timing-baseline.json "
+            "with real durations to avoid shard overruns on the first plan."
+        )
+        print(f"::warning file={file}::{message}", file=sys.stderr)
+
+
 def normalize_spec(path: str) -> str:
     prefix = "playwright/e2e/"
     return path.removeprefix(prefix)
@@ -508,6 +545,7 @@ def main() -> None:
         raise SystemExit("Playwright selection produced no runnable test units")
 
     apply_history_weights(units, test_weights, identity_weights)
+    emit_unweighted_warnings(units, test_weights, identity_weights)
 
     oversized_units = [unit for unit in units if unit.weight_ms > TARGET_MS]
     if oversized_units:
