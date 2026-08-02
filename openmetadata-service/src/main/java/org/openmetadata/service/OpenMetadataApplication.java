@@ -564,7 +564,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
    * Note: For tests using DropwizardAppExtension, uriCompliance must be set in YAML config
    * since the server is initialized before run() is called.
    */
-  private void configureUriCompliance(OpenMetadataApplicationConfig configuration) {
+  void configureUriCompliance(OpenMetadataApplicationConfig configuration) {
     if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
       // Configure application connectors - always set to UNSAFE for backward compatibility
       for (ConnectorFactory connector : serverFactory.getApplicationConnectors()) {

@@ -25,8 +25,6 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
-import Loader from '../../../common/Loader/Loader';
-import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import type { AppPlugin } from '../plugins/AppPlugin';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
@@ -34,7 +32,9 @@ export const ApplicationsContext = createContext({} as ApplicationsContextType);
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [installedPluginInstances, setInstalledPluginInstances] = useState<
+    AppPlugin[]
+  >([]);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName, setApplicationsLoaded } = useApplicationStore();
 
@@ -43,7 +43,6 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchApplicationList = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await getInstalledApplicationList();
 
       setApplications(data);
@@ -51,10 +50,26 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         (app) => app.name ?? app.fullyQualifiedName ?? ''
       );
       setApplicationsName(applicationsNameList);
+      setInstalledPluginInstances([]);
+
+      if (applicationsNameList.length > 0) {
+        const { default: applicationsClassBase } = await import(
+          '../AppDetails/ApplicationsClassBase'
+        );
+        const plugins = applicationsNameList
+          .map((applicationName) => {
+            const PluginClass =
+              applicationsClassBase.appPluginRegistry[applicationName];
+
+            return PluginClass ? new PluginClass(applicationName, true) : null;
+          })
+          .filter((plugin): plugin is AppPlugin => plugin !== null);
+
+        setInstalledPluginInstances(plugins);
+      }
     } catch {
       // do not handle error
     } finally {
-      setLoading(false);
       // Signal to downstream consumers (plugins, mode-aware code) that
       // `applications` reflects server state. Set unconditionally —
       // even on fetch error the list is "as loaded as it's going to
@@ -67,27 +82,12 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     if (!isEmpty(permissions)) {
       fetchApplicationList();
     } else {
-      setLoading(false);
       // No permissions to fetch — applications stays `[]` but the
       // "loaded" signal still needs to flip so downstream consumers
       // gating on it don't wait forever.
       setApplicationsLoaded(true);
     }
   }, [permissions]);
-
-  const installedPluginInstances: AppPlugin[] = useMemo(() => {
-    return applications
-      .map((app) => {
-        if (!app.name) {
-          return null;
-        }
-
-        const PluginClass = applicationsClassBase.appPluginRegistry[app.name];
-
-        return PluginClass ? new PluginClass(app.name, true) : null;
-      })
-      .filter(Boolean) as AppPlugin[];
-  }, [applications]);
 
   // Let plugins contribute to extension points
   useEffect(() => {
@@ -110,7 +110,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <ApplicationsContext.Provider value={appContext}>
-      {loading ? <Loader fullScreen /> : children}
+      {children}
     </ApplicationsContext.Provider>
   );
 };

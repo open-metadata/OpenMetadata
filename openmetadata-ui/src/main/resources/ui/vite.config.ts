@@ -352,7 +352,7 @@ export default defineConfig(async ({ mode }) => {
               }
             }
 
-            if (!id.includes('node_modules')) {
+            if (!normalizedId.includes('/node_modules/')) {
               return;
             }
             if (isPlaywrightBundle) {
@@ -373,100 +373,55 @@ export default defineConfig(async ({ mode }) => {
                 ? 'vendor-e2e-framework'
                 : 'app-e2e-runtime';
             }
-            // Antd remains its own vendor chunk — almost every route touches some
-            // part of it, so the cache-sharing argument holds. Tree-shaking inside
-            // a single chunk keeps the unused subtrees out anyway.
-            if (id.includes('antd')) {
+            const packagePath =
+              normalizedId.split('/node_modules/').pop() ?? normalizedId;
+            const [scopeOrName, scopedName] = packagePath.split('/');
+            const packageName = scopeOrName.startsWith('@')
+              ? `${scopeOrName}/${scopedName}`
+              : scopeOrName;
+
+            if (
+              ['react', 'react-dom', 'scheduler'].includes(packageName) ||
+              packageName.startsWith('react-router')
+            ) {
+              return 'vendor-react';
+            }
+
+            if (
+              packageName.startsWith('@react-aria/') ||
+              packageName.startsWith('@react-stately/') ||
+              packageName.startsWith('@react-types/') ||
+              packageName === 'react-aria' ||
+              packageName === 'react-aria-components' ||
+              packageName === 'react-stately'
+            ) {
+              return 'vendor-aria';
+            }
+
+            // Antd and the core component library are shared by nearly every
+            // route, so stable cache buckets pay off. Route-specific dependencies
+            // are left to Rollup so they stay behind their dynamic import.
+            if (normalizedId.includes('/node_modules/antd/')) {
               return 'vendor-antd';
             }
-            if (id.includes('@openmetadata/ui-core-components')) {
+            if (
+              normalizedId.includes(
+                '/node_modules/@openmetadata/ui-core-components/'
+              )
+            ) {
               return 'vendor-untitled';
             }
-            if (id.includes('@untitledui/icons')) {
+            if (normalizedId.includes('/node_modules/@untitledui/icons/')) {
               return 'vendor-untitled-icons';
             }
-            // Heavy specialists — each used by a small number of routes. Naming
-            // them explicitly stops Rollup from co-locating them in a giant shared
-            // chunk (the prior bundle showed an 8.7 MB chunk containing all of
-            // these mixed together). Each becomes its own ~100-300 KB chunk that
-            // routes lazy-load via React.lazy boundaries.
-            if (id.includes('node_modules/elkjs')) {
-              return 'vendor-elkjs'; // graph layout, used only by lineage views
-            }
-            if (id.includes('node_modules/@reactflow')) {
-              return 'vendor-reactflow'; // lineage canvas
-            }
-            if (
-              id.includes('node_modules/prosemirror') ||
-              id.includes('node_modules/@tiptap')
-            ) {
-              return 'vendor-prosemirror'; // rich text editor (description editing)
-            }
-            if (
-              id.includes('node_modules/codemirror') ||
-              id.includes('node_modules/@codemirror')
-            ) {
-              return 'vendor-codemirror'; // SQL / query editor
-            }
-            if (id.includes('node_modules/recharts')) {
-              return 'vendor-recharts'; // data insights charts
-            }
-            if (id.includes('node_modules/react-latex-next')) {
-              return 'vendor-latex'; // LaTeX rendering in markdown
-            }
-            if (id.includes('node_modules/@melloware/react-logviewer')) {
-              return 'vendor-logviewer'; // ingestion log viewer
-            }
-            if (id.includes('node_modules/showdown')) {
-              return 'vendor-showdown'; // markdown -> HTML in legacy paths
-            }
-            if (
-              id.includes('node_modules/quill') ||
-              id.includes('node_modules/@windmillcode/quill-emoji')
-            ) {
-              return 'vendor-quill'; // (alternative editor surface)
-            }
-            if (id.includes('node_modules/dompurify')) {
-              return 'vendor-dompurify'; // HTML sanitizer
-            }
-            if (id.includes('node_modules/react-data-grid')) {
-              return 'vendor-datagrid'; // wide-table view
-            }
-            if (id.includes('node_modules/luxon')) {
-              return 'vendor-luxon'; // date library
-            }
-            if (id.includes('node_modules/js-yaml')) {
-              return 'vendor-yaml';
-            }
-            // Linear-style per-package chunking, but with a twist: scoped packages
-            // get grouped by SCOPE (e.g. every @analytics/foo lands in
-            // vendor-analytics, every @react-aria/foo lands in vendor-react-aria).
-            // That's a coarser split than strict per-package but still wins on the
-            // cache invalidation story — bumping ONE @analytics package invalidates
-            // ONE chunk, not the whole vendor graph. The reason for grouping by
-            // scope: many scopes ship dozens of micro-packages (@analytics has 8+,
-            // @react-aria has 30+), and giving each a 2-3 KB chunk means a
-            // long tail of HTTP requests that hurts more than the granular cache
-            // wins. Unscoped packages still get their own chunk.
-            //
-            // For specialist scopes that are already explicitly named above
-            // (@reactflow, @tiptap, @codemirror, @melloware), the explicit rule
-            // wins and this generic regex never reaches them.
-            const scopedMatch = id.match(/node_modules[\\/](@[^\\/]+)[\\/]/);
-            if (scopedMatch) {
-              const scope = scopedMatch[1].replace('@', '');
-              return `vendor-${scope}`;
-            }
-            const unscopedMatch = id.match(/node_modules[\\/]([^\\/]+)/);
-            if (unscopedMatch) {
-              return `vendor-${unscopedMatch[1]}`;
-            }
+
+            return;
           },
-          // The CI-only coarse bundle trades fine-grained browser caching for
-          // fewer cold-context requests. Production keeps the existing 10 KiB
-          // threshold, while Playwright groups small application modules more
-          // aggressively without collapsing route or connector boundaries.
-          experimentalMinChunkSize: isPlaywrightBundle ? 32 * 1024 : 10 * 1024,
+          // Production merges application chunks below 50 KiB so route-level
+          // boundaries remain useful without turning shared helpers into hundreds
+          // of network round trips. The CI-only coarse bundle keeps its separately
+          // measured threshold and explicit runtime/schema buckets.
+          experimentalMinChunkSize: isPlaywrightBundle ? 32 * 1024 : 50 * 1024,
         },
       },
     },
