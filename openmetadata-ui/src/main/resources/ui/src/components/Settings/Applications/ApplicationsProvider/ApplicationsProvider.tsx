@@ -52,11 +52,15 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       setApplicationsName(applicationsNameList);
       setInstalledPluginInstances([]);
 
-      if (applicationsNameList.length > 0) {
+      // Only pay for the ApplicationsClassBase chunk when there is a name that could resolve a
+      // plugin — apps missing both name and FQN map to '' and never match the registry.
+      const pluginNames = applicationsNameList.filter(Boolean);
+
+      if (pluginNames.length > 0) {
         const { default: applicationsClassBase } = await import(
           '../AppDetails/ApplicationsClassBase'
         );
-        const plugins = applicationsNameList
+        const plugins = pluginNames
           .map((applicationName) => {
             const PluginClass =
               applicationsClassBase.appPluginRegistry[applicationName];

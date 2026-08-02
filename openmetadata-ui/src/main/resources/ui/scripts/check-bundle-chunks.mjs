@@ -17,7 +17,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 
-const MAX_EMITTED_JS_FILES = 635;
+// Ratchets, not knife-edges: each carries a little headroom so one new dynamic import does not
+// fail an unrelated PR, while still catching the fragmentation this budget exists to prevent
+// (the pre-consolidation build emitted 856 files).
+const MAX_EMITTED_JS_FILES = 645;
 const MAX_SMALL_JS_FILES = 450;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
 const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 950 * 1024;

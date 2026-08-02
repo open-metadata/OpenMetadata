@@ -35,9 +35,12 @@ export const getServiceIcon = (source: {
     });
   }
 
+  // Decorative: the service name is always rendered alongside this logo, and the data-asset
+  // branch above returns an unlabelled icon, so keep both out of the accessibility tree.
   return (
     <img
-      alt="service-icon"
+      aria-hidden
+      alt=""
       className="inline service-icon h-7"
       src={serviceUtilClassBase.getServiceTypeLogo(source)}
     />
