@@ -72,6 +72,17 @@ const scrollIntoViewCenter = async (locator: Locator) => {
     .catch(() => undefined);
 };
 
+// The CSV jobs tray is position:fixed at bottom-right and can appear at any
+// moment during a test (mid-fill, mid-modal, mid-drag) as background jobs
+// complete. Injecting pointer-events:none once disables click interception for
+// the entire page session — no need to poll or dismiss at every step.
+const disableCsvJobsTrayInterception = async (page: Page) => {
+  await page.addStyleTag({
+    content:
+      '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }',
+  });
+};
+
 const getTextEditorCandidates = (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
 
@@ -982,6 +993,11 @@ export const startCsvPreviewAndWaitForGrid = async (
   }
 ) => {
   const timeout = options?.timeout ?? 90000;
+
+  // Disable the CSV jobs tray's click interception for the entire page session.
+  // The tray can appear at any moment (mid-fill, mid-modal, mid-drag) so a
+  // one-shot CSS injection is more robust than polling at specific steps.
+  await disableCsvJobsTrayInterception(page);
 
   if (
     !(await waitForVisibleLocator(
