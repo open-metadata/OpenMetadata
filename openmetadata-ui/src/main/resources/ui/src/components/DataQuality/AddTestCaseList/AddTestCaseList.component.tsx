@@ -643,6 +643,10 @@ export const AddTestCaseList = ({
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
+                      {/* Selection is handled by the row-level onClick on the
+                      <Space> above. Do not re-wire it onto these Typography
+                      elements: `handleCardClick` toggles, so a second handler
+                      firing on the same click would cancel the first out. */}
                       <Typography
                         as="p"
                         className="m-0 font-medium text-base w-max-500"

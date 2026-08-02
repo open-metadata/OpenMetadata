@@ -13,6 +13,7 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import { Badge, Space } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { LearningIcon } from '../Learning/LearningIcon/LearningIcon.component';
 import './page-header.less';
@@ -36,7 +37,7 @@ const PageHeader = ({
           data-testid="heading"
           size="text-md"
           {...titleProps}
-          className="heading m-b-0">
+          className={classNames('heading m-b-0', titleProps?.className)}>
           {header}
 
           {isBeta && (
@@ -56,7 +57,7 @@ const PageHeader = ({
         as="p"
         data-testid="sub-heading"
         {...subHeaderProps}
-        className="sub-heading">
+        className={classNames('sub-heading', subHeaderProps?.className)}>
         {subHeader}
       </Typography>
     </div>

@@ -3122,13 +3122,14 @@ test.describe('Domain Access with noDomain() Rule', () => {
 
 test.describe('Domain Tree View Functionality', () => {
   let subDomain: SubDomain;
-  const domain = EntityDataClass.domain1;
-  const domainDisplayName = domain.responseData.displayName;
+  const domain = new Domain();
+  const domainDisplayName = domain.data.displayName;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.create(apiContext);
     subDomain = new SubDomain(domain);
     await subDomain.create(apiContext);
     await afterAction();
@@ -3138,6 +3139,7 @@ test.describe('Domain Tree View Functionality', () => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.delete(apiContext);
     await subDomain.delete(apiContext);
     await afterAction();
   });

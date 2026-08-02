@@ -53,6 +53,7 @@ export const ExtraInfoLabel = ({
   return (
     <div className="d-flex align-start extra-info-container">
       <Typography
+        as="div"
         className="text-sm d-flex flex-col gap-2 w-full"
         data-testid={dataTestId}>
         {!isEmpty(label) && (

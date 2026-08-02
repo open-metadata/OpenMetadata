@@ -163,7 +163,19 @@ export const UserProfileIcon = () => {
           data-testid="persona-label"
           onClick={() => handleSelectedPersonaChange(item)}>
           <div className="d-flex items-center default-persona-container">
-            <Typography ellipsis={{ tooltip: true }}>
+            {
+              // Nested inside the `data-testid="persona-label"` div above,
+              // whose onClick performs the actual persona switch: core
+              // Typography's `ellipsis={{ tooltip: true }}` renders a real
+              // `<button>` trigger (via TooltipTrigger) whose usePress
+              // handler stops click propagation by default, so a click on
+              // the persona name never reaches that onClick and the persona
+              // switch silently no-ops. Use plain ellipsis truncation plus a
+              // native `title` attribute instead (same fix as
+              // `default-persona` below), which preserves the hover-tooltip
+              // text without adding a click-swallowing element.
+            }
+            <Typography ellipsis title={getEntityName(item)}>
               {getEntityName(item)}
             </Typography>
 
@@ -260,10 +272,19 @@ export const UserProfileIcon = () => {
             data-testid="user-name"
             to={getUserPath(currentUser?.name as string)}
             onClick={handleCloseDropdown}>
+            {
+              // Same click-swallowing hazard as the persona label above:
+              // `ellipsis={{ tooltip: true }}` would wrap this text in a
+              // `<button>` nested inside the Link, stopping the click from
+              // ever reaching the Link's `onClick`/navigation. Plain
+              // ellipsis + `title` preserves truncation and hover text
+              // without the interactive wrapper.
+            }
             <Typography
               as="p"
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, tooltip: true }}>
+              ellipsis={{ rows: 1 }}
+              title={t('label.view-entity', { entity: t('label.profile') })}>
               {t('label.view-entity', { entity: t('label.profile') })}
             </Typography>
           </Link>

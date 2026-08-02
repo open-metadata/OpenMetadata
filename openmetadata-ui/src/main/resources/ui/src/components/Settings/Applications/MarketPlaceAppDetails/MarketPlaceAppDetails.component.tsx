@@ -217,7 +217,7 @@ const MarketPlaceAppDetails = () => {
           </Typography>
         </div>
         <Space className="p-t-lg" direction="vertical" size={8}>
-          <Typography>
+          <Typography as="div">
             {appData?.supportEmail && (
               <Typography
                 as="a"

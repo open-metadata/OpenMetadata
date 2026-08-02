@@ -20,6 +20,26 @@ import type {
   ReactNode,
   Ref,
 } from 'react';
+import type { PressEvent } from 'react-aria-components';
+
+// `TooltipTrigger` renders a react-aria `Button`, whose `usePress` hook stops
+// a completed press from propagating to ancestor DOM listeners by default
+// (react-aria's documented behavior: "the default for React Spectrum
+// components is not to propagate. This can be overridden by calling
+// continuePropagation() on the event" - see
+// node_modules/@react-types/shared/src/events.d.ts). For most `TooltipTrigger`
+// call sites that is desirable (e.g. a help-icon tooltip nested inside a
+// sortable table header should not also trigger the header's sort-on-click).
+// But Typography's ellipsis tooltip wraps *arbitrary, non-interactive* text
+// content: the wrapper is only there to host the hover/focus tooltip, so a
+// click on the truncated text should reach whatever ancestor `onClick` the
+// consumer attached (e.g. a selectable card, a persona-switcher row). Calling
+// `continuePropagation()` here restores that click, scoped to this call site
+// only - it does not change `TooltipTrigger`'s default for its other
+// consumers (form-item-label, input, table column header, avatar add button).
+const allowEllipsisTooltipPressToPropagate = (e: PressEvent) => {
+  e.continuePropagation();
+};
 
 const lineClampClasses: Record<number, string> = {
   1: 'tw:line-clamp-1',
@@ -86,6 +106,27 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   target?: HTMLAttributeAnchorTarget;
   rel?: string;
 }
+
+// `styles/typography.css` applies its real typographic rules through a
+// *descendant* selector (`.prose :not(...)`), and every rule inside it is
+// gated on an element type — `p`, `h1`-`h6`, `ol`, `ul`, `li`, `blockquote`,
+// `a`, `code`, `pre`, `img`, `figure`, table elements. For those, the wrapper
+// is load-bearing: moving `prose` onto the element itself would stop the rule
+// matching (e.g. a `p` would silently lose its margins).
+//
+// `span` and `div` are targeted by no such rule, so the wrapper contributes
+// only the element-level `.prose` layer — `--tw-prose-*` vars plus `color`,
+// `font-size` and `line-height`, all of which are inherited properties. Setting
+// `prose` directly on the element therefore yields an identical computed style
+// on the text, while dropping a block-level `<div>` that otherwise breaks
+// inline flow and produces invalid `<div>`-inside-`<span>` nesting when
+// Typography is nested. Kept as a deliberately small allowlist: anything not
+// listed here keeps the wrapper.
+//
+// Typed as `unknown` so membership can be tested without a `typeof Component
+// === 'string'` guard: that guard narrows `Component` to `string` in the JSX
+// below, which TypeScript then resolves to an arbitrary intrinsic element.
+const UNWRAPPED_ELEMENTS = new Set<unknown>(['span', 'div']);
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
   default: '',
@@ -174,7 +215,9 @@ export const Typography = (props: TypographyProps) => {
   if (ellipsisTooltip) {
     return (
       <Tooltip title={ellipsisTooltip}>
-        <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
+        <TooltipTrigger
+          className="tw:block tw:w-full tw:min-w-0"
+          onPress={allowEllipsisTooltipPressToPropagate}>
           <div
             className={cx(
               'prose',
@@ -187,6 +230,27 @@ export const Typography = (props: TypographyProps) => {
           </div>
         </TooltipTrigger>
       </Tooltip>
+    );
+  }
+
+  // Render the element directly when the wrapper would contribute nothing but
+  // a block-level box (see UNWRAPPED_ELEMENTS). Ellipsis needs the wrapper to
+  // carry its truncation classes, and a non-default quote variant styles its
+  // content through `.prose.prose-*-quote :not(...)` — also a descendant
+  // selector — so both keep the wrapper.
+  const canUnwrap =
+    !isEllipsis &&
+    quoteVariant === 'default' &&
+    UNWRAPPED_ELEMENTS.has(Component);
+
+  if (canUnwrap) {
+    return (
+      <Component
+        {...otherProps}
+        className={cx('prose', innerClassName)}
+        style={style}>
+        {children}
+      </Component>
     );
   }
 
