@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import traceback
 from datetime import datetime
+from functools import lru_cache
 from itertools import product
 from typing import TYPE_CHECKING
 
@@ -64,6 +65,12 @@ if TYPE_CHECKING:
     )
     from metadata.ingestion.ometa.ometa_api import OpenMetadata
     from metadata.ingestion.source.pipeline.prefect.client import PrefectClient
+    from metadata.ingestion.source.pipeline.prefect.models import (
+        PrefectDeployment,
+        PrefectFlow,
+        PrefectFlowRun,
+        PrefectTaskRun,
+    )
 
 logger = ingestion_logger()
 
@@ -95,7 +102,7 @@ def _parse_timestamp(ts_str: str | None) -> int | None:
         return None
 
 
-def _stable_task_names(task_runs: list[dict]) -> dict[str, str]:
+def _stable_task_names(task_runs: list[PrefectTaskRun]) -> dict[str, str]:
     """
     Map each task run's id to its task's stable name (``task_key``, not
     ``name`` — ``name`` carries a random suffix that's different on every
@@ -108,7 +115,7 @@ def _stable_task_names(task_runs: list[dict]) -> dict[str, str]:
     ``_build_task_status``), just grouped under that one Task's name instead
     of inventing a separate Task per call.
     """
-    return {t["id"]: t.get("task_key", t.get("name", t["id"])) for t in task_runs}
+    return {t.id: t.task_key or t.name or t.id for t in task_runs}
 
 
 class PrefectSource(PipelineServiceSource):
@@ -132,7 +139,7 @@ class PrefectSource(PipelineServiceSource):
             raise InvalidSourceException(f"Expected PrefectConnection, got {connection}")  # pyright: ignore[reportUnreachable]
         return cls(config, metadata)
 
-    def _build_task_dag(self, task_runs: list[dict]) -> list[Task]:
+    def _build_task_dag(self, task_runs: list[PrefectTaskRun]) -> list[Task]:
         """
         Builds Tasks from one flow run's real task runs — a deployment is a
         trigger/schedule config, not a pipeline step, so it's never
@@ -144,11 +151,11 @@ class PrefectSource(PipelineServiceSource):
         downstream: dict[str, list[str]] = {name: [] for name in id_to_name.values()}
         tags_by_name: dict[str, set[str]] = {name: set() for name in id_to_name.values()}
         for run in task_runs:
-            this_name = id_to_name[run["id"]]
-            tags_by_name[this_name].update(run.get("tags") or [])
-            for refs in (run.get("task_inputs") or {}).values():
+            this_name = id_to_name[run.id]
+            tags_by_name[this_name].update(run.tags)
+            for refs in run.task_inputs.values():
                 for ref in refs:
-                    upstream_name = id_to_name.get(ref.get("id"))
+                    upstream_name = id_to_name.get(ref.id) if ref.id else None
                     if upstream_name and this_name not in downstream[upstream_name]:
                         downstream[upstream_name].append(this_name)
         return [
@@ -167,7 +174,7 @@ class PrefectSource(PipelineServiceSource):
             for name, targets in downstream.items()
         ]
 
-    def _schedule_interval(self, deployments: list[dict]) -> str | None:
+    def _schedule_interval(self, deployments: list[PrefectDeployment]) -> str | None:
         """
         First active schedule of the latest deployment (``get_deployments``
         sorts newest-created first). Prefect 3.x deployments carry a
@@ -176,41 +183,44 @@ class PrefectSource(PipelineServiceSource):
         """
         result = None
         if deployments:
-            for entry in deployments[0].get("schedules") or []:
-                if not entry.get("active", True):
+            for entry in deployments[0].schedules:
+                if not entry.active or entry.schedule is None:
                     continue
-                schedule = entry.get("schedule") or {}
-                if "cron" in schedule:
-                    result = schedule["cron"]
-                elif "interval" in schedule:
-                    result = f"every {schedule['interval']}s"
-                elif "rrule" in schedule:
-                    result = schedule["rrule"]
+                schedule = entry.schedule
+                if schedule.cron:
+                    result = schedule.cron
+                elif schedule.interval:
+                    result = f"every {schedule.interval}s"
+                elif schedule.rrule:
+                    result = schedule.rrule
                 if result:
                     break
         return result
 
-    def _get_all_tags(self, flow: dict, deployments: list[dict], task_runs: list[dict] | None = None) -> list[str]:
+    def _get_all_tags(
+        self, deployments: list[PrefectDeployment], task_runs: list[PrefectTaskRun] | None = None
+    ) -> list[str]:
         """
-        Collect all unique tags from flow, its deployments, and (optionally) its task runs.
-        In Prefect 3.x, tags can be on flows, deployments, or individual task runs.
+        Collect all unique tags from deployments and (optionally) task runs.
+        Flow-level tags are not a source: nothing in the Prefect SDK writes to
+        that field (``@flow`` has no ``tags`` param, ``with tags():`` tags the
+        run not the flow), so it is always empty in practice.
         """
-        all_tags = set(flow.get("tags") or [])
+        all_tags: set[str] = set()
         for dep in deployments:
-            all_tags.update(dep.get("tags") or [])
+            all_tags.update(dep.tags)
         for run in task_runs or []:
-            all_tags.update(run.get("tags") or [])
+            all_tags.update(run.tags)
         return list(all_tags)
 
     def _parse_lineage_from_tags(self, tags: list[str]) -> tuple[list[str], list[str]]:
         """
-        Extract source and destination table identifiers from Prefect flow tags.
+        Extract source and destination table identifiers from Prefect flow
+        tags: 'om-source:database.schema.table' and
+        'om-destination:database.schema.table'. The 'om-' prefix avoids
+        colliding with unrelated tagging conventions (e.g. a flow tagged
+        'source:kafka' for unrelated reasons).
 
-        Supports two tag formats:
-        1. Prefixed format (recommended): 'om-source:database.schema.table' and 'om-destination:database.schema.table'
-        2. Legacy format: 'source:database.schema.table' and 'destination:database.schema.table'
-
-        The prefixed format (om-*) is recommended to avoid conflicts with other tagging conventions.
         Only the prefix is matched case-insensitively; the database/schema/table segments keep
         their original case, since table lookups in OpenMetadata are case-sensitive.
 
@@ -219,8 +229,6 @@ class PrefectSource(PipelineServiceSource):
         prefixes = (
             ("om-source:", "source"),
             ("om-destination:", "destination"),
-            ("source:", "source"),
-            ("destination:", "destination"),
         )
 
         sources = []
@@ -242,11 +250,13 @@ class PrefectSource(PipelineServiceSource):
 
         return sources, destinations
 
-    def _resolve_table_fqn(self, identifier: str) -> str | None:
+    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, database, schema, table), lives one ingestion run
+    def _resolve_table_fqn(self, database: str | None, schema: str | None, table: str) -> str | None:
         """
-        Resolve a lineage tag's <database>.<schema>.<table> identifier to the
-        table's real OpenMetadata FQN by searching the configured lineage
-        database services (``sourceConfig.lineageInformation.dbServiceNames``).
+        Resolve a (database, schema, table) triple — either of the first two
+        may be ``None`` — to the table's real OpenMetadata FQN by searching
+        the configured lineage database services
+        (``sourceConfig.lineageInformation.dbServiceNames``).
 
         Tries each configured service in turn and only accepts a candidate
         FQN once ``get_by_name`` confirms it resolves to a real Table —
@@ -254,12 +264,14 @@ class PrefectSource(PipelineServiceSource):
         actually have the table, same reasoning as Dagster's
         ``_resolve_asset_to_table``. Rolls its own loop instead of the shared
         ``_get_table_fqn_from_om`` for that reason.
+
+        Cached: the same (database, schema, table) is looked up once per
+        flow with tag-based lineage and once per materialization with
+        asset-based lineage — across many flows sharing the same source/
+        destination table this collapses repeat REST round-trips to one,
+        same pattern as ``PrefectClient``'s ``lru_cache`` on
+        ``get_deployments``/``get_flow_runs``/``get_task_runs``.
         """
-        parts = identifier.split(".")
-        if len(parts) != 3:
-            logger.warning(f"Lineage tag must be <database>.<schema>.<table>, got: {identifier}")
-            return None
-        database, schema, table = parts
         for db_service in self.get_db_service_names():
             candidate = fqn.build(
                 metadata=self.metadata,
@@ -273,7 +285,51 @@ class PrefectSource(PipelineServiceSource):
                 return candidate
         return None
 
-    def _build_task_status(self, task_runs: list[dict], valid_names: set[str]) -> list[TaskStatus]:
+    @staticmethod
+    def _split_lineage_tag_identifier(identifier: str) -> tuple[str, str, str] | None:
+        """
+        Split a lineage tag's ``<database>.<schema>.<table>`` identifier into
+        its three parts. Always required, even for schema-less databases
+        (e.g. MySQL) — OpenMetadata still assigns those a real database
+        segment (``default``, or the connector's configured
+        ``databaseName``), so every table is addressable in exactly 3 parts.
+        Tags carry no marker for which segment is missing, so — unlike asset
+        keys (see ``_parse_asset_key``, which parses Prefect's own
+        already-fixed URI format) — anything but exactly 3 dot-separated
+        parts is rejected rather than guessed.
+        """
+        parts = identifier.split(".")
+        if len(parts) != 3:
+            logger.warning(f"Lineage tag must be <database>.<schema>.<table>, got: {identifier}")
+            return None
+        return parts[0], parts[1], parts[2]
+
+    @staticmethod
+    def _parse_asset_key(asset_key: str) -> tuple[str | None, str | None, str] | None:
+        """
+        Parse a Prefect asset key URI into (database, schema, table).
+
+        The number of real segments after the host varies by platform —
+        Postgres has a schema layer, MySQL doesn't — so this mirrors
+        Dagster's ``_resolve_asset_to_table`` length fallback: 3 segments =
+        db/schema/table, 2 = db/table, 1 = table only. Non-table assets (e.g.
+        ``s3://bucket/key.csv``) and malformed keys return ``None`` — same
+        "skip rather than guess" rule ``_split_lineage_tag_identifier`` uses
+        for tags.
+        """
+        if "://" not in asset_key:
+            return None
+        _, rest = asset_key.split("://", 1)
+        parts = [part for part in rest.split("/")[1:] if part]  # drop host segment + empties
+        if len(parts) == 3:
+            return parts[0], parts[1], parts[2]
+        if len(parts) == 2:
+            return None, parts[0], parts[1]
+        if len(parts) == 1:
+            return None, None, parts[0]
+        return None
+
+    def _build_task_status(self, task_runs: list[PrefectTaskRun], valid_names: set[str]) -> list[TaskStatus]:
         """
         A historical run's tasks can differ from the pipeline's current task
         list (same flow_id persists across code changes and conditional task
@@ -285,16 +341,16 @@ class PrefectSource(PipelineServiceSource):
         id_to_name = _stable_task_names(task_runs)
         return [
             TaskStatus(  # pyright: ignore[reportCallIssue]
-                name=id_to_name[run["id"]],
-                executionStatus=PREFECT_STATE_MAP.get((run.get("state_type") or "UNKNOWN").upper(), StatusType.Pending),
-                startTime=_parse_timestamp(run.get("start_time") or run.get("expected_start_time")),
-                endTime=_parse_timestamp(run.get("end_time")),
+                name=id_to_name[run.id],
+                executionStatus=PREFECT_STATE_MAP.get((run.state_type or "UNKNOWN").upper(), StatusType.Pending),
+                startTime=_parse_timestamp(run.start_time or run.expected_start_time),
+                endTime=_parse_timestamp(run.end_time),
             )
             for run in task_runs
-            if id_to_name[run["id"]] in valid_names
+            if id_to_name[run.id] in valid_names
         ]
 
-    def _build_pipeline_status(self, flow_runs: list[dict], valid_names: set[str]) -> list[PipelineStatus]:
+    def _build_pipeline_status(self, flow_runs: list[PrefectFlowRun], valid_names: set[str]) -> list[PipelineStatus]:
         """
         Convert Prefect flow runs to OpenMetadata PipelineStatus, with each
         run's real task runs nested as ``taskStatus``. Always a list, never
@@ -302,23 +358,23 @@ class PrefectSource(PipelineServiceSource):
         a `null` here 500s even though the schema marks the field optional.
         """
         statuses = []
-        task_runs_by_run = self.client.get_task_runs_for_flow_runs([run["id"] for run in flow_runs])
+        task_runs_by_run = self.client.get_task_runs_for_flow_runs([run.id for run in flow_runs])
         for run in flow_runs:
             # In Prefect 3.x, use state_type (top-level) or state.type (nested)
-            state_type = run.get("state_type") or (run.get("state") or {}).get("type", "UNKNOWN")
+            state_type = run.state_type or (run.state.type if run.state else None) or "UNKNOWN"
             state_type = state_type.upper()
             om_status = PREFECT_STATE_MAP.get(state_type, StatusType.Pending)
 
-            start_time = _parse_timestamp(run.get("start_time") or run.get("expected_start_time"))
+            start_time = _parse_timestamp(run.start_time or run.expected_start_time)
             if start_time is None:
                 # PipelineStatus.timestamp is a required field — a run with
                 # neither start_time nor expected_start_time can't produce
                 # one, so skip it rather than fail the whole status batch.
-                logger.debug(f"Skipping status for run {run.get('id')}: no start_time or expected_start_time")
+                logger.debug(f"Skipping status for run {run.id}: no start_time or expected_start_time")
                 continue
-            end_time = _parse_timestamp(run.get("end_time"))
+            end_time = _parse_timestamp(run.end_time)
 
-            task_runs = task_runs_by_run.get(run["id"], [])
+            task_runs = task_runs_by_run.get(run.id, [])
             pipeline_status = PipelineStatus(  # pyright: ignore[reportCallIssue]
                 executionStatus=om_status,
                 taskStatus=self._build_task_status(task_runs, valid_names),
@@ -328,13 +384,13 @@ class PrefectSource(PipelineServiceSource):
             statuses.append(pipeline_status)
         return statuses
 
-    def yield_tag(self, pipeline_details: dict) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Create the classification and tags for this flow's, its deployments', and its latest run's task tags."""
-        flow_id = pipeline_details["id"]
+    def yield_tag(self, pipeline_details: PrefectFlow) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Create the classification and tags for this flow's deployments and its latest run's task tags."""
+        flow_id = pipeline_details.id
         deployments = self.client.get_deployments(flow_id)
-        latest_run = self.client.get_flow_runs(flow_id, limit=1, exclude_scheduled=True)
-        task_runs = self.client.get_task_runs(latest_run[0]["id"]) if latest_run else []
-        all_tags = self._get_all_tags(pipeline_details, deployments, task_runs)
+        latest_run = self.client.get_flow_runs(flow_id, limit=1)
+        task_runs = self.client.get_task_runs(latest_run[0].id) if latest_run else []
+        all_tags = self._get_all_tags(deployments, task_runs)
         yield from get_ometa_tag_and_classification(
             tags=all_tags,
             classification_name=PREFECT_TAG_CATEGORY,
@@ -343,21 +399,20 @@ class PrefectSource(PipelineServiceSource):
             include_tags=bool(self.source_config.includeTags),
         )
 
-    def yield_pipeline(self, pipeline_details: dict) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: PrefectFlow) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Prefect flow into an OpenMetadata CreatePipelineRequest.
         """
         try:
-            flow_id = pipeline_details["id"]
-            flow_name = pipeline_details["name"]
+            flow_id = pipeline_details.id
+            flow_name = pipeline_details.name
             logger.info(f"Processing flow: {flow_name}")
 
             # Get deployments to collect all tags
             deployments = self.client.get_deployments(flow_id)
             logger.debug(f"Found {len(deployments)} deployments for {flow_name}")
 
-            # Collect tags from both flow and deployments
-            all_tags = self._get_all_tags(pipeline_details, deployments)
+            all_tags = self._get_all_tags(deployments)
             logger.debug(f"Tags for {flow_name}: {all_tags}")
 
             tag_labels = get_tag_labels(
@@ -369,8 +424,8 @@ class PrefectSource(PipelineServiceSource):
 
             schedule_interval = self._schedule_interval(deployments)
 
-            latest_run = self.client.get_flow_runs(flow_id, limit=1, exclude_scheduled=True)
-            task_runs = self.client.get_task_runs(latest_run[0]["id"]) if latest_run else []
+            latest_run = self.client.get_flow_runs(flow_id, limit=1)
+            task_runs = self.client.get_task_runs(latest_run[0].id) if latest_run else []
             tasks = self._build_task_dag(task_runs)
             # Stashed for yield_pipeline_status to filter historical taskStatus
             # entries against, same pattern as the Airflow connector — avoids
@@ -414,19 +469,17 @@ class PrefectSource(PipelineServiceSource):
             self.context.get().task_names = set()  # pyright: ignore[reportAttributeAccessIssue]
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
-                    name=pipeline_details.get("name", "Prefect Pipeline"),
-                    error=f"Failed to yield pipeline for flow {pipeline_details.get('name')}: {exc}",
+                    name=pipeline_details.name,
+                    error=f"Failed to yield pipeline for flow {pipeline_details.name}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
 
-    def yield_pipeline_status(self, pipeline_details: dict) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: PrefectFlow) -> Iterable[Either[OMetaPipelineStatus]]:
         """Yield run history for each flow as pipeline status, each with that run's real task statuses nested."""
         try:
-            flow_id = pipeline_details["id"]
-            flow_runs = self.client.get_flow_runs(
-                flow_id, limit=self.service_connection.numberOfStatus, exclude_scheduled=True
-            )
+            flow_id = pipeline_details.id
+            flow_runs = self.client.get_flow_runs(flow_id, limit=self.service_connection.numberOfStatus)
             valid_names = self.context.get().task_names or set()  # pyright: ignore[reportAttributeAccessIssue]
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
@@ -439,22 +492,67 @@ class PrefectSource(PipelineServiceSource):
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
-                    name=pipeline_details.get("name", "Prefect Pipeline Status"),
-                    error=f"Failed to yield status for flow {pipeline_details.get('name')}: {exc}",
+                    name=pipeline_details.name,
+                    error=f"Failed to yield status for flow {pipeline_details.name}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
 
-    def yield_pipeline_lineage_details(self, pipeline_details: dict) -> Iterable[Either[AddLineageRequest]]:
+    def _yield_lineage_from_assets(
+        self, flow_run_id: str, pipeline_entity: Pipeline
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Yield table-to-table lineage edges for tables named in this pipeline's
-        lineage tags, attributing the edge to this pipeline via
-        ``LineageDetails``. Reads tags off the already-created Pipeline entity
+        Cloud-only lineage: exact upstream/downstream asset pairs for one flow
+        run, from Prefect's native Assets API. Unlike tags this is scoped to a
+        single run — no cross-deployment mixing — and needs no user-authored
+        convention, just normal ``@materialize``/``asset_deps`` usage. Yields
+        nothing if this run has no materializations, so the caller falls back
+        to tag-based lineage.
+        """
+        materializations = self.client.get_asset_materializations(flow_run_id)
+        if not materializations:
+            return
+
+        lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
+            pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),  # pyright: ignore[reportCallIssue]
+            source=LineageSource.PipelineLineage,
+        )
+        for entry in materializations:
+            downstream_parts = self._parse_asset_key(entry.asset_key or "")
+            dest_table_fqn = downstream_parts and self._resolve_table_fqn(*downstream_parts)
+            dest_table = dest_table_fqn and self.metadata.get_by_name(entity=Table, fqn=dest_table_fqn)
+            if not dest_table:
+                continue
+
+            for upstream_key in entry.upstream_assets:
+                upstream_parts = self._parse_asset_key(upstream_key)
+                source_table_fqn = upstream_parts and self._resolve_table_fqn(*upstream_parts)
+                source_table = source_table_fqn and self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
+                if not source_table:
+                    continue
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(id=source_table.id, type="table"),  # pyright: ignore[reportCallIssue]
+                            toEntity=EntityReference(id=dest_table.id, type="table"),  # pyright: ignore[reportCallIssue]
+                            lineageDetails=lineage_details,
+                        )
+                    )
+                )
+
+    def yield_pipeline_lineage_details(self, pipeline_details: PrefectFlow) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Yield table-to-table lineage edges for this pipeline. On Prefect
+        Cloud, tries the native Assets API first (``_yield_lineage_from_assets``)
+        since it gives exact per-run pairs with no cross-deployment ambiguity;
+        falls back to lineage tags — self-hosted always does, since it has no
+        Assets API at all, and so does Cloud when a run has no materializations.
+
+        Tag-based fallback: reads tags off the already-created Pipeline entity
         (flow + deployment tags are merged there by ``yield_pipeline``) rather
         than re-deriving them, so this and ``Pipeline.tags`` never disagree.
         Lineage is detected from tags: 'om-source:<database>.<schema>.<table>'
-        and 'om-destination:<database>.<schema>.<table>' (legacy
-        'source:'/'destination:' prefixes are also accepted). Every detected
+        and 'om-destination:<database>.<schema>.<table>'. Every detected
         source is linked to every detected destination, since tags carry no
         per-pair mapping. Requires ``sourceConfig.lineageInformation
         .dbServiceNames`` to be configured with the database service(s) the
@@ -472,12 +570,20 @@ class PrefectSource(PipelineServiceSource):
                 logger.warning(f"Pipeline entity not found for {pipeline_fqn}")
                 return
 
+            if isinstance(self.service_connection.authType, PrefectCloudAuthentication):
+                latest_run = self.client.get_flow_runs(pipeline_details.id, limit=1)
+                if latest_run:
+                    asset_edges = list(self._yield_lineage_from_assets(latest_run[0].id, pipeline_entity))
+                    if asset_edges:
+                        yield from asset_edges
+                        return
+
             all_tags = [tag.name for tag in pipeline_entity.tags or [] if tag.name]
             sources, destinations = self._parse_lineage_from_tags(all_tags)
 
             if not sources or not destinations:
                 # A table-to-table edge needs both ends; nothing to draw otherwise
-                logger.debug(f"No source/destination lineage tag pair for flow {pipeline_details['name']}")
+                logger.debug(f"No source/destination lineage tag pair for flow {pipeline_details.name}")
                 return
 
             lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
@@ -491,7 +597,8 @@ class PrefectSource(PipelineServiceSource):
             # Same resolve-once-then-product shape as the OpenLineage connector.
             resolved_sources = []
             for source_identifier in sources:
-                source_table_fqn = self._resolve_table_fqn(source_identifier)
+                source_parts = self._split_lineage_tag_identifier(source_identifier)
+                source_table_fqn = source_parts and self._resolve_table_fqn(*source_parts)
                 source_table = source_table_fqn and self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
                 if source_table:
                     resolved_sources.append((source_identifier, source_table))
@@ -500,7 +607,8 @@ class PrefectSource(PipelineServiceSource):
 
             resolved_destinations = []
             for dest_identifier in destinations:
-                dest_table_fqn = self._resolve_table_fqn(dest_identifier)
+                dest_parts = self._split_lineage_tag_identifier(dest_identifier)
+                dest_table_fqn = dest_parts and self._resolve_table_fqn(*dest_parts)
                 dest_table = dest_table_fqn and self.metadata.get_by_name(entity=Table, fqn=dest_table_fqn)
                 if dest_table:
                     resolved_destinations.append((dest_identifier, dest_table))
@@ -524,16 +632,16 @@ class PrefectSource(PipelineServiceSource):
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
-                    name=pipeline_details.get("name", "Prefect Pipeline Lineage"),
-                    error=f"Failed to yield lineage for flow {pipeline_details.get('name')}: {exc}",
+                    name=pipeline_details.name,
+                    error=f"Failed to yield lineage for flow {pipeline_details.name}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
 
-    def get_pipelines_list(self) -> Iterable[dict]:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def get_pipelines_list(self) -> Iterable[PrefectFlow]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Get List of all Prefect flows."""
         yield from self.client.get_flows()
 
-    def get_pipeline_name(self, pipeline_details: dict) -> str:
+    def get_pipeline_name(self, pipeline_details: PrefectFlow) -> str:
         """Return the flow name to use as pipeline name."""
-        return pipeline_details["name"]
+        return pipeline_details.name

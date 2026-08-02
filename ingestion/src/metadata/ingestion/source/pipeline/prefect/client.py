@@ -29,6 +29,13 @@ from metadata.generated.schema.entity.services.connections.pipeline.prefectConne
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.source.pipeline.prefect.models import (
+    AssetMaterialization,
+    PrefectDeployment,
+    PrefectFlow,
+    PrefectFlowRun,
+    PrefectTaskRun,
+)
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -91,70 +98,68 @@ class PrefectClient:
         result = self.client.post(f"{self._path_prefix}/{resource}/filter", json=payload, **kwargs)
         return result if isinstance(result, list) else []
 
-    def get_flows(self) -> Iterable[dict]:
+    def get_flows(self) -> Iterable[PrefectFlow]:
         """Paginate over every flow in the workspace, yielding one at a time."""
         offset = 0
         while True:
             page = self._filter("flows", {"limit": FLOWS_PAGE_SIZE, "offset": offset})
-            yield from page
+            yield from (PrefectFlow.model_validate(flow) for flow in page)
             if len(page) < FLOWS_PAGE_SIZE:
                 break
             offset += FLOWS_PAGE_SIZE
 
-    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id, limit, exclude_scheduled)
-    def get_flow_runs(self, flow_id: str, limit: int, exclude_scheduled: bool = False) -> list[dict]:
+    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id, limit)
+    def get_flow_runs(self, flow_id: str, limit: int) -> list[PrefectFlowRun]:
         """Most recent runs of one flow, newest first. Cached — yield_tag and
         yield_pipeline both fetch the same flow's latest run independently.
 
-        ``exclude_scheduled=True`` drops not-yet-started runs (state SCHEDULED) —
-        an active-schedule deployment pre-creates these with future start_times,
-        which would otherwise outrank every real past run under START_TIME_DESC
-        and starve the DAG/task-status build of a run that actually has task runs.
+        Drops not-yet-started runs (state SCHEDULED) — an active-schedule
+        deployment pre-creates these with future start_times, which would
+        otherwise outrank every real past run under START_TIME_DESC and
+        starve the DAG/task-status build of a run that actually has task runs.
         """
         payload = {
             "flows": {"id": {"any_": [flow_id]}},
             "sort": FLOW_RUNS_SORT,
             "limit": limit,
             "offset": 0,
+            "flow_runs": {"state": {"type": {"not_any_": ["SCHEDULED"]}}},
         }
-        if exclude_scheduled:
-            payload["flow_runs"] = {"state": {"type": {"not_any_": ["SCHEDULED"]}}}
-        return self._filter("flow_runs", payload)
+        return [PrefectFlowRun.model_validate(run) for run in self._filter("flow_runs", payload)]
 
     @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_run_id), lives one ingestion run
-    def get_task_runs(self, flow_run_id: str) -> list[dict]:
+    def get_task_runs(self, flow_run_id: str) -> list[PrefectTaskRun]:
         """Task runs of one flow run. Cached — the same flow run's task runs
         are read from multiple places (pipeline build, tags, status)."""
         return self.get_task_runs_for_flow_runs([flow_run_id])[flow_run_id]
 
-    def get_task_runs_for_flow_runs(self, flow_run_ids: list[str]) -> dict[str, list[dict]]:
+    def get_task_runs_for_flow_runs(self, flow_run_ids: list[str]) -> dict[str, list[PrefectTaskRun]]:
         """Task runs for many flow runs in one paginated call, grouped by
         flow_run_id — avoids one request per historical run when building
         pipeline status for a flow with many runs."""
         if not flow_run_ids:
             return {}
-        task_runs: list[dict] = []
+        grouped: dict[str, list[PrefectTaskRun]] = {flow_run_id: [] for flow_run_id in flow_run_ids}
         offset = 0
         while True:
             page = self._filter(
                 "task_runs",
                 {"task_runs": {"flow_run_id": {"any_": flow_run_ids}}, "limit": 200, "offset": offset},
             )
-            task_runs.extend(page)
+            for task_run in page:
+                validated = PrefectTaskRun.model_validate(task_run)
+                grouped[validated.flow_run_id].append(validated)
             if len(page) < 200:
                 break
             offset += 200
-        grouped: dict[str, list[dict]] = {flow_run_id: [] for flow_run_id in flow_run_ids}
-        for task_run in task_runs:
-            grouped[task_run["flow_run_id"]].append(task_run)
         return grouped
 
     @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id), lives one ingestion run
-    def get_deployments(self, flow_id: str) -> list[dict]:
+    def get_deployments(self, flow_id: str) -> list[PrefectDeployment]:
         """Every deployment of one flow, newest-created first. Cached — tags,
         schedule, and lineage tag parsing all fetch the same flow's
         deployments independently, so this avoids re-paginating per call."""
-        deployments: list[dict] = []
+        deployments: list[PrefectDeployment] = []
         offset = 0
         while True:
             page = self._filter(
@@ -166,10 +171,18 @@ class PrefectClient:
                     "offset": offset,
                 },
             )
-            deployments.extend(page)
+            deployments.extend(PrefectDeployment.model_validate(deployment) for deployment in page)
             if len(page) < DEPLOYMENTS_PAGE_SIZE:
                 return deployments
             offset += DEPLOYMENTS_PAGE_SIZE
+
+    def get_asset_materializations(self, flow_run_id: str) -> list[AssetMaterialization]:
+        """Asset materializations for one flow run — Cloud only, the self-hosted
+        Server has no Assets API at all. Gives exact upstream/downstream table
+        pairs scoped to this one run, unlike deployment tags which carry no
+        per-pair mapping. Not cached — called once per pipeline's lineage build."""
+        result = self.client.get(f"{self._path_prefix}/flow_runs/{flow_run_id}/assets/materializations")
+        return [AssetMaterialization.model_validate(entry) for entry in result] if isinstance(result, list) else []
 
     def test_check_access(self) -> None:
         """Smallest authenticated call proving host, API key and, on Prefect
