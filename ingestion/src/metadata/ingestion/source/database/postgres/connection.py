@@ -110,32 +110,42 @@ def _role_not_found(error: BaseException) -> bool:
 POSTGRES_ERRORS = ErrorPack(
     when(Matchers.contains("password authentication failed")).diagnose(
         "Authentication failed",
-        fix="Check the username and password, and that the user is allowed to connect.",
+        fix="PostgreSQL rejected the password for the account in Username. Check Username and Password.",
     ),
+    # Deliberately shares the "Authentication failed" title with the rule above:
+    # under trust/peer auth a missing role is what a wrong username looks like, and
+    # the fix is the same field. Only the remediation differs.
     when(_role_not_found).diagnose(
         "Authentication failed",
-        fix="Check the username - the configured role does not exist on the server.",
+        fix="PostgreSQL has no account with the name in Username. Check the spelling - PostgreSQL "
+        "account names are case-sensitive unless they were created with quotes.",
     ),
     when(Matchers.contains("no pg_hba.conf entry")).diagnose(
-        "Connection not permitted by pg_hba.conf",
-        fix="Add a pg_hba.conf entry for this user and host, and enable SSL if the server requires it.",
+        "The server is not configured to accept this connection",
+        fix="PostgreSQL decides which accounts may connect, from where, and over what kind of "
+        "connection, in a file called pg_hba.conf. It has no rule covering this account and the "
+        "machine ingestion runs on. Ask a PostgreSQL administrator to add one - and turn on SSL "
+        "here if the server's rule requires an encrypted connection.",
     ),
     when(_database_not_found).diagnose(
         "Database not found",
-        fix="Verify the configured database exists and the user is allowed to connect to it.",
+        fix="PostgreSQL has no database with the name in Database. Check the spelling, and that the "
+        "account in Username is allowed to connect to it.",
     ),
     when(_sqlstate("42501")).diagnose(  # insufficient_privilege
         "Insufficient privileges",
-        fix="Grant the user SELECT on the objects the failing step reads.",
+        fix="The account signed in but is not allowed to read what this step needs. Ask a "
+        "PostgreSQL administrator to GRANT SELECT on those objects to it.",
     ),
     # 42P01 (undefined_table) across the test steps can only come from the GetQueries
     # source probe - every other step reads system catalogs that always exist - so it
     # means the configured queryStatementSource is missing, whatever it is named.
     when(_sqlstate("42P01")).diagnose(  # undefined_table
         "Query history source not found",
-        fix="The query history source (queryStatementSource, default pg_stat_statements) does not "
-        "exist. Install/enable it (e.g. the pg_stat_statements extension) or correct the setting, "
-        "or query usage and lineage won't be collected.",
+        fix="The table or view named in Query Statement Source does not exist on this server. It "
+        "defaults to pg_stat_statements, which is a PostgreSQL extension an administrator has to "
+        "enable. Either enable it, or point the setting at whatever this server records query "
+        "history in - without it, usage and lineage will not be collected.",
     ),
 ).including(NETWORK_ERRORS)
 

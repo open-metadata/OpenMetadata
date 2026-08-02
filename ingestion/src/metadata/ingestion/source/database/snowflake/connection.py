@@ -198,22 +198,21 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
         # the fix. Keyed on the message: this path's errno is an accidental 540001.
         when(Matchers.contains("verify the account name is correct")).diagnose(
             "Snowflake rejected the login endpoint request",
-            fix="Snowflake answered 403 before authenticating. Most often the account identifier is "
-            "wrong - use the one from your Snowflake URL (e.g. <org>-<account> or "
-            "<locator>.<region>.<cloud>). If it is correct, check whether a network policy, IP "
-            "allowlist, or proxy is blocking this host.",
+            fix="Snowflake refused the request before it looked at any credentials. Most often the Account identifier is "
+            "wrong - copy it from your Snowflake URL, where it looks like <org>-<account> or "
+            "<locator>.<region>.<cloud>. If it is right, something is blocking this machine: a Snowflake network "
+            "policy, an IP allowlist, or a proxy.",
         ),
         when(Matchers.contains("multi-factor authentication")).diagnose(
             "Multi-factor authentication required",
-            fix="MFA is enforced on this user, and password login cannot satisfy the MFA prompt "
-            "for a non-interactive ingestion. Switch the connection to key-pair authentication "
-            "(set the Private Key field) or a Programmatic Access Token (put the PAT in the "
-            "Password field); do not use the account password.",
+            fix="This user has to complete multi-factor authentication, and there is nobody to answer the prompt during "
+            "an unattended ingestion. Use key-pair authentication instead by filling in Private Key, or put a "
+            "Programmatic Access Token in Password. The account password will not work here.",
         ),
         when(Matchers.contains("is not granted to this user")).diagnose(
             "Role not granted",
-            fix="Grant the configured role to the user, or set a role the user already has "
-            "(e.g. PUBLIC), so the connection can assume it.",
+            fix="The user has not been granted the role named in Role, so the connection cannot assume it. Ask a "
+            "Snowflake administrator to grant it, or set Role to one the user already has - PUBLIC, for example.",
         ),
         when(
             Matchers.any_of(
@@ -222,13 +221,15 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
             )
         ).diagnose(
             "Authentication failed",
-            fix="Check the username and password (or private key) and that the user is allowed to connect.",
+            fix="Snowflake rejected the sign-in. Check Username and Password - or Private Key if you are using key-pair "
+            "authentication - and that the user is allowed to connect.",
         ),
         when(_account_usage_denied(account_usage_schema)).diagnose(
             "Account usage not accessible",
-            fix="Grant the role IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE (or SELECT on the "
-            "snowflake.account_usage views) so query history, tags, and lineage can be read; "
-            "otherwise usage and lineage won't be collected.",
+            fix="Query history, tags and lineage come from Snowflake's ACCOUNT_USAGE views, and this role cannot read "
+            "them. Ask a Snowflake administrator to run GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE to the role, "
+            "or to grant it SELECT on the snowflake.account_usage views. Without that, usage and lineage will not be "
+            "collected.",
         ),
         when(
             Matchers.any_of(
@@ -237,8 +238,8 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
             )
         ).diagnose(
             "Insufficient privileges",
-            fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
-            "and SELECT on its objects).",
+            fix="The role signed in but is not allowed to read what this step needs. Ask a Snowflake administrator to "
+            "grant it USAGE on the database and schema, and SELECT on the objects inside them.",
         ),
         when(
             Matchers.any_of(
@@ -248,14 +249,15 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
             )
         ).diagnose(
             "Object not found",
-            fix="Verify the configured database, schema, warehouse, and role exist and the role is "
-            "authorized to use them.",
+            fix="Snowflake could not find one of the objects this connection names. Check Database, Schema, Warehouse and "
+            "Role all exist and are spelled correctly. Snowflake also reports an object the role cannot see as "
+            "missing, so a permission gap looks exactly the same.",
         ),
         when(Matchers.contains("no active warehouse")).diagnose(
             "No active warehouse",
-            fix="Set a valid warehouse on the connection - verify the name, since a missing, "
-            "misspelled, or inaccessible warehouse all fail here - and ensure the role has USAGE "
-            "on it, so queries have compute to run on.",
+            fix="No warehouse is active, so there is no compute to run queries on. Set Warehouse and check the name - a "
+            "warehouse that is missing, misspelled, or not granted to this role all fail the same way. The role also "
+            "needs USAGE on it.",
         ),
     ).including(NETWORK_ERRORS)
 

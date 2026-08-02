@@ -60,20 +60,24 @@ def probe_or_fail(host: str, port: int) -> None:
 NETWORK_ERRORS = ErrorPack(
     when(Matchers.exception(socket.gaierror)).diagnose(
         "Host could not be resolved",
-        fix="Check hostPort for typos and that DNS can resolve it from where ingestion runs.",
+        fix="The host name in Host and Port could not be looked up in DNS from the machine "
+        "ingestion runs on. Check it for typos, and if it is an internal name, that this machine "
+        "can resolve it.",
     ),
     when(Matchers.exception(ConnectionRefusedError)).diagnose(
         "Connection refused",
-        fix="The host answered but nothing is listening on that port; check the port in "
-        "hostPort and that the service is running.",
+        fix="The host answered, but nothing is listening on that port. Check the port in Host and "
+        "Port, and that the service is actually running there.",
     ),
     when(Matchers.exception(TimeoutError)).diagnose(
         "Connection timed out",
-        fix="The host did not answer in time; check that a firewall, security group, or "
-        "network ACL allows access to this host and port.",
+        fix="The host never answered. Something in between is most likely dropping the traffic - a "
+        "firewall, a security group, or a network ACL. Check that they allow the machine ingestion "
+        "runs on to reach this host and port.",
     ),
     when(Matchers.exception(NetworkUnreachableError)).diagnose(
         "Cannot reach the host",
-        fix="Check hostPort, the network route, and that the host is online and reachable from where ingestion runs.",
+        fix="Could not open a connection to the address in Host and Port. Check the address, that "
+        "the host is online, and that there is a network route to it from where ingestion runs.",
     ),
 )
