@@ -13,6 +13,7 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { isEmpty, noop } from 'lodash';
+import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -21,19 +22,22 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import type { FeedCounts } from '../../../interface/feed.interface';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
 import type { GlossaryDetailsProps } from './GlossaryDetails.interface';
@@ -50,6 +54,10 @@ const ActivityFeedTab = withSuspenseFallback(
   )
 );
 
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../../common/TabsLabel/TabsLabel.component'))
+);
+
 const GenericTab = withSuspenseFallback(
   lazy(() =>
     import('../../Customization/GenericTab/GenericTab').then((module) => ({
@@ -61,6 +69,14 @@ const GenericTab = withSuspenseFallback(
 const OntologyExplorer = withSuspenseFallback(
   lazy(() => import('../../OntologyExplorer/OntologyExplorer'))
 );
+
+const AlignRightIconButton = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/IconButtons/EditIconButton').then((module) => ({
+      default: module.AlignRightIconButton,
+    }))
+  )
+) as ComponentType<IconButtonProps>;
 
 const GlossaryDetails = ({
   updateVote,
@@ -92,6 +108,20 @@ const GlossaryDetails = ({
       handleFeedCount
     );
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.GLOSSARY, fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -185,7 +215,8 @@ const GlossaryDetails = ({
   ]);
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [glossary.fullyQualifiedName]);
 
   const isExpandViewSupported = useMemo(
