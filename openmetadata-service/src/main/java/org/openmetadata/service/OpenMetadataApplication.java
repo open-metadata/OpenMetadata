@@ -26,7 +26,6 @@ import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.jetty.ConnectorFactory;
-import io.dropwizard.jetty.HttpConnectorFactory;
 import io.dropwizard.jetty.HttpsConnectorFactory;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.lifecycle.Managed;
@@ -51,6 +50,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -70,6 +70,10 @@ import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
+import org.eclipse.jetty.http2.server.AbstractHTTP2ServerConnectionFactory;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.ServerConnector;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
@@ -248,9 +252,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
-    // Configure URI compliance to LEGACY mode by default for Jetty 12
-    // This allows special characters in entity names that were permitted in Jetty 11
-    configureUriCompliance(catalogConfig);
+    configureUriCompliance(environment.getApplicationContext().getServer().getConnectors());
 
     // Configure ServletHandler to preserve encoded slashes in paths
     // This is needed for entity names containing slashes (e.g., "domain.name/with-slash")
@@ -557,30 +559,29 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
-   * Configure URI compliance for Jetty 12. By default, Jetty 12 uses strict URI compliance which
-   * rejects special characters that were allowed in Jetty 11. OpenMetadata allows special
-   * characters in entity names (including encoded chars like %22 for double quotes), so we
-   * default to UNSAFE compliance mode unless explicitly configured otherwise.
-   * Note: For tests using DropwizardAppExtension, uriCompliance must be set in YAML config
-   * since the server is initialized before run() is called.
+   * Dropwizard builds HTTP/2 from a different HttpConfiguration than HTTP/1.1, so changing the
+   * connector config bean in Application.run() cannot affect the already-built h2 factory.
    */
-  void configureUriCompliance(OpenMetadataApplicationConfig configuration) {
-    if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
-      // Configure application connectors - always set to UNSAFE for backward compatibility
-      for (ConnectorFactory connector : serverFactory.getApplicationConnectors()) {
-        if (connector instanceof HttpConnectorFactory httpConnector) {
-          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-          LOG.info("Set URI compliance to UNSAFE for application connector");
-        }
-      }
-      // Configure admin connectors - always set to UNSAFE for backward compatibility
-      for (ConnectorFactory connector : serverFactory.getAdminConnectors()) {
-        if (connector instanceof HttpConnectorFactory httpConnector) {
-          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-          LOG.info("Set URI compliance to UNSAFE for admin connector");
-        }
+  void configureUriCompliance(final Connector[] connectors) {
+    int configuredFactories = 0;
+    for (final Connector connector : connectors) {
+      if (connector instanceof ServerConnector serverConnector) {
+        configuredFactories += configureUriCompliance(serverConnector);
       }
     }
+    LOG.info("Set URI compliance to UNSAFE on {} Jetty connection factories", configuredFactories);
+  }
+
+  private int configureUriCompliance(final ServerConnector connector) {
+    final Collection<HttpConnectionFactory> httpFactories =
+        connector.getContainedBeans(HttpConnectionFactory.class);
+    final Collection<AbstractHTTP2ServerConnectionFactory> http2Factories =
+        connector.getContainedBeans(AbstractHTTP2ServerConnectionFactory.class);
+    httpFactories.forEach(
+        factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
+    http2Factories.forEach(
+        factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
+    return httpFactories.size() + http2Factories.size();
   }
 
   /**

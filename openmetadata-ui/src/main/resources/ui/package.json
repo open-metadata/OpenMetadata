@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build",
+    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build && yarn bundle:check",
     "analyze": "vite build --mode analyze",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "preview": "vite preview",

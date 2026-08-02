@@ -32,6 +32,7 @@ import {
   BETA_EXPORT_TYPES,
   ExportTypes,
 } from '../../../constants/Export.constants';
+import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import {
   CSVExportJob,
   ExportData,
@@ -72,11 +73,11 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
   const dialogTitle = exportData.title ?? exportLabel;
   const exportTypeItems = useMemo(
     () =>
-      exportData.exportTypes.map((exportType) => ({
-        id: exportType,
-        label: exportType,
-      })),
-    [exportData.exportTypes]
+      exportUtilClassBase
+        .getExportTypeOptions()
+        .filter((option) => exportData.exportTypes.includes(option.value))
+        .map((option) => ({ id: option.value, label: option.label })),
+    [exportData]
   );
   const isExportInProgress =
     csvExportJob?.status === 'IN_PROGRESS' && !csvExportJob.statusUnavailable;

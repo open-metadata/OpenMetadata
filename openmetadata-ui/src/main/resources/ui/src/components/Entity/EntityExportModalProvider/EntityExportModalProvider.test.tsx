@@ -26,6 +26,7 @@ import {
   getCsvAsyncJobResult,
 } from '../../../rest/csvAPI';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
+import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import {
   EntityExportModalProvider,
   useEntityExportModalProvider,
@@ -193,6 +194,17 @@ const PollingConsumer = ({
         }>
         Complete polled export
       </button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            jobId,
+            progress: 1,
+            status: 'IN_PROGRESS',
+            total: 2,
+          })
+        }>
+        Report polled export progress
+      </button>
       <div data-testid="polled-export-data">{csvExportData ?? ''}</div>
       <div data-testid="polled-export-error">{csvExportError ?? ''}</div>
     </>
@@ -263,6 +275,30 @@ describe('EntityExportModalProvider component', () => {
       await screen.findByTestId('export-entity-modal')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('file-name-input')).toBeInTheDocument();
+  });
+
+  it('uses the export utility options so customized labels are preserved', async () => {
+    const optionsSpy = jest
+      .spyOn(exportUtilClassBase, 'getExportTypeOptions')
+      .mockReturnValue([
+        { label: 'Customized CSV', value: ExportTypes.CSV },
+        { label: 'Customized PNG', value: ExportTypes.PNG },
+      ]);
+
+    try {
+      render(
+        <EntityExportModalProvider>
+          <ConsumerComponent />
+        </EntityExportModalProvider>
+      );
+
+      fireEvent.click(await screen.findByText('Manage'));
+
+      expect(await screen.findAllByText('Customized CSV')).not.toHaveLength(0);
+      expect(optionsSpy).toHaveBeenCalled();
+    } finally {
+      optionsSpy.mockRestore();
+    }
   });
 
   it('Title should be visible, if provided', async () => {
@@ -566,6 +602,66 @@ describe('EntityExportModalProvider component', () => {
         )
       );
     } finally {
+      randomSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('stands polling down on websocket progress and re-arms the silence watchdog', async () => {
+    jest.useFakeTimers();
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    try {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      let pollingSignal: AbortSignal | undefined;
+      (getCsvAsyncJob as jest.Mock)
+        .mockImplementationOnce((_jobId: string, signal: AbortSignal) => {
+          pollingSignal = signal;
+
+          return new Promise<CsvAsyncJob>(() => undefined);
+        })
+        .mockResolvedValue({
+          createdBy: 'admin',
+          entityType: 'database',
+          jobId: mockExportJob.jobId,
+          operation: 'EXPORT',
+          status: 'RUNNING',
+        });
+
+      render(
+        <EntityExportModalProvider>
+          <PollingConsumer onExport={onExport} />
+        </EntityExportModalProvider>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start polled export'));
+      });
+      await waitFor(() => expect(onExport).toHaveBeenCalledTimes(1));
+
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+      await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByText('Report polled export progress'));
+
+      expect(pollingSignal?.aborted).toBe(true);
+
+      await act(async () => {
+        jest.advanceTimersByTime(9_999);
+      });
+
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+
+      await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(2));
+    } finally {
+      (getCsvAsyncJob as jest.Mock).mockReset();
       randomSpy.mockRestore();
       jest.useRealTimers();
     }
