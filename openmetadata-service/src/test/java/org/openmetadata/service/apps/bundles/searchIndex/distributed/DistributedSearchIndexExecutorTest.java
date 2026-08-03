@@ -1412,6 +1412,23 @@ class DistributedSearchIndexExecutorTest {
     return context;
   }
 
+  @Test
+  void recordTerminalMetricCountsPromotingAsCompletedNotFailed() throws Exception {
+    ReindexingMetrics metrics = mock(ReindexingMetrics.class);
+    Timer.Sample sample = mock(Timer.Sample.class);
+    Class<?>[] sig = {ReindexingMetrics.class, Timer.Sample.class, IndexJobStatus.class};
+
+    // PROMOTING is the drained hand-off state execute() ends on (the strategy promotes and flips it
+    // terminal afterwards). It must record a COMPLETED run — pre-fix it fell through to
+    // recordJobFailed, misreporting every successful distributed reindex as a failure.
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.PROMOTING);
+    verify(metrics).recordJobCompleted(sample);
+    verify(metrics, never()).recordJobFailed(sample);
+
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.FAILED);
+    verify(metrics).recordJobFailed(sample);
+  }
+
   private Object invokePrivate(String methodName, Class<?>[] parameterTypes, Object... args)
       throws Exception {
     Method method =

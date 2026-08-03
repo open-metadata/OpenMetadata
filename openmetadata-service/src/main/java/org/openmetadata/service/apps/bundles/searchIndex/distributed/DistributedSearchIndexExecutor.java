@@ -89,6 +89,9 @@ public class DistributedSearchIndexExecutor {
   /** Interval for checking stale partitions */
   private static final long STALE_CHECK_INTERVAL_MS = 30000;
 
+  /** Poll cadence while waiting for participant partitions to drain, so finishers reconcile promptly */
+  private static final long DRAIN_WAIT_POLL_INTERVAL_MS = 2000;
+
   /** Interval for refreshing the distributed lock */
   private static final long LOCK_REFRESH_INTERVAL_MS = 60000;
 
@@ -592,15 +595,8 @@ public class DistributedSearchIndexExecutor {
       try {
         if (metrics != null && timerSample != null) {
           SearchIndexJob finalJob = coordinator.getJob(jobId).orElse(null);
-          IndexJobStatus finalStatus = finalJob != null ? finalJob.getStatus() : null;
-          if (finalStatus == IndexJobStatus.COMPLETED
-              || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS) {
-            metrics.recordJobCompleted(timerSample);
-          } else if (finalStatus == IndexJobStatus.STOPPED) {
-            metrics.recordJobStopped(timerSample);
-          } else {
-            metrics.recordJobFailed(timerSample);
-          }
+          recordTerminalMetric(
+              metrics, timerSample, finalJob != null ? finalJob.getStatus() : null);
         }
       } catch (Exception e) {
         LOG.debug("Error recording metrics", e);
@@ -871,7 +867,7 @@ public class DistributedSearchIndexExecutor {
       if (System.currentTimeMillis() >= deadline) {
         break;
       }
-      sleepQuietly(Math.min(STALE_CHECK_INTERVAL_MS, 2000));
+      sleepQuietly(Math.min(STALE_CHECK_INTERVAL_MS, DRAIN_WAIT_POLL_INTERVAL_MS));
       processingComplete = isJobProcessingComplete(jobId);
     }
     return processingComplete;
@@ -887,6 +883,24 @@ public class DistributedSearchIndexExecutor {
       Thread.sleep(millis);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+    }
+  }
+
+  /**
+   * Records the timing metric for the run based on the job's status when {@code execute()} unwinds.
+   * PROMOTING is the normal drained end-state - the strategy's promotion sweep flips it terminal
+   * afterwards, outside this timer scope - so it counts as a completed run rather than a failure.
+   */
+  private void recordTerminalMetric(
+      ReindexingMetrics metrics, Timer.Sample timerSample, IndexJobStatus finalStatus) {
+    if (finalStatus == IndexJobStatus.COMPLETED
+        || finalStatus == IndexJobStatus.COMPLETED_WITH_ERRORS
+        || finalStatus == IndexJobStatus.PROMOTING) {
+      metrics.recordJobCompleted(timerSample);
+    } else if (finalStatus == IndexJobStatus.STOPPED) {
+      metrics.recordJobStopped(timerSample);
+    } else {
+      metrics.recordJobFailed(timerSample);
     }
   }
 
