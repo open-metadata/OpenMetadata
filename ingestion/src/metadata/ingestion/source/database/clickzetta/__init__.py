@@ -1,0 +1,1 @@
+"""ClickZetta database connector."""

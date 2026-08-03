@@ -1,0 +1,125 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/clickzettaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClickzettaConnection",
+  "description": "ClickZetta Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.ClickzettaConnection",
+  "definitions": {
+    "clickzettaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Clickzetta"
+      ],
+      "default": "Clickzetta"
+    },
+    "clickzettaScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "clickzetta"
+      ],
+      "default": "clickzetta"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/clickzettaType",
+      "default": "Clickzetta"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/clickzettaScheme",
+      "default": "clickzetta"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Complete ClickZetta instance and service host, with an optional port.",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to ClickZetta.",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose the ClickZetta authentication configuration.",
+      "mask": true,
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        }
+      ]
+    },
+    "databaseName": {
+      "title": "Workspace",
+      "description": "ClickZetta workspace to ingest.",
+      "type": "string"
+    },
+    "virtualCluster": {
+      "title": "Virtual Cluster",
+      "description": "ClickZetta virtual cluster used for metadata extraction.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.",
+      "type": "string"
+    },
+    "protocol": {
+      "title": "Protocol",
+      "description": "Protocol used to connect to ClickZetta.",
+      "type": "string",
+      "enum": [
+        "https",
+        "http"
+      ],
+      "default": "https"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include or exclude matching schemas.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include or exclude matching tables.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include or exclude matching databases.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "description": "Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live and validated.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction",
+      "default": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username",
+    "authType",
+    "databaseName",
+    "virtualCluster"
+  ]
+}

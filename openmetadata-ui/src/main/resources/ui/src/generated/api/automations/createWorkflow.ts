@@ -198,6 +198,8 @@ export interface RequestConnection {
  *
  * Clickhouse Connection Config
  *
+ * ClickZetta Database Connection Config
+ *
  * Databricks Connection Config
  *
  * Db2 Connection Config
@@ -580,6 +582,8 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
+     * Regex to only include or exclude matching databases.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -590,6 +594,8 @@ export interface ConfigObject {
      * Host and port of the AzureSQL service.
      *
      * Host and port of the Clickhouse service.
+     *
+     * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
      *
@@ -739,6 +745,8 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
+     * Regex to only include or exclude matching schemas.
+     *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
      *
@@ -764,9 +772,13 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?:          FilterPattern;
-    supportsDatabase?:                      boolean;
-    supportsDataDiff?:                      boolean;
+    storedProcedureFilterPattern?: FilterPattern;
+    supportsDatabase?:             boolean;
+    supportsDataDiff?:             boolean;
+    /**
+     * Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live
+     * and validated.
+     */
     supportsDBTExtraction?:                 boolean;
     supportsIncrementalMetadataExtraction?: boolean;
     /**
@@ -782,6 +794,8 @@ export interface ConfigObject {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to only include or exclude matching tables.
      *
      * Regex to include/exclude FHIR resource types
      *
@@ -817,6 +831,8 @@ export interface ConfigObject {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * ClickZetta workspace to ingest.
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
@@ -986,6 +1002,8 @@ export interface ConfigObject {
      * Username to connect to Clickhouse. This user should have privileges to read all the
      * metadata in Clickhouse.
      *
+     * Username to connect to ClickZetta.
+     *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
      *
@@ -1121,6 +1139,8 @@ export interface ConfigObject {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      *
+     * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -1150,6 +1170,8 @@ export interface ConfigObject {
      */
     secure?: boolean;
     /**
+     * Choose the ClickZetta authentication configuration.
+     *
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
@@ -1172,6 +1194,16 @@ export interface ConfigObject {
      * Authentication method: username/password or SSH private key
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
+     * Protocol used to connect to ClickZetta.
+     *
+     * Protocol ( Connection Argument ) to connect to Presto.
+     */
+    protocol?: string;
+    /**
+     * ClickZetta virtual cluster used for metadata extraction.
+     */
+    virtualCluster?: string;
     /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
@@ -1344,10 +1376,6 @@ export interface ConfigObject {
      * restricted.
      */
     queryStatementSource?: string;
-    /**
-     * Protocol ( Connection Argument ) to connect to Presto.
-     */
-    protocol?: string;
     /**
      * Verify ( Connection Argument for SSL ) to connect to Presto.
      *
@@ -2475,6 +2503,12 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to only include or exclude matching databases.
+ *
+ * Regex to only include or exclude matching schemas.
+ *
+ * Regex to only include or exclude matching tables.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -2628,6 +2662,12 @@ export enum AuthProvider {
 }
 
 /**
+ * Choose the ClickZetta authentication configuration.
+ *
+ * Choose Auth Config Type.
+ *
+ * Common Database Connection Config
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -2637,10 +2677,6 @@ export enum AuthProvider {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
- *
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
  *
  * IAM Auth Database Connection Config
  *
@@ -2703,6 +2739,24 @@ export enum AuthProvider {
  */
 export interface AuthenticationType {
     /**
+     * Password to connect to source.
+     *
+     * Database user password. Leave empty if using IAM database authentication.
+     *
+     * Password for the Dremio Software user account.
+     *
+     * Password to access the service.
+     *
+     * Password to authenticate with SAP S/4HANA.
+     *
+     * Elastic Search Password for Login
+     *
+     * Ranger password to authenticate to the API.
+     *
+     * SFTP password
+     */
+    password?: string;
+    /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
      */
@@ -2733,26 +2787,8 @@ export interface AuthenticationType {
      * Azure Active Directory Tenant ID where your Service Principal is registered.
      */
     azureTenantId?: string;
-    /**
-     * Password to connect to source.
-     *
-     * Database user password. Leave empty if using IAM database authentication.
-     *
-     * Password for the Dremio Software user account.
-     *
-     * Password to access the service.
-     *
-     * Password to authenticate with SAP S/4HANA.
-     *
-     * Elastic Search Password for Login
-     *
-     * Ranger password to authenticate to the API.
-     *
-     * SFTP password
-     */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
-    azureConfig?: AzureCredentials;
+    awsConfig?:     AWSCredentials;
+    azureConfig?:   AzureCredentials;
     /**
      * Use GCP IAM for database authentication instead of a password.
      */
@@ -4809,6 +4845,7 @@ export enum ConfigScheme {
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
     Databricks = "databricks",
@@ -5134,6 +5171,7 @@ export enum ConfigType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Collibra = "Collibra",
     Couchbase = "Couchbase",
