@@ -195,6 +195,59 @@ export const getToken = async (page: Page): Promise<string> => {
   return (await executeTokenOperation(page, 'get')) as string;
 };
 
+/**
+ * Replace the stored session token.
+ *
+ * The write has to go through the service worker, not straight into IndexedDB. `app-worker.js`
+ * keeps an in-memory `swStore` and only falls back to IndexedDB when the key is *absent* from it,
+ * so once the app has read `app_state` (i.e. after login) a direct IndexedDB write is invisible —
+ * the worker keeps handing the old token to `getOidcToken()`. Writing through the worker updates
+ * both its cache and IndexedDB, and is exactly what the app itself does.
+ *
+ * Falls back to the direct IndexedDB write when no worker is controlling the page.
+ */
 export const setToken = async (page: Page, token: string): Promise<void> => {
-  await executeTokenOperation(page, 'set', token);
+  const wroteViaServiceWorker = await page.evaluate(
+    async ({ appStateKey, oidcTokenKey, token }) => {
+      const controller = navigator.serviceWorker?.controller;
+
+      if (!controller) {
+        return false;
+      }
+
+      const request = (message: Record<string, unknown>): Promise<unknown> =>
+        new Promise((resolve, reject) => {
+          const channel = new MessageChannel();
+          const timer = setTimeout(
+            () => reject(new Error('Service worker did not respond')),
+            10000
+          );
+          channel.port1.onmessage = (event) => {
+            clearTimeout(timer);
+            resolve(event.data?.result ?? null);
+          };
+          controller.postMessage(message, [channel.port2]);
+        });
+
+      const current = (await request({
+        type: 'get',
+        key: appStateKey,
+      })) as string | null;
+      const state = current ? JSON.parse(current) : {};
+      state[oidcTokenKey] = token;
+
+      await request({
+        type: 'set',
+        key: appStateKey,
+        value: JSON.stringify(state),
+      });
+
+      return true;
+    },
+    { appStateKey: APP_STATE_KEY, oidcTokenKey: OIDC_TOKEN_KEY, token }
+  );
+
+  if (!wroteViaServiceWorker) {
+    await executeTokenOperation(page, 'set', token);
+  }
 };

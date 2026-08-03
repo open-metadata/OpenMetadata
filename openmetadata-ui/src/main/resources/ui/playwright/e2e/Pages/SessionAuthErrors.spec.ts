@@ -96,6 +96,10 @@ test.describe(
         })
       );
 
+      // Make the page's own requests fail the way a dead session does, so the test does not
+      // depend on how quickly the server rejects the planted token.
+      await page.route(isTeamsCollection, fulfillWith(401, 'Expired token!'));
+
       await setToken(page, EXPIRED_JWT);
 
       await page.goto(TEAMS_URL, { waitUntil: 'domcontentloaded' });
