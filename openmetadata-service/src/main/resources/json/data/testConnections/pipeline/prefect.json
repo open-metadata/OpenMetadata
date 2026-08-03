@@ -17,13 +17,6 @@
             "errorMessage": "Failed to fetch flows, please validate the credentials and the workspace access",
             "shortCircuit": false,
             "mandatory": true
-        },
-        {
-            "name": "GetRuns",
-            "description": "Validate that we can fetch the runs of a flow.",
-            "errorMessage": "Failed to fetch flow runs, please validate the credentials and the workspace access",
-            "shortCircuit": false,
-            "mandatory": false
         }
     ]
 }

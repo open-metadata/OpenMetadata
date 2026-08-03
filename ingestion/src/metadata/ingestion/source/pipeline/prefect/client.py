@@ -204,14 +204,3 @@ class PrefectClient:
     def test_get_flows(self) -> list[dict]:
         """Fetch one page of flows for the test connection step."""
         return self._filter("flows", {"limit": FLOWS_PAGE_SIZE, "offset": 0}, retries=0)
-
-    def test_get_flow_runs(self, flow_id: str) -> list[dict]:
-        """Fetch one run of one flow for the test connection step."""
-        payload = {
-            "flows": {"id": {"any_": [flow_id]}},
-            "sort": FLOW_RUNS_SORT,
-            "limit": 1,
-            "offset": 0,
-            "flow_runs": {"state": {"type": {"not_any_": ["SCHEDULED"]}}},
-        }
-        return self._filter("flow_runs", payload, retries=0)

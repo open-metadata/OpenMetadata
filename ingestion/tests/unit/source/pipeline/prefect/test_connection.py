@@ -73,7 +73,7 @@ def test_checks_expose_every_step():
     with patch(f"{CONNECTION_MODULE}.PrefectClient"):
         resolved = collect_checks(PrefectConnection(MagicMock()).checks())
 
-    assert set(resolved) == {PipelineStep.CheckAccess, PipelineStep.GetPipelines, PipelineStep.GetRuns}
+    assert set(resolved) == {PipelineStep.CheckAccess, PipelineStep.GetPipelines}
 
 
 def test_checks_borrow_the_connection_client():
@@ -111,37 +111,6 @@ def test_get_pipelines_caveats_a_workspace_with_no_flows(checks, client):
 
     assert evidence.summary == "no flows enumerated"
     assert evidence.caveat is not None
-    assert evidence.caveat.title == "No flows visible"
-
-
-def test_get_runs_counts_the_runs_of_the_first_flow(checks, client):
-    client.test_get_flows.return_value = [{"id": "flow-1"}, {"id": "flow-2"}]
-    client.test_get_flow_runs.return_value = [MagicMock()]
-
-    evidence = checks.get_runs()
-
-    client.test_get_flow_runs.assert_called_once_with("flow-1")
-    assert evidence.summary == "1 flow run enumerated"
-    assert evidence.caveat is None
-
-
-def test_get_runs_caveats_a_flow_with_no_runs(checks, client):
-    client.test_get_flows.return_value = [{"id": "flow-1"}]
-    client.test_get_flow_runs.return_value = []
-
-    evidence = checks.get_runs()
-
-    assert evidence.summary == "no flow runs enumerated"
-    assert evidence.caveat.title == "No flow runs visible"
-
-
-def test_get_runs_skips_the_call_when_there_are_no_flows(checks, client):
-    client.test_get_flows.return_value = []
-
-    evidence = checks.get_runs()
-
-    client.test_get_flow_runs.assert_not_called()
-    assert evidence.summary == "no flows to check runs against"
     assert evidence.caveat.title == "No flows visible"
 
 

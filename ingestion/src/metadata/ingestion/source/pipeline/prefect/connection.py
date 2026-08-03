@@ -60,12 +60,6 @@ NO_FLOWS_CAVEAT = Diagnosis(
     "pipelines from Prefect flows, so it would find nothing.",
 )
 
-NO_RUNS_CAVEAT = Diagnosis(
-    title="No flow runs visible",
-    remediation="The flow is readable but has no runs yet. Status and lineage "
-    "ingestion read past flow runs, so it would find nothing until this flow runs.",
-)
-
 # Auth-agnostic: same wording regardless of Cloud vs self-hosted Server.
 _COMMON_ERRORS = ErrorPack(
     when(http_status(429)).diagnose(
@@ -158,18 +152,6 @@ class PrefectChecks:
             noun="flow",
             command="fetch the flows of the workspace",
             empty_caveat=NO_FLOWS_CAVEAT,
-        )
-
-    @check(PipelineStep.GetRuns)
-    def get_runs(self) -> Evidence:
-        flows = self._prefect.client.test_get_flows()
-        if not flows:
-            return Evidence(summary="no flows to check runs against", caveat=NO_FLOWS_CAVEAT)
-        return fetch_list(
-            lambda: self._prefect.client.test_get_flow_runs(flows[0]["id"]),
-            noun="flow run",
-            command="fetch the most recent run of the first flow",
-            empty_caveat=NO_RUNS_CAVEAT,
         )
 
 
