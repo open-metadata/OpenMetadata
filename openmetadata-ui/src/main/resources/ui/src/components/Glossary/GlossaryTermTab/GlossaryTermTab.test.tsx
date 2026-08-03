@@ -34,13 +34,14 @@ const mockSetGlossaryChildTerms = jest.fn();
 const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
+const mockGetGlossaryTerms = jest.fn();
 const mockListTasks = jest.fn();
 const mockResolveTask = jest.fn();
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
+    .mockImplementation((...args) => mockGetGlossaryTerms(...args)),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   getFirstLevelGlossaryTermsPaginated: jest
     .fn()
@@ -245,6 +246,7 @@ describe('Test GlossaryTermTab component', () => {
       data: mockedGlossaryTerms,
       paging: { after: null },
     });
+    mockGetGlossaryTerms.mockResolvedValue({ data: mockedGlossaryTerms });
     mockGetGlossaryTermChildrenLazy.mockResolvedValue({
       data: [
         {
@@ -646,23 +648,7 @@ describe('Test GlossaryTermTab component', () => {
   });
 
   describe('Task Loading', () => {
-    it('should fetch open approval tasks when isGlossary is true', async () => {
-      render(<GlossaryTermTab isGlossary />, {
-        wrapper: MemoryRouter,
-      });
-
-      await waitFor(() => {
-        expect(mockListTasks).toHaveBeenCalledWith({
-          category: 'Approval',
-          fields: 'about,assignees',
-          limit: 100000,
-          status: 'Open',
-          type: 'RequestApproval',
-        });
-      });
-    });
-
-    it('should fetch open approval tasks when isGlossary is false', async () => {
+    it('should fetch open approval tasks', async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
@@ -969,6 +955,40 @@ describe('Test GlossaryTermTab component', () => {
       // we're just testing that the button exists and has proper text
       // The full integration test would require more complex setup
     });
+
+    it.each([
+      {
+        isGlossary: true,
+        requestKey: 'glossary',
+      },
+      {
+        isGlossary: false,
+        requestKey: 'parent',
+      },
+    ])(
+      'should fetch expanded terms by $requestKey when isGlossary is $isGlossary',
+      async ({ isGlossary, requestKey }) => {
+        render(<GlossaryTermTab isGlossary={isGlossary} />, {
+          wrapper: MemoryRouter,
+        });
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId('expand-collapse-all-button')
+          ).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+        await waitFor(() => {
+          expect(mockGetGlossaryTerms).toHaveBeenCalledWith(
+            expect.objectContaining({
+              [requestKey]: mockUseGlossaryStore.activeGlossary.id,
+            })
+          );
+        });
+      }
+    );
   });
 
   describe('Drag and Drop Modal', () => {
