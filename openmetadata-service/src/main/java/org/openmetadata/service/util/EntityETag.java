@@ -92,6 +92,11 @@ public class EntityETag {
    * Generate a weak ETag that only considers the version.
    * Weak ETags are prefixed with W/ and are useful when byte-for-byte equality is not required.
    *
+   * <p>This is the validator clients should send on {@code If-Match} for optimistic-concurrency
+   * writes, because it does not depend on which {@code fields} projection the client fetched — see
+   * {@link #validateETag}. Its exact rendering is therefore a cross-language contract that
+   * non-Java clients reproduce locally; {@code EntityETagTest} pins it.
+   *
    * @param entity The entity to generate weak ETag for
    * @return Weak ETag string in format W/"version"
    */
@@ -106,6 +111,15 @@ public class EntityETag {
   /**
    * Validate if the provided ETag matches the entity's current ETag.
    * If validation is enabled and ETags don't match, throws PreconditionFailedException.
+   *
+   * <p><b>Conditional writes must send the weak validator</b> {@code W/"<version>"} (see
+   * {@link #generateWeakETag}). The strong ETag hashes the serialized entity, and {@code entity}
+   * here is the copy a PATCH loaded with the repository's {@code patchFields} — a different
+   * projection from the one a GET published the ETag for. So a client that faithfully echoes the
+   * strong ETag from its own read still fails this check, no matter how correctly it stored it.
+   * The version is projection-independent and bumps on every update, which is what makes it a
+   * usable precondition. Callers relying on this: {@code patch_mixin._entity_etag} in the Python
+   * ingestion client.
    *
    * @param ifMatchHeader The If-Match header value from the request
    * @param entity The current entity

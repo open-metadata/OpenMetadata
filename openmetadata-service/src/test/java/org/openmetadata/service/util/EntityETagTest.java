@@ -18,6 +18,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -158,6 +159,48 @@ class EntityETagTest {
     assertDoesNotThrow(() -> EntityETag.validateETag("\"other\", " + etag, entity, true));
     assertDoesNotThrow(() -> EntityETag.validateETag("*", entity, true));
     assertDoesNotThrow(() -> EntityETag.validateETag("\"stale\"", entity, false));
+  }
+
+  @Test
+  void weakETagIsTheContractForNonJavaClients() {
+    // The ingestion patch helpers (metadata.ingestion.ometa.mixins.patch_mixin._entity_etag) build
+    // this string locally, so its exact rendering is a cross-language contract, not an internal
+    // detail. EntityUtil.nextVersion keeps versions at one decimal place, which is what lets a
+    // non-Java client reproduce the Double rendering. Reformatting this breaks conditional writes
+    // from every such client — and breaks them silently, into a last-write-wins fallback.
+    assertEquals("W/\"0.1\"", EntityETag.generateWeakETag(entity(0.1, 1L)));
+    assertEquals("W/\"1.0\"", EntityETag.generateWeakETag(entity(1.0, 1L)));
+    assertEquals("W/\"2.3\"", EntityETag.generateWeakETag(entity(2.3, 1L)));
+    assertEquals("W/\"10.0\"", EntityETag.generateWeakETag(entity(10.0, 1L)));
+  }
+
+  @Test
+  void weakETagValidatesAcrossProjectionsWhereStrongETagCannot() {
+    // Why a conditional write must send the weak validator. The strong ETag hashes the serialized
+    // entity, so the one a GET publishes (the caller's `fields`) is NOT the one a PATCH validates
+    // against (the repository's patchFields — for tables, tableConstraints/tablePartition/columns
+    // plus tags). Echoing the strong ETag from a read therefore always fails the precondition,
+    // however faithfully the client stored it. The version is projection-independent, so the weak
+    // validator survives the round trip. Same entity, same version, two projections:
+    UUID id = UUID.randomUUID();
+    TagLabel tag = new TagLabel().withTagFQN("PII.Sensitive");
+    EntityInterface asPublishedByRead = partialTable(id).withTags(List.of(tag));
+    EntityInterface asLoadedForPatch =
+        partialTable(id)
+            .withTags(List.of(tag))
+            .withTableConstraints(List.of(new TableConstraint().withColumns(List.of("id"))));
+
+    String strongFromRead = EntityETag.generateETag(asPublishedByRead);
+    assertNotEquals(strongFromRead, EntityETag.generateETag(asLoadedForPatch));
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> EntityETag.validateETag(strongFromRead, asLoadedForPatch, true),
+        "A strong ETag from a read projection cannot satisfy a write-side precondition");
+    assertDoesNotThrow(
+        () ->
+            EntityETag.validateETag(
+                EntityETag.generateWeakETag(asPublishedByRead), asLoadedForPatch, true),
+        "The weak version validator must survive the projection change");
   }
 
   @Test
