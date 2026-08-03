@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Harness-integrity checks — keep the agent-facing config from silently decaying.
 
-Six checks, all emitting GitHub Actions **warning** annotations (never failing) unless
+Seven checks, all emitting GitHub Actions **warning** annotations (never failing) unless
 run with ``--strict``:
 
-  1. dead-reference   — a path / make target / yarn script / maven goal named in the
-                        agent docs or a SKILL.md that no longer resolves
-  2. agents-sync      — AGENTS.md drifting from CLAUDE.md's corrected stack facts
-  3. skill-symlinks   — a real file where a symlink into skills/ is expected, or two
-                        SKILL.md sharing a name with different content
-  4. doc-size         — CLAUDE.md > 200 lines, ARCHITECTURE.md > 300, a rule file > 100
-  5. rule-globs       — a .claude/rules/ paths: glob that matches zero files
-  6. generated-fresh  — docs/generated/** out of date with its source
+  1. dead-reference       — a path / make target / yarn script / maven goal named in the
+                            agent docs or a SKILL.md that no longer resolves
+  2. agents-sync          — AGENTS.md drifting from CLAUDE.md's corrected stack facts
+  3. skill-symlinks       — a real file where a symlink into skills/ is expected, or two
+                            SKILL.md sharing a name with different content
+  4. doc-size             — CLAUDE.md > 200 lines, ARCHITECTURE.md > 300, a rule file > 100
+  5. rule-globs           — a .claude/rules/ paths: glob that matches zero files
+  6. generated-fresh      — docs/generated/** out of date with its source
+  7. baseline-freshness   — timing-baseline.json still lists an entire Playwright spec
+                            as skipped though the spec has live `test(...)` calls (i.e.
+                            the suite was re-enabled without a baseline refresh — the
+                            shard planner will under-budget it; see #30812)
 
 Run locally with ``make harness-check`` or ``python3 scripts/harness/check_harness.py``.
 Stdlib only; deterministic; safe to run anywhere in the tree.
@@ -289,7 +293,11 @@ def check_dead_references():
     if os.path.isdir(rp(RULES_DIR)):
         files += [f"{RULES_DIR}/{n}" for n in sorted(os.listdir(rp(RULES_DIR))) if n.endswith(".md")]
     for dirpath, dirs, filenames in os.walk(rp("skills")):
-        dirs[:] = [d for d in dirs if d not in PRUNE_DIRS]
+        # skills/vendor/** is third-party, copied verbatim from upstream. Its
+        # paths and commands refer to the projects it came from, so checking
+        # them against this repo produces only noise, and we must not "fix" a
+        # vendored file anyway — edits are lost on the next refresh.
+        dirs[:] = [d for d in dirs if d not in PRUNE_DIRS and d != "vendor"]
         for name in filenames:
             if name == "SKILL.md":
                 files.append(os.path.relpath(os.path.join(dirpath, name), REPO))
@@ -434,6 +442,67 @@ def check_rule_globs():
     return warnings
 
 
+# ---------------------------------------------------------------- check 7 (baseline)
+
+
+PLAYWRIGHT_BASELINE = ".github/playwright/timing-baseline.json"
+PLAYWRIGHT_E2E_ROOT = "openmetadata-ui/src/main/resources/ui/playwright/e2e"
+# Match `test(...` calls in a spec file — but NOT `test.describe(`, `test.step(`,
+# `test.beforeAll(`, `test.only(`, `test.skip(`, etc. `test.only(` and `test.fixme(`
+# should not appear in merged code either, but a `test.skip(` is a valid signal
+# that the case is still intentionally disabled, so it is treated as *not live*.
+_LIVE_TEST_CALL = re.compile(r"(?<![A-Za-z_.])test\s*\(")
+
+
+def _spec_has_live_tests(path):
+    try:
+        text = read(path)
+    except (FileNotFoundError, IsADirectoryError):
+        return None
+    return len(_LIVE_TEST_CALL.findall(text))
+
+
+def check_baseline_freshness():
+    warnings = []
+    baseline_path = rp(PLAYWRIGHT_BASELINE)
+    if not os.path.exists(baseline_path):
+        return warnings
+    try:
+        payload = json.loads(read(PLAYWRIGHT_BASELINE))
+    except json.JSONDecodeError:
+        return warnings
+    by_file = {}
+    for entry in payload.get("tests", []):
+        by_file.setdefault(entry.get("file", ""), []).append(entry)
+    for file, entries in sorted(by_file.items()):
+        if not file:
+            continue
+        if not all(
+            e.get("outcome") == "skipped" and e.get("durationMs", 0) == 0
+            for e in entries
+        ):
+            continue
+        spec_rel = f"{PLAYWRIGHT_E2E_ROOT}/{file}"
+        live = _spec_has_live_tests(spec_rel)
+        if not live:
+            continue  # spec is truly skipped end-to-end, or missing (renamed)
+        warnings.append(
+            Warn(
+                "baseline-freshness",
+                PLAYWRIGHT_BASELINE,
+                1,
+                (
+                    f"{file}: baseline records {len(entries)} skipped entries with 0 ms "
+                    f"but the spec has {live} live `test(...)` call(s). Refresh the baseline "
+                    "(seed observed durations, or wait for the next full-run capture) — "
+                    "otherwise the planner will pack the re-enabled suite onto one shard "
+                    "and the shard will time out on the merge queue (see #30812)."
+                ),
+            )
+        )
+    return warnings
+
+
 # ------------------------------------------------------------------------- check 6
 
 
@@ -463,6 +532,7 @@ CHECKS = [
     check_doc_size,
     check_rule_globs,
     check_generated_fresh,
+    check_baseline_freshness,
 ]
 
 
