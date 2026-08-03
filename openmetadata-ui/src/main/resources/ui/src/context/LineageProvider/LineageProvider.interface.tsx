@@ -53,6 +53,7 @@ export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
   dataQualityLineage?: EntityLineageResponse;
   nodes: Node[];
+  setSceneNodes: (nodes: Node[]) => void;
   edges: Edge[];
   init: boolean;
   status: LoadingState;

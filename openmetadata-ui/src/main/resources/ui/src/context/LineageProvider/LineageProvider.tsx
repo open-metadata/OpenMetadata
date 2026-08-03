@@ -2039,6 +2039,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const activityFeedContextValues: LineageContextType = useMemo(() => {
     return {
       nodes,
+      setSceneNodes: setNodes,
       edges,
       reactFlowInstance,
       entityLineage,

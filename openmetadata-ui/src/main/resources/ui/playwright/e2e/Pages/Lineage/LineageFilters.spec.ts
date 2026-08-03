@@ -758,9 +758,8 @@ test.describe('Lineage Filters', () => {
             get(record, 'entityResponseData.serviceType', '').toLowerCase()
         );
 
-        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.getByRole('button', { name: 'Update' }).click();
-        await lineageRes;
+        await waitForAllLoadersToDisappear(page);
 
         await rearrangeNodes(page);
         await fitToScreen(page);

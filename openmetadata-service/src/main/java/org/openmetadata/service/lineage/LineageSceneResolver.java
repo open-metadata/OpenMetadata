@@ -339,7 +339,7 @@ public class LineageSceneResolver {
                 .withUpstreamDepth(upstreamDepth)
                 .withDownstreamDepth(downstreamDepth)
                 .withQueryFilter(queryFilter)
-                .withPreservePaths(false)
+                .withPreservePaths(true)
                 .withIncludeDeleted(includeDeleted)
                 .withLayerSize(size)
                 .withIsConnectedVia(isConnectedVia(entityType))

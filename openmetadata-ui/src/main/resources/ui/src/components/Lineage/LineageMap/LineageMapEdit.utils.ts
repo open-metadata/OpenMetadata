@@ -256,6 +256,85 @@ export const toFlowEdge = (
   };
 };
 
+const getPipelineSceneNode = (
+  nodeById: Map<string, LineageSceneNode>,
+  edge: LineageSceneEdge
+) => {
+  if (!edge.pipeline) {
+    return undefined;
+  }
+
+  return Array.from(nodeById.values()).find((node) => {
+    const entity = getRealEntityRef(node);
+
+    return (
+      node.id === edge.pipeline?.id ||
+      entity?.id === edge.pipeline?.id ||
+      (Boolean(edge.pipeline?.fullyQualifiedName) &&
+        (node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName ||
+          entity?.fullyQualifiedName === edge.pipeline?.fullyQualifiedName))
+    );
+  });
+};
+
+export const toFlowEdges = (
+  nodeById: Map<string, LineageSceneNode>,
+  sceneEdges: LineageSceneEdge[],
+  renderPipelinesAsNodes: boolean
+): Edge<LineageMapEdgeData>[] =>
+  sceneEdges.flatMap((sceneEdge) => {
+    const source = getEndpointNodeId(sceneEdge.from);
+    const target = getEndpointNodeId(sceneEdge.to);
+    const pipelineNode = renderPipelinesAsNodes
+      ? getPipelineSceneNode(nodeById, sceneEdge)
+      : undefined;
+
+    if (
+      !pipelineNode ||
+      getEndpointHandle(sceneEdge.from) ||
+      getEndpointHandle(sceneEdge.to) ||
+      pipelineNode.id === source ||
+      pipelineNode.id === target
+    ) {
+      return [toFlowEdge(nodeById, sceneEdge)];
+    }
+
+    const toPipelineSegment = (
+      id: string,
+      from: string,
+      to: string
+    ): Edge<LineageMapEdgeData> => {
+      const flowEdge = toFlowEdge(nodeById, {
+        ...sceneEdge,
+        id,
+        from,
+        to,
+        pipeline: undefined,
+      });
+
+      return {
+        ...flowEdge,
+        data: {
+          ...flowEdge.data,
+          sceneEdge,
+        },
+      };
+    };
+
+    return [
+      toPipelineSegment(
+        `${sceneEdge.id}::pipeline-in`,
+        source,
+        pipelineNode.id
+      ),
+      toPipelineSegment(
+        `${sceneEdge.id}::pipeline-out`,
+        pipelineNode.id,
+        target
+      ),
+    ];
+  });
+
 const toEdgeDetails = (
   fromEntity: EdgeFromToData,
   toEntity: EdgeFromToData,

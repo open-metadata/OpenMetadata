@@ -71,6 +71,7 @@ import {
   LineageSceneBreadcrumb,
   LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
+import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../../generated/entity/type';
 import { LineageLayer } from '../../../generated/settings/settings';
 import { LineageDetails } from '../../../generated/type/entityLineage';
@@ -121,7 +122,7 @@ import {
   isEditableSceneEdge,
   isEditableSceneNode,
   isRemovableSceneNode,
-  toFlowEdge,
+  toFlowEdges,
   type LineageMapEdgeData,
 } from './LineageMapEdit.utils';
 
@@ -793,6 +794,7 @@ const LineageMapCanvas = ({
     onColumnEdgeRemove,
     onEdgeClick: onProviderEdgeClick,
     onPaneClick: onProviderPaneClick,
+    setSceneNodes,
   } = useLineageProvider();
   const queryParams = useMemo(
     () => Qs.parse(location.search, { ignoreQueryPrefix: true }),
@@ -1246,6 +1248,8 @@ const LineageMapCanvas = ({
 
   useEffect(() => {
     if (!scene) {
+      setSceneNodes([]);
+
       return;
     }
     setHoveredEdge(null);
@@ -1254,7 +1258,11 @@ const LineageMapCanvas = ({
     setSelectedColumn(undefined);
     setTracedColumns(new Set());
     const nodeById = new Map(scene.nodes.map((node) => [node.id, node]));
-    const nextEdges = scene.edges.map((edge) => toFlowEdge(nodeById, edge));
+    const nextEdges = toFlowEdges(
+      nodeById,
+      scene.edges,
+      !isEditMode && config.pipelineViewMode === PipelineViewMode.Node
+    );
     setColumnsHavingLineage(getColumnsHavingLineage(scene.edges));
     setColumnsInCurrentPages(new Map());
 
@@ -1290,6 +1298,7 @@ const LineageMapCanvas = ({
         },
       };
     });
+    setSceneNodes(nextNodes);
     let isMounted = true;
     layoutNodes(nextNodes, nextEdges, scene.band).then((layoutedNodes) => {
       if (isMounted) {
@@ -1307,6 +1316,7 @@ const LineageMapCanvas = ({
       isMounted = false;
     };
   }, [
+    config.pipelineViewMode,
     handleDrill,
     handleSceneColumnHover,
     handleSceneColumnSelect,
@@ -1315,6 +1325,7 @@ const LineageMapCanvas = ({
     scene,
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
+    setSceneNodes,
     setSelectedColumn,
     setTracedColumns,
     t,

@@ -35,6 +35,7 @@ import {
   isEditableSceneNode,
   isRemovableSceneNode,
   toFlowEdge,
+  toFlowEdges,
   type LineageMapEdgeData,
 } from './LineageMapEdit.utils';
 
@@ -357,6 +358,78 @@ describe('LineageMap edit utils', () => {
           targetHandle: 'target.column',
         },
       });
+    });
+
+    it('renders pipeline metadata as two visual edges in node mode', () => {
+      const pipelineNode = createNode('pipeline:transform', 'pipeline-id', {
+        levelKind: LineageLevelKind.Pipeline,
+        entityType: 'pipeline',
+        fullyQualifiedName: 'pipelineService.transform',
+        sourceEntity: {
+          id: 'pipeline-id',
+          entityType: 'pipeline',
+          fullyQualifiedName: 'pipelineService.transform',
+        },
+      });
+      const pipelineNodeById = new Map([
+        ...nodeById,
+        [pipelineNode.id, pipelineNode] as const,
+      ]);
+      const sceneEdge = createEdge({
+        pipeline: {
+          id: 'pipeline-id',
+          type: 'pipeline',
+          fullyQualifiedName: 'pipelineService.transform',
+        },
+      });
+
+      const flowEdges = toFlowEdges(pipelineNodeById, [sceneEdge], true);
+
+      expect(flowEdges).toHaveLength(2);
+      expect(flowEdges).toMatchObject([
+        {
+          id: 'scene-edge::pipeline-in',
+          source: sourceNode.id,
+          target: pipelineNode.id,
+          animated: false,
+          data: {
+            edge: {
+              fromEntity: { id: 'source-entity-id' },
+              toEntity: { id: 'pipeline-id' },
+            },
+          },
+        },
+        {
+          id: 'scene-edge::pipeline-out',
+          source: pipelineNode.id,
+          target: targetNode.id,
+          animated: false,
+          data: {
+            edge: {
+              fromEntity: { id: 'pipeline-id' },
+              toEntity: { id: 'target-entity-id' },
+            },
+          },
+        },
+      ]);
+
+      flowEdges.forEach((edge) => {
+        expect(edge.data?.edge.pipeline).toBeUndefined();
+        expect(edge.data?.sceneEdge).toBe(sceneEdge);
+      });
+    });
+
+    it('keeps the direct edge when its pipeline node is unavailable', () => {
+      const sceneEdge = createEdge({
+        pipeline: {
+          id: 'missing-pipeline-id',
+          type: 'pipeline',
+        },
+      });
+
+      expect(toFlowEdges(nodeById, [sceneEdge], true)).toEqual([
+        toFlowEdge(nodeById, sceneEdge),
+      ]);
     });
   });
 

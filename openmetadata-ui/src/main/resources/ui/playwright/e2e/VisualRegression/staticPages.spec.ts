@@ -65,7 +65,7 @@ const PAGES: {
   {
     name: 'incident-manager',
     route: '/incident-manager',
-    mask: ['[data-testid="test-case-incident-manager-table"]'],
+    mask: ['[data-testid="test-case-incident-manager-table"] tbody'],
   },
   { name: 'users', route: '/settings/members/users' },
   { name: 'teams', route: '/settings/members/teams' },
