@@ -353,11 +353,13 @@ def test_stale_baseline_files_ignore_files_covered_by_identity_match():
     assert planner.stale_baseline_files_in_plan(units, {}, identity_weights) == []
 
 
-def test_main_fails_when_a_planned_file_has_stale_baseline(tmp_path):
-    # End-to-end: the planner exits non-zero at plan time when a file's
-    # every planned test is on the fallback path. This is the gate that
-    # catches the pattern on PRs instead of on the merge queue (#30812
-    # trigger scenario).
+def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
+    # End-to-end: the planner exits non-zero at PR (targeted) plan time
+    # when a file's every planned test is on the fallback path. This is
+    # the gate that catches the pattern on PRs instead of on the merge
+    # queue (#30812 trigger scenario). Full-mode planning is exempt so
+    # nightly/merge_group runs can still generate the timing-history
+    # artifact that unblocks the "wait for the next full run" fix.
     import subprocess
     planner_path = SCRIPTS / "build_playwright_shards.py"
     test_list = tmp_path / "test-list.json"
@@ -392,7 +394,18 @@ def test_main_fails_when_a_planned_file_has_stale_baseline(tmp_path):
             }
         )
     )
-    selection.write_text(json.dumps({"mode": "full"}))
+    # Targeted selection matching the stale file — mirrors what the PR
+    # selection artifact carries when the PR touches this spec.
+    selection.write_text(
+        json.dumps(
+            {
+                "mode": "targeted",
+                "selectors": [
+                    {"spec": f"playwright/e2e/{file}", "projects": ["auto"]}
+                ],
+            }
+        )
+    )
     # History file exists but does not cover any of the discovered specs —
     # every test in the file falls through to FALLBACK_TEST_MS.
     history.write_text(json.dumps({"mode": "full", "tests": []}))
@@ -415,9 +428,74 @@ def test_main_fails_when_a_planned_file_has_stale_baseline(tmp_path):
     assert "Stale timing-baseline.json entries detected" in combined
     assert file in combined
     assert "5 planned test(s)" in combined
+    # The `::error file=...::` annotation must carry the full repo-relative
+    # spec path so GitHub Actions attaches it inline in the PR checks UI.
+    assert (
+        f"::error file=openmetadata-ui/src/main/resources/ui/playwright/e2e/{file}::"
+        in combined
+    )
     # The gate must fire BEFORE the plan is written — matrix.json must not
     # exist, so a downstream `jq` step will visibly fail on the plan step.
     assert not (output_dir / "matrix.json").exists()
+
+
+def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
+    # Full-mode (nightly / merge_group) planning must not trip the
+    # stale-baseline gate — otherwise the very run that captures the
+    # missing timing evidence would fail before it could execute.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    file = "Pages/Reactivated.spec.ts"
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": file,
+                        "suites": [
+                            {
+                                "title": "Reactivated tests",
+                                "specs": [
+                                    {
+                                        "id": f"synthetic-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(5)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    selection.write_text(json.dumps({"mode": "full"}))
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    combined = result.stdout + result.stderr
+    # The stale-baseline gate must NOT fire in full mode — a plan should
+    # still be written so the run can execute and refresh the baseline.
+    assert "Stale timing-baseline.json entries detected" not in combined
+    assert (output_dir / "matrix.json").exists()
 
 
 def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):

@@ -588,16 +588,30 @@ def main() -> None:
     apply_history_weights(units, test_weights, identity_weights)
     emit_unweighted_warnings(units, test_weights, identity_weights)
 
-    stale_files = stale_baseline_files_in_plan(
-        units, test_weights, identity_weights
+    # Only enforce the stale-baseline gate for targeted (PR-time) planning.
+    # A full-mode run is what generates the new timing-history artifact in
+    # the first place — the "wait for a nightly full-mode run" remediation
+    # below requires that full-mode planning stay unblocked even when a
+    # newly re-enabled suite has no baseline. In full mode, the softer
+    # emit_unweighted_warnings above still surfaces the issue as a warning.
+    stale_files = (
+        stale_baseline_files_in_plan(units, test_weights, identity_weights)
+        if selection["mode"] != "full"
+        else []
     )
     if stale_files:
+        # `::error file=...::` annotations resolve against the repo root, so
+        # prefix the discovery-report file path (relative to `playwright/e2e/`)
+        # with the full spec directory so the annotation attaches to the file
+        # in the PR checks UI.
+        spec_root = "openmetadata-ui/src/main/resources/ui/playwright/e2e"
         for file, count in stale_files:
             print(
-                f"::error file={file}::All {count} planned test(s) in {file} "
-                "have no timing history in timing-baseline.json. This is the "
-                "stale-baseline pattern that caused the chromium-12 SIGTERM "
-                "in run 30716060441 (see PR #30812).",
+                f"::error file={spec_root}/{file}::All {count} planned "
+                f"test(s) in {file} have no timing history in "
+                "timing-baseline.json. This is the stale-baseline pattern "
+                "that caused the chromium-12 SIGTERM in run 30716060441 "
+                "(see PR #30812).",
                 file=sys.stderr,
             )
         details = "\n".join(
