@@ -20,6 +20,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -2338,5 +2339,22 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     assertTrue(
         schemas.stream().noneMatch(s -> s.getName().startsWith("temp")),
         "Excluded schemas should not appear in results");
+  }
+
+  @Test
+  void test_listDatabaseSchemasFilteredByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchemaTestFactory.createSimple(ns, service);
+    DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    ListResponse<DatabaseSchema> response =
+        client.databaseSchemas().list(new ListParams().setService(service.getName()).setLimit(50));
+
+    assertEquals(2, response.getData().size());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(
+                schema -> schema.getFullyQualifiedName().startsWith(service.getName() + ".")));
   }
 }
