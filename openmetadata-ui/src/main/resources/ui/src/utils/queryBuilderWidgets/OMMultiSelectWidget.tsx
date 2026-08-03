@@ -101,15 +101,25 @@ const OMMultiSelectWidget = ({
     [asyncFetch]
   );
 
-  // (Re)load whenever the async field changes. Clear the previous field's
-  // results first so a stale catalogue never shows while the fetch is in
-  // flight; the requestId guard drops any late response from the old field.
+  // Reload the default catalogue only when the FIELD changes — never on the
+  // config churn a value selection causes. RAQB rebuilds `asyncFetch` on every
+  // tree change (selecting a value, adding a rule to a group, …), so keying the
+  // reload on its identity alone would refetch the unfiltered `''` list
+  // mid-interaction and clobber the user's active search (that late `''` fetch
+  // wins the requestId race). A field change clears the rule's value, whereas a
+  // selection leaves it non-empty — so gate the reload on an empty value.
+  const lastAsyncFetchRef = useRef<MultiSelectWidgetProps['asyncFetch']>();
   useEffect(() => {
-    if (isAsync) {
+    if (!isAsync) {
+      return;
+    }
+    const fieldChanged = lastAsyncFetchRef.current !== asyncFetch;
+    lastAsyncFetchRef.current = asyncFetch;
+    if (fieldChanged && valueArray.length === 0) {
       setAsyncItems([]);
       loadAsync('');
     }
-  }, [isAsync, loadAsync]);
+  }, [isAsync, asyncFetch, valueArray.length, loadAsync]);
 
   const handleItemInserted = useCallback(
     (key: Key) => {
