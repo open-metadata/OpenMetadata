@@ -63,7 +63,7 @@ AVRO_DESERIALIZER_CACHE_SIZE = 100
 
 def strip_confluent_framing(record: bytes) -> bytes:
     """Drop the Confluent wire-format header from a payload that carries one."""
-    if len(record) > CONFLUENT_HEADER_LENGTH and record[0] == CONFLUENT_MAGIC_BYTE:
+    if len(record) >= CONFLUENT_HEADER_LENGTH and record[0] == CONFLUENT_MAGIC_BYTE:
         return record[CONFLUENT_HEADER_LENGTH:]
     return record
 
@@ -274,7 +274,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                         if msg is None:
                             break
                         if msg.error():
-                            logger.warning(f"Consumer error polling topic {topic_name}: {msg.error()}")
+                            # End of a partition is not a failure; other partitions may still have data.
+                            if msg.error().code() != KafkaError._PARTITION_EOF:
+                                logger.warning(f"Consumer error polling topic {topic_name}: {msg.error()}")
                             continue
                         messages.append(msg)
             except Exception as exc:

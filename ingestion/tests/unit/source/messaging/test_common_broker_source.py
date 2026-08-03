@@ -109,6 +109,10 @@ def test_strip_confluent_framing_leaves_unframed_payloads_alone():
 
 
 def test_decode_message_rejects_undecodable_binary():
-    """Avro bytes with no registry configured must raise so the caller skips them."""
+    """A payload that is not valid UTF-8 must raise so the caller skips it."""
     with pytest.raises(UnicodeDecodeError):
         CommonBrokerSource.decode_message(_source(), b"\xff\xfe\x00binary", "", SchemaType.Other)
+
+
+def test_strip_confluent_framing_handles_a_header_only_payload():
+    assert strip_confluent_framing(CONFLUENT_HEADER) == b""
