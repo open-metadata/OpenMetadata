@@ -1104,18 +1104,22 @@ function producesNoConstraint(clause) {
 }
 
 /**
- * Reports whether the tree still holds a condition the user has not finished — no field picked, or
- * a field and an operator with no value entered.
+ * Reports whether the tree holds a condition the user started but did not finish — a row naming a
+ * field whose value was never entered.
  *
  * Such a row is dropped from the emitted query (a bodiless clause like `{"term":{}}` is rejected by
  * both search engines), so persisting it would silently widen the filter to match everything. The
  * answer comes from asking elasticSearchFormat what the row actually produces, so this check and
  * buildEsRule cannot drift apart.
  *
+ * A row with no field picked is deliberately not flagged: that is the query builder's own empty
+ * state, which it creates and keeps on its own, and it has always been dropped. Only a row that
+ * names a field carries intent that could be silently lost.
+ *
  * @param {object} tree - The immutable query-builder tree
  * @param {object} config - The same config passed to elasticSearchFormat
  * @param {string} syntax - The version of ElasticSearch syntax to generate
- * @returns {boolean} - Whether any condition is still unfinished
+ * @returns {boolean} - Whether any condition was started but left unfinished
  */
 export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
   if (!tree) {
@@ -1124,7 +1128,12 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
 
   const type = tree.get('type');
   if (type === 'rule') {
-    return producesNoConstraint(elasticSearchFormat(tree, config, syntax));
+    const field = tree.get('properties')?.get('field');
+
+    return (
+      Boolean(field) &&
+      producesNoConstraint(elasticSearchFormat(tree, config, syntax))
+    );
   }
 
   const children = tree.get('children1');

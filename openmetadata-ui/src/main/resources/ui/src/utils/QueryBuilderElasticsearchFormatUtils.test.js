@@ -233,8 +233,19 @@ describe('hasUnfinishedRule', () => {
     ).toBe(true);
   });
 
-  it('should report a rule with no field picked at all', () => {
-    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(true);
+  // The query builder creates and keeps blank rows on its own (shouldCreateEmptyGroup, and
+  // removeEmptyRulesOnLoad is off), and "Add condition" leaves one behind. They add no constraint
+  // and always have been dropped, so flagging them would block saves that have always worked.
+  it('should accept a row with no field picked at all', () => {
+    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(
+      false
+    );
+  });
+
+  it('should accept a group holding an entered rule beside a blank row', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeBlankRule()]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
   });
 
   it('should report a multiselect rule with no option picked', () => {
