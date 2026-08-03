@@ -101,7 +101,15 @@ def _raising_listing(items, exc):
 
 @pytest.fixture
 def uc_source():
-    with patch.object(UnitycatalogSource, "test_connection", return_value=False):
+    # __init__ eagerly resolves connection.client, and a real WorkspaceClient does OAuth
+    # host discovery over the network -- minutes of retry backoff for a discarded client.
+    with (
+        patch.object(UnitycatalogSource, "test_connection", return_value=False),
+        patch(
+            "metadata.ingestion.source.database.unitycatalog.connection.WorkspaceClient",
+            return_value=MagicMock(),
+        ),
+    ):
         config = OpenMetadataWorkflowConfig.model_validate(mock_unitycatalog_config)
         source = UnitycatalogSource.create(
             mock_unitycatalog_config["source"],
@@ -111,6 +119,9 @@ def uc_source():
     source.context.get().__dict__["database_service"] = "local_unitycatalog"
     source.context.get().__dict__["database_schema"] = "default"
     source.client = MagicMock()
+    # sql_connection lazily calls engine.connect(); left real, the constraints query in
+    # _get_tables_with_constraints retries 25 times before the exception is swallowed.
+    source.engine = MagicMock()
     return source
 
 
