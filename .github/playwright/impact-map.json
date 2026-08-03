@@ -258,10 +258,11 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
+      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport", "Ingestion"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",
+        "playwright/e2e/Pages/SessionAuthErrors.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts"
       ]
     },
