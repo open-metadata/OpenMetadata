@@ -304,7 +304,7 @@ jobs:
           SNYK_RESULT: ${{ needs.security-scan.result }}
           REF_NAME: ${{ github.ref_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SLACK_CHANNEL_ID: C0B6Q6KDMJN
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_IDS }}
         run: |
           python3 - <<'PY' > header.json
           import json, os, pathlib
@@ -378,7 +378,7 @@ jobs:
         if: always() && steps.send-header.outputs.ts != ''
         env:
           THREAD_TS: ${{ steps.send-header.outputs.ts }}
-          SLACK_CHANNEL_ID: C0B6Q6KDMJN
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_IDS }}
         run: |
           python3 - <<'PY' > thread.json
           import json, os, pathlib
