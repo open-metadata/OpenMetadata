@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { createServer, type Server } from 'http';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
+import { ChangeEvent } from '../../../src/generated/type/changeEvent';
 import {
   INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
 } from '../../constant/alert';
-import { ObservabilityCreationDetails } from '../../constant/alert.interface';
+import {
+  AlertDetails,
+  ObservabilityCreationDetails,
+} from '../../constant/alert.interface';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -93,7 +98,124 @@ const data = {
   },
 };
 
+interface CapturedWebhookRequest {
+  body: string;
+  method?: string;
+}
+
+const MAX_CAPTURED_WEBHOOK_REQUESTS = 10;
+const WEBHOOK_DELIVERY_COLUMN_NAME = 'webhook_delivery_field';
+const WEBHOOK_RECEIVER_HOST =
+  process.env.PLAYWRIGHT_WEBHOOK_HOST ?? 'localhost';
+const capturedWebhookRequests: CapturedWebhookRequest[] = [];
+let webhookServer: Server | undefined;
+let webhookEndpoint = '';
+
+const startWebhookReceiver = async () => {
+  const server = createServer((request, response) => {
+    let body = '';
+
+    request.setEncoding('utf8');
+    request.on('data', (chunk) => {
+      body += chunk;
+    });
+    request.on('end', () => {
+      // Preserve nearby validation or retry traffic without allowing receiver state to grow unbounded.
+      capturedWebhookRequests.push({
+        body,
+        method: request.method,
+      });
+      capturedWebhookRequests.splice(
+        0,
+        Math.max(
+          0,
+          capturedWebhookRequests.length - MAX_CAPTURED_WEBHOOK_REQUESTS
+        )
+      );
+
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end('{}');
+    });
+  });
+  webhookServer = server;
+
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '0.0.0.0', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        reject(new Error('Webhook receiver did not bind to a TCP port'));
+
+        return;
+      }
+
+      // CI can advertise the host through which a containerized server reaches this process.
+      webhookEndpoint = `http://${WEBHOOK_RECEIVER_HOST}:${address.port}/observability-alert`;
+      resolve();
+    });
+  });
+};
+
+const stopWebhookReceiver = async () => {
+  await new Promise<void>((resolve, reject) => {
+    if (!webhookServer) {
+      resolve();
+
+      return;
+    }
+
+    webhookServer.close((error) => (error ? reject(error) : resolve()));
+  });
+};
+
+const getAddedColumnNames = (payload: ChangeEvent) => {
+  const addedColumns = payload.changeDescription?.fieldsAdded?.find(
+    (field) => field.name === 'columns'
+  )?.newValue;
+
+  if (typeof addedColumns !== 'string') {
+    return [];
+  }
+
+  try {
+    // FieldChange values are JSON strings inside the serialized ChangeEvent payload.
+    const columns = JSON.parse(addedColumns) as Array<{ name?: string }>;
+
+    return Array.isArray(columns)
+      ? columns.flatMap((column) => (column.name ? [column.name] : []))
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const findWebhookDelivery = (entityId: string, addedColumnName: string) => {
+  for (let index = capturedWebhookRequests.length - 1; index >= 0; index--) {
+    const request = capturedWebhookRequests[index];
+
+    if (request.method !== 'POST') {
+      continue;
+    }
+
+    try {
+      const payload = JSON.parse(request.body) as ChangeEvent;
+      if (
+        payload.entityId === entityId &&
+        payload.eventType === 'entityUpdated' &&
+        getAddedColumnNames(payload).includes(addedColumnName)
+      ) {
+        return { payload, request };
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+};
+
 test.beforeAll(async ({ browser }) => {
+  await startWebhookReceiver();
   table1 = new TableClass();
   table2 = new TableClass();
   pipeline = new PipelineClass();
@@ -169,18 +291,24 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await commonCleanup({
-    apiContext,
-    table: table2,
-    user1,
-    user2,
-    domain,
-  });
-  await table1.delete(apiContext);
-  await pipeline.delete(apiContext);
-
-  await afterAction();
+  try {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    try {
+      await commonCleanup({
+        apiContext,
+        table: table2,
+        user1,
+        user2,
+        domain,
+      });
+      await table1.delete(apiContext);
+      await pipeline.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  } finally {
+    await stopWebhookReceiver();
+  }
 });
 
 test.beforeEach(async ({ page }) => {
@@ -318,6 +446,112 @@ for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
     });
   });
 }
+
+test('delivers table schema changes to an external webhook', async ({
+  page,
+}) => {
+  test.slow();
+  capturedWebhookRequests.length = 0;
+  const alertName = generateAlertName();
+  const tableFqn = table1.entityResponseData.fullyQualifiedName ?? '';
+  const alertCreationDetails: ObservabilityCreationDetails = {
+    source: 'table',
+    sourceDisplayName: 'Table',
+    filters: [
+      {
+        name: 'Table Name',
+        inputSelector: 'fqn-list-select',
+        inputValue: tableFqn,
+      },
+    ],
+    actions: [{ name: 'Get Schema Changes' }],
+    destinations: [
+      {
+        mode: 'external',
+        category: 'Webhook',
+        inputValue: webhookEndpoint,
+      },
+    ],
+  };
+  let alertDetails: AlertDetails | undefined;
+  const { afterAction, apiContext } = await getApiContext(page);
+
+  try {
+    await createCommonObservabilityAlert({
+      page,
+      alertName,
+      sourceName: alertCreationDetails.source,
+      sourceDisplayName: alertCreationDetails.sourceDisplayName,
+      alertDetails: alertCreationDetails,
+      filters: alertCreationDetails.filters,
+      actions: alertCreationDetails.actions,
+    });
+    alertDetails = await saveAlertAndVerifyResponse(page);
+
+    await table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/columns/4',
+          value: {
+            name: WEBHOOK_DELIVERY_COLUMN_NAME,
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar(100)',
+          },
+        },
+      ],
+    });
+
+    const matchedDelivery: {
+      current: ReturnType<typeof findWebhookDelivery>;
+    } = { current: undefined };
+
+    await test.expect
+      .poll(
+        () => {
+          matchedDelivery.current = findWebhookDelivery(
+            table1.entityResponseData.id,
+            WEBHOOK_DELIVERY_COLUMN_NAME
+          );
+
+          return matchedDelivery.current !== undefined;
+        },
+        {
+          message: 'Expected the webhook to receive the table change event',
+          timeout: 60_000,
+        }
+      )
+      .toBe(true);
+
+    const delivery = matchedDelivery.current;
+    if (!delivery) {
+      throw new Error('Matching webhook delivery was not captured');
+    }
+
+    test.expect(delivery.request.method).toBe('POST');
+    test.expect(delivery.payload).toEqual(
+      test.expect.objectContaining({
+        entityFullyQualifiedName: tableFqn,
+        entityId: table1.entityResponseData.id,
+        entityType: 'table',
+        eventType: 'entityUpdated',
+      })
+    );
+    test
+      .expect(getAddedColumnNames(delivery.payload))
+      .toContain(WEBHOOK_DELIVERY_COLUMN_NAME);
+  } finally {
+    try {
+      if (alertDetails) {
+        await deleteAlert(page, alertDetails, false);
+      }
+    } finally {
+      await afterAction();
+    }
+  }
+});
 
 test('Data Contract Name filter lists matching data contracts', async ({
   page,
