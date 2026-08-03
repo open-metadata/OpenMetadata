@@ -126,6 +126,16 @@ public final class TaskFieldValidator {
    * boundary timer unschedulable and fail the task mid-workflow. Validating at creation turns that
    * latent failure into a clean 400. No-op for non-DAR tasks.
    */
+  /**
+   * Upper bound on {@code expirationDate} — ten years from the task's creation. Blocks the
+   * QA-reported {@code 1e400} exploit (Jackson parses that literal as {@code Double.POSITIVE_INFINITY}
+   * and Long-coercing swallowed the payload silently), rejects legitimate but nonsensical
+   * year-9999 timestamps (~2.5e14) that would leave a Data Access grant effectively forever, and
+   * still leaves a comfortable envelope for real "long-lived research access" requests.
+   */
+  private static final long MAX_DATA_ACCESS_EXPIRY_HORIZON_MILLIS =
+      10L * 365L * 24L * 60L * 60L * 1000L;
+
   public static void validateDataAccessRequestExpiry(Task task) {
     if (task.getType() != TaskEntityType.DataAccessRequest) {
       return;
@@ -139,20 +149,36 @@ public final class TaskFieldValidator {
       throw new IllegalArgumentException(
           "A Data Access Request requires an access expirationDate timestamp.");
     }
-    if (expirationDate <= System.currentTimeMillis()) {
+    long now = System.currentTimeMillis();
+    if (expirationDate <= now) {
       throw new IllegalArgumentException(
           "Data Access Request expirationDate must be a future timestamp: '%s'."
               .formatted(expirationDate));
     }
+    if (expirationDate > now + MAX_DATA_ACCESS_EXPIRY_HORIZON_MILLIS) {
+      throw new IllegalArgumentException(
+          "Data Access Request expirationDate '%s' exceeds the ten-year horizon."
+              .formatted(expirationDate));
+    }
   }
 
+  /**
+   * Do NOT swallow malformed payloads. Silently returning null on
+   * {@link IllegalArgumentException} let inputs like {@code expirationDate: 1e400} — which
+   * Jackson parses as {@code Double.POSITIVE_INFINITY} and fails to coerce into the
+   * schema-declared {@code Long} — bypass every downstream validator in
+   * {@link #validateDataAccessRequestExpiry(Task)}, effectively storing "never expires". Surface
+   * the parse failure to the caller so it turns into a clean 400.
+   */
   private static DataAccessRequestPayload readDataAccessPayload(Object payload) {
     DataAccessRequestPayload result = null;
     if (payload != null) {
       try {
         result = JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
-      } catch (IllegalArgumentException ignored) {
-        result = null;
+      } catch (IllegalArgumentException invalidPayload) {
+        throw new IllegalArgumentException(
+            "Invalid Data Access Request payload: %s".formatted(invalidPayload.getMessage()),
+            invalidPayload);
       }
     }
     return result;

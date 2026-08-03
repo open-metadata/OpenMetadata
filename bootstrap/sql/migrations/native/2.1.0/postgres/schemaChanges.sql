@@ -35,3 +35,16 @@ CREATE INDEX IF NOT EXISTS idx_tci_status_fqn ON test_case_incident (testCaseRes
 CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
+
+-- DAR duplicate protection: enforce "one active Data Access Request per (creator, target
+-- entity)" at the DB layer. The application already runs a SELECT-then-INSERT check
+-- (validateNoDuplicateActiveDataAccessRequest), but concurrent creates read null from the
+-- SELECT and both INSERT succeed — a classic TOCTOU that lets the same user file duplicate
+-- active DARs on the same table (report H8, verified against the /api/v1/tasks endpoint).
+-- A partial unique index closes the race: two parallel INSERTs collide at the DB, the losing
+-- one raises a unique-constraint violation, and TaskRepository maps it back to the same
+-- IllegalArgumentException as the pre-check so callers see one consistent 400.
+CREATE UNIQUE INDEX IF NOT EXISTS uk_task_active_dar_creator_target
+  ON task_entity (createdbyid, aboutfqnhash)
+  WHERE type = 'DataAccessRequest'
+    AND status IN ('Open', 'Approved', 'Granted', 'InProgress', 'ManualRevoke', 'Pending');

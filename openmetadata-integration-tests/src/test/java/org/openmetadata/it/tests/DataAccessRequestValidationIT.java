@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +53,7 @@ import org.openmetadata.schema.services.connections.database.SnowflakeConnection
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 
@@ -487,5 +490,154 @@ public class DataAccessRequestValidationIT {
     assertTrue(
         assigneeNames.stream().noneMatch(name -> name.equalsIgnoreCase(requesterFqn)),
         () -> "Requester leaked into assignees: " + assigneeNames);
+  }
+
+  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+  /**
+   * H1: resolve endpoint used to accept any string (including "garbage-word" and an empty body)
+   * and silently drive the task to Approved via TaskWorkflowHandler.resolveResolutionType's
+   * "positive-default" fallback. It must now reject unknown transitionIds with a 400.
+   */
+  @Test
+  void testDarResolve_unknownTransitionId_returns400(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Task dar =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+
+    ResolveTask garbage = new ResolveTask().withTransitionId("garbage-word");
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().tasks().resolve(dar.getId().toString(), garbage));
+    assertTrue(
+        rejection.getMessage().contains("is not available"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  /**
+   * H2: transitionId=reject + resolutionType=Approved used to end in Approved because
+   * TaskWorkflowHandler.resolveResolutionType short-circuited on the caller-supplied
+   * resolutionType. The cross-check in TaskResource.validateTransition now rejects the mismatch.
+   */
+  @Test
+  void testDarResolve_transitionResolutionMismatch_returns400(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Task dar =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+
+    ResolveTask spoof =
+        new ResolveTask()
+            .withTransitionId("reject")
+            .withResolutionType(TaskResolutionType.Approved)
+            .withComment("attempting to spoof approve through the reject transition");
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().tasks().resolve(dar.getId().toString(), spoof));
+    assertTrue(
+        rejection.getMessage().contains("conflicts"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  /**
+   * H4: PATCH /status used to accept any value (Granted, Rejected, ...) with no workflow check
+   * — status/workflowStageId are workflow-owned and must not be changed via JSON-Patch.
+   */
+  @Test
+  void testDarPatch_statusReplace_returns400(TestNamespace ns) throws Exception {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Task dar =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+
+    JsonNode statusForge =
+        JSON_MAPPER.readTree("[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Granted\"}]");
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().tasks().patch(dar.getId(), statusForge));
+    assertTrue(
+        rejection.getMessage().contains("workflow- or audit-owned"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  /**
+   * H5: once the task has left Open, the requester used to be able to PATCH the payload and
+   * widen their own approved access — the payload must be frozen from Approved onward.
+   * Also covers H6 for /about since the same guard blocks both.
+   */
+  @Test
+  void testDarPatch_payloadAfterOpen_returns400(TestNamespace ns) throws Exception {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Task dar =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("Masked"));
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            dar.getId().toString(),
+            new ResolveTask()
+                .withTransitionId("approve")
+                .withComment("approving the smaller ask before the widening attempt"));
+
+    JsonNode widen =
+        JSON_MAPPER.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/payload/accessType\",\"value\":\"FullAccess\"}]");
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.user1Client().tasks().patch(dar.getId(), widen));
+    assertTrue(
+        rejection.getMessage().contains("frozen"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  /**
+   * H7: expirationDate = 1e400 used to parse as Double.POSITIVE_INFINITY, fail the Long coercion
+   * silently in TaskFieldValidator.readDataAccessPayload, and store "never-expires" access. The
+   * schema now caps expirationDate at ~year 2200 and the swallow-catch is gone.
+   */
+  @Test
+  void testDarCreate_expirationDateInfinity_returns400(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Map<String, Object> payload =
+        Map.of(
+            "accessType",
+            "FullAccess",
+            "requestedAccess",
+            "Read",
+            "reason",
+            "integration-test-h7-bounds",
+            "expirationDate",
+            Double.POSITIVE_INFINITY);
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> createDataAccessRequest(ns, "table", table.getFullyQualifiedName(), payload));
+    assertNotNull(rejection);
   }
 }

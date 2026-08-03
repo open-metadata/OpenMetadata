@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -365,10 +366,11 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
-    if (!update) {
-      TaskFieldValidator.validateDataAccessRequestExpiry(task);
-      validateNoDuplicateActiveDataAccessRequest(task);
-    }
+    // Both checks re-run on PATCH/PUT so a client can't work around them by first creating a
+    // benign task and then editing the payload (past expiration date, M7) or the target entity
+    // (bypassing "one active DAR per user per entity", H6).
+    TaskFieldValidator.validateDataAccessRequestExpiry(task);
+    validateNoDuplicateActiveDataAccessRequest(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -404,7 +406,11 @@ public class TaskRepository extends EntityRepository<Task> {
     if (isDuplicateDataAccessRequestCheckable(task)) {
       String entityFqn = task.getAbout().getFullyQualifiedName();
       Task existing = findActiveDataAccessRequestByCreator(entityFqn, task.getCreatedBy().getId());
-      if (existing != null) {
+      // Exclude the task's own row so re-running the check on PATCH/PUT (needed to catch H6:
+      // repointing task B's `about` at task A's entity) doesn't fire on the task's own record.
+      boolean collides =
+          existing != null && (task.getId() == null || !existing.getId().equals(task.getId()));
+      if (collides) {
         throw new IllegalArgumentException(
             String.format(
                 "An active data access request (%s) already exists for '%s'. "
@@ -412,6 +418,40 @@ public class TaskRepository extends EntityRepository<Task> {
                 existing.getTaskId(), entityFqn));
       }
     }
+  }
+
+  /**
+   * Postgres names the partial unique index {@code uk_task_active_dar_creator_target}; MySQL's
+   * unique index sits on the {@code activeDarCreatorTargetKey} generated column. Match on both
+   * so either engine's driver message resolves to the same friendly IllegalArgumentException.
+   */
+  private static final String ACTIVE_DAR_UNIQUE_CONSTRAINT_MARKER =
+      "uk_task_active_dar_creator_target";
+
+  private static final String ACTIVE_DAR_MYSQL_KEY_MARKER = "activeDarCreatorTargetKey";
+
+  private RuntimeException translateActiveDarConstraintViolation(
+      Task task, UnableToExecuteStatementException dbFailure) {
+    String message = String.valueOf(dbFailure.getMessage());
+    Throwable cause = dbFailure.getCause();
+    String causeMessage = cause == null ? "" : String.valueOf(cause.getMessage());
+    boolean isActiveDarCollision =
+        message.contains(ACTIVE_DAR_UNIQUE_CONSTRAINT_MARKER)
+            || message.contains(ACTIVE_DAR_MYSQL_KEY_MARKER)
+            || causeMessage.contains(ACTIVE_DAR_UNIQUE_CONSTRAINT_MARKER)
+            || causeMessage.contains(ACTIVE_DAR_MYSQL_KEY_MARKER);
+    RuntimeException translated = dbFailure;
+    if (isActiveDarCollision) {
+      String entityFqn =
+          task.getAbout() == null ? "<unknown>" : task.getAbout().getFullyQualifiedName();
+      translated =
+          new IllegalArgumentException(
+              String.format(
+                  "An active data access request already exists for '%s'. "
+                      + "Resolve or cancel the existing request before submitting another.",
+                  entityFqn));
+    }
+    return translated;
   }
 
   private boolean isDuplicateDataAccessRequestCheckable(Task task) {
@@ -588,15 +628,23 @@ public class TaskRepository extends EntityRepository<Task> {
         .withReviewers(null)
         .withWatchers(null);
 
-    if (update) {
-      daoCollection
-          .taskDAO()
-          .update(task.getId(), task.getFullyQualifiedName(), JsonUtils.pojoToJson(task));
-    } else {
-      daoCollection
-          .taskDAO()
-          .insertTask(
-              task.getId().toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
+    try {
+      if (update) {
+        daoCollection
+            .taskDAO()
+            .update(task.getId(), task.getFullyQualifiedName(), JsonUtils.pojoToJson(task));
+      } else {
+        daoCollection
+            .taskDAO()
+            .insertTask(
+                task.getId().toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
+      }
+    } catch (UnableToExecuteStatementException dbFailure) {
+      // Belt-and-suspenders for H8: the partial unique index on active DAR (creator, target)
+      // catches the race the application-level SELECT-then-INSERT check cannot. Translate the
+      // driver's constraint-violation into the same friendly 400 IllegalArgumentException the
+      // pre-check throws so both paths return identical error text.
+      throw translateActiveDarConstraintViolation(task, dbFailure);
     }
 
     task.withDomains(domains)

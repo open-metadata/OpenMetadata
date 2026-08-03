@@ -25,7 +25,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -1071,6 +1073,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                             "[{\"op\": \"add\", \"path\": \"/status\", \"value\": \"InProgress\"}]")
                       }))
           JsonPatch patch) {
+    Task task = repository.get(uriInfo, id, getFields(FIELDS));
+    validatePatchOperations(task, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -1109,6 +1113,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             ? resolveTask.getTransitionId()
             : TaskWorkflowLifecycleResolver.defaultTransitionId(
                 task, resolveTask.getResolutionType());
+    validateTransition(task, transitionId, resolveTask.getResolutionType());
     String newValue = resolveTask.getNewValue();
     Object resolvedPayload = resolveTask.getPayload();
     String comment = resolveTask.getComment();
@@ -1297,6 +1302,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = repository.get(uriInfo, id, fields);
 
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
+    validateTaskCanBeClosed(task);
 
     Task closedTask = repository.closeTask(task, userName, comment);
     // Change-event header so close fires task alerts.
@@ -1386,6 +1392,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     String suggestionApproveTransitionId =
         TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
+    validateTransition(task, suggestionApproveTransitionId, TaskResolutionType.Approved);
     validateTransitionComment(task, suggestionApproveTransitionId, comment);
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -1495,6 +1502,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         validateTaskCanBeResolved(task);
         String approveTransitionId =
             TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
+        validateTransition(task, approveTransitionId, TaskResolutionType.Approved);
         validateTransitionComment(task, approveTransitionId, comment);
         repository.resolveTaskWithWorkflow(
             task, approveTransitionId, TaskResolutionType.Approved, null, null, comment, userName);
@@ -1504,6 +1512,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         validateTaskCanBeResolved(task);
         String rejectTransitionId =
             TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Rejected);
+        validateTransition(task, rejectTransitionId, TaskResolutionType.Rejected);
         validateTransitionComment(task, rejectTransitionId, comment);
         repository.resolveTaskWithWorkflow(
             task, rejectTransitionId, TaskResolutionType.Rejected, null, null, comment, userName);
@@ -1534,6 +1543,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       }
       case Cancel -> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
+        validateTaskCanBeClosed(task);
         repository.closeTask(task, userName, comment);
       }
     }
@@ -1570,6 +1580,37 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   /**
+   * Rejects unknown transitionIds at the API boundary and cross-checks that any caller-supplied
+   * {@code resolutionType} matches the transition's declared resolutionType. Without this the
+   * resolve endpoint accepted an empty transitionId (silently approving via the workflow's
+   * "positive" default) and allowed {@code {"transitionId":"reject","resolutionType":"Approved"}}
+   * to override the intended action and approve a request through the reject button.
+   */
+  private void validateTransition(
+      final Task task,
+      final String transitionId,
+      final TaskResolutionType requestedResolutionType) {
+    if (transitionId == null || transitionId.isBlank()) {
+      throw BadRequestException.of(
+          "Task '%s' resolve requires a transitionId.".formatted(task.getId()));
+    }
+    final TaskAvailableTransition transition =
+        TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
+    if (transition == null) {
+      throw BadRequestException.of(
+          "Transition '%s' is not available for task '%s'.".formatted(transitionId, task.getId()));
+    }
+    final TaskResolutionType declared = transition.getResolutionType();
+    if (requestedResolutionType != null
+        && declared != null
+        && requestedResolutionType != declared) {
+      throw BadRequestException.of(
+          "Transition '%s' resolves as '%s'; resolutionType '%s' conflicts."
+              .formatted(transitionId, declared, requestedResolutionType));
+    }
+  }
+
+  /**
    * Enforces the workflow's {@code requiresComment=true} contract at the API boundary. Workflow
    * definitions (e.g. DataAccessRequestTaskWorkflow) mark reject / revoke transitions as
    * comment-required so the requester learns why their access was declined; before this check the
@@ -1587,6 +1628,105 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String.format(
               "Transition '%s' on task '%s' requires a non-empty comment.",
               transitionId, task.getId()));
+    }
+  }
+
+  /**
+   * Top-level JSON-Patch paths that only the workflow engine, the resolve/close endpoints, or
+   * the audit chain may mutate. A client PATCH that touches any of these can push the task into
+   * an inconsistent state (e.g. status=Granted while workflowStageId=review — no access was
+   * actually granted) or replay/impersonate the audit trail, so we reject those operations at
+   * the API boundary.
+   */
+  private static final Set<String> WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS =
+      Set.of(
+          "status",
+          "workflowStageId",
+          "workflowStageDisplayName",
+          "workflowInstanceId",
+          "workflowDefinitionId",
+          "availableTransitions",
+          "resolution",
+          "approvedBy",
+          "approvedById",
+          "approvedAt",
+          "aboutFqnHash",
+          "taskId",
+          "id",
+          "name",
+          "fullyQualifiedName",
+          "createdBy",
+          "createdById",
+          "createdAt",
+          "updatedBy",
+          "updatedAt",
+          "version",
+          "changeDescription");
+
+  /**
+   * Reject JSON-Patch operations that would either forge workflow/audit state (H4) or edit
+   * task details that must be frozen once the task has left {@code Open} (H5 for payload, H6
+   * for the target entity). Applied at the API boundary so the underlying updater in
+   * {@link TaskRepository} can rely on the invariant that these fields only change through the
+   * resolve/close paths.
+   */
+  private void validatePatchOperations(final Task task, final JsonPatch patch) {
+    if (patch == null) {
+      return;
+    }
+    // jakarta.json exposes the patch as an untyped JsonArray of JsonObject ops; we walk each op
+    // and inspect its "path" pointer, which is why the JsonValue instanceof-check is required.
+    for (JsonValue op : patch.toJsonArray()) {
+      if (op instanceof JsonObject opObj) {
+        rejectRestrictedPatchOp(task, opObj);
+      }
+    }
+  }
+
+  private void rejectRestrictedPatchOp(final Task task, final JsonObject op) {
+    final String rawPath = op.containsKey("path") ? op.getString("path", "") : "";
+    if (rawPath.isEmpty()) {
+      return;
+    }
+    final String topLevel = topLevelField(rawPath);
+    if (WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS.contains(topLevel)) {
+      throw BadRequestException.of(
+          "Field '/%s' is workflow- or audit-owned and cannot be changed via PATCH."
+              .formatted(topLevel));
+    }
+    if (task.getStatus() != TaskEntityStatus.Open
+        && ("payload".equals(topLevel) || "about".equals(topLevel))) {
+      throw BadRequestException.of(
+          "Field '/%s' is frozen once task '%s' has left status Open (currently '%s')."
+              .formatted(topLevel, task.getId(), task.getStatus()));
+    }
+  }
+
+  private String topLevelField(final String jsonPointerPath) {
+    // JSON-Patch paths look like "/status" or "/payload/accessType"; grab the first segment.
+    final String trimmed = jsonPointerPath.startsWith("/") ? jsonPointerPath.substring(1) : "";
+    final int slash = trimmed.indexOf('/');
+    return slash < 0 ? trimmed : trimmed.substring(0, slash);
+  }
+
+  /**
+   * A {@code Granted} DAR still holds live access on the source system, so "close" is not a
+   * valid teardown path — the caller must go through the {@code revoke} transition on
+   * {@code /resolve} which drives the PolicyAgent revoke enforcement. Closing a Granted task
+   * used to mark it {@code Cancelled} while leaving access on and wedging the task so no
+   * further transition would fire. Same argument for {@code Approved} / {@code ManualRevoke}
+   * whose workflows still expose open transitions.
+   */
+  private void validateTaskCanBeClosed(final Task task) {
+    final TaskEntityStatus status = task.getStatus();
+    final boolean liveOrPendingRevoke =
+        status == TaskEntityStatus.Granted
+            || status == TaskEntityStatus.Approved
+            || status == TaskEntityStatus.ManualRevoke;
+    if (liveOrPendingRevoke) {
+      throw BadRequestException.of(
+          "Task '%s' is '%s' — close is not allowed; use the revoke transition instead."
+              .formatted(task.getId(), status));
     }
   }
 
