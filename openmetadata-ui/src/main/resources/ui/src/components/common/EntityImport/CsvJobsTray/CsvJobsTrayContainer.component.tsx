@@ -12,7 +12,10 @@
  */
 import { FC, lazy, Suspense, useEffect, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
+import {
+  CSV_JOBS_REFRESH_EVENT,
+  CsvJobsRefreshEventDetail,
+} from './CsvJobsTray.constants';
 
 const CsvJobsTray = lazy(() =>
   import('./CsvJobsTray.component').then(({ CsvJobsTray: Tray }) => ({
@@ -29,9 +32,21 @@ const CsvJobsTray = lazy(() =>
  */
 export const CsvJobsTrayContainer: FC = () => {
   const [isTrayActivated, setIsTrayActivated] = useState(false);
+  const [pendingHandoffJobIds, setPendingHandoffJobIds] = useState<string[]>(
+    []
+  );
 
   useEffect(() => {
-    const activateTray = () => setIsTrayActivated(true);
+    const activateTray = (event: Event) => {
+      const handoffJobId = (event as CustomEvent<CsvJobsRefreshEventDetail>)
+        .detail?.handoffJobId;
+
+      if (handoffJobId) {
+        setPendingHandoffJobIds((prev) => [...prev, handoffJobId]);
+      }
+
+      setIsTrayActivated(true);
+    };
     window.addEventListener(CSV_JOBS_REFRESH_EVENT, activateTray);
 
     return () =>
@@ -44,7 +59,7 @@ export const CsvJobsTrayContainer: FC = () => {
   return isTrayActivated ? (
     <ErrorBoundary fallback={<></>}>
       <Suspense fallback={null}>
-        <CsvJobsTray />
+        <CsvJobsTray pendingHandoffJobIds={pendingHandoffJobIds} />
       </Suspense>
     </ErrorBoundary>
   ) : null;

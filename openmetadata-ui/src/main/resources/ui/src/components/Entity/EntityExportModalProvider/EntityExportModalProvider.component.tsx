@@ -429,6 +429,7 @@ export const EntityExportModalProvider = ({
       void (async () => {
         let consecutiveFailures = 0;
         let timedOut = false;
+        let bulkEditTimedOut = false;
 
         for (let attempt = 0; ; attempt++) {
           if (attempt > 0) {
@@ -448,13 +449,19 @@ export const EntityExportModalProvider = ({
           }
 
           if (
-            Date.now() - pollingStartTime >=
-            (bulkEdit
-              ? CSV_EXPORT_BULK_EDIT_MAX_POLL_DURATION_MS
-              : CSV_EXPORT_MAX_POLL_DURATION_MS)
+            !bulkEdit &&
+            Date.now() - pollingStartTime >= CSV_EXPORT_MAX_POLL_DURATION_MS
           ) {
             timedOut = true;
+            break;
+          }
 
+          if (
+            bulkEdit &&
+            Date.now() - pollingStartTime >=
+              CSV_EXPORT_BULK_EDIT_MAX_POLL_DURATION_MS
+          ) {
+            bulkEditTimedOut = true;
             break;
           }
 
@@ -494,20 +501,34 @@ export const EntityExportModalProvider = ({
           return;
         }
 
-        if (timedOut && !bulkEdit) {
-          // Modal path timeout (5 min): backend is still running — close the
-          // modal and hand the job off to CsvJobsTray for continued tracking.
+        if (timedOut) {
+          // Modal 5-min timeout: close modal, clear all refs, hand off to tray.
+          // handoffJobId exempts this job from the tray's initial auto-dismiss
+          // so it remains visible even if the backend completes in the gap.
           csvExportPollingRef.current = undefined;
           csvExportJobRef.current = undefined;
           pendingCSVExportResponsesRef.current.clear();
           setCSVExportJob(undefined);
           setDownloading(false);
           setExportData(null);
-          window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+          window.dispatchEvent(
+            new CustomEvent(CSV_JOBS_REFRESH_EVENT, {
+              detail: { handoffJobId: jobId },
+            })
+          );
+        } else if (bulkEditTimedOut) {
+          // Bulk-edit 30-min soft stop: polling ceases but csvExportJobRef
+          // stays alive so the WebSocket can still deliver COMPLETED and
+          // hydrate the grid. The job is handed to the tray as a fallback —
+          // handoffJobId prevents it being auto-dismissed if already terminal.
+          csvExportPollingRef.current = undefined;
+          window.dispatchEvent(
+            new CustomEvent(CSV_JOBS_REFRESH_EVENT, {
+              detail: { handoffJobId: jobId },
+            })
+          );
         } else {
-          // Bulk-edit timeout (30 min) or max consecutive network failures:
-          // surface FAILED so the grid can show an error banner instead of
-          // hanging on the loader indefinitely.
+          // Max consecutive network failures → surface FAILED.
           applyCSVExportJobUpdate({
             error: null,
             jobId,
