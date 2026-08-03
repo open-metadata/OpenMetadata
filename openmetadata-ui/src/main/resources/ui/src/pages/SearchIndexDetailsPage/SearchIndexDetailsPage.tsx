@@ -127,9 +127,11 @@ function SearchIndexDetailsPage() {
   } = useQuery({
     queryKey: searchIndexCacheKey,
     queryFn: searchIndexQueryFn(decodedSearchIndexFQN, defaultFields),
-    enabled: Boolean(
-      decodedSearchIndexFQN && viewPermission && !permissionsLoading
-    ),
+    // Fire the search-index fetch in parallel with the permission fetch rather
+    // than gating it on permission — this removes a serial round-trip on mount.
+    // A no-permission user's speculative GET errors, and render already shows
+    // the inline PERMISSION placeholder (checked before the error state below).
+    enabled: Boolean(decodedSearchIndexFQN),
   });
 
   useEffect(() => {

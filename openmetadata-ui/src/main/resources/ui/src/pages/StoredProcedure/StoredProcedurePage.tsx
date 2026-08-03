@@ -158,9 +158,11 @@ const StoredProcedurePage = () => {
       decodedStoredProcedureFQN,
       STORED_PROCEDURE_DEFAULT_FIELDS
     ),
-    enabled: Boolean(
-      decodedStoredProcedureFQN && viewBasicPermission && !permissionsLoading
-    ),
+    // Fire the stored-procedure fetch in parallel with the permission fetch
+    // rather than gating it on permission — removes a serial round-trip on
+    // mount. A no-permission user's speculative GET 403s and render shows the
+    // inline PERMISSION placeholder (checked before the error state below).
+    enabled: Boolean(decodedStoredProcedureFQN),
   });
 
   useEffect(() => {
@@ -169,10 +171,13 @@ const StoredProcedurePage = () => {
     }
     const status = (storedProcedureError as AxiosError | undefined)?.response
       ?.status;
-    if (status === ClientErrors.FORBIDDEN) {
+    // Only redirect on a genuine permission desync (we believe the user has
+    // access but the backend denied). A plain no-permission user falls through
+    // to the inline PERMISSION placeholder in render.
+    if (status === ClientErrors.FORBIDDEN && viewBasicPermission) {
       navigate(ROUTES.FORBIDDEN, { replace: true });
     }
-  }, [storedProcedureError, navigate]);
+  }, [storedProcedureError, navigate, viewBasicPermission]);
 
   useEffect(() => {
     if (!storedProcedure) {

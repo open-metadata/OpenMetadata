@@ -141,11 +141,11 @@ const APICollectionPage: FunctionComponent = () => {
       decodedAPICollectionFQN,
       API_COLLECTION_DEFAULT_FIELDS
     ),
-    enabled: Boolean(
-      decodedAPICollectionFQN &&
-        viewAPICollectionPermission &&
-        !isPermissionsLoading
-    ),
+    // Fire the API-collection fetch in parallel with the permission fetch
+    // rather than gating it on permission — removes a serial round-trip on
+    // mount. A no-permission user's speculative GET 403s and render shows the
+    // inline PERMISSION placeholder (checked before the error state below).
+    enabled: Boolean(decodedAPICollectionFQN),
   });
 
   const isError = useMemo(
@@ -158,7 +158,13 @@ const APICollectionPage: FunctionComponent = () => {
     const status = (apiCollectionError as AxiosError | undefined)?.response
       ?.status;
     if (status === ClientErrors.FORBIDDEN) {
-      navigate(ROUTES.FORBIDDEN, { replace: true });
+      // Only redirect on a genuine permission desync (we believe the user has
+      // access but the backend denied). A plain no-permission user falls
+      // through to the inline PERMISSION placeholder in render — and must not
+      // reach the toast branch below, so the 403 is handled entirely here.
+      if (viewAPICollectionPermission) {
+        navigate(ROUTES.FORBIDDEN, { replace: true });
+      }
     } else if (status && status !== 404) {
       showErrorToast(
         apiCollectionError as AxiosError,
@@ -168,7 +174,13 @@ const APICollectionPage: FunctionComponent = () => {
         })
       );
     }
-  }, [apiCollectionError, navigate, decodedAPICollectionFQN, t]);
+  }, [
+    apiCollectionError,
+    navigate,
+    decodedAPICollectionFQN,
+    t,
+    viewAPICollectionPermission,
+  ]);
 
   // Soft-deleted collections need the endpoint list to flip include modes; mirror the
   // soft-delete state into the table-filter store once the fetched entity lands.

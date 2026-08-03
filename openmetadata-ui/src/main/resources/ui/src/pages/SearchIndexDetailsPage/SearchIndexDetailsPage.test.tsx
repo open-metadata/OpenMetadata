@@ -184,25 +184,17 @@ describe('SearchIndexDetailsPage component', () => {
     });
   });
 
-  it('SearchIndexDetailsPage should not fetch search index details if permission is there', async () => {
+  it('SearchIndexDetailsPage fires the details fetch in parallel with the permission fetch even for a no-permission user', async () => {
     // Reset mocks to ensure clean state
     jest.clearAllMocks();
 
     renderPage();
 
     await waitFor(() => {
-      // Should try to resolve FQN first, so it MIGHT be called to resolve
-      // But the test name says "should not fetch... if permission is there"?
-      // Actually, if it's default permission (which is deny all usually?)
-      // Let's stick to the logic: if viewPermission is false, it doesn't fetch details.
-      // But resolveSearchIndexFQN calls it to verify existence.
-      // We should verify it is called for resolution (with minimal fields) or not at all depending on logic.
-      // Based on previous code, expected not.toHaveBeenCalled().
-      // Wait, resolveSearchIndexFQN check runs REGARDLESS of permissions.
-      // So this test expectation might be flawed if checking strictly for ANY call.
-      // However, assuming unmodified logic worked before:
-      expect(getSearchIndexDetailsByFQN).toHaveBeenCalledTimes(0); // No call for resolution needed anymore
-      // It should NOT call the main fetch implementation which happens after permissions
+      // W1: the fetch is no longer gated on permission — it runs in parallel
+      // with the permission fetch to remove a serial round-trip. Render still
+      // gates on permission, so a no-permission user does not see the entity.
+      expect(getSearchIndexDetailsByFQN).toHaveBeenCalled();
     });
   });
 

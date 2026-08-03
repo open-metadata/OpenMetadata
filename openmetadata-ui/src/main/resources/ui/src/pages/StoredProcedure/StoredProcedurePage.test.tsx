@@ -191,10 +191,17 @@ describe('StoredProcedure component', () => {
     );
   });
 
-  it('StoredProcedurePage should not fetch details if permission is there', () => {
-    renderPage();
+  it('StoredProcedurePage fires the details fetch in parallel with the permission fetch even for a no-permission user, and still shows the placeholder', async () => {
+    await act(async () => {
+      renderPage();
+    });
 
-    expect(getStoredProceduresByFqn).not.toHaveBeenCalled();
+    // W1: the fetch is no longer gated on permission — it runs in parallel with
+    // the permission fetch to remove a serial round-trip.
+    expect(getStoredProceduresByFqn).toHaveBeenCalled();
+    // Render still gates on permission, so a no-permission user sees the
+    // placeholder rather than the entity.
+    expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('StoredProcedurePage should fetch details with basic fields', async () => {
