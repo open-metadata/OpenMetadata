@@ -589,7 +589,7 @@ describe('EntityExportModalProvider component', () => {
     }
   });
 
-  it('keeps polling a healthy export up to the 10-minute limit without failing', async () => {
+  it('keeps polling a healthy export up to the 30-minute limit without failing', async () => {
     jest.useFakeTimers();
 
     try {
@@ -615,16 +615,16 @@ describe('EntityExportModalProvider component', () => {
         fireEvent.click(screen.getByText('Start polled export'));
       });
 
-      // Advance to just under the 10-minute cap (585 s < 600 s):
-      // 4 backoff steps (1+2+4+8 = 15 s) + 57 steps at 10 s = 585 s total.
-      for (let pollAttempt = 1; pollAttempt <= 61; pollAttempt++) {
+      // Advance to just under the 30-minute cap (1785 s < 1800 s):
+      // 4 backoff steps (1+2+4+8 = 15 s) + 175 steps at 10 s = 1765 s total.
+      for (let pollAttempt = 1; pollAttempt <= 179; pollAttempt++) {
         const intervalMs = Math.min(1_000 * 2 ** (pollAttempt - 1), 10_000);
         await act(async () => {
           jest.advanceTimersByTime(intervalMs);
         });
       }
 
-      expect(getCsvAsyncJob).toHaveBeenCalledTimes(62);
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(180);
       expect(onError).not.toHaveBeenCalled();
       expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
 
@@ -1020,7 +1020,7 @@ describe('EntityExportModalProvider component', () => {
     expect(downloadFile).not.toHaveBeenCalled();
   });
 
-  it('bulk-edit: continues polling up to the shared 10-minute cap', async () => {
+  it('bulk-edit: continues polling up to the shared 30-minute cap', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
@@ -1051,7 +1051,7 @@ describe('EntityExportModalProvider component', () => {
 
       // Advance Date.now to just under 10 min — duration cap not yet reached,
       // so bulk-edit must fire another poll.
-      nowMs = 10 * 60 * 1_000 - 1_000;
+      nowMs = 30 * 60 * 1_000 - 1_000;
       await act(async () => {
         jest.advanceTimersByTime(1_000);
       });
@@ -1095,8 +1095,8 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      // Advance past the shared 10-minute cap.
-      nowMs = 10 * 60 * 1_000 + 1_000;
+      // Advance past the shared 30-minute cap.
+      nowMs = 30 * 60 * 1_000 + 1_000;
       await act(async () => {
         jest.advanceTimersByTime(10_000);
       });
@@ -1128,7 +1128,7 @@ describe('EntityExportModalProvider component', () => {
     }
   });
 
-  it('bulk-edit: WebSocket COMPLETED after 10-min soft-stop still hydrates the grid', async () => {
+  it('bulk-edit: WebSocket COMPLETED after 30-min soft-stop still hydrates the grid', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
@@ -1191,7 +1191,7 @@ describe('EntityExportModalProvider component', () => {
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
       // Trigger the 30-min soft-stop.
-      nowMs = 10 * 60 * 1_000 + 1_000;
+      nowMs = 30 * 60 * 1_000 + 1_000;
       await act(async () => {
         jest.advanceTimersByTime(10_000);
       });
@@ -1243,7 +1243,7 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      nowMs = 10 * 60 * 1_000 + 1_000;
+      nowMs = 30 * 60 * 1_000 + 1_000;
 
       await act(async () => {
         jest.advanceTimersByTime(1_000);
@@ -1299,8 +1299,8 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      // Trigger the 10-min soft-stop.
-      nowMs = 10 * 60 * 1_000 + 1_000;
+      // Trigger the 30-min soft-stop.
+      nowMs = 30 * 60 * 1_000 + 1_000;
       await act(async () => {
         jest.advanceTimersByTime(10_000);
       });
@@ -1387,8 +1387,8 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      // Trigger the 10-min soft-stop.
-      nowMs = 10 * 60 * 1_000 + 1_000;
+      // Trigger the 30-min soft-stop.
+      nowMs = 30 * 60 * 1_000 + 1_000;
       await act(async () => {
         jest.advanceTimersByTime(10_000);
       });
