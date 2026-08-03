@@ -51,6 +51,11 @@
       "description": "SSL Configuration for Prefect API connection.",
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
