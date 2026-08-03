@@ -10,7 +10,8 @@
       "title": "Basic Auth String",
       "description": "Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format 'user:password'. Leave empty if the server has no auth enabled.",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "default": ""
     }
   },
   "additionalProperties": false,
