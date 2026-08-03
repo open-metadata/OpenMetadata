@@ -130,6 +130,13 @@ def test_flat_schema_is_unaffected() -> None:
     assert row["ssn"] == "123-45-6789"
 
 
+def test_explicit_null_does_not_inherit_a_same_named_sibling() -> None:
+    message = {"email": "sibling@example.com", "Order": {"email": None}}
+    sampler = _StubSampler(_topic(NESTED_FIELDS), [message])
+
+    assert _row(sampler)["Order.email"] is None
+
+
 def test_absent_field_stays_none() -> None:
     sampler = _StubSampler(_topic(NESTED_FIELDS), [{"order_id": "o-3"}])
 

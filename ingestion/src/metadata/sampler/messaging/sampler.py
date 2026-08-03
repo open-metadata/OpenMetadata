@@ -27,6 +27,9 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = sampler_logger()
 
+# Distinguishes an absent path from a field explicitly set to null.
+MISSING = object()
+
 
 class MessagingSampler(SamplerInterface):
     """
@@ -109,13 +112,12 @@ class MessagingSampler(SamplerInterface):
 
     @staticmethod
     def _walk(msg: dict, dotted: str) -> object:
-        """Walk a dotted path into nested dicts, returning None when absent."""
+        """Walk a dotted path into nested dicts, returning MISSING when absent."""
         cur: object = msg
         for part in dotted.split("."):
-            if isinstance(cur, dict):
-                cur = cur.get(part)
-            else:
-                return None
+            if not isinstance(cur, dict) or part not in cur:
+                return MISSING
+            cur = cur[part]
         return cur
 
     @staticmethod
@@ -129,7 +131,9 @@ class MessagingSampler(SamplerInterface):
         """
         for candidate in (dotted, dotted.split(".", 1)[-1]):
             value = MessagingSampler._walk(msg, candidate)
-            if value is not None:
+            # Only an absent path falls through: a field explicitly set to null is
+            # the schema-correct answer and must not inherit a same-named sibling.
+            if value is not MISSING:
                 return value
         return None
 
