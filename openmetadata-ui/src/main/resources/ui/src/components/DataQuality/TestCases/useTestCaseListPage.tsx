@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, uniq } from 'lodash';
+import { isEmpty, uniq, uniqBy } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -20,7 +20,6 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
@@ -50,9 +49,6 @@ export type {
 } from './FilterChip.interface';
 
 const EXPORT_SORT_FIELD = 'fullyQualifiedName.keyword';
-// Export pages can shift while records are updated. A stable sort plus a few
-// bounded reconciliation passes avoids silently dropping moving rows.
-const MAX_EXPORT_PASSES = 3;
 
 export const useTestCaseListPage = () => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
@@ -148,57 +144,43 @@ export const useTestCaseListPage = () => {
       sortField: EXPORT_SORT_FIELD,
       sortType: SORT_ORDER.ASC,
     };
-    let pass = 0;
-    let reconciledTestCases: TestCase[] = [];
+    // Fetch the first page separately because its paging metadata determines
+    // exactly which remaining offsets are needed for the filtered result set.
+    const firstPage = await getListTestCaseBySearch({
+      ...exportParams,
+      limit: PAGE_SIZE_LARGE,
+      offset: 0,
+    });
+    const total = firstPage.paging.total ?? firstPage.data.length;
+    const remainingPageCount = Math.max(
+      Math.ceil(total / PAGE_SIZE_LARGE) - 1,
+      0
+    );
+    const remainingPageOffsets = Array.from(
+      { length: remainingPageCount },
+      (_, index) => (index + 1) * PAGE_SIZE_LARGE
+    );
 
-    do {
-      // Each pass intentionally starts fresh so rows deleted or edited out of
-      // the active filters are not retained from an earlier pass.
-      const testCasesById = new Map<string, TestCase>();
-      let offset = 0;
-      let total = 0;
-      let previousReportedTotal: number | undefined;
-      let reportedTotalChanged = false;
-
-      do {
-        const response = await getListTestCaseBySearch({
+    // Stable sorting makes the remaining offsets independent, so these pages
+    // can be requested concurrently instead of waiting for each page in turn.
+    const remainingPages = await Promise.all(
+      remainingPageOffsets.map((offset) =>
+        getListTestCaseBySearch({
           ...exportParams,
           limit: PAGE_SIZE_LARGE,
           offset,
-        });
-        response.data.forEach((testCase) =>
-          testCasesById.set(testCase.id, testCase)
-        );
-        if (response.paging.total !== undefined) {
-          if (
-            previousReportedTotal !== undefined &&
-            previousReportedTotal !== response.paging.total
-          ) {
-            reportedTotalChanged = true;
-          }
-          previousReportedTotal = response.paging.total;
-        }
-        total = response.paging.total ?? testCasesById.size;
-        offset += response.data.length;
+        })
+      )
+    );
 
-        // The reported total can lag behind concurrent deletes. Stop on an
-        // empty page instead of repeatedly requesting the stale range.
-        if (response.data.length === 0) {
-          break;
-        }
-      } while (offset < total);
+    // Offset pages can overlap when records move during export. Prefer the ID,
+    // then fall back to the FQN or name so optional generated fields stay safe.
+    const testCases = uniqBy(
+      [firstPage, ...remainingPages].flatMap(({ data }) => data),
+      ({ id, fullyQualifiedName, name }) => id ?? fullyQualifiedName ?? name
+    );
 
-      reconciledTestCases = [...testCasesById.values()];
-      pass += 1;
-
-      // A changing total means the result set moved while paging. Only accept
-      // a later pass that observes a stable total from start to finish.
-      if (!reportedTotalChanged && testCasesById.size >= total) {
-        break;
-      }
-    } while (pass < MAX_EXPORT_PASSES);
-
-    return convertTestCasesToCSV(reconciledTestCases);
+    return convertTestCasesToCSV(testCases);
   }, [params, searchValue, selectedFilter]);
 
   // Keep the server-side export for unfiltered lists; only materialize rows in
