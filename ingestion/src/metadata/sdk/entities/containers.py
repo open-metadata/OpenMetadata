@@ -107,7 +107,7 @@ class Containers(BaseEntity[Container, CreateContainerRequest]):
         client = cls._get_client()
         rest_client = cls._get_rest_client(client)
         endpoint = cls._get_endpoint_path(client)
-        from metadata.ingestion.ometa.utils import (  # noqa: PLC0415
+        from metadata.ingestion.ometa.utils import (
             quote,
         )
 

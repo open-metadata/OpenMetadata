@@ -19,9 +19,9 @@ import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadc
 import { EntityType } from '../enums/entity.enum';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getEntityIcon } from './EntityIconUtils';
 import { getEntityName } from './EntityNameUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { getEntityIcon } from './TableUtils';
 
 type BreadcrumbIconFC = FC<{ className?: string }>;
 
