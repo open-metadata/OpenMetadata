@@ -85,11 +85,14 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
-          # Full clone (no shallow, no blob filter) so Sonar git blame can read file
-          # contents — blame drives PR New Code detection. A partial clone (blob:none)
-          # left blobs missing, which forced sonar.scm.disabled=true and made SonarCloud
-          # report the whole tree as "new code" on every PR.
           fetch-depth: 0
+          # Sonar git blame runs only on the pull_request_target scan below, and blame
+          # needs blob contents to drive PR New Code detection. A partial clone
+          # (blob:none) left blobs missing, which forced sonar.scm.disabled=true and made
+          # SonarCloud report the whole tree as "new code". So do a full clone only on PR
+          # runs; keep the blob:none optimization for merge_group / workflow_dispatch,
+          # which never run the Sonar scan.
+          filter: ${{ github.event_name == 'pull_request_target' && '' || 'blob:none' }}
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v5
