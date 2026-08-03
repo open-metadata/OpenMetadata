@@ -102,6 +102,26 @@ ATOMIC_PARALLEL_SCOPES = {
     ): 120_000,
 }
 
+# Filename convention → the tag-routed project each file MUST land on. When a
+# planned unit's file matches a hint pattern but its project doesn't match the
+# expected one, the plan step hard-fails with a clear message. This catches
+# the tag-drop failure mode from PR #30834 (a re-enable rewrote
+# `test.describe.fixme('...', { tag: '@import-export' }, ...)` as
+# `test.describe('...', ...)`, silently dropping the tag → suite landed on
+# chromium instead of the dedicated import-export lane).
+#
+# Today `BulkImport*.spec.ts` and `*ImportExport*.spec.ts` uniformly carry
+# `@import-export` (12 of 13 matching files as of writing; the 13th is the
+# bug this guard catches). Add other conventions as they emerge — the entry
+# shape is (filename regex, expected project name, expected tag literal).
+FILE_LANE_HINTS: list[tuple[re.Pattern[str], str, str]] = [
+    (
+        re.compile(r"(?:^|/)(?:BulkImport|[^/]*ImportExport)[^/]*\.spec\.ts$"),
+        "ImportExport",
+        "@import-export",
+    ),
+]
+
 
 @dataclass
 class Unit:
@@ -420,6 +440,31 @@ def stale_baseline_files_in_plan(
     )
 
 
+def misrouted_lane_hint_violations(
+    units: list[Unit],
+) -> list[tuple[str, str, str, str]]:
+    """Return (file, actual_project, expected_project, expected_tag) tuples
+    for every planned unit whose file matches a FILE_LANE_HINTS pattern but
+    whose project doesn't match the expected one. That's the tag-drop
+    signature from PR #30834 — a describe was rewritten (`.fixme` removed,
+    tag option accidentally dropped along with it) and the suite silently
+    routed to the wrong lane.
+    """
+    violations: list[tuple[str, str, str, str]] = []
+    for unit in units:
+        for pattern, expected_project, expected_tag in FILE_LANE_HINTS:
+            if not pattern.search(unit.file):
+                continue
+            if unit.project == expected_project:
+                continue
+            violations.append(
+                (unit.file, unit.project, expected_project, expected_tag)
+            )
+            break  # one hint per file — first-match wins
+    # Sort + dedupe: multiple units per file (audit-split) collapse to one line.
+    return sorted(set(violations))
+
+
 def normalize_spec(path: str) -> str:
     prefix = "playwright/e2e/"
     return path.removeprefix(prefix)
@@ -647,6 +692,36 @@ def main() -> None:
             "shard and blocks every downstream PR."
         )
 
+    # (B) Check filename → expected-lane routing BEFORE the oversized-unit
+    # gate below. This catches the tag-drop failure mode directly with an
+    # actionable message; without it, the developer sees the generic
+    # oversized-unit error (see A below) and has to guess whether they
+    # need to split a suite or restore a tag.
+    lane_violations = misrouted_lane_hint_violations(units)
+    if lane_violations:
+        for file, actual, expected, tag in lane_violations:
+            print(
+                f"::error file={file}::planned under `{actual}` project but its "
+                f"filename convention expects `{expected}` (via `{tag}` tag). "
+                "The describe likely lost its tag option — see PR #30834.",
+                file=sys.stderr,
+            )
+        details = "\n".join(
+            f"  {file}: on `{actual}` project, expected `{expected}` "
+            f"(add `{{ tag: '{tag}' }}` to the top-level describe)"
+            for file, actual, expected, tag in lane_violations
+        )
+        raise SystemExit(
+            "Playwright spec files are routed to the wrong project. "
+            "Each file below matches a FILE_LANE_HINTS pattern that expects a "
+            "specific tag on its top-level describe, but the tag is missing "
+            "so the suite falls through to another project.\n\n"
+            f"{details}\n\n"
+            "To fix, restore the expected `{ tag: '...' }` option on the "
+            "describe. If this file was intentionally moved off its dedicated "
+            "lane, update FILE_LANE_HINTS in .github/scripts/build_playwright_shards.py."
+        )
+
     oversized_units = [unit for unit in units if unit.weight_ms > TARGET_MS]
     if oversized_units:
         details = ", ".join(
@@ -655,9 +730,24 @@ def main() -> None:
                 oversized_units, key=lambda item: item.weight_ms, reverse=True
             )
         )
+        # (A) Common fixes list — the generic "refactor or audit" message
+        # left developers guessing whether to split a suite or restore a
+        # dropped lane tag. Point at both fixes concretely.
         raise SystemExit(
-            "Atomic Playwright units exceed the 20-minute execution budget; "
-            f"refactor or explicitly audit them for parallel splitting: {details}"
+            "Atomic Playwright units exceed the 20-minute execution budget: "
+            f"{details}\n\n"
+            "Common fixes:\n"
+            "  * If this suite belongs on a dedicated lane (import-export, "
+            "domain-isolation, ingestion, reindex), verify the top-level "
+            "describe still carries the correct `{ tag: '...' }` option — a "
+            "recent edit (e.g. removing `.fixme` or `.skip`) may have dropped "
+            "it, landing the suite on the wrong project. See FILE_LANE_HINTS "
+            "and PR #30834 for the pattern.\n"
+            "  * Otherwise add `(file, describe_title)` to "
+            "AUDITED_PARALLEL_SUITES in "
+            ".github/scripts/build_playwright_shards.py — the planner will "
+            "then split the describe into per-spec parallel units so no "
+            "single unit exceeds the ceiling."
         )
 
     lanes: dict[str, list[Unit]] = defaultdict(list)

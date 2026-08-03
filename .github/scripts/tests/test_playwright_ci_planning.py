@@ -353,6 +353,93 @@ def test_stale_baseline_files_ignore_files_covered_by_identity_match():
     assert planner.stale_baseline_files_in_plan(units, {}, identity_weights) == []
 
 
+def test_misrouted_lane_hint_violations_flags_bulk_import_on_chromium():
+    # Reproduces PR #30834's bug — BulkImport.spec.ts landed on chromium
+    # because the `@import-export` tag was dropped when un-`fixme`ing the
+    # describe. The hint check names the file and the expected tag.
+    planner = load_script("build_playwright_shards")
+    unit = planner.Unit(
+        "chromium",  # actual project — wrong
+        "Features/BulkImport.spec.ts",
+        "Bulk Import Export",
+    )
+
+    violations = planner.misrouted_lane_hint_violations([unit])
+
+    assert violations == [
+        (
+            "Features/BulkImport.spec.ts",
+            "chromium",
+            "ImportExport",
+            "@import-export",
+        )
+    ]
+
+
+def test_misrouted_lane_hint_violations_stays_quiet_when_route_matches():
+    planner = load_script("build_playwright_shards")
+    unit = planner.Unit(
+        "ImportExport",
+        "Features/BulkImport.spec.ts",
+        "Bulk Import Export",
+    )
+
+    assert planner.misrouted_lane_hint_violations([unit]) == []
+
+
+def test_misrouted_lane_hint_violations_matches_import_export_filename_family():
+    planner = load_script("build_playwright_shards")
+    matching_files = [
+        "Features/BulkImport.spec.ts",
+        "Features/BulkImportWithDotInName.spec.ts",
+        "Features/MetricBulkImportExportEdit.spec.ts",
+        "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
+        "Pages/GlossaryImportExport.spec.ts",
+    ]
+    units = [
+        planner.Unit("chromium", file, "describe title")
+        for file in matching_files
+    ]
+
+    violations = planner.misrouted_lane_hint_violations(units)
+
+    assert {v[0] for v in violations} == set(matching_files)
+
+
+def test_misrouted_lane_hint_violations_ignores_unmatched_filenames():
+    # Files without Import/Export or matching patterns must not trip the
+    # hint even when they land on chromium — chromium is the correct
+    # destination for the vast majority of specs.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit("chromium", "Pages/Users.spec.ts", "user tests"),
+        planner.Unit("chromium", "Features/AdvancedSearch.spec.ts", "Advanced Search"),
+        planner.Unit("chromium", "Pages/Entity.spec.ts", "entity tests"),
+    ]
+
+    assert planner.misrouted_lane_hint_violations(units) == []
+
+
+def test_misrouted_lane_hint_violations_dedupes_across_units():
+    # After AUDITED_PARALLEL_SUITES splits a file into per-spec units,
+    # each unit shares the same file — the violation should collapse to
+    # a single entry, not fire once per test.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium",
+            "Features/BulkImport.spec.ts",
+            f"Bulk Import Export › case {index}",
+        )
+        for index in range(4)
+    ]
+
+    violations = planner.misrouted_lane_hint_violations(units)
+
+    assert len(violations) == 1
+    assert violations[0][0] == "Features/BulkImport.spec.ts"
+
+
 def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
     # End-to-end: the planner exits non-zero at PR (targeted) plan time
     # when a file's every planned test is on the fallback path. This is
@@ -496,6 +583,80 @@ def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
     # still be written so the run can execute and refresh the baseline.
     assert "Stale timing-baseline.json entries detected" not in combined
     assert (output_dir / "matrix.json").exists()
+
+
+def test_main_fails_on_misrouted_lane_hint(tmp_path):
+    # End-to-end: the planner exits non-zero at plan time when a hint-file
+    # is on the wrong project. This is the guardrail that would have caught
+    # PR #30834 at PR review instead of on the merge queue.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": "Features/BulkImport.spec.ts",
+                        "suites": [
+                            {
+                                "title": "Bulk Import Export",
+                                "specs": [
+                                    {
+                                        "id": f"bulk-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(3)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    selection.write_text(json.dumps({"mode": "full"}))
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "routed to the wrong project" in combined
+    assert "Features/BulkImport.spec.ts" in combined
+    assert "@import-export" in combined
+    assert not (output_dir / "matrix.json").exists()
+
+
+def test_oversized_units_error_names_both_common_fixes():
+    # The improved error message must point the reader at BOTH the tag
+    # option and the AUDITED_PARALLEL_SUITES escape hatch — the old
+    # message just said "refactor or audit" and left developers guessing.
+    planner = load_script("build_playwright_shards")
+    src = (SCRIPTS / "build_playwright_shards.py").read_text()
+
+    assert "FILE_LANE_HINTS" in src
+    # The oversized branch mentions both remediation paths:
+    oversized_index = src.index("Atomic Playwright units exceed")
+    following = src[oversized_index:oversized_index + 2000]
+    assert "tag:" in following or "tag option" in following.lower() or "'{ tag:" in following
+    assert "AUDITED_PARALLEL_SUITES" in following
 
 
 def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):
