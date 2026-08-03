@@ -4,7 +4,6 @@
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
- *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,9 +12,9 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { TaskEntityType } from '../../rest/tasksAPI';
+import { ThreadType } from '../../generated/api/feed/createThread';
+import { Thread } from '../../generated/entity/feed/thread';
 import NotificationFeedCard from './NotificationFeedCard.component';
-import { MentionNotification } from './NotificationFeedCard.interface';
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
@@ -27,16 +26,14 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 const mockPrepareFeedLink = jest.fn();
-const mockGetTaskDetailPathFromTask = jest.fn();
+const mockGetTaskDetailPath = jest.fn();
 
 jest.mock('../../utils/FeedUtilsPure', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
-  prepareFeedLink: (...args: unknown[]) => mockPrepareFeedLink(...args),
+  prepareFeedLink: (...args: any[]) => mockPrepareFeedLink(...args),
 }));
-jest.mock('../../utils/TaskNavigationUtils', () => ({
-  getTaskDetailPathFromTask: (...args: unknown[]) =>
-    mockGetTaskDetailPathFromTask(...args),
-  getTaskDisplayId: jest.fn().mockReturnValue('1'),
+jest.mock('../../utils/TasksUtils', () => ({
+  getTaskDetailPath: (...args: any[]) => mockGetTaskDetailPath(...args),
 }));
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<p data-testid="profile-picture">ProfilePicture</p>)
@@ -68,10 +65,17 @@ jest.mock('../../utils/EntityNameUtils', () => ({
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
 }));
+jest.mock('../../utils/EntityLinkUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
+}));
 
-const mockMentionThread = {
+jest.mock('../../utils/Fqn', () => ({
+  split: jest.fn().mockReturnValue(['mockGlossary']),
+}));
+const mockThread = {
   id: '33873393-bd68-46e9-bccc-7701c1c41ad6',
   type: 'Conversation',
+  href: 'http://host.docker.internal:8585/v1/feed/b41ef8d2-e369-4fce-b106-8f000258e361',
   threadTs: 1755772414483,
   about: '<#E::page::Article_sQDEeTK6::description>',
   entityRef: {
@@ -82,124 +86,173 @@ const mockMentionThread = {
     description: '',
     displayName: 'SACHIN',
   },
+  generatedBy: 'user',
+  cardStyle: 'default',
+  fieldOperation: 'updated',
   createdBy: 'admin',
   updatedAt: 1755772414483,
   updatedBy: 'admin',
+  resolved: false,
+  task: {
+    id: 16,
+    type: 'RequestTestCaseFailureResolution',
+    assignees: [
+      {
+        id: '9311f065-e150-4948-96a4-e98906443b37',
+        type: 'user',
+        name: 'admin',
+        fullyQualifiedName: 'admin',
+        displayName: 'admin',
+        deleted: false,
+      },
+    ],
+    status: 'Open',
+    testCaseResolutionStatusId: '29c0871d-bd96-431b-8823-e968316915af',
+  },
   message:
     '﻿<#E::user::admin|[@admin](http://localhost:3000/users/admin)>﻿ Hii!',
   postsCount: 0,
   posts: [],
   reactions: [],
-} as MentionNotification;
-
-const mockTaskEntity = {
-  id: 'task-id',
-  taskId: 'TASK-00001',
-  type: TaskEntityType.GlossaryApproval,
-  about: {
-    type: 'glossaryTerm',
-    fullyQualifiedName: 'testGlossary.testTerm',
-  },
 };
 
-const taskProps = {
+const mockProps = {
   createdBy: 'admin',
-  entityType: 'glossaryTerm',
-  entityFQN: 'testGlossary.testTerm',
-  taskEntity: mockTaskEntity,
+  entityType: 'task',
+  entityFQN: 'test',
+  task: mockThread as Thread,
+  feedType: ThreadType.Task,
 };
 
-describe('NotificationFeedCard', () => {
-  it('renders task notifications from task entities', async () => {
-    mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');
+describe('Test NotificationFeedCard Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
+  it('Check if it has all child elements', async () => {
     await act(async () => {
-      render(<NotificationFeedCard {...taskProps} />);
+      render(<NotificationFeedCard {...mockProps} />);
     });
 
     expect(await screen.findByText('ProfilePicture')).toBeInTheDocument();
+  });
+
+  it('renders assigned task message and link for ThreadType.Task', async () => {
+    await act(async () => {
+      render(<NotificationFeedCard {...mockProps} />);
+    });
+
     expect(
       screen.getByText(/assigned-you-a-new-task-lowercase/i)
     ).toBeInTheDocument();
-    expect(screen.getByText('#1 Glossary Approval')).toBeInTheDocument();
-    expect(mockGetTaskDetailPathFromTask).toHaveBeenCalledWith(mockTaskEntity);
-    expect(screen.getAllByTestId('link')[0]).toHaveAttribute(
-      'data-to',
-      '/mock-task-link'
-    );
+
+    expect(
+      screen.getByText(`#${mockThread.task.id} ${mockThread.task.type}`)
+    ).toBeInTheDocument();
   });
 
-  it('renders mention notifications from threads', async () => {
-    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
-
+  it('renders mentioned message and entity link for ThreadType.Conversation', async () => {
+    const conversationProps = {
+      ...mockProps,
+      feedType: ThreadType.Conversation,
+    };
     await act(async () => {
-      render(
-        <NotificationFeedCard
-          createdBy="admin"
-          entityFQN="Article_sQDEeTK6"
-          entityType="page"
-          mentionNotification={mockMentionThread}
-          timestamp={mockMentionThread.threadTs}
-        />
-      );
+      render(<NotificationFeedCard {...conversationProps} />);
     });
 
     expect(
       screen.getByText(/mentioned-you-on-the-lowercase/i)
     ).toBeInTheDocument();
-    expect(screen.getByText('page')).toBeInTheDocument();
-    expect(screen.getByText('SACHIN')).toBeInTheDocument();
-    expect(mockPrepareFeedLink).toHaveBeenCalledWith(
-      'page',
-      'Article_sQDEeTK6',
-      'all'
-    );
+
+    expect(screen.getByText(conversationProps.entityType)).toBeInTheDocument();
+  });
+
+  it('should renders entityRef data is available', async () => {
+    const conversationProps = {
+      ...mockProps,
+      feedType: ThreadType.Conversation,
+    };
+    await act(async () => {
+      render(<NotificationFeedCard {...conversationProps} />);
+    });
+
+    expect(
+      screen.getByText(mockThread.entityRef.displayName)
+    ).toBeInTheDocument();
+  });
+
+  it('should renders default entityName by entityDisplayName if entityRef not present', async () => {
+    const conversationProps = {
+      ...mockProps,
+      task: {
+        ...mockProps.task,
+        entityRef: undefined,
+      },
+      feedType: ThreadType.Conversation,
+    };
+    await act(async () => {
+      render(<NotificationFeedCard {...conversationProps} />);
+    });
+
+    expect(screen.getByText('database.schema.table')).toBeInTheDocument();
+  });
+
+  it('renders timestamp', async () => {
+    const timestampProps = {
+      ...mockProps,
+      timestamp: 1692612000000, // Example: 2023-08-21T10:00:00Z in ms
+    };
+    await act(async () => {
+      render(<NotificationFeedCard {...timestampProps} />);
+    });
+
+    expect(screen.getByText('1692612000000')).toBeInTheDocument();
   });
 
   it('calls navigate with tasksRefreshKey state when the task notification card is clicked', async () => {
-    mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');
+    const taskUrl = '/database/test.entity/activity_feed/tasks';
+    mockGetTaskDetailPath.mockReturnValue(taskUrl);
 
     await act(async () => {
-      render(<NotificationFeedCard {...taskProps} />);
+      render(<NotificationFeedCard {...mockProps} />);
     });
 
     const outerLink = screen.getAllByTestId('link')[0];
     fireEvent.click(outerLink);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+    expect(mockNavigate).toHaveBeenCalledWith(taskUrl, {
       state: { tasksRefreshKey: expect.any(Number) },
     });
   });
 
   it('calls navigate with tasksRefreshKey state when the inner task ID link is clicked', async () => {
-    mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');
+    const taskUrl = '/database/test.entity/activity_feed/tasks';
+    mockGetTaskDetailPath.mockReturnValue(taskUrl);
 
     await act(async () => {
-      render(<NotificationFeedCard {...taskProps} />);
+      render(<NotificationFeedCard {...mockProps} />);
     });
 
     const links = screen.getAllByTestId('link');
     const innerTaskLink = links[links.length - 1];
     fireEvent.click(innerTaskLink);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+    expect(mockNavigate).toHaveBeenCalledWith(taskUrl, {
       state: { tasksRefreshKey: expect.any(Number) },
     });
   });
 
-  it('does not call navigate when a mention notification is clicked', async () => {
+  it('does not call navigate when a conversation notification card is clicked', async () => {
     mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
 
+    const conversationProps = {
+      ...mockProps,
+      feedType: ThreadType.Conversation,
+      isConversationFeed: true,
+    };
+
     await act(async () => {
-      render(
-        <NotificationFeedCard
-          createdBy="admin"
-          entityFQN="Article_sQDEeTK6"
-          entityType="page"
-          mentionNotification={mockMentionThread}
-          timestamp={mockMentionThread.threadTs}
-        />
-      );
+      render(<NotificationFeedCard {...conversationProps} />);
     });
 
     const outerLink = screen.getAllByTestId('link')[0];
@@ -208,27 +261,94 @@ describe('NotificationFeedCard', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('falls back to entity display name when mention thread has no entityRef', async () => {
-    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
-
-    await act(async () => {
-      render(
-        <NotificationFeedCard
-          createdBy="admin"
-          entityFQN="Article_sQDEeTK6"
-          entityType="page"
-          mentionNotification={
-            {
-              ...mockMentionThread,
-              entityRef: undefined,
-            } as MentionNotification
-          }
-          timestamp={1692612000000}
-        />
-      );
+  describe('Navigation URL Tests', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
     });
 
-    expect(screen.getByText('database.schema.table')).toBeInTheDocument();
-    expect(screen.getByText('1692612000000')).toBeInTheDocument();
+    it('should navigate to tasks subtab for task notifications', async () => {
+      const taskUrl = '/database/test.entity/activity_feed/tasks';
+      mockGetTaskDetailPath.mockReturnValue(taskUrl);
+
+      const taskProps = {
+        ...mockProps,
+        feedType: ThreadType.Task,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...taskProps} />);
+      });
+
+      expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
+
+      const linkElement = screen.getAllByTestId('link')[0];
+
+      expect(linkElement).toHaveAttribute('data-to', taskUrl);
+    });
+
+    it('should navigate to all subtab for conversation notifications', async () => {
+      const conversationUrl = '/database/test.entity/activity_feed/all';
+      mockPrepareFeedLink.mockReturnValue(conversationUrl);
+
+      const conversationProps = {
+        ...mockProps,
+        feedType: ThreadType.Conversation,
+        isConversationFeed: true,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...conversationProps} />);
+      });
+
+      expect(mockPrepareFeedLink).toHaveBeenCalledWith(
+        mockProps.entityType,
+        mockProps.entityFQN,
+        'all'
+      );
+
+      const linkElement = screen.getAllByTestId('link')[0];
+
+      expect(linkElement).toHaveAttribute('data-to', conversationUrl);
+    });
+
+    it('should call getTaskDetailPath once for task notifications', async () => {
+      const entityLinkUrl = '/database/test.entity/activity_feed/all';
+      mockPrepareFeedLink.mockReturnValue(entityLinkUrl);
+
+      const conversationProps = {
+        ...mockProps,
+        feedType: ThreadType.Conversation,
+        isConversationFeed: false,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...conversationProps} />);
+      });
+
+      expect(mockGetTaskDetailPath).toHaveBeenCalledTimes(1);
+      expect(mockGetTaskDetailPath).toHaveBeenCalledWith(mockThread);
+    });
+
+    it('should call prepareFeedLink with ALL subtab for entity links in conversation notifications', async () => {
+      const entityLinkUrl = '/database/test.entity/activity_feed/all';
+      mockPrepareFeedLink.mockReturnValue(entityLinkUrl);
+
+      const conversationProps = {
+        ...mockProps,
+        feedType: ThreadType.Conversation,
+        isConversationFeed: true,
+      };
+
+      await act(async () => {
+        render(<NotificationFeedCard {...conversationProps} />);
+      });
+
+      expect(mockPrepareFeedLink).toHaveBeenCalledTimes(2);
+      expect(mockPrepareFeedLink).toHaveBeenCalledWith(
+        mockProps.entityType,
+        mockProps.entityFQN,
+        'all'
+      );
+    });
   });
 });

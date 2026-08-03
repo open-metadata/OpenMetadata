@@ -13,7 +13,6 @@
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -24,40 +23,37 @@ import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import { TASK_TYPES } from '../../../constants/Task.constant';
-import { TaskType } from '../../../generated/api/feed/createThread';
-import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   TaskDetails,
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import { useAuth } from '../../../hooks/authHooks';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
-import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
-import {
-  resolveTask as resolveTaskAPI,
-  TaskResolutionType,
-} from '../../../rest/tasksAPI';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
+
+import { AxiosError } from 'axios';
+import { TaskOperation } from '../../../constants/Feeds.constants';
+import { TASK_TYPES } from '../../../constants/Task.constant';
+import { TaskType } from '../../../generated/api/feed/createThread';
+import { ResolveTask } from '../../../generated/api/feed/resolveTask';
+import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
+import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
+import { updateTask } from '../../../rest/feedsAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  getEntityFQNFromAbout,
-  getEntityTypeFromAbout,
-} from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
-import { isDescriptionTask, isTagsTask } from '../../../utils/TaskActionUtils';
 import {
   getTaskDetailPath,
-  isTaskPendingFurtherApproval,
-} from '../../../utils/TaskNavigationUtils';
+  isDescriptionTask,
+  isTagsTask,
+} from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -101,27 +97,19 @@ const TaskFeedCard = ({
 
   const { entityType, entityFQN } = useMemo(
     () => ({
-      // Use getEntityTypeFromAbout/getEntityFQNFromAbout to handle both:
-      // - Thread about: string entity link like "<#E::table::fqn>"
-      // - Task about: EntityReference object like { type, fullyQualifiedName }
-      entityType: getEntityTypeFromAbout(feed.about) ?? '',
-      entityFQN: getEntityFQNFromAbout(feed.about) ?? '',
+      entityType: getEntityType(feed.about) ?? '',
+      entityFQN: getEntityFQN(feed.about) ?? '',
     }),
     [feed.about]
   );
 
   const isEntityDetailsAvailable = useMemo(
-    () => Boolean(entityFQN) && Boolean(entityType),
+    () => !isUndefined(entityFQN) && !isUndefined(entityType),
     [entityFQN, entityType]
   );
 
   const taskColumnName = useMemo(() => {
-    // EntityLink.getTableColumnName expects a string entity link
-    // For EntityReference about (Task), there's no column info in the about field
-    const columnName =
-      typeof feed.about === 'string'
-        ? EntityLink.getTableColumnName(feed.about) ?? ''
-        : '';
+    const columnName = EntityLink.getTableColumnName(feed.about) ?? '';
 
     if (columnName) {
       return (
@@ -185,51 +173,19 @@ const TaskFeedCard = ({
   const isTaskRecognizerFeedbackApproval =
     taskDetails?.type === TaskType.RecognizerFeedbackApproval;
 
-  const getResolutionPayload = (resolutionType: TaskResolutionType) => {
-    if (resolutionType === TaskResolutionType.Rejected) {
-      if (isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval) {
-        return { newValue: 'Rejected' };
-      }
-
-      return { newValue: '' };
-    }
-
-    if (isTaskTags) {
-      return { newValue: taskDetails?.suggestion || '[]' };
-    }
-
-    return {
-      newValue:
-        isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval
-          ? 'approved'
-          : taskDetails?.suggestion,
-    };
-  };
-
-  const updateTaskData = async (
-    data: TaskDetails | ResolveTask,
-    resolutionType: TaskResolutionType = TaskResolutionType.Approved
-  ) => {
-    if (!feed?.id) {
+  const updateTaskData = (data: TaskDetails | ResolveTask) => {
+    if (!taskDetails?.id) {
       return;
     }
-    try {
-      const updatedTask = await resolveTaskAPI(feed.id, {
-        resolutionType,
-        newValue: (data as ResolveTask).newValue,
-      });
-      showSuccessToast(
-        isTaskPendingFurtherApproval(updatedTask)
-          ? 'Vote recorded.'
-          : t('server.task-resolved-successfully')
+    updateTask(TaskOperation.RESOLVE, taskDetails?.id + '', data)
+      .then(() => {
+        showSuccessToast(t('server.task-resolved-successfully'));
+        onAfterClose?.();
+        onUpdateEntityDetails?.();
+      })
+      .catch((err: AxiosError) =>
+        showErrorToast(getErrorText(err, t('server.unexpected-error')))
       );
-      onAfterClose?.();
-      onUpdateEntityDetails?.();
-    } catch (err) {
-      showErrorToast(
-        getErrorText(err as AxiosError, t('server.unexpected-error'))
-      );
-    }
   };
   const onTaskResolve = () => {
     if (
@@ -247,16 +203,38 @@ const TaskFeedCard = ({
 
       return;
     }
-    updateTaskData(
-      getResolutionPayload(TaskResolutionType.Approved) as TaskDetails,
-      TaskResolutionType.Approved
-    );
+    if (isTaskTags) {
+      const tagsData = {
+        newValue: taskDetails?.suggestion || '[]',
+      };
+
+      updateTaskData(tagsData as TaskDetails);
+    } else {
+      const newValue =
+        isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval
+          ? 'approved'
+          : taskDetails?.suggestion;
+      const data = { newValue: newValue };
+      updateTaskData(data as TaskDetails);
+    }
   };
-  const onTaskReject = async () => {
-    updateTaskData(
-      getResolutionPayload(TaskResolutionType.Rejected) as TaskDetails,
-      TaskResolutionType.Rejected
-    );
+  const onTaskReject = () => {
+    const updatedComment = 'Rejected';
+    if (isTaskGlossaryApproval || isTaskRecognizerFeedbackApproval) {
+      const data = { newValue: 'Rejected' };
+      updateTaskData(data as TaskDetails);
+
+      return;
+    }
+    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+      comment: updatedComment,
+    } as unknown as TaskDetails)
+      .then(() => {
+        showSuccessToast(t('server.task-closed-successfully'));
+        onAfterClose?.();
+        onUpdateEntityDetails?.();
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
   };
   const isCreator = isEqual(feed.createdBy, currentUser?.name);
   const checkIfUserPartOfTeam = useCallback(

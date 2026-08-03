@@ -64,7 +64,7 @@ jest.mock('../../../../utils/FeedUtilsPure', () => ({
   prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
 }));
 
-jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+jest.mock('../../../../utils/TasksUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('task detail path'),
 }));
 

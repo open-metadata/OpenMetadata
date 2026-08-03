@@ -25,46 +25,41 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import {
+  CreateThread,
+  TaskType,
+} from '../../../generated/api/feed/createThread';
 import { Chart } from '../../../generated/entity/data/chart';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { ThreadType } from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { TaskFormSchema } from '../../../rest/taskFormSchemasAPI';
+import { postThread } from '../../../rest/feedsAPI';
 import {
-  CreateTask,
-  createTask,
-  TaskCategory,
-  TaskEntityType,
-  TaskPayload,
-  TaskPriority,
-} from '../../../rest/tasksAPI';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+  ENTITY_LINK_SEPARATOR,
+  getEntityFeedLink,
+} from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import {
   fetchEntityDetail,
+  fetchOptions,
   getBreadCrumbList,
-} from '../../../utils/TaskEntityFetchUtils';
-import {
-  getColumnObjectByPath,
-  getTagTaskFieldPath,
+  getColumnObject,
+  getEntityColumnsDetails,
   getTaskAssignee,
   getTaskEntityFQN,
-  getTaskFieldColumns,
   getTaskMessage,
-} from '../../../utils/TaskFieldUtils';
-import {
-  applyTaskFormSchemaDefaults,
-  getResolvedTaskFormSchema,
-} from '../../../utils/TaskFormSchemaUtils';
+} from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
-import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
+import { TagsTabs } from '../shared/TagsTabs';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -87,8 +82,8 @@ const UpdateTag = () => {
 
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Option[]>([]);
-  const [payload, setPayload] = useState<TaskPayload>({});
-  const [taskFormSchema, setTaskFormSchema] = useState<TaskFormSchema>();
+  const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
+  const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
@@ -116,17 +111,15 @@ const UpdateTag = () => {
   const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
-    const fieldPathSegments = sanitizeValue
-      .split(FQN_SEPARATOR_CHAR)
-      .filter(Boolean);
+    const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
-    return getColumnObjectByPath(
-      fieldPathSegments,
-      getTaskFieldColumns(entityType, entityData, field),
+    return getColumnObject(
+      column[0],
+      getEntityColumnsDetails(entityType, entityData),
       entityType,
       chartData
     );
-  }, [field, entityData, chartData, entityType, sanitizeValue]);
+  }, [field, entityData, chartData, entityType]);
 
   const getTags = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
@@ -144,43 +137,48 @@ const UpdateTag = () => {
     fetchOptions(data);
   };
 
-  const getFieldPath = () => {
-    return getTagTaskFieldPath(field, value);
+  const getTaskAbout = () => {
+    if (field && value) {
+      return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}tags`;
+    } else {
+      return EntityField.TAGS;
+    }
   };
 
-  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
+  const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
-
-    const data: CreateTask = {
-      name: formValues.title || taskMessage,
-      category: TaskCategory.MetadataUpdate,
-      type: TaskEntityType.TagUpdate,
-      priority: TaskPriority.Medium,
-      about: getEntityFeedLink(entityType, entityFQN),
-      assignees: assignees.map((assignee) => assignee.name ?? ''),
-      payload: applyTaskFormSchemaDefaults(payload, taskFormSchema?.formSchema),
+    const data: CreateThread = {
+      message: value.title || taskMessage,
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      taskDetails: {
+        assignees: assignees.map((assignee) => ({
+          id: assignee.value,
+          type: assignee.type,
+        })),
+        suggestion: JSON.stringify(suggestion),
+        type: TaskType.UpdateTag,
+        oldValue: JSON.stringify(currentTags),
+      },
+      type: ThreadType.Task,
     };
-
-    try {
-      await createTask(data);
-      showSuccessToast(
-        t('server.create-entity-success', {
-          entity: t('label.task'),
-        })
-      );
-      navigate(
-        entityUtilClassBase.getEntityLink(
-          entityType,
-          entityFQN,
-          EntityTabs.ACTIVITY_FEED,
-          ActivityFeedTabs.TASKS
-        )
-      );
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
+    postThread(data)
+      .then(() => {
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.task'),
+          })
+        );
+        navigate(
+          entityUtilClassBase.getEntityLink(
+            entityType,
+            entityFQN,
+            EntityTabs.ACTIVITY_FEED,
+            ActivityFeedTabs.TASKS
+          )
+        );
+      })
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -193,13 +191,6 @@ const UpdateTag = () => {
   }, [entityFQN, entityType]);
 
   useEffect(() => {
-    getResolvedTaskFormSchema(
-      TaskEntityType.TagUpdate,
-      TaskCategory.MetadataUpdate
-    ).then(setTaskFormSchema);
-  }, []);
-
-  useEffect(() => {
     const defaultAssignee = getTaskAssignee(entityData as Glossary);
 
     if (defaultAssignee) {
@@ -208,25 +199,15 @@ const UpdateTag = () => {
     }
     form.setFieldsValue({
       title: taskMessage.trimEnd(),
+      updatedTags: getTags(),
       assignees: defaultAssignee,
     });
   }, [entityData, columnObject]);
 
   useEffect(() => {
-    setPayload({
-      fieldPath: getFieldPath(),
-      currentTags: getTags(),
-      tagsToAdd: [],
-      tagsToRemove: [],
-      operation: 'Replace',
-    });
+    setCurrentTags(getTags());
+    setSuggestion(getTags());
   }, [entityData, columnObject]);
-
-  useEffect(() => {
-    setPayload((prevPayload) =>
-      applyTaskFormSchemaDefaults(prevPayload, taskFormSchema?.formSchema)
-    );
-  }, [taskFormSchema?.formSchema]);
 
   if (isEmpty(entityData)) {
     return <Loader />;
@@ -299,12 +280,28 @@ const UpdateTag = () => {
                   />
                 </Form.Item>
 
-                <TaskPayloadSchemaFields
-                  payload={payload}
-                  schema={taskFormSchema?.formSchema}
-                  uiSchema={taskFormSchema?.uiSchema}
-                  onChange={setPayload}
-                />
+                {currentTags.length ? (
+                  <Form.Item
+                    data-testid="tags-label"
+                    label={t('label.update-entity', {
+                      entity: t('label.tag-plural'),
+                    })}
+                    name="updatedTags"
+                    rules={[
+                      {
+                        required: true,
+                        message: t('message.field-text-is-required', {
+                          fieldText: t('label.tag-plural'),
+                        }),
+                      },
+                    ]}>
+                    <TagsTabs
+                      tags={currentTags}
+                      value={suggestion}
+                      onChange={setSuggestion}
+                    />
+                  </Form.Item>
+                ) : null}
 
                 <Form.Item>
                   <Space

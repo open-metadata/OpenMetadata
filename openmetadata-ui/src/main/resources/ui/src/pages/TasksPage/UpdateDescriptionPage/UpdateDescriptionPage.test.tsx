@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { forwardRef } from 'react';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { createTask } from '../../../rest/tasksAPI';
+import { postThread } from '../../../rest/feedsAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateDescription from './UpdateDescriptionPage';
 const mockNavigate = jest.fn();
@@ -68,25 +75,19 @@ const mockTableData = {
     },
   ],
 };
-jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
-  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
+jest.mock('../../../utils/TasksUtils', () => ({
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
       setEntityData(mockTableData);
     }),
-  getBreadCrumbList: jest.fn().mockReturnValue([]),
-}));
-jest.mock('../../../utils/TaskAssigneeUtils', () => ({
   fetchOptions: jest.fn(),
-}));
-jest.mock('../../../utils/TaskFieldUtils', () => ({
-  ...jest.requireActual('../../../utils/TaskFieldUtils'),
+  getBreadCrumbList: jest.fn().mockReturnValue([]),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
-  getTaskFieldColumns: jest
+  getEntityColumnsDetails: jest
     .fn()
     .mockImplementation(() => mockTableData.columns),
-  getColumnObjectByPath: jest.fn().mockImplementation(() => ({
+  getColumnObject: jest.fn().mockImplementation(() => ({
     description: mockTableData.columns[0].description,
   })),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
@@ -106,21 +107,13 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../shared/TaskPayloadSchemaFields', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="description-tabs">RichTextEditor.component</div>
-    ))
+jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
+  forwardRef(
+    jest.fn().mockImplementation(() => <div>RichTextEditor.component</div>)
+  )
 );
-jest.mock('../../../rest/taskFormSchemasAPI', () => ({
-  resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
-}));
-jest.mock('../../../rest/tasksAPI', () => ({
-  createTask: jest.fn().mockResolvedValue({}),
-  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
-  TaskEntityType: { DescriptionUpdate: 'DescriptionUpdate' },
-  TaskPriority: { Medium: 'Medium' },
+jest.mock('../../../rest/feedsAPI', () => ({
+  postThread: jest.fn().mockResolvedValue({}),
 }));
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -162,48 +155,38 @@ describe('UpdateDescriptionPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockCreateTask = createTask as jest.Mock;
+    const mockPostThread = postThread as jest.Mock;
     render(
       <UpdateDescription pageTitle={i18n.t('label.update-description')} />
     );
-    const submitBtn = await screen.findByTestId('submit-btn');
+    const form = await screen.findByTestId('form-container');
+    await screen.findByDisplayValue('Task message');
 
     await act(async () => {
-      fireEvent.click(submitBtn);
+      fireEvent.submit(form);
     });
 
-    expect(mockCreateTask).toHaveBeenCalledWith({
-      name: 'Task message',
-      category: 'MetadataUpdate',
-      type: 'DescriptionUpdate',
-      priority: 'Medium',
-      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
-      assignees: ['sample_data'],
-      payload: {
-        newDescription:
-          'Unique identifier for the store. This column is the primary key for this table.',
-        currentDescription:
-          'Unique identifier for the store. This column is the primary key for this table.',
-        fieldPath: 'columns::shop_id::description',
-      },
-    });
-  });
-
-  it('should render description editor when current description is empty', async () => {
-    const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TaskFieldUtils'
+    await waitFor(() =>
+      expect(mockPostThread).toHaveBeenCalledWith({
+        about:
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::shop_id::description>',
+        from: undefined,
+        message: 'Task message',
+        taskDetails: {
+          assignees: [
+            {
+              id: 'id1',
+              type: 'User',
+            },
+          ],
+          oldValue:
+            'Unique identifier for the store. This column is the primary key for this table.',
+          suggestion:
+            'Unique identifier for the store. This column is the primary key for this table.',
+          type: 'UpdateDescription',
+        },
+        type: 'Task',
+      })
     );
-    getColumnObjectByPath.mockReturnValueOnce({
-      description: '',
-    });
-
-    render(
-      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
-    );
-
-    expect(await screen.findByTestId('description-tabs')).toBeInTheDocument();
-    expect(
-      await screen.findByText('RichTextEditor.component')
-    ).toBeInTheDocument();
   });
 });

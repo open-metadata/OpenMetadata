@@ -17,10 +17,11 @@ import * as reactRouterDom from 'react-router-dom';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   MOCK_TEST_CASE_DATA,
+  MOCK_TEST_CASE_INCIDENT,
   MOCK_TEST_CASE_RESOLUTION_STATUS,
+  MOCK_THREAD_DATA,
 } from '../../../../mocks/TestCase.mock';
 import {
-  getIncidentTaskByStateId,
   getListTestCaseIncidentByStateId,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
@@ -41,6 +42,9 @@ const mockEntityPermissions = {
 };
 
 const mockUseActivityFeedProviderValue = {
+  entityThread: MOCK_THREAD_DATA,
+  getFeedData: jest.fn().mockImplementation(() => Promise.resolve()),
+  setActiveThread: jest.fn(),
   postFeed: jest.fn(),
   testCaseResolutionStatus: MOCK_TEST_CASE_RESOLUTION_STATUS,
   updateTestCaseIncidentStatus: jest.fn(),
@@ -54,36 +58,14 @@ const mockProps: IncidentManagerPageHeaderProps = {
   fetchTaskCount: mockFetchTaskCount,
 };
 
-jest.mock('../../../../rest/incidentManagerAPI', () => {
-  const { MOCK_TEST_CASE_INCIDENT: mockTestCaseIncident } = jest.requireActual(
-    '../../../../mocks/TestCase.mock'
-  );
-
-  return {
-    getIncidentTaskByStateId: jest.fn().mockResolvedValue({
-      id: '9950d7a0-01a4-4e02-bd7f-c431d9cd77f1',
-      taskId: 'TASK-00009',
-      assignees: [
-        {
-          id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
-          type: 'user',
-          name: 'aaron_johnson0',
-          fullyQualifiedName: 'aaron_johnson0',
-          displayName: 'Aaron Johnson',
-        },
-      ],
-      payload: {
-        testCaseResolutionStatusId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
-      },
-    }),
-    getListTestCaseIncidentByStateId: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(mockTestCaseIncident)),
-    updateTestCaseIncidentById: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve()),
-  };
-});
+jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  getListTestCaseIncidentByStateId: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_TEST_CASE_INCIDENT)),
+  updateTestCaseIncidentById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve()),
+}));
 
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
@@ -137,8 +119,7 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../../utils/TaskNavigationUtils', () => ({
-  getTaskDisplayId: jest.fn().mockReturnValue(9),
+jest.mock('../../../../utils/TasksUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
 }));
 
@@ -214,10 +195,16 @@ jest.mock('../../../../hooks/useEntityRules', () => ({
 }));
 
 describe('Incident Manager Page Header component', () => {
-  it('getIncidentTaskByStateId should be call on mount', async () => {
+  it('getFeedData should be call on mount', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    expect(getIncidentTaskByStateId).toHaveBeenCalledWith('123');
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      'Task',
+      'testCase',
+      'fqn'
+    );
   });
 
   it('getListTestCaseIncidentByStateId should be call on mount', async () => {
@@ -340,6 +327,12 @@ describe('Incident Manager Page Header component', () => {
 
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    expect(getIncidentTaskByStateId).toHaveBeenCalledWith('123');
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      'Task',
+      'testCase',
+      'database.schema.table%test'
+    );
   });
 });

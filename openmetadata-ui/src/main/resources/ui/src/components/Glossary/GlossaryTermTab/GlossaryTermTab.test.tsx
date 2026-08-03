@@ -35,8 +35,8 @@ const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTerms = jest.fn();
-const mockListTasks = jest.fn();
-const mockResolveTask = jest.fn();
+const mockGetAllFeeds = jest.fn();
+const mockUpdateTask = jest.fn();
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
@@ -56,24 +56,13 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation((...args) => mockSearchGlossaryTermsPaginated(...args)),
 }));
 
-jest.mock('../../../rest/tasksAPI', () => ({
-  listTasks: jest.fn().mockImplementation((...args) => mockListTasks(...args)),
-  resolveTask: jest
+jest.mock('../../../rest/feedsAPI', () => ({
+  getAllFeeds: jest
     .fn()
-    .mockImplementation((...args) => mockResolveTask(...args)),
-  TaskCategory: {
-    Approval: 'Approval',
-  },
-  TaskEntityStatus: {
-    Open: 'Open',
-  },
-  TaskEntityType: {
-    RequestApproval: 'RequestApproval',
-  },
-  TaskResolutionType: {
-    Approved: 'Approved',
-    Rejected: 'Rejected',
-  },
+    .mockImplementation((...args) => mockGetAllFeeds(...args)),
+  updateTask: jest
+    .fn()
+    .mockImplementation((...args) => mockUpdateTask(...args)),
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
@@ -261,8 +250,8 @@ describe('Test GlossaryTermTab component', () => {
         },
       ],
     });
-    mockListTasks.mockResolvedValue({ data: [] });
-    mockResolveTask.mockResolvedValue({});
+    mockGetAllFeeds.mockResolvedValue({ data: [] });
+    mockUpdateTask.mockResolvedValue({});
 
     // Reset store to default state
     Object.assign(mockUseGlossaryStore, {
@@ -654,13 +643,15 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(mockListTasks).toHaveBeenCalledWith({
-          category: 'Approval',
-          fields: 'about,assignees',
-          limit: 100000,
-          status: 'Open',
-          type: 'RequestApproval',
-        });
+        expect(mockGetAllFeeds).toHaveBeenCalledWith(
+          expect.stringContaining('glossaryTerm'),
+          undefined,
+          'Task',
+          undefined,
+          'Open',
+          undefined,
+          100000
+        );
       });
     });
   });
@@ -708,14 +699,14 @@ describe('Test GlossaryTermTab component', () => {
     });
 
     it('should handle errors when fetching tasks', async () => {
-      mockListTasks.mockRejectedValue(new Error('Tasks error'));
+      mockGetAllFeeds.mockRejectedValue(new Error('Tasks error'));
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(mockListTasks).toHaveBeenCalled();
+        expect(mockGetAllFeeds).toHaveBeenCalled();
       });
     });
   });

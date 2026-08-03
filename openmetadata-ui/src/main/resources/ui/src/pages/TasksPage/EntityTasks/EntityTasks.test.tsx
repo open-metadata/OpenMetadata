@@ -52,14 +52,11 @@ const mockProps: EntityTasksProps = {
   onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('../../../utils/TaskFieldUtils', () => ({
+jest.mock('../../../utils/TasksUtils', () => ({
   getEntityTaskDetails: jest.fn().mockReturnValue({
     fqnPart: FqnPart.NestedColumn,
     entityField: EntityField.COLUMNS,
   }),
-}));
-
-jest.mock('../../../utils/TaskNavigationUtils', () => ({
   getRequestDescriptionPath: jest
     .fn()
     .mockImplementation(() => mockRequestDescription),

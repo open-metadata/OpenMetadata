@@ -30,7 +30,7 @@ import {
   prepareFeedLink,
 } from '../../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../../utils/RouterUtils';
-import { getTaskDetailPath } from '../../../../utils/TaskNavigationUtils';
+import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';

@@ -15,7 +15,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { forwardRef } from 'react';
 import { DescriptionTabs } from './DescriptionTabs';
 
-jest.mock('../../../utils/TaskPayloadUtils', () => ({
+jest.mock('../../../utils/TasksUtils', () => ({
   getDescriptionDiff: jest.fn().mockReturnValue([]),
 }));
 

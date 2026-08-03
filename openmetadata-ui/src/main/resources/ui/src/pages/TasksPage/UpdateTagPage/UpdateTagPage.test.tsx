@@ -13,21 +13,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
-import { createTask } from '../../../rest/tasksAPI';
+import { postThread } from '../../../rest/feedsAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateTag from './UpdateTagPage';
-
 const mockNavigate = jest.fn();
-const mockSuggestedTag = {
-  tagFQN: 'PII.Sensitive',
-  name: 'Sensitive',
-  description:
-    'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
-  source: 'Classification',
-  labelType: 'Manual',
-  state: 'Confirmed',
-};
-
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     search: 'field=columns&value="address.street_name"',
@@ -87,25 +76,19 @@ const mockTableData = {
     },
   ],
 };
-jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
-  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
+jest.mock('../../../utils/TasksUtils', () => ({
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
       setEntityData(mockTableData);
     }),
-  getBreadCrumbList: jest.fn().mockReturnValue([]),
-}));
-jest.mock('../../../utils/TaskAssigneeUtils', () => ({
   fetchOptions: jest.fn(),
-}));
-jest.mock('../../../utils/TaskFieldUtils', () => ({
-  ...jest.requireActual('../../../utils/TaskFieldUtils'),
+  getBreadCrumbList: jest.fn().mockReturnValue([]),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
-  getTaskFieldColumns: jest
+  getEntityColumnsDetails: jest
     .fn()
     .mockImplementation(() => mockTableData.columns),
-  getColumnObjectByPath: jest.fn().mockImplementation(() => ({
+  getColumnObject: jest.fn().mockImplementation(() => ({
     tags: mockTableData.columns[0].tags,
   })),
   getTaskEntityFQN: jest
@@ -113,23 +96,6 @@ jest.mock('../../../utils/TaskFieldUtils', () => ({
     .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
 }));
-
-const mockPayloadSchemaFields = jest
-  .fn()
-  .mockImplementation(({ payload, onChange }) => (
-    <button
-      data-testid="mock-tags-tabs"
-      onClick={() =>
-        onChange?.({
-          ...payload,
-          tagsToAdd: [mockSuggestedTag],
-          tagsToRemove: [],
-        })
-      }>
-      TagsTabs.component
-    </button>
-  ));
-
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)
 );
@@ -137,26 +103,16 @@ jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
-jest.mock('../../../rest/tasksAPI', () => ({
-  createTask: jest.fn().mockResolvedValue({}),
-  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
-  TaskEntityType: { TagUpdate: 'TagUpdate' },
-  TaskPriority: { Medium: 'Medium' },
-}));
-jest.mock('../../../rest/taskFormSchemasAPI', () => ({
-  resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
+jest.mock('../../../rest/feedsAPI', () => ({
+  postThread: jest.fn().mockResolvedValue({}),
 }));
 jest.mock(
   '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard',
   () =>
     jest.fn().mockImplementation(() => <div>ExploreSearchCard.component</div>)
 );
-jest.mock('../shared/TaskPayloadSchemaFields', () => ({
-  __esModule: true,
-  default: (props: {
-    payload: Record<string, unknown>;
-    onChange?: (payload: Record<string, unknown>) => void;
-  }) => mockPayloadSchemaFields(props),
+jest.mock('../shared/TagsTabs', () => ({
+  TagsTabs: jest.fn().mockImplementation(() => <div>TagsTabs.component</div>),
 }));
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
@@ -165,16 +121,6 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 
 describe('UpdateTagPage', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TaskFieldUtils'
-    );
-    getColumnObjectByPath.mockImplementation(() => ({
-      tags: mockTableData.columns[0].tags,
-    }));
-  });
-
   it('should render component', async () => {
     await act(async () => {
       render(
@@ -217,7 +163,7 @@ describe('UpdateTagPage', () => {
   });
 
   it('should submit form when submit button is clicked', async () => {
-    const mockCreateTask = createTask as jest.Mock;
+    const mockPostThread = postThread as jest.Mock;
     render(
       <UpdateTag
         pageTitle={i18n.t('label.update-entity', {
@@ -233,71 +179,27 @@ describe('UpdateTagPage', () => {
       fireEvent.click(submitBtn);
     });
 
-    const expectedTags = [
-      {
-        tagFQN: 'PII.Sensitive',
-        name: 'Sensitive',
-        description:
-          'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
-        source: 'Classification',
-        labelType: 'Manual',
-        state: 'Confirmed',
+    expect(mockPostThread).toHaveBeenCalledWith({
+      about:
+        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::tags>',
+      from: undefined,
+      message: 'Task message',
+      taskDetails: {
+        assignees: [
+          {
+            id: 'id1',
+            type: 'User',
+          },
+        ],
+        oldValue:
+          // eslint-disable-next-line max-len
+          '[{"tagFQN":"PII.Sensitive","name":"Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
+        suggestion:
+          // eslint-disable-next-line max-len
+          '[{"tagFQN":"PII.Sensitive","name":"Sensitive","description":"PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
+        type: 'UpdateTag',
       },
-    ];
-
-    expect(mockCreateTask).toHaveBeenCalledWith({
-      name: 'Task message',
-      category: 'MetadataUpdate',
-      type: 'TagUpdate',
-      priority: 'Medium',
-      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
-      assignees: ['sample_data'],
-      payload: {
-        fieldPath: 'columns."address.street_name"',
-        currentTags: expectedTags,
-        tagsToAdd: [],
-        tagsToRemove: [],
-        operation: 'Replace',
-      },
-    });
-  });
-
-  it('should allow adding suggested tags when the current field has no tags', async () => {
-    const mockCreateTask = createTask as jest.Mock;
-    const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TaskFieldUtils'
-    );
-    getColumnObjectByPath.mockImplementation(() => ({ tags: [] }));
-
-    render(
-      <UpdateTag
-        pageTitle={i18n.t('label.update-entity', {
-          entity: i18n.t('label.tag'),
-        })}
-      />,
-      { wrapper: MemoryRouter }
-    );
-
-    fireEvent.click(await screen.findByTestId('mock-tags-tabs'));
-
-    await act(async () => {
-      fireEvent.click(await screen.findByTestId('submit-tag-request'));
-    });
-
-    expect(mockCreateTask).toHaveBeenCalledWith({
-      name: 'Task message',
-      category: 'MetadataUpdate',
-      type: 'TagUpdate',
-      priority: 'Medium',
-      about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
-      assignees: ['sample_data'],
-      payload: {
-        fieldPath: 'columns."address.street_name"',
-        currentTags: [],
-        tagsToAdd: [mockSuggestedTag],
-        tagsToRemove: [],
-        operation: 'Replace',
-      },
+      type: 'Task',
     });
   });
 });

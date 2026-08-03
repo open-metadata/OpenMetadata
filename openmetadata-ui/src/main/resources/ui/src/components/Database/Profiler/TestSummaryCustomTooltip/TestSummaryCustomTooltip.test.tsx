@@ -71,7 +71,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
 }));
 
-jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+jest.mock('../../../../utils/TasksUtils', () => ({
   getTaskDetailPath: jest.fn(),
 }));
 
