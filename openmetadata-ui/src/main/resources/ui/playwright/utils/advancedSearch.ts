@@ -315,28 +315,42 @@ export const fillRule = async (
 
       await aggregateRes2;
 
-      const dropdown = page.locator('[role="listbox"]:visible');
-      const exactMatch = dropdown
-        .getByRole('option', {
-          name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
-        })
-        .first();
-      const partialMatch = dropdown
-        .getByRole('option')
-        .filter({
-          hasText: new RegExp(escapeRegex(searchData), 'i'),
-        })
-        .first();
+      // Scope the popup to THIS combobox via aria-controls.
+      // [role="listbox"]:visible is a global match that can race: the API
+      // response arrives before the popup renders, so count() returns 0 and
+      // we fall through to Enter which selects nothing. Waiting for
+      // aria-controls ensures the popup is truly open before querying it.
+      await expect(async () => {
+        const listboxId = await dropdownInput.getAttribute('aria-controls');
+        if (!listboxId) {
+          throw new Error('Value combobox popup not open (aria-controls missing)');
+        }
+        const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
+        const exactMatch = dropdown
+          .getByRole('option', {
+            name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
+          })
+          .first();
+        const partialMatch = dropdown
+          .getByRole('option')
+          .filter({
+            hasText: new RegExp(escapeRegex(searchData), 'i'),
+          })
+          .first();
 
-      if (await exactMatch.count()) {
-        await exactMatch.click();
-      } else if (await partialMatch.count()) {
-        await partialMatch.click();
-      } else {
-        // Some suggestion backends normalize or delay option text; Enter keeps
-        // the typed criteria and avoids waiting forever on an exact match.
-        await dropdownInput.press('Enter');
-      }
+        if (await exactMatch.count()) {
+          await exactMatch.click();
+        } else if (await partialMatch.count()) {
+          await partialMatch.click();
+        } else {
+          // Re-fill to re-trigger the API fetch on retry (e.g. if the popup
+          // closed between the aggregate response and the option click).
+          await dropdownInput.fill(searchData);
+          throw new Error(
+            `No option matching "${searchData}" in the listbox yet`
+          );
+        }
+      }).toPass({ timeout: 15000 });
     }
 
     await clickOutside(page);
