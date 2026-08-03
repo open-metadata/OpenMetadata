@@ -22,8 +22,8 @@ import {
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { EntityType } from '../support/entity/EntityDataClass.interface';
@@ -2718,7 +2718,6 @@ export const validateCopiedLinkFormat = ({
     isValid: true,
   };
 };
-
 
 /**
  * Types the DELETE confirmation only when the delete modal renders a
