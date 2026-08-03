@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Page, Request } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { performAdminLogin } from '../../utils/admin';
@@ -59,96 +60,32 @@ const ensureNoIntakeForm = async (
   }
 };
 
-const ensureCustomProperty = async (
-  api: APIRequestContext,
-  entityType: string,
-  propertyName: string,
-  propertyTypeName: string,
-  config?: unknown
-) => {
-  const typeRes = await api.get(
-    `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
-  );
-  expect(typeRes.status()).toBe(200);
-  const type = await typeRes.json();
-  const existing = (type.customProperties ?? []).find(
-    (cp: { name: string }) => cp.name === propertyName
-  );
-  if (existing) {
-    return;
-  }
-  const propertyTypeRes = await api.get(
-    `/api/v1/metadata/types/name/${propertyTypeName}`
-  );
-  expect(propertyTypeRes.status()).toBe(200);
-  const propertyType = await propertyTypeRes.json();
-  const put = await api.put(`/api/v1/metadata/types/${type.id}`, {
-    data: {
-      name: propertyName,
-      description: 'Custom property registered by IntakeForm playwright test',
-      propertyType: { id: propertyType.id, type: 'type' },
-      ...(config === undefined ? {} : { customPropertyConfig: { config } }),
-    },
+// Custom properties come from entity-data.setup.ts, which creates them
+// sequentially before any test runs. Specs must never PUT
+// /api/v1/metadata/types/{id} themselves: it is read-modify-write on a single
+// global row per entity type, so a concurrent writer silently drops one side's
+// property while the API still answers 200.
+const intakeFormProperty = (entityType: string, key: string) => {
+  const property =
+    EntityDataClass.intakeFormCustomProperties[entityType]?.[key];
+
+  expect(
+    property?.name,
+    `intake-form custom property "${key}" missing for "${entityType}" — entity-data setup did not run or its fixture is stale`
+  ).toBeTruthy();
+
+  return property.name;
+};
+
+/**
+ * A name map whose entries resolve on access, so the fixture data written by the
+ * entity-data-setup project is never read while this file is being collected.
+ */
+const intakeFormProperties = (entityType: string) =>
+  new Proxy({} as Record<string, string>, {
+    get: (_target, key) =>
+      typeof key === 'string' ? intakeFormProperty(entityType, key) : undefined,
   });
-  expect(put.status()).toBe(200);
-};
-
-const ensureEntityReferenceCustomProperty = async (
-  api: APIRequestContext,
-  entityType: string,
-  propertyName: string,
-  allowedTypes: string[]
-) =>
-  ensureCustomProperty(
-    api,
-    entityType,
-    propertyName,
-    'entityReference',
-    allowedTypes
-  );
-
-const ensureStringCustomProperty = async (
-  api: APIRequestContext,
-  entityType: string,
-  propertyName: string
-) => ensureCustomProperty(api, entityType, propertyName, 'string');
-
-const removeCustomProperty = async (
-  api: APIRequestContext,
-  entityType: string,
-  propertyName: string
-) => {
-  const typeResponse = await api.get(
-    `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
-  );
-  expect(typeResponse.status()).toBe(200);
-  const entityTypeDefinition = (await typeResponse.json()) as {
-    customProperties?: Array<{ name: string }>;
-    id: string;
-  };
-  const propertyIndex =
-    entityTypeDefinition.customProperties?.findIndex(
-      (property) => property.name === propertyName
-    ) ?? -1;
-
-  expect(propertyIndex).toBeGreaterThanOrEqual(0);
-
-  const response = await api.patch(
-    `/api/v1/metadata/types/${entityTypeDefinition.id}`,
-    {
-      data: [
-        {
-          op: 'test',
-          path: `/customProperties/${propertyIndex}/name`,
-          value: propertyName,
-        },
-        { op: 'remove', path: `/customProperties/${propertyIndex}` },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    }
-  );
-  expect(response.status()).toBe(200);
-};
 
 type IntakeRequiredField = {
   fieldKind: 'customProperty' | 'native';
@@ -238,39 +175,35 @@ test.describe(
     test.describe.configure({ mode: 'serial' });
 
     const domain = new Domain();
-    const stewardPropName = `pwStewardString${uuid()}`;
-    const audiencePropName = `pwAudienceString${uuid()}`;
-    const sourcePropName = `pwSourceString${uuid()}`;
-    const customPropertyNames = [
-      stewardPropName,
-      audiencePropName,
-      sourcePropName,
-    ] as const;
-    const domainCustomPropertyNames = [
-      `pwDomainStewardString${uuid()}`,
-      `pwDomainAudienceString${uuid()}`,
-      `pwDomainSourceString${uuid()}`,
-    ] as const;
-    const glossaryTermCustomPropertyNames = [
-      `pwTermStewardString${uuid()}`,
-      `pwTermAudienceString${uuid()}`,
-      `pwTermSourceString${uuid()}`,
-    ] as const;
+    const designerStringNames = (entityType: string) =>
+      [
+        intakeFormProperty(entityType, 'designerSteward'),
+        intakeFormProperty(entityType, 'designerAudience'),
+        intakeFormProperty(entityType, 'designerSource'),
+      ] as const;
+    // Resolved lazily: the fixture data is written by the entity-data-setup
+    // project, so it must not be read while this file is being collected.
     const designerScenarios = [
       {
-        customPropertyNames,
         entityType: DP_INTAKE_NAME,
         label: 'Data Product',
+        get customPropertyNames() {
+          return designerStringNames(DP_INTAKE_NAME);
+        },
       },
       {
-        customPropertyNames: domainCustomPropertyNames,
         entityType: DOMAIN_INTAKE_NAME,
         label: 'Domain',
+        get customPropertyNames() {
+          return designerStringNames(DOMAIN_INTAKE_NAME);
+        },
       },
       {
-        customPropertyNames: glossaryTermCustomPropertyNames,
         entityType: GLOSSARY_TERM_INTAKE_NAME,
         label: 'Glossary Term',
+        get customPropertyNames() {
+          return designerStringNames(GLOSSARY_TERM_INTAKE_NAME);
+        },
       },
     ];
 
@@ -279,15 +212,6 @@ test.describe(
       await ensureNoIntakeForm(apiContext, DP_INTAKE_NAME);
       await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
       await ensureNoIntakeForm(apiContext, GLOSSARY_TERM_INTAKE_NAME);
-      for (const scenario of designerScenarios) {
-        for (const propertyName of scenario.customPropertyNames) {
-          await ensureStringCustomProperty(
-            apiContext,
-            scenario.entityType,
-            propertyName
-          );
-        }
-      }
       await domain.create(apiContext);
       await afterAction();
     });
@@ -582,7 +506,9 @@ test.describe(
           await dpTab.click();
         }
         await page.getByRole('button', { name: /Add Data Product/i }).click();
-        await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
+        await expect(
+          page.locator('form[data-testid="add-domain"]')
+        ).toBeVisible();
       });
 
       await test.step('Type field is rendered and marked required by intake form', async () => {
@@ -722,7 +648,10 @@ test.describe(
             enabled: true,
             requiredFields: [
               {
-                fieldPath: `extension.${stewardPropName}`,
+                fieldPath: `extension.${intakeFormProperty(
+                  DP_INTAKE_NAME,
+                  'designerSteward'
+                )}`,
                 fieldLabel: 'Steward',
                 fieldKind: 'customProperty',
               },
@@ -742,13 +671,17 @@ test.describe(
         await dpTab.click();
       }
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
+      await expect(
+        page.locator('form[data-testid="add-domain"]')
+      ).toBeVisible();
 
       // The field is rendered; its required marker is widget-specific. The
       // enforcement is covered end-to-end by the entity-reference test below
       // (backend returns 400 when the field is missing).
       await expect(
-        page.getByTestId(`extension-${stewardPropName}`)
+        page.getByTestId(
+          `extension-${intakeFormProperty(DP_INTAKE_NAME, 'designerSteward')}`
+        )
       ).toBeVisible();
     });
 
@@ -873,77 +806,6 @@ test.describe(
       await expect(page.getByTestId('require-displayName')).toBeVisible();
       await expect(page.getByTestId('require-visibility')).toBeVisible();
     });
-
-    for (const scenario of designerScenarios) {
-      test(`deleting a required custom property prunes it from the ${scenario.label} intake form`, async ({
-        browser,
-        page,
-      }) => {
-        const [deletedProperty, , survivingProperty] =
-          scenario.customPropertyNames;
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        const createResponse = await apiContext.post(
-          '/api/v1/governance/intakeForms',
-          {
-            data: {
-              name: scenario.entityType,
-              entityType: scenario.entityType,
-              enabled: true,
-              formFields: [
-                {
-                  fieldKind: 'customProperty',
-                  fieldLabel: deletedProperty,
-                  fieldPath: `extension.${deletedProperty}`,
-                  required: true,
-                },
-                {
-                  fieldKind: 'customProperty',
-                  fieldLabel: survivingProperty,
-                  fieldPath: `extension.${survivingProperty}`,
-                  required: false,
-                },
-              ],
-            },
-          }
-        );
-        expect(createResponse.status()).toBe(201);
-
-        await removeCustomProperty(
-          apiContext,
-          scenario.entityType,
-          deletedProperty
-        );
-
-        const intakeFormResponse = await apiContext.get(
-          `/api/v1/governance/intakeForms/entityType/${scenario.entityType}`
-        );
-        expect(intakeFormResponse.status()).toBe(200);
-        const intakeForm = (await intakeFormResponse.json()) as {
-          formFields: Array<{ fieldPath: string; required: boolean }>;
-          requiredFields: Array<{ fieldPath: string }>;
-        };
-        expect(intakeForm.formFields).toEqual([
-          expect.objectContaining({
-            fieldPath: `extension.${survivingProperty}`,
-            required: false,
-          }),
-        ]);
-        expect(intakeForm.requiredFields).toHaveLength(0);
-        await afterAction();
-
-        await redirectToHomePage(page);
-        await page.goto(INTAKE_FORMS_URL);
-        await expect(
-          page.getByTestId(`row-${scenario.entityType}`)
-        ).toBeVisible({ timeout: 30000 });
-        await expect(
-          page.getByText(`extension.${deletedProperty}`)
-        ).toHaveCount(0);
-        await expect(
-          page.getByText(`extension.${survivingProperty}`)
-        ).toBeVisible();
-      });
-    }
   }
 );
 
@@ -958,17 +820,12 @@ test.describe(
   { tag: ['@Governance'] },
   () => {
     const domain = new Domain();
-    const stewardRefPropName = `pwStewardRef${uuid()}`;
+    const stewardRefPropName = () =>
+      intakeFormProperty(DP_INTAKE_NAME, 'stewardRef');
 
     test.beforeAll('Clean slate + fixtures', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await ensureNoIntakeForm(apiContext, DP_INTAKE_NAME);
-      await ensureEntityReferenceCustomProperty(
-        apiContext,
-        'dataProduct',
-        stewardRefPropName,
-        ['user']
-      );
       await domain.create(apiContext);
       await afterAction();
     });
@@ -995,7 +852,7 @@ test.describe(
             enabled: true,
             requiredFields: [
               {
-                fieldPath: `extension.${stewardRefPropName}`,
+                fieldPath: `extension.${stewardRefPropName()}`,
                 fieldLabel: 'Steward',
                 fieldKind: 'customProperty',
               },
@@ -1023,7 +880,9 @@ test.describe(
           r.request().method() === 'GET'
       );
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
+      await expect(
+        page.locator('form[data-testid="add-domain"]')
+      ).toBeVisible();
       await intakeFetch;
 
       const dpName = `intake-ref-e2e-${uuid()}`;
@@ -1070,7 +929,7 @@ test.describe(
         const body = await response.json();
         expect(body.name).toBe(dpName);
         expect(body.extension).toBeDefined();
-        const ref = body.extension[stewardRefPropName];
+        const ref = body.extension[stewardRefPropName()];
         expect(ref).toBeDefined();
         // Must be a single object (not an array) with id + type=user
         expect(Array.isArray(ref)).toBe(false);
@@ -1098,36 +957,8 @@ test.describe(
     const parentDomain = new Domain();
     const glossary = new Glossary();
     const referenceTerm = new GlossaryTerm(glossary);
-    const suffix = uuid();
-    const dataProductProperties = {
-      date: `pwDpDate${suffix}`,
-      dateTime: `pwDpDateTime${suffix}`,
-      duration: `pwDpDuration${suffix}`,
-      email: `pwDpEmail${suffix}`,
-      enum: `pwDpEnum${suffix}`,
-      enumMulti: `pwDpEnumMulti${suffix}`,
-      hyperlink: `pwDpLink${suffix}`,
-      integer: `pwDpInteger${suffix}`,
-      markdown: `pwDpMarkdown${suffix}`,
-      number: `pwDpNumber${suffix}`,
-      reference: `pwDpTermRef${suffix}`,
-      referenceList: `pwDpTermRefList${suffix}`,
-      sqlQuery: `pwDpSqlQuery${suffix}`,
-      string: `pwDpString${suffix}`,
-      table: `pwDpTable${suffix}`,
-      time: `pwDpTime${suffix}`,
-      timeInterval: `pwDpTimeInterval${suffix}`,
-      timestamp: `pwDpTimestamp${suffix}`,
-    };
-    const domainProperties = {
-      enum: `pwDomainEnum${suffix}`,
-      hyperlink: `pwDomainLink${suffix}`,
-      markdown: `pwDomainMarkdown${suffix}`,
-      reference: `pwDomainTermRef${suffix}`,
-      sqlQuery: `pwDomainSqlQuery${suffix}`,
-      string: `pwDomainString${suffix}`,
-      table: `pwDomainTable${suffix}`,
-    };
+    const dataProductProperties = intakeFormProperties(DP_INTAKE_NAME);
+    const domainProperties = intakeFormProperties(DOMAIN_INTAKE_NAME);
 
     test.beforeAll(
       'Create custom properties and references',
@@ -1141,163 +972,6 @@ test.describe(
         await glossary.create(apiContext);
         await referenceTerm.create(apiContext);
 
-        await ensureEntityReferenceCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.reference,
-          ['glossaryTerm']
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.hyperlink,
-          'hyperlink-cp'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.integer,
-          'integer'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.number,
-          'number'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.date,
-          'date-cp',
-          'yyyy-MM-dd'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.dateTime,
-          'dateTime-cp',
-          'yyyy-MM-dd HH:mm:ss'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.time,
-          'time-cp',
-          'HH:mm:ss'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.timestamp,
-          'timestamp'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.referenceList,
-          'entityReferenceList',
-          ['glossaryTerm']
-        );
-        await ensureStringCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.string
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.email,
-          'email'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.duration,
-          'duration'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.markdown,
-          'markdown'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.enum,
-          'enum',
-          { values: ['Low', 'Medium', 'High'], multiSelect: false }
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.enumMulti,
-          'enum',
-          { values: ['Tag1', 'Tag2', 'Tag3'], multiSelect: true }
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.sqlQuery,
-          'sqlQuery'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.table,
-          'table-cp',
-          { columns: ['Name', 'Value'] }
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.timeInterval,
-          'timeInterval'
-        );
-        await ensureEntityReferenceCustomProperty(
-          apiContext,
-          DOMAIN_INTAKE_NAME,
-          domainProperties.reference,
-          ['glossaryTerm']
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DOMAIN_INTAKE_NAME,
-          domainProperties.hyperlink,
-          'hyperlink-cp'
-        );
-        await ensureStringCustomProperty(
-          apiContext,
-          DOMAIN_INTAKE_NAME,
-          domainProperties.string
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DOMAIN_INTAKE_NAME,
-          domainProperties.markdown,
-          'markdown'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DOMAIN_INTAKE_NAME,
-          domainProperties.enum,
-          'enum',
-          { values: ['Low', 'Medium', 'High'], multiSelect: false }
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DOMAIN_INTAKE_NAME,
-          domainProperties.sqlQuery,
-          'sqlQuery'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DOMAIN_INTAKE_NAME,
-          domainProperties.table,
-          'table-cp',
-          { columns: ['Name', 'Value'] }
-        );
         await afterAction();
       }
     );
@@ -1402,7 +1076,9 @@ test.describe(
       }).toPass({ timeout: 60000 });
       await dataProductsMenuItem.click();
       await intakeFetch;
-      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
+      await expect(
+        page.locator('form[data-testid="add-domain"]')
+      ).toBeVisible();
 
       const customPropertiesSection = page.getByTestId(
         'custom-properties-section'
@@ -1652,7 +1328,9 @@ test.describe(
       );
       await page.locator('button[data-testid="add-domain"]').click();
       await intakeFetch2;
-      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
+      await expect(
+        page.locator('form[data-testid="add-domain"]')
+      ).toBeVisible();
 
       const domainSection = page.getByTestId('custom-properties-section');
       await expect(domainSection).toBeVisible();
@@ -1667,14 +1345,23 @@ test.describe(
         page.getByTestId(`extension-${domainProperties.enum}`)
       ).toBeVisible();
       await expect(
-        page.getByTestId(`extension-${domainProperties.sqlQuery}`)
-             .locator('.CodeMirror')
+        page
+          .getByTestId(`extension-${domainProperties.sqlQuery}`)
+          .locator('.CodeMirror')
       ).toBeVisible();
       await expect(
         page.getByTestId(`extension-${domainProperties.table}`)
       ).toBeVisible();
 
-      for (const badge of ['STRING', 'MARKDOWN', 'ENUM', 'SQLQUERY', 'TABLE', 'HYPERLINK', 'ENTITYREFERENCE']) {
+      for (const badge of [
+        'STRING',
+        'MARKDOWN',
+        'ENUM',
+        'SQLQUERY',
+        'TABLE',
+        'HYPERLINK',
+        'ENTITYREFERENCE',
+      ]) {
         await expect(
           domainSection
             .getByTestId('custom-property-type-badge')
@@ -1719,7 +1406,9 @@ test.describe(
       );
       await page.locator('button[data-testid="add-domain"]').click();
       await intakeFetch;
-      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
+      await expect(
+        page.locator('form[data-testid="add-domain"]')
+      ).toBeVisible();
       await expect(page.getByTestId('custom-properties-section')).toBeVisible();
       await expect(
         page
@@ -1794,15 +1483,7 @@ test.describe(
     test.describe.configure({ mode: 'serial' });
 
     const glossary = new Glossary();
-    const suffix = uuid();
-    const properties = {
-      enum: `pwTermEnum${suffix}`,
-      hyperlink: `pwTermLink${suffix}`,
-      markdown: `pwTermMarkdown${suffix}`,
-      sqlQuery: `pwTermSqlQuery${suffix}`,
-      string: `pwTermString${suffix}`,
-      table: `pwTermTable${suffix}`,
-    };
+    const properties = intakeFormProperties(GLOSSARY_TERM_INTAKE_NAME);
 
     test.beforeAll(
       'Create glossary fixtures and custom properties',
@@ -1811,43 +1492,6 @@ test.describe(
 
         await ensureNoIntakeForm(apiContext, GLOSSARY_TERM_INTAKE_NAME);
         await glossary.create(apiContext);
-        await ensureStringCustomProperty(
-          apiContext,
-          GLOSSARY_TERM_INTAKE_NAME,
-          properties.string
-        );
-        await ensureCustomProperty(
-          apiContext,
-          GLOSSARY_TERM_INTAKE_NAME,
-          properties.hyperlink,
-          'hyperlink-cp'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          GLOSSARY_TERM_INTAKE_NAME,
-          properties.markdown,
-          'markdown'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          GLOSSARY_TERM_INTAKE_NAME,
-          properties.enum,
-          'enum',
-          { values: ['Draft', 'Active', 'Deprecated'], multiSelect: false }
-        );
-        await ensureCustomProperty(
-          apiContext,
-          GLOSSARY_TERM_INTAKE_NAME,
-          properties.sqlQuery,
-          'sqlQuery'
-        );
-        await ensureCustomProperty(
-          apiContext,
-          GLOSSARY_TERM_INTAKE_NAME,
-          properties.table,
-          'table-cp',
-          { columns: ['Name', 'Value'] }
-        );
         await afterAction();
       }
     );
@@ -1923,21 +1567,27 @@ test.describe(
       await expect(
         page.getByTestId(`extension-${properties.hyperlink}-url`)
       ).toBeVisible();
-      await expect(
-        cpSection.locator('.om-block-editor').first()
-      ).toBeVisible();
+      await expect(cpSection.locator('.om-block-editor').first()).toBeVisible();
       await expect(
         page.getByTestId(`extension-${properties.enum}`)
       ).toBeVisible();
       await expect(
-        page.getByTestId(`extension-${properties.sqlQuery}`)
-             .locator('.CodeMirror')
+        page
+          .getByTestId(`extension-${properties.sqlQuery}`)
+          .locator('.CodeMirror')
       ).toBeVisible();
       await expect(
         page.getByTestId(`extension-${properties.table}`)
       ).toBeVisible();
 
-      for (const badge of ['STRING', 'HYPERLINK', 'MARKDOWN', 'ENUM', 'SQLQUERY', 'TABLE']) {
+      for (const badge of [
+        'STRING',
+        'HYPERLINK',
+        'MARKDOWN',
+        'ENUM',
+        'SQLQUERY',
+        'TABLE',
+      ]) {
         await expect(
           cpSection
             .getByTestId('custom-property-type-badge')
@@ -2079,6 +1729,276 @@ test.describe(
       await expect(modal.getByTestId('name')).toHaveValue(termName);
       await expect(page.getByTestId(stringFieldId)).toHaveCount(0);
       await expect(page.getByTestId(hyperlinkUrlId)).toHaveCount(0);
+    });
+  }
+);
+
+// Merged from IntakeFormCustomPropertyFields.spec.ts. It has to live in this
+// file: intake forms are singleton-per-entityType and each spec's
+// ensureNoIntakeForm deletes by entityType, so running it as a separate file
+// let two workers create and delete each other's `domain` form. The file-level
+// mode: 'serial' above is what keeps them apart.
+test.describe(
+  'IntakeForm custom-property fields render and serialize correctly on the create form',
+  { tag: ['@Governance'] },
+  () => {
+    test.describe.configure({ mode: 'serial' });
+
+    const fieldsGlossary = new Glossary();
+    const fieldsGlossaryTerm = new GlossaryTerm(fieldsGlossary);
+    const ID = uuid();
+    const CP = {
+      get str() {
+        return intakeFormProperty(DOMAIN_INTAKE_NAME, 'string');
+      },
+      get table() {
+        return intakeFormProperty(DOMAIN_INTAKE_NAME, 'fieldsTable');
+      },
+      get link() {
+        return intakeFormProperty(DOMAIN_INTAKE_NAME, 'hyperlink');
+      },
+      get interval() {
+        return intakeFormProperty(DOMAIN_INTAKE_NAME, 'timeInterval');
+      },
+      get ref() {
+        return intakeFormProperty(DOMAIN_INTAKE_NAME, 'reference');
+      },
+    };
+
+    const createCustomPropertyFieldsIntakeForm = async (
+      api: APIRequestContext,
+      entityType: string,
+      requiredPropertyNames: string[]
+    ) => {
+      const response = await api.post('/api/v1/governance/intakeForms', {
+        data: {
+          name: entityType,
+          entityType,
+          enabled: true,
+          formFields: requiredPropertyNames.map((name) => ({
+            fieldPath: `extension.${name}`,
+            fieldLabel: name,
+            fieldKind: 'customProperty',
+            required: true,
+          })),
+        },
+      });
+
+      expect(response.status()).toBe(201);
+    };
+
+    // Opens the Add-Domain drawer and waits for both the form heading and the
+    // intake-form API call to resolve before returning. This ensures the
+    // custom-property extension section is ready to interact with.
+    const openCreateDomainForm = async (page: Page) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+
+      const intakeFetch = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/governance/intakeForms/entityType/') &&
+          response.request().method() === 'GET'
+      );
+
+      await page.getByTestId('add-domain').click();
+      await page.getByTestId('form-heading').waitFor({ timeout: 10000 });
+      await intakeFetch;
+    };
+
+    test.beforeAll(
+      'Set up custom properties + intake form',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        await fieldsGlossary.create(apiContext);
+        await fieldsGlossaryTerm.create(apiContext);
+
+        await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+
+        await createCustomPropertyFieldsIntakeForm(
+          apiContext,
+          DOMAIN_INTAKE_NAME,
+          [CP.str, CP.table, CP.link, CP.interval, CP.ref]
+        );
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Tear down', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+      await fieldsGlossaryTerm.delete(apiContext);
+      await fieldsGlossary.delete(apiContext);
+      await afterAction();
+    });
+
+    test('required custom properties show the asterisk and block an empty submit', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await openCreateDomainForm(page);
+
+      // Wait for the custom-properties section to be rendered before touching
+      // extension fields — it appears only after both the intake form and the
+      // custom property API calls resolve.
+      await expect(page.getByTestId('custom-properties-section')).toBeVisible({
+        timeout: 30000,
+      });
+
+      // Required marker is on the labelled Form.Item for every required field,
+      // including the split-layout hyperlink and timeInterval fields.
+      await expect(
+        page.locator('.ant-form-item-required', { hasText: CP.link })
+      ).toBeVisible();
+      await expect(
+        page.locator('.ant-form-item-required', { hasText: CP.interval })
+      ).toBeVisible();
+
+      // A submit with required custom properties empty must NOT reach the API.
+      let postFired = false;
+      const listener = (r: import('@playwright/test').Response) => {
+        if (
+          r.url().endsWith('/api/v1/domains') &&
+          r.request().method() === 'POST'
+        ) {
+          postFired = true;
+        }
+      };
+      page.on('response', listener);
+
+      await extensionInput(page, `extension-${CP.str}`).fill(`d ${ID}`);
+      await page.locator('#root\\/name').fill(`pwDomainNeg${ID}`);
+      await page.getByRole('button', { name: 'Save' }).click();
+
+      await expect(async () => {
+        expect(postFired).toBe(false);
+      }).toPass({ intervals: [300], timeout: 4000 });
+      page.off('response', listener);
+    });
+
+    test('all custom-property widgets fill and the submit payload preserves every value', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const name = `pwDomainPos${ID}`;
+      const tableId = '42';
+      const tableValue = 'answer';
+      const linkUrl = 'https://collate.io';
+      const startVal = '10';
+      const endVal = '20';
+      const strVal = `hello ${ID}`;
+
+      await openCreateDomainForm(page);
+
+      // Wait for the custom-properties section to be rendered before touching
+      // extension fields — it appears only after both the intake form and the
+      // custom property API calls resolve.
+      await expect(page.getByTestId('custom-properties-section')).toBeVisible({
+        timeout: 30000,
+      });
+
+      await page.locator('#root\\/name').fill(name);
+      await page.locator('#root\\/displayName').fill(name);
+      await page.locator(descriptionBox).fill('intake field test');
+
+      await page.getByRole('combobox', { name: 'Domain Type' }).click();
+      await page.getByRole('option', { name: 'Aggregate' }).click();
+
+      // string
+      await extensionInput(page, `extension-${CP.str}`).fill(strVal);
+
+      // hyperlink (url + display text)
+      await extensionInput(page, `extension-${CP.link}-url`).fill(linkUrl);
+      await extensionInput(page, `extension-${CP.link}-displayText`).fill(
+        'Collate'
+      );
+
+      // time interval (start + end)
+      await extensionInput(page, `extension-${CP.interval}-start`).fill(
+        startVal
+      );
+      await extensionInput(page, `extension-${CP.interval}-end`).fill(endVal);
+
+      // entity reference — use the search-response-aware helper so we don't
+      // click the option before the async search API call has resolved.
+      await selectExtensionReference({
+        page,
+        testId: `extension-${CP.ref}`,
+        query: fieldsGlossaryTerm.data.name,
+        optionText: fieldsGlossaryTerm.data.displayName,
+      });
+
+      const table = page.getByTestId(`extension-${CP.table}`);
+      await table.getByRole('button', { name: /add\s*row/i }).click();
+
+      const idCell = table.locator('.rdg-cell-id').first();
+      await idCell.dblclick();
+      await page.keyboard.type(tableId);
+      await page.keyboard.press('Enter');
+
+      const valueCell = table.locator('.rdg-cell-value').first();
+      await valueCell.dblclick();
+      await page.keyboard.type(tableValue);
+      await page.keyboard.press('Enter');
+
+      await expect(idCell).toContainText(tableId);
+      await expect(valueCell).toContainText(tableValue);
+
+      // Capture the create request and its response together.
+      const [request, response] = await Promise.all([
+        page.waitForRequest(
+          (r) => r.url().endsWith('/api/v1/domains') && r.method() === 'POST'
+        ),
+        page.waitForResponse(
+          (r) =>
+            r.url().endsWith('/api/v1/domains') &&
+            r.request().method() === 'POST'
+        ),
+        page.getByRole('button', { name: 'Save' }).click(),
+      ]);
+
+      // Server accepted it (required validation satisfied, no dropped values).
+      expect(response.status()).toBe(201);
+
+      const ext = request.postDataJSON().extension;
+
+      expect(ext[CP.str]).toBe(strVal);
+
+      // table: id column preserved, and NO stray keys beyond the config columns
+      expect(ext[CP.table].rows).toHaveLength(1);
+      expect(ext[CP.table].rows[0]).toEqual({ id: tableId, value: tableValue });
+      expect(Object.keys(ext[CP.table].rows[0]).sort()).toEqual([
+        'id',
+        'value',
+      ]);
+
+      // hyperlink object
+      expect(ext[CP.link].url).toBe(linkUrl);
+
+      // time interval serialized to numbers
+      expect(ext[CP.interval]).toEqual({
+        start: Number(startVal),
+        end: Number(endVal),
+      });
+
+      // single entity reference present (not dropped)
+      expect(ext[CP.ref]).toMatchObject({ type: 'glossaryTerm' });
+      expect(ext[CP.ref].id).toBeTruthy();
+
+      // Clean up the created domain.
+      const { apiContext, afterAction } = await performAdminLogin(
+        page.context().browser()!
+      );
+      await apiContext.delete(
+        `/api/v1/domains/name/${name}?recursive=true&hardDelete=true`
+      );
+      await afterAction();
     });
   }
 );

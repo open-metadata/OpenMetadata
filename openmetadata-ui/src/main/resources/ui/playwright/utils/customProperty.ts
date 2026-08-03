@@ -77,24 +77,26 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
+  // The grid strips every non-[a-zA-Z0-9-_] character from the column name to
+  // build the cell class (EditTableTypePropertyModal.tsx), so 'Sr No' renders as
+  // `rdg-cell-SrNo`. Interpolating the raw name yields invalid CSS.
+  const cellClass = `rdg-cell-${columnName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+
+  await page.locator(`div.${cellClass}`).last().dblclick();
 
   const isInputVisible = await page
-    .locator(`div.rdg-editor-container.rdg-cell-${columnName}`)
+    .locator(`div.rdg-editor-container.${cellClass}`)
     .isVisible();
 
   if (!isInputVisible) {
-    await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
+    await page.locator(`div.${cellClass}`).last().dblclick();
   }
   await page
     .getByTestId('edit-table-type-property-modal')
     .getByRole('textbox')
     .fill(text);
 
-  await page
-    .locator(`div.rdg-cell-${columnName}`)
-    .last()
-    .press('Enter', { delay: 100 });
+  await page.locator(`div.${cellClass}`).last().press('Enter', { delay: 100 });
 };
 
 export const setValueForProperty = async (data: {
@@ -477,6 +479,112 @@ export const getPropertyValues = (
         value: '',
         newValue: '',
       };
+  }
+};
+
+export const createStringCustomProperty = async (
+  apiContext: APIRequestContext,
+  entityTypeName: string,
+  propertyName: string
+) => {
+  const propertyTypeResponse = await apiContext.get(
+    '/api/v1/metadata/types/name/string'
+  );
+
+  expect(propertyTypeResponse.status()).toBe(200);
+
+  const propertyType = await propertyTypeResponse.json();
+  const typeResponse = await apiContext.get(
+    `/api/v1/metadata/types/name/${entityTypeName}?fields=customProperties`
+  );
+
+  expect(typeResponse.status()).toBe(200);
+
+  const entityType = await typeResponse.json();
+  const response = await apiContext.put(
+    `/api/v1/metadata/types/${entityType.id}`,
+    {
+      data: {
+        name: propertyName,
+        description: propertyName,
+        propertyType: { id: propertyType.id, type: 'type' },
+      },
+    }
+  );
+
+  expect(response.status()).toBe(200);
+};
+
+export const removeCustomPropertyByApi = async (
+  apiContext: APIRequestContext,
+  entityTypeName: string,
+  propertyName: string
+) => {
+  const typeResponse = await apiContext.get(
+    `/api/v1/metadata/types/name/${entityTypeName}?fields=customProperties`
+  );
+
+  expect(typeResponse.status()).toBe(200);
+
+  const entityType = (await typeResponse.json()) as {
+    customProperties?: { name: string }[];
+    id: string;
+  };
+  const propertyIndex =
+    entityType.customProperties?.findIndex(
+      (property) => property.name === propertyName
+    ) ?? -1;
+
+  // Absent is the desired end state, so treat it as success. That lets this be
+  // called from cleanup without needing to know whether the test got far enough
+  // to create the property.
+  if (propertyIndex === -1) {
+    return;
+  }
+
+  const response = await apiContext.patch(
+    `/api/v1/metadata/types/${entityType.id}`,
+    {
+      data: [
+        {
+          op: 'test',
+          path: `/customProperties/${propertyIndex}/name`,
+          value: propertyName,
+        },
+        { op: 'remove', path: `/customProperties/${propertyIndex}` },
+      ],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    }
+  );
+
+  expect(response.status()).toBe(200);
+};
+
+export const removeIntakeForm = async (
+  apiContext: APIRequestContext,
+  entityTypeName: string
+) => {
+  const listResponse = await apiContext.get(
+    '/api/v1/governance/intakeForms?limit=100&include=all'
+  );
+
+  if (listResponse.status() !== 200) {
+    return;
+  }
+
+  const forms = ((await listResponse.json()).data ?? []) as {
+    entityType: string;
+    id: string;
+  }[];
+
+  for (const form of forms.filter(
+    (item) => item.entityType === entityTypeName
+  )) {
+    const response = await apiContext.delete(
+      `/api/v1/governance/intakeForms/${form.id}?hardDelete=true`
+    );
+
+    expect([200, 204, 404]).toContain(response.status());
   }
 };
 
