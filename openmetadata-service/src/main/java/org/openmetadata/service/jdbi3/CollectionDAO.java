@@ -2397,14 +2397,21 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :fromId "
-                + "OR fromId = :fromId) AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :fromId) "
                 + "ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE (json->'pipeline'->>'id' = :fromId OR fromId = :fromId) AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :fromId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, json FROM entity_relationship "
+                + "WHERE fromId = :fromId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :fromId "
                 + "ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -2636,14 +2643,21 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId "
-                + "OR toId = :toId) AND relation = :relation "
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) "
                 + "ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE (json->'pipeline'->>'id' = :toId OR toId = :toId) AND relation = :relation "
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "UNION ALL "
+                + "SELECT fromId, fromEntity, json FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId "
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -2672,15 +2686,23 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId "
-                + "OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE json->>'$.pipeline.id' = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source "
+                + "AND NOT (json->>'$.pipeline.id' <=> :toId) ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (json->'pipeline'->>'id' =:toId OR toId = :toId) AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "WHERE json->'pipeline'->>'id' = :toId AND relation = :relation "
+                + "AND json->>'source' = :source "
+                + "UNION ALL "
+                + "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
+                + "WHERE toId = :toId AND relation = :relation AND json->>'source' = :source "
+                + "AND json->'pipeline'->>'id' IS DISTINCT FROM :toId ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> findLineageBySourcePipeline(
@@ -2911,7 +2933,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId "
+                + "WHERE (json->>'$.pipeline.id' = :toId "
                 + "OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source",
         connectionType = MYSQL)
