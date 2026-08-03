@@ -136,6 +136,7 @@ public class JobRecoveryManager {
                 IndexJobStatus.INITIALIZING,
                 IndexJobStatus.READY,
                 IndexJobStatus.RUNNING,
+                IndexJobStatus.PROMOTING,
                 IndexJobStatus.STOPPING),
             1);
 
@@ -165,6 +166,7 @@ public class JobRecoveryManager {
                     IndexJobStatus.INITIALIZING,
                     IndexJobStatus.READY,
                     IndexJobStatus.RUNNING,
+                    IndexJobStatus.PROMOTING,
                     IndexJobStatus.STOPPING),
                 1);
 
@@ -227,6 +229,7 @@ public class JobRecoveryManager {
                 IndexJobStatus.INITIALIZING,
                 IndexJobStatus.READY,
                 IndexJobStatus.RUNNING,
+                IndexJobStatus.PROMOTING,
                 IndexJobStatus.STOPPING),
             10);
 
@@ -298,8 +301,8 @@ public class JobRecoveryManager {
         resultBuilder.incrementRecovered();
         LOG.info("Job {} has been marked for recovery (will resume processing)", job.getId());
       }
-    } else if (isFinishedButNotFinalized(job)) {
-      finalizeCompletedJob(job, resultBuilder);
+    } else if (hasFinishedProcessing(job)) {
+      terminalizeUnpromotedJob(job, resultBuilder);
     } else {
       failJob(job, "Job abandoned due to server crash or shutdown");
       resultBuilder.incrementFailed();
@@ -308,14 +311,14 @@ public class JobRecoveryManager {
   }
 
   /**
-   * True when an orphaned job already processed every partition to a terminal state but was never
-   * flipped out of RUNNING — e.g. the coordinator exited between the last partition completing and
-   * the completion check landing. Such a job finished its work; it must be finalized to its real
-   * terminal status, not failed as an abandoned crash. Requires at least one partition so a RUNNING
-   * job that never created any is not mistaken for finished.
+   * True when an orphaned job finished processing every partition but is not yet terminal — either
+   * left RUNNING (the coordinator exited between the last partition completing and the completion
+   * check) or stuck PROMOTING (the coordinator died during the promotion sweep). Such a job did its
+   * work and must be terminalized, not failed as an abandoned crash. A RUNNING job must have at least
+   * one partition, so one that never created any is not mistaken for finished.
    */
-  private boolean isFinishedButNotFinalized(SearchIndexJob job) {
-    boolean finished = false;
+  private boolean hasFinishedProcessing(SearchIndexJob job) {
+    boolean finished = job.getStatus() == IndexJobStatus.PROMOTING;
     if (job.getStatus() == IndexJobStatus.RUNNING) {
       List<SearchIndexPartition> partitions = coordinator.getPartitions(job.getId(), null);
       finished =
@@ -330,31 +333,31 @@ public class JobRecoveryManager {
   }
 
   /**
-   * Finalize a job that finished all partitions but was left RUNNING: take the reindex lock and let
-   * the coordinator's completion check flip it to its real terminal status (COMPLETED, or
-   * COMPLETED_WITH_ERRORS when some partitions failed) — the same transition the coordinator makes
-   * on the happy path — then release the lock. A fully-processed job is never marked FAILED.
+   * Terminalize an orphaned job that finished processing but whose coordinator died before promotion
+   * was confirmed. Takes the reindex lock, drives the job through the completion check (RUNNING ->
+   * PROMOTING) and then marks it COMPLETED_WITH_ERRORS: promotion could not be verified from cold
+   * recovery, so the staged indexes may not have been swapped onto their aliases and the run is not a
+   * clean rebuild. This never marks a fully-processed job FAILED and it unblocks future reindexes.
    *
-   * <p>This flips status only; it does not re-run index promotion. On the happy path the coordinator
-   * promotes each entity before the job can be orphaned. If a genuine crash lands between the last
-   * completion and promotion, the recovery point is to rebuild the context from {@code
-   * job.getStagedIndexMapping()} and run the finalizer before completing.
+   * <p>It does not itself re-run promotion; recovering the staged indexes is a follow-up (rebuild the
+   * context from {@code job.getStagedIndexMapping()} and run the finalizer).
    */
-  private void finalizeCompletedJob(SearchIndexJob job, RecoveryResult.Builder resultBuilder) {
+  private void terminalizeUnpromotedJob(SearchIndexJob job, RecoveryResult.Builder resultBuilder) {
     if (coordinator.tryAcquireReindexLock(job.getId())) {
       try {
-        coordinator.checkAndUpdateJobCompletion(job.getId());
+        coordinator.markOrphanedJobCompletedWithErrors(job.getId());
         resultBuilder.incrementRecovered();
         LOG.info(
-            "Job {} finished all partitions but was left RUNNING; finalized to its terminal status "
-                + "instead of failing it as abandoned",
+            "Job {} finished processing but its coordinator died before promotion completed; "
+                + "terminalized as COMPLETED_WITH_ERRORS (staged indexes may be stale - re-run "
+                + "reindex to refresh) instead of failing it as abandoned",
             job.getId());
       } finally {
         coordinator.releaseReindexLock(job.getId());
       }
     } else {
       LOG.warn(
-          "Could not acquire lock to finalize completed job {}; another server may hold it",
+          "Could not acquire lock to finalize orphaned job {}; another server may hold it",
           job.getId());
     }
   }

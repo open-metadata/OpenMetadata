@@ -845,7 +845,7 @@ public class DistributedSearchIndexExecutor {
       coordinator.forceCompleteProcessingPartitions(jobId);
     } else if (drained
         && !coordinator.getPartitions(jobId, PartitionStatus.PROCESSING).isEmpty()
-        && !awaitJobTerminal(jobId, participantDrainTimeoutMs)) {
+        && !awaitProcessingComplete(jobId, participantDrainTimeoutMs)) {
       LOG.warn(
           "Job {} still has PROCESSING partitions after waiting {}ms for participant servers to "
               + "finish; leaving them in-flight rather than cancelling, so entities are promoted "
@@ -857,14 +857,14 @@ public class DistributedSearchIndexExecutor {
   }
 
   /**
-   * Waits for the job to reach a terminal state up to {@code timeoutMs}, reconciling entity
-   * completion each cycle so partitions finished by participant servers are promoted as they land.
-   * Returns whether the job became terminal within the wait.
+   * Waits up to {@code timeoutMs} for the job's partitions to all finish processing (the job reaching
+   * PROMOTING or a terminal state), reconciling entity completion each cycle so partitions finished
+   * by participant servers are promoted as they land. Returns whether processing completed in time.
    */
-  private boolean awaitJobTerminal(UUID jobId, long timeoutMs) {
+  private boolean awaitProcessingComplete(UUID jobId, long timeoutMs) {
     long deadline = System.currentTimeMillis() + timeoutMs;
-    boolean terminal = isJobTerminal(jobId);
-    while (!terminal && !Thread.currentThread().isInterrupted()) {
+    boolean processingComplete = isJobProcessingComplete(jobId);
+    while (!processingComplete && !Thread.currentThread().isInterrupted()) {
       if (entityTracker != null) {
         entityTracker.reconcileFromDatabase(coordinator.getPartitions(jobId, null));
       }
@@ -872,14 +872,14 @@ public class DistributedSearchIndexExecutor {
         break;
       }
       sleepQuietly(Math.min(STALE_CHECK_INTERVAL_MS, 2000));
-      terminal = isJobTerminal(jobId);
+      processingComplete = isJobProcessingComplete(jobId);
     }
-    return terminal;
+    return processingComplete;
   }
 
-  private boolean isJobTerminal(UUID jobId) {
+  private boolean isJobProcessingComplete(UUID jobId) {
     SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
-    return job == null || job.isTerminal();
+    return job == null || job.isProcessingComplete();
   }
 
   private void sleepQuietly(long millis) {
@@ -1187,6 +1187,14 @@ public class DistributedSearchIndexExecutor {
    */
   public EntityCompletionTracker getEntityTracker() {
     return entityTracker;
+  }
+
+  /**
+   * Flip the job from PROMOTING to its terminal status after the strategy's promotion sweep. Thin
+   * delegate to the coordinator so the strategy does not reach past the executor.
+   */
+  public void markPromotionComplete(UUID jobId, boolean allPromoted) {
+    coordinator.markPromotionComplete(jobId, allPromoted);
   }
 
   /**
