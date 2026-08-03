@@ -1969,8 +1969,7 @@ test.describe('Glossary tests', () => {
   });
 
   // Need to fix the workflow from BE end, as it constantly failing in the AUT's
-  // eslint-disable-next-line playwright/no-skipped-test -- skipped: backend workflow issue
-  test.skip('Term should stay approved when changes made by reviewer', async ({
+  test('Term should stay approved when changes made by reviewer', async ({
     browser,
   }) => {
     test.slow(true);
