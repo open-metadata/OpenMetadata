@@ -18,9 +18,10 @@
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
     <node.heap.size>6144</node.heap.size>
-    <!-- Overridden by the skip-ui-build profile below when the vite app dist
-         already exists (e.g. restored from actions/cache in CI). The five
-         frontend-maven-plugin executions honor <skip> to short-circuit. -->
+    <!-- Overridden to `true` by the skip-ui-build profile below when BOTH
+         `env.SKIP_UI_BUILD=true` is set (exported by .github/actions/cache-ui-dist
+         on a cache HIT) AND the vite app dist already exists on disk. Each
+         frontend-maven-plugin execution honors <skip> to short-circuit. -->
     <skip.ui.build>false</skip.ui.build>
   </properties>
 

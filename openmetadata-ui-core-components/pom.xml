@@ -15,9 +15,10 @@
   <properties>
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
-    <!-- Overridden by the skip-ui-build profile below when dist/ already exists
-         (e.g. restored from actions/cache in CI). Frontend-maven-plugin honors
-         <skip> to short-circuit its executions. -->
+    <!-- Overridden to `true` by the skip-ui-build profile below when BOTH
+         `env.SKIP_UI_BUILD=true` is set (exported by .github/actions/cache-ui-dist
+         on a cache HIT) AND the library dist already exists on disk.
+         Frontend-maven-plugin honors <skip> to short-circuit its executions. -->
     <skip.ui.build>false</skip.ui.build>
   </properties>
 
