@@ -4315,6 +4315,7 @@
     "validation-error-assets": "Examina todos os teus activos que están sendo engadidos",
     "value-count-profile-metric-description": "Número total de valores na columna",
     "value-must-be-greater-than": "{{field}} debe ser maior que {{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} debe ser menor ou igual a {{maximum}}",
     "value-should-equal-to-value": "O valor debe ser igual a {{value}}.",
     "value-should-not-equal-to-value": "O valor non debe ser igual a {{value}}.",
     "version-released-try-now": "{{version}} Lançada <0>Vexa as Novidades!</0>",
