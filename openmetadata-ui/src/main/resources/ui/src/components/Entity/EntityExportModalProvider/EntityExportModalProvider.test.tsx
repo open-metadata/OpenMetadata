@@ -1309,7 +1309,7 @@ describe('EntityExportModalProvider component', () => {
 
       // Advance the 5-min fallback grace window — WebSocket never arrived.
       await act(async () => {
-        jest.advanceTimersByTime(5 * 60 * 1_000 + 1_000);
+        jest.advanceTimersByTime(30 * 60 * 1_000 + 1_000);
       });
 
       expect(onError).toHaveBeenCalledTimes(1);
@@ -1400,7 +1400,7 @@ describe('EntityExportModalProvider component', () => {
 
       // Advance past the fallback window — timer was cancelled, no FAILED.
       await act(async () => {
-        jest.advanceTimersByTime(5 * 60 * 1_000 + 1_000);
+        jest.advanceTimersByTime(30 * 60 * 1_000 + 1_000);
       });
 
       expect(onError).not.toHaveBeenCalled();
