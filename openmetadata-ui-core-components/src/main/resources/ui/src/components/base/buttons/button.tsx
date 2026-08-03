@@ -8,7 +8,7 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { forwardRef, isValidElement } from 'react';
+import { cloneElement, forwardRef, isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
@@ -273,6 +273,26 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const Component = href ? AriaLink : AriaButton;
 
     const isIcon = (IconLeading || IconTrailing) && !children;
+
+    // An icon passed as an *element* (`iconLeading={<EditIcon />}`) used to
+    // render untouched, while an icon passed as a *component*
+    // (`iconLeading={EditIcon}`) is given `data-icon`. All of the button's
+    // icon styling hangs off that attribute - `tw:*:data-icon:size-5` and the
+    // per-size overrides such as `tw:*:data-icon:size-3` size it, and the
+    // loading state hides `*:not([data-icon=loading])`. Without it an element
+    // icon gets no dimensions at all, so an icon-only button collapses to zero
+    // size and becomes invisible and unclickable.
+    //
+    // Stamping `data-icon` onto the element makes both call shapes behave
+    // identically. Sizing is left to the root's `*:data-icon:` variants rather
+    // than the fixed `styles.common.icon` class so per-size overrides still
+    // win. An explicit `data-icon` from the caller is preserved.
+    const withIconAttr = (icon: ReactNode, position: 'leading' | 'trailing') =>
+      isValidElement<{ 'data-icon'?: string }>(icon)
+        ? cloneElement(icon, {
+            'data-icon': icon.props['data-icon'] ?? position,
+          })
+        : icon;
     const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
       color
     );
@@ -325,7 +345,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
         isDisabled={disabled}>
         {/* Leading icon */}
-        {isValidElement(IconLeading) && IconLeading}
+        {isValidElement(IconLeading) && withIconAttr(IconLeading, 'leading')}
         {isReactComponent(IconLeading) && (
           <IconLeading className={styles.common.icon} data-icon="leading" />
         )}
@@ -376,7 +396,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
 
         {/* Trailing icon */}
-        {isValidElement(IconTrailing) && IconTrailing}
+        {isValidElement(IconTrailing) && withIconAttr(IconTrailing, 'trailing')}
         {isReactComponent(IconTrailing) && (
           <IconTrailing className={styles.common.icon} data-icon="trailing" />
         )}
