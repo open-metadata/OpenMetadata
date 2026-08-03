@@ -58,6 +58,7 @@ The gates are collected rather than short-circuited, so one failure does not hid
 | `tw-guard` | **added lines** | new `antd` import or new `.less` file |
 | `jsx-a11y` (ESLint) | changed files | one of 19 zero-backlog accessibility rules trips |
 | SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
+| OpenMetadata performance (ESLint) | changed files | eager route page import, unguarded lazy component, or unbounded module cache |
 | SonarCloud gate | **new code** | complexity, duplication, or new issues on lines this PR added |
 
 ## Component reuse — guidance, not a gate
@@ -85,15 +86,34 @@ would fail PRs for code they merely touched.
 
 | Tier | Meaning | Today |
 |---|---|---|
-| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y |
+| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y + 3 OpenMetadata performance |
 | `warn` | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, `react-hooks/exhaustive-deps`, `i18next/no-literal-string`, `@typescript-eslint/no-non-null-assertion` |
 
-Repo-wide today: **0 errors, 8935 warnings** across 3846 files. The warnings *are* the backlog, made
+Repo-wide today: **0 errors, 8985 warnings** across 1948 files. The warnings *are* the backlog, made
 visible instead of hidden — the target is zero, reached rule by rule.
 
 `i18next/no-literal-string` was disabled with a `TODO: re-enable when the plugin supports ESLint 9`.
 That incompatibility no longer reproduces; it runs fine and reports a large backlog, so it is back on
 at `warn`. The repo convention is no user-facing string literals, so it should reach `error`.
+
+## Repository-specific performance rules
+
+`openmetadata-ui/src/main/resources/ui/eslint-rules/openmetadata-performance.mjs` contains three
+reporting-only rules. Their test suite is run with `yarn test:eslint-rules`. All three were enabled at
+`error` only after a full `src/` scan reached zero findings.
+
+- `no-eager-page-imports` applies to `src/components/AppRouter/**` and rejects runtime static imports
+  whose path contains `pages/`. Type-only imports remain valid.
+- `require-suspense-fallback` recognizes `lazy` and `React.lazy` only when imported from React. It
+  accepts a component passed directly or subsequently to an approved helper imported from
+  `components/AppRouter/withSuspenseFallback`, or a module with a real React `Suspense` boundary and
+  an explicit `fallback` prop.
+- `no-unbounded-module-cache` checks module-level `Map` and `Set` bindings with cache-like names. A
+  cache needs both an explicit numeric or uppercase named size comparison and an eviction call using
+  `delete` or `clear` on the same binding.
+
+The rules intentionally do not autofix because introducing a loading boundary, choosing an eviction
+policy, and deciding which route dependency should remain eager require runtime context.
 
 **Rules deliberately still off**, and why:
 

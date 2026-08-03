@@ -18,6 +18,7 @@
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
     "test": "jest --passWithNoTests",
+    "test:eslint-rules": "node --test eslint-rules/*.test.mjs",
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",
     "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters json-summary",
