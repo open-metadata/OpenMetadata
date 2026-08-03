@@ -20,6 +20,7 @@ import {
 } from '../../../src/generated/type/personaContextDefinition';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { selectOption } from '../../utils/advancedSearch';
 import {
   getDefaultAdminAPIContext,
   toastNotification,
@@ -1103,6 +1104,20 @@ test.describe.serial('Persona AI Context', () => {
     await expect(adminPage.getByText('7 truncated')).toBeVisible();
   });
 
+  // The rule drawer already shows one empty condition row, so naming a field on it is all it takes
+  // to leave a condition started and its value blank. Display Name takes a text value and never
+  // defaults to a valueless operator, so the row stays unfinished.
+  const startConditionWithoutValue = async (page: Page) => {
+    const rule = page.getByRole('dialog').locator('.rule').first();
+
+    await selectOption(
+      page,
+      rule.locator('.rule--field .ant-select'),
+      'Display Name',
+      true
+    );
+  };
+
   // A condition with a field but no value serializes to `{"term":{}}`, which the search engines
   // reject outright. The emitted filter now drops it, so saving such a rule would silently widen it
   // to match everything — the editor has to stop that at the source. See issue #30715.
@@ -1118,26 +1133,17 @@ test.describe.serial('Persona AI Context', () => {
 
     await adminPage.getByTestId('empty-add-context-rule').click();
     await adminPage.getByTestId('context-rule-name').fill('Unfinished filter');
-    await adminPage.getByTestId('add-context-condition').click();
+    await startConditionWithoutValue(adminPage);
 
-    const condition = adminPage.getByTestId('delete-condition-button');
-    await expect(condition).toHaveCount(1);
-
-    const fieldSelect = adminPage
-      .getByRole('dialog')
-      .locator('.rule--field .ant-select')
-      .first();
-    await fieldSelect.click();
-    await adminPage
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
-      .filter({ hasText: 'Display Name' })
-      .first()
-      .click();
-
+    // Observe rather than intercept, so the debounced preview call is left alone.
     let saveRequested = false;
-    await adminPage.route('**/aiContext/rules', async (route) => {
-      saveRequested = true;
-      await route.abort();
+    adminPage.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        request.url().endsWith('/aiContext/rules')
+      ) {
+        saveRequested = true;
+      }
     });
 
     await adminPage.getByRole('button', { name: 'Save Rule' }).click();
@@ -1145,13 +1151,16 @@ test.describe.serial('Persona AI Context', () => {
     await expect(
       adminPage.getByTestId('context-rule-filter-error')
     ).toBeVisible();
+    // The drawer only closes on a successful submit, so it staying open is the block.
     await expect(adminPage.getByTestId('form-heading')).toBeVisible();
+
     expect(saveRequested).toBe(false);
   });
 
   // Guards the other side of the same check: "Empty selects every entity of the configured type" is
-  // documented behaviour, so a rule with no filter at all must stay saveable.
-  test('saves a rule that has no filter conditions at all', async ({
+  // documented behaviour, so a rule whose conditions were never filled in must stay saveable — the
+  // drawer's own empty condition row included.
+  test('saves a rule that has no filter conditions entered', async ({
     adminPage,
   }) => {
     await mockPersonaContextApi(
@@ -1172,14 +1181,11 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage.getByRole('button', { name: 'Save Rule' }).click();
 
     const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
     expect(createdRule).toMatchObject({ name: 'Every table', queryFilter: '' });
-    await expect(
-      adminPage.getByTestId('context-rule-filter-error')
-    ).toBeHidden();
   });
 
-  // The blank row "Add condition" creates is also unfinished, so it blocks too — and removing it
-  // has to clear the error rather than leave the drawer stuck.
+  // Removing the unfinished condition has to clear the error rather than leave the drawer stuck.
   test('clears the filter error once the unfinished condition is removed', async ({
     adminPage,
   }) => {
@@ -1192,24 +1198,16 @@ test.describe.serial('Persona AI Context', () => {
 
     await adminPage.getByTestId('empty-add-context-rule').click();
     await adminPage.getByTestId('context-rule-name').fill('Recovered rule');
-    await adminPage.getByTestId('add-context-condition').click();
-
-    const fieldSelect = adminPage
-      .getByRole('dialog')
-      .locator('.rule--field .ant-select')
-      .first();
-    await fieldSelect.click();
-    await adminPage
-      .locator('.ant-select-dropdown:visible .ant-select-item-option')
-      .filter({ hasText: 'Display Name' })
-      .first()
-      .click();
+    await startConditionWithoutValue(adminPage);
     await adminPage.getByRole('button', { name: 'Save Rule' }).click();
     await expect(
       adminPage.getByTestId('context-rule-filter-error')
     ).toBeVisible();
 
-    await adminPage.getByTestId('delete-condition-button').last().click();
+    await adminPage.getByTestId('delete-condition-button').first().click();
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).toBeHidden();
 
     const createRuleRequest = adminPage.waitForRequest(
       (request) =>
