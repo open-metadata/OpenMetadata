@@ -45,13 +45,24 @@
   </dependencies>
 
   <profiles>
-    <!-- Auto-activates when the vite build output already exists on disk, so a
-         CI workflow that restored openmetadata-ui/src/main/resources/ui/dist
-         from actions/cache before running mvn skips the ~5 min frontend build
-         entirely. See .github/actions/cache-ui-dist. -->
+    <!-- Activates ONLY when the composite action .github/actions/cache-ui-dist
+         signals a cache hit by exporting SKIP_UI_BUILD=true, AND the vite
+         build output exists on disk. Both conditions together defend against
+         two independent risks:
+
+           - The env-var gate keeps a stale on-disk dist from silently
+             suppressing a rebuild during a local `mvn clean package` after
+             the developer edited UI sources (mvn clean removes target, not
+             the source-tree dist).
+           - The file-exists check keeps a spurious env var from suppressing
+             the build when the cache actually missed and left dist empty. -->
     <profile>
       <id>skip-ui-build</id>
       <activation>
+        <property>
+          <name>env.SKIP_UI_BUILD</name>
+          <value>true</value>
+        </property>
         <file>
           <exists>${project.basedir}/src/main/resources/ui/dist/index.html</exists>
         </file>

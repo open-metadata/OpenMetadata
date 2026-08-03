@@ -22,12 +22,18 @@
   </properties>
 
   <profiles>
-    <!-- Auto-activates when the compiled library dist already exists on disk.
-         Enables the CI cache workflow (.github/actions/cache-ui-dist) to reuse
-         a prior build across workflows without a workflow_run dependency. -->
+    <!-- Activates ONLY when the composite action .github/actions/cache-ui-dist
+         signals a cache hit by exporting SKIP_UI_BUILD=true, AND the compiled
+         library dist exists on disk. The env-var gate defends against a stale
+         source-tree dist silently suppressing a rebuild during a local `mvn
+         clean package` after the developer edited UI sources. -->
     <profile>
       <id>skip-ui-build</id>
       <activation>
+        <property>
+          <name>env.SKIP_UI_BUILD</name>
+          <value>true</value>
+        </property>
         <file>
           <exists>${project.basedir}/src/main/resources/ui/dist/index.es.js</exists>
         </file>
