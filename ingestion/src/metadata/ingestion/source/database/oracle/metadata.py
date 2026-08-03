@@ -69,6 +69,7 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_table_comment_preserve_case,
     get_table_names,
     get_table_prefix_from_connection,
+    get_temporary_table_names,
     get_view_definition,
     get_view_definition_preserve_case,
     get_view_names,
@@ -154,8 +155,18 @@ class OracleSource(CommonDbSourceService):
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)
             for table_name in self.inspector.get_mview_names(schema_name) or []
         ]
+        temporary_tables = []
+        if getattr(self.service_connection, "includeTemporaryTables", False):
+            with self.engine.connect() as conn:
+                temporary_tables = [
+                    TableNameAndType(name=table_name, type_=TableType.Local)
+                    for table_name in get_temporary_table_names(
+                        self.engine.dialect, conn, schema_name
+                    )
+                    or []
+                ]
 
-        return regular_tables + material_tables
+        return regular_tables + material_tables + temporary_tables
 
     def process_result(self, data: FetchObjectList):
         """Process data as per our stored procedure format"""
