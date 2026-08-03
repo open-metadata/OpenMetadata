@@ -130,7 +130,9 @@ def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:  # no
     try:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj  # noqa: RET504, TRY300
-    except (ModuleNotFoundError, ImportError) as err:
+    # AttributeError covers an importable module missing the requested name, e.g. a
+    # typo in a custom connector's `sourcePythonClass`.
+    except (ModuleNotFoundError, ImportError, AttributeError) as err:
         if log_traceback:
             logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)  # noqa: B904

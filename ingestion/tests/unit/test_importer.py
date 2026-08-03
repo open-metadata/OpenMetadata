@@ -15,8 +15,11 @@ Test import utilities
 
 from unittest import TestCase
 
+import pytest
+
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.importer import (
+    DynamicImportException,
     get_class_name_root,
     get_module_name,
     get_source_module_name,
@@ -87,3 +90,18 @@ class ImporterTest(TestCase):
             import_bulk_sink_type(bulk_sink_type="metadata-usage"),
             MetadataUsageBulkSink,
         )
+
+
+def test_import_from_module_wraps_missing_module() -> None:
+    with pytest.raises(DynamicImportException) as exc_info:
+        import_from_module("metadata.ingestion.source.database.does_not_exist.Nope")
+
+    assert "Cannot import metadata.ingestion.source.database.does_not_exist.Nope" in str(exc_info.value)
+
+
+def test_import_from_module_wraps_missing_attribute() -> None:
+    """A typo in the class part of `sourcePythonClass` must not escape as AttributeError."""
+    with pytest.raises(DynamicImportException) as exc_info:
+        import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSourceTypo")
+
+    assert "Cannot import metadata.ingestion.source.database.mysql.metadata.MysqlSourceTypo" in str(exc_info.value)
