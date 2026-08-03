@@ -14,6 +14,7 @@ Utilities for working with the Presidio Library.
 
 import inspect
 import logging
+import re
 import types
 from collections.abc import Callable, Iterable
 from functools import cache, wraps
@@ -57,6 +58,34 @@ from metadata.utils.logger import pii_logger
 logger = pii_logger()
 
 MIN_SCORE_FOR_ENHANCEMENT = 0.3
+
+_CONTEXT_TOKEN_SEPARATORS = re.compile(r"[^0-9a-z]+")
+
+
+def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bool:
+    """
+    Whether any of the recognizer's context words is present in the given context
+    (the column name, split into its parts by `split_column_name`).
+
+    Single-word context entries are matched against whole tokens, never as substrings.
+    A plain `"cid" in "acid level"` test is true, which would boost the CVV recognizer on
+    any column whose name merely contains the letters of a context word -- `acid_level`,
+    `incident_count`, `decoder_ring` -- turning a 0.5 "3-4 digits" regex into a 1.0 match.
+    Multi-word entries keep substring semantics; they have no single token to compare against.
+    """
+    context_lower = " ".join(context).lower()
+    tokens = {token for token in _CONTEXT_TOKEN_SEPARATORS.split(context_lower) if token}
+
+    for ctx_word in recognizer_context:
+        word = ctx_word.lower()
+        parts = [part for part in _CONTEXT_TOKEN_SEPARATORS.split(word) if part]
+        if len(parts) == 1:
+            if parts[0] in tokens:
+                return True
+        elif word in context_lower:
+            return True
+
+    return False
 
 
 @cache
@@ -337,8 +366,6 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
         if context is None:
             return raw_recognizer_results
 
-        context_lower = " ".join(context).lower()
-
         for result in raw_recognizer_results:
             # if previously enhanced, then ignore
             if result.recognition_metadata.get(  # pyright: ignore[reportUnknownMemberType]
@@ -346,7 +373,7 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
             ):
                 continue
 
-            if any(ctx_word.lower() in context_lower for ctx_word in self.context):
+            if context_matches(self.context, context):
                 original_score = result.score
                 result.score = self.MAX_SCORE
 
@@ -442,8 +469,6 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             # then ignore this
             return results
 
-        context_lower = " ".join(context).lower()
-
         for result in results:
             # if previously enhanced, then ignore
             if result.recognition_metadata.get(  # pyright: ignore[reportUnknownMemberType]
@@ -455,7 +480,7 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             if result.score < MIN_SCORE_FOR_ENHANCEMENT:
                 continue
 
-            if any(ctx_word.lower() in context_lower for ctx_word in rec.context):
+            if context_matches(rec.context, context):
                 original_score = result.score
                 result.score = rec.MAX_SCORE
 
