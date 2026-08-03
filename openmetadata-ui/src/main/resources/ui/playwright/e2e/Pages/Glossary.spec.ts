@@ -153,7 +153,7 @@ test.describe('Glossary tests', () => {
     await test.step('Approve Glossary Term from Glossary Listing for reviewer user', async () => {
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page1, glossary1.data.name);
+      await selectActiveGlossary(page1, glossary1.data.displayName);
       await verifyTaskCreated(
         page1,
         glossary1.data.fullyQualifiedName,
@@ -179,7 +179,7 @@ test.describe('Glossary tests', () => {
       await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page1, glossary1.data.name);
+      await selectActiveGlossary(page1, glossary1.data.displayName);
       await validateGlossaryTerm(
         page1,
         glossary1.data.terms[0].data,
@@ -222,7 +222,7 @@ test.describe('Glossary tests', () => {
     await test.step('Approve Glossary Term from Glossary Listing for reviewer team', async () => {
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page1, glossary2.data.name);
+      await selectActiveGlossary(page1, glossary2.data.displayName);
 
       await verifyTaskCreated(
         page1,
@@ -234,7 +234,7 @@ test.describe('Glossary tests', () => {
 
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page1, glossary2.data.name);
+      await selectActiveGlossary(page1, glossary2.data.displayName);
       await validateGlossaryTerm(
         page1,
         glossary2.data.terms[0].data,
@@ -441,7 +441,7 @@ test.describe('Glossary tests', () => {
     await test.step('Approve and Reject Glossary Term', async () => {
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page1, glossary1.data.name);
+      await selectActiveGlossary(page1, glossary1.data.displayName);
       await verifyTaskCreated(
         page1,
         glossary1.data.fullyQualifiedName,
@@ -454,7 +454,7 @@ test.describe('Glossary tests', () => {
       );
       await redirectToHomePage(page1);
       await sidebarClick(page1, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page1, glossary1.data.name);
+      await selectActiveGlossary(page1, glossary1.data.displayName);
 
       const taskResolve = page1.waitForResponse('/api/v1/feed/tasks/*/resolve');
       await page1
