@@ -443,6 +443,42 @@ describe('useTestCaseListPage', () => {
     expect(csv).toContain('filtered-final');
   });
 
+  it('should cap filtered export paging when every response is a full page without a total', async () => {
+    const fullPage = Array.from({ length: 50 }, (_, index) =>
+      buildTestCase(`filtered-${index}`, `svc.tbl.filtered-${index}`)
+    );
+    (getListTestCaseBySearch as jest.Mock).mockImplementation(() => {
+      if ((getListTestCaseBySearch as jest.Mock).mock.calls.length > 201) {
+        return Promise.reject(new Error('Exceeded export page safety ceiling'));
+      }
+
+      return Promise.resolve({ data: fullPage, paging: {} });
+    });
+    mockLocation.search = QueryString.stringify({ searchValue: 'filtered' });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    await exportData.onExport('*');
+
+    // One list request plus at most 200 requests for the export pass.
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(201);
+    expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        limit: 50,
+        offset: 9950,
+        q: '*filtered*',
+      })
+    );
+  });
+
   it('should reconcile a row shifted across pages by a concurrent delete', async () => {
     const staleFirstPage = Array.from({ length: 50 }, (_, index) =>
       buildTestCase(`filtered-${index}`, `svc.tbl.filtered-${index}`)

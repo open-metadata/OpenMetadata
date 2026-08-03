@@ -51,6 +51,7 @@ export type {
 
 const EXPORT_SORT_FIELD = 'fullyQualifiedName.keyword';
 const MAX_EXPORT_PASSES = 3;
+const MAX_SEQUENTIAL_EXPORT_PAGES = 200;
 
 export const useTestCaseListPage = () => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
@@ -161,7 +162,10 @@ export const useTestCaseListPage = () => {
         let page = firstPage;
         let offset = firstPage.data.length;
 
-        while (page.data.length === PAGE_SIZE_LARGE) {
+        while (
+          page.data.length === PAGE_SIZE_LARGE &&
+          pages.length < MAX_SEQUENTIAL_EXPORT_PAGES
+        ) {
           page = await getListTestCaseBySearch({
             ...exportParams,
             limit: PAGE_SIZE_LARGE,
