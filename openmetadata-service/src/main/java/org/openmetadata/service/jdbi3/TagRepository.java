@@ -300,14 +300,17 @@ public class TagRepository extends EntityRepository<Tag> {
     // setInheritedFields() sets disabled=true on the in-memory Tag whenever the parent
     // Classification is disabled. That inherited value must never be persisted: once it is
     // stored, re-enabling the Classification can no longer clear it and the Tag stays disabled
-    // forever. Store the Tag's own flag, then restore the effective value for the response.
-    Boolean effectiveDisabled = tag.getDisabled();
-    tag.setDisabled(getOwnDisabled(tag, update, effectiveDisabled));
-    try {
-      store(tag, update);
-    } finally {
-      tag.setDisabled(effectiveDisabled);
-    }
+    // forever.
+    //
+    // Leave the Tag holding its own flag afterwards rather than restoring the effective value.
+    // The entity is cached after this returns, so restoring would write the inherited true into
+    // the cache while the row holds false - the read then reports a Tag that is disabled with an
+    // enabled Classification, which is the very state this guard exists to prevent. It only
+    // shows up with a distributed cache, because an L1-only entry is invalidated on write and
+    // reloaded from the row. Restoring is also unnecessary: inheritance is re-applied on the way
+    // out, so the write response still reports the effective value.
+    tag.setDisabled(getOwnDisabled(tag, update, tag.getDisabled()));
+    store(tag, update);
   }
 
   /**
