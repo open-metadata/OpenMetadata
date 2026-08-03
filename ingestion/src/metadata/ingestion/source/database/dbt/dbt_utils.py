@@ -867,22 +867,22 @@ def find_entity_by_type_and_fqn(metadata: OpenMetadata, entity_type: str, entity
     Returns:
         Entity object if found, None otherwise
     """
-    from metadata.generated.schema.entity.classification.tag import Tag  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.container import Container  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.dashboard import Dashboard  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.dashboardDataModel import (  # noqa: PLC0415
+    from metadata.generated.schema.entity.classification.tag import Tag
+    from metadata.generated.schema.entity.data.container import Container
+    from metadata.generated.schema.entity.data.dashboard import Dashboard
+    from metadata.generated.schema.entity.data.dashboardDataModel import (
         DashboardDataModel,
     )
-    from metadata.generated.schema.entity.data.database import Database  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.metric import Metric  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.mlmodel import MlModel  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.pipeline import Pipeline  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.searchIndex import SearchIndex  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.table import Table  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.topic import Topic  # noqa: PLC0415
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+    from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+    from metadata.generated.schema.entity.data.metric import Metric
+    from metadata.generated.schema.entity.data.mlmodel import MlModel
+    from metadata.generated.schema.entity.data.pipeline import Pipeline
+    from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+    from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+    from metadata.generated.schema.entity.data.table import Table
+    from metadata.generated.schema.entity.data.topic import Topic
 
     # Map entity type names to Python classes
     ENTITY_TYPE_MAP = {  # noqa: N806
