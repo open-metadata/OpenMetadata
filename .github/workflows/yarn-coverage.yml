@@ -92,7 +92,7 @@ jobs:
           # SonarCloud report the whole tree as "new code". So do a full clone only on PR
           # runs; keep the blob:none optimization for merge_group / workflow_dispatch,
           # which never run the Sonar scan.
-          filter: ${{ github.event_name == 'pull_request_target' && '' || 'blob:none' }}
+          filter: ${{ github.event_name != 'pull_request_target' && 'blob:none' || '' }}
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v5
