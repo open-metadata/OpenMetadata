@@ -114,12 +114,62 @@ const extensionInput = (page: Page, testId: string) =>
     )
     .first();
 
+// Mirrors the selectExtensionReference helper in IntakeForm.spec.ts: waits for
+// the search response before asserting the option is visible, so the test
+// doesn't race the async search API call under CI load.
+const selectExtensionReference = async ({
+  page,
+  testId,
+  query,
+  optionText,
+}: {
+  page: Page;
+  testId: string;
+  query: string;
+  optionText: string;
+}) => {
+  const searchResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/search/query') &&
+      (url.searchParams.get('q') ?? '').includes(query) &&
+      response.status() === 200
+    );
+  });
+  const input = page
+    .locator(
+      `[data-testid="${testId}"] input[role="combobox"], [data-testid="${testId}"][role="combobox"]`
+    )
+    .first();
+
+  await expect(input).toBeVisible({ timeout: 15000 });
+  await input.click();
+  await input.fill(query);
+  await searchResponse;
+
+  const option = page.getByRole('option').filter({ hasText: optionText }).first();
+  await expect(option).toBeVisible({ timeout: 15000 });
+  await option.click();
+};
+
+// Opens the Add-Domain drawer and waits for both the form heading and the
+// intake-form API call to resolve before returning. This ensures the
+// custom-property extension section is ready to interact with.
 const openCreateDomainForm = async (page: Page) => {
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.DOMAIN);
   await waitForAllLoadersToDisappear(page);
+
+  const intakeFetch = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/governance/intakeForms/entityType/') &&
+      response.request().method() === 'GET'
+  );
+
   await page.getByTestId('add-domain').click();
   await page.getByTestId('form-heading').waitFor({ timeout: 10000 });
+  await intakeFetch;
 };
 
 const glossary = new Glossary();
@@ -183,6 +233,13 @@ test.describe(
 
       await openCreateDomainForm(page);
 
+      // Wait for the custom-properties section to be rendered before asserting
+      // on labels — the section appears after both the intake form and custom
+      // property API calls resolve.
+      await expect(page.getByTestId('custom-properties-section')).toBeVisible({
+        timeout: 30000,
+      });
+
       // Required marker is on the labelled Form.Item for every required field,
       // including the split-layout hyperlink and timeInterval fields.
       await expect(
@@ -229,6 +286,13 @@ test.describe(
 
       await openCreateDomainForm(page);
 
+      // Wait for the custom-properties section to confirm the intake form has
+      // loaded and rendered extension fields before filling anything. Without
+      // this guard the test races the async API call and times out.
+      await expect(page.getByTestId('custom-properties-section')).toBeVisible({
+        timeout: 30000,
+      });
+
       await page.locator('#root\\/name').fill(name);
       await page.locator('#root\\/displayName').fill(name);
       await page.locator(descriptionBox).fill('intake field test');
@@ -249,17 +313,14 @@ test.describe(
       await extensionInput(page, `extension-${CP.interval}-start`).fill(startVal);
       await extensionInput(page, `extension-${CP.interval}-end`).fill(endVal);
 
-      // entity reference (glossaryTerm -> async search picker)
-      const refPicker = page
-        .locator(`[data-testid="extension-${CP.ref}"] input`)
-        .first();
-      await refPicker.click();
-      await refPicker.fill(glossaryTerm.data.name);
-      await page
-        .getByRole('option')
-        .filter({ hasText: glossaryTerm.data.displayName })
-        .first()
-        .click();
+      // entity reference — use the search-response-aware helper so we don't
+      // click the option before the async search API call has resolved.
+      await selectExtensionReference({
+        page,
+        testId: `extension-${CP.ref}`,
+        query: glossaryTerm.data.name,
+        optionText: glossaryTerm.data.displayName,
+      });
 
       const table = page.getByTestId(`extension-${CP.table}`);
       await table.getByRole('button', { name: /add\s*row/i }).click();
