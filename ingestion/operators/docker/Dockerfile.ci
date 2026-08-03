@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
 # before configuring third-party apt repositories.
@@ -34,7 +34,7 @@ RUN apt-get -qq update \
     openssl \
     # mysqlclient 2.2+ locates libmysqlclient through pkg-config (2.1.x used
     # mysql_config) and has no Linux wheels, so it always builds from source.
-    # The slim base omits pkg-config, unlike the python:3.10-bookworm base.
+    # The slim base omits pkg-config, unlike the python:3.12-bookworm base.
     pkg-config \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
@@ -113,6 +113,13 @@ RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
 RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
+
+# Refresh the interpreter-level pip before dropping privileges. The per-user
+# `pip install --upgrade pip` below only writes to ~/.local, so the base image's
+# /usr/local copy stays on disk and image scanners keep reporting it
+# (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
+RUN pip install --no-cache-dir --upgrade "pip==26.2"
+
 USER openmetadata
 
 # Disable pip cache dir
@@ -148,6 +155,13 @@ RUN [ $(uname -m) = "x86_64" ] \
 # pyspark install rather than silently shipping unpatched jars.
 COPY --chown=openmetadata:openmetadata ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
 RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
+
+# datamodel-code-generator (and the black it depends on) exist only to run the codegen
+# step above -- nothing imports them at runtime. Drop them so the shipped image stops
+# reporting their CVEs. Runs after the final pip install so an extra cannot pull them
+# back in. Bumping the pin instead is not an option: the codegen script monkeypatches
+# datamodel_code_generator.model.pydantic.types.IMPORT_SECRET_STR, gone in 0.26+.
+RUN pip uninstall -y datamodel-code-generator black
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
