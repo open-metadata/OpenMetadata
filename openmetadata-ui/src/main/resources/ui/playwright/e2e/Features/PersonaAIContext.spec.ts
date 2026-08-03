@@ -1104,11 +1104,18 @@ test.describe.serial('Persona AI Context', () => {
     await expect(adminPage.getByText('7 truncated')).toBeVisible();
   });
 
-  // The rule drawer already shows one empty condition row, so naming a field on it is all it takes
-  // to leave a condition started and its value blank. Display Name takes a text value and never
-  // defaults to a valueless operator, so the row stays unfinished.
+  // The drawer opens with no condition rows at all — the Filter section shows only the group's own
+  // field select and an "Add condition" button. Adding a row and naming its field is what leaves a
+  // condition started with its value blank. Display Name takes a text value and never defaults to a
+  // valueless operator, so the row stays unfinished.
   const startConditionWithoutValue = async (page: Page) => {
-    const rule = page.getByRole('dialog').locator('.rule').first();
+    await page.getByTestId('add-context-condition').click();
+
+    const rule = page
+      .getByTestId('query-builder-form-field')
+      .locator('.rule')
+      .first();
+    await expect(rule).toBeVisible();
 
     await selectOption(
       page,
