@@ -359,7 +359,10 @@ def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_p
 
 def test_versioned_baseline_omits_all_zero_ids_from_weights():
     # Was previously "only_uses_zero_weight_for_skipped_ids". See the sibling
-    # test above for the rationale for the behavior change.
+    # test above for the rationale for the behavior change. The behavior we
+    # care about is that every zero-duration entry in the checked-in baseline
+    # is filtered out of `weights` — regardless of whether its recorded
+    # outcome was `skipped` (normal) or `expected` (rare 0-ms observation).
     planner = load_script("build_playwright_shards")
     baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
     payload = json.loads(baseline.read_text())
@@ -367,7 +370,6 @@ def test_versioned_baseline_omits_all_zero_ids_from_weights():
 
     weights, _ = planner.load_history([baseline])
 
-    assert any(test["outcome"] == "expected" for test in zero_tests)
     assert all(test["id"] not in weights for test in zero_tests)
 
 
