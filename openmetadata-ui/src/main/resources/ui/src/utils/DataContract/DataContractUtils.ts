@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { RuleObject } from 'antd/lib/form';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';

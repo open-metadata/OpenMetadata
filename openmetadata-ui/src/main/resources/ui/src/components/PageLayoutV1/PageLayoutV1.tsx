@@ -50,48 +50,6 @@ export const pageContainerStyles: CSSProperties = {
   overflow: 'hidden',
 };
 
-const FullHeightWrapper: FC<{
-  $wrapperClassName?: string;
-  children: ReactNode;
-}> = ({ $wrapperClassName, children }) => {
-  const scopedStyles = useMemo(() => {
-    if (!$wrapperClassName) {
-      return '';
-    }
-
-    return `
-      .full-height-wrapper .page-layout-v1-vertical-scroll.${$wrapperClassName} {
-        overflow: hidden;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      .full-height-wrapper .${$wrapperClassName} > .ant-row {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col {
-        flex: none;
-      }
-      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col:last-child {
-        min-height: 0;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-      }
-    `;
-  }, [$wrapperClassName]);
-
-  return (
-    <div className="full-height-wrapper">
-      {scopedStyles && <style>{scopedStyles}</style>}
-      {children}
-    </div>
-  );
-};
-
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
   children,
@@ -175,6 +133,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             {
               'flex justify-center': center,
               'full-screen-view': isFullScreen,
+              'page-layout-v1-full-height-main':
+                fullHeight && Boolean(mainContainerClassName),
             },
             mainContainerClassName
           )}
@@ -203,9 +163,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   );
 
   return fullHeight ? (
-    <FullHeightWrapper $wrapperClassName={mainContainerClassName}>
-      {content}
-    </FullHeightWrapper>
+    <div className="full-height-wrapper">{content}</div>
   ) : (
     content
   );

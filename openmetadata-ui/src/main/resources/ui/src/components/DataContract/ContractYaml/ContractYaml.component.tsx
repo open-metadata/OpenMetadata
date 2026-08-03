@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { lazy, useMemo } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';

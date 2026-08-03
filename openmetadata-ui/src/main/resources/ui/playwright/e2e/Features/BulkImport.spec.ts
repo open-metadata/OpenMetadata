@@ -28,7 +28,10 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  mockClipboardApi,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   createColumnRowDetails,
   createCustomPropertiesForEntity,
@@ -1050,328 +1053,309 @@ test.describe('Bulk Import Export', () => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
     test.setTimeout(300_000);
 
+    // Grid's copy/paste relies on navigator.clipboard directly, which is
+    // unreliable in AUT/headless CI even with clipboard permissions granted.
+    await mockClipboardApi(page);
+
     const dbEntity = new DatabaseClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await dbEntity.create(apiContext);
 
-    await test.step('should export data database details', async () => {
-      await dbEntity.visitEntityPage(page);
-      await performBulkDownload(page, dbEntity.entity.name);
-    });
-
-    await test.step('should import and test range selection', async () => {
-      await dbEntity.visitEntityPage(page);
-      await page.getByTestId('manage-button').click();
-      await page
-        .getByTestId('manage-dropdown-list-container')
-        .waitFor({ state: 'visible' });
-      await page.click('[data-testid="import-button-title"]');
-      await page
-        .locator('[type="file"]')
-        .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
-      await page
-        .getByText('Import is in progress.')
-        .waitFor({ state: 'detached', timeout: 90000 });
-      await page
-        .locator('.rdg-header-row')
-        .first()
-        .waitFor({ state: 'visible', timeout: 90000 });
-
-      // Adding some assertion to make sure that CSV loaded correctly
-      await expect(page.locator('.rdg-header-row')).toBeVisible();
-
-      // Context: virtual grid — 8 data rows (1 schema + 1 table + 6 columns from DatabaseClass).
-      // visibleColCount is computed from the DOM since react-data-grid column-virtualizes.
-      const rowCount = 8;
-      await expect(page.locator('.rdg-row')).toHaveCount(rowCount);
-      const totalCellCount = await page.locator('.rdg-cell').count();
-      const visibleColCount = totalCellCount / (rowCount + 1); // +1 for the header row
-
-      await test.step('Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row', async () => {
-        await page.keyboard.press('Control+A');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          rowCount * visibleColCount
-        );
-
-        // Deselect all the cells by clicking on second cell of .rdg-row
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').nth(0);
-        const secondCell = firstRow.locator('.rdg-cell').nth(1);
-        await secondCell.click();
-
-        await expect(firstCell).not.toBeFocused();
-        await expect(secondCell).toBeFocused();
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(0);
+    try {
+      await test.step('should export data database details', async () => {
+        await dbEntity.visitEntityPage(page);
+        await performBulkDownload(page, dbEntity.entity.name);
       });
 
-      await test.step('should select all the cells in the column by clicking on column header', async () => {
-        const firstHeaderCell = page
+      await test.step('should import and test range selection', async () => {
+        await dbEntity.visitEntityPage(page);
+        await page.getByTestId('manage-button').click();
+        await page
+          .getByTestId('manage-dropdown-list-container')
+          .waitFor({ state: 'visible' });
+        await page.click('[data-testid="import-button-title"]');
+        await page
+          .locator('[type="file"]')
+          .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
+        await page
+          .getByText('Import is in progress.')
+          .waitFor({ state: 'detached', timeout: 90000 });
+        await page
           .locator('.rdg-header-row')
           .first()
-          .locator('.rdg-cell')
-          .first();
+          .waitFor({ state: 'visible', timeout: 90000 });
 
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').nth(1);
+        // Adding some assertion to make sure that CSV loaded correctly
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-        await firstHeaderCell.click();
+        // Context: virtual grid — 8 data rows (1 schema + 1 table + 6 columns from DatabaseClass).
+        // visibleColCount is computed from the DOM since react-data-grid column-virtualizes.
+        const rowCount = 8;
+        await expect(page.locator('.rdg-row')).toHaveCount(rowCount);
+        const totalCellCount = await page.locator('.rdg-cell').count();
+        const visibleColCount = totalCellCount / (rowCount + 1); // +1 for the header row
 
-        await expect(firstCell).not.toBeFocused();
+        await test.step('Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row', async () => {
+          await page.keyboard.press('Control+A');
 
-        await expect(firstHeaderCell).toBeFocused();
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            rowCount * visibleColCount
+          );
 
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(rowCount);
-      });
+          // Deselect all the cells by clicking on second cell of .rdg-row
+          const firstRow = page.locator('.rdg-row').first();
+          const firstCell = firstRow.locator('.rdg-cell').nth(0);
+          const secondCell = firstRow.locator('.rdg-cell').nth(1);
+          await secondCell.click();
 
-      await test.step('allow multiple column selection', async () => {
-        const headerRow = page.locator('.rdg-header-row');
-        // Mouse down on first header cell then move to 3rd header cell then mouse up
-        const startHeaderCell = headerRow.locator('.rdg-cell').nth(1);
-        const endHeaderCell = headerRow.locator('.rdg-cell').nth(3);
+          await expect(firstCell).not.toBeFocused();
+          await expect(secondCell).toBeFocused();
 
-        const startBox = await startHeaderCell.boundingBox();
-        const endBox = await endHeaderCell.boundingBox();
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(0);
+        });
 
-        if (!startBox || !endBox) {
-          throw new Error('Failed to get bounding boxes');
-        }
-
-        const startX = startBox.x + startBox.width / 2;
-        const startY = startBox.y + startBox.height / 2;
-        const endX = endBox.x + endBox.width / 2;
-        const endY = endBox.y + endBox.height / 2;
-
-        const mouse = page.mouse;
-
-        // Simulate drag from col 2 to col 4
-        await mouse.move(startX, startY);
-        await mouse.down();
-
-        await expect(startHeaderCell).toBeFocused();
-
-        await mouse.move(endX, endY, { steps: 10 }); // Smooth drag
-        await mouse.up();
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          rowCount * 3
-        );
-      });
-
-      await test.step('allow multiple column selection using keyboard', async () => {
-        // click first cell of first row
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
-        await firstCell.click();
-
-        // Press arrow up to go to header row
-        await page.keyboard.press('ArrowUp');
-        // press arrow right 3 times
-        await page.keyboard.press('Shift+ArrowRight');
-        await page.keyboard.press('Shift+ArrowRight');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          rowCount * 3
-        );
-      });
-
-      await test.step('allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click', async () => {
-        // click first cell of first row
-        const firstRow = page.locator('.rdg-row').first();
-        const fourthRow = page.locator('.rdg-row').nth(3);
-        const sixthRow = page.locator('.rdg-row').nth(5);
-
-        const firstCellFirstRow = firstRow.locator('.rdg-cell').first();
-        const secondCellFourthRow = fourthRow.locator('.rdg-cell').nth(1);
-        const fifthCellSixthRow = sixthRow.locator('.rdg-cell').nth(4);
-
-        await secondCellFourthRow.click();
-
-        await expect(secondCellFourthRow).toBeFocused();
-
-        const startBox = await secondCellFourthRow.boundingBox();
-        const endBoxRightBottom = await fifthCellSixthRow.boundingBox();
-        const endBoxLeftUp = await firstCellFirstRow.boundingBox();
-
-        if (!startBox || !endBoxRightBottom || !endBoxLeftUp) {
-          throw new Error('Failed to get bounding boxes');
-        }
-
-        const startX = startBox.x + startBox.width / 2;
-        const startY = startBox.y + startBox.height / 2;
-        const endXRightBottom =
-          endBoxRightBottom.x + endBoxRightBottom.width / 2;
-        const endYRightBottom =
-          endBoxRightBottom.y + endBoxRightBottom.height / 2;
-        const endXLeftUp = endBoxLeftUp.x + endBoxLeftUp.width / 2;
-        const endYLeftUp = endBoxLeftUp.y + endBoxLeftUp.height / 2;
-
-        const mouse = page.mouse;
-
-        // Simulate drag from col 2 to col 4
-        await mouse.move(startX, startY);
-        await mouse.down();
-
-        await mouse.move(endXRightBottom, endYRightBottom, { steps: 10 }); // Smooth drag
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          12
-        );
-
-        await mouse.move(endXLeftUp, endYLeftUp, { steps: 10 }); // Smooth drag
-        await mouse.up();
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
-
-        // Hold shift and click on fifthCellSixthRow
-        await page.keyboard.down('Shift');
-        await fifthCellSixthRow.click();
-        await page.keyboard.up('Shift');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          12
-        );
-
-        // Hold shift and click on firstCellFirstRow
-        await page.keyboard.down('Shift');
-        await firstCellFirstRow.click();
-        await page.keyboard.up('Shift');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
-      });
-
-      await test.step('allow multiple cell selection using keyboard on rightDown and leftUp', async () => {
-        // click first cell of first row
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
-        await firstCell.click();
-
-        // navigate to 4th row, second cell
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('ArrowDown');
-
-        await page.keyboard.press('Shift+ArrowDown');
-        await page.keyboard.press('Shift+ArrowDown');
-        await page.keyboard.press('Shift+ArrowRight');
-        await page.keyboard.press('Shift+ArrowRight');
-        await page.keyboard.press('Shift+ArrowRight');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          12
-        );
-
-        // Select left up cells
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowLeft');
-        await page.keyboard.press('Shift+ArrowLeft');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
-      });
-
-      await test.step('perform single cell copy-paste and undo-redo', async () => {
-        // click first cell of first row
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
-        const secondCell = firstRow.locator('.rdg-cell').nth(1);
-        await firstCell.click();
-
-        // copy the cell
-        await page.keyboard.press('Control+C');
-
-        // move to next right cell
-        await page.keyboard.press('ArrowRight');
-
-        // paste the cell
-        await page.keyboard.press('Control+V');
-
-        // second cell should have text equal to first cell text
-        await expect(secondCell).toHaveText(
-          (await firstCell.textContent()) || ''
-        );
-
-        // undo the action
-        await page.keyboard.press('Control+Z');
-
-        await expect(secondCell).toHaveText('');
-
-        // redo the action
-        await page.keyboard.press('Control+Y');
-
-        // second cell should have text equal to first cell text
-        await expect(secondCell).toHaveText(
-          (await firstCell.textContent()) || ''
-        );
-      });
-
-      await test.step('Select range, copy-paste and undo-redo', async () => {
-        // click on first cell to focus
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
-        await firstCell.click();
-
-        // navigate to header row
-        await page.keyboard.press('ArrowUp');
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.up('Shift');
-
-        // copy the range
-        await page.keyboard.press('Control+C');
-
-        // click on fourth cell of first row
-        const fourthCellFirstRow = firstRow.locator('.rdg-cell').nth(3);
-        await fourthCellFirstRow.click();
-
-        // paste the range
-        await page.keyboard.press('Control+V');
-
-        // check if the range is pasted correctly
-        await expect(fourthCellFirstRow).toContainText(
-          (await firstCell.textContent()) || ''
-        );
-        await expect(
-          page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
-        ).toContainText(
-          (await page
-            .locator('.rdg-row')
-            .nth(0)
-            .locator('.rdg-cell')
+        await test.step('should select all the cells in the column by clicking on column header', async () => {
+          const firstHeaderCell = page
+            .locator('.rdg-header-row')
             .first()
-            .textContent()) || ''
-        );
+            .locator('.rdg-cell')
+            .first();
 
-        // undo the action
-        await page.keyboard.press('Control+Z');
+          const firstRow = page.locator('.rdg-row').first();
+          const firstCell = firstRow.locator('.rdg-cell').nth(1);
 
-        // check if the range is pasted correctly
-        await expect(fourthCellFirstRow).toHaveText('');
-        await expect(
-          page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
-        ).toHaveText('');
+          await firstHeaderCell.click();
 
-        // redo the action
-        await page.keyboard.press('Control+Y');
+          await expect(firstCell).not.toBeFocused();
 
-        // check if the range is pasted correctly
-        await expect(fourthCellFirstRow).toContainText(
-          (await firstCell.textContent()) || ''
-        );
+          await expect(firstHeaderCell).toBeFocused();
 
-        // undo the action
-        await page.keyboard.press('Control+Z');
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(rowCount);
+        });
+
+        await test.step('allow multiple column selection', async () => {
+          const headerRow = page.locator('.rdg-header-row');
+          // Mouse down on first header cell then move to 3rd header cell then mouse up
+          const startHeaderCell = headerRow.locator('.rdg-cell').nth(1);
+          const endHeaderCell = headerRow.locator('.rdg-cell').nth(3);
+
+          const startBox = await startHeaderCell.boundingBox();
+          const endBox = await endHeaderCell.boundingBox();
+
+          if (!startBox || !endBox) {
+            throw new Error('Failed to get bounding boxes');
+          }
+
+          const startX = startBox.x + startBox.width / 2;
+          const startY = startBox.y + startBox.height / 2;
+          const endX = endBox.x + endBox.width / 2;
+          const endY = endBox.y + endBox.height / 2;
+
+          const mouse = page.mouse;
+
+          // Simulate drag from col 2 to col 4
+          await mouse.move(startX, startY);
+          await mouse.down();
+
+          await expect(startHeaderCell).toBeFocused();
+
+          await mouse.move(endX, endY, { steps: 10 }); // Smooth drag
+          await mouse.up();
+
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            rowCount * 3
+          );
+        });
+
+        await test.step('allow multiple column selection using keyboard', async () => {
+          // click first cell of first row
+          const firstRow = page.locator('.rdg-row').first();
+          const firstCell = firstRow.locator('.rdg-cell').first();
+          await firstCell.click();
+
+          // Press arrow up to go to header row (selects column 0, all rows)
+          await page.keyboard.press('ArrowUp');
+
+          // Shift+click the 3rd header cell to deterministically extend the
+          // selection to columns 0-2. Using repeated Shift+ArrowRight here
+          // races react-data-grid's own internal keyboard navigation against
+          // this app's Shift+Arrow handler, since both react to the same
+          // bubbling keydown event.
+          const headerRow = page.locator('.rdg-header-row').first();
+          const targetHeaderCell = headerRow.locator('.rdg-cell').nth(2);
+          await page.keyboard.down('Shift');
+          await targetHeaderCell.click();
+          await page.keyboard.up('Shift');
+
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            rowCount * 3
+          );
+        });
+
+        await test.step('allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click', async () => {
+          // click first cell of first row
+          const firstRow = page.locator('.rdg-row').first();
+          const fourthRow = page.locator('.rdg-row').nth(3);
+          const sixthRow = page.locator('.rdg-row').nth(5);
+
+          const firstCellFirstRow = firstRow.locator('.rdg-cell').first();
+          const secondCellFourthRow = fourthRow.locator('.rdg-cell').nth(1);
+          const fifthCellSixthRow = sixthRow.locator('.rdg-cell').nth(4);
+
+          await secondCellFourthRow.click();
+
+          await expect(secondCellFourthRow).toBeFocused();
+
+          const startBox = await secondCellFourthRow.boundingBox();
+          const endBoxRightBottom = await fifthCellSixthRow.boundingBox();
+          const endBoxLeftUp = await firstCellFirstRow.boundingBox();
+
+          if (!startBox || !endBoxRightBottom || !endBoxLeftUp) {
+            throw new Error('Failed to get bounding boxes');
+          }
+
+          const startX = startBox.x + startBox.width / 2;
+          const startY = startBox.y + startBox.height / 2;
+          const endXRightBottom =
+            endBoxRightBottom.x + endBoxRightBottom.width / 2;
+          const endYRightBottom =
+            endBoxRightBottom.y + endBoxRightBottom.height / 2;
+          const endXLeftUp = endBoxLeftUp.x + endBoxLeftUp.width / 2;
+          const endYLeftUp = endBoxLeftUp.y + endBoxLeftUp.height / 2;
+
+          const mouse = page.mouse;
+
+          // Simulate drag from col 2 to col 4
+          await mouse.move(startX, startY);
+          await mouse.down();
+
+          await mouse.move(endXRightBottom, endYRightBottom, { steps: 10 }); // Smooth drag
+
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            12
+          );
+
+          await mouse.move(endXLeftUp, endYLeftUp, { steps: 10 }); // Smooth drag
+          await mouse.up();
+
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+
+          // Hold shift and click on fifthCellSixthRow
+          await page.keyboard.down('Shift');
+          await fifthCellSixthRow.click();
+          await page.keyboard.up('Shift');
+
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            12
+          );
+
+          // Hold shift and click on firstCellFirstRow
+          await page.keyboard.down('Shift');
+          await firstCellFirstRow.click();
+          await page.keyboard.up('Shift');
+
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+        });
+
+
+        await test.step('perform single cell copy-paste and undo-redo', async () => {
+          // click first cell of first row
+          const firstRow = page.locator('.rdg-row').first();
+          const firstCell = firstRow.locator('.rdg-cell').first();
+          const secondCell = firstRow.locator('.rdg-cell').nth(1);
+          await firstCell.click();
+
+          // copy the cell
+          await page.keyboard.press('Control+C');
+
+          // move to next right cell
+          await page.keyboard.press('ArrowRight');
+
+          // paste the cell
+          await page.keyboard.press('Control+V');
+
+          // second cell should have text equal to first cell text
+          await expect(secondCell).toHaveText(
+            (await firstCell.textContent()) || ''
+          );
+
+          // undo the action
+          await page.keyboard.press('Control+Z');
+
+          await expect(secondCell).toHaveText('');
+
+          // redo the action
+          await page.keyboard.press('Control+Y');
+
+          // second cell should have text equal to first cell text
+          await expect(secondCell).toHaveText(
+            (await firstCell.textContent()) || ''
+          );
+        });
+
+        await test.step('Select range, copy-paste and undo-redo', async () => {
+          // click on first cell to focus
+          const firstRow = page.locator('.rdg-row').first();
+          const firstCell = firstRow.locator('.rdg-cell').first();
+          await firstCell.click();
+
+          // navigate to header row
+          await page.keyboard.press('ArrowUp');
+          await page.keyboard.down('Shift');
+          await page.keyboard.press('ArrowRight');
+          await page.keyboard.press('ArrowRight');
+          await page.keyboard.up('Shift');
+
+          // copy the range
+          await page.keyboard.press('Control+C');
+
+          // click on fourth cell of first row
+          const fourthCellFirstRow = firstRow.locator('.rdg-cell').nth(3);
+          await fourthCellFirstRow.click();
+
+          // paste the range
+          await page.keyboard.press('Control+V');
+
+          // check if the range is pasted correctly
+          await expect(fourthCellFirstRow).toContainText(
+            (await firstCell.textContent()) || ''
+          );
+          await expect(
+            page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
+          ).toContainText(
+            (await page
+              .locator('.rdg-row')
+              .nth(0)
+              .locator('.rdg-cell')
+              .first()
+              .textContent()) || ''
+          );
+
+          // undo the action
+          await page.keyboard.press('Control+Z');
+
+          // check if the range is pasted correctly
+          await expect(fourthCellFirstRow).toHaveText('');
+          await expect(
+            page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
+          ).toHaveText('');
+
+          // redo the action
+          await page.keyboard.press('Control+Y');
+
+          // check if the range is pasted correctly
+          await expect(fourthCellFirstRow).toContainText(
+            (await firstCell.textContent()) || ''
+          );
+
+          // undo the action
+          await page.keyboard.press('Control+Z');
+        });
       });
-    });
-
-    await dbEntity.delete(apiContext);
-    await afterAction();
+    } finally {
+      await dbEntity.delete(apiContext);
+      await afterAction();
+    }
   });
 });
