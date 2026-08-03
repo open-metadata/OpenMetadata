@@ -61,10 +61,13 @@ def test_full_common_shard_count_is_capped_at_24():
     assert planner.shard_count(units, "chromium", "full") == 24
 
 
-def test_common_lane_keeps_one_minute_of_allocation_reserve():
+def test_common_lane_carries_its_own_shard_budget():
+    # The chromium lane no longer sits a minute under TARGET_MS: the suite grew
+    # past what COMMON_MAX_SHARDS could hold at 19m, so it now runs a minute
+    # above the other lanes. Both still fit the 25m playwright timeout wrapper.
     planner = load_script("build_playwright_shards")
 
-    assert planner.shard_budget_ms_for_lane("chromium") == 19 * 60 * 1000
+    assert planner.shard_budget_ms_for_lane("chromium") == 21 * 60 * 1000
     assert planner.shard_budget_ms_for_lane("search") == 20 * 60 * 1000
 
 
@@ -93,6 +96,44 @@ def test_common_assignment_stays_within_the_execution_ceiling():
         planner.predicted_execution_ms(shard, 3) <= planner.TARGET_MS
         for shard in shards
     )
+
+
+def test_full_mode_chromium_converges_at_the_shard_ceiling():
+    # Regression guard for the merge-queue outage: a lane of this shape exhausted
+    # COMMON_MAX_SHARDS under the old 19m budget and aborted planning outright.
+    # The allocator must converge at or before the ceiling, and the resulting
+    # plan genuinely needs the window above 19m -- so quietly reverting the
+    # budget to 19m fails on the final assertion rather than only in CI.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium", f"heavy-{index}.spec.ts", str(index), weight_ms=13 * 60 * 1000
+        )
+        for index in range(96)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "chromium", "full")
+
+    workers = planner.LANE_WORKERS.get("chromium", 3)
+    heaviest_ms = max(
+        planner.predicted_execution_ms(shard, workers) for shard in shards
+    )
+    assert len(shards) <= planner.COMMON_MAX_SHARDS
+    assert heaviest_ms <= planner.COMMON_SHARD_BUDGET_MS
+    assert heaviest_ms > 19 * 60 * 1000
+
+
+def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium", f"huge-{index}.spec.ts", str(index), weight_ms=19 * 60 * 1000
+        )
+        for index in range(120)
+    ]
+
+    with pytest.raises(SystemExit, match=r"needs more than 24 shards"):
+        planner.assign_lane_within_budget(units, "chromium", "full")
 
 
 def test_shard_pattern_includes_project_and_file():
@@ -138,7 +179,107 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
-def test_history_includes_retry_time_and_only_preserves_explicit_skips(tmp_path):
+def test_emit_unweighted_warnings_annotates_files_over_threshold(capsys):
+    planner = load_script("build_playwright_shards")
+    # A file with more tests than UNWEIGHTED_WARN_MIN_TESTS should be annotated.
+    file = "Pages/NewSuite.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"missing-{index}"},
+            test_names={f"missing-{index}": f"case {index}"},
+        )
+        for index in range(planner.UNWEIGHTED_WARN_MIN_TESTS)
+    ]
+
+    planner.emit_unweighted_warnings(units, {}, {})
+
+    captured = capsys.readouterr()
+    assert f"::warning file={file}::" in captured.err
+    assert f"{planner.UNWEIGHTED_WARN_MIN_TESTS} test(s) in {file}" in captured.err
+
+
+def test_emit_unweighted_warnings_annotates_when_reserved_minutes_over_threshold(capsys):
+    planner = load_script("build_playwright_shards")
+    # Fewer tests than UNWEIGHTED_WARN_MIN_TESTS but their reserved fallback
+    # time exceeds UNWEIGHTED_WARN_MIN_MS should still annotate.
+    import math
+    trigger_count = max(
+        1,
+        math.ceil(planner.UNWEIGHTED_WARN_MIN_MS / planner.FALLBACK_TEST_MS),
+    )
+    assert trigger_count < planner.UNWEIGHTED_WARN_MIN_TESTS
+    file = "Pages/SmallHeavy.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"missing-{index}"},
+            test_names={f"missing-{index}": f"case {index}"},
+        )
+        for index in range(trigger_count)
+    ]
+
+    planner.emit_unweighted_warnings(units, {}, {})
+
+    assert f"::warning file={file}::" in capsys.readouterr().err
+
+
+def test_emit_unweighted_warnings_stays_quiet_below_threshold(capsys):
+    planner = load_script("build_playwright_shards")
+    # 1 test with fallback = 30_000 ms < UNWEIGHTED_WARN_MIN_MS should not warn.
+    assert planner.FALLBACK_TEST_MS < planner.UNWEIGHTED_WARN_MIN_MS
+    file = "Pages/Trivial.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            "sole-unit",
+            test_ids={"missing"},
+            test_names={"missing": "case"},
+        )
+    ]
+
+    planner.emit_unweighted_warnings(units, {}, {})
+
+    assert capsys.readouterr().err == ""
+
+
+def test_emit_unweighted_warnings_ignores_tests_with_history(capsys):
+    planner = load_script("build_playwright_shards")
+    file = "Pages/Existing.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"present-{index}"},
+            test_names={f"present-{index}": f"case {index}"},
+        )
+        for index in range(planner.UNWEIGHTED_WARN_MIN_TESTS + 5)
+    ]
+    weights = {f"present-{index}": 5_000 for index in range(len(units))}
+
+    planner.emit_unweighted_warnings(units, weights, {})
+
+    assert capsys.readouterr().err == ""
+
+
+def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):
+    # Was previously "only_preserves_explicit_skips" — the planner used to pin
+    # weight_ms=0 for tests whose only recorded outcome was 'skipped'. That was
+    # correct for tests that STAY skipped but silently wrong for a suite that
+    # was skipped at baseline capture and later re-enabled (Pages/Domains.spec.ts,
+    # PR #30451): the planner reserved zero budget for the newly-live tests and
+    # the shard blew past the 25-minute wall timeout (chromium-12 in run
+    # 30716060441). New rule: an all-zero history is treated as no data, so
+    # the unit falls through to the identity/FALLBACK_TEST_MS path.
+    # The trade-off — a legitimately-skipped test now consumes 30 s of planning
+    # budget per re-run — is negligible compared to under-budgeting a
+    # re-enabled suite by tens of minutes.
     planner = load_script("build_playwright_shards")
     history = tmp_path / "history.json"
     history.write_text(
@@ -207,16 +348,18 @@ def test_history_includes_retry_time_and_only_preserves_explicit_skips(tmp_path)
     planner.apply_history_weights(units, weights, identity_weights)
 
     assert weights["flaky-test"] == 150
-    assert weights["known-skip"] == 0
+    assert "known-skip" not in weights
     assert "expected-zero" not in weights
     assert ("Features/Entity.spec.ts", "zero observation") not in identity_weights
-    assert units[0].weight_ms == 0
+    assert units[0].weight_ms == planner.FALLBACK_TEST_MS
     assert units[1].weight_ms == planner.FALLBACK_TEST_MS
     assert units[2].weight_ms == planner.FALLBACK_TEST_MS
     assert units[3].weight_ms == planner.FALLBACK_TEST_MS
 
 
-def test_versioned_baseline_only_uses_zero_weight_for_skipped_ids():
+def test_versioned_baseline_omits_all_zero_ids_from_weights():
+    # Was previously "only_uses_zero_weight_for_skipped_ids". See the sibling
+    # test above for the rationale for the behavior change.
     planner = load_script("build_playwright_shards")
     baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
     payload = json.loads(baseline.read_text())
@@ -225,10 +368,7 @@ def test_versioned_baseline_only_uses_zero_weight_for_skipped_ids():
     weights, _ = planner.load_history([baseline])
 
     assert any(test["outcome"] == "expected" for test in zero_tests)
-    assert all(
-        (weights.get(test["id"]) == 0) == (test["outcome"] == "skipped")
-        for test in zero_tests
-    )
+    assert all(test["id"] not in weights for test in zero_tests)
 
 
 def test_timing_import_keeps_project_executions_separate(tmp_path, monkeypatch):
@@ -449,7 +589,7 @@ def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():
     ]
 
 
-def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
+def test_common_shards_enforce_the_twenty_one_minute_budget(tmp_path):
     planner = load_script("build_playwright_shards")
     within_budget = planner.Unit(
         "chromium",
@@ -457,7 +597,7 @@ def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
         "within",
         grep_titles={("chromium", "within.spec.ts", "within")},
         test_ids={"within"},
-        weight_ms=19 * 60 * 1000,
+        weight_ms=21 * 60 * 1000,
     )
     above_budget = planner.Unit(
         "chromium",
@@ -465,11 +605,11 @@ def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
         "above",
         grep_titles={("chromium", "above.spec.ts", "above")},
         test_ids={"above"},
-        weight_ms=19 * 60 * 1000 + 1,
+        weight_ms=21 * 60 * 1000 + 1,
     )
 
     planner.write_plan(tmp_path, "chromium", 0, [within_budget])
-    with pytest.raises(SystemExit, match="above the 19-minute plan budget"):
+    with pytest.raises(SystemExit, match="above the 21-minute plan budget"):
         planner.write_plan(tmp_path, "chromium", 1, [above_budget])
 
 
