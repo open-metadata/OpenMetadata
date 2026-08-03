@@ -15,6 +15,7 @@ import type { Connection, Edge } from 'reactflow';
 import {
   LineageBand,
   LineageLevelKind,
+  type LineageScene,
   type LineageSceneEdge,
   type LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
@@ -28,6 +29,7 @@ import {
   getEndpointHandle,
   getEndpointNodeId,
   getRealEntityRef,
+  hasSceneEntityConnection,
   hydrateSelectedEdge,
   isEditableSceneEdge,
   isEditableSceneNode,
@@ -81,6 +83,36 @@ describe('LineageMap edit utils', () => {
       expect(getEndpointNodeId(endpoint)).toBe(sourceNode.id);
       expect(getEndpointHandle(endpoint)).toBe('source.column');
       expect(getEndpointHandle(sourceNode.id)).toBeUndefined();
+    });
+
+    it('matches asset and field connections returned by a refreshed scene', () => {
+      const scene = {
+        nodes: [sourceNode, targetNode],
+        edges: [
+          createEdge(),
+          createEdge({
+            id: 'field-edge',
+            from: `${sourceNode.id}${FIELD_SEPARATOR}source.column`,
+            to: `${targetNode.id}${FIELD_SEPARATOR}target.column`,
+          }),
+        ],
+      } as LineageScene;
+
+      expect(
+        hasSceneEntityConnection(scene, 'source-entity-id', 'target-entity-id')
+      ).toBe(true);
+      expect(
+        hasSceneEntityConnection(
+          scene,
+          'source-entity-id',
+          'target-entity-id',
+          'source.column',
+          'target.column'
+        )
+      ).toBe(true);
+      expect(
+        hasSceneEntityConnection(scene, 'target-entity-id', 'source-entity-id')
+      ).toBe(false);
     });
   });
 

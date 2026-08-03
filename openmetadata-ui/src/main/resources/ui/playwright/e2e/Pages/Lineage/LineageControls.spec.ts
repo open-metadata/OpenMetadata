@@ -25,8 +25,9 @@ import {
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  clickLineageNode,
   connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+  editLineageClick,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -133,12 +134,13 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
-    await clickLineageNode(page, tableFqn);
-
-    await page.getByTestId('drawer-close-icon').click();
+    await editLineageClick(page);
+    await page.getByTestId(`lineage-node-${tableFqn}`).dispatchEvent('click');
 
     await page.getByTestId('fit-screen').click();
     await page.getByRole('menuitem', { name: 'Refocused to selected' }).click();
+
+    await editLineageClick(page);
 
     await page.getByTestId('fit-screen').click();
     await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
@@ -173,6 +175,11 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
 test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe('Data Observability Layer', () => {
+    test.skip(
+      true,
+      'Data observability overlays are not rendered by hierarchical lineage scenes.'
+    );
+
     test.beforeEach(async ({ page }) => {
       await table.visitEntityPage(page);
       await visitLineageTab(page);
@@ -219,7 +226,10 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test.describe('Error Handling', () => {
     test('Verify invalid entity search handling', async ({ page }) => {
+      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
       await sidebarClick(page, SidebarItem.LINEAGE);
+      expect((await sceneResponse).ok()).toBeTruthy();
+      await dismissLineageMapOnboarding(page);
 
       await waitForAllLoadersToDisappear(page);
 

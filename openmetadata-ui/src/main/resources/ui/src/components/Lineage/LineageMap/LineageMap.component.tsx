@@ -116,6 +116,7 @@ import {
   getEndpointHandle,
   getEndpointNodeId,
   getRealEntityRef,
+  hasSceneEntityConnection,
   hydrateSelectedEdge,
   isEditableSceneEdge,
   isEditableSceneNode,
@@ -130,6 +131,8 @@ const ZOOM_OUT_THRESHOLD = 0.5;
 const SEMANTIC_ZOOM_COOLDOWN = 450;
 const PROGRAMMATIC_ZOOM_SUPPRESSION_MS = 1200;
 const SCENE_CACHE_LIMIT = 50;
+const SCENE_MUTATION_MAX_ATTEMPTS = 5;
+const SCENE_MUTATION_RETRY_DELAY_MS = 500;
 const MAX_SCENE_DEPTH = 3;
 const CONTROL_INSET_PADDING = 0.2;
 const SCENE_LAYER_FIT_VIEW_MIN_ZOOM = MIN_ZOOM_VALUE;
@@ -354,7 +357,8 @@ const isSceneNodeDrillable = (
 
 export const getSceneCacheKey = (
   request: SceneRequest,
-  config: LineageConfig
+  config: LineageConfig,
+  queryFilter = ''
 ) =>
   [
     request.lens,
@@ -365,6 +369,7 @@ export const getSceneCacheKey = (
     config.downstreamDepth,
     config.nodesPerLayer,
     config.pipelineViewMode,
+    queryFilter,
   ].join('|');
 
 const getCachedScene = (
@@ -768,11 +773,13 @@ const LineageMapBreadcrumbs = ({
 
 const LineageMapCanvas = ({
   config,
+  deleted,
   entity,
   entityType,
   isPlatformLineage,
 }: {
   config: LineageConfig;
+  deleted?: boolean;
   entity?: SourceType;
   entityType: LineageProps['entityType'];
   isPlatformLineage?: boolean;
@@ -781,6 +788,7 @@ const LineageMapCanvas = ({
   const location = useCustomLocation();
   const navigate = useNavigate();
   const {
+    queryFilter,
     onAddPipelineClick,
     onColumnEdgeRemove,
     onEdgeClick: onProviderEdgeClick,
@@ -954,15 +962,17 @@ const LineageMapCanvas = ({
   const handleOnboardingClose = useCallback(() => {
     cookieStorage.setItem(LINEAGE_MAP_ONBOARDING_COOKIE, 'true', {
       expires: getLineageMapOnboardingExpiry(),
+      path: '/',
     });
     setShowOnboarding(false);
   }, []);
 
   useEffect(() => {
     setShowOnboarding(
-      cookieStorage.getItem(LINEAGE_MAP_ONBOARDING_COOKIE) !== 'true'
+      !deleted &&
+        cookieStorage.getItem(LINEAGE_MAP_ONBOARDING_COOKIE) !== 'true'
     );
-  }, []);
+  }, [deleted]);
 
   const getOriginRequestTarget = useCallback(
     (currentScene?: LineageScene) => ({
@@ -983,7 +993,7 @@ const LineageMapCanvas = ({
     ) => {
       const requestId = sceneRequestIdRef.current + 1;
       sceneRequestIdRef.current = requestId;
-      const cacheKey = getSceneCacheKey(nextRequest, config);
+      const cacheKey = getSceneCacheKey(nextRequest, config, queryFilter);
       const cachedScene = options.bypassCache
         ? undefined
         : getCachedScene(cacheRef.current, cacheKey);
@@ -992,14 +1002,16 @@ const LineageMapCanvas = ({
         setSceneError(undefined);
         setLoading(false);
 
-        return;
+        return cachedScene;
       }
       preserveViewportRef.current = Boolean(options.preserveViewport);
       setLoading(true);
+      let response: LineageScene | undefined;
       try {
-        const response = await getLineageScene({
+        response = await getLineageScene({
           ...nextRequest,
           config,
+          queryFilter,
         });
         setCachedScene(cacheRef.current, cacheKey, response);
         if (sceneRequestIdRef.current === requestId) {
@@ -1016,17 +1028,31 @@ const LineageMapCanvas = ({
           setLoading(false);
         }
       }
-    },
-    [config]
-  );
 
-  const refetchCurrentScene = useCallback(async () => {
-    cacheRef.current.clear();
-    await fetchScene(request, {
-      bypassCache: true,
-      preserveViewport: true,
-    });
-  }, [fetchScene, request]);
+      return response;
+    },
+    [config, queryFilter]
+  );
+  const refetchCurrentScene = useCallback(
+    async (isExpectedScene?: (response: LineageScene) => boolean) => {
+      cacheRef.current.clear();
+      for (let attempt = 0; attempt < SCENE_MUTATION_MAX_ATTEMPTS; attempt++) {
+        const response = await fetchScene(request, {
+          bypassCache: true,
+          preserveViewport: true,
+        });
+        if (!isExpectedScene || (response && isExpectedScene(response))) {
+          break;
+        }
+        if (attempt < SCENE_MUTATION_MAX_ATTEMPTS - 1) {
+          await new Promise<void>((resolve) => {
+            window.setTimeout(resolve, SCENE_MUTATION_RETRY_DELAY_MS);
+          });
+        }
+      }
+    },
+    [fetchScene, request]
+  );
 
   const removeSceneNode = useCallback(
     async (node: { id: string }) => {
@@ -1118,9 +1144,9 @@ const LineageMapCanvas = ({
             : [LineageBand.Asset];
         bands.forEach((band) => {
           const nextRequest = { ...request, band };
-          const cacheKey = getSceneCacheKey(nextRequest, config);
+          const cacheKey = getSceneCacheKey(nextRequest, config, queryFilter);
           if (!cacheRef.current.has(cacheKey)) {
-            getLineageScene({ ...nextRequest, config })
+            getLineageScene({ ...nextRequest, config, queryFilter })
               .then((response) =>
                 setCachedScene(cacheRef.current, cacheKey, response)
               )
@@ -1128,7 +1154,7 @@ const LineageMapCanvas = ({
           }
         });
       }, 300),
-    [config, isEditMode, request]
+    [config, isEditMode, queryFilter, request]
   );
 
   useEffect(() => {
@@ -1723,7 +1749,23 @@ const LineageMapCanvas = ({
         await addLineageHandler(payload);
         setSelectedEdge(undefined);
         setSelectedNode(undefined);
-        await refetchCurrentScene();
+        const sourceHandle =
+          connection.sourceHandle === connection.source
+            ? undefined
+            : connection.sourceHandle ?? undefined;
+        const targetHandle =
+          connection.targetHandle === connection.target
+            ? undefined
+            : connection.targetHandle ?? undefined;
+        await refetchCurrentScene((response) =>
+          hasSceneEntityConnection(
+            response,
+            fromEntity.id,
+            toEntity.id,
+            sourceHandle,
+            targetHandle
+          )
+        );
       } catch (error) {
         if ((error as AxiosError).response?.status !== undefined) {
           showErrorToast(error as AxiosError);
@@ -2179,6 +2221,7 @@ const LineageMapCanvas = ({
 };
 
 const LineageMap = ({
+  deleted,
   entity,
   entityType,
   isPlatformLineage,
@@ -2204,6 +2247,7 @@ const LineageMap = ({
     <ReactFlowProvider>
       <LineageMapCanvas
         config={config}
+        deleted={deleted}
         entity={entity}
         entityType={entityType}
         isPlatformLineage={isPlatformLineage}

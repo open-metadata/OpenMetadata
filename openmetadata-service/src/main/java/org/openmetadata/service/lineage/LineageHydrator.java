@@ -75,6 +75,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  */
 @Slf4j
 public class LineageHydrator {
+  private static final String LINEAGE_SCENE_SYNTHETIC_COUNT = "lineageSceneSyntheticCount";
   private static final String AUTHORIZATION_FIELDS =
       String.join(
           ",",
@@ -127,17 +128,21 @@ public class LineageHydrator {
 
   /**
    * Removes lineage nodes the caller cannot VIEW_BASIC and every edge touching a removed node.
-   * Nodes without a resolvable entity identity are also removed so synthetic aggregate counts
-   * cannot reveal assets hidden by policy.
+   * Synthetic counts may be retained only when their search aggregation was restricted to the
+   * caller's authorized domains. Other nodes without a resolvable entity identity are removed.
    */
   public SearchLineageResult pruneUnauthorizedLineage(
-      SecurityContext securityContext, SearchLineageResult lineage, Include include) {
+      SecurityContext securityContext,
+      SearchLineageResult lineage,
+      Include include,
+      boolean preserveSyntheticCounts) {
     if (lineage == null || nullOrEmpty(lineage.getNodes())) {
       return lineage;
     }
     List<LineageNode> candidates = lineageNodes(lineage.getNodes());
     Set<EntityKey> authorized = authorizeLineageNodes(securityContext, candidates, include);
-    Set<String> visibleNodeKeys = new HashSet<>();
+    Set<String> visibleNodeKeys =
+        preserveSyntheticCounts ? syntheticCountNodeKeys(lineage.getNodes()) : new HashSet<>();
     for (LineageNode candidate : candidates) {
       if (authorized.contains(candidate.entityKey())) {
         visibleNodeKeys.add(candidate.nodeKey());
@@ -147,6 +152,22 @@ public class LineageHydrator {
     retainAuthorizedEdges(lineage.getUpstreamEdges(), authorized);
     retainAuthorizedEdges(lineage.getDownstreamEdges(), authorized);
     return lineage;
+  }
+
+  private static Set<String> syntheticCountNodeKeys(Map<String, NodeInformation> nodes) {
+    Set<String> nodeKeys = new HashSet<>();
+    for (Map.Entry<String, NodeInformation> entry : nodes.entrySet()) {
+      NodeInformation nodeInformation = entry.getValue();
+      Map<String, Object> entity = nodeInformation == null ? null : nodeInformation.getEntity();
+      if (entity != null && isSyntheticCount(entity.get(LINEAGE_SCENE_SYNTHETIC_COUNT))) {
+        nodeKeys.add(entry.getKey());
+      }
+    }
+    return nodeKeys;
+  }
+
+  private static boolean isSyntheticCount(Object value) {
+    return Boolean.TRUE.equals(value) || "true".equalsIgnoreCase(String.valueOf(value));
   }
 
   private static Map<String, List<UUID>> groupIdsByType(List<EntityReference> refs) {

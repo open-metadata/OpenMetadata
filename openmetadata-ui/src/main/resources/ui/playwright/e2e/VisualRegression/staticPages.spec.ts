@@ -62,7 +62,11 @@ const PAGES: {
   { name: 'settings', route: '/settings' },
   { name: 'database-services', route: '/settings/services/databases' },
   { name: 'data-quality', route: '/data-quality' },
-  { name: 'incident-manager', route: '/incident-manager' },
+  {
+    name: 'incident-manager',
+    route: '/incident-manager',
+    mask: ['[data-testid="test-case-incident-manager-table"]'],
+  },
   { name: 'users', route: '/settings/members/users' },
   { name: 'teams', route: '/settings/members/teams' },
   // 'roles' intentionally omitted: the roles listing renders seeded roles

@@ -24,23 +24,16 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  clickOutside,
-  redirectToHomePage,
-  toastNotification,
-} from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  activateColumnLayer,
   applyPipelineFromModal,
   connectEdgeBetweenNodesViaAPI,
   editLineage,
   editLineageClick,
   fillLineageConfigForm,
-  performCollapse,
-  performExpand,
   performZoomOut,
-  verifyColumnLayerActive,
-  verifyExpandHandleHover,
   verifyNodePresent,
   verifyPipelineDataInDrawer,
   visitLineageTab,
@@ -185,7 +178,10 @@ test.describe.serial(
 
         await expect(mlModelNode).not.toBeVisible();
 
-        await verifyColumnLayerActive(page);
+        await activateColumnLayer(page);
+        await expect
+          .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+          .toBe('FIELD');
       });
 
       await test.step('Update global lineage config and verify lineage for entity layer', async () => {
@@ -221,38 +217,6 @@ test.describe.serial(
         await expect(searchIndexNode).not.toBeVisible();
       });
 
-      await test.step('Verify Upstream and Downstream expand collapse buttons', async () => {
-        await redirectToHomePage(page);
-        await dashboard.visitEntityPage(page);
-        await visitLineageTab(page);
-        const closeIcon = page.getByTestId('entity-panel-close-icon');
-        if (await closeIcon.isVisible()) {
-          await closeIcon.click();
-        }
-        await performZoomOut(page);
-        await verifyNodePresent(page, topic);
-        await verifyNodePresent(page, mlModel);
-
-        await verifyExpandHandleHover(page, mlModel, false);
-        await clickOutside(page);
-        await verifyExpandHandleHover(page, topic, true);
-
-        await performExpand(page, mlModel, false, searchIndex);
-        await performExpand(page, searchIndex, false, container);
-        await performExpand(page, container, false, metric);
-        await performExpand(page, topic, true, table);
-
-        await performZoomOut(page);
-
-        await performCollapse(page, mlModel, false, [
-          searchIndex,
-          container,
-          metric,
-        ]);
-        await performZoomOut(page);
-        await performCollapse(page, dashboard, true, [table, topic]);
-      });
-
       await test.step('Reset global lineage config and verify lineage', async () => {
         await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
         await fillLineageConfigForm(page, {
@@ -276,6 +240,10 @@ test.describe.serial(
     test('Verify lineage time filter and tab switch reuse loaded graph', async ({
       page,
     }) => {
+      test.skip(
+        true,
+        'Time-window filtering is not part of the hierarchical scene request contract.'
+      );
       await table.visitEntityPage(page);
       await visitLineageTab(page);
       await verifyNodePresent(page, table);

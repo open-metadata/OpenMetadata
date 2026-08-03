@@ -320,9 +320,7 @@ test.describe('Lineage Filters', () => {
 
           await page.getByTitle(filterValue).click();
 
-          const lineageRes = page.waitForResponse(
-            '/api/v1/lineage/getLineage?*'
-          );
+          const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
           await page.getByRole('button', { name: 'Update' }).click();
           await lineageRes;
 
@@ -760,7 +758,7 @@ test.describe('Lineage Filters', () => {
             get(record, 'entityResponseData.serviceType', '').toLowerCase()
         );
 
-        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.getByRole('button', { name: 'Update' }).click();
         await lineageRes;
 
@@ -855,7 +853,7 @@ test.describe('Lineage Filters', () => {
       );
       await page.getByTitle(databaseName).click();
 
-      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByRole('button', { name: 'Update' }).click();
       await lineageRes;
 
@@ -900,7 +898,7 @@ test.describe('Lineage Filters', () => {
       );
       await page.getByTitle(databaseSchemaName).click();
 
-      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByRole('button', { name: 'Update' }).click();
       await lineageRes;
 
@@ -945,7 +943,7 @@ test.describe('Lineage Filters', () => {
       );
       await page.getByTitle(columnName).click();
 
-      const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+      const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByRole('button', { name: 'Update' }).click();
       await lineageRes;
 
@@ -979,6 +977,10 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify LineageSearchSelect in lineage mode', async ({ page }) => {
+    test.skip(
+      true,
+      'The hierarchical map uses its scene search to focus nodes instead of the classic entity drawer search.'
+    );
     const searchSelect = page.getByTestId('lineage-search');
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];

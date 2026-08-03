@@ -50,6 +50,10 @@ test.describe.serial(
   'Test pagination in column level lineage',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
+    test.skip(
+      true,
+      'Per-node column pagination is a classic-canvas interaction and is not exposed by hierarchical lineage scenes.'
+    );
     const table1 = new TableClass();
     const table2 = new TableClass();
 

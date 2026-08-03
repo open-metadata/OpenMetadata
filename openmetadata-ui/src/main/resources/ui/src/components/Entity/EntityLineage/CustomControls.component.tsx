@@ -71,6 +71,12 @@ import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 import LineageTimeFilter from './LineageTimeFilter.component';
+
+type LineageFilterNodeData = {
+  node?: { id?: string };
+  sceneNode?: { sourceEntity?: { id?: string } };
+};
+
 const CustomControls: FC<{
   nodeDepthOptions?: number[];
   onSearchValueChange?: (value: string) => void;
@@ -114,15 +120,24 @@ const CustomControls: FC<{
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
-      .map((node) => node.data?.node?.id)
+      .map((node) => {
+        const nodeData = node.data as LineageFilterNodeData | undefined;
+
+        return nodeData?.sceneNode?.sourceEntity?.id ?? nodeData?.node?.id;
+      })
       .filter(Boolean);
+    const filterNodeIds = queryFilterNodeIds ?? nodeIds;
+
+    if (filterNodeIds.length === 0) {
+      return undefined;
+    }
 
     return {
       query: {
         bool: {
           must: {
             terms: {
-              'id.keyword': queryFilterNodeIds ?? nodeIds,
+              'id.keyword': filterNodeIds,
             },
           },
         },

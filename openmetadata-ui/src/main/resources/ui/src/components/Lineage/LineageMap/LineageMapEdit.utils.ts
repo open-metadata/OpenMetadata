@@ -83,6 +83,11 @@ export const getEndpointHandle = (endpoint: string) => {
     : endpoint.slice(separatorIndex + FIELD_SEPARATOR.length);
 };
 
+const getConnectionHandle = (
+  handle: string | null | undefined,
+  nodeId: string
+) => (handle && handle !== nodeId ? handle : undefined);
+
 export const getRealEntityRef = (
   node: LineageSceneNode
 ): EdgeFromToData | undefined => {
@@ -105,6 +110,32 @@ export const getRealEntityRef = (
       node.fullyQualifiedName
     ),
   };
+};
+
+export const hasSceneEntityConnection = (
+  scene: LineageScene,
+  fromEntityId: string,
+  toEntityId: string,
+  sourceHandle?: string,
+  targetHandle?: string
+) => {
+  const sourceNode = scene.nodes.find(
+    (node) => getRealEntityRef(node)?.id === fromEntityId
+  );
+  const targetNode = scene.nodes.find(
+    (node) => getRealEntityRef(node)?.id === toEntityId
+  );
+  if (!sourceNode || !targetNode) {
+    return false;
+  }
+
+  return scene.edges.some(
+    (edge) =>
+      getEndpointNodeId(edge.from) === sourceNode.id &&
+      getEndpointNodeId(edge.to) === targetNode.id &&
+      getEndpointHandle(edge.from) === sourceHandle &&
+      getEndpointHandle(edge.to) === targetHandle
+  );
 };
 
 export const isEditableSceneNode = (
@@ -302,14 +333,12 @@ export const buildConnectPayload = (
     : undefined;
   const fromEntity = sourceNode ? getRealEntityRef(sourceNode) : undefined;
   const toEntity = targetNode ? getRealEntityRef(targetNode) : undefined;
-  const sourceHandle =
-    connection.sourceHandle && connection.sourceHandle !== connection.source
-      ? connection.sourceHandle
-      : undefined;
-  const targetHandle =
-    connection.targetHandle && connection.targetHandle !== connection.target
-      ? connection.targetHandle
-      : undefined;
+  const sourceHandle = connection.source
+    ? getConnectionHandle(connection.sourceHandle, connection.source)
+    : undefined;
+  const targetHandle = connection.target
+    ? getConnectionHandle(connection.targetHandle, connection.target)
+    : undefined;
   const isColumnConnection = Boolean(sourceHandle && targetHandle);
 
   if (

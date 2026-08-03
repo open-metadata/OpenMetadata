@@ -223,7 +223,8 @@ public class LineageSceneResolver {
     }
     if (authorizeRoot) {
       Include include = includeDeleted ? Include.DELETED : Include.NON_DELETED;
-      hydrator.pruneUnauthorizedLineage(securityContext, lineage, include);
+      hydrator.pruneUnauthorizedLineage(
+          securityContext, lineage, include, LineageDomainFilter.shouldApply(subjectContext));
       sampled = true;
     }
     pruneLineage(lineage, subjectContext, focusFqn);
@@ -338,6 +339,7 @@ public class LineageSceneResolver {
                 .withUpstreamDepth(upstreamDepth)
                 .withDownstreamDepth(downstreamDepth)
                 .withQueryFilter(queryFilter)
+                .withPreservePaths(false)
                 .withIncludeDeleted(includeDeleted)
                 .withLayerSize(size)
                 .withIsConnectedVia(isConnectedVia(entityType))
