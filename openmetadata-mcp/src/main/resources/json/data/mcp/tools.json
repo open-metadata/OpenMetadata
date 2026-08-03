@@ -208,7 +208,7 @@
           },
           "filters": {
             "type": "object",
-            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}. These belong here and nowhere else — passing 'entityType', 'service' or 'tags' at the top level of the call is rejected with an error.",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'serviceType', 'tags' (e.g., ['PII.Sensitive']), 'owners', 'domains', 'tier', 'certification', 'database', 'databaseSchema', and for metrics 'metricType', 'granularity' (e.g., ['MONTH']) and 'unitOfMeasurement' — the same metric facets returned on every metric result, so you can filter by what you see. Custom properties are filterable as 'customProperties.<name>'. Example: {\"entityType\": [\"metric\"], \"granularity\": [\"MONTH\"]}. These belong here and nowhere else — passing a filter field at the top level of the call, or naming a field that is not in this list, is rejected with an error rather than silently ignored.",
             "additionalProperties": {
               "type": "array",
               "items": {

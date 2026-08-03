@@ -29,8 +29,30 @@ public class SemanticSearchTool implements McpTool {
   private static final int MAX_K = 10_000;
   private static final double DEFAULT_THRESHOLD = 0.0;
 
-  /** Filter fields the tool schema declares under {@code filters}; never valid at the top level. */
-  private static final List<String> FILTER_FIELDS = List.of("entityType", "service", "tags");
+  /**
+   * Every filter key {@code VectorSearchQueryBuilder} understands. A key belongs under
+   * {@code filters} and nowhere else, and a key outside this set would be dropped with nothing but a
+   * debug log — so both mistakes are rejected instead, per {@link #validateParams}. Keep in step
+   * with the switch in {@code VectorSearchQueryBuilder.appendFilterMustClauses}.
+   */
+  private static final List<String> FILTER_FIELDS =
+      List.of(
+          "entityType",
+          "service",
+          "serviceType",
+          "tags",
+          "owners",
+          "domains",
+          "tier",
+          "certification",
+          "database",
+          "databaseSchema",
+          "metricType",
+          "granularity",
+          "unitOfMeasurement");
+
+  /** Filter keys of the form {@code customProperties.<name>}, matched by prefix. */
+  private static final String CUSTOM_PROPERTIES_PREFIX = "customProperties.";
 
   /** Sentinel unit meaning "see customUnitOfMeasurement" rather than a unit in its own right. */
   private static final String UNIT_OF_MEASUREMENT_OTHER = "OTHER";
@@ -86,10 +108,10 @@ public class SemanticSearchTool implements McpTool {
   }
 
   /**
-   * Rejects a filter passed at the top level (e.g. {@code "entityType": "metric"}) instead of under
-   * {@code filters}. Such a parameter used to be dropped by {@link #parseFilters}, so the caller got
-   * an unfiltered search back with no indication their filter had done nothing — a wrong answer that
-   * looks like a right one. Failing loudly with the correct shape is the only honest option.
+   * Rejects the two ways a filter used to be discarded in silence: passed at the top level instead
+   * of under {@code filters}, or named something the query builder does not understand. Either way
+   * the caller got an unfiltered search back with no indication their filter had done nothing — a
+   * wrong answer that looks like a right one.
    *
    * @return the error message, or {@code null} when the parameters are usable
    */
@@ -98,17 +120,40 @@ public class SemanticSearchTool implements McpTool {
     if (query == null || query.isBlank()) {
       error = "'query' parameter is required";
     } else {
-      String misplaced =
-          FILTER_FIELDS.stream().filter(params::containsKey).findFirst().orElse(null);
-      if (misplaced != null) {
-        error =
-            String.format(
-                "'%s' is a filter and must be nested under 'filters' as an array, "
-                    + "for example: {\"query\": \"...\", \"filters\": {\"%s\": [\"value\"]}}",
-                misplaced, misplaced);
+      error = misplacedFilterError(params);
+      if (error == null) {
+        error = unknownFilterError(params);
       }
     }
     return error;
+  }
+
+  private static String misplacedFilterError(Map<String, Object> params) {
+    String misplaced = FILTER_FIELDS.stream().filter(params::containsKey).findFirst().orElse(null);
+    return misplaced == null
+        ? null
+        : String.format(
+            "'%s' is a filter and must be nested under 'filters' as an array, "
+                + "for example: {\"query\": \"...\", \"filters\": {\"%s\": [\"value\"]}}",
+            misplaced, misplaced);
+  }
+
+  private static String unknownFilterError(Map<String, Object> params) {
+    String unknown =
+        parseFilters(params).keySet().stream()
+            .filter(key -> !isSupportedFilter(key))
+            .findFirst()
+            .orElse(null);
+    return unknown == null
+        ? null
+        : String.format(
+            "'%s' is not a supported filter field. Supported fields: %s, "
+                + "or 'customProperties.<name>'.",
+            unknown, String.join(", ", FILTER_FIELDS));
+  }
+
+  private static boolean isSupportedFilter(String key) {
+    return FILTER_FIELDS.contains(key) || key.startsWith(CUSTOM_PROPERTIES_PREFIX);
   }
 
   @Override
@@ -302,7 +347,7 @@ public class SemanticSearchTool implements McpTool {
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, List<String>> parseFilters(Map<String, Object> params) {
+  private static Map<String, List<String>> parseFilters(Map<String, Object> params) {
     if (!params.containsKey("filters")) {
       return Collections.emptyMap();
     }

@@ -588,6 +588,50 @@ class SemanticSearchToolTest {
   }
 
   @Test
+  void testUnknownFilterKeyIsRejectedInsteadOfIgnored() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "active users");
+    params.put("filters", Map.of("granularityy", List.of("MONTH")));
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    String error = (String) result.get("error");
+    assertNotNull(error);
+    assertTrue(error.contains("granularityy"));
+    assertTrue(error.contains("granularity"), "the error lists the supported fields");
+    verify(vectorService, never())
+        .search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble());
+  }
+
+  @Test
+  void testSupportedMetricFacetFilterIsAccepted() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, Collections.emptyList()));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "active users");
+    params.put("filters", Map.of("granularity", List.of("MONTH"), "metricType", List.of("COUNT")));
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    assertNull(result.get("error"));
+    assertEquals(0, result.get("totalFound"));
+  }
+
+  @Test
+  void testTopLevelMetricFacetIsRejectedToo() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "active users");
+    params.put("granularity", "MONTH");
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    assertTrue(result.get("error").toString().contains("granularity"));
+    assertTrue(result.get("error").toString().contains("filters"));
+  }
+
+  @Test
   void testOversizedMetricExpressionIsCappedOnTheReadSide() throws Exception {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
 
