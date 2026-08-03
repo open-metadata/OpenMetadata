@@ -788,6 +788,24 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
+      # Restore Playwright's Chromium system deps (fonts + xfonts) from the
+      # GH Actions cache before install-deps runs. On cache hit the action
+      # extracts the previously-installed files (~/usr/share/fonts and
+      # /var/cache/fontconfig) directly, so the subsequent `install-deps`
+      # sees every package as already-installed and skips fetching from the
+      # Ubuntu mirror entirely. This closes the failure mode where a slow
+      # Azure mirror hit chromium-18 with a 40 kB/s download and pushed the
+      # shard past the 30-min elapsed-before-upload gate (run 30788758311).
+      # `install-deps` still runs as a safety net so a Playwright version
+      # bump that adds a new dep does not silently miss it.
+      - name: Cache Playwright system deps
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        continue-on-error: true
+        with:
+          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
+          version: playwright-chromium-deps-v1
+
       - name: Install fixture-state browser
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -1048,6 +1066,17 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      # Same rationale as the Cache Playwright system deps step in the
+      # fixture builder above — cache the Chromium system deps so every
+      # shard skips the ~30 s Ubuntu-mirror fetch (or a multi-minute crawl
+      # on a bad-mirror day, see run 30788758311).
+      - name: Cache Playwright system deps
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        continue-on-error: true
+        with:
+          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
+          version: playwright-chromium-deps-v1
 
       - name: Install Playwright Browsers
         id: install-browsers
