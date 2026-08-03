@@ -154,7 +154,10 @@ test('add team form (form inside modal) matches baseline', async ({ page }) => {
     (document.activeElement as HTMLElement | null)?.blur()
   );
 
-  await expect(page.locator('.ant-modal')).toHaveScreenshot(
+  // `.ant-modal-content`, not `.ant-modal`: the latter is antd's transparent
+  // positioning wrapper, so screenshotting it captures whatever shows through
+  // from the page behind rather than the dialog itself.
+  await expect(page.locator('.ant-modal-content')).toHaveScreenshot(
     'add-team-form.png',
     SCREENSHOT_OPTS
   );
