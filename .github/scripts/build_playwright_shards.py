@@ -78,6 +78,15 @@ COMMON_MAX_SHARDS = 24
 FALLBACK_TEST_MS = 30_000
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
+    # Six long-running tests (each 5-10 min per test.setTimeout) inside one
+    # top-level describe. Left as a single atomic unit, its total weight
+    # exceeds the 20-minute per-unit ceiling — merge-queue plan step for
+    # PR #30697 failed with "chromium|Features/BulkImport.spec.ts|Bulk Import
+    # Export (25.8m)" once the suite was re-enabled by #30458. Split it into
+    # per-spec parallel units. beforeAll setup is per-test-instance
+    # (module-scoped entity constructors generate unique names), so each
+    # parallel unit brings its own state without cross-worker collision.
+    ("Features/BulkImport.spec.ts", "Bulk Import Export"),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
     ("Pages/ExplorePageRightPanel.spec.ts", "Right Panel Test Suite"),
     ("Pages/Glossary.spec.ts", "Glossary tests"),
