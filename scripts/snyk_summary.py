@@ -156,17 +156,22 @@ def render_code_slack(name, by_rule, rules, total, top):
 
 
 def count_severities(libs, by_rule):
-    """Snyk Code SARIF uses level (error/warning/note); treat error=high, warning=medium, note=low.
-    Dep libs already have explicit severity."""
+    """Count DISTINCT issues, not occurrences, so the Slack severity totals stay
+    comparable to a package count:
+      - dependency scans: one per vulnerable (package, version) library;
+      - Snyk Code (SARIF): one per rule, at its most-severe level — a single rule
+        spanning many files/lines counts once, not once per location.
+    Snyk Code SARIF uses level (error/warning/note); treat error=high,
+    warning=medium, note=low. Dep libs already have explicit severity."""
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for info in libs.values():
         sev = (info["sev"] or "low").lower()
         if sev in counts:
             counts[sev] += 1
+    level_sev = {"error": "high", "warning": "medium", "note": "low"}
     for rid, items in by_rule.items():
-        for uri, level, lines in items:
-            mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
-            counts[mapped] += 1  # count locations to match render_code_md total
+        sev = min((level_sev.get(level, "medium") for _, level, _ in items), key=sev_key)
+        counts[sev] += 1
     return counts
 
 
