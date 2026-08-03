@@ -20,7 +20,6 @@ import {
 } from '../../../src/generated/type/personaContextDefinition';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { selectOption } from '../../utils/advancedSearch';
 import {
   getDefaultAdminAPIContext,
   toastNotification,
@@ -1104,25 +1103,15 @@ test.describe.serial('Persona AI Context', () => {
     await expect(adminPage.getByText('7 truncated')).toBeVisible();
   });
 
-  // The drawer opens with no condition rows at all — the Filter section shows only the group's own
-  // field select and an "Add condition" button. Adding a row and naming its field is what leaves a
-  // condition started with its value blank. Display Name takes a text value and never defaults to a
-  // valueless operator, so the row stays unfinished.
+  // The drawer opens with no visible condition row. "Add condition" adds one that already carries a
+  // field and an operator — Owners / Is — with its value left empty, which is exactly the unfinished
+  // state under test, so there is nothing further to fill in.
   const startConditionWithoutValue = async (page: Page) => {
     await page.getByTestId('add-context-condition').click();
 
-    const rule = page
-      .getByTestId('query-builder-form-field')
-      .locator('.rule')
-      .first();
-    await expect(rule).toBeVisible();
-
-    await selectOption(
-      page,
-      rule.locator('.rule--field .ant-select'),
-      'Display Name',
-      true
-    );
+    await expect(
+      page.getByTestId('delete-condition-button').last()
+    ).toBeVisible();
   };
 
   // A condition with a field but no value serializes to `{"term":{}}`, which the search engines
@@ -1211,7 +1200,8 @@ test.describe.serial('Persona AI Context', () => {
       adminPage.getByTestId('context-rule-filter-error')
     ).toBeVisible();
 
-    await adminPage.getByTestId('delete-condition-button').first().click();
+    // Remove the row that was added, the same way the entity-type test does.
+    await adminPage.getByTestId('delete-condition-button').last().click();
     await expect(
       adminPage.getByTestId('context-rule-filter-error')
     ).toBeHidden();
