@@ -45,23 +45,28 @@ const InlineEdit = ({
       onKeyDown={handleKeyDown}>
       {children}
       <Space className="w-full justify-end" data-testid="buttons" size={4}>
+        {/* The spread stays last, as it was before the antd migration:
+        callers pass overrides through cancelButtonProps/saveButtonProps
+        (e.g. PropertyValue passes `type: 'submit'` + `form`), and those must
+        win over the defaults here. The codemod moved the converted props
+        after the spread, which silently inverted that precedence. */}
         <Button
-          data-testid="inline-cancel-btn"
-          onClick={onCancel}
-          {...cancelButtonProps}
           color="primary"
+          data-testid="inline-cancel-btn"
           iconLeading={<CloseOutlined />}
           isDisabled={isLoading}
           size="xs"
+          onClick={onCancel}
+          {...cancelButtonProps}
         />
         <Button
-          data-testid="inline-save-btn"
-          onClick={onSave}
-          {...saveButtonProps}
           color="primary"
+          data-testid="inline-save-btn"
           iconLeading={<CheckOutlined />}
           isLoading={isLoading}
           size="xs"
+          onClick={onSave}
+          {...saveButtonProps}
         />
       </Space>
     </Space>
