@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useState } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
-import ApplicationsProvider from './ApplicationsProvider';
+import ApplicationsProvider, {
+  useApplicationsProvider,
+} from './ApplicationsProvider';
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(),
@@ -34,6 +44,37 @@ const mockGetInstalledApplicationList =
 const mockSetApplicationsName = jest.fn();
 const mockSetApplicationsLoaded = jest.fn();
 const APPLICATION_CHILDREN_TEST_ID = 'application-children';
+const APPLICATION_STATUS_TEST_ID = 'application-loading-status';
+const STATEFUL_CHILD_TEST_ID = 'stateful-child';
+
+const createDeferredPromise = <T,>() => {
+  let resolvePromise: (value: T) => void = () => undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
+
+  return { promise, resolve: resolvePromise };
+};
+
+const ApplicationsLoadingStatus = () => {
+  const { isLoading } = useApplicationsProvider();
+
+  return (
+    <div data-loading={isLoading} data-testid={APPLICATION_STATUS_TEST_ID} />
+  );
+};
+
+const StatefulChild = () => {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button
+      data-testid={STATEFUL_CHILD_TEST_ID}
+      onClick={() => setCount((currentCount) => currentCount + 1)}>
+      {count}
+    </button>
+  );
+};
 
 describe('ApplicationsProvider', () => {
   beforeEach(() => {
@@ -47,28 +88,70 @@ describe('ApplicationsProvider', () => {
     });
   });
 
-  it('keeps children hidden until installed applications are loaded', async () => {
-    mockGetInstalledApplicationList.mockResolvedValue([]);
+  it('renders children while installed applications are loading', async () => {
+    const applicationsRequest = createDeferredPromise<EntityReference[]>();
+    mockGetInstalledApplicationList.mockReturnValue(
+      applicationsRequest.promise
+    );
 
     render(
       <ApplicationsProvider>
         <div data-testid={APPLICATION_CHILDREN_TEST_ID} />
+        <ApplicationsLoadingStatus />
       </ApplicationsProvider>
     );
 
-    expect(screen.getByTestId('full-screen-loader')).toBeInTheDocument();
     expect(
-      screen.queryByTestId(APPLICATION_CHILDREN_TEST_ID)
-    ).not.toBeInTheDocument();
+      screen.getByTestId(APPLICATION_CHILDREN_TEST_ID)
+    ).toBeInTheDocument();
+    expect(screen.getByTestId(APPLICATION_STATUS_TEST_ID)).toHaveAttribute(
+      'data-loading',
+      'true'
+    );
+    expect(screen.queryByTestId('full-screen-loader')).not.toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId(APPLICATION_CHILDREN_TEST_ID)
-      ).toBeInTheDocument();
+    await act(async () => {
+      applicationsRequest.resolve([]);
+      await applicationsRequest.promise;
     });
 
-    expect(screen.queryByTestId('full-screen-loader')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId(APPLICATION_STATUS_TEST_ID)).toHaveAttribute(
+        'data-loading',
+        'false'
+      );
+    });
+
     expect(mockSetApplicationsLoaded).toHaveBeenCalledWith(true);
+  });
+
+  it('preserves child state when the permissions object changes', async () => {
+    mockGetInstalledApplicationList.mockResolvedValue([]);
+    const { rerender } = render(
+      <ApplicationsProvider>
+        <StatefulChild />
+      </ApplicationsProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockSetApplicationsLoaded).toHaveBeenCalledWith(true);
+    });
+
+    fireEvent.click(screen.getByTestId(STATEFUL_CHILD_TEST_ID));
+
+    expect(screen.getByTestId(STATEFUL_CHILD_TEST_ID)).toHaveTextContent('1');
+
+    mockUsePermissionProvider.mockReturnValue({
+      permissions: { app: {}, user: {} },
+    });
+    rerender(
+      <ApplicationsProvider>
+        <StatefulChild />
+      </ApplicationsProvider>
+    );
+
+    expect(screen.getByTestId(STATEFUL_CHILD_TEST_ID)).toHaveTextContent('1');
+    expect(mockGetInstalledApplicationList).toHaveBeenCalledTimes(1);
   });
 
   it('renders children when application permissions are unavailable', async () => {

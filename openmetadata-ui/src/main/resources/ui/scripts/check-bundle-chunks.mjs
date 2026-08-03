@@ -59,9 +59,24 @@ const htmlBootstrapJsFiles = [
     )
   ),
 ];
-const htmlBootstrapJsBrotliBytes = htmlBootstrapJsFiles.reduce(
+const htmlBootstrapJsBrotliFiles = htmlBootstrapJsFiles.map(
+  (fileName) => `${fileName}.br`
+);
+const missingHtmlBootstrapJsBrotliFiles = htmlBootstrapJsBrotliFiles.filter(
+  (fileName) => !existsSync(path.join(assetsDirectory, fileName))
+);
+
+if (missingHtmlBootstrapJsBrotliFiles.length > 0) {
+  throw new Error(
+    `Bundle budget cannot be checked because Brotli artifacts are missing: ${missingHtmlBootstrapJsBrotliFiles.join(
+      ', '
+    )}. Run \`yarn build\` to regenerate compressed assets.`
+  );
+}
+
+const htmlBootstrapJsBrotliBytes = htmlBootstrapJsBrotliFiles.reduce(
   (totalBytes, fileName) =>
-    totalBytes + statSync(path.join(assetsDirectory, `${fileName}.br`)).size,
+    totalBytes + statSync(path.join(assetsDirectory, fileName)).size,
   0
 );
 
