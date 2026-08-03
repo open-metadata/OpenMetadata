@@ -27,13 +27,14 @@ from uuid import uuid4
 import pytest
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.models.table_metadata import ColumnTag
+from metadata.ingestion.models.table_metadata import ColumnDescription, ColumnTag
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin, _entity_etag
 
@@ -158,6 +159,24 @@ class TestPatchColumnTagsIfMatch:
         assert metadata.client.patch.call_count == 2
         sent = [call.kwargs["headers"] for call in metadata.client.patch.call_args_list]
         assert sent == [{"If-Match": 'W/"0.4"'}, {"If-Match": 'W/"0.5"'}]
+
+    def test_column_descriptions_send_the_same_validator(self):
+        # patch_column_descriptions runs its own copy of the retry loop, so it needs its own guard
+        # against the two paths drifting apart.
+        instance = _table(1.0)
+        metadata = _FakeMetadata(
+            instances=[instance],
+            patch_side_effect=[instance.model_dump(mode="json")],
+        )
+
+        result = metadata.patch_column_descriptions(
+            table=instance,
+            column_descriptions=[ColumnDescription(column_fqn=COLUMN_FQN, description=Markdown("classified"))],
+            force=True,
+        )
+
+        assert result is not None
+        assert metadata.client.patch.call_args.kwargs["headers"] == {"If-Match": 'W/"1.0"'}
 
     def test_falls_back_unconditionally_when_version_did_not_move(self):
         # A 412 on an unchanged version means the precondition itself is unusable (client/server
