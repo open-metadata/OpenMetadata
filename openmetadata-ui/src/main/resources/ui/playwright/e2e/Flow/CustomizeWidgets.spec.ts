@@ -335,7 +335,7 @@ test('My Data Widget', async ({ page }) => {
   });
 });
 
-test.fixme('KPI Widget', async ({ page }) => {
+test('KPI Widget', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {
@@ -374,8 +374,6 @@ test.fixme('KPI Widget', async ({ page }) => {
       widgetKey,
       link: 'data-insights/kpi',
     });
-
-    await redirectToHomePage(page);
   });
 
   await test.step('Test widget loads KPI data correctly', async () => {
@@ -393,6 +391,7 @@ test.fixme('KPI Widget', async ({ page }) => {
         response.url().includes('/kpiResult')
     );
 
+    await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
 
     const widget = page.getByTestId(widgetKey);
