@@ -323,7 +323,9 @@ export const fillRule = async (
       await expect(async () => {
         const listboxId = await dropdownInput.getAttribute('aria-controls');
         if (!listboxId) {
-          throw new Error('Value combobox popup not open (aria-controls missing)');
+          throw new Error(
+            'Value combobox popup not open (aria-controls missing)'
+          );
         }
         const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
         const exactMatch = dropdown

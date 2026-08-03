@@ -85,7 +85,10 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
     }
     const fieldChanged = lastAsyncFetchRef.current !== asyncFetch;
     lastAsyncFetchRef.current = asyncFetch;
-    if (fieldChanged && (value === null || value === undefined || value === '')) {
+    if (
+      fieldChanged &&
+      (value === null || value === undefined || value === '')
+    ) {
       loadAsync('');
     }
   }, [useAsyncSearch, asyncFetch, value, loadAsync]);
