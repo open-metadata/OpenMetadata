@@ -472,7 +472,6 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await verifyTermVisible(page, basicChild.data.displayName);
     });
 
-    // Skip: Requires re-filtering expanded state which isn't fully implemented
     test('change filter while expanded updates visible root terms', async ({
       page,
     }) => {
