@@ -90,6 +90,7 @@ import org.openmetadata.service.attachments.NoOpAssetService;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -137,6 +138,8 @@ public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
       "Glossary term relation settings changed while the JSON Patch was being applied";
+  private static final String INVALID_GLOSSARY_TERM_RELATION_SETTINGS_PATCH =
+      "Invalid JSON Patch for glossary term relation settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
@@ -422,7 +425,7 @@ public class SystemRepository {
     try {
       patched = JsonUtils.applyPatch(current, patch);
     } catch (JsonException exception) {
-      throw new PreconditionFailedException(GLOSSARY_TERM_RELATION_SETTINGS_CHANGED, exception);
+      throw new BadRequestException(INVALID_GLOSSARY_TERM_RELATION_SETTINGS_PATCH, exception);
     }
     GlossaryTermRelationSettings updated =
         JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
