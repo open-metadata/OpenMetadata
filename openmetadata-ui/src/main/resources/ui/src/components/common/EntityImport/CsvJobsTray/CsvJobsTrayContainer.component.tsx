@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC, lazy, Suspense, useEffect, useState } from 'react';
+import { FC, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 import { CsvJobsRefreshEventDetail } from './CsvJobsTray.interface';
@@ -30,9 +30,10 @@ const CsvJobsTray = lazy(() =>
  */
 export const CsvJobsTrayContainer: FC = () => {
   const [isTrayActivated, setIsTrayActivated] = useState(false);
-  const [pendingHandoffJobIds, setPendingHandoffJobIds] = useState<string[]>(
-    []
-  );
+  // Ref (not state) — CsvJobsTray only reads these IDs at mount; no re-render
+  // needed on subsequent events. Set deduplicates if the same job ID arrives
+  // more than once before the tray is first mounted.
+  const pendingHandoffJobIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const activateTray = (event: Event) => {
@@ -40,7 +41,7 @@ export const CsvJobsTrayContainer: FC = () => {
         .detail?.handoffJobId;
 
       if (handoffJobId) {
-        setPendingHandoffJobIds((prev) => [...prev, handoffJobId]);
+        pendingHandoffJobIdsRef.current.add(handoffJobId);
       }
 
       setIsTrayActivated(true);
@@ -57,7 +58,9 @@ export const CsvJobsTrayContainer: FC = () => {
   return isTrayActivated ? (
     <ErrorBoundary fallback={<></>}>
       <Suspense fallback={null}>
-        <CsvJobsTray pendingHandoffJobIds={pendingHandoffJobIds} />
+        <CsvJobsTray
+          pendingHandoffJobIds={[...pendingHandoffJobIdsRef.current]}
+        />
       </Suspense>
     </ErrorBoundary>
   ) : null;
