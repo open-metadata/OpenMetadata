@@ -47,10 +47,8 @@ import {
 } from '../../../../rest/csvAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
-import {
-  CSV_JOBS_REFRESH_EVENT,
-  CsvJobsRefreshEventDetail,
-} from './CsvJobsTray.constants';
+import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
+import { CsvJobsRefreshEventDetail } from './CsvJobsTray.interface';
 
 const ACTIVE_STATUSES: CsvAsyncJobStatus[] = [
   'QUEUED',

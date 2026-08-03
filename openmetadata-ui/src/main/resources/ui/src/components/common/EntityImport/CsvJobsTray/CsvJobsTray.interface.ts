@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-// Window event that entity pages dispatch after starting a CSV export/import so
-// the (lazily mounted) jobs tray refreshes. Kept in its own module so importing
-// it does not pull the heavy CsvJobsTray component into the caller's bundle.
-export const CSV_JOBS_REFRESH_EVENT = 'csv-jobs-refresh';
+// When a provider times out and hands a job off to the tray it passes this
+// detail so the tray knows not to auto-dismiss the job even if it has already
+// reached a terminal status by the time the tray performs its initial fetch.
+export type CsvJobsRefreshEventDetail = { handoffJobId?: string };

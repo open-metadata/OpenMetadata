@@ -12,10 +12,8 @@
  */
 import { FC, lazy, Suspense, useEffect, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import {
-  CSV_JOBS_REFRESH_EVENT,
-  CsvJobsRefreshEventDetail,
-} from './CsvJobsTray.constants';
+import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
+import { CsvJobsRefreshEventDetail } from './CsvJobsTray.interface';
 
 const CsvJobsTray = lazy(() =>
   import('./CsvJobsTray.component').then(({ CsvJobsTray: Tray }) => ({
