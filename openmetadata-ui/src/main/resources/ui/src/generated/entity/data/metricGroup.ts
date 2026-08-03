@@ -79,8 +79,9 @@ export interface MetricGroup {
      */
     metricCount?: number;
     /**
-     * Metrics that belong to this group. Derived from membership relationships and never
-     * stored, so a metric can be added or removed without rewriting the group.
+     * Metrics that belong to this group. This relationship-derived field is used internally for
+     * mutations and is exposed to clients only through the authorized, paginated
+     * `/v1/metricGroups/{id}/metrics` endpoint.
      */
     metrics?: EntityReference[];
     /**
