@@ -85,11 +85,11 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
-          # Disabling shallow clone is recommended for improving relevancy of reporting.
-          # Use partial clone (blob:none) to avoid downloading every blob in history —
-          # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
+          # Full clone (no shallow, no blob filter) so Sonar git blame can read file
+          # contents — blame drives PR New Code detection. A partial clone (blob:none)
+          # left blobs missing, which forced sonar.scm.disabled=true and made SonarCloud
+          # report the whole tree as "new code" on every PR.
           fetch-depth: 0
-          filter: blob:none
           persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -162,8 +162,7 @@ jobs:
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
           -Dsonar.pullrequest.provider=github \
           -Dsonar.qualitygate.wait=true \
-          -Dsonar.qualitygate.timeout=600 \
-          -Dsonar.scm.disabled=true
+          -Dsonar.qualitygate.timeout=600
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
