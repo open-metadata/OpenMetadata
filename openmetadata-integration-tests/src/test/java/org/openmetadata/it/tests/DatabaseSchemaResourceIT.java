@@ -20,7 +20,6 @@ import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -2345,8 +2344,14 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   void test_listDatabaseSchemasFilteredByService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchemaTestFactory.createSimple(ns, service);
-    DatabaseSchemaTestFactory.createSimple(ns, service);
+    Database database =
+        Databases.create().name(ns.prefix("db")).in(service.getFullyQualifiedName()).execute();
+    for (int i = 0; i < 2; i++) {
+      DatabaseSchemas.create()
+          .name(ns.prefix("service_filter_schema_" + i))
+          .in(database.getFullyQualifiedName())
+          .execute();
+    }
 
     ListResponse<DatabaseSchema> response =
         client.databaseSchemas().list(new ListParams().setService(service.getName()).setLimit(50));
