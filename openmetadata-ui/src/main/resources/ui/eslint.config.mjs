@@ -334,9 +334,12 @@ export default [
 
       // React correctness and re-render cost — the enforceable slice of
       // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 23
-      'react/jsx-no-constructed-context-values': 'warn', // 1
-      'react/no-unstable-nested-components': 'warn', // 1
+      // Backlog counts below are full-repo, not sampled. Re-measure with:
+      //   eslint 'src/**/*.{ts,tsx}' --format json \
+      //     | jq '[.[].messages[]|select(.ruleId=="<rule>")]|length'
+      'react/no-array-index-key': 'warn', // 93
+      'react/jsx-no-constructed-context-values': 'warn', // 8
+      'react/no-unstable-nested-components': 'warn', // 25
       'react/no-danger': 'warn', // 0 in sample
       '@typescript-eslint/no-non-null-assertion': 'warn',
 
