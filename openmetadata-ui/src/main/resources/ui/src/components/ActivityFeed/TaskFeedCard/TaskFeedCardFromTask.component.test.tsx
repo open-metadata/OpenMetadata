@@ -161,7 +161,7 @@ jest.mock('../../../utils/TaskActionUtils', () => ({
 }));
 
 jest.mock('../../../utils/TaskNavigationUtils', () => ({
-  ...jest.requireActual('../../../utils/TaskNavigationUtils'),
+  getTaskDisplayId: jest.fn().mockReturnValue('2'),
   getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
 }));
 

@@ -34,12 +34,14 @@ const mockSetGlossaryChildTerms = jest.fn();
 const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
-const mockGetAllFeeds = jest.fn();
+const mockGetGlossaryTerms = jest.fn();
+const mockListTasks = jest.fn();
+const mockResolveTask = jest.fn();
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
+    .mockImplementation((...args) => mockGetGlossaryTerms(...args)),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   getFirstLevelGlossaryTermsPaginated: jest
     .fn()
@@ -54,10 +56,24 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation((...args) => mockSearchGlossaryTermsPaginated(...args)),
 }));
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  getAllFeeds: jest
+jest.mock('../../../rest/tasksAPI', () => ({
+  listTasks: jest.fn().mockImplementation((...args) => mockListTasks(...args)),
+  resolveTask: jest
     .fn()
-    .mockImplementation((...args) => mockGetAllFeeds(...args)),
+    .mockImplementation((...args) => mockResolveTask(...args)),
+  TaskCategory: {
+    Approval: 'Approval',
+  },
+  TaskEntityStatus: {
+    Open: 'Open',
+  },
+  TaskEntityType: {
+    RequestApproval: 'RequestApproval',
+  },
+  TaskResolutionType: {
+    Approved: 'Approved',
+    Rejected: 'Rejected',
+  },
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
@@ -230,6 +246,7 @@ describe('Test GlossaryTermTab component', () => {
       data: mockedGlossaryTerms,
       paging: { after: null },
     });
+    mockGetGlossaryTerms.mockResolvedValue({ data: mockedGlossaryTerms });
     mockGetGlossaryTermChildrenLazy.mockResolvedValue({
       data: [
         {
@@ -244,7 +261,8 @@ describe('Test GlossaryTermTab component', () => {
         },
       ],
     });
-    mockGetAllFeeds.mockResolvedValue({ data: [] });
+    mockListTasks.mockResolvedValue({ data: [] });
+    mockResolveTask.mockResolvedValue({});
 
     // Reset store to default state
     Object.assign(mockUseGlossaryStore, {
@@ -629,40 +647,20 @@ describe('Test GlossaryTermTab component', () => {
     });
   });
 
-  describe('Glossary vs Glossary Term Context', () => {
-    it('should behave differently when isGlossary is true', async () => {
-      render(<GlossaryTermTab isGlossary />, {
-        wrapper: MemoryRouter,
-      });
-
-      await waitFor(() => {
-        expect(mockGetAllFeeds).toHaveBeenCalledWith(
-          expect.stringContaining('glossary'),
-          undefined,
-          'Task',
-          undefined,
-          'Open',
-          undefined,
-          100000
-        );
-      });
-    });
-
-    it('should behave differently when isGlossary is false', async () => {
+  describe('Task Loading', () => {
+    it('should fetch open approval tasks', async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(mockGetAllFeeds).toHaveBeenCalledWith(
-          expect.stringContaining('glossaryTerm'),
-          undefined,
-          'Task',
-          undefined,
-          'Open',
-          undefined,
-          100000
-        );
+        expect(mockListTasks).toHaveBeenCalledWith({
+          category: 'Approval',
+          fields: 'about,assignees',
+          limit: 100000,
+          status: 'Open',
+          type: 'RequestApproval',
+        });
       });
     });
   });
@@ -709,15 +707,15 @@ describe('Test GlossaryTermTab component', () => {
       });
     });
 
-    it('should handle errors when fetching feeds', async () => {
-      mockGetAllFeeds.mockRejectedValue(new Error('Feeds error'));
+    it('should handle errors when fetching tasks', async () => {
+      mockListTasks.mockRejectedValue(new Error('Tasks error'));
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(mockGetAllFeeds).toHaveBeenCalled();
+        expect(mockListTasks).toHaveBeenCalled();
       });
     });
   });
@@ -957,6 +955,40 @@ describe('Test GlossaryTermTab component', () => {
       // we're just testing that the button exists and has proper text
       // The full integration test would require more complex setup
     });
+
+    it.each([
+      {
+        isGlossary: true,
+        requestKey: 'glossary',
+      },
+      {
+        isGlossary: false,
+        requestKey: 'parent',
+      },
+    ])(
+      'should fetch expanded terms by $requestKey when isGlossary is $isGlossary',
+      async ({ isGlossary, requestKey }) => {
+        render(<GlossaryTermTab isGlossary={isGlossary} />, {
+          wrapper: MemoryRouter,
+        });
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId('expand-collapse-all-button')
+          ).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+        await waitFor(() => {
+          expect(mockGetGlossaryTerms).toHaveBeenCalledWith(
+            expect.objectContaining({
+              [requestKey]: mockUseGlossaryStore.activeGlossary.id,
+            })
+          );
+        });
+      }
+    );
   });
 
   describe('Drag and Drop Modal', () => {
