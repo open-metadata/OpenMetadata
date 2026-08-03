@@ -363,7 +363,9 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
                               accuracy of the context enhancement process
         :param context: list of context words
         """
-        if context is None:
+        # The match depends only on the recognizer and the column, not on the individual
+        # result, so resolve it once instead of re-tokenizing the context for every result.
+        if not context or not self.context or not context_matches(self.context, context):
             return raw_recognizer_results
 
         for result in raw_recognizer_results:
@@ -373,17 +375,16 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
             ):
                 continue
 
-            if context_matches(self.context, context):
-                original_score = result.score
-                result.score = self.MAX_SCORE
+            original_score = result.score
+            result.score = self.MAX_SCORE
 
-                result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
-                    RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-                ] = True
+            result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
+                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
+            ] = True
 
-                logger.debug(
-                    f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"
-                )
+            logger.debug(
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"
+            )
 
         return raw_recognizer_results
 
@@ -464,9 +465,11 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             context,
         )
 
-        if not rec.context or not context:
-            # If no context is given or the recognizer does not support it,
-            # then ignore this
+        # The match depends only on the recognizer and the column, not on the individual
+        # result, so resolve it once instead of re-tokenizing the context for every result.
+        if not rec.context or not context or not context_matches(rec.context, context):
+            # If no context is given, the recognizer does not support it, or none of its
+            # context words match the column, then ignore this
             return results
 
         for result in results:
@@ -480,17 +483,16 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             if result.score < MIN_SCORE_FOR_ENHANCEMENT:
                 continue
 
-            if context_matches(rec.context, context):
-                original_score = result.score
-                result.score = rec.MAX_SCORE
+            original_score = result.score
+            result.score = rec.MAX_SCORE
 
-                result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
-                    RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-                ] = True
+            result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
+                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
+            ] = True
 
-                logger.debug(
-                    f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"
-                )
+            logger.debug(
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"
+            )
 
         return results
 
