@@ -13,9 +13,9 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { FC, useState } from 'react';
-import { ICON_CATEGORIES } from '../icons/categories';
+import { ICON_CATEGORIES } from '../icons-static/categories';
 import * as Icons from '../icons/index';
-import type { IconProps } from '../icons/types';
+import type { IconProps } from '../icons-static/types';
 
 type IconComponent = FC<IconProps>;
 
