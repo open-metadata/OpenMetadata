@@ -16,9 +16,11 @@ import i18next from 'eslint-plugin-i18next';
 import jest from 'eslint-plugin-jest';
 import jestFormatting from 'eslint-plugin-jest-formatting';
 import jsoncPlugin from 'eslint-plugin-jsonc';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import playwright from 'eslint-plugin-playwright';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
@@ -98,6 +100,8 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      sonarjs,
+      'jsx-a11y': jsxA11y,
     },
 
     rules: {
@@ -187,9 +191,12 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
 
-      // i18next rules - temporarily disabled due to ESLint 9 compatibility issues
-      // TODO: Re-enable when eslint-plugin-i18next fully supports ESLint 9 flat config
-      'i18next/no-literal-string': 'off',
+      // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
+      // for no longer reproduces — verified running against this config, where
+      // it reports ~367 findings in a 400-file sample. `warn` because of that
+      // backlog; the repo convention is no user-facing string literals, so this
+      // should reach `error` once the backlog is worked down.
+      'i18next/no-literal-string': 'warn',
 
       // Ban Tailwind `ring-*` for drawing edges. Rings compile to box-shadow, and WebKit
       // does not pixel-snap box-shadows, so a ring used as a border thins out and can
@@ -212,6 +219,131 @@ export default [
             'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
         },
       ],
+
+      // SonarJS — same engine and rule ids (Sxxxx) as the SonarCloud analysis
+      // that already runs on every UI PR, so a finding here is the finding
+      // Sonar reports, only faster and in the editor.
+      //
+      // ONLY rules with zero existing violations across src/ are listed. ESLint
+      // reports per file, not per added line, so a rule with a legacy backlog
+      // would fail PRs for code they merely touched. The high-backlog rules —
+      // no-duplicate-string (640), cognitive-complexity (85), no-collapsible-if
+      // (21), no-redundant-jump (14), no-duplicated-branches (9),
+      // no-identical-functions (6) — are deliberately NOT here: SonarCloud's
+      // Clean-as-You-Code gate scopes them to new lines, which ESLint cannot do.
+      // Also held back for a small backlog, mostly in tests: no-extra-arguments
+      // (20), prefer-object-literal (1), no-redundant-boolean (1).
+      // Promote a rule here once its backlog is cleared.
+      'sonarjs/no-identical-conditions': 'error',
+      'sonarjs/no-identical-expressions': 'error',
+      'sonarjs/no-gratuitous-expressions': 'error',
+      'sonarjs/no-inverted-boolean-check': 'error',
+      'sonarjs/no-useless-catch': 'error',
+      'sonarjs/no-element-overwrite': 'error',
+      'sonarjs/no-empty-collection': 'error',
+      'sonarjs/no-same-line-conditional': 'error',
+      'sonarjs/no-use-of-empty-return-value': 'error',
+      'sonarjs/non-existent-operator': 'error',
+      'sonarjs/no-ignored-return': 'error',
+      'sonarjs/no-nested-switch': 'error',
+      'sonarjs/no-globals-shadowing': 'error',
+      'sonarjs/prefer-while': 'error',
+      'sonarjs/no-unthrown-error': 'error',
+      'sonarjs/no-misleading-array-reverse': 'error',
+
+      // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
+      // had never been registered, so none of it ran.
+      //
+      // Severity is chosen by MEASURED backlog, not by taste. ESLint reports per
+      // file, not per added line, so a rule with existing violations set to
+      // `error` would fail PRs for code they merely touched. Zero-backlog rules
+      // are therefore `error` (blocking), and everything else is `warn` — kept
+      // on so it shows in the editor and in CI output, and so the backlog is
+      // visible rather than invisible.
+      //
+      // Promotion path: clear a rule's backlog, re-measure, move it to `error`.
+      //
+      // Safety note: `ui-checkstyle` runs `eslint --fix` and fails on the
+      // resulting git diff, so a `warn` rule that AUTO-FIXES would silently
+      // rewrite files and hard-fail the gate. Every rule listed at `warn` below
+      // was checked: all report `fixable: none` or suggestions-only, and
+      // react-hooks/exhaustive-deps — which declares `fixable: 'code'` — was
+      // verified empirically not to rewrite a dependency array under `--fix`.
+      // Re-check that before adding any new `warn` rule here.
+      'jsx-a11y/aria-props': 'error',
+      'jsx-a11y/aria-proptypes': 'error',
+      'jsx-a11y/aria-role': 'error',
+      'jsx-a11y/aria-unsupported-elements': 'error',
+      'jsx-a11y/aria-activedescendant-has-tabindex': 'error',
+      'jsx-a11y/role-has-required-aria-props': 'error',
+      'jsx-a11y/role-supports-aria-props': 'error',
+      'jsx-a11y/no-interactive-element-to-noninteractive-role': 'error',
+      'jsx-a11y/no-noninteractive-tabindex': 'error',
+      'jsx-a11y/tabindex-no-positive': 'error',
+      'jsx-a11y/label-has-associated-control': 'error',
+      'jsx-a11y/autocomplete-valid': 'error',
+      'jsx-a11y/heading-has-content': 'error',
+      'jsx-a11y/html-has-lang': 'error',
+      'jsx-a11y/iframe-has-title': 'error',
+      'jsx-a11y/img-redundant-alt': 'error',
+      'jsx-a11y/no-access-key': 'error',
+      'jsx-a11y/no-distracting-elements': 'error',
+      'jsx-a11y/scope': 'error',
+
+      // --- warn tier: on, visible, not yet blocking. Counts are the measured
+      // backlog at the time of writing; they only go down.
+      'react-hooks/exhaustive-deps': 'warn', // 1694 across 595 files
+      'jsx-a11y/control-has-associated-label': 'warn', // 146
+      'jsx-a11y/click-events-have-key-events': 'warn', // 89
+      'jsx-a11y/no-static-element-interactions': 'warn', // 87
+      'jsx-a11y/label-has-for': 'warn', // 61
+      'jsx-a11y/no-autofocus': 'warn', // 45
+      'jsx-a11y/anchor-has-content': 'warn', // 12
+      'jsx-a11y/no-noninteractive-element-interactions': 'warn', // 8
+      'jsx-a11y/interactive-supports-focus': 'warn', // 7
+      'jsx-a11y/anchor-is-valid': 'warn', // 5
+      'jsx-a11y/alt-text': 'warn', // 3
+      'jsx-a11y/no-redundant-roles': 'warn', // 2
+      'jsx-a11y/mouse-events-have-key-events': 'warn', // 2
+      'jsx-a11y/media-has-caption': 'warn', // 2
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'warn', // 2
+      'jsx-a11y/anchor-ambiguous-text': 'warn', // 1
+      'sonarjs/no-duplicate-string': 'warn', // 640
+      'sonarjs/cognitive-complexity': ['warn', 15], // 85
+      'sonarjs/no-collapsible-if': 'warn', // 21
+      'sonarjs/no-extra-arguments': 'warn', // 20
+      'sonarjs/no-redundant-jump': 'warn', // 14
+      'sonarjs/no-duplicated-branches': 'warn', // 9
+      'sonarjs/no-identical-functions': 'warn', // 6
+      'sonarjs/prefer-object-literal': 'warn', // 1
+      'sonarjs/no-redundant-boolean': 'warn', // 1
+
+      // Complexity and structure. SonarCloud gates these on new code; these
+      // surface the same findings locally and in the editor.
+      'sonarjs/cyclomatic-complexity': 'warn', // 54 in a 400-file sample
+      'sonarjs/expression-complexity': 'warn', // 15
+      'sonarjs/no-nested-conditional': 'warn', // 16
+      'sonarjs/no-nested-functions': 'warn', // 18
+
+      // Security. Near-zero today — promote to error once confirmed at zero
+      // across the whole tree, not just a sample.
+      'sonarjs/no-clear-text-protocols': 'warn', // 18
+      'sonarjs/no-hardcoded-passwords': 'warn', // 0 in sample
+      'sonarjs/no-hardcoded-ip': 'warn', // 0 in sample
+      'sonarjs/no-invariant-returns': 'warn', // 0 in sample
+
+      // React correctness and re-render cost — the enforceable slice of
+      // frontend-performance.md.
+      'react/no-array-index-key': 'warn', // 23
+      'react/jsx-no-constructed-context-values': 'warn', // 1
+      'react/no-unstable-nested-components': 'warn', // 1
+      'react/no-danger': 'warn', // 0 in sample
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+
+      // NOT enabled: react/jsx-no-useless-fragment. It auto-fixes, so at any
+      // severity `eslint --fix` would rewrite files and hard-fail the
+      // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
+      // commit first, then add it here at error.
     },
   },
 
