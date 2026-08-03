@@ -31,7 +31,7 @@ __all__ = [
 
 @pytest.fixture(scope="package")
 def mysql_container():
-    with try_bind(MySqlContainer("mysql:8"), 3306, 3307) as container:
+    with try_bind(MySqlContainer("mysql:8.4.5"), 3306, 3307) as container:
         yield container
 
 

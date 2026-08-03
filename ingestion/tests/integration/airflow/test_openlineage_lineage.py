@@ -16,25 +16,37 @@ to existing OM table entities and lineage edges are created.
 
 Prerequisites:
     - OM server running at localhost:8585
-    - Sample data ingested (tables exist in sample_data service)
-    - OpenLineage settings: enabled=true, eventTypeFilter includes COMPLETE
 """
 
 import json
+import time
 import uuid
 
 import pytest
 import requests
 
-from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from ..integration_base import get_create_service  # noqa: TID252
 
 OM_HOST = "http://localhost:8585"
 OM_API = f"{OM_HOST}/api"
@@ -62,24 +74,32 @@ def _om_reachable() -> bool:
         return False
 
 
-def _sample_data_exists() -> bool:
-    try:
-        resp = requests.get(
-            f"{OM_API}/v1/tables/name/sample_data.ecommerce_db.shopify.raw_order",
-            headers=AUTH_HEADERS,
-            timeout=5,
-        )
-        return resp.status_code == 200
-    except Exception:
-        return False
-
-
 pytestmark = [
     pytest.mark.skipif(not _om_reachable(), reason="OM not running at localhost:8585"),
-    pytest.mark.skipif(
-        not _sample_data_exists(), reason="Sample data tables not ingested"
-    ),
 ]
+
+SERVICE_NAME = "ol_lineage_test"
+DATABASE_NAME = "ol_db"
+SCHEMA_NAME = "ol_schema"
+SOURCE_TABLE = "raw_order"
+TARGET_TABLE = "fact_order"
+# A second pair, so the pipeline test does not depend on edges another test created.
+PIPELINE_SOURCE_TABLE = "raw_customer"
+PIPELINE_TARGET_TABLE = "dim_customer"
+PIPELINE_SERVICE_NAME = "ol_lineage_test_pipelines"
+PIPELINE_NAME = "ol_transform"
+
+
+def _dataset(table_name: str) -> dict:
+    """OpenLineage dataset reference: namespace is the service, name the rest of the FQN."""
+    return {
+        "namespace": SERVICE_NAME,
+        "name": f"{DATABASE_NAME}.{SCHEMA_NAME}.{table_name}",
+    }
+
+
+def _table_fqn(table_name: str) -> str:
+    return f"{SERVICE_NAME}.{DATABASE_NAME}.{SCHEMA_NAME}.{table_name}"
 
 
 @pytest.fixture(scope="module")
@@ -93,6 +113,63 @@ def metadata():
     )
     assert meta.health_check()
     return meta
+
+
+@pytest.fixture(scope="module")
+def ol_entities(metadata):
+    """Tables and a pipeline for OpenLineage events to resolve against."""
+    db_service = metadata.create_or_update(
+        data=get_create_service(entity=DatabaseService, name=SERVICE_NAME)
+    )
+    database = metadata.create_or_update(
+        data=CreateDatabaseRequest(
+            name=DATABASE_NAME, service=db_service.fullyQualifiedName
+        )
+    )
+    db_schema = metadata.create_or_update(
+        data=CreateDatabaseSchemaRequest(
+            name=SCHEMA_NAME, database=database.fullyQualifiedName
+        )
+    )
+    tables = {
+        name: metadata.create_or_update(
+            data=CreateTableRequest(
+                name=name,
+                databaseSchema=db_schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.BIGINT)],
+            )
+        )
+        for name in (
+            SOURCE_TABLE,
+            TARGET_TABLE,
+            PIPELINE_SOURCE_TABLE,
+            PIPELINE_TARGET_TABLE,
+        )
+    }
+
+    pipeline_service = metadata.create_or_update(
+        data=get_create_service(entity=PipelineService, name=PIPELINE_SERVICE_NAME)
+    )
+    pipeline = metadata.create_or_update(
+        data=CreatePipelineRequest(
+            name=PIPELINE_NAME, service=pipeline_service.fullyQualifiedName
+        )
+    )
+
+    yield {"tables": tables, "pipeline": pipeline}
+
+    metadata.delete(
+        entity=DatabaseService,
+        entity_id=db_service.id,
+        recursive=True,
+        hard_delete=True,
+    )
+    metadata.delete(
+        entity=PipelineService,
+        entity_id=pipeline_service.id,
+        recursive=True,
+        hard_delete=True,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -120,7 +197,7 @@ def _send_ol_event(
     job_name: str,
     inputs: list,
     outputs: list,
-    run_id: str = None,
+    run_id: str = None,  # noqa: RUF013
 ) -> dict:
     event = {
         "eventType": "COMPLETE",
@@ -163,39 +240,39 @@ class TestOpenLineageEndpointAcceptsEvents:
         assert resp.status_code == 400
 
 
-class TestOpenLineageResolvesExistingTables:
-    """Verify OL events with inputs/outputs matching existing sample_data tables
-    create lineage edges in OM."""
+@pytest.fixture(scope="module")
+def ol_lineage_result(ensure_ol_settings, ol_entities):
+    """Result of an OL event over the fixture tables, retried while the tables index.
 
-    def test_creates_lineage_edge_for_known_tables(self, metadata, ensure_ol_settings):
-        """Send an OL event referencing sample_data tables and verify lineage."""
-        src_fqn = "sample_data.ecommerce_db.shopify.raw_order"
-        tgt_fqn = "sample_data.ecommerce_db.shopify.fact_order"
-
-        # Verify tables exist
-        src = metadata.get_by_name(entity=Table, fqn=src_fqn)
-        tgt = metadata.get_by_name(entity=Table, fqn=tgt_fqn)
-        assert src is not None, f"Table {src_fqn} must exist"
-        assert tgt is not None, f"Table {tgt_fqn} must exist"
-
+    Dataset resolution goes through the search index, which trails entity creation.
+    """
+    deadline = time.monotonic() + 120
+    result = {}
+    while time.monotonic() < deadline:
         result = _send_ol_event(
             job_namespace="airflow_e2e_lineage",
             job_name="sample_transform",
-            inputs=[
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.raw_order"}
-            ],
-            outputs=[
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.fact_order"}
-            ],
+            inputs=[_dataset(SOURCE_TABLE)],
+            outputs=[_dataset(TARGET_TABLE)],
         )
+        if result.get("lineageEdgesCreated", 0) > 0:
+            return result
+        time.sleep(5)
 
+    return result
+
+
+class TestOpenLineageResolvesExistingTables:
+    """Verify OL events whose inputs/outputs match existing tables create lineage edges."""
+
+    def test_creates_lineage_edge_for_known_tables(self, ol_lineage_result):
         assert (
-            result["lineageEdgesCreated"] > 0
-        ), f"Expected lineage edges to be created, got: {json.dumps(result, indent=2)}"
+            ol_lineage_result["lineageEdgesCreated"] > 0
+        ), f"Expected lineage edges to be created, got: {json.dumps(ol_lineage_result, indent=2)}"
 
-    def test_lineage_edge_has_openlineage_source(self, metadata, ensure_ol_settings):
+    def test_lineage_edge_has_openlineage_source(self, metadata, ol_lineage_result):
         """Verify the created lineage edge has source=OpenLineage."""
-        src_fqn = "sample_data.ecommerce_db.shopify.raw_order"
+        src_fqn = _table_fqn(SOURCE_TABLE)
 
         lineage = metadata.get_lineage_by_name(
             entity=Table, fqn=src_fqn, up_depth=0, down_depth=3
@@ -209,36 +286,19 @@ class TestOpenLineageResolvesExistingTables:
         ]
         assert len(ol_edges) > 0, (
             f"Expected at least one OpenLineage-sourced edge from {src_fqn}, "
-            f"got sources: {[e.get('lineageDetails',{}).get('source') for e in downstream]}"
+            f"got sources: {[e.get('lineageDetails', {}).get('source') for e in downstream]}"
         )
 
-    def test_lineage_references_existing_pipeline(self, metadata, ensure_ol_settings):
-        """When an AirflowApi pipeline already exists, OL events should resolve
-        to it via the sample_airflow service (which has sample DAGs)."""
-        # sample_airflow service has pipeline "sample_airflow.dim_product_etl"
-        pipeline_fqn = "sample_airflow.dim_product_etl"
-        pipeline = metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
-        if not pipeline:
-            pytest.skip(f"Pipeline {pipeline_fqn} not in sample data")
-
-        # The OL event's job namespace/name won't auto-match to this pipeline.
-        # Instead, add lineage manually via API with source=OpenLineage to prove
-        # the lineage model supports it. This is what would happen when
-        # BigQuery/Spark operators emit OL events that the mapper resolves.
-        from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-        from metadata.generated.schema.type.entityLineage import (
-            EntitiesEdge,
-            LineageDetails,
-        )
-        from metadata.generated.schema.type.entityLineage import Source as LineageSource
-        from metadata.generated.schema.type.entityReference import EntityReference
-
-        src_fqn = "sample_data.ecommerce_db.shopify.raw_customer"
-        tgt_fqn = "sample_data.ecommerce_db.shopify.dim_address"
-        src = metadata.get_by_name(entity=Table, fqn=src_fqn)
-        tgt = metadata.get_by_name(entity=Table, fqn=tgt_fqn)
-        if not src or not tgt:
-            pytest.skip(f"Tables {src_fqn} or {tgt_fqn} not in sample data")
+    def test_lineage_references_existing_pipeline(
+        self, metadata, ensure_ol_settings, ol_entities
+    ):
+        """A lineage edge carrying source=OpenLineage keeps its pipeline reference."""
+        # The OL event's job namespace/name will not auto-match a pipeline, so the edge
+        # is added directly -- as the mapper would once it resolves one.
+        pipeline = ol_entities["pipeline"]
+        src_fqn = _table_fqn(PIPELINE_SOURCE_TABLE)
+        src = ol_entities["tables"][PIPELINE_SOURCE_TABLE]
+        tgt = ol_entities["tables"][PIPELINE_TARGET_TABLE]
 
         metadata.add_lineage(
             AddLineageRequest(
@@ -266,7 +326,7 @@ class TestOpenLineageResolvesExistingTables:
 
         pipeline_ref = ol_edges[0]["lineageDetails"]["pipeline"]
         assert pipeline_ref["type"] == "pipeline"
-        assert "dim_product_etl" in pipeline_ref.get("fullyQualifiedName", "")
+        assert PIPELINE_NAME in pipeline_ref.get("fullyQualifiedName", "")
 
     def test_no_edges_for_nonexistent_tables(self, ensure_ol_settings):
         """OL events with unknown table names should create 0 edges."""
@@ -294,7 +354,9 @@ class TestOpenLineageResolvesExistingTables:
 
 
 class TestOpenLineageEventTypeFiltering:
-    def test_start_events_skipped_when_filter_is_complete(self, ensure_ol_settings):
+    def test_start_events_skipped_when_filter_is_complete(
+        self, ensure_ol_settings, ol_entities
+    ):
         """START events should be skipped when filter only allows COMPLETE."""
         event = {
             "eventType": "START",
@@ -303,12 +365,8 @@ class TestOpenLineageEventTypeFiltering:
             "producer": "test",
             "run": {"runId": str(uuid.uuid4())},
             "job": {"namespace": "test", "name": "start_test"},
-            "inputs": [
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.raw_order"}
-            ],
-            "outputs": [
-                {"namespace": "sample_data", "name": "ecommerce_db.shopify.fact_order"}
-            ],
+            "inputs": [_dataset(SOURCE_TABLE)],
+            "outputs": [_dataset(TARGET_TABLE)],
         }
         resp = requests.post(OL_ENDPOINT, headers=AUTH_HEADERS, json=event, timeout=10)
         result = resp.json()
