@@ -249,7 +249,7 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -263,7 +263,7 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -277,7 +277,7 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };

@@ -51,7 +51,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
-test.describe.fixme('Context Center - Dashboard', () => {
+test.describe('Context Center - Dashboard', () => {
   let dataAsset: TopicClass;
 
   test.beforeAll(async ({ browser }) => {

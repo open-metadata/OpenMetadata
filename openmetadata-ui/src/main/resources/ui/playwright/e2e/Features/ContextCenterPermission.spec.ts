@@ -1696,7 +1696,7 @@ test.describe('Context Center Permissions', () => {
 
   // ─── Memories Permissions (includes isOwner matrix) ─────────────────────
 
-  test.describe.fixme('Memories Permissions', () => {
+  test.describe('Memories Permissions', () => {
     test('user with view-only permission sees no Add Memory button, no row actions, and no modal action buttons', async ({
       viewOnlyPage,
     }) => {

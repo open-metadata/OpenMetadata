@@ -41,6 +41,8 @@ const shardPlan = process.env.PW_SHARD_PLAN
   : undefined;
 const hasDedicatedIngestionLane =
   Boolean(shardPlan) || process.env.PW_DEDICATED_INGESTION === 'true';
+const hasDedicatedImportExportLane =
+  Boolean(shardPlan) || process.env.PW_DEDICATED_IMPORT_EXPORT === 'true';
 const isPlannedShard = Boolean(shardPlan);
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
@@ -182,6 +184,7 @@ export default defineConfig({
         /@data-insight/,
         /@basic/,
         ...(hasDedicatedIngestionLane ? [/@ingestion/] : []),
+        ...(hasDedicatedImportExportLane ? [/@import-export/] : []),
         /@knowledge-graph/,
         /@ontology-rdf/,
       ],
@@ -199,7 +202,18 @@ export default defineConfig({
         '**/IntakeForm.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
+        '**/VisualRegression/**',
       ],
+    },
+    {
+      name: 'visual-regression',
+      testMatch: '**/VisualRegression/**/*.spec.ts',
+      dependencies: ['setup', 'entity-data-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        storageState: 'playwright/.auth/admin.json',
+      },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
     // Playwright to do discovery for it on every default run even though its spec files are
@@ -309,6 +323,20 @@ export default defineConfig({
             dependencies: entityDependencies,
             fullyParallel: false,
             workers: 1,
+            teardown: entityTeardown,
+          },
+        ]
+      : []),
+    ...(hasDedicatedImportExportLane
+      ? [
+          {
+            name: 'ImportExport',
+            grep: combineGrep(/@import-export/),
+            testIgnore: '**/nightly/**',
+            use: { ...devices['Desktop Chrome'] },
+            dependencies: entityDependencies,
+            fullyParallel: true,
+            workers: 2,
             teardown: entityTeardown,
           },
         ]

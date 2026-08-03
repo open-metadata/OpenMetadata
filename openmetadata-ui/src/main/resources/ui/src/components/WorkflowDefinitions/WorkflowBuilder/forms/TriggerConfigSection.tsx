@@ -245,33 +245,6 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
 
           <div className="tw:mt-6">
             <Autocomplete
-              data-testid="exclude-fields-select"
-              isDisabled={includeExcludeDisabled}
-              items={fieldItems}
-              label={t('label.exclude-fields')}
-              maxVisibleItems={2}
-              placeholder={t('message.select-fields-to-exclude')}
-              selectedItems={selectedExcludeFields}
-              onItemCleared={(key) => {
-                selectedExcludeFields.remove(key);
-                onRemoveExcludeField?.(String(key));
-              }}
-              onItemInserted={(key) => {
-                selectedExcludeFields.append({
-                  id: String(key),
-                  label: getFieldLabel(String(key)),
-                });
-                onExcludeFieldsChange?.([
-                  ...selectedExcludeFields.items.map((i) => i.id),
-                  String(key),
-                ]);
-              }}>
-              {renderFieldItem}
-            </Autocomplete>
-          </div>
-
-          <div className="tw:mt-6">
-            <Autocomplete
               data-testid="include-fields-select"
               isDisabled={includeExcludeDisabled}
               items={fieldItems}
@@ -290,6 +263,33 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
                 });
                 onIncludeChange?.([
                   ...selectedIncludeFields.items.map((i) => i.id),
+                  String(key),
+                ]);
+              }}>
+              {renderFieldItem}
+            </Autocomplete>
+          </div>
+
+          <div className="tw:mt-6">
+            <Autocomplete
+              data-testid="exclude-fields-select"
+              isDisabled={includeExcludeDisabled}
+              items={fieldItems}
+              label={t('label.exclude-fields')}
+              maxVisibleItems={2}
+              placeholder={t('message.select-fields-to-exclude')}
+              selectedItems={selectedExcludeFields}
+              onItemCleared={(key) => {
+                selectedExcludeFields.remove(key);
+                onRemoveExcludeField?.(String(key));
+              }}
+              onItemInserted={(key) => {
+                selectedExcludeFields.append({
+                  id: String(key),
+                  label: getFieldLabel(String(key)),
+                });
+                onExcludeFieldsChange?.([
+                  ...selectedExcludeFields.items.map((i) => i.id),
                   String(key),
                 ]);
               }}>

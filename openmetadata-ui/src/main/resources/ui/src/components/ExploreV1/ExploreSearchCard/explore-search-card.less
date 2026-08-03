@@ -13,16 +13,16 @@
 @import '../../../styles/variables.less';
 
 .explore-search-card {
-  padding: 12px 16px;
+  padding: var(--om-space-12) var(--om-space-16);
   position: relative;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   background-color: @white;
   border: 1px solid @border-color;
-  margin: 0 0 10px;
+  margin: 0 0 var(--om-space-10);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease,
-    background-color 0.2s ease;
+  transition: border-color var(--om-duration-200) ease, box-shadow var(--om-duration-200) ease,
+    background-color var(--om-duration-200) ease;
   .no-owner-text {
     font-size: @size-sm;
     font-weight: @font-regular;
@@ -30,7 +30,7 @@
 
   .owner-avatar-stack {
     .owner-avatar-stack-row {
-      gap: 4px;
+      gap: var(--om-space-4);
     }
 
     .owner-avatar-stack-row-name {
@@ -42,44 +42,44 @@
   // Density: the design fits ~5 cards per viewport — compact title,
   // single-line breadcrumb, tight description and meta rows.
   .entity-breadcrumb {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     white-space: nowrap;
     overflow: hidden;
 
     .ant-breadcrumb {
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
   }
 
   [data-testid='entity-header-display-name'] {
-    font-size: 15px;
+    font-size: var(--om-font-size-15);
     line-height: 20px;
   }
 
   .p-t-sm {
-    padding-top: 4px;
+    padding-top: var(--om-space-4);
   }
 
   .explore-search-card-breadcrumbs {
     a,
     span[aria-current='page'] {
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
   }
 
   .description-text {
-    margin-bottom: 6px;
-    font-size: 13px;
+    margin-bottom: var(--om-space-6);
+    font-size: var(--om-font-size-13);
 
     .ant-typography {
       margin-bottom: 0;
-      font-size: 13px;
+      font-size: var(--om-font-size-13);
     }
   }
 
   &:hover {
     border-color: @primary-1;
-    box-shadow: 0 1px 3px rgba(10, 13, 18, 0.1);
+    box-shadow: 0 1px 3px var(--om-legacy-color-10-13-18-0-1);
   }
 
   // Selection highlights the box only — clean blue border on a white card,
@@ -95,7 +95,7 @@
   }
 
   .entity-summary-details {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     font-weight: @font-regular;
 
     .ant-typography {
@@ -111,9 +111,9 @@
     position: absolute;
     right: 10px;
     top: 8px;
-    transition: width 0.3s;
-    padding: 4px;
-    border-radius: 6px;
+    transition: width var(--om-duration-300);
+    padding: var(--om-space-4);
+    border-radius: var(--om-radius-md);
     display: flex;
   }
   .ProseMirror-hideselection *::selection {
@@ -130,8 +130,8 @@
 
 .score-container {
   background-color: @blue-14;
-  padding: 6px;
-  border-radius: 6px;
+  padding: var(--om-space-6);
+  border-radius: var(--om-radius-md);
 
   .score {
     color: @primary-heading-color;
@@ -141,57 +141,57 @@
 .ranking-details-container {
   background-color: @white;
   border: 1px solid @border-color-4;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 8px 12px;
+  gap: var(--om-space-6);
+  margin-top: var(--om-space-8);
+  padding: var(--om-space-8) var(--om-space-12);
 }
 
 .ranking-details-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--om-space-8);
 }
 
 .ranking-details-title {
   color: @text-color;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--om-font-size-xs);
+  font-weight: var(--om-font-weight-semibold);
   line-height: 18px;
 }
 
 .ranking-details-score {
   color: @text-grey-muted;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   line-height: 18px;
 }
 
 .ranking-stage-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--om-space-4);
 }
 
 .ranking-stage-item {
   display: grid;
   grid-template-columns: minmax(88px, max-content) minmax(0, 1fr);
-  column-gap: 8px;
-  row-gap: 2px;
+  column-gap: var(--om-space-8);
+  row-gap: var(--om-space-2);
   align-items: baseline;
 }
 
 .ranking-score-explanation {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--om-space-4);
 }
 
 .ranking-score-contributor {
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--om-space-8);
   align-items: baseline;
 }

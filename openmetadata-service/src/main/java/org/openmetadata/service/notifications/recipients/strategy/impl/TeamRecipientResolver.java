@@ -41,6 +41,8 @@ import org.openmetadata.service.notifications.recipients.strategy.RecipientResol
 @Slf4j
 public class TeamRecipientResolver implements RecipientResolutionStrategy {
 
+  private static final String TEAM_FIELDS = "id,profile,email";
+
   @Override
   public Set<Recipient> resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
@@ -62,19 +64,21 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
+    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
+    return action.getReceivers().stream()
+        .map(teamName -> resolveTeamByName(teamName, notificationType))
+        .filter(Objects::nonNull)
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  private Recipient resolveTeamByName(
+      String teamName, SubscriptionDestination.SubscriptionType notificationType) {
     try {
-      SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-      return action.getReceivers().stream()
-          .map(
-              teamName ->
-                  (Team)
-                      Entity.getEntityByName(
-                          Entity.TEAM, teamName, "id,profile,email", Include.NON_DELETED))
-          .map(team -> Recipient.fromTeam(team, notificationType))
-          .collect(Collectors.toUnmodifiableSet());
+      Team team = Entity.getEntityByName(Entity.TEAM, teamName, TEAM_FIELDS, Include.NON_DELETED);
+      return Recipient.fromTeam(team, notificationType);
     } catch (Exception e) {
-      LOG.error("Failed to resolve team recipients", e);
-      return Collections.emptySet();
+      LOG.error("Failed to resolve team recipient for team {}", teamName, e);
+      return null;
     }
   }
 
@@ -85,7 +89,8 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
    * FollowerRecipientResolver) to convert EntityReferences (which have IDs) to Recipients.
    *
    * Note: Fetches with "id,profile,email" fields to ensure profile is available for webhook
-   * extraction.
+   * extraction. Teams that cannot be resolved, or that have no contact information for the
+   * destination type, are skipped without discarding the remaining teams.
    *
    * @param teamIds list of team IDs to resolve
    * @param destination the subscription destination
@@ -96,20 +101,21 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
     }
 
+    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
+    return teamIds.stream()
+        .map(teamId -> resolveTeamById(teamId, notificationType))
+        .filter(Objects::nonNull)
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  private Recipient resolveTeamById(
+      UUID teamId, SubscriptionDestination.SubscriptionType notificationType) {
     try {
-      SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-      return teamIds.stream()
-          .map(
-              teamId ->
-                  (Team)
-                      Entity.getEntity(
-                          Entity.TEAM, teamId, "id,profile,email", Include.NON_DELETED))
-          .map(team -> Recipient.fromTeam(team, notificationType))
-          .filter(Objects::nonNull)
-          .collect(Collectors.toUnmodifiableSet());
+      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
+      return Recipient.fromTeam(team, notificationType);
     } catch (Exception e) {
-      LOG.error("Failed to resolve team recipients by IDs", e);
-      return Collections.emptySet();
+      LOG.error("Failed to resolve team recipient for team {}", teamId, e);
+      return null;
     }
   }
 

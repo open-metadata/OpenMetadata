@@ -174,6 +174,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Ssas,
   DatabaseServiceType.Epic,
   DashboardServiceType.Hex,
+  DashboardServiceType.Omni,
   DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Dremio,
