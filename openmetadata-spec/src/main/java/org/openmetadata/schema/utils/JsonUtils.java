@@ -573,8 +573,9 @@ public final class JsonUtils {
   }
 
   public static List<String> getTypeNames(String jsonSchemaFile, byte[] jsonSchema) {
-    boolean fieldTypeSchema = jsonSchemaFile.contains("json/schema/type/");
-    boolean entityTypeSchema = jsonSchemaFile.contains("json/schema/entity/");
+    String normalizedSchemaFile = jsonSchemaFile.replace('\\', '/');
+    boolean fieldTypeSchema = normalizedSchemaFile.contains("json/schema/type/");
+    boolean entityTypeSchema = normalizedSchemaFile.contains("json/schema/entity/");
     if (!fieldTypeSchema && !entityTypeSchema) {
       return Collections.emptyList();
     }
@@ -593,7 +594,7 @@ public final class JsonUtils {
     if (fieldTypeSchema) {
       return getFieldTypeNames(node);
     }
-    String entityTypeName = getEntityTypeName(jsonSchemaFile, node);
+    String entityTypeName = getEntityTypeName(normalizedSchemaFile, node);
     return entityTypeName == null ? Collections.emptyList() : List.of(entityTypeName);
   }
 

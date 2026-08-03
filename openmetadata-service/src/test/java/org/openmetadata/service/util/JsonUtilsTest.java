@@ -88,6 +88,22 @@ class JsonUtilsTest {
             .isEmpty());
   }
 
+  @Test
+  void typeNameExtractionSupportsWindowsResourcePaths() {
+    String fieldSchema = "{\"definitions\":{\"seedField\":{\"$comment\":\"@om-field-type\"}}}";
+    String entitySchema = "{\"$comment\":\"@om-entity-type\"}";
+
+    assertEquals(
+        List.of("seedField"),
+        JsonUtils.getTypeNames(
+            "json\\schema\\type\\example.json", fieldSchema.getBytes(StandardCharsets.UTF_8)));
+    assertEquals(
+        List.of("exampleEntity"),
+        JsonUtils.getTypeNames(
+            "json\\schema\\entity\\data\\exampleEntity.json",
+            entitySchema.getBytes(StandardCharsets.UTF_8)));
+  }
+
   @ParameterizedTest
   @MethodSource("patchConversionCases")
   void applyPatchConversionMatchesTheStringBridge(String originalJson, String patchJson) {
