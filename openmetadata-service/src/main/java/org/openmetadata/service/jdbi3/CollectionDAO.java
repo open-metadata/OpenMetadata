@@ -2397,7 +2397,8 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE (pipelineId = :fromId OR fromId = :fromId) AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :fromId "
+                + "OR fromId = :fromId) AND relation = :relation "
                 + "ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -2635,7 +2636,8 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE (pipelineId = :toId OR toId = :toId) AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId "
+                + "OR toId = :toId) AND relation = :relation "
                 + "ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -2670,7 +2672,8 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (pipelineId = :toId OR toId = :toId) AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId "
+                + "OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -2908,7 +2911,8 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE (pipelineId = :toId OR toId = :toId) AND relation = :relation "
+                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId "
+                + "OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
