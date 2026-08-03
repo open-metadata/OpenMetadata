@@ -28,15 +28,14 @@ import {
   getEntityActivityByFqn,
   getMyActivityFeed,
   postFeedById,
-  postThread,
   removeActivityReaction,
 } from '../../../rest/feedsAPI';
 import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
 import ActivityFeedProvider from './ActivityFeedProvider';
 import {
-  DummyActivityCommentComponent,
   DummyActivityFeedComponent,
   DummyActivityReactionComponent,
+  DummyActivityReactionSyncComponent,
   DummyChildrenComponent,
   DummyChildrenDeletePostComponent,
   DummyChildrenEntityComponent,
@@ -85,7 +84,6 @@ jest.mock('../../../rest/feedsAPI', () => ({
   getAllFeeds: jest.fn().mockResolvedValue({ data: [], paging: {} }),
   getFeedById: jest.fn(),
   postFeedById: jest.fn().mockResolvedValue({ id: 'thread-123', posts: [] }),
-  postThread: jest.fn().mockResolvedValue({ id: 'new-thread-123', posts: [] }),
   updatePost: jest.fn(),
   updateThread: jest.fn(),
   getMyActivityFeed: jest.fn().mockResolvedValue({ data: [], paging: {} }),
@@ -457,72 +455,40 @@ describe('ActivityFeedProvider', () => {
         );
       });
     });
-  });
 
-  describe('Activity Comments', () => {
-    const mockActivity: ActivityEvent = {
-      id: 'activity-456',
-      timestamp: 1234567890,
-      eventType: 'entityUpdated' as ActivityEvent['eventType'],
-      actor: { id: 'user-1', type: 'user', name: 'testuser' },
-      entity: { id: 'entity-1', type: 'table', name: 'testTable' },
-      about: '<#E::table::test>',
-      summary: 'Updated description',
-    };
-
-    it('should create a new thread when posting first comment on activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValueOnce({
-        data: [],
+    it('syncs the selected activity so the right panel reflects the reaction', async () => {
+      (getMyActivityFeed as jest.Mock).mockResolvedValueOnce({
+        data: mockActivityEvents,
         paging: {},
       });
 
       await act(async () => {
         render(
           <ActivityFeedProvider>
-            <DummyActivityCommentComponent activity={mockActivity} />
+            <DummyActivityReactionSyncComponent />
           </ActivityFeedProvider>
         );
       });
 
-      fireEvent.click(screen.getByTestId('post-comment'));
-
+      // Select the activity into the right panel — it starts with no reactions.
+      fireEvent.click(screen.getByTestId('select-activity'));
       await waitFor(() => {
-        expect(postThread).toHaveBeenCalledWith(
-          expect.objectContaining({
-            message: 'Test comment',
-            about: '<#E::table::test>',
-          })
-        );
-      });
-    });
-
-    it('should add to existing thread when posting comment on activity with thread', async () => {
-      const existingThread = {
-        id: 'existing-thread-123',
-        posts: [],
-      };
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [existingThread],
-        paging: {},
+        expect(
+          screen.getByTestId('selected-activity-reactions')
+        ).toHaveTextContent('0');
       });
 
-      await act(async () => {
-        render(
-          <ActivityFeedProvider>
-            <DummySetActiveActivityComponent activity={mockActivity} />
-          </ActivityFeedProvider>
-        );
-      });
-
-      fireEvent.click(screen.getByTestId('set-active'));
-
+      // Toggling a reaction must update the SELECTED copy, not just the list.
+      fireEvent.click(screen.getByTestId('react'));
       await waitFor(() => {
-        expect(getAllFeeds).toHaveBeenCalled();
+        expect(
+          screen.getByTestId('selected-activity-reactions')
+        ).toHaveTextContent('1');
       });
     });
   });
 
-  describe('Set Active Activity', () => {
+  describe('Set Active Activity (read-only activities)', () => {
     const mockActivity: ActivityEvent = {
       id: 'activity-789',
       timestamp: 1234567890,
@@ -533,12 +499,7 @@ describe('ActivityFeedProvider', () => {
       summary: 'Updated tags',
     };
 
-    it('should fetch associated threads when setting active activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [{ id: 'thread-for-activity', posts: [] }],
-        paging: {},
-      });
-
+    it('selects the activity WITHOUT adopting any conversation thread', async () => {
       await act(async () => {
         render(
           <ActivityFeedProvider>
@@ -550,38 +511,21 @@ describe('ActivityFeedProvider', () => {
       fireEvent.click(screen.getByTestId('set-active'));
 
       await waitFor(() => {
-        expect(getAllFeeds).toHaveBeenCalledWith(
-          '<#E::table::test>',
-          undefined,
-          'Conversation'
+        expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(
+          'activity-789'
         );
       });
+
+      // Activities are read-only: no conversation thread is fetched/adopted,
+      // so replies can never leak across activities sharing an entityLink.
+      expect(getAllFeeds).not.toHaveBeenCalledWith(
+        '<#E::table::test>',
+        undefined,
+        'Conversation'
+      );
     });
 
-    it('should handle no existing thread for activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [],
-        paging: {},
-      });
-
-      await act(async () => {
-        render(
-          <ActivityFeedProvider>
-            <DummySetActiveActivityComponent activity={mockActivity} />
-          </ActivityFeedProvider>
-        );
-      });
-
-      fireEvent.click(screen.getByTestId('set-active'));
-
-      await waitFor(() => {
-        expect(screen.getByTestId('activity-thread-id')).toHaveTextContent(
-          'no-thread'
-        );
-      });
-    });
-
-    it('should clear activity thread when setting active to undefined', async () => {
+    it('clears the selected activity when set to undefined', async () => {
       await act(async () => {
         render(
           <ActivityFeedProvider>

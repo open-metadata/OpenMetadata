@@ -200,24 +200,40 @@ export const DummyActivityReactionComponent = () => {
   );
 };
 
-export const DummyActivityCommentComponent = ({
-  activity,
-}: {
-  activity: ActivityEvent;
-}) => {
-  const { t } = useTranslation();
-  const { postActivityComment, activityThread } = useActivityFeedProvider();
+export const DummyActivityReactionSyncComponent = () => {
+  const {
+    activityEvents,
+    selectedActivity,
+    setActiveActivity,
+    updateActivityReaction,
+    fetchMyActivityFeed,
+  } = useActivityFeedProvider();
 
-  const handlePostComment = () => {
-    postActivityComment('Test comment', activity);
-  };
+  useEffect(() => {
+    fetchMyActivityFeed({ days: 7, limit: 20 });
+  }, [fetchMyActivityFeed]);
 
   return (
     <div>
-      <button data-testid="post-comment" onClick={handlePostComment}>
-        {t('label.post-comment')}
+      <button
+        data-testid="select-activity"
+        onClick={() => setActiveActivity(activityEvents[0])}>
+        select
       </button>
-      <span data-testid="thread-id">{activityThread?.id ?? 'no-thread'}</span>
+      <button
+        data-testid="react"
+        onClick={() =>
+          updateActivityReaction(
+            'activity-123',
+            ReactionType.ThumbsUp,
+            ReactionOperation.ADD
+          )
+        }>
+        react
+      </button>
+      <span data-testid="selected-activity-reactions">
+        {selectedActivity?.reactions?.length ?? -1}
+      </span>
     </div>
   );
 };
@@ -228,8 +244,7 @@ export const DummySetActiveActivityComponent = ({
   activity?: ActivityEvent;
 }) => {
   const { t } = useTranslation();
-  const { setActiveActivity, selectedActivity, activityThread } =
-    useActivityFeedProvider();
+  const { setActiveActivity, selectedActivity } = useActivityFeedProvider();
 
   const handleSetActive = () => {
     setActiveActivity(activity);
@@ -242,9 +257,6 @@ export const DummySetActiveActivityComponent = ({
       </button>
       <span data-testid="selected-activity-id">
         {selectedActivity?.id ?? 'none'}
-      </span>
-      <span data-testid="activity-thread-id">
-        {activityThread?.id ?? 'no-thread'}
       </span>
     </div>
   );

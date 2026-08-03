@@ -41,13 +41,14 @@ import {
   deleteThread,
   getEntityActivityByFqn,
   getFeedById,
+  getFeedCount,
   updatePost,
   updateThread,
 } from '../rest/feedsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
@@ -577,28 +578,39 @@ export const getFeedCounts = async (
       return;
     }
 
-    const [activityRes, taskCounts] = await Promise.all([
+    const [feedCountRes, activityRes, taskCounts] = await Promise.all([
+      getFeedCount(getEntityFeedLink(entityType, entityFQN)),
       getEntityActivityByFqn(entityType, entityFQN, {
         days: 30,
-        limit: 100,
+        limit: 0,
         domain,
       }),
       getTaskCounts({ aboutEntity: entityFQN, domain }),
     ]);
 
-    const activityCount = activityRes?.data?.length ?? 0;
+    // Conversations and activity change-events are separate stores; count both.
+    const conversationCount = (feedCountRes ?? []).reduce(
+      (sum, item) => sum + (item.conversationCount ?? 0),
+      0
+    );
+    const mentionCount = (feedCountRes ?? []).reduce(
+      (sum, item) => sum + (item.mentionCount ?? 0),
+      0
+    );
+    const activityCount = activityRes?.paging?.total ?? 0;
 
     const openTaskCount = taskCounts.open ?? 0;
     const closedTaskCount = taskCounts.completed ?? 0;
     const totalTasksCount = taskCounts.total ?? 0;
 
     feedCountCallback({
-      conversationCount: activityCount,
+      conversationCount,
+      activityCount,
       totalTasksCount,
       openTaskCount,
       closedTaskCount,
-      totalCount: activityCount + totalTasksCount,
-      mentionCount: 0,
+      totalCount: conversationCount + activityCount + totalTasksCount,
+      mentionCount,
     });
   } catch (err) {
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
@@ -622,7 +634,10 @@ export const fetchEntityTaskCountsInto = async (
         openTaskCount,
         closedTaskCount,
         totalTasksCount,
-        totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
+        totalCount:
+          (prev.conversationCount ?? 0) +
+          (prev.activityCount ?? 0) +
+          totalTasksCount,
       };
     });
   } catch (err) {
@@ -637,18 +652,34 @@ export const fetchEntityActivityCountInto = async (
   domain?: string
 ) => {
   try {
-    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
-      days: 30,
-      limit: 0,
-      domain,
-    });
+    // Conversations and activity change-events live in separate stores; the
+    // entity feed shows both, so the count must include both.
+    const [activityRes, feedCountRes] = await Promise.all([
+      getEntityActivityByFqn(entityType, entityFqn, {
+        days: 30,
+        limit: 0,
+        domain,
+      }),
+      getFeedCount(getEntityFeedLink(entityType, entityFqn)),
+    ]);
     setFeedCount((prev) => {
-      const conversationCount = activityRes?.paging?.total ?? 0;
+      const activityCount = activityRes?.paging?.total ?? 0;
+      const conversationCount = (feedCountRes ?? []).reduce(
+        (sum, item) => sum + (item.conversationCount ?? 0),
+        0
+      );
+      const mentionCount = (feedCountRes ?? []).reduce(
+        (sum, item) => sum + (item.mentionCount ?? 0),
+        0
+      );
 
       return {
         ...prev,
+        activityCount,
         conversationCount,
-        totalCount: conversationCount + (prev.totalTasksCount ?? 0),
+        mentionCount,
+        totalCount:
+          conversationCount + activityCount + (prev.totalTasksCount ?? 0),
       };
     });
   } catch (err) {

@@ -25,6 +25,10 @@ const mockGetFeedData = jest.fn();
 const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
 const mockUseRequiredParams = jest.fn();
+const mockFetchEntityActivity = jest.fn();
+const mockFetchUserActivity = jest.fn();
+let mockActivityEvents: { id: string; timestamp: number }[] = [];
+let mockConversationCount = 0;
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -65,10 +69,10 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     tasks: [],
     selectedTask: null,
     setActiveTask: jest.fn(),
-    activityEvents: [],
+    activityEvents: mockActivityEvents,
     isActivityLoading: false,
-    fetchEntityActivity: jest.fn(),
-    fetchUserActivity: jest.fn(),
+    fetchEntityActivity: mockFetchEntityActivity,
+    fetchUserActivity: mockFetchUserActivity,
     userId: '',
     selectedActivity: null,
     setActiveActivity: jest.fn(),
@@ -97,9 +101,10 @@ jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
 jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
-      conversationCount: 0,
+      conversationCount: mockConversationCount,
+      activityCount: 0,
       mentionCount: 0,
-      totalCount: 0,
+      totalCount: mockConversationCount,
       totalTasksCount: 0,
       openTaskCount: 0,
       closedTaskCount: 0,
@@ -165,6 +170,8 @@ const renderComponent = (subTab = ActivityFeedTabs.TASKS) => {
 describe('ActivityFeedTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockActivityEvents = [];
+    mockConversationCount = 0;
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
       inProgress: 0,
@@ -173,6 +180,48 @@ describe('ActivityFeedTab', () => {
     });
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
+  });
+
+  describe('Activity fetch is gated by tab', () => {
+    it('does NOT fetch entity activity on the Tasks tab', async () => {
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => {
+        expect(mockGetTaskData).toHaveBeenCalled();
+      });
+
+      expect(mockFetchEntityActivity).not.toHaveBeenCalled();
+    });
+
+    it('fetches entity activity on the All tab', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        expect(mockFetchEntityActivity).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('All count = conversations + activity events', () => {
+    it('sums conversationCount and activityEvents.length (not just activity)', async () => {
+      mockConversationCount = 3;
+      mockActivityEvents = [
+        { id: 'a1', timestamp: 1 },
+        { id: 'a2', timestamp: 2 },
+      ];
+
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => {
+        const counts = screen
+          .getAllByTestId('filter-count')
+          .map((el) => el.textContent);
+
+        // All badge must be 3 (conversations) + 2 (activity) = 5,
+        // not the clobbered activityEvents.length of 2.
+        expect(counts).toContain('5');
+      });
+    });
   });
 
   describe('Bug 1 — feedFilter uses ActivityFeedTabs.MENTIONS enum', () => {
