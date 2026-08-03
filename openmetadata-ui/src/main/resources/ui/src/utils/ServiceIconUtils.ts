@@ -16,6 +16,7 @@ import azuresql from '../assets/img/service-icon-azuresql.webp';
 import bigtable from '../assets/img/service-icon-bigtable.webp';
 import burstiq from '../assets/img/service-icon-burstiq.webp';
 import cassandra from '../assets/img/service-icon-cassandra.webp';
+import clickzetta from '../assets/img/service-icon-clickzetta.svg';
 import clickhouse from '../assets/img/service-icon-clickhouse.webp';
 import cockroach from '../assets/img/service-icon-cockroach.webp';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
@@ -158,6 +159,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   vertica: vertica,
   azuresql: azuresql,
   clickhouse: clickhouse,
+  clickzetta: clickzetta,
   databricks: databrick,
   unitycatalog: unitycatalog,
   db2: ibmdb2,

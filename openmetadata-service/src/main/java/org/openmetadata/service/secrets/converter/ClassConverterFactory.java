@@ -29,6 +29,7 @@ import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnect
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.ClickzettaConnection;
 import org.openmetadata.schema.services.connections.database.CockroachConnection;
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
@@ -118,6 +119,7 @@ public final class ClassConverterFactory {
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
             Map.entry(Workflow.class, new WorkflowClassConverter()),
             Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()),
+            Map.entry(ClickzettaConnection.class, new ClickzettaConnectionClassConverter()),
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
             Map.entry(OpenLineageConnection.class, new OpenLineageConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),

@@ -43,6 +43,10 @@ const databaseSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/database/clickhouseConnection.json'
     ),
+  [DatabaseServiceType.Clickzetta]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/database/clickzettaConnection.json'
+    ),
   [DatabaseServiceType.Cockroach]: () =>
     import(
       '../jsons/connectionSchemas/connections/database/cockroachConnection.json'

@@ -16,6 +16,7 @@ import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
+import org.openmetadata.schema.services.connections.database.ClickzettaConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
@@ -35,6 +36,7 @@ public class ClassConverterFactoryTest {
       classes = {
         AirflowConnection.class,
         BigQueryConnection.class,
+        ClickzettaConnection.class,
         DatalakeConnection.class,
         MysqlConnection.class,
         PostgresConnection.class,
