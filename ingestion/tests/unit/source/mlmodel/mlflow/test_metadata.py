@@ -16,13 +16,14 @@ import pytest
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from mlflow.exceptions import MlflowException
 from mlflow.store.entities import PagedList
+from mlflow.utils.search_utils import SearchModelUtils
 
 from metadata.ingestion.source.mlmodel.mlflow.metadata import MlflowSource
 
 MODEL_NAME = "catalog.schema.wine_model"
 
 
-def make_version(version: str, run_id: str | None = "run-id") -> ModelVersion:
+def make_version(version: str | None, run_id: str | None = "run-id") -> ModelVersion:
     return ModelVersion(name=MODEL_NAME, version=version, creation_timestamp=1, run_id=run_id)
 
 
@@ -68,6 +69,20 @@ def test_prefers_latest_versions_without_searching():
     source.client.search_model_versions.assert_not_called()
 
 
+def test_empty_latest_versions_still_searches():
+    """
+    An empty list is not proof that no versions exist: stage-based backends
+    return [] when every version sits outside the requested stages. Searching
+    recovers those, where the old code recorded a spurious "Version not found".
+    """
+    source = make_source(latest_versions=[], search_result=PagedList([make_version("5")], None))
+
+    results = list(source.get_mlmodels())
+
+    assert results[0][1].version == "5"
+    source.status.failed.assert_not_called()
+
+
 def test_search_follows_pagination():
     source = make_source()
     source.client.search_model_versions.side_effect = [
@@ -89,7 +104,25 @@ def test_search_never_passes_order_by():
 
     _, kwargs = source.client.search_model_versions.call_args
     assert "order_by" not in kwargs
-    assert kwargs["filter_string"] == f"name='{MODEL_NAME}'"
+    assert kwargs["filter_string"] == f'name="{MODEL_NAME}"'
+
+
+@pytest.mark.parametrize(
+    "model_name",
+    ["catalog.schema.o'brien_model", "catalog.schema.it's_a_model"],
+)
+def test_search_filter_survives_quotes_in_model_name(model_name):
+    """A quote in the name must not corrupt the filter, or the model silently vanishes."""
+    source = make_source(search_result=PagedList([make_version("2")], None), model_name=model_name)
+
+    results = list(source.get_mlmodels())
+
+    assert results[0][1].version == "2"
+    filter_string = source.client.search_model_versions.call_args[1]["filter_string"]
+    # The parser must recover the name byte-for-byte; the SQL-style '' escape
+    # parses cleanly but hands back a doubled quote, matching nothing.
+    parsed = SearchModelUtils.parse_search_filter(filter_string)
+    assert parsed[0]["value"] == model_name
 
 
 def test_search_failure_is_recorded_and_does_not_raise():

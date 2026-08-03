@@ -120,6 +120,10 @@ class MlflowSource(MlModelServiceSource):
         `latest_versions` is a stage-era field that registries without stages —
         Unity Catalog among them — leave unset, so fall back to searching the
         model's versions when it is missing.
+
+        Empty is treated the same as unset on purpose: stage-based backends
+        return [] when every version sits outside the requested stages, so an
+        empty list is not evidence that the model has no versions.
         """
         return self._pick_newest(model.latest_versions or self._search_versions(model.name))
 
@@ -133,9 +137,15 @@ class MlflowSource(MlModelServiceSource):
         versions: list[ModelVersion] = []
         page_token = None
 
+        # MLflow only bars `/` and `:` from model names, so a name may well contain
+        # a quote. Double quotes are the only delimiter the filter parser round-trips
+        # a single quote through: the SQL-style `''` escape parses, but yields the
+        # doubled quote verbatim and would silently match nothing.
+        filter_string = f'name="{model_name}"'
+
         try:
             for _ in range(MAX_VERSION_PAGES):
-                page = self.client.search_model_versions(filter_string=f"name='{model_name}'", page_token=page_token)
+                page = self.client.search_model_versions(filter_string=filter_string, page_token=page_token)
                 versions.extend(page)
 
                 page_token = getattr(page, "token", None)
