@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import math
 import re
 import statistics
@@ -57,10 +58,24 @@ LANE_WORKERS = {
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
-COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
+# The chromium lane has outgrown a 19-minute shard: at the COMMON_MAX_SHARDS
+# ceiling the heaviest shard is predicted at 19.2m, so full-mode planning aborts
+# and every merge-queue run fails before a single test runs. The binding limit
+# is the 25m `timeout` wrapper around `npx playwright test`, against which 21m
+# leaves ~4m; the 35m playwright-ci-postgresql job clock is looser still, since
+# it also has to cover ~5-8m of setup and teardown around that wrapper.
+COMMON_SHARD_BUDGET_MS = 21 * 60 * 1000
 EFFICIENCY = 0.85
 COMMON_MAX_SHARDS = 24
-FALLBACK_TEST_MS = 20_000
+# Weight assigned to a test that has no timing evidence in `timing-baseline.json`
+# (or in any additional history payloads). Bumped from 20 s → 30 s alongside the
+# all-zero-history fix in `load_history`: a suite re-enabled after being
+# `test.skip`'d at baseline capture (e.g. Pages/Domains.spec.ts in #30451) now
+# falls through to this fallback until the next full-run baseline refresh, and
+# 20 s was noticeably below the observed per-test average of ~25 s on that
+# suite. 30 s preserves a reasonable margin so the first plan after re-enable
+# does not silently over-pack the shard.
+FALLBACK_TEST_MS = 30_000
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
@@ -282,7 +297,19 @@ def load_history(
             elif test_id and test.get("outcome") == "skipped":
                 durations[test_id].append(0)
 
-    weights = {test_id: percentile_75(values) for test_id, values in durations.items()}
+    # If every recorded run for a test was `outcome: skipped` (all-zero) the
+    # test has no actual timing evidence — treat it as missing so the planner
+    # falls through to the identity match or FALLBACK_TEST_MS instead of
+    # pinning the weight at 0 ms. Otherwise a suite that was `test.skip`'d at
+    # baseline capture (see Pages/Domains.spec.ts before #30451 re-enabled it)
+    # keeps a "zero-weight" record after re-enable, the planner packs the
+    # newly-live suite as free content, and the shard blows past the wall
+    # timeout at run time (chromium-12 in run 30716060441).
+    weights = {
+        test_id: percentile_75(values)
+        for test_id, values in durations.items()
+        if any(v > 0 for v in values)
+    }
     identity_weights = {
         identity: percentile_75(values)
         for identity, values in identity_durations.items()
@@ -305,6 +332,42 @@ def apply_history_weights(
             )
             for test_id in unit.test_ids
         )
+
+
+# Emit a GitHub Actions ::warning:: for any file where enough tests fall through
+# to FALLBACK_TEST_MS that the plan is at real risk of under-budgeting the shard
+# holding them (see fix #30812 for the failure mode). The gate is intentionally
+# quiet: files with a handful of new tests trip nothing; a re-enabled suite of
+# 10+ tests, or a smaller suite whose fallback allocation crosses one minute,
+# gets an annotation the re-enabling PR author will see on the plan step.
+UNWEIGHTED_WARN_MIN_TESTS = 10
+UNWEIGHTED_WARN_MIN_MS = 60_000
+
+
+def emit_unweighted_warnings(
+    units: list[Unit],
+    test_weights: dict[str, int],
+    identity_weights: dict[tuple[str, str], int],
+) -> None:
+    stats: dict[str, dict[str, int]] = defaultdict(lambda: {"count": 0})
+    for unit in units:
+        for test_id in unit.test_ids:
+            if test_id in test_weights:
+                continue
+            if (unit.file, unit.test_names[test_id]) in identity_weights:
+                continue
+            stats[unit.file]["count"] += 1
+    for file, entry in sorted(stats.items()):
+        reserved_ms = entry["count"] * FALLBACK_TEST_MS
+        if entry["count"] < UNWEIGHTED_WARN_MIN_TESTS and reserved_ms < UNWEIGHTED_WARN_MIN_MS:
+            continue
+        message = (
+            f"{entry['count']} test(s) in {file} have no timing history; "
+            f"planner reserved {reserved_ms / 60_000:.1f} min via FALLBACK_TEST_MS. "
+            "If this suite was recently re-enabled, refresh timing-baseline.json "
+            "with real durations to avoid shard overruns on the first plan."
+        )
+        print(f"::warning file={file}::{message}", file=sys.stderr)
 
 
 def normalize_spec(path: str) -> str:
@@ -482,6 +545,7 @@ def main() -> None:
         raise SystemExit("Playwright selection produced no runnable test units")
 
     apply_history_weights(units, test_weights, identity_weights)
+    emit_unweighted_warnings(units, test_weights, identity_weights)
 
     oversized_units = [unit for unit in units if unit.weight_ms > TARGET_MS]
     if oversized_units:

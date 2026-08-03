@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { Typography } from './typography';
 
 describe('Typography', () => {
@@ -74,5 +75,94 @@ describe('Typography', () => {
 
     expect(el).toHaveClass('tw:text-tertiary');
     expect(el.className).not.toMatch(/tw:text-error-primary/);
+  });
+});
+
+describe('Typography ellipsis tooltip', () => {
+  it('propagates a click through to an ancestor onClick handler', () => {
+    const handleAncestorClick = vi.fn();
+
+    render(
+      <div onClick={handleAncestorClick}>
+        <Typography ellipsis={{ tooltip: true }}>
+          A very long piece of text that gets truncated with an ellipsis
+        </Typography>
+      </div>
+    );
+
+    fireEvent.click(
+      screen.getByText(
+        'A very long piece of text that gets truncated with an ellipsis'
+      )
+    );
+
+    // Regression guard: react-aria's `usePress` stops a completed press from
+    // propagating to ancestor DOM listeners by default. Typography's
+    // ellipsis-tooltip wrapper must opt back into propagation so a click on
+    // truncated text still reaches whatever ancestor `onClick` the consumer
+    // attached (e.g. a selectable card or a persona-switcher row).
+    expect(handleAncestorClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('still shows the tooltip on hover', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Typography ellipsis={{ tooltip: 'Full text' }}>
+        Truncated text
+      </Typography>
+    );
+
+    expect(screen.queryByText('Full text')).not.toBeInTheDocument();
+
+    // react-aria only treats hover as a tooltip-showing interaction when the
+    // current "interaction modality" is pointer (see
+    // @react-aria/interactions/useFocusVisible, which falls back to
+    // mousemove/mousedown/mouseup listeners in test environments since jsdom
+    // has no PointerEvent). A bare hover with no prior mouse movement leaves
+    // the modality at its initial `null`, so establish it first.
+    fireEvent.mouseMove(document);
+
+    await user.hover(screen.getByText('Truncated text'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Full text')).toBeInTheDocument();
+    });
+  });
+
+  it('still shows the tooltip on keyboard focus', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Typography ellipsis={{ tooltip: 'Full text' }}>
+        Truncated text
+      </Typography>
+    );
+
+    expect(screen.queryByText('Full text')).not.toBeInTheDocument();
+
+    await user.tab();
+
+    await waitFor(() => {
+      expect(screen.getByText('Full text')).toBeInTheDocument();
+    });
+  });
+
+  it('does not wrap non-ellipsis Typography in a tooltip trigger', () => {
+    const handleAncestorClick = vi.fn();
+
+    render(
+      <div onClick={handleAncestorClick}>
+        <Typography>Plain text</Typography>
+      </div>
+    );
+
+    const el = screen.getByText('Plain text');
+
+    expect(el.closest('button')).toBeNull();
+
+    fireEvent.click(el);
+
+    expect(handleAncestorClick).toHaveBeenCalledTimes(1);
   });
 });
