@@ -36,6 +36,7 @@ const PAGES: {
   name: string;
   route: string;
   mask?: string[];
+  maskColor?: string;
   maxDiffPixelRatio?: number;
 }[] = [
   {
@@ -77,13 +78,14 @@ const PAGES: {
   { name: 'applications', route: '/marketplace' },
 ];
 
-for (const { name, route, mask, maxDiffPixelRatio } of PAGES) {
+for (const { name, route, mask, maskColor, maxDiffPixelRatio } of PAGES) {
   test(`${name} matches baseline`, async ({ page }) => {
     await gotoForScreenshot(page, route);
     await expect(page).toHaveScreenshot(`${name}.png`, {
       ...SCREENSHOT_OPTS,
       ...(maxDiffPixelRatio !== undefined && { maxDiffPixelRatio }),
       mask: (mask ?? []).map((selector) => page.locator(selector)),
+      ...(maskColor !== undefined && { maskColor }),
     });
   });
 }
