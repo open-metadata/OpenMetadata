@@ -24,6 +24,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Data Access Request capability validation in {@link
@@ -495,6 +498,52 @@ public class DataAccessRequestValidationIT {
   private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
   /**
+   * The DAR workflow runs the create → start → TaskReview steps on a Flowable thread pool, so
+   * {@code availableTransitions} is not yet stamped on the row when the create call returns.
+   * Every resolve-driven regression below must wait for the transition it targets to appear
+   * before firing — otherwise the API's new "unknown transitionId" guard rejects the call
+   * before the code path under test executes.
+   */
+  private static void awaitTransitionAvailable(java.util.UUID taskId, String transitionId) {
+    java.util.concurrent.atomic.AtomicReference<Task> latest =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    try {
+      Awaitility.await("DAR workflow to expose transition '" + transitionId + "'")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofMillis(500))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                Task fresh =
+                    SdkClients.adminClient().tasks().get(taskId.toString(), "availableTransitions");
+                latest.set(fresh);
+                return fresh.getAvailableTransitions() != null
+                    && fresh.getAvailableTransitions().stream()
+                        .anyMatch(t -> transitionId.equals(t.getId()));
+              });
+    } catch (org.awaitility.core.ConditionTimeoutException timeout) {
+      Task snapshot = latest.get();
+      String state =
+          snapshot == null
+              ? "no snapshot"
+              : String.format(
+                  "status=%s stageId=%s workflowInstanceId=%s availableTransitions=%s",
+                  snapshot.getStatus(),
+                  snapshot.getWorkflowStageId(),
+                  snapshot.getWorkflowInstanceId(),
+                  snapshot.getAvailableTransitions());
+      throw new AssertionError(
+          "Workflow never surfaced transition '"
+              + transitionId
+              + "' on task "
+              + taskId
+              + " within 60s. Last snapshot: "
+              + state,
+          timeout);
+    }
+  }
+
+  /**
    * H1: resolve endpoint used to accept any string (including "garbage-word" and an empty body)
    * and silently drive the task to Approved via TaskWorkflowHandler.resolveResolutionType's
    * "positive-default" fallback. It must now reject unknown transitionIds with a 400.
@@ -537,6 +586,7 @@ public class DataAccessRequestValidationIT {
             table.getFullyQualifiedName(),
             dataAccessPayload("FullAccess"));
 
+    awaitTransitionAvailable(dar.getId(), "reject");
     ResolveTask spoof =
         new ResolveTask()
             .withTransitionId("reject")
@@ -594,6 +644,7 @@ public class DataAccessRequestValidationIT {
             "table",
             table.getFullyQualifiedName(),
             dataAccessPayload("Masked"));
+    awaitTransitionAvailable(dar.getId(), "approve");
     SdkClients.adminClient()
         .tasks()
         .resolve(
@@ -601,6 +652,19 @@ public class DataAccessRequestValidationIT {
             new ResolveTask()
                 .withTransitionId("approve")
                 .withComment("approving the smaller ask before the widening attempt"));
+    Awaitility.await("DAR to leave Open after approve")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .ignoreExceptions()
+        .until(
+            () ->
+                !"Open"
+                    .equals(
+                        SdkClients.adminClient()
+                            .tasks()
+                            .get(dar.getId().toString(), "availableTransitions")
+                            .getStatus()
+                            .value()));
 
     JsonNode widen =
         JSON_MAPPER.readTree(
@@ -613,6 +677,120 @@ public class DataAccessRequestValidationIT {
     assertTrue(
         rejection.getMessage().contains("frozen"),
         () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  /**
+   * H3: closing a Granted DAR used to mark it Cancelled without running any revoke enforcement.
+   * The close guard now rejects with 400, forcing callers through the revoke transition.
+   */
+  @Test
+  void testDarClose_onGranted_returns400(TestNamespace ns) throws Exception {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Task dar =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+
+    awaitTransitionAvailable(dar.getId(), "approve");
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            dar.getId().toString(),
+            new ResolveTask().withTransitionId("approve").withComment("approve for close test"));
+    Awaitility.await("DAR to reach Approved after approve transition")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              Task fresh =
+                  SdkClients.adminClient()
+                      .tasks()
+                      .get(dar.getId().toString(), "availableTransitions");
+              return fresh.getAvailableTransitions() != null
+                  && fresh.getAvailableTransitions().stream()
+                      .anyMatch(t -> "markAsGranted".equals(t.getId()));
+            });
+    SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            dar.getId().toString(),
+            new ResolveTask().withTransitionId("markAsGranted").withComment("mark granted"));
+    Awaitility.await("DAR to reach Granted after markAsGranted")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .ignoreExceptions()
+        .until(
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .get(dar.getId().toString(), "availableTransitions")
+                    .getStatus()
+                    .value()
+                    .equals("Granted"));
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/tasks/" + dar.getId() + "/close", null));
+    assertTrue(
+        rejection.getMessage().contains("close is not allowed"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  /**
+   * H8: concurrent create used to bypass the SELECT-then-INSERT duplicate check (TOCTOU). The
+   * partial unique index at the DB layer now closes the race — exactly one of the parallel
+   * INSERTs wins and the losers surface as 400 duplicate-request errors.
+   */
+  @Test
+  void testDarCreate_concurrentBySameUser_onlyOneWins(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    String tableFqn = table.getFullyQualifiedName();
+    int parallelism = 5;
+
+    AtomicInteger successes = new AtomicInteger();
+    AtomicInteger duplicates = new AtomicInteger();
+    List<CompletableFuture<Void>> attempts =
+        java.util.stream.IntStream.range(0, parallelism)
+            .mapToObj(
+                i ->
+                    CompletableFuture.runAsync(
+                        () -> {
+                          try {
+                            createDataAccessRequest(
+                                SdkClients.user1Client(),
+                                ns,
+                                "table",
+                                tableFqn,
+                                dataAccessPayload("FullAccess"));
+                            successes.incrementAndGet();
+                          } catch (InvalidRequestException expected) {
+                            if (expected.getMessage().contains("already exists")) {
+                              duplicates.incrementAndGet();
+                            } else {
+                              throw expected;
+                            }
+                          }
+                        }))
+            .collect(Collectors.toList());
+    CompletableFuture.allOf(attempts.toArray(new CompletableFuture[0])).join();
+
+    assertEquals(
+        1,
+        successes.get(),
+        () ->
+            "Only one concurrent DAR should have won. successes="
+                + successes
+                + " duplicates="
+                + duplicates);
+    assertEquals(parallelism - 1, duplicates.get(), "Every loser must be a duplicate rejection");
   }
 
   /**
