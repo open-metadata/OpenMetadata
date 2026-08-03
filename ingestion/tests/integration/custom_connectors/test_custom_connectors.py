@@ -235,10 +235,12 @@ def ingested_service(metadata, workflow_config, sink_config):
 
     def _run(spec: ConnectorSpec) -> tuple[str, MetadataWorkflow]:
         service_name = f"custom_{spec.key}_{uuid.uuid4().hex[:8]}"
+        # Registered before the run: a workflow that fails partway may still have
+        # created the service, and teardown has to reclaim it either way.
+        created.append((spec.service_entity, service_name))
         workflow = MetadataWorkflow.create(build_config(spec, service_name, workflow_config, sink_config))
         workflow.execute()
         workflow.raise_from_status()
-        created.append((spec.service_entity, service_name))
         return service_name, workflow
 
     yield _run

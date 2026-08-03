@@ -14,6 +14,7 @@ Test import utilities
 """
 
 from unittest import TestCase
+from unittest.mock import patch
 
 import pytest
 
@@ -105,3 +106,12 @@ def test_import_from_module_wraps_missing_attribute() -> None:
         import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSourceTypo")
 
     assert "Cannot import metadata.ingestion.source.database.mysql.metadata.MysqlSourceTypo" in str(exc_info.value)
+
+
+def test_import_from_module_does_not_wrap_module_level_attribute_error() -> None:
+    """An AttributeError from the module's own code must keep its traceback."""
+    with (
+        patch("importlib.import_module", side_effect=AttributeError("boom inside the module")),
+        pytest.raises(AttributeError, match="boom inside the module"),
+    ):
+        import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSource")
