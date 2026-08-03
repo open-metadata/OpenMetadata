@@ -20,6 +20,7 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
@@ -49,6 +50,7 @@ export type {
 } from './FilterChip.interface';
 
 const EXPORT_SORT_FIELD = 'fullyQualifiedName.keyword';
+const MAX_EXPORT_PASSES = 3;
 
 export const useTestCaseListPage = () => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
@@ -144,41 +146,76 @@ export const useTestCaseListPage = () => {
       sortField: EXPORT_SORT_FIELD,
       sortType: SORT_ORDER.ASC,
     };
-    // Fetch the first page separately because its paging metadata determines
-    // exactly which remaining offsets are needed for the filtered result set.
-    const firstPage = await getListTestCaseBySearch({
-      ...exportParams,
-      limit: PAGE_SIZE_LARGE,
-      offset: 0,
-    });
-    const total = firstPage.paging.total ?? firstPage.data.length;
-    const remainingPageCount = Math.max(
-      Math.ceil(total / PAGE_SIZE_LARGE) - 1,
-      0
-    );
-    const remainingPageOffsets = Array.from(
-      { length: remainingPageCount },
-      (_, index) => (index + 1) * PAGE_SIZE_LARGE
-    );
+    const fetchExportPass = async () => {
+      const firstPage = await getListTestCaseBySearch({
+        ...exportParams,
+        limit: PAGE_SIZE_LARGE,
+        offset: 0,
+      });
+      const pages = [firstPage];
+      const firstReportedTotal = firstPage.paging.total;
 
-    // Stable sorting makes the remaining offsets independent, so these pages
-    // can be requested concurrently instead of waiting for each page in turn.
-    const remainingPages = await Promise.all(
-      remainingPageOffsets.map((offset) =>
-        getListTestCaseBySearch({
-          ...exportParams,
-          limit: PAGE_SIZE_LARGE,
-          offset,
-        })
-      )
-    );
+      if (firstReportedTotal === undefined) {
+        // Without a total, a full page is not evidence that the export is
+        // complete. Continue sequentially until the API returns a short page.
+        let page = firstPage;
+        let offset = firstPage.data.length;
 
-    // Offset pages can overlap when records move during export. Prefer the ID,
-    // then fall back to the FQN or name so optional generated fields stay safe.
-    const testCases = uniqBy(
-      [firstPage, ...remainingPages].flatMap(({ data }) => data),
-      ({ id, fullyQualifiedName, name }) => id ?? fullyQualifiedName ?? name
-    );
+        while (page.data.length === PAGE_SIZE_LARGE) {
+          page = await getListTestCaseBySearch({
+            ...exportParams,
+            limit: PAGE_SIZE_LARGE,
+            offset,
+          });
+          pages.push(page);
+          offset += page.data.length;
+        }
+      } else {
+        const remainingPageCount = Math.max(
+          Math.ceil(firstReportedTotal / PAGE_SIZE_LARGE) - 1,
+          0
+        );
+        const remainingPageOffsets = Array.from(
+          { length: remainingPageCount },
+          (_, index) => (index + 1) * PAGE_SIZE_LARGE
+        );
+
+        // A known total allows stable offsets to be fetched concurrently.
+        pages.push(
+          ...(await Promise.all(
+            remainingPageOffsets.map((offset) =>
+              getListTestCaseBySearch({
+                ...exportParams,
+                limit: PAGE_SIZE_LARGE,
+                offset,
+              })
+            )
+          ))
+        );
+      }
+
+      const testCases = uniqBy(
+        pages.flatMap(({ data }) => data),
+        ({ id, fullyQualifiedName, name }) => id ?? fullyQualifiedName ?? name
+      );
+      const reportedTotalChanged = pages.some(
+        ({ paging: { total } }) =>
+          total !== undefined && total !== firstReportedTotal
+      );
+
+      return { reportedTotalChanged, testCases };
+    };
+
+    let pass = 0;
+    let testCases: TestCase[] = [];
+    let reportedTotalChanged: boolean;
+
+    do {
+      ({ reportedTotalChanged, testCases } = await fetchExportPass());
+      pass += 1;
+      // Replace the previous pass instead of merging it so deleted or newly
+      // nonmatching rows are not retained in the exported snapshot.
+    } while (reportedTotalChanged && pass < MAX_EXPORT_PASSES);
 
     return convertTestCasesToCSV(testCases);
   }, [params, searchValue, selectedFilter]);

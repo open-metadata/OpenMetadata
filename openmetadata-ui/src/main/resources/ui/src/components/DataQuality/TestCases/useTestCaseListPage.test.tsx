@@ -407,6 +407,78 @@ describe('useTestCaseListPage', () => {
     expect(csv).toContain('filtered-final');
   });
 
+  it('should continue filtered export paging when the response total is absent', async () => {
+    const firstPage = Array.from({ length: 50 }, (_, index) =>
+      buildTestCase(`filtered-${index}`, `svc.tbl.filtered-${index}`)
+    );
+    const finalTestCase = buildTestCase(
+      'filtered-final',
+      'svc.tbl.filtered-final'
+    );
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({ data: [], paging: { total: 0 } })
+      .mockResolvedValueOnce({ data: firstPage, paging: {} })
+      .mockResolvedValueOnce({ data: [finalTestCase], paging: {} });
+    mockLocation.search = QueryString.stringify({ searchValue: 'filtered' });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    const csv = await exportData.onExport('*');
+
+    expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        limit: 50,
+        offset: 50,
+        q: '*filtered*',
+      })
+    );
+    expect(csv).toContain('filtered-final');
+  });
+
+  it('should reconcile a row shifted across pages by a concurrent delete', async () => {
+    const staleFirstPage = Array.from({ length: 50 }, (_, index) =>
+      buildTestCase(`filtered-${index}`, `svc.tbl.filtered-${index}`)
+    );
+    const shiftedTestCase = buildTestCase('filtered-50', 'svc.tbl.filtered-50');
+    const currentFirstPage = [...staleFirstPage.slice(1), shiftedTestCase];
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({ data: [], paging: { total: 0 } })
+      .mockResolvedValueOnce({
+        data: staleFirstPage,
+        paging: { total: 51 },
+      })
+      .mockResolvedValueOnce({ data: [], paging: { total: 50 } })
+      .mockResolvedValueOnce({
+        data: currentFirstPage,
+        paging: { total: 50 },
+      });
+    mockLocation.search = QueryString.stringify({ searchValue: 'filtered' });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    const csv = await exportData.onExport('*');
+
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(4);
+    expect(csv).toContain('\nfiltered-50,');
+    expect(csv).not.toContain('\nfiltered-0,');
+  });
+
   it('should fetch the remaining filtered export pages concurrently', async () => {
     const firstPage = Array.from({ length: 50 }, (_, index) =>
       buildTestCase(`filtered-${index}`, `svc.tbl.filtered-${index}`)
