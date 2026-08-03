@@ -473,8 +473,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     });
 
     // Skip: Requires re-filtering expanded state which isn't fully implemented
-    // eslint-disable-next-line playwright/no-skipped-test -- requires re-filtering expanded state support
-    test.skip('change filter while expanded updates visible root terms', async ({
+    test('change filter while expanded updates visible root terms', async ({
       page,
     }) => {
       // Expand parent first with All filter
