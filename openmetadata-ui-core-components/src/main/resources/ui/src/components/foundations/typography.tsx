@@ -14,6 +14,26 @@
 import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
+import type { PressEvent } from 'react-aria-components';
+
+// `TooltipTrigger` renders a react-aria `Button`, whose `usePress` hook stops
+// a completed press from propagating to ancestor DOM listeners by default
+// (react-aria's documented behavior: "the default for React Spectrum
+// components is not to propagate. This can be overridden by calling
+// continuePropagation() on the event" - see
+// node_modules/@react-types/shared/src/events.d.ts). For most `TooltipTrigger`
+// call sites that is desirable (e.g. a help-icon tooltip nested inside a
+// sortable table header should not also trigger the header's sort-on-click).
+// But Typography's ellipsis tooltip wraps *arbitrary, non-interactive* text
+// content: the wrapper is only there to host the hover/focus tooltip, so a
+// click on the truncated text should reach whatever ancestor `onClick` the
+// consumer attached (e.g. a selectable card, a persona-switcher row). Calling
+// `continuePropagation()` here restores that click, scoped to this call site
+// only - it does not change `TooltipTrigger`'s default for its other
+// consumers (form-item-label, input, table column header, avatar add button).
+const allowEllipsisTooltipPressToPropagate = (e: PressEvent) => {
+  e.continuePropagation();
+};
 
 const lineClampClasses: Record<number, string> = {
   1: 'tw:line-clamp-1',
@@ -160,7 +180,9 @@ export const Typography = (props: TypographyProps) => {
   if (ellipsisTooltip) {
     return (
       <Tooltip title={ellipsisTooltip}>
-        <TooltipTrigger className="tw:block tw:w-full tw:min-w-0">
+        <TooltipTrigger
+          className="tw:block tw:w-full tw:min-w-0"
+          onPress={allowEllipsisTooltipPressToPropagate}>
           <div
             className={cx(
               'prose',
