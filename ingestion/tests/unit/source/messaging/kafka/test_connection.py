@@ -38,3 +38,38 @@ def test_test_connection_runs_steps():
         result = conn.test_connection(metadata=MagicMock())
 
     assert result is mock_step.return_value
+
+
+def _kafka_config(**overrides):
+    from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+        KafkaConnection as KafkaConnectionConfig,
+    )
+
+    return KafkaConnectionConfig(bootstrapServers="localhost:9092", **overrides)
+
+
+def test_consumer_is_built_without_a_schema_registry():
+    from metadata.ingestion.source.messaging.kafka.connection import get_connection
+
+    with patch(f"{CONNECTION_MODULE}.AdminClient"), patch(f"{CONNECTION_MODULE}.Consumer") as mock_consumer:
+        client = get_connection(_kafka_config())
+
+    assert client.schema_registry_client is None
+    assert client.consumer_client is mock_consumer.return_value
+    consumer_config = mock_consumer.call_args.args[0]
+    assert consumer_config["bootstrap.servers"] == "localhost:9092"
+    assert "value.deserializer" not in consumer_config
+
+
+def test_admin_client_does_not_inherit_consumer_only_settings():
+    from metadata.ingestion.source.messaging.kafka.connection import get_connection
+
+    with (
+        patch(f"{CONNECTION_MODULE}.AdminClient") as mock_admin,
+        patch(f"{CONNECTION_MODULE}.Consumer"),
+    ):
+        get_connection(_kafka_config())
+
+    admin_config = mock_admin.call_args.args[0]
+    assert "group.id" not in admin_config
+    assert "enable.auto.commit" not in admin_config

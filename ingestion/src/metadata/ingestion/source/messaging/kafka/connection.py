@@ -17,9 +17,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Optional, Union
 
-from confluent_kafka import DeserializingConsumer
+from confluent_kafka import Consumer
 from confluent_kafka.admin import AdminClient, KafkaException
-from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -87,28 +86,22 @@ def get_connection(connection: Union[KafkaConnectionConfig, RedpandaConnection])
     if connection.basicAuthUserInfo:
         schema_registry_config["basic.auth.user.info"] = connection.basicAuthUserInfo.get_secret_value()
 
-    admin_client_config = consumer_config
+    admin_client_config = dict(consumer_config)
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers
     admin_client = AdminClient(admin_client_config)
 
     schema_registry_client = None
-    consumer_client = None
-
     if connection.schemaRegistryURL:
         schema_registry_config["url"] = str(connection.schemaRegistryURL)
         schema_registry_client = SchemaRegistryClient(schema_registry_config)
 
-        consumer_config["bootstrap.servers"] = connection.bootstrapServers
-        if "group.id" not in consumer_config:
-            consumer_config["group.id"] = "openmetadata-consumer"
-        if "auto.offset.reset" not in consumer_config:
-            consumer_config["auto.offset.reset"] = "largest"
-        consumer_config["enable.auto.commit"] = False
-
-        avro_deserializer = AvroDeserializer(schema_registry_client=schema_registry_client)
-        consumer_config["value.deserializer"] = avro_deserializer
-
-        consumer_client = DeserializingConsumer(consumer_config)
+    # Messages are handed back as raw bytes and decoded per topic, so sample data
+    # works for every schema type and does not require a Schema Registry.
+    consumer_config["bootstrap.servers"] = connection.bootstrapServers
+    consumer_config.setdefault("group.id", "openmetadata-consumer")
+    consumer_config.setdefault("auto.offset.reset", "largest")
+    consumer_config["enable.auto.commit"] = False
+    consumer_client = Consumer(consumer_config)
 
     return KafkaClient(
         admin_client=admin_client,
