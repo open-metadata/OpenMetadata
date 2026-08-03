@@ -83,7 +83,7 @@
           },
           "queryFilter": {
             "type": "string",
-            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}})."
+            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}}). 'fullyQualifiedName' is indexed with a lowercase normalizer, so values in 'term'/'terms' clauses must be lowercased — {\"terms\": {\"fullyQualifiedName\": [\"dailyactiveusers\"]}} matches, the original casing silently matches nothing. Combining a 'terms' clause on 'fullyQualifiedName' with 'fields' is the way to hydrate many known entities in one call."
           },
           "from": {
             "type": "integer",
@@ -197,7 +197,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Metric results additionally carry 'metricExpression', 'metricType', 'granularity' and 'unitOfMeasurement' — enough to tell similarly named metrics apart (e.g. daily vs monthly active users) and shortlist the right one without fetching each candidate. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information, including custom properties ('extension'), which summaries never include. One result is returned per entity: the best-matching passage represents it.",
       "parameters": {
         "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
         "type": "object",
@@ -208,7 +208,7 @@
           },
           "filters": {
             "type": "object",
-            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}. These belong here and nowhere else — passing 'entityType', 'service' or 'tags' at the top level of the call is rejected with an error.",
             "additionalProperties": {
               "type": "array",
               "items": {

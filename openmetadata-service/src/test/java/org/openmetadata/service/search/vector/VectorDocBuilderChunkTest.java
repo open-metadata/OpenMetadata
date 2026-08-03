@@ -23,10 +23,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetricExpressionLanguage;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricType;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 /**
@@ -169,6 +175,77 @@ class VectorDocBuilderChunkTest {
     List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, new MockEmbeddingClient());
     String description = (String) docs.get(0).get("description");
     assertEquals(VectorDocBuilder.MAX_CHUNK_DESCRIPTION_CHARS, description.length());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void fromEntity_denormalizesTheMetricFactsThatTellSimilarMetricsApart() {
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("MonthlyActiveUsers")
+            .withDescription("Distinct users in a month")
+            .withMetricType(MetricType.COUNT)
+            .withGranularity(MetricGranularity.MONTH)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT)
+            .withMetricExpression(
+                new MetricExpression()
+                    .withLanguage(MetricExpressionLanguage.SQL)
+                    .withCode("SELECT COUNT(DISTINCT user_id) FROM events"));
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    Map<String, Object> expression = (Map<String, Object>) doc.get("metricExpression");
+    assertEquals("SELECT COUNT(DISTINCT user_id) FROM events", expression.get("code"));
+    assertEquals("SQL", expression.get("language"));
+    assertEquals("COUNT", doc.get("metricType"));
+    assertEquals("MONTH", doc.get("granularity"));
+    assertEquals("COUNT", doc.get("unitOfMeasurement"));
+  }
+
+  @Test
+  void fromEntity_prefersTheCustomUnitOverTheOtherSentinel() {
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("m")
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("basis points");
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    assertEquals("basis points", doc.get("unitOfMeasurement"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void fromEntity_capsDenormalizedMetricCode() {
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("m")
+            .withMetricExpression(
+                new MetricExpression()
+                    .withCode("x".repeat(VectorDocBuilder.MAX_CHUNK_METRIC_CODE_CHARS + 500)));
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    Map<String, Object> expression = (Map<String, Object>) doc.get("metricExpression");
+    assertEquals(
+        VectorDocBuilder.MAX_CHUNK_METRIC_CODE_CHARS, ((String) expression.get("code")).length());
+  }
+
+  @Test
+  void fromEntity_omitsMetricFieldsWhenTheMetricHasNone() {
+    Metric metric =
+        new Metric().withId(UUID.randomUUID()).withName("m").withDescription("no expression here");
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    assertFalse(doc.containsKey("metricExpression"));
+    assertFalse(doc.containsKey("metricType"));
+    assertFalse(doc.containsKey("granularity"));
+    assertFalse(doc.containsKey("unitOfMeasurement"));
   }
 
   @Test

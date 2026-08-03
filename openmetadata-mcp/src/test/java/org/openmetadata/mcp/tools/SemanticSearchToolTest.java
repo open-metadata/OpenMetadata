@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -330,6 +332,47 @@ class SemanticSearchToolTest {
   }
 
   @Test
+  void testTopLevelFilterIsRejectedInsteadOfIgnored() throws Exception {
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "Active Customers");
+    params.put("entityType", "metric");
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    String error = (String) result.get("error");
+    assertNotNull(error);
+    assertTrue(error.contains("entityType"));
+    assertTrue(error.contains("filters"));
+    assertEquals(0, result.get("totalFound"));
+    verify(vectorService, never())
+        .search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble());
+  }
+
+  @Test
+  void testCustomUnitReplacesTheOtherSentinelOnEntityIndexHits() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    // Entity-index hits carry the raw enum plus a separate custom unit; chunk docs carry the
+    // resolved value. Both must look the same to the caller.
+    Map<String, Object> hit = createHit("metric", "SpreadBps", "SpreadBps", 0.9);
+    hit.put("unitOfMeasurement", "OTHER");
+    hit.put("customUnitOfMeasurement", "basis points");
+
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, List.of(hit)));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "spread");
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> cleaned = (Map<String, Object>) ((List<?>) result.get("results")).get(0);
+    assertEquals("basis points", cleaned.get("unitOfMeasurement"));
+    assertFalse(cleaned.containsKey("customUnitOfMeasurement"));
+  }
+
+  @Test
   void testFiltersPassedAsMap() throws Exception {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
 
@@ -510,6 +553,97 @@ class SemanticSearchToolTest {
     if (returned == 0) {
       assertNull(result.get("nextCursor"), "cursor must not point back to the same page");
     }
+  }
+
+  @Test
+  void testMetricFactsAreReturnedForShortlisting() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    Map<String, Object> hit = createHit("metric", "MonthlyActiveUsers", "MonthlyActiveUsers", 0.9);
+    hit.put("metricExpression", Map.of("language", "SQL", "code", "SELECT COUNT(DISTINCT id)"));
+    hit.put("metricType", "COUNT");
+    hit.put("granularity", "MONTH");
+    hit.put("unitOfMeasurement", "COUNT");
+    hit.put("extension", Map.of("owningTeam", "growth"));
+
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, List.of(hit)));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "active customers");
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> cleaned = (Map<String, Object>) ((List<?>) result.get("results")).get(0);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> expression = (Map<String, Object>) cleaned.get("metricExpression");
+    assertEquals("SELECT COUNT(DISTINCT id)", expression.get("code"));
+    assertEquals("MONTH", cleaned.get("granularity"));
+    assertEquals("COUNT", cleaned.get("metricType"));
+    assertEquals("COUNT", cleaned.get("unitOfMeasurement"));
+    // Custom properties stay a get_entity_details concern: unbounded user JSON would compete with
+    // results for the response budget.
+    assertFalse(cleaned.containsKey("extension"));
+  }
+
+  @Test
+  void testChunksOfOneEntityCollapseToASingleResult() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    Map<String, Object> best = createHit("page", "kb.long_article", "long_article", 0.91);
+    best.put("parentId", "parent-1");
+    best.put("chunkIndex", 0);
+    Map<String, Object> weaker = createHit("page", "kb.long_article", "long_article", 0.62);
+    weaker.put("parentId", "parent-1");
+    weaker.put("chunkIndex", 3);
+    Map<String, Object> other = createHit("page", "kb.other", "other", 0.55);
+    other.put("parentId", "parent-2");
+
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, List.of(best, weaker, other)));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "anything");
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    List<?> results = (List<?>) result.get("results");
+    assertEquals(2, results.size(), "each entity must appear once, not once per matching chunk");
+    assertEquals(2, result.get("returnedCount"));
+    @SuppressWarnings("unchecked")
+    Map<String, Object> first = (Map<String, Object>) results.get(0);
+    assertEquals(
+        0.91, first.get("similarityScore"), "the best-scoring chunk must represent the entity");
+  }
+
+  @Test
+  void testCollapsedCountKeepsNextCursorAlignedWithParentPaging() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    // Two entities, three chunk hits: a cursor built from the raw hit count would advance the
+    // vector service's parent-offset by 3 and skip an entity on the next page.
+    Map<String, Object> firstChunk = createHit("page", "kb.a", "a", 0.9);
+    firstChunk.put("parentId", "parent-1");
+    Map<String, Object> secondChunk = createHit("page", "kb.a", "a", 0.8);
+    secondChunk.put("parentId", "parent-1");
+    Map<String, Object> otherEntity = createHit("page", "kb.b", "b", 0.7);
+    otherEntity.put("parentId", "parent-2");
+
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(
+            new VectorSearchResponse(
+                10L, List.of(firstChunk, secondChunk, otherEntity), null, true));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "anything");
+    params.put("size", 2);
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    String cursor = (String) result.get("nextCursor");
+    assertNotNull(cursor, "a full page with more in the index must advertise a cursor");
+    assertEquals(2, PageCursor.decode(cursor).orElseThrow().offset());
   }
 
   private Map<String, Object> createHit(String entityType, String fqn, String name, double score) {

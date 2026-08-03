@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,12 @@ public class SemanticSearchTool implements McpTool {
   private static final int MAX_K = 10_000;
   private static final double DEFAULT_THRESHOLD = 0.0;
 
+  /** Filter fields the tool schema declares under {@code filters}; never valid at the top level. */
+  private static final List<String> FILTER_FIELDS = List.of("entityType", "service", "tags");
+
+  /** Sentinel unit meaning "see customUnitOfMeasurement" rather than a unit in its own right. */
+  private static final String UNIT_OF_MEASUREMENT_OTHER = "OTHER";
+
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
@@ -35,8 +42,9 @@ public class SemanticSearchTool implements McpTool {
     LOG.info("Executing semanticSearch with params: {}", params);
 
     String query = (String) params.get("query");
-    if (query == null || query.isBlank()) {
-      return errorResponse("'query' parameter is required");
+    String paramError = validateParams(query, params);
+    if (paramError != null) {
+      return errorResponse(paramError);
     }
 
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
@@ -74,6 +82,32 @@ public class SemanticSearchTool implements McpTool {
     }
   }
 
+  /**
+   * Rejects a filter passed at the top level (e.g. {@code "entityType": "metric"}) instead of under
+   * {@code filters}. Such a parameter used to be dropped by {@link #parseFilters}, so the caller got
+   * an unfiltered search back with no indication their filter had done nothing — a wrong answer that
+   * looks like a right one. Failing loudly with the correct shape is the only honest option.
+   *
+   * @return the error message, or {@code null} when the parameters are usable
+   */
+  private static String validateParams(String query, Map<String, Object> params) {
+    String error = null;
+    if (query == null || query.isBlank()) {
+      error = "'query' parameter is required";
+    } else {
+      String misplaced =
+          FILTER_FIELDS.stream().filter(params::containsKey).findFirst().orElse(null);
+      if (misplaced != null) {
+        error =
+            String.format(
+                "'%s' is a filter and must be nested under 'filters' as an array, "
+                    + "for example: {\"query\": \"...\", \"filters\": {\"%s\": [\"value\"]}}",
+                misplaced, misplaced);
+      }
+    }
+    return error;
+  }
+
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer,
@@ -98,10 +132,7 @@ public class SemanticSearchTool implements McpTool {
       return result;
     }
 
-    List<Map<String, Object>> cleanedResults = new ArrayList<>();
-    for (Map<String, Object> hit : response.getHits()) {
-      cleanedResults.add(cleanHit(hit));
-    }
+    List<Map<String, Object>> cleanedResults = collapseByParent(response.getHits());
 
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
@@ -121,6 +152,40 @@ public class SemanticSearchTool implements McpTool {
         "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
             + "Adjust 'threshold' to filter by similarity score.");
     return result;
+  }
+
+  /**
+   * One result per entity, best-scoring chunk first.
+   *
+   * <p>The vector service pages by <em>parent entity</em> but returns every matching chunk of each
+   * parent, ordered best-first. Since {@link #cleanHit} keeps only entity-level fields, the extra
+   * chunks of one entity clean down to near-identical results — duplicate rows that burn response
+   * budget and caller context while adding nothing. Worse, {@code nextCursor} advances by the number
+   * of rows returned (see {@code VectorPagingContract}) while the service's {@code from} skips
+   * parents, so any multi-chunk parent made page two skip entities entirely. Collapsing here makes
+   * the returned count equal the parent count, which is what the cursor arithmetic assumes.
+   */
+  private List<Map<String, Object>> collapseByParent(List<Map<String, Object>> hits) {
+    Map<String, Map<String, Object>> byParent = new LinkedHashMap<>();
+    for (Map<String, Object> hit : hits) {
+      byParent.computeIfAbsent(parentKey(hit), ignored -> cleanHit(hit));
+    }
+    return new ArrayList<>(byParent.values());
+  }
+
+  /**
+   * Identity of the entity a hit belongs to. {@code parentId} is present on chunk docs and on
+   * backfilled entity docs; the FQN and then the hit's own identity hash are fallbacks so a doc
+   * missing both is never silently merged into another entity's result.
+   */
+  private static String parentKey(Map<String, Object> hit) {
+    Object parentId = hit.get("parentId");
+    Object fqn = hit.get("fullyQualifiedName");
+    String key = parentId != null ? parentId.toString() : null;
+    if (key == null) {
+      key = fqn != null ? fqn.toString() : "hit:" + System.identityHashCode(hit);
+    }
+    return key;
   }
 
   /**
@@ -171,6 +236,13 @@ public class SemanticSearchTool implements McpTool {
     copyIfPresent(hit, cleaned, "domains");
     copyIfPresent(hit, cleaned, "columns");
     copyIfPresent(hit, cleaned, "certification");
+    // Metric facts: a metric summary without its expression, granularity, type and unit cannot be
+    // told apart from a similarly named metric, which forced a per-result get_entity_details call.
+    copyIfPresent(hit, cleaned, "metricExpression");
+    copyIfPresent(hit, cleaned, "metricType");
+    copyIfPresent(hit, cleaned, "granularity");
+    copyIfPresent(hit, cleaned, "unitOfMeasurement");
+    resolveCustomUnit(hit, cleaned);
 
     if (hit.containsKey("_score")) {
       cleaned.put("similarityScore", hit.get("_score"));
@@ -184,6 +256,19 @@ public class SemanticSearchTool implements McpTool {
     }
 
     return cleaned;
+  }
+
+  /**
+   * A hit from an entity index carries the raw {@code OTHER} sentinel plus a separate
+   * {@code customUnitOfMeasurement}, while a chunk doc already stores the resolved unit. Resolving
+   * it here keeps the two doc types indistinguishable to the caller — "OTHER" on its own says
+   * nothing about the metric.
+   */
+  private static void resolveCustomUnit(Map<String, Object> hit, Map<String, Object> cleaned) {
+    Object customUnit = hit.get("customUnitOfMeasurement");
+    if (UNIT_OF_MEASUREMENT_OTHER.equals(cleaned.get("unitOfMeasurement")) && customUnit != null) {
+      cleaned.put("unitOfMeasurement", customUnit);
+    }
   }
 
   private void copyIfPresent(Map<String, Object> source, Map<String, Object> target, String key) {
