@@ -391,7 +391,12 @@ public class VectorDocBuilder {
     }
     putIfPresent(fields, "metricType", enumValue(metric.getMetricType()));
     putIfPresent(fields, "granularity", enumValue(metric.getGranularity()));
-    putIfPresent(fields, "unitOfMeasurement", unitOfMeasurement(metric));
+    // Store the raw enum, not the resolved custom text: this field is a filterable keyword and the
+    // entity indices (also members of the dataAssetEmbeddings alias) hold the enum under the same
+    // name. Diverging would make a facet filter match one index and silently miss the other. The
+    // read side resolves OTHER -> customUnitOfMeasurement for display.
+    putIfPresent(fields, "unitOfMeasurement", enumValue(metric.getUnitOfMeasurement()));
+    putIfPresent(fields, "customUnitOfMeasurement", metric.getCustomUnitOfMeasurement());
   }
 
   /**
@@ -408,8 +413,10 @@ public class VectorDocBuilder {
   }
 
   /**
-   * {@code OTHER} means the real unit lives in {@code customUnitOfMeasurement}; surfacing the
-   * literal "OTHER" would tell a caller nothing.
+   * The unit as it should read in the embedded text: {@code OTHER} means the real unit lives in
+   * {@code customUnitOfMeasurement}, and embedding the literal "OTHER" would teach the model
+   * nothing. The denormalized keyword field keeps the raw enum instead — see
+   * {@link #addMetricFields}.
    */
   private static String unitOfMeasurement(Metric metric) {
     String unit = enumValue(metric.getUnitOfMeasurement());

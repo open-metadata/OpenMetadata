@@ -204,7 +204,7 @@ class VectorDocBuilderChunkTest {
   }
 
   @Test
-  void fromEntity_prefersTheCustomUnitOverTheOtherSentinel() {
+  void fromEntity_keepsTheRawUnitEnumSoFacetFiltersMatchBothIndexes() {
     Metric metric =
         new Metric()
             .withId(UUID.randomUUID())
@@ -214,7 +214,10 @@ class VectorDocBuilderChunkTest {
 
     Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
 
-    assertEquals("basis points", doc.get("unitOfMeasurement"));
+    // The entity indices store the raw enum under this name and share the dataAssetEmbeddings
+    // alias; resolving it here would make a facet filter match one index and miss the other.
+    assertEquals("OTHER", doc.get("unitOfMeasurement"));
+    assertEquals("basis points", doc.get("customUnitOfMeasurement"));
   }
 
   @Test

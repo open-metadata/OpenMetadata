@@ -867,9 +867,9 @@ public class AIContextBuilder {
    */
   private static GenericAssetContext buildMetricContext(Metric metric) {
     MetricExpression expression = metric.getMetricExpression();
-    GenericAssetContext context = new GenericAssetContext();
+    GenericAssetContext context = null;
     if (expression != null && !nullOrEmpty(expression.getCode())) {
-      context.withDefinition(expression.getCode());
+      context = new GenericAssetContext().withDefinition(expression.getCode());
     }
     return context;
   }

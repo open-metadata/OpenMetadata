@@ -893,7 +893,8 @@ public class OpenSearchVectorService implements VectorIndexService {
             "serviceType",
             "metricType",
             "granularity",
-            "unitOfMeasurement")) {
+            "unitOfMeasurement",
+            "customUnitOfMeasurement")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -1399,6 +1400,9 @@ public class OpenSearchVectorService implements VectorIndexService {
       hitMap.put("_score", score);
 
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      // Persist the fallback into the result map so consumers (e.g. SemanticSearchTool collapsing
+      // chunks by entity) see the same parentId this grouping used, matching the ES service.
+      hitMap.put("parentId", parentId);
       List<Map<String, Object>> group =
           byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>());
       // During chunk-index migration the same chunk can surface twice — once from the legacy

@@ -588,6 +588,34 @@ class SemanticSearchToolTest {
   }
 
   @Test
+  void testOversizedMetricExpressionIsCappedOnTheReadSide() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    // Entity-index hits never passed through the write-side cap — and on Elasticsearch, which has
+    // no chunk index, every hit is an entity doc. An uncapped 30KB expression would crowd the
+    // other results out of the response budget.
+    Map<String, Object> hit = createHit("metric", "HugeMetric", "HugeMetric", 0.9);
+    hit.put("metricExpression", Map.of("language", "SQL", "code", "x".repeat(30_000)));
+
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, List.of(hit)));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "huge");
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> cleaned = (Map<String, Object>) ((List<?>) result.get("results")).get(0);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> expression = (Map<String, Object>) cleaned.get("metricExpression");
+    assertTrue(
+        ((String) expression.get("code")).length() < 1100,
+        "the summary must cap a pathological expression");
+    assertEquals("SQL", expression.get("language"), "other expression fields survive the cap");
+  }
+
+  @Test
   void testChunksOfOneEntityCollapseToASingleResult() throws Exception {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
 

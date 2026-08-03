@@ -174,6 +174,20 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "parentId", values);
           }
+            // Metric facets: semantic_search returns these on every metric result, so a caller
+            // that sees "granularity": "MONTH" will reasonably filter by it.
+          case "metricType" -> {
+            sb.append(',');
+            appendFlat(sb, "metricType", values);
+          }
+          case "granularity" -> {
+            sb.append(',');
+            appendFlat(sb, "granularity", values);
+          }
+          case "unitOfMeasurement" -> {
+            sb.append(',');
+            appendFlat(sb, "unitOfMeasurement", values);
+          }
           default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }
       }
