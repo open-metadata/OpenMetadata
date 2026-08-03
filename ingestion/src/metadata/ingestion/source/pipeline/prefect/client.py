@@ -102,12 +102,15 @@ class PrefectClient:
     def get_flows(self) -> Iterable[PrefectFlow]:
         """Paginate over every flow in the workspace, yielding one at a time."""
         offset = 0
+        total = 0
         while True:
             page = self._filter("flows", {"limit": FLOWS_PAGE_SIZE, "offset": offset})
+            total += len(page)
             yield from (PrefectFlow.model_validate(flow) for flow in page)
             if len(page) < FLOWS_PAGE_SIZE:
                 break
             offset += FLOWS_PAGE_SIZE
+        logger.debug("Fetched %d flows", total)
 
     @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id, limit)
     def get_flow_runs(self, flow_id: str, limit: int) -> list[PrefectFlowRun]:
@@ -126,7 +129,9 @@ class PrefectClient:
             "offset": 0,
             "flow_runs": {"state": {"type": {"not_any_": ["SCHEDULED"]}}},
         }
-        return [PrefectFlowRun.model_validate(run) for run in self._filter("flow_runs", payload)]
+        runs = [PrefectFlowRun.model_validate(run) for run in self._filter("flow_runs", payload)]
+        logger.debug("Fetched %d flow runs for flow %s", len(runs), flow_id)
+        return runs
 
     @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_run_id), lives one ingestion run
     def get_task_runs(self, flow_run_id: str) -> list[PrefectTaskRun]:
@@ -153,6 +158,7 @@ class PrefectClient:
             if len(page) < 200:
                 break
             offset += 200
+        logger.debug("Fetched %d task runs for %d flow runs", sum(len(v) for v in grouped.values()), len(flow_run_ids))
         return grouped
 
     @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id), lives one ingestion run
@@ -174,6 +180,7 @@ class PrefectClient:
             )
             deployments.extend(PrefectDeployment.model_validate(deployment) for deployment in page)
             if len(page) < DEPLOYMENTS_PAGE_SIZE:
+                logger.debug("Fetched %d deployments for flow %s", len(deployments), flow_id)
                 return deployments
             offset += DEPLOYMENTS_PAGE_SIZE
 
@@ -183,7 +190,11 @@ class PrefectClient:
         pairs scoped to this one run, unlike deployment tags which carry no
         per-pair mapping. Not cached — called once per pipeline's lineage build."""
         result = self.client.get(f"{self._path_prefix}/flow_runs/{flow_run_id}/assets/materializations")
-        return [AssetMaterialization.model_validate(entry) for entry in result] if isinstance(result, list) else []
+        materializations = (
+            [AssetMaterialization.model_validate(entry) for entry in result] if isinstance(result, list) else []
+        )
+        logger.debug("Fetched %d asset materializations for flow run %s", len(materializations), flow_run_id)
+        return materializations
 
     def test_check_access(self) -> None:
         """Smallest authenticated call proving host, API key and, on Prefect

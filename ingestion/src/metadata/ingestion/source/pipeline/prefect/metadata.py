@@ -100,6 +100,7 @@ def _parse_timestamp(ts_str: str | None) -> int | None:
         dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
         return int(dt.timestamp() * 1000)
     except Exception:
+        logger.debug("Failed to parse timestamp %r", ts_str, exc_info=True)
         return None
 
 
@@ -302,7 +303,7 @@ class PrefectSource(PipelineServiceSource):
         """
         parts = identifier.split(".")
         if len(parts) != 3:
-            logger.warning(f"Lineage tag must be <database>.<schema>.<table>, got: {identifier}")
+            logger.warning("Lineage tag must be <database>.<schema>.<table>, got: %s", identifier)
             return None
         return parts[0], parts[1], parts[2]
 
@@ -372,7 +373,7 @@ class PrefectSource(PipelineServiceSource):
                 # PipelineStatus.timestamp is a required field — a run with
                 # neither start_time nor expected_start_time can't produce
                 # one, so skip it rather than fail the whole status batch.
-                logger.debug(f"Skipping status for run {run.id}: no start_time or expected_start_time")
+                logger.debug("Skipping status for run %s: no start_time or expected_start_time", run.id)
                 continue
             end_time = _parse_timestamp(run.end_time)
 
@@ -408,13 +409,13 @@ class PrefectSource(PipelineServiceSource):
         try:
             flow_id = pipeline_details.id
             flow_name = pipeline_details.name
-            logger.info(f"Processing flow: {flow_name}")
+            logger.info("Processing flow: %s", flow_name)
 
             deployments = self.client.get_deployments(flow_id)
-            logger.debug(f"Found {len(deployments)} deployments for {flow_name}")
+            logger.debug("Found %d deployments for %s", len(deployments), flow_name)
 
             all_tags = self._get_all_tags(deployments)
-            logger.debug(f"Tags for {flow_name}: {all_tags}")
+            logger.debug("Tags for %s: %s", flow_name, all_tags)
 
             tag_labels = get_tag_labels(
                 metadata=self.metadata,
@@ -458,7 +459,7 @@ class PrefectSource(PipelineServiceSource):
                 service=FullyQualifiedEntityName(service_fqn),
             )
 
-            logger.info(f"Yielding pipeline request for {flow_name}")
+            logger.info("Yielding pipeline request for %s", flow_name)
             yield Either(right=create_request)  # pyright: ignore[reportCallIssue]
             self.register_record(pipeline_request=create_request)
 
@@ -567,7 +568,7 @@ class PrefectSource(PipelineServiceSource):
             )
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tags"])  # pyright: ignore[reportArgumentType]
             if not pipeline_entity:
-                logger.warning(f"Pipeline entity not found for {pipeline_fqn}")
+                logger.warning("Pipeline entity not found for %s", pipeline_fqn)
                 return
 
             if isinstance(self.service_connection.authType, PrefectCloudAuthentication):
@@ -583,7 +584,7 @@ class PrefectSource(PipelineServiceSource):
 
             if not sources or not destinations:
                 # A table-to-table edge needs both ends; nothing to draw otherwise
-                logger.debug(f"No source/destination lineage tag pair for flow {pipeline_details.name}")
+                logger.debug("No source/destination lineage tag pair for flow %s", pipeline_details.name)
                 return
 
             lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
@@ -603,7 +604,7 @@ class PrefectSource(PipelineServiceSource):
                 if source_table:
                     resolved_sources.append((source_identifier, source_table))
                 else:
-                    logger.warning(f"Source table not found in OpenMetadata: {source_identifier}")
+                    logger.warning("Source table not found in OpenMetadata: %s", source_identifier)
 
             resolved_destinations = []
             for dest_identifier in destinations:
@@ -613,12 +614,12 @@ class PrefectSource(PipelineServiceSource):
                 if dest_table:
                     resolved_destinations.append((dest_identifier, dest_table))
                 else:
-                    logger.warning(f"Destination table not found in OpenMetadata: {dest_identifier}")
+                    logger.warning("Destination table not found in OpenMetadata: %s", dest_identifier)
 
             for (source_identifier, source_table), (dest_identifier, dest_table) in product(
                 resolved_sources, resolved_destinations
             ):
-                logger.info(f"Creating lineage: {source_identifier} -> {dest_identifier}")
+                logger.info("Creating lineage: %s -> %s", source_identifier, dest_identifier)
                 yield Either(  # pyright: ignore[reportCallIssue]
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
