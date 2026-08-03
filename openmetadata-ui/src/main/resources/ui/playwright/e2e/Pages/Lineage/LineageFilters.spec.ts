@@ -63,6 +63,17 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
+interface LineageFilterConfig {
+  filterName: string;
+  filterTestId: string;
+  setupMetadata: (
+    apiContext: APIRequestContext,
+    entitiesToPatch: EntityClassUnion[]
+  ) => Promise<void>;
+  filterValue: string;
+  searchField?: string;
+}
+
 // Contains list of entity supported
 const allEntities = {
   table: TableClass,
@@ -98,6 +109,16 @@ const searchIndexByEntityType: Record<string, string> = {
   table: 'table_search_index',
   topic: 'topic_search_index',
   worksheet: 'worksheet_search_index',
+};
+
+const getSearchIndexForEntity = (entity: EntityClassUnion) => {
+  const entityType = getEntityTypeSearchIndexMapping(entity.type);
+  const searchIndex = searchIndexByEntityType[entityType];
+  if (!searchIndex) {
+    throw new Error(`Search index is not mapped for ${entity.type}`);
+  }
+
+  return searchIndex;
 };
 
 test.describe('Lineage Filters', () => {
@@ -143,16 +164,10 @@ test.describe('Lineage Filters', () => {
 
     await Promise.all(
       [lineageEntity, ...entities].map((entity) => {
-        const entityType = getEntityTypeSearchIndexMapping(entity.type);
-        const searchIndex = searchIndexByEntityType[entityType];
-        if (!searchIndex) {
-          throw new Error(`Search index is not mapped for ${entity.type}`);
-        }
-
         return waitForSearchIndexed(
           apiContext,
           entity.entityResponseData.fullyQualifiedName,
-          searchIndex
+          getSearchIndexForEntity(entity)
         );
       })
     );
@@ -175,7 +190,7 @@ test.describe('Lineage Filters', () => {
     ).toBeVisible();
   });
 
-  const filterConfigs = [
+  const filterConfigs: LineageFilterConfig[] = [
     {
       filterName: 'Domains',
       filterTestId: 'Domains',
@@ -255,6 +270,7 @@ test.describe('Lineage Filters', () => {
         }
       },
       filterValue: EntityDataClass.tag1.responseData.fullyQualifiedName,
+      searchField: 'tags.tagFQN',
     },
     {
       filterName: 'Tier',
@@ -285,11 +301,12 @@ test.describe('Lineage Filters', () => {
         }
       },
       filterValue: EntityDataClass.tierTag1.responseData.fullyQualifiedName,
+      searchField: 'tier.tagFQN',
     },
   ];
 
   filterConfigs.forEach(
-    ({ filterName, filterTestId, setupMetadata, filterValue }) => {
+    ({ filterName, filterTestId, setupMetadata, filterValue, searchField }) => {
       test(`Verify ${filterName} filter for Lineage`, async ({ page }) => {
         const { apiContext, afterAction } = await getApiContext(page);
 
@@ -308,6 +325,25 @@ test.describe('Lineage Filters', () => {
         });
 
         await setupMetadata(apiContext, entitiesToShow);
+        if (searchField) {
+          const queryFilter = JSON.stringify({
+            query: {
+              bool: {
+                must: [{ term: { [searchField]: filterValue } }],
+              },
+            },
+          });
+          await Promise.all(
+            entitiesToShow.map((entity) =>
+              waitForSearchIndexed(
+                apiContext,
+                entity.entityResponseData.fullyQualifiedName,
+                getSearchIndexForEntity(entity),
+                { queryFilter }
+              )
+            )
+          );
+        }
 
         await test.step('Verify filters working for Lineage tab', async () => {
           await page.reload();

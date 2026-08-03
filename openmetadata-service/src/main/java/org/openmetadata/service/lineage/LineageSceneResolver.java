@@ -73,7 +73,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class LineageSceneResolver {
   private static final String BASE_SOURCE_FIELDS =
       "id,name,displayName,fullyQualifiedName,entityType,service,serviceType,database,"
-          + "databaseSchema,domains,dataProducts,deleted,certification";
+          + "databaseSchema,domains,dataProducts,tags,tier,deleted,certification";
   private static final String FIELD_BAND_SOURCE_FIELDS =
       BASE_SOURCE_FIELDS
           + ",columns,messageSchema,charts,mlFeatures,fields,dataModel,requestSchema,responseSchema";
