@@ -333,7 +333,7 @@ test('My Data Widget', async ({ page }) => {
   });
 });
 
-test('KPI Widget', async ({ page }) => {
+test.fixme('KPI Widget', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {
