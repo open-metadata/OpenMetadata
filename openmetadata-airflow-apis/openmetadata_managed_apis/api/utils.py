@@ -166,7 +166,7 @@ class ScanDagsTask(Process):
         dedicated DAG processor. We use the DagFileProcessorManager to
         trigger a single parsing run.
         """
-        from airflow.dag_processing.manager import DagFileProcessorManager  # noqa: PLC0415
+        from airflow.dag_processing.manager import DagFileProcessorManager
 
         processor_manager = DagFileProcessorManager(max_runs=1)
         processor_manager.run()
@@ -176,8 +176,8 @@ class ScanDagsTask(Process):
         """
         Run the new scheduler job from Airflow 2.6
         """
-        from airflow.jobs.job import Job, run_job  # noqa: PLC0415
-        from airflow.jobs.scheduler_job_runner import SchedulerJobRunner  # noqa: PLC0415
+        from airflow.jobs.job import Job, run_job
+        from airflow.jobs.scheduler_job_runner import SchedulerJobRunner
 
         scheduler_job = Job()
         job_runner = SchedulerJobRunner(
@@ -196,7 +196,7 @@ class ScanDagsTask(Process):
         """
         Run the old scheduler job before 2.6
         """
-        from airflow.jobs.scheduler_job import SchedulerJob  # noqa: PLC0415
+        from airflow.jobs.scheduler_job import SchedulerJob
 
         scheduler_job = SchedulerJob(num_times_parse_dags=1)
         scheduler_job.heartrate = 0

@@ -76,7 +76,7 @@ class TrackedREST(REST):
         Replaces IDs and UUIDs with placeholders for better aggregation.
         Example: /dashboard/123-abc -> /dashboard/{id}
         """
-        import re  # noqa: PLC0415
+        import re
 
         parts = path.split("?")[0].split("/")  # noqa: PLC0207
         cleaned_parts = []
