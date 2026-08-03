@@ -101,6 +101,8 @@ def _raising_listing(items, exc):
 
 @pytest.fixture
 def uc_source():
+    # The source eagerly resolves both API and SQL clients. Mock their owning
+    # connection so these unit tests cannot trigger OAuth discovery or SQL retry backoff.
     connection = MagicMock()
     connection.client = MagicMock()
     connection.api.client = MagicMock()

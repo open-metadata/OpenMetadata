@@ -33,12 +33,10 @@ server:
     #            but downgrade to HTTP/1.1 on the upstream hop anyway, so HTTP/2 on Jetty
     #            buys nothing.
     #
-    #   - h2c    HTTP/2 cleartext on the same TCP port. Jetty 12 accepts both h1 clients
-    #            (via h1 protocol) and h2 clients (via h2c-upgrade or h2c-prior-knowledge),
-    #            so this is backwards-compatible. Worth flipping on when browsers hit Jetty
-    #            directly (Docker Compose, on-prem single-node, local dev) — multiplexing
-    #            removes the h1 6-connections-per-origin cap, which materially helps cold
-    #            first-paint on SPAs that load 30+ chunks.
+    #   - h2c    HTTP/2 cleartext on the same TCP port for clients and proxies that explicitly
+    #            support h2c upgrade or prior knowledge. Mainstream browsers do not negotiate
+    #            h2c, so browser-direct deployments continue to use HTTP/1.1 on this connector.
+    #            Use the TLS `h2` connector below when Jetty is the browser-facing edge.
     #
     # For HTTPS-terminated HTTP/2 (`type: h2`) see the example block lower in this file —
     # that path requires a keystore and isn't env-var-driven from here.
@@ -178,15 +176,15 @@ server:
 
 # HTTP/2 support — opt-in. The dropwizard-http2 module is on the classpath, so the
 # `type: h2` (TLS) and `type: h2c` (cleartext) connector types are available out of the
-# box. Both are backward-compatible: HTTP/1.1 clients still work on the same port (h2c
-# negotiates via the HTTP/1.1 Upgrade header; h2 negotiates via TLS ALPN), so flipping
-# from `type: http` to `type: h2c` does not break the SDK or browser.
+# box. Both retain HTTP/1.1 on the same port. h2c-capable SDKs and proxies can upgrade,
+# while mainstream browsers remain on HTTP/1.1; browsers require TLS ALPN (`type: h2`)
+# for HTTP/2 multiplexing.
 #
 # When to enable at Jetty:
-#   * Self-hosted single-node deploys with no LB in front (Jetty IS the edge).
+#   * Service-to-service deployments whose clients explicitly support h2c.
 #   * Production deploys that want end-to-end HTTP/2 — multiplexing all the way through
 #     instead of LB↔pod fanning out to many HTTP/1.1 connections under high parallelism.
-#   * Behind h2c-aware proxies (envoy, nginx with `proxy_http_version 2`).
+#   * Behind proxies explicitly configured to use h2c to the origin.
 #
 # When to leave HTTP/2 to the LB and keep `type: http` here:
 #   * Production deploys behind nginx-ingress / ALB / Traefik that already terminate

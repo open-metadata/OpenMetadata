@@ -31,7 +31,7 @@ secrets_manager_client_loader = enum_register()
 # pylint: disable=import-outside-toplevel
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.noop.value)
 def _() -> Optional["GCPCredentials"]:  # noqa: F821
-    from metadata.generated.schema.security.credentials.gcpCredentials import (  # noqa: PLC0415
+    from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
         gcpValues,
     )
@@ -47,9 +47,9 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
 def _() -> Optional["GCPCredentials"]:  # noqa: F821
-    from airflow.configuration import conf  # noqa: PLC0415
+    from airflow.configuration import conf
 
-    from metadata.generated.schema.security.credentials.gcpCredentials import (  # noqa: PLC0415
+    from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
         gcpValues,
     )
@@ -65,7 +65,7 @@ def _() -> Optional["GCPCredentials"]:  # noqa: F821
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
 def _() -> Optional["GCPCredentials"]:  # noqa: F821
-    from metadata.generated.schema.security.credentials.gcpCredentials import (  # noqa: PLC0415
+    from metadata.generated.schema.security.credentials.gcpCredentials import (
         GCPCredentials,
         gcpValues,
     )
