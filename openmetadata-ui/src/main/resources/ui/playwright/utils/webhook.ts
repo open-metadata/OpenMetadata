@@ -19,7 +19,8 @@ interface CapturedWebhookRequest {
   method?: string;
 }
 
-const MAX_CAPTURED_WEBHOOK_REQUESTS = 10;
+// Allow room for validation and retry bursts while keeping receiver state bounded.
+const MAX_CAPTURED_WEBHOOK_REQUESTS = 100;
 const WEBHOOK_RECEIVER_HOST =
   process.env.PLAYWRIGHT_WEBHOOK_HOST ?? 'localhost';
 const capturedWebhookRequests: CapturedWebhookRequest[] = [];
