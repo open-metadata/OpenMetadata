@@ -128,7 +128,7 @@ public class EntityETag {
    */
   public static void validateETag(
       String ifMatchHeader, EntityInterface entity, boolean enforceETag) {
-    LOG.info(
+    LOG.debug(
         "validateETag called - ifMatchHeader: {}, enforceETag: {}, entity: {}",
         ifMatchHeader,
         enforceETag,
@@ -136,7 +136,7 @@ public class EntityETag {
 
     if (!enforceETag || ifMatchHeader == null || ifMatchHeader.isEmpty()) {
       // ETag validation is optional - skip if not enforced or no header provided
-      LOG.info(
+      LOG.debug(
           "ETag validation skipped - enforceETag: {}, ifMatchHeader: {}",
           enforceETag,
           ifMatchHeader);
@@ -144,7 +144,7 @@ public class EntityETag {
     }
 
     String currentETag = generateETag(entity);
-    LOG.info("Current ETag for entity {}: {}", entity.getId(), currentETag);
+    LOG.debug("Current ETag for entity {}: {}", entity.getId(), currentETag);
 
     // Handle multiple ETags in If-Match header (comma-separated)
     String[] providedETags = ifMatchHeader.split(",");
