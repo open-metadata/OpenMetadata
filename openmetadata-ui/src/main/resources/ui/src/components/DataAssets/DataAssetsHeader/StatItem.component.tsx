@@ -55,26 +55,17 @@ export const StatItem = ({
     </>
   );
 
-  const interactive = onClick ? (
-    <button
-      aria-busy={loading || undefined}
-      aria-label={srLabel ?? tooltip}
-      className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
-      data-testid={testId}
-      disabled={isDisabled}
-      type="button"
-      onClick={onClick}>
-      <span className={labelClassName}>{label}</span>
-    </button>
-  ) : (
-    <span className={labelClassName} data-testid={testId}>
-      {label}
-    </span>
-  );
-
   return (
     <Tooltip placement="top" title={tooltip}>
-      <TooltipTrigger>{interactive}</TooltipTrigger>
+      <TooltipTrigger
+        aria-busy={loading || undefined}
+        aria-label={srLabel ?? tooltip}
+        className="tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-brand"
+        data-testid={testId}
+        isDisabled={isDisabled}
+        onPress={onClick}>
+        <span className={labelClassName}>{label}</span>
+      </TooltipTrigger>
     </Tooltip>
   );
 };

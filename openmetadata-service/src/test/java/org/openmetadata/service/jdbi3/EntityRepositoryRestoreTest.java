@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -94,6 +96,7 @@ class EntityRepositoryRestoreTest {
     final Set<UUID> bulkRestoreInvokedWith = new HashSet<>();
     final Set<UUID> bulkSoftDeleteInvokedWith = new HashSet<>();
     final Set<UUID> bulkHardDeleteInvokedWith = new HashSet<>();
+    final List<String> restoreFromSearchSteps = new ArrayList<>();
 
     CountingPipelineRepo(CollectionDAO.PipelineDAO dao) {
       super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
@@ -136,6 +139,11 @@ class EntityRepositoryRestoreTest {
     protected void bulkEntitySpecificCleanup(List<Pipeline> entities) {
       bulkEntitySpecificCleanupCalls++;
     }
+
+    @Override
+    protected void postRestoreFromSearch(Pipeline entity) {
+      restoreFromSearchSteps.add("postRestoreFromSearch");
+    }
   }
 
   @BeforeEach
@@ -163,6 +171,35 @@ class EntityRepositoryRestoreTest {
 
     verify(relationshipDAO).findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
+  }
+
+  @Test
+  void restoreFromSearchRunsTheRepositoryHookAfterSearchDispatch() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline")
+            .withDeleted(false);
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+    doAnswer(
+            ignored -> {
+              repo.restoreFromSearchSteps.add("searchDispatch");
+              return null;
+            })
+        .when(dispatcher)
+        .onEntitySoftDeletedOrRestored(pipeline, false, null);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+        mockStatic(EntityLifecycleEventDispatcher.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+
+      repo.restoreFromSearch(pipeline);
+    }
+
+    assertEquals(List.of("searchDispatch", "postRestoreFromSearch"), repo.restoreFromSearchSteps);
+    verify(dispatcher).onEntitySoftDeletedOrRestored(pipeline, false, null);
   }
 
   @Test

@@ -71,6 +71,8 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.MetricDimension;
+import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -81,6 +83,7 @@ import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
@@ -1229,8 +1232,8 @@ public class LineageRepository {
         return result;
       }
       case METRIC -> {
-        LOG.info("Metric column level lineage is not supported");
-        return new HashSet<>();
+        Metric metric = Entity.getEntity(METRIC, entityReference.getId(), "", Include.NON_DELETED);
+        return metricChildNames(metric);
       }
       case PIPELINE -> {
         LOG.info("Pipeline column level lineage is not supported");
@@ -1240,6 +1243,24 @@ public class LineageRepository {
         LOG.error("Unsupported Entity Type {} for column lineage", entityReference.getType());
         return new HashSet<>();
       }
+    }
+  }
+
+  static Set<String> metricChildNames(Metric metric) {
+    Set<String> result = new HashSet<>();
+    String prefix = metric.getFullyQualifiedName() + ".";
+    for (MetricDimension dimension : listOrEmpty(metric.getDimensions())) {
+      addMetricChildName(result, dimension.getFullyQualifiedName(), prefix);
+    }
+    for (MetricMeasure measure : listOrEmpty(metric.getMeasures())) {
+      addMetricChildName(result, measure.getFullyQualifiedName(), prefix);
+    }
+    return result;
+  }
+
+  private static void addMetricChildName(Set<String> names, String childFqn, String parentPrefix) {
+    if (childFqn != null && childFqn.startsWith(parentPrefix)) {
+      names.add(childFqn.substring(parentPrefix.length()));
     }
   }
 

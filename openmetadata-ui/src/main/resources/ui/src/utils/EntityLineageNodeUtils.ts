@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchLg } from '@untitledui/icons';
 import { isEqual, isUndefined, omit, pick, uniqWith } from 'lodash';
 import type { Edge, Node } from 'reactflow';
 import {
@@ -143,7 +143,7 @@ export const getEntityNodeIcon = (label: string) => {
     case EntityType.MLMODEL:
       return MlModelIcon;
     case EntityType.SEARCH_INDEX:
-      return SearchOutlined;
+      return SearchLg;
     default:
       return TableIcon;
   }

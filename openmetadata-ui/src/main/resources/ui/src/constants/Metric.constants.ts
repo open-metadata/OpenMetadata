@@ -118,3 +118,29 @@ export const METRIC_DUMMY_DATA: Metric = {
     downVoters: [],
   },
 };
+
+/**
+ * Name of the seeded governance workflow that drives metric approval. Must match
+ * `openmetadata-service/src/main/resources/json/data/governance/workflows/MetricApprovalWorkflow.json`.
+ */
+export const METRIC_APPROVAL_WORKFLOW_DEFINITION_NAME =
+  'MetricApprovalWorkflow';
+
+/**
+ * Ceiling on how many groups and root metrics the tree loads.
+ *
+ * The list composes groups and their members client-side so a group banner's count always matches
+ * the rows beneath it; that requires holding the top level in memory. Well past this many metrics
+ * the tree stops being a useful way to browse anyway, and search (flat mode) is the better tool.
+ */
+
+/** How many children are fetched per expand before a load-more row appears. */
+export const METRIC_CHILDREN_PAGE_SIZE = 50;
+
+/**
+ * Ceiling on the peer and variant rows the detail page's hierarchy card reads.
+ *
+ * The card is an orientation aid, not a browser — past a couple of dozen rows it stops helping, and
+ * the list page is where a large group is actually explored.
+ */
+export const METRIC_HIERARCHY_PEER_LIMIT = 25;

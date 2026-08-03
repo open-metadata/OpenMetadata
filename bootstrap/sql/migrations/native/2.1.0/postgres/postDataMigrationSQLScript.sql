@@ -26,3 +26,10 @@ ON CONFLICT (stateId) DO UPDATE SET
   createdAt = LEAST(test_case_incident.createdAt, EXCLUDED.createdAt),
   updatedAt = EXCLUDED.updatedAt,
   latestRecordId = EXCLUDED.latestRecordId;
+
+-- Existing metrics predate the approval workflow and must remain usable. Explicit
+-- workflow statuses are preserved, and this update is idempotent.
+UPDATE metric_entity
+SET json = jsonb_set(json::jsonb, '{entityStatus}', '"Approved"'::jsonb)
+WHERE json->>'entityStatus' IS NULL
+   OR json->>'entityStatus' = 'Unprocessed';

@@ -31,6 +31,7 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
@@ -61,6 +62,34 @@ class TaskWorkflowHandlerTest {
   void testInstanceNotNull() {
     TaskWorkflowHandler handler = TaskWorkflowHandler.getInstance();
     assertNotNull(handler);
+  }
+
+  @Test
+  void testRejectedResolutionRequiresComment() {
+    TaskAvailableTransition transition =
+        new TaskAvailableTransition().withId("reject").withRequiresComment(true);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> TaskWorkflowHandler.validateResolutionComment(transition, null));
+
+    assertEquals("A rejection comment is required", exception.getMessage());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> TaskWorkflowHandler.validateResolutionComment(transition, ""));
+  }
+
+  @Test
+  void testResolutionCommentValidationUsesTransitionRequirement() {
+    TaskAvailableTransition optionalComment =
+        new TaskAvailableTransition().withId("reject").withRequiresComment(false);
+    TaskAvailableTransition requiredComment =
+        new TaskAvailableTransition().withId("reject").withRequiresComment(true);
+
+    TaskWorkflowHandler.validateResolutionComment(null, null);
+    TaskWorkflowHandler.validateResolutionComment(optionalComment, null);
+    TaskWorkflowHandler.validateResolutionComment(
+        requiredComment, "Metric definition is incomplete");
   }
 
   @Test

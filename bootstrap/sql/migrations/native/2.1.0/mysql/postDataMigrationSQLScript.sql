@@ -26,3 +26,11 @@ ON DUPLICATE KEY UPDATE
   test_case_incident.createdAt = LEAST(test_case_incident.createdAt, VALUES(createdAt)),
   updatedAt = VALUES(updatedAt),
   latestRecordId = VALUES(latestRecordId);
+
+-- Existing metrics predate the approval workflow and must remain usable. Explicit
+-- workflow statuses are preserved, and this update is idempotent.
+UPDATE metric_entity
+SET json = JSON_SET(json, '$.entityStatus', 'Approved')
+WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL
+   OR JSON_TYPE(JSON_EXTRACT(json, '$.entityStatus')) = 'NULL'
+   OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) = 'Unprocessed';

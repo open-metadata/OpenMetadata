@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
@@ -123,6 +124,7 @@ public class TaskWorkflowHandler {
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
     TaskResolutionType effectiveResolutionType =
         resolveResolutionType(task, requestedResolutionType, selectedTransition);
+    validateResolutionComment(selectedTransition, comment);
     LOG.info(
         "[TaskWorkflowHandler] Resolving task: id='{}', transitionId='{}', resolutionType='{}', user='{}'",
         taskId,
@@ -153,6 +155,14 @@ public class TaskWorkflowHandler {
           resolvedPayload,
           comment,
           user);
+    }
+  }
+
+  static void validateResolutionComment(TaskAvailableTransition transition, String comment) {
+    if (transition != null
+        && Boolean.TRUE.equals(transition.getRequiresComment())
+        && nullOrEmpty(comment)) {
+      throw new IllegalArgumentException("A rejection comment is required");
     }
   }
 

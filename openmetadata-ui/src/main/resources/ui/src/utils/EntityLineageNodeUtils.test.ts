@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../generated/type/entityReference';
-import { getNodeLineageData } from './EntityLineageNodeUtils';
+import { SearchLg } from '@untitledui/icons';
+import { EntityType } from '../enums/entity.enum';
+import type { EntityReference } from '../generated/type/entityReference';
+import {
+  getEntityNodeIcon,
+  getNodeLineageData,
+} from './EntityLineageNodeUtils';
 
 describe('getNodeLineageData', () => {
   it('should keep lineageSqlQueries on the node so the edge drawer can resolve sqlQueryKey', () => {
@@ -30,5 +35,11 @@ describe('getNodeLineageData', () => {
     };
 
     expect(result.lineageSqlQueries).toEqual(lineageSqlQueries);
+  });
+});
+
+describe('getEntityNodeIcon', () => {
+  it('uses the Untitled UI search icon for search index nodes', () => {
+    expect(getEntityNodeIcon(EntityType.SEARCH_INDEX)).toBe(SearchLg);
   });
 });

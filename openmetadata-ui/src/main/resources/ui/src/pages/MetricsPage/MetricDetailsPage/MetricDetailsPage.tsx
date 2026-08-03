@@ -11,37 +11,35 @@
  *  limitations under the License.
  */
 
+import {
+  Box,
+  Button,
+  Card,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PageLoader } from '../../../components/common/Loader/Loader';
-import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { Metric } from '../../../generated/entity/data/metric';
+import type { Metric } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useFqn } from '../../../hooks/useFqn';
 import {
   addMetricFollower,
   patchMetric,
   removeMetricFollower,
-  updateMetricVote,
 } from '../../../rest/metricsAPI';
 import {
   metricQueryFn,
@@ -57,6 +55,7 @@ import {
 import { addToRecentViewed } from '../../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 
 const MetricDetailsPage = () => {
   const { t } = useTranslation();
@@ -66,7 +65,7 @@ const MetricDetailsPage = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const queryClient = useQueryClient();
 
-  const { fqn: metricFqn } = useFqn();
+  const { fqn: metricFqn } = useRequiredParams<{ fqn: string }>();
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
 
   const [metricPermissions, setMetricPermissions] =
@@ -88,6 +87,7 @@ const MetricDetailsPage = () => {
     data: metricDetails,
     isLoading: metricLoading,
     error: metricError,
+    refetch: refetchMetricQuery,
   } = useQuery({
     queryKey: metricCacheKey,
     queryFn: metricQueryFn(metricFqn, METRIC_DEFAULT_FIELDS),
@@ -103,16 +103,8 @@ const MetricDetailsPage = () => {
     const status = (metricError as AxiosError | undefined)?.response?.status;
     if (status === ClientErrors.FORBIDDEN) {
       navigate(ROUTES.FORBIDDEN, { replace: true });
-    } else if (status && status !== 404) {
-      showErrorToast(
-        metricError as AxiosError,
-        t('server.entity-details-fetch-error', {
-          entityType: t('label.metric'),
-          entityName: metricFqn,
-        })
-      );
     }
-  }, [metricError, navigate, metricFqn, t]);
+  }, [metricError, navigate]);
 
   useEffect(() => {
     if (!metricDetails) {
@@ -224,6 +216,8 @@ const MetricDetailsPage = () => {
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      throw error;
     }
   };
 
@@ -307,80 +301,91 @@ const MetricDetailsPage = () => {
       );
   };
 
-  const handleToggleDelete = (version?: number) => {
-    setMetricDetails((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        deleted: !prev?.deleted,
-        ...(version ? { version } : {}),
-      };
-    });
-  };
-
-  const handleUpdateVote = async (data: QueryVote, id: string) => {
-    try {
-      await updateMetricVote(id, data);
-      await queryClient.invalidateQueries({ queryKey: metricCacheKey });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const updateMetricDetails = useCallback(
-    (data: DataAssetWithDomains) => {
-      const updatedData = data as Metric;
-      setMetricDetails((prev) => ({
-        ...(updatedData ?? prev),
-        version: updatedData.version,
-      }));
-    },
-    [setMetricDetails]
-  );
-
   useEffect(() => {
     fetchResourcePermission(metricFqn);
   }, [metricFqn]);
 
   if (permissionsLoading || metricLoading) {
-    return <PageLoader />;
+    return (
+      <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        <Box
+          aria-label={t('label.loading')}
+          direction="col"
+          gap={3}
+          role="status">
+          <Skeleton height={72} variant="rounded" />
+          <Skeleton height={320} variant="rounded" />
+        </Box>
+      </main>
+    );
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(EntityType.METRIC, metricFqn)}
-      </ErrorPlaceHolder>
+      <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        <Card>
+          <Card.Content>
+            <Typography className="tw:text-error-primary" size="text-sm">
+              <span role="alert">
+                {getEntityMissingError(EntityType.METRIC, metricFqn)}
+              </span>
+            </Typography>
+          </Card.Content>
+        </Card>
+      </main>
     );
   }
   if (!metricPermissions.ViewAll && !metricPermissions.ViewBasic) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.metric'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        <Card>
+          <Card.Content>
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {t('message.no-permission-to-view')}
+            </Typography>
+          </Card.Content>
+        </Card>
+      </main>
+    );
+  }
+  if (metricError) {
+    return (
+      <main className="tw:min-h-full tw:bg-secondary tw:p-6">
+        <Card>
+          <Card.Content>
+            <Box direction="col" gap={3}>
+              <Typography className="tw:text-error-primary" size="text-sm">
+                <span role="alert">
+                  {t('server.entity-details-fetch-error', {
+                    entityType: t('label.metric'),
+                    entityName: metricFqn,
+                  })}
+                </span>
+              </Typography>
+              <Button
+                className="tw:self-start"
+                color="secondary"
+                onPress={() => refetchMetricQuery()}>
+                {t('label.try-again')}
+              </Button>
+            </Box>
+          </Card.Content>
+        </Card>
+      </main>
     );
   }
   if (!metricDetails) {
-    return <PageLoader />;
+    return null;
   }
 
   return (
     <MetricDetails
+      currentUser={currentUser}
       fetchMetricDetails={refetchMetricDetails}
       metricDetails={metricDetails}
       metricPermissions={metricPermissions}
       onFollowMetric={followMetric}
       onMetricUpdate={handleMetricUpdate}
-      onToggleDelete={handleToggleDelete}
       onUnFollowMetric={unFollowMetric}
-      onUpdateMetricDetails={updateMetricDetails}
-      onUpdateVote={handleUpdateVote}
       onVersionChange={versionHandler}
     />
   );
