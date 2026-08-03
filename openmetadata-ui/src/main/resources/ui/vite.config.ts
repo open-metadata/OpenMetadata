@@ -170,7 +170,8 @@ export default defineConfig(async ({ mode }) => {
         viteCompression({
           algorithm: 'brotliCompress',
           ext: '.br',
-          threshold: 1024, // Only compress files larger than 1KB
+          // Keep deployed artifacts and the Brotli bundle budget on one compression path.
+          threshold: 0,
           deleteOriginFile: false, // Keep original files for fallback
           // Same exclusion list — woff2 is already brotli-compressed internally.
           filter: /\.(js|mjs|css|html|svg|json|wasm)(\?.*)?$/i,

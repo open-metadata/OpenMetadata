@@ -15,7 +15,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 
 // Ratchets, not knife-edges: each carries a little headroom so one new dynamic import does not
 // fail an unrelated PR, while still catching the fragmentation this budget exists to prevent
@@ -60,22 +59,9 @@ const htmlBootstrapJsFiles = [
     )
   ),
 ];
-// vite-plugin-compression only emits a `.br` sibling above its 1 KiB threshold. Substituting the
-// raw size for the files it skips would mix uncompressed bytes into a budget compared as Brotli,
-// so compress those here instead.
-const brotliBytesOf = (fileName) => {
-  const jsPath = path.join(assetsDirectory, fileName);
-  const brotliPath = `${jsPath}.br`;
-
-  return existsSync(brotliPath)
-    ? statSync(brotliPath).size
-    : brotliCompressSync(readFileSync(jsPath), {
-        params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 11 },
-      }).length;
-};
-
 const htmlBootstrapJsBrotliBytes = htmlBootstrapJsFiles.reduce(
-  (totalBytes, fileName) => totalBytes + brotliBytesOf(fileName),
+  (totalBytes, fileName) =>
+    totalBytes + statSync(path.join(assetsDirectory, `${fileName}.br`)).size,
   0
 );
 
