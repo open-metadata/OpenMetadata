@@ -34,6 +34,9 @@ from metadata.core.connections.test_connection.checks.rest import (
     http_status,
     verify_access,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.prefect.cloudAuth import (
+    PrefectCloudAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.prefectConnection import (
     PrefectConnection as PrefectConnectionConfig,
 )
@@ -57,22 +60,14 @@ NO_FLOWS_CAVEAT = Diagnosis(
     "pipelines from Prefect flows, so it would find nothing.",
 )
 
-PREFECT_ERRORS = ErrorPack(
-    when(http_status(401)).diagnose(
-        "Authentication failed",
-        fix="Prefect rejected the API key. Check it is a valid, unexpired key.",
-        doc=API_KEYS_DOC,
-    ),
-    when(http_status(403)).diagnose(
-        "Access denied",
-        fix=f"Prefect refused the request. {IDS_FIX} If both are right, check "
-        "the API key belongs to that account and can read the workspace.",
-        doc=API_KEYS_DOC,
-    ),
-    when(http_status(404)).diagnose(
-        "Endpoint not found",
-        fix=f"Host, Account Id and Workspace Id build the path the API answered 404 for. {IDS_FIX}",
-    ),
+NO_RUNS_CAVEAT = Diagnosis(
+    title="No flow runs visible",
+    remediation="The flow is readable but has no runs yet. Status and lineage "
+    "ingestion read past flow runs, so it would find nothing until this flow runs.",
+)
+
+# Auth-agnostic: same wording regardless of Cloud vs self-hosted Server.
+_COMMON_ERRORS = ErrorPack(
     when(http_status(429)).diagnose(
         "Rate limited",
         fix="Prefect rate limited the request. Retry in a few minutes.",
@@ -94,6 +89,45 @@ PREFECT_ERRORS = ErrorPack(
     ),
 )
 
+# Cloud has an API key plus Account/Workspace ids; self-hosted Server has neither,
+# so 401/403/404 need their own wording per auth mode - the rest is shared.
+CLOUD_ERRORS = ErrorPack(
+    when(http_status(401)).diagnose(
+        "Authentication failed",
+        fix="Prefect rejected the API key. Check it is a valid, unexpired key.",
+        doc=API_KEYS_DOC,
+    ),
+    when(http_status(403)).diagnose(
+        "Access denied",
+        fix=f"Prefect refused the request. {IDS_FIX} If both are right, check "
+        "the API key belongs to that account and can read the workspace.",
+        doc=API_KEYS_DOC,
+    ),
+    when(http_status(404)).diagnose(
+        "Endpoint not found",
+        fix=f"Host, Account Id and Workspace Id build the path the API answered 404 for. {IDS_FIX}",
+    ),
+).including(_COMMON_ERRORS)
+
+SERVER_ERRORS = ErrorPack(
+    when(http_status(401)).diagnose(
+        "Authentication failed",
+        fix="Prefect rejected the credentials. Check the Basic Auth String "
+        "(PREFECT_SERVER_API_AUTH_STRING, format 'user:password') is correct, "
+        "or that the server truly has no auth enabled.",
+    ),
+    when(http_status(403)).diagnose(
+        "Access denied",
+        fix="Prefect refused the request. Check the Basic Auth String is "
+        "correct and has read access to this workspace.",
+    ),
+    when(http_status(404)).diagnose(
+        "Endpoint not found",
+        fix="Host and Port build the path the API answered 404 for. Check for "
+        "typos and that this is the Prefect API base URL, not the UI URL.",
+    ),
+).including(_COMMON_ERRORS)
+
 
 class PrefectChecks:
     """Test-connection checks for Prefect.
@@ -104,10 +138,11 @@ class PrefectChecks:
     client is borrowed from the connection that owns it.
     """
 
-    errors = PREFECT_ERRORS
-
     def __init__(self, prefect: Borrowed[PrefectClient]) -> None:
         self._prefect = prefect
+        self.errors = (
+            CLOUD_ERRORS if isinstance(prefect.client.config.authType, PrefectCloudAuthentication) else SERVER_ERRORS
+        )
 
     @check(PipelineStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -123,6 +158,18 @@ class PrefectChecks:
             noun="flow",
             command="fetch the flows of the workspace",
             empty_caveat=NO_FLOWS_CAVEAT,
+        )
+
+    @check(PipelineStep.GetRuns)
+    def get_runs(self) -> Evidence:
+        flows = self._prefect.client.test_get_flows()
+        if not flows:
+            return Evidence(summary="no flows to check runs against", caveat=NO_FLOWS_CAVEAT)
+        return fetch_list(
+            lambda: self._prefect.client.test_get_flow_runs(flows[0]["id"]),
+            noun="flow run",
+            command="fetch the most recent run of the first flow",
+            empty_caveat=NO_RUNS_CAVEAT,
         )
 
 

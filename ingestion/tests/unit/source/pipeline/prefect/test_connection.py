@@ -23,9 +23,16 @@ from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
+from metadata.generated.schema.entity.services.connections.pipeline.prefect.cloudAuth import (
+    PrefectCloudAuthentication,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.prefect.serverAuth import (
+    PrefectServerAuthentication,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.pipeline.prefect.connection import (
-    PREFECT_ERRORS,
+    CLOUD_ERRORS,
+    SERVER_ERRORS,
     PrefectChecks,
     PrefectConnection,
 )
@@ -39,7 +46,9 @@ def _http_error(status_code: int) -> HTTPError:
 
 @pytest.fixture
 def client():
-    return MagicMock()
+    mock_client = MagicMock()
+    mock_client.config.authType = PrefectServerAuthentication()
+    return mock_client
 
 
 @pytest.fixture
@@ -64,7 +73,7 @@ def test_checks_expose_every_step():
     with patch(f"{CONNECTION_MODULE}.PrefectClient"):
         resolved = collect_checks(PrefectConnection(MagicMock()).checks())
 
-    assert set(resolved) == {PipelineStep.CheckAccess, PipelineStep.GetPipelines}
+    assert set(resolved) == {PipelineStep.CheckAccess, PipelineStep.GetPipelines, PipelineStep.GetRuns}
 
 
 def test_checks_borrow_the_connection_client():
@@ -105,6 +114,37 @@ def test_get_pipelines_caveats_a_workspace_with_no_flows(checks, client):
     assert evidence.caveat.title == "No flows visible"
 
 
+def test_get_runs_counts_the_runs_of_the_first_flow(checks, client):
+    client.test_get_flows.return_value = [{"id": "flow-1"}, {"id": "flow-2"}]
+    client.test_get_flow_runs.return_value = [MagicMock()]
+
+    evidence = checks.get_runs()
+
+    client.test_get_flow_runs.assert_called_once_with("flow-1")
+    assert evidence.summary == "1 flow run enumerated"
+    assert evidence.caveat is None
+
+
+def test_get_runs_caveats_a_flow_with_no_runs(checks, client):
+    client.test_get_flows.return_value = [{"id": "flow-1"}]
+    client.test_get_flow_runs.return_value = []
+
+    evidence = checks.get_runs()
+
+    assert evidence.summary == "no flow runs enumerated"
+    assert evidence.caveat.title == "No flow runs visible"
+
+
+def test_get_runs_skips_the_call_when_there_are_no_flows(checks, client):
+    client.test_get_flows.return_value = []
+
+    evidence = checks.get_runs()
+
+    client.test_get_flow_runs.assert_not_called()
+    assert evidence.summary == "no flows to check runs against"
+    assert evidence.caveat.title == "No flows visible"
+
+
 def test_a_failed_check_still_reports_what_it_ran(checks, client):
     client.test_get_flows.side_effect = _http_error(403)
 
@@ -115,6 +155,7 @@ def test_a_failed_check_still_reports_what_it_ran(checks, client):
     assert failure.value.cause is client.test_get_flows.side_effect
 
 
+@pytest.mark.parametrize("pack", [CLOUD_ERRORS, SERVER_ERRORS])
 @pytest.mark.parametrize(
     ("error", "title"),
     [
@@ -127,12 +168,55 @@ def test_a_failed_check_still_reports_what_it_ran(checks, client):
         (RequestsConnectionError("name resolution failed"), "Cannot reach the host"),
     ],
 )
-def test_error_pack_diagnoses_known_failures(error, title):
-    diagnosis = PREFECT_ERRORS.classify(error)
+def test_error_pack_diagnoses_known_failures(error, title, pack):
+    diagnosis = pack.classify(error)
 
     assert diagnosis is not None
     assert diagnosis.title == title
     assert diagnosis.remediation
+
+
+@pytest.mark.parametrize("status", [401, 403, 404])
+def test_cloud_errors_mention_cloud_only_concepts(status):
+    """Cloud has an API key and Account/Workspace ids; the fix text should say so."""
+    remediation = CLOUD_ERRORS.classify(_http_error(status)).remediation
+
+    assert "API key" in remediation or "Account Id" in remediation
+
+
+@pytest.mark.parametrize("status", [401, 403, 404])
+def test_server_errors_never_mention_cloud_only_concepts(status):
+    """Self-hosted Server has no API key and no Account/Workspace id - telling a
+    Server user to check those would send them chasing fields that don't exist."""
+    remediation = SERVER_ERRORS.classify(_http_error(status)).remediation
+
+    assert "API key" not in remediation
+    assert "Account Id" not in remediation
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_server_auth_errors_point_at_the_basic_auth_string(status):
+    """401/403 are credential problems for Server - the fix should name the one
+    credential Server actually has."""
+    remediation = SERVER_ERRORS.classify(_http_error(status)).remediation
+
+    assert "Basic Auth String" in remediation
+
+
+def test_checks_use_cloud_errors_for_cloud_auth(client):
+    client.config.authType = PrefectCloudAuthentication(apiKey="key", accountId="acct", workspaceId="ws")
+
+    checks = PrefectChecks(prefect=Borrowed.of(client))
+
+    assert checks.errors is CLOUD_ERRORS
+
+
+def test_checks_use_server_errors_for_server_auth(client):
+    client.config.authType = PrefectServerAuthentication()
+
+    checks = PrefectChecks(prefect=Borrowed.of(client))
+
+    assert checks.errors is SERVER_ERRORS
 
 
 def _dns_failure() -> RequestsConnectionError:
@@ -152,16 +236,19 @@ def _dns_failure() -> RequestsConnectionError:
 
 
 def test_a_dns_failure_is_claimed_by_the_connectors_own_rule():
+    """The common pack (shared by both auth modes) walks the cause chain -
+    checked once against CLOUD_ERRORS, since SERVER_ERRORS includes the same
+    common rules via `.including()`."""
     error = _dns_failure()
 
     assert any(isinstance(current, socket.gaierror) for current in exception_chain(error))
-    assert PREFECT_ERRORS.classify(error).title == "Cannot reach the host"
+    assert CLOUD_ERRORS.classify(error).title == "Cannot reach the host"
 
 
 def test_network_unreachable_is_impossible_without_a_preflight():
     """This connector runs no TCP preflight, so the pack does not claim to
     diagnose a NetworkUnreachableError — nothing in it ever raises one."""
-    assert PREFECT_ERRORS.classify(NetworkUnreachableError("api.prefect.cloud:443 is not reachable")) is None
+    assert CLOUD_ERRORS.classify(NetworkUnreachableError("api.prefect.cloud:443 is not reachable")) is None
 
 
 def test_error_pack_diagnoses_a_status_wrapped_by_a_check_error():
@@ -171,8 +258,8 @@ def test_error_pack_diagnoses_a_status_wrapped_by_a_check_error():
     wrapped = RuntimeError("step failed")
     wrapped.__cause__ = cause
 
-    assert PREFECT_ERRORS.classify(wrapped).title == "Authentication failed"
+    assert CLOUD_ERRORS.classify(wrapped).title == "Authentication failed"
 
 
 def test_error_pack_leaves_an_unknown_error_unclassified():
-    assert PREFECT_ERRORS.classify(ValueError("something else")) is None
+    assert CLOUD_ERRORS.classify(ValueError("something else")) is None
