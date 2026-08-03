@@ -344,6 +344,10 @@ test.describe('Explore Assets Discovery', () => {
     // Close the Owners dropdown before opening the next — immediate-apply keeps
     // it open after selection, and a stale open menu has its own search-input
     await page.keyboard.press('Escape');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(ownerSearchText)
+      .waitFor({ state: 'detached' });
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
@@ -380,6 +384,11 @@ test.describe('Explore Assets Discovery', () => {
 
     // Close the Domains dropdown before opening the Data Assets one
     await page.keyboard.press('Escape');
+
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .waitFor({ state: 'detached' });
 
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
