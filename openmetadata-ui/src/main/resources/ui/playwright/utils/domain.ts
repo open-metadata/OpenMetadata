@@ -67,7 +67,10 @@ const clickAvailableWidgetAction = async (
   addBtn: Locator,
   editBtn: Locator
 ) => {
-  await addBtn.or(editBtn).first().waitFor({ state: 'visible' });
+  await addBtn.or(editBtn).first().waitFor({
+    state: 'visible',
+    timeout: 30000,
+  });
 
   if (await addBtn.isVisible()) {
     await addBtn.click();
@@ -162,7 +165,9 @@ export const assignCertificationForWidget = async (
   certification: TagClass,
   endpoint: string
 ) => {
-  await page.getByTestId('edit-certification').click();
+  const addBtn = page.getByTestId('add-certification');
+  const editBtn = page.getByTestId('edit-certification');
+  await clickAvailableWidgetAction(addBtn, editBtn);
 
   await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
@@ -425,6 +430,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
   ]);
 
   await waitForAllLoadersToDisappear(page);
+  await checkDomainDisplayName(page, domain.displayName);
 };
 
 export const selectSubDomain = async (
@@ -517,6 +523,16 @@ export const selectDataProduct = async (
   ]);
 
   await waitForAllLoadersToDisappear(page);
+  await waitForDataProductHeader(page);
+};
+
+export const waitForDataProductHeader = async (page: Page) => {
+  await expect(
+    page
+      .getByTestId('entity-header-display-name')
+      .or(page.getByTestId('entity-header-name'))
+      .first()
+  ).toBeVisible({ timeout: 30000 });
 };
 
 export const goToAssetsTab = async (
@@ -600,7 +616,8 @@ export const checkDomainDisplayName = async (
   displayName: string
 ) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName
+    displayName,
+    { timeout: 30000 }
   );
 };
 

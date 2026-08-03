@@ -509,10 +509,25 @@ export const assignTier = async (
   endpoint: string,
   initiatorId = 'edit-tier'
 ) => {
-  // Wait for the edit button to be visible and clickable
-  const editButton = page.getByTestId(initiatorId);
-  await editButton.waitFor({ state: 'visible' });
-  await editButton.click();
+  if (initiatorId === 'edit-tier') {
+    const addButton = page.getByTestId('add-tier');
+    const editButton = page.getByTestId('edit-tier');
+
+    await addButton.or(editButton).first().waitFor({
+      state: 'visible',
+      timeout: 30000,
+    });
+
+    if (await addButton.isVisible()) {
+      await addButton.click();
+    } else {
+      await editButton.click();
+    }
+  } else {
+    const editButton = page.getByTestId(initiatorId);
+    await editButton.waitFor({ state: 'visible' });
+    await editButton.click();
+  }
 
   // Wait for all loaders to disappear
   await waitForAllLoadersToDisappear(page);
