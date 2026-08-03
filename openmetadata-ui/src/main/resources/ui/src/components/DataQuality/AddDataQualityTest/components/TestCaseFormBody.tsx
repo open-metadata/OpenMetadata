@@ -833,7 +833,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     props: {
       'data-testid': 'dimensionColumns',
       isDisabled: !selectedTableFqn,
-      multiple: true,
       options: dimensionColumnOptions,
     },
   };
