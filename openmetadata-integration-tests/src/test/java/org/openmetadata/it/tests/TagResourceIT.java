@@ -229,10 +229,28 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     setClassificationDisabled(classification.getId().toString(), false);
 
+    // Assert the precondition separately from the behaviour under test. If the re-enable did
+    // not take effect the Tag is correctly still inheriting disabled, and conflating the two
+    // makes the failure look like the fix regressed when it did not.
+    Classification parentAfter =
+        SdkClients.adminClient().classifications().get(classification.getId().toString());
+    assertFalse(
+        Boolean.TRUE.equals(parentAfter.getDisabled()),
+        "precondition: Classification should be re-enabled, but disabled="
+            + parentAfter.getDisabled());
+
     Tag reEnabledTag = getEntityByName(tag.getFullyQualifiedName());
     assertFalse(
         Boolean.TRUE.equals(reEnabledTag.getDisabled()),
-        "Tag must be usable again once its Classification is re-enabled");
+        "Tag must be usable again once its Classification is re-enabled."
+            + " If this fails the Tag was written while the parent was disabled by something"
+            + " other than this test - the details below identify the writer."
+            + " tag.version="
+            + reEnabledTag.getVersion()
+            + " tag.updatedBy="
+            + reEnabledTag.getUpdatedBy()
+            + " tag.changeDescription="
+            + reEnabledTag.getChangeDescription());
   }
 
   @Test
