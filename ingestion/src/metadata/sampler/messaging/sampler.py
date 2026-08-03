@@ -108,7 +108,7 @@ class MessagingSampler(SamplerInterface):
         """
 
     @staticmethod
-    def _resolve(msg: dict, dotted: str) -> object:
+    def _walk(msg: dict, dotted: str) -> object:
         """Walk a dotted path into nested dicts, returning None when absent."""
         cur: object = msg
         for part in dotted.split("."):
@@ -117,6 +117,21 @@ class MessagingSampler(SamplerInterface):
             else:
                 return None
         return cur
+
+    @staticmethod
+    def _resolve(msg: dict, dotted: str) -> object:
+        """Resolve a column path against a message, tolerating the schema root.
+
+        Column paths carry the schema's root RECORD (``Order.email``) because that
+        is what the auto-classification processor matches on, but the message on
+        the wire is unwrapped (``{"email": ...}``). Try the full path first so a
+        genuinely wrapped message keeps winning.
+        """
+        for candidate in (dotted, dotted.split(".", 1)[-1]):
+            value = MessagingSampler._walk(msg, candidate)
+            if value is not None:
+                return value
+        return None
 
     def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
         column_objs = columns or self.get_columns()
