@@ -450,7 +450,7 @@ public class DataAccessRequestValidationIT {
   @Test
   void testDarCreation_requesterAsReviewer_notInAssignees(TestNamespace ns) throws Exception {
     Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
-    String requesterFqn = "shared_user1@test.openmetadata.org";
+    String requesterFqn = "shared_user1";
 
     CreateTask request =
         new CreateTask()

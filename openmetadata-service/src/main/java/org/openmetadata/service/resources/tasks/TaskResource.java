@@ -112,7 +112,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   public static final String COLLECTION_PATH = "v1/tasks/";
   static final String FIELDS =
-      "assignees,reviewers,watchers,about,domains,comments,createdBy,payload";
+      "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,availableTransitions";
 
   /**
    * Lightweight default for list endpoints — enough for the UI card (assignee, target entity,
