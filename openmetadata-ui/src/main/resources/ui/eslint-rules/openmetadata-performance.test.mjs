@@ -145,6 +145,36 @@ ruleTester.run(
       },
       {
         code: `
+          import { lazy, Suspense } from 'react';
+          const InternalPage = lazy(() => import('./Page'));
+          const App = () => {
+            const TypedPage = InternalPage;
+            return <Suspense fallback={null}><TypedPage /></Suspense>;
+          };
+        `,
+      },
+      {
+        code: `
+          import { lazy, Suspense } from 'react';
+          const pageMap = { example: lazy(() => import('./Page')) };
+          const App = () => {
+            const Page = pageMap.example;
+            return <Suspense fallback={null}><Page /></Suspense>;
+          };
+        `,
+      },
+      {
+        code: `
+          import { lazy, Suspense, useMemo } from 'react';
+          const Field = lazy(() => import('./Field'));
+          const App = () => {
+            const fields = useMemo(() => ({ Field }), []);
+            return <Suspense fallback={null}><Form fields={fields} /></Suspense>;
+          };
+        `,
+      },
+      {
+        code: `
           import { lazy } from 'react';
           import withSuspenseFallback from './withSuspenseFallback';
           const PageLazy = lazy(() => import('./Page'));
@@ -207,6 +237,31 @@ ruleTester.run(
       },
       {
         code: `
+          import { lazy, Suspense } from 'react';
+          const ProtectedPage = lazy(() => import('./ProtectedPage'));
+          const UnprotectedPage = lazy(() => import('./UnprotectedPage'));
+          const App = () => (
+            <>
+              <Suspense fallback={null}><ProtectedPage /></Suspense>
+              <UnprotectedPage />
+            </>
+          );
+        `,
+        errors: [{ messageId: 'missingSuspenseFallback' }],
+      },
+      {
+        code: `
+          import { lazy, Suspense } from 'react';
+          const Page = lazy(() => import('./Page'));
+          const App = () => {
+            const Page = () => null;
+            return <Suspense fallback={null}><Page /></Suspense>;
+          };
+        `,
+        errors: [{ messageId: 'missingSuspenseFallback' }],
+      },
+      {
+        code: `
           import { lazy } from 'react';
           const Suspense = ({ children }) => children;
           const Page = lazy(() => import('./Page'));
@@ -247,6 +302,15 @@ ruleTester.run(
         `,
       },
       {
+        code: `
+          const MAX_ENTRIES = 200;
+          const resultCache = new Map();
+          while (resultCache.size > MAX_ENTRIES) {
+            resultCache.delete(resultCache.keys().next().value);
+          }
+        `,
+      },
+      {
         code: "const ENTITY_TYPES = new Set(['table', 'topic']);",
       },
       {
@@ -277,6 +341,33 @@ ruleTester.run(
           const resultCache = new Map();
           if (resultCache.size > MAX_ENTRIES) {
             logOverflow();
+          }
+        `,
+        errors: [{ messageId: 'unboundedModuleCache' }],
+      },
+      {
+        code: `
+          const MAX_ENTRIES = 100;
+          const resultCache = new Map();
+          if (resultCache.size > MAX_ENTRIES) {
+            logOverflow();
+          }
+          function invalidate(key) {
+            resultCache.delete(key);
+          }
+        `,
+        errors: [{ messageId: 'unboundedModuleCache' }],
+      },
+      {
+        code: `
+          const MAX_ENTRIES = 100;
+          const resultCache = new Map();
+          function createLocalCache() {
+            const resultCache = new Map();
+            if (resultCache.size > MAX_ENTRIES) {
+              resultCache.clear();
+            }
+            return resultCache;
           }
         `,
         errors: [{ messageId: 'unboundedModuleCache' }],

@@ -106,11 +106,12 @@ reporting-only rules. Their test suite is run with `yarn test:eslint-rules`. All
   whose path contains `pages/`. Type-only imports remain valid.
 - `require-suspense-fallback` recognizes `lazy` and `React.lazy` only when imported from React. It
   accepts a component passed directly or subsequently to an approved helper imported from
-  `components/AppRouter/withSuspenseFallback`, or a module with a real React `Suspense` boundary and
-  an explicit `fallback` prop.
+  `components/AppRouter/withSuspenseFallback`, or a local variable-dependency path from the lazy
+  binding to JSX rendered or passed beneath a real React `Suspense` boundary with an explicit
+  `fallback` prop. An unrelated boundary elsewhere in the module does not satisfy the rule.
 - `no-unbounded-module-cache` checks module-level `Map` and `Set` bindings with cache-like names. A
-  cache needs both an explicit numeric or uppercase named size comparison and an eviction call using
-  `delete` or `clear` on the same binding.
+  cache needs an explicit numeric or uppercase named size comparison whose guarded `if` branch or
+  `while` body evicts from the same binding using `delete` or `clear`.
 
 The rules intentionally do not autofix because introducing a loading boundary, choosing an eviction
 policy, and deciding which route dependency should remain eager require runtime context.
