@@ -10,28 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, uniq, uniqBy } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { SORT_ORDER } from '../../../enums/common.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import {
-  convertTestCasesToCSV,
-  getTestCaseManageMenuItems,
-} from '../../../utils/TestCaseUtils';
+import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useTestCaseActions } from './useTestCaseActions';
 import { useTestCaseFilterOptions } from './useTestCaseFilterOptions';
@@ -48,10 +38,6 @@ export type {
   FilterOptionData as TestCaseFilterOptionData,
   FilterValue as TestCaseFilterValue,
 } from './FilterChip.interface';
-
-const EXPORT_SORT_FIELD = 'fullyQualifiedName.keyword';
-const MAX_EXPORT_PASSES = 3;
-const MAX_SEQUENTIAL_EXPORT_PAGES = 200;
 
 export const useTestCaseListPage = () => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
@@ -133,102 +119,6 @@ export const useTestCaseListPage = () => {
     setTestCase,
   });
 
-  const exportFilteredTestCases = useCallback(async () => {
-    const activeFilters = uniq([...selectedFilter, ...Object.keys(params)]);
-    const updatedParams = getTestCaseFiltersValue(params, activeFilters);
-    const exportParams = {
-      ...updatedParams,
-      testCaseStatus: isEmpty(params.testCaseStatus)
-        ? undefined
-        : params.testCaseStatus,
-      includeAllTests: true,
-      fields: [TabSpecificField.TEST_DEFINITION, TabSpecificField.TESTSUITE],
-      q: searchValue ? `*${searchValue}*` : undefined,
-      sortField: EXPORT_SORT_FIELD,
-      sortType: SORT_ORDER.ASC,
-    };
-    const fetchExportPass = async () => {
-      const firstPage = await getListTestCaseBySearch({
-        ...exportParams,
-        limit: PAGE_SIZE_LARGE,
-        offset: 0,
-      });
-      const pages = [firstPage];
-      const firstReportedTotal = firstPage.paging.total;
-
-      if (firstReportedTotal === undefined) {
-        // Without a total, a full page is not evidence that the export is
-        // complete. Continue sequentially until the API returns a short page.
-        let page = firstPage;
-        let offset = firstPage.data.length;
-
-        while (
-          page.data.length === PAGE_SIZE_LARGE &&
-          pages.length < MAX_SEQUENTIAL_EXPORT_PAGES
-        ) {
-          page = await getListTestCaseBySearch({
-            ...exportParams,
-            limit: PAGE_SIZE_LARGE,
-            offset,
-          });
-          pages.push(page);
-          offset += page.data.length;
-        }
-      } else {
-        const remainingPageCount = Math.max(
-          Math.ceil(firstReportedTotal / PAGE_SIZE_LARGE) - 1,
-          0
-        );
-        const remainingPageOffsets = Array.from(
-          { length: remainingPageCount },
-          (_, index) => (index + 1) * PAGE_SIZE_LARGE
-        );
-
-        // A known total allows stable offsets to be fetched concurrently.
-        pages.push(
-          ...(await Promise.all(
-            remainingPageOffsets.map((offset) =>
-              getListTestCaseBySearch({
-                ...exportParams,
-                limit: PAGE_SIZE_LARGE,
-                offset,
-              })
-            )
-          ))
-        );
-      }
-
-      const testCases = uniqBy(
-        pages.flatMap(({ data }) => data),
-        ({ id, fullyQualifiedName, name }) => id ?? fullyQualifiedName ?? name
-      );
-      const reportedTotalChanged = pages.some(
-        ({ paging: { total } }) =>
-          total !== undefined && total !== firstReportedTotal
-      );
-
-      return { reportedTotalChanged, testCases };
-    };
-
-    let pass = 0;
-    let testCases: TestCase[] = [];
-    let reportedTotalChanged: boolean;
-
-    do {
-      ({ reportedTotalChanged, testCases } = await fetchExportPass());
-      pass += 1;
-      // Replace the previous pass instead of merging it so deleted or newly
-      // nonmatching rows are not retained in the exported snapshot.
-    } while (reportedTotalChanged && pass < MAX_EXPORT_PASSES);
-
-    return convertTestCasesToCSV(testCases);
-  }, [params, searchValue, selectedFilter]);
-
-  // Keep the server-side export for unfiltered lists; only materialize rows in
-  // the browser when the current search/filter state must be preserved.
-  const filteredExportAction =
-    hasActiveFilters || searchValue ? exportFilteredTestCases : undefined;
-
   const extraDropdownContent = useMemo(
     () =>
       getTestCaseManageMenuItems(
@@ -249,11 +139,9 @@ export const useTestCaseListPage = () => {
         },
         false,
         navigate,
-        showModal,
-        undefined,
-        filteredExportAction
+        showModal
       ),
-    [permissions, navigate, showModal, filteredExportAction]
+    [permissions, navigate, showModal]
   );
 
   return {
