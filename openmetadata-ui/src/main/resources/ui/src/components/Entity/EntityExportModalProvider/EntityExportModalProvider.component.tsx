@@ -74,8 +74,8 @@ const CSV_EXPORT_INITIAL_POLL_INTERVAL_MS = 1_000;
 const CSV_EXPORT_MAX_POLL_INTERVAL_MS = 10_000;
 const CSV_EXPORT_STATUS_REQUEST_TIMEOUT_MS = 5_000;
 const CSV_EXPORT_MAX_CONSECUTIVE_POLL_FAILURES = 6;
-const CSV_EXPORT_MAX_POLL_DURATION_MS = 5 * 60 * 1_000;
-const CSV_EXPORT_BULK_EDIT_MAX_POLL_DURATION_MS = 30 * 60 * 1_000;
+const CSV_EXPORT_MAX_POLL_DURATION_MS = 10 * 60 * 1_000;
+const CSV_EXPORT_BULK_EDIT_FALLBACK_GRACE_MS = 5 * 60 * 1_000;
 
 interface CSVExportPollingState {
   abortController: AbortController;
@@ -113,6 +113,7 @@ export const EntityExportModalProvider = ({
   const csvExportPollingRef = useRef<CSVExportPollingState>();
   const csvExportResultAbortControllerRef = useRef<AbortController>();
   const exportGenerationRef = useRef(0);
+  const bulkEditFallbackTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
 
@@ -160,6 +161,13 @@ export const EntityExportModalProvider = ({
     csvExportResultAbortControllerRef.current = undefined;
   }, []);
 
+  const clearBulkEditFallbackTimer = useCallback(() => {
+    if (bulkEditFallbackTimerRef.current) {
+      clearTimeout(bulkEditFallbackTimerRef.current);
+      bulkEditFallbackTimerRef.current = undefined;
+    }
+  }, []);
+
   const exportTypeItems = useMemo(
     () =>
       exportUtilClassBase
@@ -175,13 +183,18 @@ export const EntityExportModalProvider = ({
     exportGenerationRef.current++;
     stopCSVExportPolling();
     abortCSVExportResultRequest();
+    clearBulkEditFallbackTimer();
     setCSVExportJob(undefined);
     csvExportJobRef.current = undefined;
     pendingCSVExportResponsesRef.current.clear();
     exportOnErrorRef.current = undefined;
     setDownloading(false);
     setExportData(null);
-  }, [abortCSVExportResultRequest, stopCSVExportPolling]);
+  }, [
+    abortCSVExportResultRequest,
+    clearBulkEditFallbackTimer,
+    stopCSVExportPolling,
+  ]);
 
   const showModal = useCallback((data: ExportData) => {
     setExportData(data);
@@ -195,6 +208,7 @@ export const EntityExportModalProvider = ({
     (data: string, fileName?: string) => {
       stopCSVExportPolling();
       abortCSVExportResultRequest();
+      clearBulkEditFallbackTimer();
       if (isBulkEdit) {
         setCSVExportData(data);
       } else {
@@ -206,6 +220,7 @@ export const EntityExportModalProvider = ({
     },
     [
       abortCSVExportResultRequest,
+      clearBulkEditFallbackTimer,
       handleCancel,
       isBulkEdit,
       stopCSVExportPolling,
@@ -215,6 +230,7 @@ export const EntityExportModalProvider = ({
   const handleClearCSVExportData = useCallback(() => {
     stopCSVExportPolling();
     abortCSVExportResultRequest();
+    clearBulkEditFallbackTimer();
     setCSVExportData(undefined);
     setCSVExportError(undefined);
     setCSVExportJob(undefined);
@@ -222,7 +238,11 @@ export const EntityExportModalProvider = ({
     csvExportJobRef.current = undefined;
     pendingCSVExportResponsesRef.current.clear();
     exportOnErrorRef.current = undefined;
-  }, [abortCSVExportResultRequest, stopCSVExportPolling]);
+  }, [
+    abortCSVExportResultRequest,
+    clearBulkEditFallbackTimer,
+    stopCSVExportPolling,
+  ]);
 
   const applyCSVExportJobUpdate = useCallback(
     (response: Partial<CSVExportWebsocketResponse>) => {
@@ -449,19 +469,14 @@ export const EntityExportModalProvider = ({
           }
 
           if (
-            !bulkEdit &&
-            Date.now() - pollingStartTime >= CSV_EXPORT_MAX_POLL_DURATION_MS
-          ) {
-            timedOut = true;
-            break;
-          }
-
-          if (
-            bulkEdit &&
             Date.now() - pollingStartTime >=
-              CSV_EXPORT_BULK_EDIT_MAX_POLL_DURATION_MS
+            CSV_EXPORT_MAX_POLL_DURATION_MS
           ) {
-            bulkEditTimedOut = true;
+            if (bulkEdit) {
+              bulkEditTimedOut = true;
+            } else {
+              timedOut = true;
+            }
             break;
           }
 
@@ -502,7 +517,7 @@ export const EntityExportModalProvider = ({
         }
 
         if (timedOut) {
-          // Modal 5-min timeout: close modal, clear all refs, hand off to tray.
+          // Modal 10-min timeout: close modal, clear all refs, hand off to tray.
           // handoffJobId exempts this job from the tray's initial auto-dismiss
           // so it remains visible even if the backend completes in the gap.
           csvExportPollingRef.current = undefined;
@@ -517,11 +532,17 @@ export const EntityExportModalProvider = ({
             })
           );
         } else if (bulkEditTimedOut) {
-          // Bulk-edit 30-min soft stop: polling ceases but csvExportJobRef
-          // stays alive so the WebSocket can still deliver COMPLETED and
-          // hydrate the grid. The job is handed to the tray as a fallback —
-          // handoffJobId prevents it being auto-dismissed if already terminal.
+          // Bulk-edit 10-min soft stop: polling ceases but csvExportJobRef stays
+          // alive so the WebSocket can still deliver COMPLETED and hydrate the
+          // grid. A 5-min fallback timer surfaces FAILED if WebSocket never
+          // arrives (dropped connection / backend permanently stuck).
           csvExportPollingRef.current = undefined;
+          bulkEditFallbackTimerRef.current = setTimeout(() => {
+            bulkEditFallbackTimerRef.current = undefined;
+            if (csvExportJobRef.current?.jobId === jobId) {
+              applyCSVExportJobUpdate({ error: null, jobId, status: 'FAILED' });
+            }
+          }, CSV_EXPORT_BULK_EDIT_FALLBACK_GRACE_MS);
           window.dispatchEvent(
             new CustomEvent(CSV_JOBS_REFRESH_EVENT, {
               detail: { handoffJobId: jobId },
@@ -686,8 +707,13 @@ export const EntityExportModalProvider = ({
       exportGenerationRef.current++;
       stopCSVExportPolling();
       abortCSVExportResultRequest();
+      clearBulkEditFallbackTimer();
     },
-    [abortCSVExportResultRequest, stopCSVExportPolling]
+    [
+      abortCSVExportResultRequest,
+      clearBulkEditFallbackTimer,
+      stopCSVExportPolling,
+    ]
   );
 
   const providerValue = useMemo(

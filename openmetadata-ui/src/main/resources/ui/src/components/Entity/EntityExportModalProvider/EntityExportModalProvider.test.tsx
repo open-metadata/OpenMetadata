@@ -589,7 +589,7 @@ describe('EntityExportModalProvider component', () => {
     }
   });
 
-  it('keeps polling a healthy export up to the 5-minute limit without failing', async () => {
+  it('keeps polling a healthy export up to the 10-minute limit without failing', async () => {
     jest.useFakeTimers();
 
     try {
@@ -615,16 +615,16 @@ describe('EntityExportModalProvider component', () => {
         fireEvent.click(screen.getByText('Start polled export'));
       });
 
-      // Advance to just under the 5-minute cap (285 s < 300 s):
-      // 4 backoff steps (1+2+4+8 = 15 s) + 27 steps at 10 s = 285 s total.
-      for (let pollAttempt = 1; pollAttempt <= 31; pollAttempt++) {
+      // Advance to just under the 10-minute cap (585 s < 600 s):
+      // 4 backoff steps (1+2+4+8 = 15 s) + 57 steps at 10 s = 585 s total.
+      for (let pollAttempt = 1; pollAttempt <= 61; pollAttempt++) {
         const intervalMs = Math.min(1_000 * 2 ** (pollAttempt - 1), 10_000);
         await act(async () => {
           jest.advanceTimersByTime(intervalMs);
         });
       }
 
-      expect(getCsvAsyncJob).toHaveBeenCalledTimes(32);
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(62);
       expect(onError).not.toHaveBeenCalled();
       expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
 
@@ -1020,7 +1020,7 @@ describe('EntityExportModalProvider component', () => {
     expect(downloadFile).not.toHaveBeenCalled();
   });
 
-  it('bulk-edit: continues past the 5-minute modal cap without stopping', async () => {
+  it('bulk-edit: continues polling up to the shared 10-minute cap', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
@@ -1049,8 +1049,9 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      // Advance past the 5-minute modal cap — bulk-edit must keep polling.
-      nowMs = 5 * 60 * 1_000 + 1_000;
+      // Advance Date.now to just under 10 min — duration cap not yet reached,
+      // so bulk-edit must fire another poll.
+      nowMs = 10 * 60 * 1_000 - 1_000;
       await act(async () => {
         jest.advanceTimersByTime(1_000);
       });
@@ -1064,7 +1065,7 @@ describe('EntityExportModalProvider component', () => {
     }
   });
 
-  it('bulk-edit: soft-stops at 30 min, keeps WebSocket alive, dispatches to tray with handoffJobId', async () => {
+  it('bulk-edit: soft-stops at 10 min, keeps WebSocket alive, dispatches to tray with handoffJobId', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
@@ -1094,8 +1095,8 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      // Advance past the 30-minute bulk-edit cap.
-      nowMs = 30 * 60 * 1_000 + 1_000;
+      // Advance past the shared 10-minute cap.
+      nowMs = 10 * 60 * 1_000 + 1_000;
       await act(async () => {
         jest.advanceTimersByTime(10_000);
       });
@@ -1127,7 +1128,7 @@ describe('EntityExportModalProvider component', () => {
     }
   });
 
-  it('bulk-edit: WebSocket COMPLETED after 30-min soft-stop still hydrates the grid', async () => {
+  it('bulk-edit: WebSocket COMPLETED after 10-min soft-stop still hydrates the grid', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
@@ -1190,7 +1191,7 @@ describe('EntityExportModalProvider component', () => {
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
       // Trigger the 30-min soft-stop.
-      nowMs = 30 * 60 * 1_000 + 1_000;
+      nowMs = 10 * 60 * 1_000 + 1_000;
       await act(async () => {
         jest.advanceTimersByTime(10_000);
       });
@@ -1242,7 +1243,7 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      nowMs = 5 * 60 * 1_000 + 1_000;
+      nowMs = 10 * 60 * 1_000 + 1_000;
 
       await act(async () => {
         jest.advanceTimersByTime(1_000);
@@ -1264,6 +1265,150 @@ describe('EntityExportModalProvider component', () => {
     } finally {
       dateSpy.mockRestore();
       dispatchSpy.mockRestore();
+      (getCsvAsyncJob as jest.Mock).mockReset();
+      jest.useRealTimers();
+    }
+  });
+
+  it('bulk-edit: fallback timer surfaces FAILED when WebSocket never delivers after soft-stop', async () => {
+    jest.useFakeTimers();
+    let nowMs = 0;
+    const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
+
+    try {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+      const onError = jest.fn();
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      (getCsvAsyncJob as jest.Mock).mockResolvedValue({
+        createdBy: 'admin',
+        entityType: 'database',
+        jobId: mockExportJob.jobId,
+        operation: 'EXPORT',
+        status: 'RUNNING',
+      } as CsvAsyncJob);
+
+      render(
+        <EntityExportModalProvider>
+          <PollingConsumer onError={onError} onExport={onExport} />
+        </EntityExportModalProvider>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start polled export'));
+      });
+
+      await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
+
+      // Trigger the 10-min soft-stop.
+      nowMs = 10 * 60 * 1_000 + 1_000;
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      expect(onError).not.toHaveBeenCalled();
+
+      // Advance the 5-min fallback grace window — WebSocket never arrived.
+      await act(async () => {
+        jest.advanceTimersByTime(5 * 60 * 1_000 + 1_000);
+      });
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
+        'server.unexpected-error'
+      );
+    } finally {
+      dateSpy.mockRestore();
+      (getCsvAsyncJob as jest.Mock).mockReset();
+      jest.useRealTimers();
+    }
+  });
+
+  it('bulk-edit: fallback timer is cancelled when WebSocket delivers COMPLETED', async () => {
+    jest.useFakeTimers();
+    let nowMs = 0;
+    const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
+
+    try {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+      const onError = jest.fn();
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      (getCsvAsyncJob as jest.Mock).mockResolvedValue({
+        createdBy: 'admin',
+        entityType: 'database',
+        jobId: mockExportJob.jobId,
+        operation: 'EXPORT',
+        status: 'RUNNING',
+      } as CsvAsyncJob);
+
+      const FallbackCancelConsumer = () => {
+        const {
+          triggerExportForBulkEdit,
+          onUpdateCSVExportJob,
+          csvExportData,
+        } = useEntityExportModalProvider();
+
+        return (
+          <>
+            <button
+              onClick={() =>
+                triggerExportForBulkEdit({
+                  name: 'bulk-edit',
+                  exportTypes: [ExportTypes.CSV],
+                  onError,
+                  onExport,
+                })
+              }>
+              Start
+            </button>
+            <button
+              onClick={() =>
+                onUpdateCSVExportJob({
+                  jobId: mockExportJob.jobId,
+                  status: 'COMPLETED',
+                  data: 'csv,data',
+                })
+              }>
+              WS Complete
+            </button>
+            <div data-testid="grid-data">{csvExportData ?? ''}</div>
+          </>
+        );
+      };
+
+      render(
+        <EntityExportModalProvider>
+          <FallbackCancelConsumer />
+        </EntityExportModalProvider>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start'));
+      });
+
+      await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
+
+      // Trigger the 10-min soft-stop.
+      nowMs = 10 * 60 * 1_000 + 1_000;
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      // WebSocket delivers before the 5-min fallback timer fires.
+      await act(async () => {
+        fireEvent.click(screen.getByText('WS Complete'));
+      });
+
+      // Advance past the fallback window — timer was cancelled, no FAILED.
+      await act(async () => {
+        jest.advanceTimersByTime(5 * 60 * 1_000 + 1_000);
+      });
+
+      expect(onError).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(screen.getByTestId('grid-data')).toHaveTextContent('csv,data')
+      );
+    } finally {
+      dateSpy.mockRestore();
       (getCsvAsyncJob as jest.Mock).mockReset();
       jest.useRealTimers();
     }
