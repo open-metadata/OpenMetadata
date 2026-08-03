@@ -10,6 +10,15 @@ description: >
   prevents a stale on-disk dist (e.g. from a prior local build in a dev
   workspace) from silently suppressing a rebuild when sources changed.
 
+  SECURITY: the cache steps are skipped entirely when the workflow is a
+  fork PR running under `pull_request_target`. That event runs in the base
+  branch's context (so `actions/cache` writes to main's cache scope) while
+  the checkout deliberately fetches untrusted fork code — a poisoned dist
+  saved under such a run would be served to browsers by any later workflow
+  that hashes to the same key (CodeQL rule `actions/actions/cache-poisoning`).
+  Fork PRs pay the full ~5 min build; same-repo PRs, merge_group, push,
+  and schedule runs are unaffected.
+
   The cache is scoped to the repository (GitHub Actions cache always is), so
   the first workflow of the day that builds a given UI source tree populates
   the cache; every other workflow triggered by the same push, and every
@@ -42,6 +51,14 @@ runs:
   steps:
     - name: Restore openmetadata-ui dist cache
       id: cache
+      # Fork-PR-under-pull_request_target runs base-branch privileged with
+      # untrusted checked-out code — skip cache entirely so no poisoned dist
+      # can enter (or be restored into) the base-branch cache scope. Every
+      # other event (same-repo pull_request, merge_group, push, schedule,
+      # workflow_dispatch) uses the cache normally.
+      if: >-
+        !(github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository)
       uses: actions/cache@v5
       with:
         # Both modules' dist dirs; the poms' skip-ui-build profile requires
