@@ -702,7 +702,7 @@
       "title": "Create Lineage",
       "annotations": {
         "readOnlyHint": false,
-        "destructiveHint": false,
+        "destructiveHint": true,
         "openWorldHint": false
       },
       "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them.",
