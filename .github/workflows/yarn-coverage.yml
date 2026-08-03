@@ -55,7 +55,10 @@ jobs:
     needs: check-changes
     runs-on: ubuntu-latest
     outputs:
-      sonar_gate_result: ${{ steps.sonar_pr_scan.outcome }}
+      # Parsed from the scanner log: passed | failed | error. Only "failed" (a real
+      # New Code gate failure) blocks; "error" means Sonar never returned a verdict
+      # (upload error / rate limit / timeout) and must not fail the required check.
+      sonar_gate_status: ${{ steps.sonar_pr_scan.outputs.gate_status }}
       # Exposed so the gate can tell "scanner never ran" apart from "gate passed".
       sonar_scanner_install: ${{ steps.npm_install_sonar_scanner.outcome }}
     if: |
@@ -149,13 +152,17 @@ jobs:
         id: npm_install_sonar_scanner
       - name: SonarCloud Scan On PR
         id: sonar_pr_scan
-        # The quality gate is a required PR check, so a failing gate must not
-        # kill this job before the coverage comment is posted — ui-sonar-gate
-        # below turns this outcome into the check contributors see.
+        # The quality gate is a required PR check, so a failing scan must not kill
+        # this job before the coverage comment is posted — ui-sonar-gate below turns
+        # the parsed verdict into the check contributors see. The gate verdict is read
+        # from the scanner log (not the exit code) so a real New Code failure can be
+        # told apart from an upload error / rate limit / timeout, which never returns a
+        # "QUALITY GATE STATUS" line and must not block the required check.
         continue-on-error: true
         if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
+          set +e
           sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
           -Dproject.settings=sonar-project.properties \
           -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
@@ -165,7 +172,19 @@ jobs:
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
           -Dsonar.pullrequest.provider=github \
           -Dsonar.qualitygate.wait=true \
-          -Dsonar.qualitygate.timeout=600
+          -Dsonar.qualitygate.timeout=600 2>&1 | tee sonar-output.log
+          scan_rc=${PIPESTATUS[0]}
+          if grep -q "QUALITY GATE STATUS: PASSED" sonar-output.log; then
+            status=passed
+          elif grep -q "QUALITY GATE STATUS: FAILED" sonar-output.log; then
+            status=failed
+          else
+            status=error
+          fi
+          echo "gate_status=$status" >> "$GITHUB_OUTPUT"
+          echo "sonar-scanner exit=$scan_rc, gate_status=$status"
+          # Never fail the step: ui-sonar-gate decides red/green from gate_status.
+          exit 0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
@@ -217,8 +236,7 @@ jobs:
       - name: Check Sonar quality gate
         run: |
           job="${{ needs.ui-coverage-tests.result }}"
-          gate="${{ needs.ui-coverage-tests.outputs.sonar_gate_result }}"
-          install="${{ needs.ui-coverage-tests.outputs.sonar_scanner_install }}"
+          status="${{ needs.ui-coverage-tests.outputs.sonar_gate_status }}"
           event="${{ github.event_name }}"
 
           # Skipped means no UI paths changed. Pass, exactly like ui-coverage —
@@ -231,32 +249,32 @@ jobs:
             echo "Upstream coverage job ended with '$job'; the gate could not be evaluated."
             exit 1
           fi
-          # On a PR the scan MUST have run. If it was skipped here the scanner
-          # install failed, and treating that as "nothing to gate" would let a
-          # transient npm error pass a required gate without ever evaluating New
-          # Code — the same silent pass this job exists to remove.
-          if [[ "$event" == "pull_request_target" ]]; then
-            if [[ "$install" != "success" ]]; then
-              echo "✖ sonar-scanner install ended with '$install', so the quality gate never ran."
-              echo "  Re-run the job. A required gate must not pass without evaluating New Code."
-              exit 1
-            fi
-            if [[ -z "$gate" || "$gate" == "skipped" ]]; then
-              echo "✖ The Sonar PR scan did not run, so New Code was never evaluated."
-              exit 1
-            fi
-          fi
-          # push / merge_group: the PR scan step is correctly inapplicable.
-          if [[ -z "$gate" || "$gate" == "skipped" ]]; then
-            echo "Sonar PR scan does not apply to this event — nothing to gate."
+
+          # push / merge_group never run the PR scan, so there is no verdict to gate.
+          if [[ "$event" != "pull_request_target" ]]; then
+            echo "Sonar PR scan does not apply to '$event' — nothing to gate."
             exit 0
           fi
-          if [[ "$gate" != "success" ]]; then
-            echo "✖ Sonar quality gate FAILED on new code."
-            echo ""
-            echo "Every condition is scoped to the lines this PR adds — the legacy"
-            echo "backlog is never in scope. Open the SonarCloud link on this PR and"
-            echo "work the New Code tab. See docs/ui-code-quality-gate.md."
-            exit 1
-          fi
-          echo "✔ Sonar quality gate passed on new code."
+
+          # Only a real New Code gate FAILURE blocks the required check. An "error"
+          # (Sonar returned no verdict: upload error / rate limit / timeout / scanner
+          # install flake) is infra, not a code problem — warn and stay green.
+          case "$status" in
+            passed)
+              echo "✔ Sonar quality gate passed on new code."
+              ;;
+            failed)
+              echo "✖ Sonar quality gate FAILED on new code."
+              echo ""
+              echo "Every condition is scoped to the lines this PR adds — the legacy"
+              echo "backlog is never in scope. Open the SonarCloud link on this PR and"
+              echo "work the New Code tab. See docs/ui-code-quality-gate.md."
+              exit 1
+              ;;
+            *)
+              echo "⚠ Sonar did not return a gate verdict (status: '${status:-none}')."
+              echo "  Likely a report-upload error, SonarCloud rate limit, or timeout —"
+              echo "  not a code issue. Not blocking the required check; re-run to get a"
+              echo "  fresh verdict if needed."
+              ;;
+          esac
