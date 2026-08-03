@@ -226,7 +226,7 @@ headerPermTest.describe(
       }
     );
 
-     headerPermTest(
+    headerPermTest(
       'EditTier, EditOwners, EditCertification allowed but EditAll denied – edit buttons not visible',
       async ({ specificEditsPage }) => {
         await headerPermTable.visitEntityPage(specificEditsPage);
