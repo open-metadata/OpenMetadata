@@ -71,15 +71,13 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('should check for glossary term search', async ({ page }) => {
-    test.slow(true);
-
     await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.getByTestId('glossary-terms-table').waitFor();
 
     // Test 1: Search for specific term
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
     const searchResponse = page.waitForResponse(
       '**/api/v1/glossaryTerms/search?*'
     );
@@ -125,8 +123,6 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('should check for nested glossary term search', async ({ page }) => {
-    test.slow(true);
-
     // Navigate to glossary
     await glossary.visitEntityPage(page);
 
@@ -138,11 +134,19 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       `[data-testid="glossary-terms-table"] >> text="${parentTerm.responseData.displayName}"`
     );
 
-    // Click on Terms tab to see child terms
+    // Click on Terms tab to see child terms and wait for the tab body to
+    // mount — the search input below only exists once `GlossaryTermTab`
+    // renders, and filling it before the mount silently misses the input
+    // (the `waitForResponse` then hangs to the test-level timeout).
     await page.click('[data-testid="terms"]');
+    await page
+      .getByTestId('glossary-terms-scroll-container')
+      .waitFor({ state: 'visible' });
 
-    // Test 1: Search within parent term for child terms
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    // Test 1: Search within parent term for child terms — use the specific
+    // testid rather than a placeholder regex; the regex previously matched
+    // an ambiguous input, causing the fill to hit the wrong element.
+    const searchInput = page.getByTestId('search-glossary-terms-input');
     const searchRes1 = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
     await searchInput.fill('ChildSearchTerm');
     await searchRes1;
@@ -192,7 +196,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Wait for terms to load
     await page.getByTestId('glossary-terms-table').waitFor();
 
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search with lowercase
     const lowerRes = page.waitForResponse('**/api/v1/glossaryTerms/search?*');
@@ -244,7 +248,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     // Wait for terms to load
     await page.getByTestId('glossary-terms-table').waitFor();
 
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchInput = page.getByTestId('search-glossary-terms-input');
 
     // Search for a term that doesn't exist
     const noResultsRes = page.waitForResponse(

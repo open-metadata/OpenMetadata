@@ -268,6 +268,236 @@ def test_emit_unweighted_warnings_ignores_tests_with_history(capsys):
     assert capsys.readouterr().err == ""
 
 
+def test_stale_baseline_files_flag_all_fallback_files_over_threshold():
+    # The exact chromium-12 pattern (#30812): every planned test in a file
+    # has no timing evidence (test_weights miss + identity_weights miss)
+    # AND the file has >= STALE_BASELINE_MIN_TESTS planned tests.
+    planner = load_script("build_playwright_shards")
+    stale_file = "Pages/Reactivated.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            stale_file,
+            f"unit-{index}",
+            test_ids={f"reactivated-{index}"},
+            test_names={f"reactivated-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS)
+    ]
+
+    result = planner.stale_baseline_files_in_plan(units, {}, {})
+
+    assert result == [(stale_file, planner.STALE_BASELINE_MIN_TESTS)]
+
+
+def test_stale_baseline_files_ignore_files_below_threshold():
+    # A file with fewer than STALE_BASELINE_MIN_TESTS on the fallback path
+    # is a legitimate "wrote a couple of tests" case, not a re-enable.
+    planner = load_script("build_playwright_shards")
+    file = "Pages/JustTwoNewTests.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"new-{index}"},
+            test_names={f"new-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS - 1)
+    ]
+
+    assert planner.stale_baseline_files_in_plan(units, {}, {}) == []
+
+
+def test_stale_baseline_files_ignore_files_with_any_history():
+    # If even one test in the file has real history, it's not the stale
+    # pattern — it's just "someone added some new tests to a covered file",
+    # which the softer emit_unweighted_warnings covers.
+    planner = load_script("build_playwright_shards")
+    file = "Pages/Existing.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"test-{index}"},
+            test_names={f"test-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS + 3)
+    ]
+    weights = {"test-0": 5_000}  # a single existing test carries the file
+
+    assert planner.stale_baseline_files_in_plan(units, weights, {}) == []
+
+
+def test_stale_baseline_files_ignore_files_covered_by_identity_match():
+    # Identity fallback (file + leaf title) is treated as real history —
+    # the planner uses those weights, so the file is not "stale".
+    planner = load_script("build_playwright_shards")
+    file = "Pages/RenamedIds.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"drifted-id-{index}"},
+            test_names={f"drifted-id-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS + 2)
+    ]
+    identity_weights = {
+        (file, f"case {index}"): 4_000
+        for index in range(len(units))
+    }
+
+    assert planner.stale_baseline_files_in_plan(units, {}, identity_weights) == []
+
+
+def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
+    # End-to-end: the planner exits non-zero at PR (targeted) plan time
+    # when a file's every planned test is on the fallback path. This is
+    # the gate that catches the pattern on PRs instead of on the merge
+    # queue (#30812 trigger scenario). Full-mode planning is exempt so
+    # nightly/merge_group runs can still generate the timing-history
+    # artifact that unblocks the "wait for the next full run" fix.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    # A spec file with 5 tests (== STALE_BASELINE_MIN_TESTS default), all
+    # newly discovered — no baseline entries.
+    file = "Pages/Reactivated.spec.ts"
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": file,
+                        "suites": [
+                            {
+                                "title": "Reactivated tests",
+                                "specs": [
+                                    {
+                                        "id": f"synthetic-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(5)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    # Targeted selection matching the stale file — mirrors what the PR
+    # selection artifact carries when the PR touches this spec.
+    selection.write_text(
+        json.dumps(
+            {
+                "mode": "targeted",
+                "selectors": [
+                    {"spec": f"playwright/e2e/{file}", "projects": ["auto"]}
+                ],
+            }
+        )
+    )
+    # History file exists but does not cover any of the discovered specs —
+    # every test in the file falls through to FALLBACK_TEST_MS.
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "Stale timing-baseline.json entries detected" in combined
+    assert file in combined
+    assert "5 planned test(s)" in combined
+    # The `::error file=...::` annotation must carry the full repo-relative
+    # spec path so GitHub Actions attaches it inline in the PR checks UI.
+    assert (
+        f"::error file=openmetadata-ui/src/main/resources/ui/playwright/e2e/{file}::"
+        in combined
+    )
+    # The gate must fire BEFORE the plan is written — matrix.json must not
+    # exist, so a downstream `jq` step will visibly fail on the plan step.
+    assert not (output_dir / "matrix.json").exists()
+
+
+def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
+    # Full-mode (nightly / merge_group) planning must not trip the
+    # stale-baseline gate — otherwise the very run that captures the
+    # missing timing evidence would fail before it could execute.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    file = "Pages/Reactivated.spec.ts"
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": file,
+                        "suites": [
+                            {
+                                "title": "Reactivated tests",
+                                "specs": [
+                                    {
+                                        "id": f"synthetic-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(5)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    selection.write_text(json.dumps({"mode": "full"}))
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    combined = result.stdout + result.stderr
+    # The stale-baseline gate must NOT fire in full mode — a plan should
+    # still be written so the run can execute and refresh the baseline.
+    assert "Stale timing-baseline.json entries detected" not in combined
+    assert (output_dir / "matrix.json").exists()
+
+
 def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):
     # Was previously "only_preserves_explicit_skips" — the planner used to pin
     # weight_ms=0 for tests whose only recorded outcome was 'skipped'. That was
@@ -359,15 +589,27 @@ def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_p
 
 def test_versioned_baseline_omits_all_zero_ids_from_weights():
     # Was previously "only_uses_zero_weight_for_skipped_ids". See the sibling
-    # test above for the rationale for the behavior change.
+    # test above for the rationale for the behavior change. The behavior we
+    # care about is that every zero-duration entry in the checked-in baseline
+    # is filtered out of `weights` — regardless of whether its recorded
+    # outcome was `skipped` (normal) or `expected` (rare 0-ms observation).
     planner = load_script("build_playwright_shards")
     baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
     payload = json.loads(baseline.read_text())
     zero_tests = [test for test in payload["tests"] if test["durationMs"] == 0]
 
+    # Ensure there's something to check — if a future baseline refresh
+    # produces a run with zero skipped/0-ms entries, the `all(...)` below
+    # would pass vacuously without exercising the filter. Fail loudly
+    # instead so whoever refreshed the baseline knows to either construct
+    # a synthetic fixture or convert this to a synthetic test.
+    assert zero_tests, (
+        "checked-in baseline has no zero-duration entries; this test can "
+        "no longer exercise the load_history filter path against real data"
+    )
+
     weights, _ = planner.load_history([baseline])
 
-    assert any(test["outcome"] == "expected" for test in zero_tests)
     assert all(test["id"] not in weights for test in zero_tests)
 
 

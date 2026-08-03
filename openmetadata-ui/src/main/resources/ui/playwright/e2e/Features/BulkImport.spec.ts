@@ -147,7 +147,7 @@ const storedProcedureDetails = {
   glossary: glossaryDetails,
 };
 
-test.describe('Bulk Import Export', () => {
+test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 

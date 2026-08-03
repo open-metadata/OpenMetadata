@@ -658,8 +658,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         Called by the source after ``expand_entries`` so both literal
         and expanded entries are filtered uniformly.
         """
-        from metadata.utils.filters import filter_by_container  # noqa: PLC0415
-        from metadata.utils.storage_utils import is_excluded_artifact  # noqa: PLC0415
+        from metadata.utils.filters import filter_by_container
+        from metadata.utils.storage_utils import is_excluded_artifact
 
         pattern = getattr(self.source_config, "containerFilterPattern", None)
         filtered: List[MetadataEntry] = []  # noqa: UP006
