@@ -252,8 +252,7 @@ export const assignDomainWidget = async (
 ) => {
   const addBtn = page.getByTestId('add-domain');
   const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAvailableWidgetAction(addBtn, editBtn);
   await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
@@ -298,8 +297,7 @@ export const removeDomainWidget = async (
 ) => {
   const addBtn = page.getByTestId('add-domain');
   const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAvailableWidgetAction(addBtn, editBtn);
   await waitForAllLoadersToDisappear(page);
 
   await page
