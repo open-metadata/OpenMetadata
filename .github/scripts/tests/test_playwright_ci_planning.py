@@ -368,6 +368,16 @@ def test_versioned_baseline_omits_all_zero_ids_from_weights():
     payload = json.loads(baseline.read_text())
     zero_tests = [test for test in payload["tests"] if test["durationMs"] == 0]
 
+    # Ensure there's something to check — if a future baseline refresh
+    # produces a run with zero skipped/0-ms entries, the `all(...)` below
+    # would pass vacuously without exercising the filter. Fail loudly
+    # instead so whoever refreshed the baseline knows to either construct
+    # a synthetic fixture or convert this to a synthetic test.
+    assert zero_tests, (
+        "checked-in baseline has no zero-duration entries; this test can "
+        "no longer exercise the load_history filter path against real data"
+    )
+
     weights, _ = planner.load_history([baseline])
 
     assert all(test["id"] not in weights for test in zero_tests)
