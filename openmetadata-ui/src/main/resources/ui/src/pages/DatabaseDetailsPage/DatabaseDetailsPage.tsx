@@ -162,9 +162,12 @@ const DatabaseDetails: FunctionComponent = () => {
   } = useQuery({
     queryKey: databaseCacheKey,
     queryFn: databaseQueryFn(decodedDatabaseFQN, DATABASE_DEFAULT_FIELDS),
-    enabled: Boolean(
-      decodedDatabaseFQN && hasViewBasicPermission && !permissionsLoading
-    ),
+    // Fire the database fetch in parallel with the permission fetch rather than
+    // gating it on permission — this removes a serial round-trip on page mount.
+    // A no-permission user's speculative GET 403s and is handled below (the
+    // inline PERMISSION placeholder), so the extra request replaces a
+    // guaranteed extra RTT instead of adding one.
+    enabled: Boolean(decodedDatabaseFQN),
   });
 
   const isError = useMemo(() => Boolean(databaseError), [databaseError]);
@@ -172,7 +175,14 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     const status = (databaseError as AxiosError | undefined)?.response?.status;
     if (status === ClientErrors.FORBIDDEN) {
-      navigate(ROUTES.FORBIDDEN, { replace: true });
+      // Only redirect on a genuine permission desync — i.e. we believe the user
+      // has view access but the backend still denied the GET. A plain
+      // no-permission user (hasViewBasicPermission false) falls through to the
+      // inline PERMISSION placeholder in render, preserving the prior UX now
+      // that the GET fires speculatively in parallel with the permission fetch.
+      if (hasViewBasicPermission) {
+        navigate(ROUTES.FORBIDDEN, { replace: true });
+      }
     } else if (status && status !== 404) {
       showErrorToast(
         databaseError as AxiosError,
@@ -182,7 +192,7 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
     }
-  }, [databaseError, navigate, decodedDatabaseFQN, t]);
+  }, [databaseError, navigate, decodedDatabaseFQN, t, hasViewBasicPermission]);
 
   const setDatabase = useCallback(
     (
@@ -653,14 +663,10 @@ const DatabaseDetails: FunctionComponent = () => {
     return <PageLoader />;
   }
 
-  if (isError) {
-    return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
-      </ErrorPlaceHolder>
-    );
-  }
-
+  // Permission is checked before the error state: now that the database GET
+  // fires in parallel with the permission fetch, a no-permission user's GET
+  // 403s and would otherwise fall into the generic error placeholder. Showing
+  // the PERMISSION placeholder first preserves the prior no-permission UX.
   if (!hasViewBasicPermission) {
     return (
       <ErrorPlaceHolder
@@ -670,6 +676,14 @@ const DatabaseDetails: FunctionComponent = () => {
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
+      </ErrorPlaceHolder>
     );
   }
 

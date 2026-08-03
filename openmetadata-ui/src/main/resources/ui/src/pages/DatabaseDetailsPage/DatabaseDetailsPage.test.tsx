@@ -15,12 +15,23 @@ import { findByTestId, findByText } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../rest/databaseAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import DatabaseDetailsPage from './DatabaseDetailsPage';
+
+const FULL_PERMISSION = {
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
 
 const mockDatabase = {
   id: 'b705cc69-55fd-4338-aa45-86f34b655ae6',
@@ -394,5 +405,39 @@ describe('Test DatabaseDetails page', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('Should show the permission placeholder (not the generic error or a forbidden redirect) and still fire the database fetch in parallel when the user lacks view permission', async () => {
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermissionByFqn: jest.fn().mockReturnValue({
+        ...FULL_PERMISSION,
+        ViewAll: false,
+        ViewBasic: false,
+      }),
+    });
+
+    try {
+      const { container } = renderWithQueryClient(
+        <MemoryRouter>
+          <DatabaseDetailsPage />
+        </MemoryRouter>
+      );
+
+      const permissionPlaceholder = await findByTestId(
+        container,
+        'permission-error-placeholder'
+      );
+
+      expect(permissionPlaceholder).toBeInTheDocument();
+      // The database GET is fired in parallel with the permission fetch — it is
+      // no longer gated on permission, so it runs even for a no-permission user.
+      expect(getDatabaseDetailsByFQN).toHaveBeenCalled();
+    } finally {
+      // Restore the default full-permission mock (clearMocks keeps
+      // implementations, so this override would otherwise leak to later tests).
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        getEntityPermissionByFqn: jest.fn().mockReturnValue(FULL_PERMISSION),
+      });
+    }
   });
 });
