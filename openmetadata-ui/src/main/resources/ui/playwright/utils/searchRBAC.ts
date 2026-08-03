@@ -169,7 +169,8 @@ export const enableDisableSearchRBAC = async (
 export const searchForEntityShouldWork = async (
   fqn: string,
   displayName: string,
-  page: Page
+  page: Page,
+  entityName: string
 ) => {
   // Wait for welcome screen and close it if visible
   const isWelcomeScreenVisible = await page
@@ -191,6 +192,8 @@ export const searchForEntityShouldWork = async (
   await page.getByTestId('searchBox').press('Enter');
   await searchResponse;
 
+  await waitForAllLoadersToDisappear(page);
+  await page.getByRole('menuitem').filter({ hasText: entityName }).click();
   await waitForAllLoadersToDisappear(page);
 
   await expect(
