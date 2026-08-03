@@ -620,6 +620,23 @@ class SemanticSearchToolTest {
   }
 
   @Test
+  void testEveryFilterKeyTheQueryBuilderHandlesIsAccepted() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(new VectorSearchResponse(10L, Collections.emptyList()));
+
+    // Validation must not reject a filter the engine understands. These two are not in the tool
+    // schema but VectorSearchQueryBuilder has switch arms for them.
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "anything");
+    params.put("filters", Map.of("parentId", List.of("abc"), "primaryEntityId", List.of("def")));
+
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    assertNull(result.get("error"));
+  }
+
+  @Test
   void testTopLevelMetricFacetIsRejectedToo() throws Exception {
     Map<String, Object> params = new HashMap<>();
     params.put("query", "active users");

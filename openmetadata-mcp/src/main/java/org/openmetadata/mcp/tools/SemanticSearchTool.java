@@ -47,6 +47,8 @@ public class SemanticSearchTool implements McpTool {
           "certification",
           "database",
           "databaseSchema",
+          "primaryEntityId",
+          "parentId",
           "metricType",
           "granularity",
           "unitOfMeasurement");
