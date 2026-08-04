@@ -45,7 +45,7 @@ def _get_connection_class_from_spec(
     Helper method to get the connection class from the connection spec.
     Returns the connection class if successful, None otherwise.
     """
-    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel
         BaseSpec,
         import_connection_class,
     )

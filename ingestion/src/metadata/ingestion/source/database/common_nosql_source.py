@@ -260,7 +260,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         Method to return all columns of a table
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         df = pd.DataFrame.from_records(list(self.get_table_columns_dict(schema_name, table_name)))
         column_parser = DataFrameColumnParser.create(df)
