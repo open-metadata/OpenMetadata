@@ -477,10 +477,11 @@ const handlePropertyValueInput = async (
     await fillPropertyValue(inputElement, stringValue);
 
     if (MULTISELECT_OPERATORS.includes(operator)) {
-      // react-aria MultiSelect commits the FOCUSED option on Enter — focus
-      // the first filtered option first (antd committed the typed text).
-      await page.keyboard.press('ArrowDown');
-      await page.keyboard.press('Enter');
+      await page
+        .locator('[role="listbox"]:visible')
+        .getByRole('option', { name: String(value), exact: true })
+        .first()
+        .click();
     } else if (
       ((operator === 'equal' || operator === 'not_equal') &&
         propertyType === 'dateTime-cp') ||
@@ -584,28 +585,37 @@ export const verifySearchResults = async (
 
   if (shouldBeVisible) {
     if (!(await dashboardCard.isVisible())) {
-      await expect
-        .poll(
-          async () => {
-            const retryResponse = await page.request.get(response.url());
+      // Re-query the backend through an authenticated context. `page.request`
+      // shares cookies but NOT the app's `Authorization: Bearer <JWT>` header,
+      // so re-fetching the search URL with it returns 401 "Token not present"
+      // and the poll would never resolve. getApiContext attaches the token.
+      const { apiContext, afterAction } = await getApiContext(page);
+      try {
+        await expect
+          .poll(
+            async () => {
+              const retryResponse = await apiContext.get(response.url());
 
-            if (!retryResponse.ok()) {
-              return false;
+              if (!retryResponse.ok()) {
+                return false;
+              }
+
+              const searchData =
+                (await retryResponse.json()) as SearchResponseData;
+
+              return searchData.hits.hits.some(
+                (hit) => hit._source?.fullyQualifiedName === dashboardFQN
+              );
+            },
+            {
+              intervals: [1000, 2000, 5000],
+              timeout: 30000,
             }
-
-            const searchData =
-              (await retryResponse.json()) as SearchResponseData;
-
-            return searchData.hits.hits.some(
-              (hit) => hit._source?.fullyQualifiedName === dashboardFQN
-            );
-          },
-          {
-            intervals: [1000, 2000, 5000],
-            timeout: 30000,
-          }
-        )
-        .toBe(true);
+          )
+          .toBe(true);
+      } finally {
+        await afterAction();
+      }
 
       await showAdvancedSearchDialog(page);
       const retrySearchResponse = page.waitForResponse(searchResponsePattern);

@@ -220,11 +220,16 @@ export const selectOption = async (
     if (!listboxId) {
       throw new Error('Combobox popup did not open (aria-controls not set)');
     }
-    await page
+    const option = page
       .locator(`[role="listbox"][id="${listboxId}"]`)
       .getByRole('option', { name: optionTitle, exact: true })
-      .first()
-      .click({ timeout: 2000 });
+      .first();
+    if (isSearchable && (await option.count()) === 0) {
+      await comboboxInput.fill('');
+      await comboboxInput.fill(optionTitle);
+      throw new Error(`Option "${optionTitle}" not present yet; re-searched`);
+    }
+    await option.click({ timeout: 2000 });
   }).toPass({ timeout: 30000 });
 
   // Close the popup if the click didn't: re-selecting the current value emits
