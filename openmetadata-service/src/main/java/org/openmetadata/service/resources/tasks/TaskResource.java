@@ -1107,13 +1107,21 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     validateTaskCanBeResolved(task);
 
-    // Use TaskWorkflowHandler to resolve the task and apply entity changes
+    // Use TaskWorkflowHandler to resolve the task and apply entity changes. The strict-transition
+    // validation only fires when the caller explicitly named a transitionId — legacy callers that
+    // pass resolutionType alone stay on the workflow handler's positive/negative default path (used
+    // heavily by generic-workflow ITs and the recognizer-feedback flow). H1 still rejects the
+    // empty-body exploit below via requireExplicitResolveIntent.
+    String requestedTransitionId = resolveTask.getTransitionId();
+    requireExplicitResolveIntent(task, requestedTransitionId, resolveTask.getResolutionType());
     String transitionId =
-        resolveTask.getTransitionId() != null
-            ? resolveTask.getTransitionId()
+        requestedTransitionId != null
+            ? requestedTransitionId
             : TaskWorkflowLifecycleResolver.defaultTransitionId(
                 task, resolveTask.getResolutionType());
-    validateTransition(task, transitionId, resolveTask.getResolutionType());
+    if (requestedTransitionId != null) {
+      validateTransition(task, requestedTransitionId, resolveTask.getResolutionType());
+    }
     String newValue = resolveTask.getNewValue();
     Object resolvedPayload = resolveTask.getPayload();
     String comment = resolveTask.getComment();
@@ -1590,10 +1598,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       final Task task,
       final String transitionId,
       final TaskResolutionType requestedResolutionType) {
-    if (transitionId == null || transitionId.isBlank()) {
-      throw BadRequestException.of(
-          "Task '%s' resolve requires a transitionId.".formatted(task.getId()));
-    }
     final TaskAvailableTransition transition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
     if (transition == null) {
@@ -1607,6 +1611,26 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       throw BadRequestException.of(
           "Transition '%s' resolves as '%s'; resolutionType '%s' conflicts."
               .formatted(transitionId, declared, requestedResolutionType));
+    }
+  }
+
+  /**
+   * Reject an empty resolve body ({@code POST /resolve} with no {@code transitionId} and no
+   * {@code resolutionType}) — that used to fall through to the workflow handler's positive default
+   * and silently approve. Any caller must state intent by naming a transition or a resolutionType;
+   * the workflow handler still picks the concrete transition when only resolutionType is supplied
+   * so legacy generic-workflow callers keep working.
+   */
+  private void requireExplicitResolveIntent(
+      final Task task,
+      final String requestedTransitionId,
+      final TaskResolutionType requestedResolutionType) {
+    boolean anyIntent =
+        (requestedTransitionId != null && !requestedTransitionId.isBlank())
+            || requestedResolutionType != null;
+    if (!anyIntent) {
+      throw BadRequestException.of(
+          "Task '%s' resolve requires a transitionId or resolutionType.".formatted(task.getId()));
     }
   }
 
@@ -1685,7 +1709,18 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   private void rejectRestrictedPatchOp(final Task task, final JsonObject op) {
     final String rawPath = op.containsKey("path") ? op.getString("path", "") : "";
-    if (rawPath.isEmpty()) {
+    checkRestrictedTarget(task, rawPath);
+    // move/copy operations carry a second pointer that names the SOURCE. A restricted
+    // source is just as unsafe as a restricted target — {"op":"move","from":"/payload/x",
+    // "path":"/foo"} would silently strip a field out of the frozen payload while the
+    // target /foo doesn't touch any restricted top-level. Check both.
+    if (op.containsKey("from")) {
+      checkRestrictedTarget(task, op.getString("from", ""));
+    }
+  }
+
+  private void checkRestrictedTarget(final Task task, final String rawPath) {
+    if (rawPath == null || rawPath.isEmpty()) {
       return;
     }
     final String topLevel = topLevelField(rawPath);

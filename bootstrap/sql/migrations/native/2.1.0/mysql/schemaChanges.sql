@@ -41,6 +41,42 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
 -- (validateNoDuplicateActiveDataAccessRequest), but concurrent creates read null from the
 -- SELECT and both INSERT succeed — a classic TOCTOU that lets the same user file duplicate
 -- active DARs on the same table (report H8, verified against the /api/v1/tasks endpoint).
+-- Pre-existing duplicates from that same bug would abort the ADD UNIQUE INDEX below on any
+-- upgraded environment, so cancel every not-newest active DAR per (creator, target) first.
+-- Uses JSON_MERGE_PATCH so the JSON generated columns are recomputed from the updated blob.
+UPDATE task_entity t
+JOIN (
+  SELECT
+    id,
+    ROW_NUMBER() OVER (
+      PARTITION BY
+        JSON_UNQUOTE(JSON_EXTRACT(json, '$.createdById')),
+        JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash'))
+      ORDER BY
+        CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.createdAt')) AS UNSIGNED) DESC,
+        id DESC
+    ) AS collision_rank
+  FROM task_entity
+  WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.type')) = 'DataAccessRequest'
+    AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status'))
+        IN ('Open', 'Approved', 'Granted', 'InProgress', 'ManualRevoke', 'Pending')
+    AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.createdById')) IS NOT NULL
+    AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) IS NOT NULL
+) ranked ON t.id = ranked.id
+SET t.json = JSON_MERGE_PATCH(
+  t.json,
+  JSON_OBJECT(
+    'status', 'Cancelled',
+    'resolution', JSON_OBJECT(
+      'type', 'Cancelled',
+      'comment', 'Auto-cancelled during 2.1.0 upgrade: superseded by a newer active DAR.',
+      'resolvedAt', UNIX_TIMESTAMP() * 1000
+    ),
+    'updatedAt', UNIX_TIMESTAMP() * 1000
+  )
+)
+WHERE ranked.collision_rank > 1;
+
 -- MySQL has no partial indexes, so we compute a virtual generated column that is non-null
 -- only for active DARs and unique-index that. MySQL treats multiple NULLs as distinct, so
 -- terminal rows do not collide.

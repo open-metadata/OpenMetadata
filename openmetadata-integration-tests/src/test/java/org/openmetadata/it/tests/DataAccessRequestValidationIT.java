@@ -25,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
@@ -750,37 +754,58 @@ public class DataAccessRequestValidationIT {
    * INSERTs wins and the losers surface as 400 duplicate-request errors.
    */
   @Test
-  void testDarCreate_concurrentBySameUser_onlyOneWins(TestNamespace ns) {
+  void testDarCreate_concurrentBySameUser_onlyOneWins(TestNamespace ns) throws Exception {
     Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
     String tableFqn = table.getFullyQualifiedName();
     int parallelism = 5;
 
+    // Fixed-size pool + a CyclicBarrier so all threads block on await() and are then released at
+    // the same instant. CompletableFuture.runAsync uses the common ForkJoinPool whose parallelism
+    // is derived from available processors, so on low-core CI agents the create attempts run
+    // effectively serially — the application-level SELECT-then-INSERT check would rule the win
+    // and the DB-index race we're validating never happens. Explicit barrier removes that.
+    ExecutorService pool = Executors.newFixedThreadPool(parallelism);
+    CyclicBarrier startGate = new CyclicBarrier(parallelism);
     AtomicInteger successes = new AtomicInteger();
     AtomicInteger duplicates = new AtomicInteger();
-    List<CompletableFuture<Void>> attempts =
-        java.util.stream.IntStream.range(0, parallelism)
-            .mapToObj(
-                i ->
-                    CompletableFuture.runAsync(
-                        () -> {
-                          try {
-                            createDataAccessRequest(
-                                SdkClients.user1Client(),
-                                ns,
-                                "table",
-                                tableFqn,
-                                dataAccessPayload("FullAccess"));
-                            successes.incrementAndGet();
-                          } catch (InvalidRequestException expected) {
-                            if (expected.getMessage().contains("already exists")) {
-                              duplicates.incrementAndGet();
-                            } else {
-                              throw expected;
+    try {
+      List<CompletableFuture<Void>> attempts =
+          java.util.stream.IntStream.range(0, parallelism)
+              .mapToObj(
+                  i ->
+                      CompletableFuture.runAsync(
+                          () -> {
+                            try {
+                              startGate.await();
+                              createDataAccessRequest(
+                                  SdkClients.user1Client(),
+                                  ns,
+                                  "table",
+                                  tableFqn,
+                                  dataAccessPayload("FullAccess"));
+                              successes.incrementAndGet();
+                            } catch (InvalidRequestException expected) {
+                              if (expected.getMessage().contains("already exists")) {
+                                duplicates.incrementAndGet();
+                              } else {
+                                throw expected;
+                              }
+                            } catch (InterruptedException interrupted) {
+                              Thread.currentThread().interrupt();
+                              throw new RuntimeException(interrupted);
+                            } catch (java.util.concurrent.BrokenBarrierException broken) {
+                              throw new RuntimeException(broken);
                             }
-                          }
-                        }))
-            .collect(Collectors.toList());
-    CompletableFuture.allOf(attempts.toArray(new CompletableFuture[0])).join();
+                          },
+                          pool))
+              .collect(Collectors.toList());
+      CompletableFuture.allOf(attempts.toArray(new CompletableFuture[0])).join();
+    } finally {
+      pool.shutdown();
+      if (!pool.awaitTermination(30, TimeUnit.SECONDS)) {
+        pool.shutdownNow();
+      }
+    }
 
     assertEquals(
         1,

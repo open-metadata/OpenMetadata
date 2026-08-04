@@ -366,10 +366,14 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
-    // Both checks re-run on PATCH/PUT so a client can't work around them by first creating a
-    // benign task and then editing the payload (past expiration date, M7) or the target entity
-    // (bypassing "one active DAR per user per entity", H6).
-    TaskFieldValidator.validateDataAccessRequestExpiry(task);
+    // Duplicate check re-runs on PATCH/PUT so an existing task can't be repointed at an entity
+    // that already has an active DAR (H6). Expiry future-check stays create-only: a task that
+    // sat in Open past its own deadline (H7 gray-zone) must still be editable by its filer up
+    // until close; the JSON-schema bound on expirationDate plus the "payload frozen after Open"
+    // patch guard together stop the year-9999 / Infinity / past-date exploits on PATCH.
+    if (!update) {
+      TaskFieldValidator.validateDataAccessRequestExpiry(task);
+    }
     validateNoDuplicateActiveDataAccessRequest(task);
 
     // Compute aboutFqnHash for efficient querying by target entity FQN

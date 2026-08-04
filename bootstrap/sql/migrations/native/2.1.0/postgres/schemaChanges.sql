@@ -41,9 +41,46 @@ CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
 -- (validateNoDuplicateActiveDataAccessRequest), but concurrent creates read null from the
 -- SELECT and both INSERT succeed — a classic TOCTOU that lets the same user file duplicate
 -- active DARs on the same table (report H8, verified against the /api/v1/tasks endpoint).
--- A partial unique index closes the race: two parallel INSERTs collide at the DB, the losing
--- one raises a unique-constraint violation, and TaskRepository maps it back to the same
--- IllegalArgumentException as the pre-check so callers see one consistent 400.
+-- Pre-existing duplicates are the exact rows the H8 bug produced, so before creating the
+-- unique index we cancel every not-newest active DAR per (createdbyid, aboutfqnhash). The
+-- newest wins; the losers become Cancelled with an audit-friendly resolution reason. Without
+-- this step CREATE UNIQUE INDEX aborts on databases that already carry colliding rows and
+-- the whole 2.1.0 upgrade fails.
+WITH ranked_active_dars AS (
+  SELECT
+    id,
+    ROW_NUMBER() OVER (
+      PARTITION BY createdbyid, aboutfqnhash
+      ORDER BY createdat DESC, id DESC
+    ) AS collision_rank
+  FROM task_entity
+  WHERE type = 'DataAccessRequest'
+    AND status IN ('Open', 'Approved', 'Granted', 'InProgress', 'ManualRevoke', 'Pending')
+    AND createdbyid IS NOT NULL
+    AND aboutfqnhash IS NOT NULL
+), collide AS (
+  SELECT id FROM ranked_active_dars WHERE collision_rank > 1
+)
+UPDATE task_entity
+SET json = jsonb_set(
+  jsonb_set(
+    jsonb_set(
+      json,
+      '{status}',
+      to_jsonb('Cancelled'::text)
+    ),
+    '{resolution}',
+    jsonb_build_object(
+      'type', 'Cancelled',
+      'comment', 'Auto-cancelled during 2.1.0 upgrade: superseded by a newer active DAR.',
+      'resolvedAt', (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint
+    )
+  ),
+  '{updatedAt}',
+  to_jsonb((EXTRACT(EPOCH FROM NOW()) * 1000)::bigint)
+)
+WHERE id IN (SELECT id FROM collide);
+
 CREATE UNIQUE INDEX IF NOT EXISTS uk_task_active_dar_creator_target
   ON task_entity (createdbyid, aboutfqnhash)
   WHERE type = 'DataAccessRequest'
