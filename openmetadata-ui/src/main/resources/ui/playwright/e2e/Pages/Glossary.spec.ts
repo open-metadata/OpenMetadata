@@ -1968,7 +1968,6 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  // Need to fix the workflow from BE end, as it constantly failing in the AUT's
   test('Term should stay approved when changes made by reviewer', async ({
     browser,
   }) => {
