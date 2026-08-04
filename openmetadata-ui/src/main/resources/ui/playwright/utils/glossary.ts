@@ -88,9 +88,15 @@ type GlossaryApprovalSnapshot = {
   instances: GlossaryApprovalInstance[];
 };
 
+// A term gets one instance per Created/Updated event, so a handful at most in these tests. The cap
+// keeps the per-poll fan-out bounded; instances come back newest first, so the ones that matter are
+// never the ones dropped.
+const APPROVAL_INSTANCE_LIMIT = 10;
+
 /**
- * Read every GlossaryTermApprovalWorkflow instance for a term together with each instance's stages,
- * newest first, so callers can assert against the whole set instead of a single row.
+ * Read the most recent GlossaryTermApprovalWorkflow instances for a term - newest first, at most
+ * APPROVAL_INSTANCE_LIMIT of them - together with every stage of each, so callers can assert
+ * against the whole set instead of a single row.
  */
 export const getGlossaryApprovalWorkflowSnapshot = async (
   apiContext: APIRequestContext,
@@ -107,7 +113,7 @@ export const getGlossaryApprovalWorkflowSnapshot = async (
   // term - task workflows included - whose states live under a different definition hash and so
   // read back empty.
   const instancesResponse = await apiContext.get(
-    `/api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowDefinitionName=${GLOSSARY_TERM_APPROVAL_WORKFLOW}&limit=10`
+    `/api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowDefinitionName=${GLOSSARY_TERM_APPROVAL_WORKFLOW}&limit=${APPROVAL_INSTANCE_LIMIT}`
   );
 
   if (!instancesResponse.ok()) {
