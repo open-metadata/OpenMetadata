@@ -273,6 +273,25 @@ class ConversationResourceIT {
   }
 
   @Test
+  void testRootPatchPreservesReactions(TestNamespace ns) throws Exception {
+    Conversation conversation =
+        createConversation(entityLink(createTestTable(ns, "patch-reactions")), "Original root");
+    putRootReaction(SdkClients.adminClient(), conversation.getId(), ReactionType.HEART);
+
+    Conversation patchedMessage =
+        patchConversation(conversation.getId(), patch("/message", "Updated root"));
+    assertEquals("Updated root", patchedMessage.getMessage());
+    assertEquals(1, patchedMessage.getReactions().size());
+    assertEquals(ReactionType.HEART, patchedMessage.getReactions().getFirst().getReactionType());
+
+    Conversation patchedResolved =
+        patchConversation(conversation.getId(), patch("/resolved", true));
+    assertTrue(patchedResolved.getResolved());
+    assertEquals(1, patchedResolved.getReactions().size());
+    assertEquals(ReactionType.HEART, patchedResolved.getReactions().getFirst().getReactionType());
+  }
+
+  @Test
   void testConcurrentRepliesDoNotLoseRowsOrCounters(TestNamespace ns) throws Exception {
     Conversation conversation =
         createConversation(entityLink(createTestTable(ns, "concurrent")), "Concurrent root");

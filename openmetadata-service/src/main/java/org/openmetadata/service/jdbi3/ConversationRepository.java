@@ -144,8 +144,8 @@ public class ConversationRepository {
     }
     hydrate(conversations, EMBEDDED_REPLY_LIMIT);
     conversations.forEach(conversation -> withHref(uriInfo, conversation));
-    int total =
-        conversationDAO.count(filter.build(false).condition(), filter.build(false).params());
+    ConversationFilter.Sql countSql = filter.build(false);
+    int total = conversationDAO.count(countSql.condition(), countSql.params());
     return rootResult(conversations, before, after, hasMore, total);
   }
 
@@ -1285,7 +1285,7 @@ public class ConversationRepository {
         .withCreatedAt(original.getCreatedAt())
         .withReplyCount(original.getReplyCount())
         .withReplies(List.of())
-        .withReactions(null)
+        .withReactions(original.getReactions())
         .withImpersonatedBy(original.getImpersonatedBy());
   }
 
