@@ -26,6 +26,7 @@ import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import omPlaywright from './playwright/eslint-rules/index.js';
 
 export default [
   // Base recommended configs
@@ -435,6 +436,7 @@ export default [
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
     plugins: {
       playwright,
+      'om-playwright': omPlaywright,
     },
     rules: {
       // TypeScript/base rule overrides for Playwright files
@@ -510,6 +512,22 @@ export default [
       'playwright/no-force-option': 'error',
       'playwright/no-skipped-test': 'error',
       'playwright/no-wait-for-selector': 'error',
+    },
+  },
+
+  // Local ESLint plugin (playwright/eslint-rules/**): plain CommonJS, not part
+  // of the TypeScript/ESM playwright test sources above — needs `require`/
+  // `module` as known globals and the ESM-oriented `no-require-imports` rule off.
+  {
+    files: ['playwright/eslint-rules/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 

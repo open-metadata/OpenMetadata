@@ -47,6 +47,7 @@
     "lint:playwright": "yarn lint:base './playwright/**/*.{ts,tsx,js,jsx}'",
     "lint:playwright:full": "yarn lint:base './playwright/**/*.{ts,tsx,js,jsx}' --suppressions-location eslint-suppressions.json",
     "lint:playwright:suppressions": "yarn lint:playwright:full --prune-suppressions",
+    "test:eslint-rules": "node --test 'playwright/eslint-rules/tests/**/*.test.js'",
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",
     "pretty": "yarn pretty:base . --write",
     "pretty:src": "yarn pretty:base './src/**/*.{js,jsx,ts,tsx,json}' --write",
