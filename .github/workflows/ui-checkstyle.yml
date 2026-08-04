@@ -102,6 +102,8 @@ jobs:
       app_docs_changed_files: ${{ steps.app_docs.outputs.changed_files }}
       lint_playwright_result: ${{ steps.lint_playwright.outcome }}
       lint_playwright_changed_files: ${{ steps.lint_playwright.outputs.changed_files }}
+      lint_playwright_suppressions_result: ${{ steps.lint_playwright_suppressions.outcome }}
+      lint_playwright_suppressions_changed_files: ${{ steps.lint_playwright_suppressions.outputs.changed_files }}
       lint_core_components_result: ${{ steps.lint_core_components.outcome }}
       lint_core_components_changed_files: ${{ steps.lint_core_components.outputs.changed_files }}
       i18n_core_result: ${{ steps.i18n_core.outcome }}
@@ -303,6 +305,25 @@ jobs:
             exit 1
           fi
 
+      - name: Playwright guardrails (full corpus + suppressions ratchet)
+        id: lint_playwright_suppressions
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          # Full corpus, not changed-files-only: --prune-suppressions treats any
+          # unlinted file's suppressions as unused and deletes them, which would
+          # silently un-grandfather every violation in a file this PR didn't touch.
+          if ! { yarn test:eslint-rules && \
+                 yarn lint:playwright:suppressions && \
+                 node scripts/generate-playwright-rule-table.js --check; } > /tmp/pw-guardrails.out 2>&1; then
+            cat /tmp/pw-guardrails.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
       - name: Install Core Components Yarn Packages
         working-directory: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
         run: |
@@ -457,6 +478,12 @@ jobs:
                 files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_changed_files) }} || '',
               },
               {
+                name:    'Playwright Guardrails (rule tests + suppressions ratchet)',
+                reason:  'ESLint rule unit tests failed, a new Playwright guardrail violation was introduced, or the suppression baseline grew, or the generated rule table is stale. Run `yarn test:eslint-rules && yarn lint:playwright:suppressions && node scripts/generate-playwright-rule-table.js --check` in `openmetadata-ui/src/main/resources/ui`.',
+                result:  '${{ needs.checkstyle.outputs.lint_playwright_suppressions_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_suppressions_changed_files) }} || '',
+              },
+              {
                 name:    'Core Components - ESLint + Prettier',
                 reason:  'One or more core-component files have linting or formatting issues.',
                 result:  '${{ needs.checkstyle.outputs.lint_core_components_result }}',
@@ -569,6 +596,7 @@ jobs:
              [ "${{ needs.checkstyle.outputs.i18n_core_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.app_docs_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_playwright_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.lint_playwright_suppressions_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ]; then
