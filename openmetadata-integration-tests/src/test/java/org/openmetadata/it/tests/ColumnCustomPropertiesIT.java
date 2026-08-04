@@ -228,9 +228,7 @@ public class ColumnCustomPropertiesIT {
 
       BulkOperationResult result = client.tables().bulkCreateOrUpdate(List.of(create));
       assertEquals(
-          1,
-          result.getNumberOfRowsPassed(),
-          "bulk create of a single new table should succeed");
+          1, result.getNumberOfRowsPassed(), "bulk create of a single new table should succeed");
 
       Table reloaded =
           client
