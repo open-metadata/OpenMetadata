@@ -38,6 +38,7 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
           i18nKey="message.refer-to-our-doc"
           renderElement={
             <a
+              aria-label={t('label.documentation')}
               href={DATA_INSIGHT_DOCS}
               rel="noreferrer"
               target="_blank"

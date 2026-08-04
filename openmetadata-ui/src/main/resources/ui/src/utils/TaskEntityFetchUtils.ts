@@ -125,7 +125,8 @@ export const getBreadCrumbList = (
   };
 
   switch (entityType) {
-    case EntityType.TABLE: {
+    case EntityType.TABLE:
+    case EntityType.STORED_PROCEDURE: {
       return [
         service(ServiceCategory.DATABASE_SERVICES),
         database,
@@ -171,15 +172,6 @@ export const getBreadCrumbList = (
 
     case EntityType.CONTAINER: {
       return [service(ServiceCategory.STORAGE_SERVICES), activeEntity];
-    }
-
-    case EntityType.STORED_PROCEDURE: {
-      return [
-        service(ServiceCategory.DATABASE_SERVICES),
-        database,
-        databaseSchema,
-        activeEntity,
-      ];
     }
 
     case EntityType.GLOSSARY:

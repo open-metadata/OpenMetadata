@@ -170,6 +170,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       <Col>{entityIcon}</Col>
       <Col flex="1">
         <Select
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required for inline node search
           autoFocus
           showSearch
           className="lineage-node-searchbox"

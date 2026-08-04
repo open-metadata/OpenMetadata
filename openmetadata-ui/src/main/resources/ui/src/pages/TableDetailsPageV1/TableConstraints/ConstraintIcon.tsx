@@ -81,7 +81,7 @@ const ConstraintIcon = ({
       })}
       data-testid={`${constraintType}-icon`}>
       {!showOnlyIcon && (
-        <img className="primary-key-section-line" src={SectionLine} />
+        <img alt="" className="primary-key-section-line" src={SectionLine} />
       )}
       <Tooltip placement="bottom" title={title} trigger="hover">
         <Icon

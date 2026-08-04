@@ -231,6 +231,7 @@ const GlossaryTermTreeSelect: FC<GlossaryTermTreeSelectProps> = ({
       lazyLoad
       multiple
       searchable
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is controlled by the caller via prop
       autoFocus={autoFocus}
       data-testid={dataTestId}
       fetchData={fetchData}

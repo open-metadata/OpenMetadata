@@ -68,6 +68,7 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
 
       return (
         <textarea
+          aria-label="Editor"
           data-testid="editor-textarea"
           ref={textareaRef}
           value={value}

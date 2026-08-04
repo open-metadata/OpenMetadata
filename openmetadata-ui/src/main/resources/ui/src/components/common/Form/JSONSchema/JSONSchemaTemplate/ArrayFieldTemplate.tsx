@@ -27,7 +27,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="d-flex justify-between items-center">
-        <label className="control-label">{title}</label>
+        <span className="control-label">{title}</span>
         {canAdd && (
           <Button
             data-testid={`add-item-${title}`}

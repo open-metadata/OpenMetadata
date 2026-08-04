@@ -81,7 +81,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Input: jest
     .fn()
     .mockImplementation(({ placeholder, value, onChange }) => (
-      <input placeholder={placeholder} value={value} onChange={onChange} />
+      <input
+        aria-label="Search"
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+      />
     )),
   Typography: jest
     .fn()
