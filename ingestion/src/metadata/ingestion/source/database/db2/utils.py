@@ -157,15 +157,15 @@ def install_clidriver(clidriver_version: str) -> None:
     Install the CLI Driver for DB2
     """
     # pylint: disable=import-outside-toplevel
-    import os  # noqa: PLC0415
-    import platform  # noqa: PLC0415
-    import subprocess  # noqa: PLC0415
-    import sys  # noqa: PLC0415
-    from importlib.metadata import (  # noqa: PLC0415
+    import os
+    import platform
+    import subprocess
+    import sys
+    from importlib.metadata import (
         PackageNotFoundError,
         distribution,
     )
-    from urllib.request import URLError, urlopen  # noqa: PLC0415
+    from urllib.request import URLError, urlopen
 
     clidriver_version = f"v{clidriver_version}"
     system = platform.system().lower()

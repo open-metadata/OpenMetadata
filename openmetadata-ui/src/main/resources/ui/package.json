@@ -13,7 +13,9 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build",
+    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build && yarn bundle:check",
+    "analyze": "vite build --mode analyze",
+    "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
@@ -247,6 +249,7 @@
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.37.3",
     "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-sonarjs": "4.2.0",
     "fs-extra": "^10.1.0",
     "i18next-json-sync": "^3.1.2",
     "jest": "^29.7.0",
