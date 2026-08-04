@@ -39,7 +39,7 @@ const DirectoryChildrenTable = withSuspenseFallback(
         '../components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable'
       )
   ),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 export interface DirectoryDetailPageTabProps {

@@ -83,7 +83,7 @@ const SearchIndexFieldsTab = withSuspenseFallback(
         '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab'
       )
   ),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(

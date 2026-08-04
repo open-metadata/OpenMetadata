@@ -78,7 +78,7 @@ import {
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor')),
-  <EntityDetailWidgetSkeleton variant="text" />
+  <EntityDetailWidgetSkeleton />
 );
 
 const ModalWithMarkdownEditor = withSuspenseFallback(

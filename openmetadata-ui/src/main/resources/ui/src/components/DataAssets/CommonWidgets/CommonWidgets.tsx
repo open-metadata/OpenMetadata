@@ -66,13 +66,12 @@ type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
-const LIST_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton variant="list" />;
-const TABLE_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton variant="table" />;
-const TEXT_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton variant="text" />;
+const WIDGET_FALLBACK = <EntityDetailWidgetSkeleton />;
+const LARGE_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton lineCount={5} />;
 
 const CertificationWidget = withSuspenseFallback(
   lazy(() => import('../../common/CertificationWidget/CertificationWidget')),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -83,17 +82,17 @@ const CustomPropertyTable = withSuspenseFallback(
       })
     )
   ),
-  TABLE_WIDGET_FALLBACK
+  LARGE_WIDGET_FALLBACK
 ) as CustomPropertyTableComponent;
 
 const Description = withSuspenseFallback(
   lazy(() => import('../../common/EntityDescription/Description')),
-  TEXT_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const TierWidget = withSuspenseFallback(
   lazy(() => import('../../common/TierWidget/TierWidget')),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const LeftPanelContainer = withSuspenseFallback(
@@ -102,7 +101,7 @@ const LeftPanelContainer = withSuspenseFallback(
       default: m.LeftPanelContainer,
     }))
   ),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const DataProductsContainer = withSuspenseFallback(
@@ -112,7 +111,7 @@ const DataProductsContainer = withSuspenseFallback(
         '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
       )
   ),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const DomainExpertWidget = withSuspenseFallback(
@@ -121,12 +120,12 @@ const DomainExpertWidget = withSuspenseFallback(
       default: m.DomainExpertWidget,
     }))
   ),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const TagsContainerV2 = withSuspenseFallback(
   lazy(() => import('../../Tag/TagsContainerV2/TagsContainerV2')),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const DomainLabelV2 = withSuspenseFallback(
@@ -135,7 +134,7 @@ const DomainLabelV2 = withSuspenseFallback(
       default: m.DomainLabelV2,
     }))
   ),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const OwnerLabelV2 = withSuspenseFallback(
@@ -144,7 +143,7 @@ const OwnerLabelV2 = withSuspenseFallback(
       default: m.OwnerLabelV2,
     }))
   ),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const ReviewerLabelV2 = withSuspenseFallback(
@@ -153,7 +152,7 @@ const ReviewerLabelV2 = withSuspenseFallback(
       default: m.ReviewerLabelV2,
     }))
   ),
-  LIST_WIDGET_FALLBACK
+  WIDGET_FALLBACK
 );
 
 const GlossaryUpdateConfirmationModal = withSuspenseFallback(

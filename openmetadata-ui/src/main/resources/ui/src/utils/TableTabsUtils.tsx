@@ -70,9 +70,7 @@ const CommonWidgets = withSuspenseFallback(
       (module) => ({ default: module.CommonWidgets })
     )
   ),
-  ({ widgetConfig }) => (
-    <EntityDetailWidgetSkeleton widgetKey={widgetConfig.i} />
-  )
+  <EntityDetailWidgetSkeleton />
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -90,7 +88,7 @@ const SchemaTable = withSuspenseFallback(
   lazy(
     () => import('../components/Database/SchemaTable/SchemaTable.component')
   ),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const AssetHealthWidget = withSuspenseFallback(
@@ -148,7 +146,7 @@ const TableConstraints = withSuspenseFallback(
     () =>
       import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
   ),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const KnowledgeGraph = withSuspenseFallback(
@@ -167,7 +165,7 @@ const FrequentlyJoinedTables = withSuspenseFallback(
       '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component'
     ).then((module) => ({ default: module.FrequentlyJoinedTables }))
   ),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const PartitionedKeys = withSuspenseFallback(
@@ -176,7 +174,7 @@ const PartitionedKeys = withSuspenseFallback(
       '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
     ).then((module) => ({ default: module.PartitionedKeys }))
   ),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 export const getTableDetailPageBaseTabs = ({

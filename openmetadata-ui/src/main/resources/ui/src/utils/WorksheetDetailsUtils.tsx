@@ -37,7 +37,7 @@ const WorksheetColumnsTable = withSuspenseFallback(
         '../components/DriveService/Worksheet/WorksheetColumnsTable/WorksheetColumnsTable'
       )
   ),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 export interface WorksheetDetailPageTabProps {

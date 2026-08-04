@@ -24,7 +24,7 @@ import { getAllRowKeysByKeyName } from '../../../utils/TablePureUtils';
 
 const SearchIndexFieldsTable = withSuspenseFallback(
   lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable')),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 function SearchIndexFieldsTab() {

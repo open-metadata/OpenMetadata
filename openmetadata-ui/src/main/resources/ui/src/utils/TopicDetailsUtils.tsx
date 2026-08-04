@@ -61,7 +61,7 @@ const ContractTab = withSuspenseFallback(
 );
 const TopicSchemaFields = withSuspenseFallback(
   lazy(() => import('../components/Topic/TopicSchema/TopicSchema')),
-  <EntityDetailWidgetSkeleton variant="table" />
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 export const getTopicDetailsPageTabs = ({

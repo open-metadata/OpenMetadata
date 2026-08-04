@@ -43,8 +43,7 @@ interface LazyCommonWidgetsProps {
 }
 
 export const LazyCommonWidgets = (props: LazyCommonWidgetsProps) => (
-  <Suspense
-    fallback={<EntityDetailWidgetSkeleton widgetKey={props.widgetConfig.i} />}>
+  <Suspense fallback={<EntityDetailWidgetSkeleton />}>
     <CommonWidgets {...props} />
   </Suspense>
 );

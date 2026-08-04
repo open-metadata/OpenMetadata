@@ -12,64 +12,13 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { DetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 import { EntityDetailWidgetSkeleton } from './EntityDetailWidgetSkeleton.component';
 
 const SKELETON_TEST_ID = 'entity-detail-widget-skeleton';
-const matchMediaMock = window.matchMedia as jest.MockedFunction<
-  typeof window.matchMedia
->;
-
-const getMatchMediaResult = (matches: boolean, media = ''): MediaQueryList => ({
-  matches,
-  media,
-  onchange: null,
-  addListener: jest.fn(),
-  removeListener: jest.fn(),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
-  dispatchEvent: jest.fn(),
-});
 
 describe('EntityDetailWidgetSkeleton', () => {
-  beforeEach(() => {
-    matchMediaMock.mockImplementation((query) =>
-      getMatchMediaResult(false, query)
-    );
-  });
-
-  it('renders a text-shaped skeleton for the description widget', () => {
-    render(
-      <EntityDetailWidgetSkeleton
-        widgetKey={DetailPageWidgetKeys.DESCRIPTION}
-      />
-    );
-
-    expect(screen.getByTestId(SKELETON_TEST_ID)).toHaveAttribute(
-      'data-variant',
-      'text'
-    );
-    expect(screen.getAllByTestId('widget-skeleton-row')).toHaveLength(4);
-  });
-
-  it('renders a table-shaped skeleton for the table schema widget', () => {
-    render(
-      <EntityDetailWidgetSkeleton
-        widgetKey={DetailPageWidgetKeys.TABLE_SCHEMA}
-      />
-    );
-
-    expect(screen.getByTestId(SKELETON_TEST_ID)).toHaveAttribute(
-      'data-variant',
-      'table'
-    );
-    expect(screen.getAllByTestId('widget-skeleton-row')).toHaveLength(5);
-  });
-
-  it('fills the reserved widget container for compact metadata widgets', () => {
-    render(
-      <EntityDetailWidgetSkeleton widgetKey={DetailPageWidgetKeys.DOMAIN} />
-    );
+  it('fills the reserved widget container', () => {
+    render(<EntityDetailWidgetSkeleton />);
 
     expect(screen.getByTestId(SKELETON_TEST_ID)).toHaveClass(
       'tw:h-full',
@@ -77,23 +26,20 @@ describe('EntityDetailWidgetSkeleton', () => {
     );
   });
 
-  it('animates skeletons by default', () => {
-    const { container } = render(
-      <EntityDetailWidgetSkeleton widgetKey={DetailPageWidgetKeys.DOMAIN} />
-    );
+  it('renders two visible animated placeholders', () => {
+    const { container } = render(<EntityDetailWidgetSkeleton />);
+    const placeholders = container.querySelectorAll('.tw\\:animate-pulse');
 
-    expect(container.querySelector('.tw\\:animate-pulse')).toBeInTheDocument();
+    expect(placeholders).toHaveLength(2);
+
+    placeholders.forEach((placeholder) => {
+      expect(placeholder).toHaveStyle({ height: '1.2em' });
+    });
   });
 
-  it('animates skeletons when reduced motion is preferred', () => {
-    matchMediaMock.mockImplementation((query) =>
-      getMatchMediaResult(true, query)
-    );
+  it('supports a custom line count for larger widgets', () => {
+    const { container } = render(<EntityDetailWidgetSkeleton lineCount={5} />);
 
-    const { container } = render(
-      <EntityDetailWidgetSkeleton widgetKey={DetailPageWidgetKeys.DOMAIN} />
-    );
-
-    expect(container.querySelector('.tw\\:animate-pulse')).toBeInTheDocument();
+    expect(container.querySelectorAll('.tw\\:animate-pulse')).toHaveLength(5);
   });
 });

@@ -16,19 +16,14 @@ import Loader from '../common/Loader/Loader';
 
 export const TAB_CONTENT_FALLBACK = <Loader />;
 
-type SuspenseFallback<T> = ReactNode | ((props: T) => ReactNode);
-
 export function withSuspenseFallback<T extends object>(
   Component: ComponentType<T>,
   // Keep embedded/background lazy chunks silent unless a caller opts into visible progress.
-  fallback: SuspenseFallback<T> = null
+  fallback: ReactNode = null
 ) {
   return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
-    const fallbackContent =
-      typeof fallback === 'function' ? fallback(props as T) : fallback;
-
     return (
-      <Suspense fallback={fallbackContent}>
+      <Suspense fallback={fallback}>
         <Component {...(props as T)} ref={ref} />
       </Suspense>
     );
