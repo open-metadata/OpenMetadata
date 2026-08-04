@@ -1,0 +1,124 @@
+{
+  "playwright/e2e/Auth/SSOAuthentication.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 2
+    },
+    "playwright/no-wait-for-timeout": {
+      "count": 19
+    }
+  },
+  "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 1
+    },
+    "playwright/no-wait-for-timeout": {
+      "count": 6
+    }
+  },
+  "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 11
+    }
+  },
+  "playwright/e2e/Features/Tasks.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 3
+    }
+  },
+  "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Http2/SmokeH2.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/DataMarketplace.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 3
+    }
+  },
+  "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/DataMarketplacePermissions.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/TasksUIFlow.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 4
+    }
+  },
+  "playwright/e2e/Pages/TestSuite.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 1
+    }
+  },
+  "playwright/utils/ContextCenterUtil.ts": {
+    "playwright/no-wait-for-timeout": {
+      "count": 2
+    }
+  },
+  "playwright/utils/KnowledgeCenter.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 9
+    },
+    "playwright/no-wait-for-timeout": {
+      "count": 5
+    }
+  },
+  "playwright/utils/activityFeed.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 1
+    }
+  },
+  "playwright/utils/customizeLandingPage.ts": {
+    "playwright/no-wait-for-timeout": {
+      "count": 1
+    }
+  },
+  "playwright/utils/glossary.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 1
+    }
+  },
+  "playwright/utils/reviewerWorkflow.utils.ts": {
+    "playwright/no-wait-for-selector": {
+      "count": 2
+    }
+  },
+  "playwright/utils/taskWorkflow.ts": {
+    "playwright/no-force-option": {
+      "count": 11
+    },
+    "playwright/no-wait-for-selector": {
+      "count": 1
+    }
+  },
+  "playwright/utils/team.ts": {
+    "playwright/no-force-option": {
+      "count": 2
+    }
+  },
+  "playwright/utils/widgetFilters.ts": {
+    "playwright/no-wait-for-timeout": {
+      "count": 3
+    }
+  }
+}
