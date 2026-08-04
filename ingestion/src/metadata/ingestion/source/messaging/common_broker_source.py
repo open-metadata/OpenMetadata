@@ -328,6 +328,5 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         return strip_confluent_framing(bytes(record)).decode("utf-8")
 
     def close(self):
-        if getattr(self, "generate_sample_data", False) and getattr(self, "consumer_client", None):
-            self.consumer_client.close()
+        # The consumer belongs to the connection, which closes it on teardown.
         super().close()
