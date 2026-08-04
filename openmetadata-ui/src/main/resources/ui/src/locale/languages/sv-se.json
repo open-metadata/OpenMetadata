@@ -4315,6 +4315,7 @@
     "validation-error-assets": "Granska alla dina tillgångar som läggs till",
     "value-count-profile-metric-description": "Totalt antal värden i kolumnen",
     "value-must-be-greater-than": "{{field}} måste vara större än {{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} måste vara mindre än eller lika med {{maximum}}",
     "value-should-equal-to-value": "Värdet ska vara lika med {{value}}.",
     "value-should-not-equal-to-value": "Värdet ska inte vara lika med {{value}}.",
     "version-released-try-now": "{{version}} släppt <0>Se vad som är nytt!</0>",

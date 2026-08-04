@@ -4315,6 +4315,7 @@
     "validation-error-assets": "אנא בדוק את כל הנכסים שלך שמתווספים",
     "value-count-profile-metric-description": "מספר סך הערכים בעמודה",
     "value-must-be-greater-than": "{{field}} חייב להיות גדול מ-{{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} חייב להיות קטן מ- או שווה ל-{{maximum}}",
     "value-should-equal-to-value": "הערך צריך להיות שווה ל-{{value}}.",
     "value-should-not-equal-to-value": "הערך לא צריך להיות שווה ל-{{value}}.",
     "version-released-try-now": "{{version}} שוחרר <0>ראה מה חדש!</0>",
