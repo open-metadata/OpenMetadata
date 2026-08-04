@@ -45,11 +45,9 @@ const OMMultiSelectWidget = ({
   listValues,
   asyncFetch,
   useAsyncSearch,
-  field,
 }: MultiSelectWidgetProps) => {
   const valueArray = Array.isArray(value) ? value.map(String) : [];
   const isAsync = Boolean(useAsyncSearch && asyncFetch);
-  const fieldKey = typeof field === 'string' ? field : JSON.stringify(field);
 
   const staticItems = useMemo(
     () => toSelectItems(listValues),
@@ -69,35 +67,50 @@ const OMMultiSelectWidget = ({
     [valueArray.join(','), allItems]
   );
 
-  const requestIdRef = useRef(0);
+  // The search string of the most recent fetch request. A response may only
+  // publish its results if the user is still searching for that exact string,
+  // so a slower or later request — in particular the eager default ('') load
+  // or a transient empty value emitted by react-aria — can never overwrite the
+  // options for what the user has actually typed. Keying on the search string
+  // (rather than a monotonic counter) is what makes this safe: with a counter,
+  // a late '' request has the highest id and wins, repopulating the list with
+  // the unfiltered default catalogue while the input still holds the query.
+  const latestSearchRef = useRef<string | null>(null);
 
   const loadAsync = useCallback(
     async (search: string) => {
       if (!asyncFetch) {
         return;
       }
-      // Guard against out-of-order responses: only the latest request may
-      // set items, otherwise a slow earlier fetch overwrites newer results.
-      const requestId = ++requestIdRef.current;
+      latestSearchRef.current = search;
       const result = await asyncFetch(search);
-      if (requestId === requestIdRef.current) {
-        setAsyncItems(
-          (result.values as ListItem[]).map((item) => ({
-            id: String(item.value),
-            label: String(item.title ?? item.value),
-          }))
-        );
+      if (latestSearchRef.current !== search) {
+        return;
       }
+      setAsyncItems(
+        (result.values as ListItem[]).map((item) => ({
+          id: String(item.value),
+          label: String(item.title ?? item.value),
+        }))
+      );
     },
     [asyncFetch]
   );
 
+  // Seed the default catalogue exactly once when async search activates. Keying
+  // this on the field config (which react-awesome-query-builder rebuilds on
+  // every rule re-render) re-ran the effect mid-interaction, and its
+  // setAsyncItems([]) + loadAsync('') wiped the options the user had just
+  // narrowed to. The value widget remounts when the field itself changes, so a
+  // once-per-mount seed still refreshes for a new field.
+  const didSeedRef = useRef(false);
+
   useEffect(() => {
-    if (isAsync) {
-      setAsyncItems([]);
+    if (isAsync && !didSeedRef.current) {
+      didSeedRef.current = true;
       loadAsync('');
     }
-  }, [fieldKey, isAsync]);
+  }, [isAsync, loadAsync]);
 
   const handleItemInserted = useCallback(
     (key: Key) => {
