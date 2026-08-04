@@ -531,7 +531,7 @@ test.describe('Mention notifications in Notification Box', () => {
           new URL(response.url()).pathname === '/api/v1/conversations' &&
           response.request().method() === 'GET'
       );
-      await user1Page.getByTestId('conversation').click();
+      await user1Page.getByTestId('activity_feed').click();
       await conversationsResponse;
       await waitForAllLoadersToDisappear(user1Page);
 

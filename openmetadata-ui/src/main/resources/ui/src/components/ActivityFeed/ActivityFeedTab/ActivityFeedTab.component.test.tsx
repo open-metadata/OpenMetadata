@@ -166,6 +166,19 @@ describe('ActivityFeedTab', () => {
   });
 
   describe('Bug 1 — feedFilter uses ActivityFeedTabs.MENTIONS enum', () => {
+    it('fetches conversations alongside activity events on the All tab', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() =>
+        expect(mockGetFeedData).toHaveBeenCalledWith(
+          undefined,
+          undefined,
+          EntityType.TABLE,
+          'test.db.table'
+        )
+      );
+    });
+
     it('calls getFeedData with FeedFilter.MENTIONS when mentions tab is active', async () => {
       renderComponent(ActivityFeedTabs.MENTIONS);
 

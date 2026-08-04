@@ -71,7 +71,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
         onChange={(e) => onTextChange(e.target.value)}
       />
       <button
-        data-testid="save-button"
+        data-testid="send-button"
         onClick={() => onSave('edited message')}>
         Save
       </button>
@@ -276,7 +276,7 @@ describe('CommentCard', () => {
         target: { value: 'updated message' },
       });
 
-      fireEvent.click(screen.getByTestId('save-button'));
+      fireEvent.click(screen.getByTestId('send-button'));
 
       await waitFor(() => {
         expect(mockUpdateFeed).toHaveBeenCalled();
@@ -299,7 +299,7 @@ describe('CommentCard', () => {
         expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('save-button'));
+      fireEvent.click(screen.getByTestId('send-button'));
 
       await waitFor(() => {
         expect(screen.queryByTestId('feed-editor')).not.toBeInTheDocument();

@@ -311,7 +311,10 @@ test.describe(
         await firstReplyCard.hover();
         await firstReplyCard.getByTestId('edit-message').click();
 
-        const replyEditor = firstReplyCard.locator(
+        const editingReplyCard = page
+          .getByTestId('feed-reply-card')
+          .filter({ has: page.locator('.is_edit_post') });
+        const replyEditor = editingReplyCard.locator(
           '[data-testid="editor-wrapper"] [contenteditable="true"]'
         );
         await replyEditor.fill(editedFirstReply);
@@ -322,7 +325,7 @@ test.describe(
               .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
             response.request().method() === 'PATCH'
         );
-        await firstReplyCard.getByTestId('save-button').click();
+        await editingReplyCard.getByTestId('send-button').click();
         await editResponse;
 
         const editedReplyCard = page

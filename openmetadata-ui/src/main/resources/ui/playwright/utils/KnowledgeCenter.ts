@@ -394,7 +394,13 @@ export const createMentionInConversation = async (
 
   // Click on Conversations tab
   await page.getByRole('tab', { name: 'Conversations' }).click();
-  await page.waitForSelector('[data-testid="editor-wrapper"]');
+  const editor = page.locator(
+    '[data-testid="editor-wrapper"] [contenteditable="true"]'
+  );
+  if (!(await editor.isVisible())) {
+    await page.getByTestId('add-new-conversation').click();
+  }
+  await expect(editor).toBeVisible();
 
   // Create message with mention
   const messageWithMention = `${message} @${userName}`;
@@ -405,12 +411,8 @@ export const createMentionInConversation = async (
   );
 
   // Type the message with mention
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .click();
-  await page
-    .locator('[data-testid="editor-wrapper"] [contenteditable="true"]')
-    .fill(messageWithMention);
+  await editor.click();
+  await editor.fill(messageWithMention);
 
   await userSuggestionsResponse;
 

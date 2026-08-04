@@ -577,13 +577,12 @@ test.describe('User Profile Feed Interactions', () => {
     const { page, afterAction } = await performUserLogin(browser, user3);
 
     await redirectToHomePage(page);
-    await tableEntity.visitEntityPage(page);
     const conversationsResponse = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === '/api/v1/conversations' &&
         response.request().method() === 'GET'
     );
-    await page.getByTestId('conversation').click();
+    await visitOwnProfilePage(page);
     await conversationsResponse;
 
     await page

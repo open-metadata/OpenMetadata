@@ -326,7 +326,7 @@ export const ActivityFeedTab = ({
       setIsFirstLoad(false);
       if (isTaskActiveTab) {
         getTaskData(feedFilter, after, entityType, fqn, taskFilter);
-      } else if (isMentionTabSelected) {
+      } else {
         getFeedData(feedFilter, after, entityType, fqn);
       }
     },
@@ -338,7 +338,6 @@ export const ActivityFeedTab = ({
       taskFilter,
       getFeedData,
       getTaskData,
-      isMentionTabSelected,
     ]
   );
 
@@ -346,7 +345,7 @@ export const ActivityFeedTab = ({
     if (fqn) {
       if (isTaskActiveTab) {
         getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
-      } else if (isMentionTabSelected) {
+      } else {
         getFeedData(feedFilter, undefined, entityType, fqn);
       }
     }
@@ -359,7 +358,6 @@ export const ActivityFeedTab = ({
     getFeedData,
     getTaskData,
     isTaskActiveTab,
-    isMentionTabSelected,
   ]);
 
   useEffect(() => {
@@ -415,11 +413,19 @@ export const ActivityFeedTab = ({
       if (!feed && (isTaskActiveTab || isMentionTabSelected)) {
         setIsFullWidth(false);
       }
-      if (selectedThread?.id !== feed?.id) {
+      if (selectedActivity || selectedThread?.id !== feed?.id) {
+        setActiveActivity(undefined);
         setActiveThread(feed);
       }
     },
-    [setActiveThread, isTaskActiveTab, isMentionTabSelected, selectedThread]
+    [
+      setActiveActivity,
+      setActiveThread,
+      isTaskActiveTab,
+      isMentionTabSelected,
+      selectedActivity,
+      selectedThread,
+    ]
   );
 
   const handleTaskClick = useCallback(
@@ -817,7 +823,7 @@ export const ActivityFeedTab = ({
             }
             componentsVisibility={componentsVisibility}
             emptyPlaceholderText={placeholderText}
-            feedList={isMentionTabSelected ? entityThread : undefined}
+            feedList={entityThread}
             handlePanelResize={handlePanelResize}
             isForFeedTab={false}
             isFullWidth={isFullWidth}
@@ -835,13 +841,11 @@ export const ActivityFeedTab = ({
           />
         )}
         {!isFirstLoad && loader}
-        {!isEmpty(
-          isTaskActiveTab
-            ? tasks
-            : activeTab === ActivityFeedTabs.ALL
-            ? activityEvents
-            : entityThread
-        ) &&
+        {!(isTaskActiveTab
+          ? isEmpty(tasks)
+          : activeTab === ActivityFeedTabs.ALL
+          ? isEmpty(activityEvents) && isEmpty(entityThread)
+          : isEmpty(entityThread)) &&
           !loading && (
             <div
               className="w-full"
