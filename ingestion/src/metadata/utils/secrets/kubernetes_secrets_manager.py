@@ -64,7 +64,7 @@ def _() -> None:
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
 def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
-    from airflow.configuration import conf  # noqa: PLC0415
+    from airflow.configuration import conf
 
     namespace = conf.get(
         SECRET_MANAGER_AIRFLOW_CONF,
