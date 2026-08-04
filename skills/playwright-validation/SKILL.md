@@ -158,7 +158,7 @@ await expect(page.locator('.class')).not.toBeVisible();
 - [ ] Tests cover both positive and negative scenarios
 - [ ] Tests verify visual indicators (icons, badges, states)
 - [ ] Tests validate API interactions
-- [ ] `yarn lint:playwright` passes with zero errors
+- [ ] `yarn lint:playwright:suppressions` passes with zero errors
 - [ ] No `networkidle`, `page.pause()`, or `test.only()` usage (blocked by ESLint)
 - [ ] Test fixtures are properly created and cleaned up
 - [ ] Test timeouts use `test.slow()` (preferred) or `test.setTimeout()`

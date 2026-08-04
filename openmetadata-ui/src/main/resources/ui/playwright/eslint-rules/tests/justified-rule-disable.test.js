@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-const { RuleTester } = require('eslint');
+const assert = require('node:assert/strict');
+const { test } = require('node:test');
+const { Linter, RuleTester } = require('eslint');
 const rule = require('../justified-rule-disable.js');
 
 // ESLint 9's own linter validates that every rule id referenced in an
@@ -51,5 +53,50 @@ ruleTester.run('justified-rule-disable', rule, {
              const w = 1;`,
       errors: [{ messageId: 'unjustified' }],
     },
+    // A bare `-next-line` directive with no rule list disables every active
+    // rule on the following line, not just playwright rules — always
+    // invalid. (The report lands on the comment, which is on the *prior*
+    // line to the disabled range, so ESLint's own disable-comment filtering
+    // does not swallow it — see the Linter-level test below for the block
+    // form, where it does.)
+    {
+      code: `// eslint-disable-next-line
+             const b = 1;`,
+      errors: [{ messageId: 'blanketDisable' }],
+    },
+    // Design decision: a blanket disable stays invalid even with a
+    // justification. `-- <why>` justifies disabling a *named* rule; it
+    // cannot justify disabling every rule in the file, which is what a bare
+    // directive does regardless of the comment attached to it. A blanket
+    // disable of everything is never acceptable, reasoned or not.
+    {
+      code: `// eslint-disable-next-line -- turning everything off on purpose
+             const c = 1;`,
+      errors: [{ messageId: 'blanketDisable' }],
+    },
   ],
+});
+
+// The bare *block* form, `/* eslint-disable */`, cannot be asserted through
+// RuleTester as an 'invalid' case: ESLint's own disable-comment filtering
+// treats a block-form disable as covering its own line, so it swallows this
+// rule's report about itself before RuleTester (or a real lint run) ever
+// sees it — the same self-referential blind spot documented for
+// `/* eslint-disable om-playwright/justified-rule-disable */` in Fix 2(b) of
+// the review, just via the unnamed form instead of the self-named one. This
+// test pins that ESLint behaviour (zero messages) so a future ESLint upgrade
+// that changes it doesn't silently invalidate the CI-level grep guard that
+// exists precisely because this case can't be caught here.
+test('bare block-form eslint-disable self-suppresses this rule (pinned; enforcement is the CI grep guard, not this rule)', () => {
+  const linter = new Linter();
+  const messages = linter.verify(
+    '/* eslint-disable */\nconst a = 1;',
+    {
+      languageOptions: { ecmaVersion: 2022, sourceType: 'module' },
+      plugins: { 'om-playwright': { rules: { 'justified-rule-disable': rule } } },
+      rules: { 'om-playwright/justified-rule-disable': 'error' },
+    }
+  );
+
+  assert.deepEqual(messages, []);
 });
