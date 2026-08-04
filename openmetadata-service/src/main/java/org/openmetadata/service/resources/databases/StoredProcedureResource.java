@@ -92,6 +92,11 @@ public class StoredProcedureResource
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter stored procedures by database service name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
+      @Parameter(
               description = "Filter stored procedures by database schema",
               schema = @Schema(type = "string", example = "customerDatabaseSchema"))
           @QueryParam("databaseSchema")
@@ -120,6 +125,9 @@ public class StoredProcedureResource
           Include include) {
     ListFilter filter =
         new ListFilter(include).addQueryParam("databaseSchema", databaseSchemaParam);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
