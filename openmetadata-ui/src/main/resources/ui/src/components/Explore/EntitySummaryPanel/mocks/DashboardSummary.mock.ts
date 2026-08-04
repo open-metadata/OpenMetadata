@@ -37,9 +37,11 @@ export const mockDashboardEntityDetails: Dashboard = {
       description: '',
       displayName: 'Are you an ethnic minority in your city?',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
       href: 'http://openmetadata-server:8585/api/v1/charts/eba9c260-4036-4c57-92fe-6c6e3d703bda',
     },
   ],
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
   href: 'http://openmetadata-server:8585/api/v1/dashboards/2edaff89-b1d4-47b6-a081-d72f08e1def9',
   followers: [],
   service: {
@@ -48,6 +50,7 @@ export const mockDashboardEntityDetails: Dashboard = {
     name: 'sample_superset',
     fullyQualifiedName: 'sample_superset',
     deleted: false,
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
     href: 'http://openmetadata-server:8585/api/v1/services/dashboardServices/38ae6d66-7086-4e00-b2d6-cabd2b951993',
   },
   serviceType: DashboardServiceType.Superset,

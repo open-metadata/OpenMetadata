@@ -251,6 +251,7 @@ export const MOCK_TEST_CASE_RESOLUTION_STATUS = [
         'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
       description: 'test the number of column in table is between x and y',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
       href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',
     },
   },
@@ -275,6 +276,7 @@ export const MOCK_TEST_CASE_RESOLUTION_STATUS = [
         'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
       description: 'test the number of column in table is between x and y',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
       href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',
     },
   },
@@ -368,6 +370,7 @@ export const MOCK_TEST_CASE_INCIDENT = {
           'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
         description: 'test the number of column in table is between x and y',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
         href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',
       },
     },
@@ -392,6 +395,7 @@ export const MOCK_TEST_CASE_INCIDENT = {
           'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
         description: 'test the number of column in table is between x and y',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
         href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',
       },
     },

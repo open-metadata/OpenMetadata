@@ -49,6 +49,7 @@ export const mockIngestionPipeline = {
   openMetadataServerConnection: {
     clusterName: 'openmetadata',
     type: 'OpenMetadata',
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     hostPort: 'http://openmetadata-server:8585/api',
     authProvider: 'openmetadata',
     verifySSL: 'no-ssl',

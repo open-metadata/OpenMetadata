@@ -68,6 +68,7 @@ export const mockESIngestionData: IngestionPipeline = {
   openMetadataServerConnection: {
     clusterName: 'sandbox-beta',
     type: OpenmetadataType.OpenMetadata,
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
     hostPort: 'http://openmetadata-server:8585/api',
     authProvider: AuthProvider.Openmetadata,
     verifySSL: VerifySSL.NoSSL,
@@ -116,6 +117,7 @@ export const mockESIngestionData: IngestionPipeline = {
     description: 'Service Used for creating OpenMetadata Ingestion Pipelines.',
     displayName: 'OpenMetadata Service',
     deleted: false,
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/services/databaseServices/d520c9bb-a517-4f1e-8962-d8518de71279',
   },
   pipelineStatuses: {
@@ -128,6 +130,7 @@ export const mockESIngestionData: IngestionPipeline = {
   loggerLevel: LogLevels.Info,
   deployed: true,
   enabled: false,
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
   href: 'http://sandbox-beta.open-metadata.org/api/v1/services/ingestionPipelines/5ff66f1c-9809-4333-836e-ba4dadda11f2',
   version: 0.5,
   updatedAt: 1687854372726,

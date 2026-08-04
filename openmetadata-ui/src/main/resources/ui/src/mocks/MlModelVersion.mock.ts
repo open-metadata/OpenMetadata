@@ -51,6 +51,7 @@ export const mockMlModelDetails = {
             type: 'table',
             fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
             description: '',
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
             href: 'http://openmetadata-server:8585/api/v1/tables/655888c1-6a55-4730-a0a2-f1aa287301e2',
           },
         },
@@ -71,6 +72,7 @@ export const mockMlModelDetails = {
             type: 'table',
             fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
             description: '',
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
             href: 'http://openmetadata-server:8585/api/v1/tables/655888c1-6a55-4730-a0a2-f1aa287301e2',
           },
         },
@@ -116,6 +118,7 @@ export const mockMlModelDetails = {
     storage: 's3://path-to-pickle',
     imageRepository: 'https://docker.hub.com/image',
   },
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a network call
   server: 'http://my-server.ai',
   followers: [],
   tags: [],

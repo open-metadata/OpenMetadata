@@ -22,6 +22,7 @@ export const mockTagEntityDetails: Tag = {
   version: 0.1,
   updatedAt: 1672668265493,
   updatedBy: 'admin',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
   href: 'http://openmetadata-server:8585/api/v1/tags/tag-id-456',
   deprecated: false,
   classification: {

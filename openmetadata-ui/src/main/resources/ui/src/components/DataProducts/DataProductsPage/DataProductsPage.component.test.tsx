@@ -27,6 +27,7 @@ const mockDataProduct: DataProduct = {
   version: 0.1,
   updatedAt: 1234567890,
   updatedBy: 'test-user',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a network call
   href: 'http://test.com',
 };
 

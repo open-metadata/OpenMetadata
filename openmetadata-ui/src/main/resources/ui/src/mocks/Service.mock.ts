@@ -329,6 +329,7 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
       type: MetadataServiceType.Atlas,
       username: 'admin',
       password: '*********',
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock connection URL fixture, not a network call
       hostPort: 'http://ec2-3-15-17-164.us-east-2.compute.amazonaws.com:21000',
       databaseServiceName: ['local_hive_new'],
       messagingServiceName: [],
@@ -348,9 +349,11 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
       fullyQualifiedName: 'mayur',
       displayName: 'Mayur Singal',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/users/7a12b462-36c7-488a-b4c2-9756918704cb',
     },
   ],
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
   href: 'http://sandbox-beta.open-metadata.org/api/v1/services/databaseServices/9b09f404-7713-4f04-b7db-95111bac0c59',
   changeDescription: {
     fieldsAdded: [],

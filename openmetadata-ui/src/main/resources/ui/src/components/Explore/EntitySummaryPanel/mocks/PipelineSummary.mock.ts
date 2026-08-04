@@ -45,6 +45,7 @@ export const mockPipelineEntityDetails: Pipeline = {
     },
   ],
   deleted: false,
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
   href: 'http://openmetadata-server:8585/api/v1/pipelines/b35f7a53-16a9-4ed1-9223-801c3d75674f',
   followers: [],
   tags: [],
@@ -54,6 +55,7 @@ export const mockPipelineEntityDetails: Pipeline = {
     name: 'sample_airflow',
     fullyQualifiedName: 'sample_airflow',
     deleted: false,
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
     href: 'http://openmetadata-server:8585/api/v1/services/pipelineServices/d1c5f7b4-dc61-4336-a4b1-a27e0b97d791',
   },
 };

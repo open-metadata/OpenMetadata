@@ -45,6 +45,7 @@ export const mockMlModelEntityDetails: Mlmodel = {
             fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
             description:
               'The fact table captures the value of products sold or returned.',
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/tables/148e01f8-817a-4094-aa39-970746e3427e',
           },
         },
@@ -67,6 +68,7 @@ export const mockMlModelEntityDetails: Mlmodel = {
             fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_customer',
             description:
               'This is a raw customers table as represented in our online DB. ',
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/tables/e2e27b89-9eda-441f-afe4-3c9b780e9e15',
           },
         },
@@ -81,6 +83,7 @@ export const mockMlModelEntityDetails: Mlmodel = {
             fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_customer',
             description:
               'This is a raw customers table as represented in our online DB. This contains personal.',
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/tables/e2e27b89-9eda-441f-afe4-3c9b780e9e15',
           },
         },
@@ -113,9 +116,11 @@ export const mockMlModelEntityDetails: Mlmodel = {
     id: '43523452345345325423452345',
     type: '',
   },
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   server: 'http://my-server.ai',
   tags: [],
   followers: [],
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://openmetadata-server:8585/api/v1/mlmodels/e42a5d43-36fd-4636-ae89-5bcc6a61542e',
   deleted: false,
 };
@@ -141,6 +146,7 @@ export const mockMlModelEntityDetails1: Mlmodel = {
   },
   tags: [],
   followers: [],
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://openmetadata-server:8585/api/v1/mlmodels/b849cc70-ceda-4f2a-8de2-022a5c7f78a6',
   deleted: false,
 };

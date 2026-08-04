@@ -31,6 +31,7 @@ export const mockDomainEntityDetails: Domain = {
   version: 0.1,
   updatedAt: 1672668265493,
   updatedBy: 'admin',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://openmetadata-server:8585/api/v1/domains/123e4567-e89b-12d3-a456-426614174000',
   owners: [
     {

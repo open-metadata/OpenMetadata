@@ -176,6 +176,7 @@ export const QUICK_LINK_MOCK_DATA = {
   fullyQualifiedName: 'QuickLink_AOJs37ZW',
   displayName: 'OpenMetadata Docs updated',
   description: 'Quick Link for OpenMetadata Website updated.',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://sandbox-beta.open-metadata.org/api/v1/contextCenter/pages/fea97e8c-b2ac-4103-b827-29530d1292ad',
   changeDescription: {
     fieldsAdded: [
@@ -205,6 +206,7 @@ export const QUICK_LINK_MOCK_DATA = {
         'Amundsen is one of the OSS Data Catalogs that was developed by Lyft and was open-sourced in October 2019. It quickly became popular for solving data discovery and data governance challenges. However, in recent years, Amundsen’s development and growth have slowed down considerably. Without an active community and no clear roadmap to address the emerging needs, the users of Amundsen are looking for alternatives in the OSS space.\n\nOpenMetadata is redefining the modern metadata platform with a bold vision. We have built a centralized metadata repository based on metadata specifications and APIs from the ground up. It is the foundation for innovation with several applications, such as Discovery, Collaboration, Governance, Data Quality, and Data Insights going beyond passive Data Catalogs. Learn more about OpenMetadata’s journey so far here.',
       displayName: 'Rupesh Chavan',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/users/fcc81c9c-1ca2-4ab6-a44f-722c436c7aa8',
     },
   ],

@@ -59,6 +59,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.User,
         fullyQualifiedName: 'test.classification',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://test.com',
         updatedAt: 1234567890,
         updatedBy: 'test-user',
@@ -89,6 +90,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.System,
         fullyQualifiedName: 'tier.classification',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://test.com',
         updatedAt: 1234567890,
         updatedBy: 'system',
@@ -119,6 +121,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.System,
         fullyQualifiedName: 'system.classification',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://test.com',
         updatedAt: 1234567890,
         updatedBy: 'system',
@@ -149,6 +152,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.User,
         fullyQualifiedName: 'disabled.classification',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://test.com',
         updatedAt: 1234567890,
         updatedBy: 'test-user',
@@ -175,6 +179,7 @@ describe('ClassificationUtils', () => {
         description: 'Minimal description',
         fullyQualifiedName: 'minimal.classification',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://test.com',
         updatedAt: 1234567890,
         updatedBy: 'test-user',
@@ -212,6 +217,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.User,
         fullyQualifiedName: 'versioned.classification',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://test.com',
         updatedAt: 1234567890,
         updatedBy: 'test-user',
@@ -358,6 +364,7 @@ describe('ClassificationUtils', () => {
           description: 'Test description',
           fullyQualifiedName: 'test.classification',
           deleted: false,
+          // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
           href: 'http://test.com',
           updatedAt: 1234567890,
           updatedBy: 'test-user',

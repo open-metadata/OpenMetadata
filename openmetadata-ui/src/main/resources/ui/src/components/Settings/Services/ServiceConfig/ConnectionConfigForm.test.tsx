@@ -277,6 +277,7 @@ jest.mock('../../../common/TestConnection/TestConnection', () =>
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getPipelineServiceHostIp: jest.fn().mockReturnValue({
     data: {
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- mock IP fixture
       ip: '192.168.0.1',
     },
     status: 200,
@@ -667,6 +668,7 @@ describe('ServiceConfig', () => {
   it('should not display host ip if status is is not 200', async () => {
     (getPipelineServiceHostIp as jest.Mock).mockImplementationOnce(() => ({
       data: {
+        // eslint-disable-next-line sonarjs/no-hardcoded-ip -- mock IP fixture
         ip: '192.168.0.1',
       },
       status: 201,
@@ -793,6 +795,7 @@ describe('ServiceConfig', () => {
       expect.objectContaining({
         i18nKey: 'message.airflow-host-ip-address',
         values: expect.objectContaining({
+          // eslint-disable-next-line sonarjs/no-hardcoded-ip -- mock IP fixture
           hostIp: '192.168.0.1',
         }),
       }),

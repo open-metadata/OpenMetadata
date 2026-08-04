@@ -90,6 +90,7 @@ export const MOCK_SEARCH_INDEX: SearchIndex = {
     name: 'elasticsearch_sample',
     fullyQualifiedName: 'elasticsearch_sample',
     deleted: false,
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/services/storageServices/43bcffa8-89e7-45f5-9518-9247c56a1de7',
   },
   serviceType: SearchServiceType.ElasticSearch,
@@ -106,6 +107,7 @@ export const MOCK_SEARCH_INDEX: SearchIndex = {
       state: State.Confirmed,
     },
   ],
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://sandbox-beta.open-metadata.org/api/v1/searchIndexes/5cb19694-636d-4c8f-93cf-ed6f6a135da7',
   changeDescription: {
     fieldsAdded: [],
@@ -122,6 +124,7 @@ export const MOCK_SEARCH_INDEX: SearchIndex = {
       fullyQualifiedName: 'Design',
       description: "Here' the description for Product Design",
       displayName: 'Product Design ',
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/52fc9c67-78b7-42bf-8147-69278853c230',
     },
   ],
