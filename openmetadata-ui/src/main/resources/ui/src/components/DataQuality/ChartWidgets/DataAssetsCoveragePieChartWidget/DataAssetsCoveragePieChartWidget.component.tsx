@@ -90,11 +90,10 @@ const DataAssetsCoveragePieChartWidget = ({
   const fetchDataAssetsCoverage = async () => {
     setIsLoading(true);
     try {
-      const { data: coverageData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        false
-      );
-      const { data: totalData } = await fetchTotalEntityCount(chartFilter);
+      const [{ data: coverageData }, { data: totalData }] = await Promise.all([
+        fetchEntityCoveredWithDQ(chartFilter, false),
+        fetchTotalEntityCount(chartFilter),
+      ]);
       if (coverageData.length === 0 || totalData.length === 0) {
         setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
 
