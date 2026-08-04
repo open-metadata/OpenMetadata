@@ -503,11 +503,13 @@ export default [
       'playwright/prefer-web-first-assertions': 'error',
       'playwright/no-useless-await': 'error',
 
-      // Playwright rules — aspirational (warn): existing violations to fix over time
-      'playwright/no-wait-for-timeout': 'warn',
-      'playwright/no-force-option': 'warn',
-      'playwright/no-skipped-test': 'warn',
-      'playwright/no-wait-for-selector': 'warn',
+      // Playwright rules — promoted to error behind the suppressions ratchet
+      // (see eslint-suppressions.json): existing violations are snapshotted,
+      // new ones fail lint.
+      'playwright/no-wait-for-timeout': 'error',
+      'playwright/no-force-option': 'error',
+      'playwright/no-skipped-test': 'error',
+      'playwright/no-wait-for-selector': 'error',
     },
   },
 
