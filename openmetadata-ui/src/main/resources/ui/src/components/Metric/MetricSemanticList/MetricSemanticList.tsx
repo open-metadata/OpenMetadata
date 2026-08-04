@@ -40,7 +40,7 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
 }: MetricSemanticListProps<T>) => {
   const { t } = useTranslation();
   const [isShowMore, setIsShowMore] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<T | undefined>();
+  const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
 
   const {
     data: metricDetails,
@@ -60,12 +60,13 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
     [items, isShowMore]
   );
 
+  const selectedItem =
+    selectedIndex === undefined ? undefined : items[selectedIndex];
+
   const handleDescriptionSave = useCallback(
     async (value: string) => {
-      const updatedItems = items.map((item) =>
-        item.name === selectedItem?.name
-          ? { ...item, description: value }
-          : item
+      const updatedItems = items.map((item, index) =>
+        index === selectedIndex ? { ...item, description: value } : item
       );
 
       const updatedMetric = {
@@ -75,13 +76,13 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
 
       await onUpdate(updatedMetric, fieldKey);
 
-      setSelectedItem(undefined);
+      setSelectedIndex(undefined);
     },
-    [items, selectedItem, metricDetails, fieldKey, onUpdate]
+    [items, selectedIndex, metricDetails, fieldKey, onUpdate]
   );
 
   const renderRow = useCallback(
-    (item: T) => {
+    (item: T, index: number) => {
       const badge = getBadge(item);
 
       return (
@@ -90,7 +91,7 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
           data-testid={`semantic-item-${item.name}`}
           direction="col"
           gap={1}
-          key={item.name}>
+          key={`${item.name}-${index}`}>
           <Box align="start" gap={2} justify="between">
             <Box
               align="start"
@@ -135,7 +136,7 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
                   title={t('label.edit-entity', {
                     entity: t('label.description'),
                   })}
-                  onClick={() => setSelectedItem(item)}
+                  onClick={() => setSelectedIndex(index)}
                 />
               )}
             </Box>
@@ -201,7 +202,7 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
               field: entityLabelLowercase,
             })}
             value={selectedItem.description ?? ''}
-            onCancel={() => setSelectedItem(undefined)}
+            onCancel={() => setSelectedIndex(undefined)}
             onSave={handleDescriptionSave}
           />
         </EntityAttachmentProvider>

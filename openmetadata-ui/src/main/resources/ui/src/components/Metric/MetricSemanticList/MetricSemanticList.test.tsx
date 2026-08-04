@@ -25,6 +25,8 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   ))
 );
 
+const NEW_DESCRIPTION = 'new description';
+
 jest.mock(
   '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
@@ -152,7 +154,37 @@ describe('MetricSemanticList', () => {
             {
               name: 'region',
               expression: 'c.region',
-              description: 'new description',
+              description: NEW_DESCRIPTION,
+            },
+          ],
+        }),
+        'dimensions'
+      )
+    );
+  });
+
+  it('edits only the selected row when two items share a name', async () => {
+    const duplicates: MetricSemanticItem[] = [
+      { name: 'region', expression: 'c.region' },
+      { name: 'region', expression: 'o.region' },
+    ];
+    setContext({
+      data: { id: 'metric-1', name: 'revenue', dimensions: duplicates },
+    });
+    renderList({ items: duplicates });
+
+    fireEvent.click(screen.getAllByTestId('edit-description-region')[1]);
+    fireEvent.click(await screen.findByTestId('save-description'));
+
+    await waitFor(() =>
+      expect(mockOnUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dimensions: [
+            { name: 'region', expression: 'c.region' },
+            {
+              name: 'region',
+              expression: 'o.region',
+              description: NEW_DESCRIPTION,
             },
           ],
         }),
