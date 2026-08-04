@@ -1740,3 +1740,106 @@ jobs:
           path: ${{ runner.temp }}/playwright-pr-comment/summary.json
           retention-days: 5
           if-no-files-found: ignore
+
+  # Auto-refresh the checked-in timing baseline from every successful
+  # full-mode merge_group run. Without this, `.github/playwright/timing-baseline.json`
+  # only gets updated by hand — and it drifts fast (see PR #30871 for the
+  # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
+  #
+  # The step opens/updates a single tracked PR against `main`. A human still
+  # clicks merge — the auto-PR just eliminates the "regenerate the file"
+  # busywork.
+  #
+  # Guards:
+  #   * merge_group event only (skip on PR/schedule/dispatch — the ci-status
+  #     signal on merge_group is the safest known-good snapshot)
+  #   * full execution mode only (targeted PR plans do not exercise every
+  #     spec — a targeted refresh would lose coverage)
+  #   * playwright-summary success only (no partial data on gate failures)
+  #   * a drift cap in refresh_timing_baseline.py refuses > 40 % churn as a
+  #     safety valve against an accidentally-broken source run
+  refresh-timing-baseline:
+    name: Refresh timing baseline
+    needs: [detect-changes, playwright-summary]
+    if: |
+      always() &&
+      github.event_name == 'merge_group' &&
+      needs.detect-changes.outputs.mode == 'full' &&
+      needs.playwright-summary.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download timing history artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-timing-history-full-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/timing-history
+
+      - name: Locate merged history file
+        id: locate
+        run: |
+          history=$(find "$RUNNER_TEMP/timing-history" -name 'playwright-timing-history.json' -type f | head -1)
+          if [[ -z "$history" ]]; then
+            echo "No playwright-timing-history.json found under $RUNNER_TEMP/timing-history" >&2
+            find "$RUNNER_TEMP/timing-history" -type f >&2 || true
+            exit 1
+          fi
+          echo "history_path=$history" >> "$GITHUB_OUTPUT"
+
+      - name: Build refreshed baseline
+        run: |
+          python3 .github/scripts/refresh_timing_baseline.py \
+            --history "${{ steps.locate.outputs.history_path }}" \
+            --current .github/playwright/timing-baseline.json \
+            --output .github/playwright/timing-baseline.json \
+            --source-run-id "${{ github.run_id }}" \
+            --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
+
+      - name: Skip if baseline unchanged
+        id: diff
+        run: |
+          if git diff --quiet -- .github/playwright/timing-baseline.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push refresh branch and open/update PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          branch="ci/auto-refresh-timing-baseline"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          # Reset the tracked branch to the latest state — a single tracked
+          # PR gets updated across successive runs rather than accumulating
+          # one PR per merge_group.
+          git checkout -B "$branch"
+          git add .github/playwright/timing-baseline.json
+          git commit -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID}"
+          git push --force-with-lease origin "$branch"
+
+          summary_body="$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")"
+          pr_body=$(printf '## Summary\n\nAuto-refreshed from [merge_group run %s](%s).\n\n```\n%s\n```\n\nA human still clicks merge. If this drift looks unreasonable, close the PR — the next successful merge_group run will open a fresh one.\n' "$RUN_ID" "$RUN_URL" "$summary_body")
+          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number' || echo "")
+          if [[ -n "$existing" ]]; then
+            gh pr edit "$existing" --body "$pr_body"
+            echo "Updated existing PR #$existing"
+          else
+            gh pr create --base main --head "$branch" \
+              --title "chore(playwright): auto-refresh timing-baseline.json" \
+              --body "$pr_body"
+          fi
