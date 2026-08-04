@@ -700,6 +700,24 @@ def get_dbt_test_definition_name(manifest_node) -> str:
     return test_type or manifest_node.name
 
 
+def get_dbt_test_description(manifest_node) -> Optional[str]:  # noqa: UP045
+    """
+    Return the description of a dbt test node.
+
+    Falls back to the "description" key of the node level ``meta`` dict when the
+    node has no description of its own.  dbt only supports a first class
+    ``description`` on data tests from 1.9 onwards, so older projects carry it in
+    ``config(meta={"description": ...})`` instead, which dbt copies onto
+    ``manifest_node.meta`` while parsing.
+    """
+    description = getattr(manifest_node, "description", None)
+    if not description:
+        meta = getattr(manifest_node, "meta", None)
+        if isinstance(meta, dict):
+            description = meta.get("description")
+    return description
+
+
 def generate_entity_link(dbt_test):
     """
     Method returns entity link for dbt test cases.

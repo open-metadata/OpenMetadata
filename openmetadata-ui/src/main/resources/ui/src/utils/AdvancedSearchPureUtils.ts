@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import type { OldJsonTree } from '@react-awesome-query-builder/ui';
-import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { isArray, isEmpty, toLower } from 'lodash';
 import type { Bucket } from 'Models';
 import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -42,6 +41,7 @@ import type {
   TopicSearchSource,
 } from '../interface/search.interface';
 import { getEntityName } from './EntityNameUtils';
+import { generateUUID } from './StringUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity
@@ -253,21 +253,21 @@ export const getEmptyJsonTree = (
   defaultField: string = EntityFields.OWNERS
 ): OldJsonTree => {
   return {
-    id: QbUtils.uuid(),
+    id: generateUUID(),
     type: 'group',
     properties: {
       conjunction: 'AND',
       not: false,
     },
     children1: {
-      [QbUtils.uuid()]: {
+      [generateUUID()]: {
         type: 'group',
         properties: {
           conjunction: 'AND',
           not: false,
         },
         children1: {
-          [QbUtils.uuid()]: {
+          [generateUUID()]: {
             type: 'rule',
             properties: {
               field: defaultField,
@@ -286,9 +286,9 @@ export const getEmptyJsonTreeForQueryBuilder = (
   defaultField: string = EntityReferenceFields.OWNERS,
   subField = 'fullyQualifiedName'
 ): OldJsonTree => {
-  const uuid1 = QbUtils.uuid();
-  const uuid2 = QbUtils.uuid();
-  const uuid3 = QbUtils.uuid();
+  const uuid1 = generateUUID();
+  const uuid2 = generateUUID();
+  const uuid3 = generateUUID();
 
   return {
     id: uuid1,
