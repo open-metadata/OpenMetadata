@@ -74,12 +74,36 @@ class IndexMappingValidatorTest {
   }
 
   /**
-   * The real shape of the gap in {@code indexMapping.json}: {@code directory} lists {@code
-   * spreadsheet} but not {@code worksheet}, so hard-deleting a directory leaves the worksheets under
-   * its spreadsheets orphaned in search.
+   * The real shape of the gap in {@code indexMapping.json}: {@code mcpService} lists {@code
+   * mcpServer} but not {@code mcpExecution}, so a cascade over {@code mcpService}'s childAliases
+   * never reaches the execution documents under its servers.
    */
   @Test
   void flagsChildAliasesThatAreNotTransitivelyClosed() {
+    registerEntities("mcpService", "mcpServer", "mcpExecution");
+
+    Map<String, IndexMapping> mappings =
+        Map.of(
+            "mcpService", mappingWithChildren("mcpService", List.of("mcpServer")),
+            "mcpServer", mappingWithChildren("mcpServer", List.of("mcpExecution")),
+            "mcpExecution", mappingWithChildren("mcpExecution", List.of()));
+
+    List<String> warnings = IndexMappingValidator.validate(mappings);
+
+    assertEquals(1, warnings.size());
+    assertTrue(
+        warnings.get(0).contains("mcpService") && warnings.get(0).contains("mcpExecution"),
+        () -> "warning should name the parent and the unreachable descendant; got: " + warnings);
+  }
+
+  /**
+   * {@code directory} → {@code worksheet} is a genuine gap in the generic cascade, but
+   * {@code deleteOrUpdateChildren} sweeps the drive subtree by FQN prefix instead, so warning about
+   * it is noise. Four of the five gaps in the real mapping are covered this way; suppressing them is
+   * what keeps the one actionable warning visible.
+   */
+  @Test
+  void silentWhenTheTransitiveGapIsCoveredByADedicatedCascade() {
     registerEntities("directory", "spreadsheet", "worksheet");
 
     Map<String, IndexMapping> mappings =
@@ -88,12 +112,10 @@ class IndexMappingValidatorTest {
             "spreadsheet", mappingWithChildren("spreadsheet", List.of("worksheet")),
             "worksheet", mappingWithChildren("worksheet", List.of()));
 
-    List<String> warnings = IndexMappingValidator.validate(mappings);
-
-    assertEquals(1, warnings.size());
-    assertTrue(
-        warnings.get(0).contains("directory") && warnings.get(0).contains("worksheet"),
-        () -> "warning should name the parent and the unreachable descendant; got: " + warnings);
+    assertEquals(
+        List.of(),
+        IndexMappingValidator.validate(mappings),
+        "directory->worksheet is covered by the FQN-prefix drive sweep and must not warn");
   }
 
   @Test
