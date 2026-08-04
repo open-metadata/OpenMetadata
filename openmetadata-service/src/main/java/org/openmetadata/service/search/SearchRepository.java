@@ -2508,43 +2508,6 @@ public class SearchRepository {
     updateEntitiesIndex(entities);
   }
 
-  /**
-   * Bulk updates domain references for assets when a data product's domain changes. This is more
-   * efficient than updating each entity individually as it uses a single update-by-query operation.
-   *
-   * @param dataProductFqn the fully qualified name of the data product
-   * @param oldDomainFqns list of old domain FQNs to remove from assets
-   * @param newDomains list of new domain references to add to assets
-   */
-  public void updateAssetDomainsForDataProduct(
-      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
-    if (deferSearchWrite(
-        new DeferredSearchWrite(
-            () -> updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains),
-            "updateAssetDomainsForDataProduct",
-            null,
-            dataProductFqn,
-            null))) {
-      return;
-    }
-    Timer.Sample s = RequestLatencyContext.startSearchOperation();
-    if (!getSearchClient().isClientAvailable()) {
-      SearchIndexRetryQueue.enqueue(
-          null, dataProductFqn, "updateAssetDomainsForDataProduct: Search client unavailable");
-      return;
-    }
-    try {
-      getSearchClient().updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains);
-    } catch (Exception e) {
-      SearchIndexRetryQueue.enqueue(
-          null,
-          dataProductFqn,
-          SearchIndexRetryQueue.failureReason("updateAssetDomainsForDataProduct", e));
-    } finally {
-      RequestLatencyContext.endSearchOperation(s);
-    }
-  }
-
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
     if (deferSearchWrite(

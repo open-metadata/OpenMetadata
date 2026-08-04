@@ -2577,12 +2577,10 @@ class SearchRepositoryBehaviorTest {
     List<EntityReference> newDomains = List.of(domain);
     List<UUID> assetIds = List.of(UUID.randomUUID(), UUID.randomUUID());
 
-    repository.updateAssetDomainsForDataProduct("dataProduct", oldDomains, newDomains);
     repository.updateAssetDomainsByIds(assetIds, oldDomains, newDomains);
     repository.updateDomainFqnByPrefix("old.domain", "new.domain");
     repository.updateAssetDomainFqnByPrefix("old.domain", "new.domain");
 
-    verify(searchClient).updateAssetDomainsForDataProduct("dataProduct", oldDomains, newDomains);
     verify(searchClient).updateAssetDomainsByIds(assetIds, oldDomains, newDomains);
     verify(searchClient).updateDomainFqnByPrefix("old.domain", "new.domain");
     verify(searchClient).updateAssetDomainFqnByPrefix("old.domain", "new.domain");

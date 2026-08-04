@@ -309,20 +309,6 @@ public interface EntityManagementClient {
   void updateDataProductReferences(String oldFqn, String newFqn);
 
   /**
-   * Updates domain references for assets when a data product's domain changes. This method finds
-   * all assets linked to the data product and updates their domains array to replace old domains
-   * with new domains.
-   *
-   * @param dataProductFqn the fully qualified name of the data product
-   * @param oldDomainFqns list of old domain FQNs to remove from assets
-   * @param newDomains list of new domain references to add to assets
-   */
-  default void updateAssetDomainsForDataProduct(
-      String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
-    // Default no-op implementation - overridden by search-specific implementations
-  }
-
-  /**
    * Updates domain references for assets by their IDs. This method performs a bulk update using
    * document IDs rather than querying by data product FQN.
    *
