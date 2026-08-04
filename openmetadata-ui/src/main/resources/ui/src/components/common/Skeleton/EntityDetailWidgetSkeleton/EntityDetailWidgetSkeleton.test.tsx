@@ -16,8 +16,28 @@ import { DetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum
 import { EntityDetailWidgetSkeleton } from './EntityDetailWidgetSkeleton.component';
 
 const SKELETON_TEST_ID = 'entity-detail-widget-skeleton';
+const matchMediaMock = window.matchMedia as jest.MockedFunction<
+  typeof window.matchMedia
+>;
+
+const getMatchMediaResult = (matches: boolean, media = ''): MediaQueryList => ({
+  matches,
+  media,
+  onchange: null,
+  addListener: jest.fn(),
+  removeListener: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+  dispatchEvent: jest.fn(),
+});
 
 describe('EntityDetailWidgetSkeleton', () => {
+  beforeEach(() => {
+    matchMediaMock.mockImplementation((query) =>
+      getMatchMediaResult(false, query)
+    );
+  });
+
   it('renders a text-shaped skeleton for the description widget', () => {
     render(
       <EntityDetailWidgetSkeleton
@@ -57,7 +77,19 @@ describe('EntityDetailWidgetSkeleton', () => {
     );
   });
 
-  it('does not animate when reduced-motion support is unavailable', () => {
+  it('animates skeletons by default', () => {
+    const { container } = render(
+      <EntityDetailWidgetSkeleton widgetKey={DetailPageWidgetKeys.DOMAIN} />
+    );
+
+    expect(container.querySelector('.tw\\:animate-pulse')).toBeInTheDocument();
+  });
+
+  it('disables animation when reduced motion is preferred', () => {
+    matchMediaMock.mockImplementation((query) =>
+      getMatchMediaResult(true, query)
+    );
+
     const { container } = render(
       <EntityDetailWidgetSkeleton widgetKey={DetailPageWidgetKeys.DOMAIN} />
     );

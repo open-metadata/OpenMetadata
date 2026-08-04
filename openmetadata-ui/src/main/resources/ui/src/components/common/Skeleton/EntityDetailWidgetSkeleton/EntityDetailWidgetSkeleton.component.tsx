@@ -12,6 +12,7 @@
  */
 
 import { Box, Skeleton } from '@openmetadata/ui-core-components';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 
@@ -69,13 +70,20 @@ export const EntityDetailWidgetSkeleton = ({
 }: EntityDetailWidgetSkeletonProps) => {
   const { t } = useTranslation();
   const resolvedVariant = variant ?? getSkeletonVariant(widgetKey);
+  const prefersReducedMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches),
+    []
+  );
+  const skeletonAnimation = prefersReducedMotion ? false : undefined;
 
   let rows;
 
   if (resolvedVariant === 'text') {
     rows = TEXT_ROW_WIDTHS.map((width) => (
       <Box data-testid="widget-skeleton-row" key={width}>
-        <Skeleton animation={false} className={width} />
+        <Skeleton animation={skeletonAnimation} className={width} />
       </Box>
     ));
   } else if (resolvedVariant === 'table') {
@@ -85,14 +93,18 @@ export const EntityDetailWidgetSkeleton = ({
         data-testid="widget-skeleton-row"
         gap={3}
         key={row}>
-        <Skeleton animation={false} className="tw:w-1/4" />
-        <Skeleton animation={false} className="tw:w-2/3" />
+        <Skeleton animation={skeletonAnimation} className="tw:w-1/4" />
+        <Skeleton animation={skeletonAnimation} className="tw:w-2/3" />
       </Box>
     ));
   } else {
     rows = LIST_ROW_WIDTHS.map((width) => (
       <Box data-testid="widget-skeleton-row" key={width}>
-        <Skeleton animation={false} className={width} variant="rounded" />
+        <Skeleton
+          animation={skeletonAnimation}
+          className={width}
+          variant="rounded"
+        />
       </Box>
     ));
   }
@@ -106,7 +118,11 @@ export const EntityDetailWidgetSkeleton = ({
       direction="col"
       gap={4}
       role="status">
-      <Skeleton animation={false} className="tw:w-1/3" variant="rounded" />
+      <Skeleton
+        animation={skeletonAnimation}
+        className="tw:w-1/3"
+        variant="rounded"
+      />
       {rows}
     </Box>
   );
