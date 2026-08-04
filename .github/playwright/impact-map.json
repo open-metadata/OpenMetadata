@@ -120,7 +120,8 @@
         "ImportExport",
         "search-nightly",
         "Reindex",
-        "GlobalSettings"
+        "GlobalSettings",
+        "SearchRBAC"
       ],
       "specs": [
         "playwright/e2e/Pages/Explore*.spec.ts",
