@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { SLASH_COMMANDS } from '../../constant/KnowledgeCenter.constant';
+import { SHORTCUTS, SLASH_COMMANDS } from '../../constant/KnowledgeCenter.constant';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
@@ -43,21 +43,6 @@ test.beforeEach(async ({ page }) => {
   await table.visitEntityPage(page);
 });
 
-/**
- * Regression test for #30942.
- *
- * Entering an invalid URL in the description editor's Image embed-link popover
- * previously crashed the entire editor with a react-aria slot error:
- * "Invalid slot 'errorMessage'. Valid slot names are 'description'".
- *
- * Root cause: EmbedLinkElement rendered the validation error as a standalone
- * <HintText> sibling of <Input>. HintText resolves to slot="errorMessage" which
- * is invalid in the parent TextField's slot context, so react-aria threw and the
- * error boundary replaced the whole editor.
- *
- * Fix: pass the error through Input's own `hint` prop so the HintText is rendered
- * inside Input's own AriaTextField where the errorMessage slot is valid.
- */
 test.describe('BlockEditor embed-link form', { tag: ['@Discovery'] }, () => {
   test('entering an invalid URL shows validation error and does not crash the editor', async ({
     page,
@@ -67,8 +52,9 @@ test.describe('BlockEditor embed-link form', { tag: ['@Discovery'] }, () => {
     const editor = page.locator(descriptionBox).first();
     await expect(editor).toBeVisible();
     await editor.click();
-
+    await page.keyboard.press(SHORTCUTS.enter);
     await executeSlashCommand(page, SLASH_COMMANDS.image);
+    await page.getByTestId('add-image-container').click();
 
     const embedForm = page.getByTestId('embed-link-form');
     await expect(embedForm).toBeVisible();
