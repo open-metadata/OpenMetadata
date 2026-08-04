@@ -91,13 +91,23 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
           direction="col"
           gap={1}
           key={item.name}>
-          <Box align="center" gap={2} justify="between">
-            <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
-              <Typography as="span" size="text-sm" weight="semibold">
+          <Box align="start" gap={2} justify="between">
+            <Box
+              align="start"
+              className="tw:min-w-0 tw:max-w-1/2 tw:flex-1"
+              gap={2}>
+              <Typography
+                as="span"
+                className="tw:line-clamp-2 tw:[overflow-wrap:anywhere]"
+                ellipsis={{ rows: 2 }}
+                size="text-sm"
+                title={item.name}
+                weight="semibold">
                 {item.name}
               </Typography>
               {badge && (
                 <Badge
+                  className="tw:shrink-0"
                   color="blue"
                   data-testid={`semantic-item-badge-${item.name}`}
                   size="sm">
@@ -105,19 +115,22 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
                 </Badge>
               )}
             </Box>
-            <Box align="center" className="tw:shrink-0" gap={2}>
+            <Box align="start" className="tw:min-w-0 tw:max-w-1/2" gap={2}>
               {item.expression && (
-                <Typography
-                  as="span"
-                  className="tw:inline-block tw:max-w-xs tw:truncate tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:px-2 tw:py-1 tw:text-secondary"
-                  size="text-xs"
-                  title={item.expression}
-                  weight="regular">
-                  {item.expression}
-                </Typography>
+                <Box className="tw:min-w-0 tw:max-w-xs tw:overflow-hidden tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:px-2 tw:py-1">
+                  <Typography
+                    as="span"
+                    className="tw:line-clamp-2 tw:[overflow-wrap:anywhere] tw:text-secondary"
+                    size="text-xs"
+                    title={item.expression}
+                    weight="regular">
+                    {item.expression}
+                  </Typography>
+                </Box>
               )}
               {hasEditPermission && (
                 <WidgetEditButton
+                  className="tw:shrink-0 tw:p-1"
                   data-testid={`edit-description-${item.name}`}
                   title={t('label.edit-entity', {
                     entity: t('label.description'),
