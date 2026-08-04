@@ -37,6 +37,8 @@ public final class NamespaceCleanup {
           Map.entry(Entity.DATA_PRODUCT, "dataProducts"),
           Map.entry(Entity.TEAM, "teams"),
           Map.entry(Entity.USER, "users"),
+          Map.entry(Entity.ROLE, "roles"),
+          Map.entry(Entity.POLICY, "policies"),
           Map.entry(Entity.PERSONA, "personas"),
           Map.entry(Entity.TEST_SUITE, "dataQuality/testSuites"));
 

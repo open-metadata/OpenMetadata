@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPatternList.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPatternList",
+  "description": "The complete catalog of supported Ontology Studio modeling patterns.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPatternList",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyPatternTemplate.json"
+      },
+      "default": []
+    }
+  },
+  "required": ["data"],
+  "additionalProperties": false
+}

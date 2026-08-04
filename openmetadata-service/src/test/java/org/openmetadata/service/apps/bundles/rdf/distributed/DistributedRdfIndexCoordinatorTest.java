@@ -19,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,12 +48,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexJobDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexJobDAO.RdfIndexJobRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfAggregatedStatsRecord;
+import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfIndexPartitionRecord;
+import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexServerStatsDAO;
 
 @ExtendWith(MockitoExtension.class)
 class DistributedRdfIndexCoordinatorTest {
@@ -61,6 +66,7 @@ class DistributedRdfIndexCoordinatorTest {
   @Mock private CollectionDAO collectionDAO;
   @Mock private RdfIndexJobDAO jobDAO;
   @Mock private RdfIndexPartitionDAO partitionDAO;
+  @Mock private RdfIndexServerStatsDAO serverStatsDAO;
   @Mock private RdfPartitionCalculator partitionCalculator;
 
   private DistributedRdfIndexCoordinator coordinator;
@@ -76,6 +82,7 @@ class DistributedRdfIndexCoordinatorTest {
 
     lenient().when(collectionDAO.rdfIndexJobDAO()).thenReturn(jobDAO);
     lenient().when(collectionDAO.rdfIndexPartitionDAO()).thenReturn(partitionDAO);
+    lenient().when(collectionDAO.rdfIndexServerStatsDAO()).thenReturn(serverStatsDAO);
 
     coordinator = new DistributedRdfIndexCoordinator(collectionDAO, partitionCalculator);
   }
@@ -465,5 +472,550 @@ class DistributedRdfIndexCoordinatorTest {
     coordinator.claimNextPartition(UUID.randomUUID(), TEST_SERVER_ID);
     verify(partitionDAO, times(1))
         .claimNextPartitionAtomic(anyString(), eq(TEST_SERVER_ID), anyLong());
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionReturnsEarlyWhenPendingPartitionsRemain() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 0L);
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.PENDING.name()))
+        .thenReturn(2);
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(0);
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verify(partitionDAO, never())
+        .countPartitionsByStatus(jobId.toString(), PartitionStatus.FAILED.name());
+    verify(jobDAO, never())
+        .update(
+            anyString(),
+            eq(IndexJobStatus.COMPLETED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionReturnsEarlyWhenProcessingPartitionsRemain() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 0L);
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.PENDING.name()))
+        .thenReturn(0);
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(3);
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verify(partitionDAO, never())
+        .countPartitionsByStatus(jobId.toString(), PartitionStatus.FAILED.name());
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionIsNoOpWhenJobAlreadyTerminal() {
+    UUID jobId = UUID.randomUUID();
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord(jobId, IndexJobStatus.COMPLETED));
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new RdfAggregatedStatsRecord(25L, 25L, 25L, 0L, 1, 1, 0, 0, 0));
+    when(partitionDAO.getEntityStats(jobId.toString())).thenReturn(List.of());
+    when(partitionDAO.getServerStats(jobId.toString())).thenReturn(List.of());
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1)).thenReturn(List.of());
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verify(partitionDAO, never())
+        .countPartitionsByStatus(anyString(), eq(PartitionStatus.PENDING.name()));
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionStoppingWithAllDonePromotesToStoppedNotCompleted() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.STOPPING, 0L);
+    stubAllPartitionsSettled(jobId, 0, 0);
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1)).thenReturn(List.of());
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verifyTerminalStatusWritten(jobId, IndexJobStatus.STOPPED);
+    verify(jobDAO, never())
+        .update(
+            anyString(),
+            eq(IndexJobStatus.COMPLETED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionCleanRunPromotesToCompleted() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 0L);
+    stubAllPartitionsSettled(jobId, 0, 0);
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1)).thenReturn(List.of());
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verifyTerminalStatusWritten(jobId, IndexJobStatus.COMPLETED);
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionFailedPartitionsPromoteToCompletedWithErrors() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 0L);
+    stubAllPartitionsSettled(jobId, 1, 0);
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1)).thenReturn(List.of());
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verifyTerminalStatusWritten(jobId, IndexJobStatus.COMPLETED_WITH_ERRORS);
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionCancelledPartitionsPromoteToCompletedWithErrors() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 0L);
+    stubAllPartitionsSettled(jobId, 0, 1);
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1)).thenReturn(List.of());
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verifyTerminalStatusWritten(jobId, IndexJobStatus.COMPLETED_WITH_ERRORS);
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionFailedRecordsPromoteToCompletedWithErrors() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 4L);
+    stubAllPartitionsSettled(jobId, 0, 0);
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1)).thenReturn(List.of());
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    verifyTerminalStatusWritten(jobId, IndexJobStatus.COMPLETED_WITH_ERRORS);
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionPartitionLastErrorPromotesToCompletedWithErrors() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 0L);
+    stubAllPartitionsSettled(jobId, 0, 0);
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1))
+        .thenReturn(List.of("fuseki write failed"));
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 5))
+        .thenReturn(List.of("fuseki write failed"));
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    ArgumentCaptor<String> errorCaptor = captureTerminalErrorMessage(jobId);
+    assertEquals("Partition errors: fuseki write failed", errorCaptor.getValue());
+  }
+
+  @Test
+  void checkAndUpdateJobCompletionSynthesizedErrorMessageIsTruncatedAtMaxLength() {
+    UUID jobId = UUID.randomUUID();
+    stubNonTerminalRefresh(jobId, IndexJobStatus.RUNNING, 0L);
+    stubAllPartitionsSettled(jobId, 0, 0);
+    String hugeError = "e".repeat(5000);
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 1)).thenReturn(List.of("marker"));
+    when(partitionDAO.findRecentPartitionErrors(jobId.toString(), 5))
+        .thenReturn(List.of(hugeError));
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    ArgumentCaptor<String> errorCaptor = captureTerminalErrorMessage(jobId);
+    String errorMessage = errorCaptor.getValue();
+    assertEquals(4003, errorMessage.length());
+    assertTrue(errorMessage.startsWith("Partition errors: "));
+    assertTrue(errorMessage.endsWith("..."));
+  }
+
+  @Test
+  void failPartitionBumpsRetryCountByOneViaUpdateIfProcessing() {
+    UUID partitionId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.findById(partitionId.toString()))
+        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 2));
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
+
+    coordinator.failPartition(partitionId, 10L, 5L, 3L, 2L, "boom");
+
+    ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
+    verify(partitionDAO)
+        .updateIfProcessing(
+            eq(partitionId.toString()),
+            eq(PartitionStatus.FAILED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            retryCaptor.capture());
+    assertEquals(3, retryCaptor.getValue());
+  }
+
+  @Test
+  void failPartitionSkipsStatsWhenNoLongerProcessing() {
+    UUID partitionId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.findById(partitionId.toString()))
+        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 0));
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyInt()))
+        .thenReturn(0);
+
+    coordinator.failPartition(partitionId, 10L, 5L, 3L, 2L, "boom");
+
+    verify(serverStatsDAO, never())
+        .incrementStats(
+            anyString(),
+            anyString(),
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyInt(),
+            anyInt(),
+            anyLong());
+    verify(jobDAO, never()).findById(jobId.toString());
+  }
+
+  @Test
+  void failPartitionIncrementsFailedPartitionStatOnSuccess() {
+    UUID partitionId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.findById(partitionId.toString()))
+        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 0));
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
+
+    coordinator.failPartition(partitionId, 10L, 5L, 3L, 2L, "boom");
+
+    verify(serverStatsDAO)
+        .incrementStats(
+            anyString(),
+            eq(jobId.toString()),
+            eq(TEST_SERVER_ID),
+            eq("table"),
+            eq(5L),
+            eq(3L),
+            eq(2L),
+            eq(0),
+            eq(1),
+            anyLong());
+  }
+
+  @Test
+  void completePartitionSkipsStatsWhenNoLongerProcessing() {
+    UUID partitionId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.findById(partitionId.toString()))
+        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 0));
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyInt()))
+        .thenReturn(0);
+
+    coordinator.completePartition(partitionId, 10L, 5L, 5L, 0L, null);
+
+    verify(serverStatsDAO, never())
+        .incrementStats(
+            anyString(),
+            anyString(),
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyInt(),
+            anyInt(),
+            anyLong());
+  }
+
+  @Test
+  void completePartitionIncrementsCompletedPartitionStatOnSuccess() {
+    UUID partitionId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.findById(partitionId.toString()))
+        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 2));
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
+
+    coordinator.completePartition(partitionId, 10L, 5L, 5L, 0L, null);
+
+    verify(serverStatsDAO)
+        .incrementStats(
+            anyString(),
+            eq(jobId.toString()),
+            eq(TEST_SERVER_ID),
+            eq("table"),
+            eq(5L),
+            eq(5L),
+            eq(0L),
+            eq(1),
+            eq(0),
+            anyLong());
+  }
+
+  @Test
+  void completePartitionKeepsRetryCountUnchanged() {
+    UUID partitionId = UUID.randomUUID();
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.findById(partitionId.toString()))
+        .thenReturn(partitionRecord(partitionId, jobId, PartitionStatus.PROCESSING.name(), 2));
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
+
+    coordinator.completePartition(partitionId, 10L, 5L, 5L, 0L, null);
+
+    ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
+    verify(partitionDAO)
+        .updateIfProcessing(
+            eq(partitionId.toString()),
+            eq(PartitionStatus.COMPLETED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            retryCaptor.capture());
+    assertEquals(2, retryCaptor.getValue());
+  }
+
+  @Test
+  void reclaimStalePartitionsPassesMaxRetriesAndAggregatesCounts() {
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.reclaimStalePartitionsForRetry(eq(jobId.toString()), anyLong(), eq(3)))
+        .thenReturn(2);
+    when(partitionDAO.failStalePartitionsExceedingRetries(
+            eq(jobId.toString()), anyLong(), eq(3), anyLong()))
+        .thenReturn(1);
+
+    int recovered = coordinator.reclaimStalePartitions(jobId);
+
+    assertEquals(3, recovered);
+    verify(partitionDAO).reclaimStalePartitionsForRetry(eq(jobId.toString()), anyLong(), eq(3));
+    verify(partitionDAO)
+        .failStalePartitionsExceedingRetries(eq(jobId.toString()), anyLong(), eq(3), anyLong());
+    verify(jobDAO).findById(jobId.toString());
+  }
+
+  @Test
+  void reclaimStalePartitionsReturnsReclaimedWhenNoneExceedRetries() {
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.reclaimStalePartitionsForRetry(eq(jobId.toString()), anyLong(), eq(3)))
+        .thenReturn(5);
+    when(partitionDAO.failStalePartitionsExceedingRetries(
+            eq(jobId.toString()), anyLong(), eq(3), anyLong()))
+        .thenReturn(0);
+
+    assertEquals(5, coordinator.reclaimStalePartitions(jobId));
+    verify(jobDAO).findById(jobId.toString());
+  }
+
+  @Test
+  void reclaimStalePartitionsSkipsRefreshWhenNothingRecovered() {
+    UUID jobId = UUID.randomUUID();
+    when(partitionDAO.reclaimStalePartitionsForRetry(eq(jobId.toString()), anyLong(), eq(3)))
+        .thenReturn(0);
+    when(partitionDAO.failStalePartitionsExceedingRetries(
+            eq(jobId.toString()), anyLong(), eq(3), anyLong()))
+        .thenReturn(0);
+
+    assertEquals(0, coordinator.reclaimStalePartitions(jobId));
+    verify(jobDAO, never()).findById(jobId.toString());
+  }
+
+  private RdfIndexJobRecord jobRecord(UUID jobId, IndexJobStatus status) {
+    EventPublisherJob jobConfiguration = new EventPublisherJob().withEntities(Set.of("table"));
+    return new RdfIndexJobRecord(
+        jobId.toString(),
+        status.name(),
+        JsonUtils.pojoToJson(jobConfiguration),
+        25L,
+        0L,
+        0L,
+        0L,
+        JsonUtils.pojoToJson(Map.of()),
+        "admin",
+        System.currentTimeMillis(),
+        null,
+        null,
+        System.currentTimeMillis(),
+        null);
+  }
+
+  private void stubNonTerminalRefresh(UUID jobId, IndexJobStatus status, long failedRecords) {
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord(jobId, status));
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new RdfAggregatedStatsRecord(25L, 0L, 0L, failedRecords, 1, 0, 0, 1, 0));
+    when(partitionDAO.getEntityStats(jobId.toString())).thenReturn(List.of());
+    when(partitionDAO.getServerStats(jobId.toString())).thenReturn(List.of());
+  }
+
+  private void stubAllPartitionsSettled(UUID jobId, int failed, int cancelled) {
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.PENDING.name()))
+        .thenReturn(0);
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(0);
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.FAILED.name()))
+        .thenReturn(failed);
+    when(partitionDAO.countPartitionsByStatus(jobId.toString(), PartitionStatus.CANCELLED.name()))
+        .thenReturn(cancelled);
+  }
+
+  private void verifyTerminalStatusWritten(UUID jobId, IndexJobStatus status) {
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(status.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  private ArgumentCaptor<String> captureTerminalErrorMessage(UUID jobId) {
+    ArgumentCaptor<String> errorCaptor = ArgumentCaptor.forClass(String.class);
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED_WITH_ERRORS.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            errorCaptor.capture());
+    return errorCaptor;
+  }
+
+  private RdfIndexPartitionRecord partitionRecord(
+      UUID partitionId, UUID jobId, String status, int retryCount) {
+    return new RdfIndexPartitionRecord(
+        partitionId.toString(),
+        jobId.toString(),
+        "table",
+        0,
+        0L,
+        100L,
+        100L,
+        100L,
+        1,
+        status,
+        0L,
+        0L,
+        0L,
+        0L,
+        TEST_SERVER_ID,
+        1000L,
+        2000L,
+        null,
+        3000L,
+        null,
+        retryCount,
+        0L);
   }
 }

@@ -53,6 +53,14 @@ const AssetsTabs = withSuspenseFallback(
   )
 );
 
+const GlossaryTermRealizedAssets = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermRealizedAssets.component'
+    ).then((module) => ({ default: module.GlossaryTermRealizedAssets }))
+  )
+);
+
 const GlossaryTermTab = withSuspenseFallback(
   lazy(
     () =>
@@ -167,16 +175,19 @@ export const getGlossaryTermDetailPageTabs = (
                 firstPanel={{
                   className: 'glossary-term-resizable-panel-container',
                   children: (
-                    <AssetsTabs
-                      assetCount={assetCount}
-                      entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                      isSummaryPanelOpen={Boolean(previewAsset)}
-                      permissions={assetPermissions}
-                      ref={assetTabRef}
-                      onAddAsset={() => setAssetModalVisible(true)}
-                      onAssetClick={handleAssetClick}
-                      onRemoveAsset={handleAssetSave}
-                    />
+                    <>
+                      <GlossaryTermRealizedAssets termId={glossaryTerm.id} />
+                      <AssetsTabs
+                        assetCount={assetCount}
+                        entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                        isSummaryPanelOpen={Boolean(previewAsset)}
+                        permissions={assetPermissions}
+                        ref={assetTabRef}
+                        onAddAsset={() => setAssetModalVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
+                    </>
                   ),
                   flex: 0.7,
                   minWidth: 700,

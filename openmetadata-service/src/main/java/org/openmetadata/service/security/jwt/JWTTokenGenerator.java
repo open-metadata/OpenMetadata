@@ -74,6 +74,22 @@ public class JWTTokenGenerator {
     return INSTANCE;
   }
 
+  Algorithm internalSigningAlgorithm() {
+    requireInitialized();
+    return getAlgorithm(tokenValidationAlgorithm, null, privateKey);
+  }
+
+  Algorithm internalVerificationAlgorithm() {
+    requireInitialized();
+    return getAlgorithm(tokenValidationAlgorithm, publicKey, null);
+  }
+
+  private void requireInitialized() {
+    if (tokenValidationAlgorithm == null || privateKey == null || publicKey == null) {
+      throw new IllegalStateException("JWT signing keys are not initialized for internal tokens");
+    }
+  }
+
   /** Expected to be initialized only once during application start */
   public void init(
       AuthenticationConfiguration.TokenValidationAlgorithm algorithm,

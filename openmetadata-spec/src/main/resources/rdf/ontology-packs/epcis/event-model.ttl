@@ -1,0 +1,40 @@
+@prefix epcis: <https://open-metadata.org/library/epcis/event-model/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+epcis:Event a skos:Concept ;
+  skos:prefLabel "EPCIS Event" .
+
+epcis:ObjectEvent a skos:Concept ;
+  skos:prefLabel "Object Event" ;
+  skos:broader epcis:Event .
+
+epcis:AggregationEvent a skos:Concept ;
+  skos:prefLabel "Aggregation Event" ;
+  skos:broader epcis:Event .
+
+epcis:TransactionEvent a skos:Concept ;
+  skos:prefLabel "Transaction Event" ;
+  skos:broader epcis:Event .
+
+epcis:TransformationEvent a skos:Concept ;
+  skos:prefLabel "Transformation Event" ;
+  skos:broader epcis:Event .
+
+epcis:EventDimension a skos:Concept ;
+  skos:prefLabel "Event Dimension" .
+
+epcis:BusinessStep a skos:Concept ;
+  skos:prefLabel "Business Step" ;
+  skos:broader epcis:EventDimension .
+
+epcis:Disposition a skos:Concept ;
+  skos:prefLabel "Disposition" ;
+  skos:broader epcis:EventDimension .
+
+epcis:ReadPoint a skos:Concept ;
+  skos:prefLabel "Read Point" ;
+  skos:broader epcis:EventDimension .
+
+epcis:BusinessLocation a skos:Concept ;
+  skos:prefLabel "Business Location" ;
+  skos:broader epcis:EventDimension .

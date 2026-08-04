@@ -5,16 +5,53 @@
   "description": "This schema defines the TermRelation type used for establishing typed semantic relationships between glossary terms.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.TermRelation",
-  "properties": {
+  "definitions": {
     "relationType": {
-      "description": "Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to 'relatedTo' for backward compatibility.",
+      "description": "Type of the semantic relation between glossary terms.",
       "type": "string",
       "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
       "default": "relatedTo"
     },
+    "provenance": {
+      "javaType": "org.openmetadata.schema.type.RelationProvenance",
+      "description": "How this relation edge originated.",
+      "type": "string",
+      "enum": ["Manual", "Inferred", "Imported", "AiSuggested"],
+      "default": "Manual"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this relation edge.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "relationType": {
+      "description": "Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to 'relatedTo' for backward compatibility.",
+      "$ref": "#/definitions/relationType"
+    },
+    "relationshipType": {
+      "description": "Resolved first-class relationship type.",
+      "$ref": "entityReference.json"
+    },
     "term": {
       "description": "Reference to the related glossary term.",
       "$ref": "entityReference.json"
+    },
+    "provenance": {
+      "description": "How this relation edge originated. Defaults to 'Manual'.",
+      "$ref": "#/definitions/provenance"
+    },
+    "status": {
+      "description": "Approval status of this relation edge.",
+      "$ref": "status.json"
+    },
+    "createdBy": {
+      "description": "User who first authored or imported the relationship.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Time the relationship was first persisted.",
+      "$ref": "basic.json#/definitions/timestamp"
     }
   },
   "required": ["term"],

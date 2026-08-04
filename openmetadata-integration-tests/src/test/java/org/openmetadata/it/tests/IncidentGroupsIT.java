@@ -10,9 +10,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.db.DataSourceFactory;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -92,6 +95,10 @@ public class IncidentGroupsIT {
   private static final String GROUP_BY_TEST_DEFINITION = "testDefinition";
   private static final String GROUP_BY_OWNER = "owner";
   private static final String MAX_LIMIT = "1000";
+  private static final String INCIDENT_BACKFILL_END_MARKER =
+      "-- Invalidate pre-2.1 projection success records.";
+  private static final Path MIGRATION_ROOT =
+      Path.of("bootstrap", "sql", "migrations", "native", "2.1.0");
 
   private OpenMetadataClient client;
   private Table tableA;
@@ -939,34 +946,35 @@ public class IncidentGroupsIT {
         statement.addBatch();
       }
       statement.executeBatch();
-      syncIncidentSummary(connection, postgres, fqnHash);
+      syncIncidentSummary(connection, postgres);
     }
   }
 
   // Direct SQL seeding bypasses the repository's write path, so the summary projection the
   // groups endpoint reads must be synced the way pre-existing history is at upgrade time: by
-  // the 2.1.0 backfill. The shipped migration file is executed verbatim (no hand copy that
-  // could drift from it) — safe unscoped because the upsert is idempotent, and it is exactly
-  // its MAX(id) tie-break that testDuplicateMaxTimestampTieBreak pins.
-  private void syncIncidentSummary(Connection connection, boolean postgres, String fqnHash)
-      throws Exception {
-    java.nio.file.Path migrationFile =
-        java.nio.file.Path.of(
-            "..",
-            "bootstrap",
-            "sql",
-            "migrations",
-            "native",
-            "2.1.0",
-            postgres ? "postgres" : "mysql",
-            "postDataMigrationSQLScript.sql");
-    if (!java.nio.file.Files.exists(migrationFile)) {
-      migrationFile = java.nio.file.Path.of("bootstrap").resolve(migrationFile.subpath(1, 8));
+  // the 2.1.0 backfill. Execute that section from the shipped file without also running the
+  // unrelated RDF and search post-migration operations that follow it.
+  private void syncIncidentSummary(Connection connection, boolean postgres) throws Exception {
+    Path migrationFile =
+        resolveMigrationRoot()
+            .resolve(postgres ? "postgres" : "mysql")
+            .resolve("postDataMigrationSQLScript.sql");
+    String migrationScript = Files.readString(migrationFile);
+    int backfillEnd = migrationScript.indexOf(INCIDENT_BACKFILL_END_MARKER);
+    if (backfillEnd < 0) {
+      throw new IllegalStateException("Incident backfill end marker missing from " + migrationFile);
     }
-    String backfill = java.nio.file.Files.readString(migrationFile);
-    try (java.sql.Statement statement = connection.createStatement()) {
-      statement.executeUpdate(backfill);
+    try (Statement statement = connection.createStatement()) {
+      statement.executeUpdate(migrationScript.substring(0, backfillEnd));
     }
+  }
+
+  private Path resolveMigrationRoot() {
+    Path migrationRoot = MIGRATION_ROOT;
+    if (!Files.isDirectory(migrationRoot)) {
+      migrationRoot = Path.of("..").resolve(migrationRoot).normalize();
+    }
+    return migrationRoot;
   }
 
   @Test

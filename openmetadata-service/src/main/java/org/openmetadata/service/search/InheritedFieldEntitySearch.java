@@ -15,12 +15,16 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
 import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_ORDER;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.openmetadata.schema.api.data.OntologyStudioAsset;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface InheritedFieldEntitySearch {
 
@@ -32,6 +36,27 @@ public interface InheritedFieldEntitySearch {
   Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter);
 
   Map<String, Integer> getAggregatedCountsByField(String fieldPath, String queryFilter, int size);
+
+  List<OntologyStudioAssetBucket> getAssetBucketsForTerms(
+      List<String> termFullyQualifiedNames, int assetPreviewSize, SubjectContext subjectContext);
+
+  OntologyStudioAssetResult getAssetPreviewsForField(
+      InheritedFieldQuery query,
+      SubjectContext subjectContext,
+      Supplier<OntologyStudioAssetResult> fallback);
+
+  record OntologyStudioAssetBucket(
+      String termFullyQualifiedName, int assetCount, List<OntologyStudioAsset> assets) {
+    public OntologyStudioAssetBucket {
+      assets = List.copyOf(assets);
+    }
+  }
+
+  record OntologyStudioAssetResult(List<OntologyStudioAsset> assets, int total) {
+    public OntologyStudioAssetResult {
+      assets = List.copyOf(assets);
+    }
+  }
 
   enum QueryFilterType {
     DOMAIN_ASSETS,
@@ -241,6 +266,8 @@ public interface InheritedFieldEntitySearch {
           .includeDeleted(true)
           .from(offset)
           .size(limit)
+          .sortField(GLOSSARY_ASSET_SORT_FIELD)
+          .sortOrder(GLOSSARY_ASSET_SORT_ORDER)
           .build();
     }
 

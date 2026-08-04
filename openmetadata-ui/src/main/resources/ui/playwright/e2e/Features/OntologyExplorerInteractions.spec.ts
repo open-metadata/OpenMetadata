@@ -17,7 +17,6 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
   addTermRelation,
   applyGlossaryFilter,
-  applyRelationTypeFilter,
   createApiContext,
   deleteEntities,
   disposeApiContext,
@@ -28,92 +27,6 @@ import {
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-test.describe('Isolated nodes + relation filter combo', () => {
-  const comboGlossary = new Glossary();
-  const connectedTermA = new GlossaryTerm(comboGlossary);
-  const connectedTermB = new GlossaryTerm(comboGlossary);
-  const isolatedTerm = new GlossaryTerm(comboGlossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await comboGlossary.create(apiContext);
-    await connectedTermA.create(apiContext);
-    await connectedTermB.create(apiContext);
-    await isolatedTerm.create(apiContext);
-    await addTermRelation(
-      apiContext,
-      connectedTermA,
-      connectedTermB,
-      'relatedTo'
-    );
-    await disposeApiContext(page, apiContext);
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { page, apiContext } = await createApiContext(browser);
-    await deleteEntities(
-      apiContext,
-      connectedTermA,
-      connectedTermB,
-      isolatedTerm,
-      comboGlossary
-    );
-    await disposeApiContext(page, apiContext);
-  });
-
-  test.beforeEach(async ({ page }) => {
-    test.slow();
-    await navigateToOntologyExplorer(page);
-    await waitForGraphLoaded(page);
-    await applyGlossaryFilter(page, comboGlossary.responseData.id);
-    await waitForGraphLoaded(page);
-  });
-
-  test('relation filter with no matching edges shows no-relations state', async ({
-    page,
-  }) => {
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
-  });
-
-  test('isolated nodes OFF + unmatched relation filter shows no-relations, not empty state', async ({
-    page,
-  }) => {
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
-    await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
-  });
-
-  test('removing the relation filter restores connected nodes', async ({
-    page,
-  }) => {
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await applyRelationTypeFilter(page, 'Synonym');
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await expect(
-      page.getByTestId('ontology-graph-no-relations')
-    ).not.toBeVisible();
-    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      '2 Terms'
-    );
-  });
-
-  test('re-enabling isolated nodes while relation filter is active keeps no-relations state', async ({
-    page,
-  }) => {
-    await page.getByTestId('ontology-isolated-toggle').click();
-    await applyRelationTypeFilter(page, 'Synonym');
-
-    await page.getByTestId('ontology-isolated-toggle').click();
-
-    await expect(page.getByTestId('ontology-graph-no-relations')).toBeVisible();
-  });
-});
 
 test.describe('Cross-glossary term hydration', () => {
   const salesGlossary = new Glossary();
@@ -174,9 +87,11 @@ test.describe('Cross-glossary term hydration', () => {
     expect(edge).toBeDefined();
   });
 
-  test('stats include the cross-glossary relation', async ({ page }) => {
-    await expect(page.getByTestId('ontology-explorer-stats')).not.toContainText(
-      '0 Relations'
+  test('header stats remain scoped to the selected glossary', async ({
+    page,
+  }) => {
+    await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
+      /1\s+terms?/i
     );
   });
 });
@@ -216,10 +131,11 @@ test.describe('Embedded scope (Relations Graph tab)', () => {
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
   });
 
-  test('global filter toolbar is hidden in term scope', async ({ page }) => {
+  test('global Studio controls are hidden in term scope', async ({ page }) => {
     await expect(
-      page.getByTestId('ontology-explorer-header')
+      page.getByTestId('ontology-glossary-menu-trigger')
     ).not.toBeVisible();
+    await expect(page.getByTestId('mode-tab-view')).not.toBeVisible();
   });
 
   test('zoom and fit-view controls are visible', async ({ page }) => {

@@ -154,6 +154,21 @@ public class DefaultToolContext {
         case "create_data_product":
           result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
           break;
+        case "sparql_query":
+          result = new SparqlQueryTool().execute(authorizer, securityContext, params);
+          break;
+        case "entity_neighborhood":
+          result = new EntityNeighborhoodTool().execute(authorizer, securityContext, params);
+          break;
+        case "find_by_tag":
+          result = new FindByTagTool().execute(authorizer, securityContext, params);
+          break;
+        case "shacl_validate":
+          result = new ShaclValidateTool().execute(authorizer, securityContext, params);
+          break;
+        case "ontology_describe":
+          result = new OntologyDescribeTool().execute(authorizer, securityContext, params);
+          break;
         default:
           return new CallToolOutcome(
               errorResult(errorPayload("Unknown function: " + toolName, STATUS_BAD_REQUEST)),
@@ -306,6 +321,7 @@ public class DefaultToolContext {
                   meta.name().contains("Authorization")
                       || meta.name().contains("Forbidden")
                       || meta.name().contains("Unauthorized")
+                      || meta.name().contains("FederationDisallowed")
                       || meta.message().contains("forbidden")
                       || meta.message().contains("unauthorized")
                       || meta.message().contains("access denied")

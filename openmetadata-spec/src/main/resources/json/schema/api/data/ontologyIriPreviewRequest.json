@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyIriPreviewRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyIriPreviewRequest",
+  "description": "Request a deterministic preview from a glossary's governed IRI minting policy.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyIriPreviewRequest",
+  "properties": {
+    "glossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "termName": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "candidateId": {
+      "description": "Optional candidate UUID used when expanding {uuid}. The service creates one when omitted.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    }
+  },
+  "required": ["glossaryId", "termName"],
+  "additionalProperties": false
+}

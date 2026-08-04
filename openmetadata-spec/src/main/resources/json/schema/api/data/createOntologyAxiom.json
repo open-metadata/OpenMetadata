@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createOntologyAxiom.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateOntologyAxiomRequest",
+  "description": "Create or update a governed OWL axiom.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateOntologyAxiom",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "glossary": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "axiomType": {
+      "$ref": "../../entity/data/ontologyAxiom.json#/definitions/axiomType"
+    },
+    "subjectIri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "expressions": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyExpression.json"
+      }
+    },
+    "propertyIri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "targetIri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "literal": {
+      "$ref": "../../type/ontologyExpression.json#/definitions/literal"
+    },
+    "provenance": {
+      "$ref": "../../type/termRelation.json#/definitions/provenance"
+    },
+    "entityStatus": {
+      "$ref": "../../type/status.json"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    }
+  },
+  "required": [
+    "name",
+    "displayName",
+    "description",
+    "glossary",
+    "axiomType",
+    "subjectIri",
+    "provenance",
+    "entityStatus"
+  ],
+  "additionalProperties": false
+}

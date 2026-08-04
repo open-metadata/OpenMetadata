@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/type/termRelationMetadata.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TermRelationMetadata",
+  "description": "Metadata persisted with a glossary term relationship edge.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.TermRelationMetadata",
+  "properties": {
+    "id": {
+      "description": "Stable logical relationship identifier.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "relationshipTypeId": {
+      "description": "Stable identifier of the governed relationship type.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "sourceTermId": {
+      "description": "Authored source term, independent of canonical physical row ordering.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "relationType": {
+      "description": "Type of the semantic relation between the glossary terms.",
+      "$ref": "termRelation.json#/definitions/relationType"
+    },
+    "provenance": {
+      "description": "How this relation edge originated.",
+      "$ref": "termRelation.json#/definitions/provenance"
+    },
+    "status": {
+      "description": "Approval status of this relation edge.",
+      "$ref": "status.json"
+    },
+    "createdBy": {
+      "description": "User who first authored or imported the relationship.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Time the relationship was first persisted.",
+      "$ref": "basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["relationType", "provenance", "status"],
+  "additionalProperties": false
+}

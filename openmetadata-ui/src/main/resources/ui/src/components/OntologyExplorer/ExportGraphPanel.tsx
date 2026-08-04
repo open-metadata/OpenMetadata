@@ -44,10 +44,10 @@ const ExportGraphPanel: React.FC<ExportGraphPanelProps> = ({
       ? [{ id: ExportFormat.JSONLD, label: t('label.json-ld') }]
       : []),
     ...(onExportTurtle
-      ? [{ id: ExportFormat.TURTLE, label: t('label.turtle-ttl') }]
+      ? [{ id: ExportFormat.TURTLE, label: t('label.skos-turtle') }]
       : []),
     ...(onExportRdfXml
-      ? [{ id: ExportFormat.RDFXML, label: t('label.rdf-xml-rdf') }]
+      ? [{ id: ExportFormat.RDFXML, label: t('label.owl-rdf-xml') }]
       : []),
   ];
 

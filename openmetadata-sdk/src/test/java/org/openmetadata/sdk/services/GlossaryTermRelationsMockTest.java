@@ -23,17 +23,24 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
+import org.openmetadata.schema.api.data.OntologyStudioAsset;
+import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
+import org.openmetadata.schema.api.data.OntologyStudioSummary;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.sdk.services.glossary.GlossaryTermRelationGraphOptions;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 import org.openmetadata.sdk.services.system.SystemSettingsService;
 
@@ -103,26 +110,99 @@ class GlossaryTermRelationsMockTest {
   @Test
   void relationGraphParsesNodesAndEdges() {
     UUID id = UUID.randomUUID();
-    when(httpClient.executeForString(
-            eq(HttpMethod.GET), anyString(), isNull(), any(RequestOptions.class)))
-        .thenReturn("{\"nodes\":[{\"id\":\"a\"}],\"edges\":[]}");
+    GlossaryTermRelationGraph expected = new GlossaryTermRelationGraph();
+    when(httpClient.execute(
+            eq(HttpMethod.GET),
+            anyString(),
+            isNull(),
+            eq(GlossaryTermRelationGraph.class),
+            any(RequestOptions.class)))
+        .thenReturn(expected);
 
-    Map<String, Object> graph = glossaryTerms.relationGraph(id, 2, List.of("prescribes"));
+    GlossaryTermRelationGraph graph = glossaryTerms.relationGraph(id, 2, List.of("prescribes"));
 
-    assertTrue(graph.containsKey("nodes"));
-    assertTrue(graph.containsKey("edges"));
+    assertSame(expected, graph);
+    ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    verify(httpClient)
+        .execute(
+            eq(HttpMethod.GET),
+            eq("/v1/glossaryTerms/" + id + "/relationsGraph"),
+            isNull(),
+            eq(GlossaryTermRelationGraph.class),
+            options.capture());
+    assertEquals("2", options.getValue().getQueryParams().get("depth"));
+    assertEquals("prescribes", options.getValue().getQueryParams().get("relationTypes"));
+    assertEquals("500", options.getValue().getQueryParams().get("nodeLimit"));
+    assertEquals("1000", options.getValue().getQueryParams().get("edgeLimit"));
+  }
+
+  @Test
+  void relationGraphOptionsRejectInvalidBounds() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new GlossaryTermRelationGraphOptions(0, List.of(), 500, 1000));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new GlossaryTermRelationGraphOptions(1, List.of(), 0, 1000));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new GlossaryTermRelationGraphOptions(1, List.of(), 500, 10001));
   }
 
   @Test
   void relationTypeUsageParsesCounts() {
     when(httpClient.executeForString(
             eq(HttpMethod.GET), eq("/v1/glossaryTerms/relationTypes/usage"), isNull()))
-        .thenReturn("{\"prescribes\":3,\"synonym\":5}");
+        .thenReturn(
+            "[{\"relationshipType\":{\"id\":\"11111111-1111-1111-1111-111111111111\","
+                + "\"type\":\"relationshipType\",\"name\":\"prescribes\"},\"count\":3},"
+                + "{\"relationshipType\":{\"id\":\"22222222-2222-2222-2222-222222222222\","
+                + "\"type\":\"relationshipType\",\"name\":\"synonym\"},\"count\":5}]");
 
-    Map<String, Integer> usage = glossaryTerms.relationTypeUsage();
+    List<RelationshipTypeUsage> usage = glossaryTerms.relationTypeUsage();
 
-    assertEquals(3, usage.get("prescribes"));
-    assertEquals(5, usage.get("synonym"));
+    assertEquals(2, usage.size());
+    assertEquals("prescribes", usage.getFirst().getRelationshipType().getName());
+    assertEquals(3, usage.getFirst().getCount());
+    assertEquals("synonym", usage.getLast().getRelationshipType().getName());
+    assertEquals(5, usage.getLast().getCount());
+  }
+
+  @Test
+  void studioEndpointsUseBoundedPagingParameters() {
+    UUID termId = UUID.randomUUID();
+    when(httpClient.execute(
+            eq(HttpMethod.GET),
+            eq("/v1/glossaryTerms/studio/summary"),
+            isNull(),
+            eq(OntologyStudioSummary.class),
+            any(RequestOptions.class)))
+        .thenReturn(new OntologyStudioSummary());
+    when(httpClient.execute(
+            eq(HttpMethod.GET),
+            eq("/v1/glossaryTerms/studio/data"),
+            isNull(),
+            eq(OntologyStudioDataGraph.class),
+            any(RequestOptions.class)))
+        .thenReturn(new OntologyStudioDataGraph());
+    when(httpClient.executeForString(
+            eq(HttpMethod.GET),
+            eq("/v1/glossaryTerms/" + termId + "/studioAssets"),
+            any(RequestOptions.class)))
+        .thenReturn("{\"data\":[],\"paging\":{\"total\":0}}");
+
+    glossaryTerms.studioSummary("Commerce", 5, 10);
+    glossaryTerms.studioData("Commerce", 12, 24, 4);
+    ResultList<OntologyStudioAsset> assets = glossaryTerms.studioAssets(termId, 6, 12);
+
+    ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    verify(httpClient, times(2))
+        .execute(eq(HttpMethod.GET), anyString(), isNull(), any(Class.class), options.capture());
+    assertEquals("5", options.getAllValues().getFirst().getQueryParams().get("limit"));
+    assertEquals("10", options.getAllValues().getFirst().getQueryParams().get("offset"));
+    assertEquals("Commerce", options.getAllValues().getFirst().getQueryParams().get("parent"));
+    assertEquals("4", options.getAllValues().getLast().getQueryParams().get("assetPreviewSize"));
+    assertEquals(0, assets.getData().size());
   }
 
   @Test

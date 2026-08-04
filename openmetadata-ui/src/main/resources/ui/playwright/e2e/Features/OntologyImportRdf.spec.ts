@@ -96,22 +96,12 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
     // The imported concept shows up in the glossary term tree.
     await expect(page.getByText('Healthcare Provider').first()).toBeVisible();
 
-    // RDF round-trip: with the triplestore enabled, exporting the glossary as an
-    // ontology reproduces the canonical concept IRI we imported.
-    // When RDF is disabled the export endpoint returns 503; skip the assertion
-    // rather than fail so the test remains useful in non-Fuseki environments.
-    const statusRes = await apiContext.get('/api/v1/rdf/status');
-    const rdfEnabled =
-      statusRes.ok() && (await statusRes.json()).enabled === true;
+    const response = await apiContext.get(
+      `/api/v1/rdf/glossary/${glossary.responseData.id}/export?format=turtle`
+    );
 
-    if (rdfEnabled) {
-      const response = await apiContext.get(
-        `/api/v1/rdf/glossary/${glossary.responseData.id}/export?format=turtle`
-      );
-
-      expect(response.ok()).toBeTruthy();
-      expect(await response.text()).toContain(HCP_IRI);
-    }
+    expect(response.ok()).toBeTruthy();
+    expect(await response.text()).toContain(HCP_IRI);
 
     await afterAction();
   });
@@ -147,24 +137,21 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   });
 
   test('hides Import Ontology from a user without glossary edit permission', async ({
-    browser,
+    page,
   }) => {
-    const userPage = await browser.newPage();
-    await consumerUser.login(userPage);
-    await redirectToHomePage(userPage);
+    await consumerUser.login(page);
+    await redirectToHomePage(page);
 
     // A read-only data consumer can open the glossary (visitPage asserts the
     // header is rendered), but the Import Ontology action is gated behind the
     // same edit permission as CSV import/export and must not be reachable.
-    await glossary.visitPage(userPage);
+    await glossary.visitPage(page);
 
-    const manageButton = userPage.getByTestId('manage-button');
+    const manageButton = page.getByTestId('manage-button');
     if (await manageButton.isVisible().catch(() => false)) {
       await manageButton.click();
     }
 
-    await expect(userPage.getByTestId('import-ontology-button')).toBeHidden();
-
-    await userPage.close();
+    await expect(page.getByTestId('import-ontology-button')).toBeHidden();
   });
 });

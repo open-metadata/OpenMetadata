@@ -176,7 +176,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       },
       {
         key: ROUTES.ONTOLOGY_EXPLORER,
-        title: 'label.ontology-explorer',
+        title: 'label.ontology-studio',
         redirect_url: ROUTES.ONTOLOGY_EXPLORER,
         icon: LineageIcon,
         dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,

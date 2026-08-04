@@ -776,6 +776,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword(FUSEKI_ADMIN_PASSWORD);
     rdfConfig.setDataset(FUSEKI_DATASET);
+    rdfConfig.setMaterializedInferenceEnabled(true);
 
     LOG.info("RDF configuration complete");
   }

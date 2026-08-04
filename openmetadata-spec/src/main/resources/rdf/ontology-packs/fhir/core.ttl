@@ -1,0 +1,18 @@
+@prefix fhir: <https://open-metadata.org/library/fhir/core/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+fhir:Resource a skos:Concept ;
+  skos:prefLabel "FHIR Resource" ;
+  skos:definition "A governed metadata concept representing a FHIR resource." .
+
+fhir:DomainResource a skos:Concept ;
+  skos:prefLabel "FHIR Domain Resource" ;
+  skos:broader fhir:Resource .
+
+fhir:Reference a skos:Concept ;
+  skos:prefLabel "FHIR Reference" ;
+  skos:broader fhir:Resource .
+
+fhir:Identifier a skos:Concept ;
+  skos:prefLabel "FHIR Identifier" ;
+  skos:broader fhir:Resource .

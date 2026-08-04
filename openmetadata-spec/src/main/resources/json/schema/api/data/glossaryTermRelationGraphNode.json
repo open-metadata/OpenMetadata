@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/glossaryTermRelationGraphNode.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlossaryTermRelationGraphNode",
+  "description": "A glossary term represented as a node in the relation graph.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.GlossaryTermRelationGraphNode",
+  "properties": {
+    "id": {
+      "description": "Identifier of the glossary term.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the glossary term.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the glossary term.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Optional display name of the glossary term.",
+      "type": "string"
+    }
+  },
+  "required": ["id", "name", "fullyQualifiedName"],
+  "additionalProperties": false
+}

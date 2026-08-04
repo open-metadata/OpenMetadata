@@ -52,12 +52,12 @@ public final class GlossaryTermRelationSettingsUtil {
         relationType.setTargetMax(1);
       }
       case ONE_TO_MANY -> {
-        relationType.setSourceMax(1);
-        relationType.setTargetMax(null);
-      }
-      case MANY_TO_ONE -> {
         relationType.setSourceMax(null);
         relationType.setTargetMax(1);
+      }
+      case MANY_TO_ONE -> {
+        relationType.setSourceMax(1);
+        relationType.setTargetMax(null);
       }
       case MANY_TO_MANY -> {
         relationType.setSourceMax(null);
@@ -122,10 +122,10 @@ public final class GlossaryTermRelationSettingsUtil {
     if (Integer.valueOf(1).equals(sourceMax) && Integer.valueOf(1).equals(targetMax)) {
       return RelationCardinality.ONE_TO_ONE;
     }
-    if (Integer.valueOf(1).equals(sourceMax) && targetMax == null) {
+    if (sourceMax == null && Integer.valueOf(1).equals(targetMax)) {
       return RelationCardinality.ONE_TO_MANY;
     }
-    if (sourceMax == null && Integer.valueOf(1).equals(targetMax)) {
+    if (Integer.valueOf(1).equals(sourceMax) && targetMax == null) {
       return RelationCardinality.MANY_TO_ONE;
     }
     return RelationCardinality.CUSTOM;

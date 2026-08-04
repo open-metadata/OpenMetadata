@@ -1,0 +1,101 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createRelationshipType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateRelationshipTypeRequest",
+  "description": "Create or update a governed semantic relationship type.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateRelationshipType",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "iri": {
+      "type": "string",
+      "format": "uri"
+    },
+    "rdfPredicate": {
+      "type": "string",
+      "format": "uri"
+    },
+    "category": {
+      "$ref": "../../entity/data/relationshipType.json#/definitions/category"
+    },
+    "inverse": {
+      "description": "Fully qualified name of the inverse relationship type.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "domain": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/semanticReference.json"
+      }
+    },
+    "range": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/semanticReference.json"
+      }
+    },
+    "characteristics": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/relationshipType.json#/definitions/characteristic"
+      },
+      "uniqueItems": true
+    },
+    "cardinality": {
+      "$ref": "../../entity/data/relationshipType.json#/definitions/cardinality"
+    },
+    "propertyChain": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "default": []
+    },
+    "disjointWith": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "crossGlossaryAllowed": {
+      "type": "boolean",
+      "default": true
+    },
+    "paletteKey": {
+      "$ref": "../../entity/data/relationshipType.json#/definitions/paletteKey"
+    },
+    "replacedBy": {
+      "description": "Fully qualified name of the replacement relationship type.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "entityStatus": {
+      "$ref": "../../type/status.json"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "$ref": "../../type/entityReferenceList.json"
+    }
+  },
+  "required": [
+    "name",
+    "displayName",
+    "description",
+    "rdfPredicate",
+    "category",
+    "paletteKey"
+  ],
+  "additionalProperties": false
+}

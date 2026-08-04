@@ -29,10 +29,17 @@ public class GlossaryTermIndex implements TaggableIndex {
     return Set.of("children");
   }
 
+  /**
+   * {@code effectiveAttributes} is deliberately absent: it is derived from the term's ancestors, so
+   * an indexed copy would go stale whenever an ancestor's attributes change until the next full
+   * reindex. It stays computed per read on the API until a cascade handler exists to refresh
+   * descendants.
+   */
   @Override
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
     fields.add("relatedTerms");
+    fields.add("realizedIn");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

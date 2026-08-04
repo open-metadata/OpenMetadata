@@ -591,6 +591,7 @@ rdf:
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
   remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  maxInMemoryInferenceTriples: ${RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES:-100000}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}

@@ -170,6 +170,22 @@ public interface JobDAO {
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob findCsvJobById(@Bind("id") long id);
 
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE createdBy = :createdBy "
+          + "AND jobType = 'ONTOLOGY_BULK' ORDER BY createdAt DESC LIMIT :limit")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  List<BackgroundJob> listOntologyBulkJobsByUser(
+      @Bind("createdBy") String createdBy, @Bind("limit") int limit);
+
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE id = :id AND jobType = 'ONTOLOGY_BULK'")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findOntologyBulkJobById(@Bind("id") long id);
+
   @SqlUpdate(
       "UPDATE background_jobs SET status = :status, message = :message, "
           + "updatedAt = :updatedAt WHERE id = :id")
@@ -233,6 +249,14 @@ public interface JobDAO {
           + "message = 'Server restarted before the job completed.', updatedAt = :updatedAt, completedAt = :updatedAt "
           + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT') AND status = 'RUNNING'")
   int markStaleRunningCsvJobsFailed(@Bind("updatedAt") long updatedAt);
+
+  @SqlUpdate(
+      "UPDATE background_jobs SET status = 'FAILED', "
+          + "error = 'Server restarted before the ontology bulk job completed.', "
+          + "message = 'Server restarted before the ontology bulk job completed.', "
+          + "updatedAt = :updatedAt, completedAt = :updatedAt "
+          + "WHERE jobType = 'ONTOLOGY_BULK' AND status = 'RUNNING'")
+  int markStaleRunningOntologyBulkJobsFailed(@Bind("updatedAt") long updatedAt);
 
   @SqlUpdate(
       "INSERT INTO background_job_logs (logId, jobId, createdAt, level, message) "

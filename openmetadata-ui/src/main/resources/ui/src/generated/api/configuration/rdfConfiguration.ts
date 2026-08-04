@@ -15,6 +15,11 @@
  */
 export interface RDFConfiguration {
     /**
+     * Expose optional AI-assisted Ontology Studio flows. Manual authoring remains available
+     * when disabled.
+     */
+    askCollateEnabled?: boolean;
+    /**
      * Base URI for RDF resources
      */
     baseUri?: string;
@@ -31,7 +36,8 @@ export interface RDFConfiguration {
      */
     bulkRelationshipSourceBatchSize?: number;
     /**
-     * Cache inferred triples for better query performance (requires more storage)
+     * Cache bounded in-memory inference models for better query performance. Cached models
+     * expire after 60 seconds.
      */
     cacheInferredTriples?: boolean;
     /**
@@ -49,14 +55,34 @@ export interface RDFConfiguration {
      */
     defaultInferenceLevel?: ReasoningLevel;
     /**
+     * Expose authenticated content-negotiated redirects for OpenMetadata-minted IRIs.
+     */
+    dereferenceableIris?: boolean;
+    /**
      * Enable or disable RDF support
      */
     enabled: boolean;
+    /**
+     * Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is
+     * disabled by default; SERVICE clauses are rejected unless the target URI is in the
+     * allowlist.
+     */
+    federation?: Federation;
     /**
      * Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the
      * inference engine to derive additional triples based on the reasoning level.
      */
     inferenceEnabled?: boolean;
+    /**
+     * Use durable per-rule inferred named graphs produced inside the RDF store instead of
+     * building an in-memory Jena inference model for CUSTOM inference queries.
+     */
+    materializedInferenceEnabled?: boolean;
+    /**
+     * Maximum RDF store size for in-process inference. Queries requesting inference fall back
+     * to direct SPARQL execution when the store exceeds this limit.
+     */
+    maxInMemoryInferenceTriples?: number;
     /**
      * Password for RDF storage authentication
      */
@@ -68,11 +94,16 @@ export interface RDFConfiguration {
     /**
      * Timeout in milliseconds for individual RDF storage requests.
      */
-    requestTimeoutMs?: number;
+    requestTimeoutMs?:    number;
+    shaclValidationMode?: ShaclValidationMode;
     /**
      * Type of RDF storage backend
      */
     storageType: StorageType;
+    /**
+     * Reject authored axioms that violate the supported OWL 2 DL profile guardrails.
+     */
+    strictOwlProfile?: boolean;
     /**
      * Username for RDF storage authentication
      */
@@ -104,6 +135,33 @@ export enum ReasoningLevel {
     OwlDL = "OWL_DL",
     OwlLite = "OWL_LITE",
     Rdfs = "RDFS",
+}
+
+/**
+ * Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is
+ * disabled by default; SERVICE clauses are rejected unless the target URI is in the
+ * allowlist.
+ */
+export interface Federation {
+    /**
+     * External SPARQL endpoint URIs that may appear in SERVICE clauses. Compared verbatim
+     * against the URI in the SERVICE clause; trailing slashes matter.
+     */
+    allowedEndpoints?: string[];
+    /**
+     * Master switch for federated SPARQL. When false, every SERVICE clause is rejected
+     * regardless of allowlist contents.
+     */
+    enabled?: boolean;
+}
+
+/**
+ * SHACL validation behavior for RDF import and asynchronous projections.
+ */
+export enum ShaclValidationMode {
+    EnforceImports = "ENFORCE_IMPORTS",
+    Off = "OFF",
+    Report = "REPORT",
 }
 
 /**
