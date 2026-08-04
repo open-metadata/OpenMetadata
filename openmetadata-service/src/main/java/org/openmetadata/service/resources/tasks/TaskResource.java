@@ -1091,8 +1091,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // status to decide H4/H5/H6. Small extra field cost vs. the alternative of pulling
     // FIELDS which includes payload/comments/availableTransitions.
     Task task = repository.get(uriInfo, id, EntityUtil.Fields.EMPTY_FIELDS);
-    validatePatchOperations(task, patch);
+    validatePatchOperations(task, patch, isAdmin(securityContext));
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  private boolean isAdmin(SecurityContext securityContext) {
+    SubjectContext subject = getSubjectContext(securityContext);
+    return subject != null && subject.isAdmin();
   }
 
   @POST
@@ -1714,7 +1719,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    * {@link TaskRepository} can rely on the invariant that these fields only change through the
    * resolve/close paths.
    */
-  private void validatePatchOperations(final Task task, final JsonPatch patch) {
+  private void validatePatchOperations(
+      final Task task, final JsonPatch patch, final boolean callerIsAdmin) {
     if (patch == null) {
       return;
     }
@@ -1722,21 +1728,22 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // and inspect its "path" pointer, which is why the JsonValue instanceof-check is required.
     for (JsonValue op : patch.toJsonArray()) {
       if (op instanceof JsonObject opObj) {
-        rejectRestrictedPatchOp(task, opObj);
+        rejectRestrictedPatchOp(task, opObj, callerIsAdmin);
       }
     }
   }
 
-  private void rejectRestrictedPatchOp(final Task task, final JsonObject op) {
+  private void rejectRestrictedPatchOp(
+      final Task task, final JsonObject op, final boolean callerIsAdmin) {
     final String rawPath = op.containsKey("path") ? op.getString("path", "") : "";
-    checkRestrictedTarget(task, rawPath);
+    checkRestrictedTarget(task, rawPath, callerIsAdmin);
     checkStatusPatchIsNotWorkflowDecision(task, op, rawPath);
     // move/copy operations carry a second pointer that names the SOURCE. A restricted
     // source is just as unsafe as a restricted target — {"op":"move","from":"/payload/x",
     // "path":"/foo"} would silently strip a field out of the frozen payload while the
     // target /foo doesn't touch any restricted top-level. Check both.
     if (op.containsKey("from")) {
-      checkRestrictedTarget(task, op.getString("from", ""));
+      checkRestrictedTarget(task, op.getString("from", ""), callerIsAdmin);
     }
   }
 
@@ -1775,7 +1782,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
   }
 
-  private void checkRestrictedTarget(final Task task, final String rawPath) {
+  private void checkRestrictedTarget(
+      final Task task, final String rawPath, final boolean callerIsAdmin) {
     if (rawPath == null) {
       return;
     }
@@ -1791,6 +1799,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       throw BadRequestException.of(
           "Field '/%s' is workflow- or audit-owned and cannot be changed via PATCH."
               .formatted(topLevel));
+    }
+    // /availableTransitions is the input to validateTransition's transitionId check on resolve.
+    // A regular user PATCHing it to add a fake {id: "grant", resolutionType: "Approved"} could
+    // pass validateTransition and land the task in Approved via the workflow handler's positive-
+    // default fallback — the exact H1 bypass Copilot's review flagged. Non-admin cannot write.
+    // Admin retains the ability so OSS "resolve when the workflow has not stamped transitions"
+    // regression tests (which use adminClient().tasks().update() to seed an empty transitions
+    // list) still work; admin already has broader footguns.
+    if (!callerIsAdmin && "availableTransitions".equals(topLevel)) {
+      throw BadRequestException.of(
+          "Field '/availableTransitions' is workflow-owned and cannot be changed via PATCH.");
     }
     if (task.getStatus() != TaskEntityStatus.Open
         && ("payload".equals(topLevel) || "about".equals(topLevel))) {
