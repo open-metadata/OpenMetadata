@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import type { ColumnsType } from 'antd/es/table/interface';
 import type { HTMLAttributes, ReactNode, TdHTMLAttributes } from 'react';
+import type { TableComponentProps } from './Table.interface';
 import TableV2 from './TableV2';
 
 const mockSetPreference = jest.fn();
@@ -137,7 +137,7 @@ const sibling: TreeRow = {
   value: 'sibling-value',
 };
 
-const columns: ColumnsType<TreeRow> = [
+const columns: NonNullable<TableComponentProps<TreeRow>['columns']> = [
   {
     dataIndex: 'name',
     key: 'name',

@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.atLeastOnce;
@@ -143,6 +144,10 @@ class EntityRepositoryRestoreTest {
     @Override
     protected void postRestoreFromSearch(Pipeline entity) {
       restoreFromSearchSteps.add("postRestoreFromSearch");
+    }
+
+    void postCreateMany(List<Pipeline> pipelines) {
+      postCreate(pipelines);
     }
   }
 
@@ -292,6 +297,41 @@ class EntityRepositoryRestoreTest {
           () ->
               CacheBundle.invalidateEntity(
                   Entity.PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName()));
+    }
+  }
+
+  @Test
+  void postCreateManyClearsNegativeCacheMarkersForEachCreatedEntity() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline first =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("first")
+            .withFullyQualifiedName("service.first");
+    Pipeline duplicate =
+        new Pipeline()
+            .withId(first.getId())
+            .withName(first.getName())
+            .withFullyQualifiedName(first.getFullyQualifiedName());
+    Pipeline second =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("second")
+            .withFullyQualifiedName("service.second");
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+
+      repo.postCreateMany(List.of(first, duplicate, second));
+
+      cacheBundle.verify(
+          () -> CacheBundle.invalidateEntity(Entity.PIPELINE, first.getId(), "service.first"));
+      cacheBundle.verify(
+          () -> CacheBundle.invalidateEntity(Entity.PIPELINE, second.getId(), "service.second"));
+      verify(dispatcher).onEntitiesCreated(argThat(created -> created.size() == 2), eq(null));
     }
   }
 

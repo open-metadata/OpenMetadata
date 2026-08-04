@@ -67,7 +67,7 @@ const MetricApprovalTab: FC<MetricApprovalTabProps> = ({
   const latestOutcome = getMetricApprovalOutcome(historyQuery.data);
   const isRollbackOutcome =
     metric.entityStatus === EntityStatus.Approved &&
-    latestOutcome === 'rollback';
+    (latestOutcome === 'rollback' || latestOutcome === 'rejected');
   const taskQuery = useEntityApprovalTask({
     entityFqn: metric.fullyQualifiedName ?? '',
     enabled: hasWorkflow,

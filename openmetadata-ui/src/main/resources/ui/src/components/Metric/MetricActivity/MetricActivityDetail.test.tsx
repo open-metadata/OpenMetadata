@@ -43,10 +43,12 @@ const baseProps = {
   canComment: true,
   canResolveTasks: true,
   isCommenting: false,
+  isResolvePermissionLoading: false,
   isResolvingTask: false,
   onClose: jest.fn(),
   onCreateComment: jest.fn(),
   onReply: jest.fn().mockResolvedValue({}),
+  onRetryResolvePermission: jest.fn(),
   onResolveTask: jest.fn().mockResolvedValue({}),
   onTaskComment: jest.fn(),
 };
@@ -140,5 +142,52 @@ describe('MetricActivityDetail', () => {
       'reject-transition',
       undefined
     );
+  });
+
+  it('shows a loading status without flashing task resolution actions', () => {
+    render(
+      <MetricActivityDetail
+        {...baseProps}
+        isResolvePermissionLoading
+        canResolveTasks={false}
+        selection={{
+          kind: 'task',
+          value: {
+            createdAt: 10,
+            id: 'task-1',
+            name: 'Clarify definition',
+            status: TaskStatus.Open,
+            type: TaskType.DescriptionUpdate,
+          } as Task,
+        }}
+      />
+    );
+
+    expect(screen.getByRole('status', { name: 'label.loading' })).toBeVisible();
+    expect(screen.queryByText('label.resolve')).not.toBeInTheDocument();
+  });
+
+  it('offers retry when task permission loading fails', () => {
+    render(
+      <MetricActivityDetail
+        {...baseProps}
+        canResolveTasks={false}
+        resolvePermissionError={new Error('permission unavailable')}
+        selection={{
+          kind: 'task',
+          value: {
+            createdAt: 10,
+            id: 'task-1',
+            name: 'Clarify definition',
+            status: TaskStatus.Open,
+            type: TaskType.DescriptionUpdate,
+          } as Task,
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByText('label.try-again'));
+
+    expect(baseProps.onRetryResolvePermission).toHaveBeenCalledTimes(1);
   });
 });

@@ -25,6 +25,7 @@ import { Plus } from '@untitledui/icons';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
 import { User } from '../../../generated/entity/teams/user';
@@ -41,14 +42,15 @@ import MetricCommentComposer from './MetricCommentComposer';
 import MetricTaskCreateDialog from './MetricTaskCreateDialog';
 import MetricTaskItem from './MetricTaskItem';
 import { useMetricActivity } from './useMetricActivity';
+import { useMetricTaskResolutionPermission } from './useMetricTaskResolutionPermission';
 
 export interface MetricActivityTabProps {
   canCreateThread?: boolean;
   canCreateTasks?: boolean;
-  canResolveTasks?: boolean;
   currentUser?: Pick<User, 'id' | 'name'>;
   feedCount?: FeedCounts;
   metric: Metric;
+  metricPermissions?: Partial<OperationPermission>;
   onFeedUpdate?: () => void;
   onUpdateEntityDetails?: () => void;
   onUpdateFeedCount?: (counts: FeedCounts) => void;
@@ -57,10 +59,10 @@ export interface MetricActivityTabProps {
 const MetricActivityTab = ({
   canCreateThread = true,
   canCreateTasks = true,
-  canResolveTasks = false,
   currentUser,
   feedCount,
   metric,
+  metricPermissions = {},
   onFeedUpdate,
   onUpdateEntityDetails,
   onUpdateFeedCount,
@@ -72,6 +74,11 @@ const MetricActivityTab = ({
   const [taskStatus, setTaskStatus] = useState<MetricTaskStatusFilter>('open');
   const [selection, setSelection] = useState<MetricActivitySelection>();
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const selectedTask = selection?.kind === 'task' ? selection.value : undefined;
+  const taskResolutionPermission = useMetricTaskResolutionPermission(
+    selectedTask,
+    metricPermissions
+  );
   const state = useMetricActivity({
     currentUserId: currentUser?.id,
     currentUserName: currentUser?.name,
@@ -303,9 +310,11 @@ const MetricActivityTab = ({
         {selection && (
           <MetricActivityDetail
             canComment={canCreateThread}
-            canResolveTasks={canResolveTasks}
+            canResolveTasks={taskResolutionPermission.canResolve}
             isCommenting={state.isCommenting}
+            isResolvePermissionLoading={taskResolutionPermission.isLoading}
             isResolvingTask={state.isResolvingTask}
+            resolvePermissionError={taskResolutionPermission.error}
             selection={selection}
             onClose={() => setSelection(undefined)}
             onCreateComment={(about, message) =>
@@ -325,6 +334,7 @@ const MetricActivityTab = ({
                   })
               )
             }
+            onRetryResolvePermission={() => taskResolutionPermission.refetch()}
             onTaskComment={(taskId, message) =>
               afterMutation(state.addTaskComment(taskId, message))
             }
@@ -340,7 +350,11 @@ const MetricActivityTab = ({
         onCreate={(task) => afterMutation(state.createTask(task))}
       />
       <span aria-live="polite" className="tw:sr-only">
-        {state.isCommenting || state.isResolvingTask ? t('label.loading') : ''}
+        {state.isCommenting ||
+        state.isResolvingTask ||
+        taskResolutionPermission.isLoading
+          ? t('label.loading')
+          : ''}
       </span>
     </Box>
   );

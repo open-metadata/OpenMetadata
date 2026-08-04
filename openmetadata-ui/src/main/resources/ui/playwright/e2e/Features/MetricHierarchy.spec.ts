@@ -14,9 +14,13 @@ import type { APIRequestContext, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { VIEW_ONLY_RULE } from '../../constant/permission';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
+import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
+import { setupUserWithPolicy } from '../../utils/permission';
 import { performUserLogin } from '../../utils/user';
 
 /**
@@ -42,6 +46,7 @@ interface MetricResponse {
   children?: EntityReferenceResponse[];
   childrenCount?: number;
   metricGroup?: EntityReferenceResponse;
+  reviewers?: EntityReferenceResponse[];
 }
 
 interface MetricListResponse {
@@ -59,7 +64,8 @@ const createMetric = async (
   apiContext: APIRequestContext,
   name: string,
   parent?: string,
-  metricGroup?: string
+  metricGroup?: string,
+  owners?: EntityReferenceResponse[]
 ): Promise<MetricResponse> => {
   const response = await apiContext.post('/api/v1/metrics', {
     data: {
@@ -72,6 +78,7 @@ const createMetric = async (
       unitOfMeasurement: 'COUNT',
       ...(parent ? { parent } : {}),
       ...(metricGroup ? { metricGroup } : {}),
+      ...(owners?.length ? { owners } : {}),
     },
   });
 
@@ -422,6 +429,13 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.goto('/metrics');
       await rootsRequest;
 
+      const searchResponse = waitForMetricHierarchySearch(page, parentName);
+      await page
+        .getByTestId('metric-search')
+        .getByRole('textbox')
+        .fill(parentName);
+      expect((await searchResponse).ok()).toBeTruthy();
+
       // Metric variants remain collapsed until their parent is explicitly expanded.
       await expect(page.getByText(parentName, { exact: true })).toBeVisible();
       await expect(page.getByText(childName, { exact: true })).toBeHidden();
@@ -711,20 +725,40 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let group: MetricGroupResponse | undefined;
 
     try {
-      await page.goto('/metrics/add');
+      await page.goto('/metrics/add-metric');
       await fillRequiredMetricFields(page, rootName);
       const groupCombo = page
         .getByTestId('metric-group-select')
         .getByRole('combobox');
+      const groupResolution = page.waitForResponse((response) =>
+        new URL(response.url()).pathname.endsWith(
+          `/api/v1/metricGroups/name/${encodeURIComponent(groupName)}`
+        )
+      );
       await groupCombo.fill(groupName);
-      await page.getByRole('option').filter({ hasText: groupName }).click();
+      expect((await groupResolution).status()).toBe(404);
+      const createGroupOption = page.getByRole('option', {
+        name: new RegExp(`^Create ${groupName}`),
+      });
+      await groupCombo.press('ArrowDown');
+      await expect(createGroupOption).toBeVisible();
+      await groupCombo.press('End');
+      await expect(createGroupOption).toHaveAttribute('data-focused', 'true');
+      await groupCombo.press('Enter');
+      await expect(groupCombo).toHaveValue(groupName);
 
+      const groupCreateResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname.endsWith('/api/v1/metricGroups')
+      );
       const rootResponse = page.waitForResponse(
         (response) =>
           response.request().method() === 'POST' &&
           new URL(response.url()).pathname.endsWith('/api/v1/metrics')
       );
       await page.getByTestId('create-button').click();
+      expect((await groupCreateResponse).ok()).toBeTruthy();
       root = (await (await rootResponse).json()) as MetricResponse;
 
       await expect(page.getByTestId('metric-details-page')).toBeVisible();
@@ -735,22 +769,14 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         detailHeader.getByTestId('metric-status-pill')
       ).toContainText('Approved');
       await expect(detailHeader.getByTestId('metric-type')).toBeVisible();
-      await expect(
-        detailHeader.getByTestId('unit-of-measurement')
-      ).toBeVisible();
+      await expect(page.getByTestId('metric-definition-unit')).toBeVisible();
       await expect(detailHeader.getByTestId('granularity')).toBeVisible();
       await expect(
         detailHeader.getByTestId('metric-header-health-pill')
       ).toBeVisible({ timeout: 60_000 });
-      await expect(
-        detailHeader.getByTestId('metric-header-owner')
-      ).toBeVisible();
-      await expect(
-        detailHeader.getByTestId('metric-header-domain')
-      ).toBeVisible();
-      await expect(
-        detailHeader.getByTestId('metric-header-tier')
-      ).toBeVisible();
+      await expect(page.getByTestId('metric-header-owner')).toBeVisible();
+      await expect(page.getByTestId('metric-header-domain')).toBeVisible();
+      await expect(page.getByTestId('metric-header-tier')).toBeVisible();
       await expect(page.getByTestId('metric-tree-group')).toContainText(
         groupName
       );
@@ -807,7 +833,9 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
       await page.getByTestId('metric-definition-save').click();
       await patchResponse;
-      await expect(page.getByText('COUNT(DISTINCT order_id)')).toBeVisible();
+      await expect(page.getByTestId('metric-expression-code')).toContainText(
+        'COUNT(DISTINCT order_id)'
+      );
 
       await expect(page.getByTestId('edit-metric-metadata')).toBeVisible();
       await page.getByTestId('edit-metric-metadata').click();
@@ -863,14 +891,31 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const readOnlyUser = new UserClass();
+    const readOnlyPolicy = new PolicyClass();
+    const readOnlyRole = new RolesClass();
     const metricName = `pw-metric-read-only-overview-${uuid()}`;
     let metric: MetricResponse | undefined;
     let readOnlyAfterAction: (() => Promise<void>) | undefined;
     let userCreated = false;
 
     try {
-      metric = await createMetric(apiContext, metricName);
-      await readOnlyUser.create(apiContext);
+      const adminResponse = await apiContext.get('/api/v1/users/name/admin');
+      expect(adminResponse.ok()).toBeTruthy();
+      const admin = (await adminResponse.json()) as EntityReferenceResponse;
+      metric = await createMetric(
+        apiContext,
+        metricName,
+        undefined,
+        undefined,
+        [{ id: admin.id, name: admin.name, type: 'user' }]
+      );
+      await setupUserWithPolicy(
+        apiContext,
+        readOnlyUser,
+        readOnlyPolicy,
+        readOnlyRole,
+        VIEW_ONLY_RULE
+      );
       userCreated = true;
 
       const readOnlySession = await performUserLogin(browser, readOnlyUser);
@@ -890,7 +935,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         'Count'
       );
       await expect(
-        detailHeader.getByTestId('unit-of-measurement')
+        detailsPage.getByTestId('metric-definition-unit')
       ).toContainText('Count');
       await expect(detailHeader.getByTestId('granularity')).toContainText(
         'Day'
@@ -923,7 +968,19 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
               await readOnlyUser.delete(apiContext);
             }
           } finally {
-            await afterAction();
+            try {
+              if (readOnlyRole.responseData?.id) {
+                await readOnlyRole.delete(apiContext);
+              }
+            } finally {
+              try {
+                if (readOnlyPolicy.responseData?.id) {
+                  await readOnlyPolicy.delete(apiContext);
+                }
+              } finally {
+                await afterAction();
+              }
+            }
           }
         }
       }
@@ -1012,15 +1069,19 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         )
         .toBeGreaterThan(0);
 
-      await page.goto('/metrics/add');
+      await page.goto('/metrics/add-metric');
       await fillRequiredMetricFields(page, metricName);
+      await page
+        .getByRole('textbox', { name: 'Description' })
+        .fill(`Metric ${metricName}`);
       const reviewerPicker = page.getByRole('group', { name: 'Reviewers' });
       await reviewerPicker.getByRole('textbox').fill(reviewerName);
-      await reviewerPicker
-        .getByRole('checkbox', {
-          name: reviewer.responseData.displayName ?? reviewerName,
-        })
-        .click();
+      const reviewerCheckbox = reviewerPicker.getByRole('checkbox', {
+        name: reviewer.responseData.displayName ?? reviewerName,
+      });
+      await reviewerCheckbox.focus();
+      await reviewerCheckbox.press('Space');
+      await expect(reviewerCheckbox).toBeChecked();
 
       const createResponse = page.waitForResponse(
         (response) =>
@@ -1031,6 +1092,9 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const response = await createResponse;
       const createdMetric = (await response.json()) as MetricResponse;
       metric = createdMetric;
+      expect(createdMetric.reviewers?.map(({ id }) => id)).toContain(
+        reviewer.responseData.id
+      );
 
       await expect
         .poll(

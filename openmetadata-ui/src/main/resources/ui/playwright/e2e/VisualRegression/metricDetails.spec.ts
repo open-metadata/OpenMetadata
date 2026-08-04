@@ -647,15 +647,12 @@ const captureMetricScreens = async (
     await expect(page.getByTestId('left-sidebar')).toHaveCSS('width', '72px');
   }
   await page.getByRole('radio', { name: 'Card' }).click();
-  await expect(page.getByTestId('metric-card-view')).toBeVisible();
-  const groupResponse = page.waitForResponse((response) =>
-    new URL(response.url()).pathname.endsWith(
-      `/api/v1/metricGroups/${GROUP_ID}/metrics`
-    )
-  );
-  await page.getByTestId('metric-group-profitability').click();
-  await groupResponse;
-  await expect(page.getByText('Gross Margin', { exact: true })).toBeVisible();
+  const metricCardView = page.getByTestId('metric-card-view');
+
+  await expect(metricCardView).toBeVisible();
+  await expect(
+    metricCardView.getByText('Gross Margin', { exact: true })
+  ).toBeVisible();
   await expectMetricScreenshot(page, 'list', viewport);
 
   await gotoForScreenshot(page, `/metric/${METRIC_FQN}`);

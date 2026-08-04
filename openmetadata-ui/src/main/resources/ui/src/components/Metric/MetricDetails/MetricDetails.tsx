@@ -626,10 +626,10 @@ const MetricDetails: FC<MetricDetailsProps> = ({
             <MetricActivityTab
               canCreateTasks={Boolean(metricPermissions.EditAll)}
               canCreateThread={Boolean(metricPermissions.EditAll)}
-              canResolveTasks={Boolean(metricPermissions.CloseTask)}
               currentUser={currentUser}
               feedCount={feedCount}
               metric={metricDetails}
+              metricPermissions={metricPermissions}
               onFeedUpdate={fetchFeedCount}
               onUpdateEntityDetails={fetchMetricDetails}
               onUpdateFeedCount={setFeedCount}
@@ -924,6 +924,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({
                 <Tabs.Item
                   badge={tab.badge}
                   className="tw:w-auto tw:min-w-0 tw:shrink-0 tw:whitespace-nowrap tw:px-3 tw:text-center tw:font-semibold"
+                  data-testid={tab.key}
                   id={tab.key}
                   key={tab.key}>
                   <TabIcon

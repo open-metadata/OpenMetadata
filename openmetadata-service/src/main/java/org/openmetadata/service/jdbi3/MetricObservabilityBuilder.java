@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
+import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import io.micrometer.core.instrument.Counter;
@@ -273,6 +274,9 @@ public class MetricObservabilityBuilder {
         Entity.getCollectionDAO()
             .testCaseDAO()
             .findEntitiesByIds(new ArrayList<>(testCaseIds), Include.NON_DELETED);
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+    testCaseRepository.setFieldsInBulk(testCaseRepository.getFields(TEST_DEFINITION), tests);
     return tests.stream().collect(Collectors.toMap(TestCase::getId, Function.identity()));
   }
 

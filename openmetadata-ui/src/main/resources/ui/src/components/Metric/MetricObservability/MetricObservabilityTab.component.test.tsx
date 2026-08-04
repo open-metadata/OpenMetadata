@@ -332,6 +332,52 @@ describe('MetricObservabilityTab', () => {
     );
   });
 
+  it('renders the Unknown health summary when no assets are linked', () => {
+    mockUseMetricObservability.mockReturnValue({
+      error: undefined,
+      isFetching: false,
+      isPending: false,
+      observability: {
+        assets: [],
+        dimensions: [],
+        health: Health.Unknown,
+        incidents: [],
+        reasonCode: ReasonCode.NoLinkedAssets,
+        sourceCoverage: {
+          coveragePercent: 0,
+          partial: false,
+          restrictedTables: 0,
+          testedTables: 0,
+          upstreamTables: 0,
+          visibleTables: 0,
+        },
+        statusCounts: {
+          aborted: 0,
+          failed: 0,
+          missing: 0,
+          passed: 0,
+          queued: 0,
+          terminal: 0,
+        },
+        tests: [],
+      },
+      refetch,
+    });
+
+    render(<MetricObservabilityTab metric={metric} />);
+
+    expect(screen.getByTestId('metric-health-pill')).toBeVisible();
+    expect(screen.getByTestId('metric-health-score-unknown')).toHaveTextContent(
+      'label.unknown'
+    );
+    expect(screen.getByTestId('metric-rollup-reason')).toHaveTextContent(
+      'label.no-assets-linked-yet'
+    );
+    expect(
+      screen.queryByTestId('metric-observability-empty')
+    ).not.toBeInTheDocument();
+  });
+
   it('offers retry for transport errors but not for permission errors', () => {
     mockUseMetricObservability.mockReturnValue({
       error: new Error('network'),

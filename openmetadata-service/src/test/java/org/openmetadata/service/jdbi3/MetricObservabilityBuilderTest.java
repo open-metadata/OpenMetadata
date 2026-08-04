@@ -19,17 +19,22 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricAssetRollup;
 import org.openmetadata.schema.api.data.MetricIncident;
@@ -44,9 +49,11 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetricHealth;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -151,6 +158,45 @@ class MetricObservabilityBuilderTest {
 
     assertSame(newest, invokeLatestResult(builder, testCaseFqn, List.of(older, other, newest)));
     assertNull(invokeLatestResult(builder, "missing", List.of(older, other, newest)));
+  }
+
+  @Test
+  void activeTestCasesHydratesRelationshipDerivedTestDefinitions() throws Exception {
+    UUID testCaseId = UUID.randomUUID();
+    UUID definitionId = UUID.randomUUID();
+    TestCase testCase = new TestCase().withId(testCaseId).withName("consistency_test");
+    EntityReference definition =
+        new EntityReference()
+            .withId(definitionId)
+            .withName("consistency_definition")
+            .withType(Entity.TEST_DEFINITION);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.TestCaseDAO testCaseDAO = mock(CollectionDAO.TestCaseDAO.class);
+    TestCaseRepository testCaseRepository = mock(TestCaseRepository.class);
+    Fields fields = new Fields(Set.of(Entity.TEST_DEFINITION), Entity.TEST_DEFINITION);
+    when(collectionDAO.testCaseDAO()).thenReturn(testCaseDAO);
+    when(testCaseDAO.findEntitiesByIds(List.of(testCaseId), Include.NON_DELETED))
+        .thenReturn(List.of(testCase));
+    when(testCaseRepository.getFields(Entity.TEST_DEFINITION)).thenReturn(fields);
+    doAnswer(
+            invocation -> {
+              testCase.setTestDefinition(definition);
+              return null;
+            })
+        .when(testCaseRepository)
+        .setFieldsInBulk(fields, List.of(testCase));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.TEST_CASE))
+          .thenReturn(testCaseRepository);
+      MetricObservabilityBuilder builder =
+          new MetricObservabilityBuilder(null, new SimpleMeterRegistry());
+
+      Map<UUID, TestCase> testCases = invokeActiveTestCases(builder, Set.of(testCaseId));
+
+      assertEquals(definition, testCases.get(testCaseId).getTestDefinition());
+    }
   }
 
   @Test
@@ -384,6 +430,15 @@ class MetricObservabilityBuilderTest {
         MetricObservabilityBuilder.class.getDeclaredMethod("latestFor", String.class, List.class);
     latestFor.setAccessible(true);
     return (ResultSummary) latestFor.invoke(builder, testCaseFqn, summaries);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<UUID, TestCase> invokeActiveTestCases(
+      MetricObservabilityBuilder builder, Set<UUID> testCaseIds) throws Exception {
+    Method activeTestCases =
+        MetricObservabilityBuilder.class.getDeclaredMethod("activeTestCases", Set.class);
+    activeTestCases.setAccessible(true);
+    return (Map<UUID, TestCase>) activeTestCases.invoke(builder, testCaseIds);
   }
 
   private TestCaseResolutionStatus resolutionStatus(

@@ -25,6 +25,7 @@ import { TaskStatus, TaskType } from '../../../generated/entity/tasks/task';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import MetricActivityTab from './MetricActivityTab.component';
 import { useMetricActivity } from './useMetricActivity';
+import { useMetricTaskResolutionPermission } from './useMetricTaskResolutionPermission';
 
 const mockNavigate = jest.fn();
 
@@ -33,6 +34,7 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 jest.mock('./useMetricActivity');
+jest.mock('./useMetricTaskResolutionPermission');
 jest.mock('./MetricCommentComposer', () => ({
   __esModule: true,
   default: () => <div data-testid="mock-comment-composer" />,
@@ -88,6 +90,12 @@ describe('MetricActivityTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useMetricActivity as jest.Mock).mockReturnValue(baseState);
+    (useMetricTaskResolutionPermission as jest.Mock).mockReturnValue({
+      canResolve: false,
+      error: undefined,
+      isLoading: false,
+      refetch: jest.fn(),
+    });
   });
 
   it('renders accessible loading and read-only states', () => {

@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import type { FC } from 'react';
+import type { FC, KeyboardEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -170,6 +170,15 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
   );
 
   const handleSelectionChange = (key: Key | null) => {
+    if (key === null && trimmedInput && !hasExactMatch) {
+      if (canCreateGroup) {
+        setInputValue(trimmedInput);
+        onChange?.(trimmedInput, true);
+      }
+
+      return;
+    }
+
     const selected = key === null ? undefined : String(key);
     const isExisting = Boolean(
       selected && options.some((option) => option.id === selected)
@@ -183,6 +192,16 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
     }
     setInputValue(selected ?? '');
     onChange?.(selected, Boolean(selected) && !isExisting);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.key === 'Enter' &&
+      !event.nativeEvent.isComposing &&
+      canCreateGroup
+    ) {
+      handleSelectionChange(trimmedInput);
+    }
   };
 
   if (isPending) {
@@ -226,6 +245,7 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
         selectedKey={value ?? null}
         showSearchIcon={false}
         onInputChange={setInputValue}
+        onKeyDown={handleKeyDown}
         onSelectionChange={handleSelectionChange}>
         {(item) => (
           <SelectItem

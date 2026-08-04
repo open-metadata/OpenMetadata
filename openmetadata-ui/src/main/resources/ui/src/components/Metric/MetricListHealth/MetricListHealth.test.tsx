@@ -63,9 +63,11 @@ describe('MetricListHealth', () => {
       enabled: true,
     });
 
-    expect(screen.getByTestId(HEALTH_PILL_TEST_ID)).toHaveTextContent('96%');
-    expect(screen.getByTestId(HEALTH_PILL_TEST_ID)).toHaveTextContent(
-      'label.healthy'
+    expect(
+      screen.getByTestId(`${HEALTH_PILL_TEST_ID}-score`)
+    ).toHaveTextContent('96');
+    expect(screen.getByTestId(HEALTH_PILL_TEST_ID)).toHaveAccessibleName(
+      'label.healthy 96'
     );
   });
 

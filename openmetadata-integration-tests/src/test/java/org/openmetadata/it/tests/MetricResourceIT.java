@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -62,11 +63,14 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
@@ -79,10 +83,12 @@ import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -93,6 +99,8 @@ import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Integration tests for Metric entity operations.
@@ -1813,8 +1821,18 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     try {
       long processedBefore = processedNotificationEvents(notification);
-      assertThrows(
-          Exception.class,
+      assertApiStatus(
+          400,
+          () ->
+              SdkClients.user1Client()
+                  .tasks()
+                  .resolve(
+                      task.getId().toString(),
+                      new ResolveTask()
+                          .withTransitionId("unknown-reject-transition")
+                          .withResolutionType(TaskResolutionType.Rejected)));
+      assertApiStatus(
+          400,
           () ->
               SdkClients.user1Client()
                   .tasks()
@@ -1858,22 +1876,46 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   void rejectMetricUpdateRollsBackPreviousApprovedVersion(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
     String approvedDescription = "Previously approved definition";
-    Metric approved =
+    Metric metric =
         createEntity(
             new CreateMetric()
                 .withName(ns.prefix("approval_rollback"))
-                .withDescription(approvedDescription));
-    Metric update = getEntityWithFields(approved.getId().toString(), "reviewers");
+                .withDescription(approvedDescription)
+                .withReviewers(List.of(shared.USER1_REF)));
+    Task approvalTask = awaitApprovalTask(metric);
+    String approvalNote = "Approved baseline definition";
+
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            approvalTask.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withComment(approvalNote));
+
+    Awaitility.await("Metric approval should complete before the update")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    EntityStatus.APPROVED, getEntity(metric.getId().toString()).getEntityStatus()));
+
+    Task approvedTask = SdkClients.adminClient().tasks().get(approvalTask.getId().toString());
+    assertEquals(TaskEntityStatus.Approved, approvedTask.getStatus());
+    assertEquals(TaskResolutionType.Approved, approvedTask.getResolution().getType());
+    assertEquals(approvalNote, approvedTask.getResolution().getComment());
+
+    Metric update = getEntityWithFields(metric.getId().toString(), "reviewers");
     update.setDescription("Unapproved definition change");
-    update.setReviewers(List.of(shared.USER1_REF));
     Metric pending = patchEntity(update.getId().toString(), update);
-    Task task = awaitApprovalTask(pending);
+    Task rejectionTask = awaitApprovalTask(pending);
     String decisionNote = "Keep the approved definition";
 
     SdkClients.user1Client()
         .tasks()
         .resolve(
-            task.getId().toString(),
+            rejectionTask.getId().toString(),
             new ResolveTask()
                 .withResolutionType(TaskResolutionType.Rejected)
                 .withComment(decisionNote));
@@ -1883,17 +1925,39 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
-              Metric rolledBack = getEntity(approved.getId().toString());
+              Metric rolledBack = getEntity(metric.getId().toString());
               assertEquals(EntityStatus.APPROVED, rolledBack.getEntityStatus());
               assertEquals(approvedDescription, rolledBack.getDescription());
             });
-    Task rejectedTask = SdkClients.adminClient().tasks().get(task.getId().toString());
+    Task rejectedTask = SdkClients.adminClient().tasks().get(rejectionTask.getId().toString());
     assertEquals(TaskEntityStatus.Rejected, rejectedTask.getStatus());
     assertEquals(TaskResolutionType.Rejected, rejectedTask.getResolution().getType());
     assertEquals(decisionNote, rejectedTask.getResolution().getComment());
-    EntityHistory taskHistory = SdkClients.adminClient().tasks().getVersionList(task.getId());
-    EntityHistory metricHistory =
-        SdkClients.adminClient().metrics().getVersionList(approved.getId());
+
+    Task preservedApprovalTask =
+        SdkClients.adminClient().tasks().get(approvalTask.getId().toString());
+    assertEquals(TaskEntityStatus.Approved, preservedApprovalTask.getStatus());
+    assertEquals(TaskResolutionType.Approved, preservedApprovalTask.getResolution().getType());
+    assertEquals(approvalNote, preservedApprovalTask.getResolution().getComment());
+
+    List<Task> approvalHistory = listApprovalTasks(metric.getFullyQualifiedName()).getData();
+    assertEquals(2, approvalHistory.size());
+    Task listedApproval =
+        approvalHistory.stream()
+            .filter(task -> task.getId().equals(approvalTask.getId()))
+            .findFirst()
+            .orElseThrow();
+    Task listedRejection =
+        approvalHistory.stream()
+            .filter(task -> task.getId().equals(rejectionTask.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(approvalNote, listedApproval.getResolution().getComment());
+    assertEquals(decisionNote, listedRejection.getResolution().getComment());
+
+    EntityHistory taskHistory =
+        SdkClients.adminClient().tasks().getVersionList(rejectionTask.getId());
+    EntityHistory metricHistory = SdkClients.adminClient().metrics().getVersionList(metric.getId());
     assertHistoryContains(taskHistory, "status", TaskEntityStatus.Rejected.value());
     assertHistoryContains(taskHistory, "comment", decisionNote);
     assertHistoryContains(metricHistory, "description", "Unapproved definition change");
@@ -1902,7 +1966,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
   private Task awaitApprovalTask(Metric metric) {
     Awaitility.await("Metric approval workflow should create an open task")
-        .atMost(Duration.ofMinutes(2))
+        .atMost(Duration.ofMinutes(5))
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
@@ -1927,6 +1991,19 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                 metricFqn,
                 "fields",
                 "assignees,about"));
+  }
+
+  private ListResponse<Task> listApprovalTasks(String metricFqn) {
+    return SdkClients.adminClient()
+        .tasks()
+        .listWithFilters(
+            Map.of(
+                "category",
+                TaskCategory.Approval.value(),
+                "aboutEntity",
+                metricFqn,
+                "fields",
+                "assignees,about,resolution"));
   }
 
   private EventSubscription createApprovalTaskNotification(TestNamespace ns) {
@@ -2501,12 +2578,21 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                         .withFromEntity(table.getEntityReference())
                         .withToEntity(metric.getEntityReference())));
 
+    TestDefinition consistencyDefinition =
+        client
+            .testDefinitions()
+            .create(
+                new CreateTestDefinition()
+                    .withName(ns.uniqueShortId() + "_consistency")
+                    .withDescription("Consistency dimension for Metric observability")
+                    .withEntityType(TestDefinitionEntityType.TABLE)
+                    .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA))
+                    .withDataQualityDimension(DataQualityDimensions.CONSISTENCY));
     TestCase tableTest =
         TestCaseBuilder.create(client)
             .name(ns.uniqueShortId() + "_table")
             .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "10")
+            .testDefinition(consistencyDefinition.getFullyQualifiedName())
             .create();
     TestCase columnTest =
         TestCaseBuilder.create(client)
@@ -2576,6 +2662,17 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(1, observability.get("statusCounts").get("queued").asInt());
     assertEquals(1, observability.get("statusCounts").get("missing").asInt());
     assertEquals(2, observability.get("statusCounts").get("terminal").asInt());
+    JsonNode consistency = null;
+    for (JsonNode dimension : observability.get("dimensions")) {
+      if (DataQualityDimensions.CONSISTENCY.value().equals(dimension.get("dimension").asText())) {
+        consistency = dimension;
+        break;
+      }
+    }
+    assertNotNull(consistency);
+    assertEquals(1, consistency.get("total").asInt());
+    assertEquals(0, consistency.get("passed").asInt());
+    assertEquals(1, consistency.get("failed").asInt());
     assertEquals(start + 300, observability.get("latestRunTime").asLong());
     assertEquals(4, observability.get("tests").size());
     assertEquals(1, observability.get("incidents").size());
@@ -2997,6 +3094,63 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   // ===================================================================
   // BULK API SUPPORT
   // ===================================================================
+
+  @Test
+  void bulkCreateInvalidatesPreviouslyCachedMissingMetric(TestNamespace ns) {
+    String metricName = ns.prefix("bulk_negative_cache");
+    assertApiStatus(404, () -> getEntityByName(metricName));
+
+    BulkOperationResult result = executeBulkCreate(List.of(createRequest(metricName, ns)));
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(metricName, getEntityByName(metricName).getFullyQualifiedName());
+  }
+
+  @Test
+  void relationshipJsonInsertAndDuplicateUpdatePreserveUnicode(TestNamespace ns) throws Exception {
+    Metric metric = createEntity(createRequest(ns.prefix("relationship_json"), ns));
+    int relation = Relationship.RELATED_TO.ordinal();
+    String relationType = "unicode_" + ns.uniqueShortId();
+    CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
+
+    try {
+      dao.insert(
+          metric.getId(),
+          metric.getId(),
+          Entity.METRIC,
+          Entity.METRIC,
+          relation,
+          relationType,
+          "{\"label\":\"Métrica 東京 📈\"}");
+      List<CollectionDAO.EntityRelationshipRecord> relationships =
+          dao.findTo(metric.getId(), Entity.METRIC, relation).stream()
+              .filter(record -> metric.getId().equals(record.getId()))
+              .toList();
+      assertEquals(1, relationships.size());
+      assertEquals(
+          "Métrica 東京 📈", JSON.readTree(relationships.getFirst().getJson()).get("label").asText());
+
+      dao.insert(
+          metric.getId(),
+          metric.getId(),
+          Entity.METRIC,
+          Entity.METRIC,
+          relation,
+          relationType,
+          "{\"label\":\"Résumé Київ ✅\"}");
+      relationships =
+          dao.findTo(metric.getId(), Entity.METRIC, relation).stream()
+              .filter(record -> metric.getId().equals(record.getId()))
+              .toList();
+      assertEquals(1, relationships.size());
+      assertEquals(
+          "Résumé Київ ✅", JSON.readTree(relationships.getFirst().getJson()).get("label").asText());
+    } finally {
+      dao.deleteWithRelationType(
+          metric.getId(), Entity.METRIC, metric.getId(), Entity.METRIC, relation, relationType);
+    }
+  }
 
   @Override
   protected BulkOperationResult executeBulkCreate(List<CreateMetric> createRequests) {

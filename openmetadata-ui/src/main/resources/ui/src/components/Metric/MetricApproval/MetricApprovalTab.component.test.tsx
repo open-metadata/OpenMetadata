@@ -238,10 +238,10 @@ describe('MetricApprovalTab', () => {
     mockUseMetricApprovalHistory.mockReturnValue({
       data: [
         {
-          id: 'rollback',
-          isAutomatic: true,
-          label: 'Rollback',
-          outcome: 'rollback',
+          id: 'rejected-update',
+          isAutomatic: false,
+          label: 'Reject update',
+          outcome: 'rejected',
           status: 'Finished',
           timestamp: 2,
         },
@@ -264,5 +264,34 @@ describe('MetricApprovalTab', () => {
     expect(
       screen.queryByTestId('metric-approval-approved')
     ).not.toBeInTheDocument();
+  });
+
+  it('recognizes an explicit rollback workflow outcome', () => {
+    mockUseMetricApprovalHistory.mockReturnValue({
+      data: [
+        {
+          id: 'rollback',
+          isAutomatic: true,
+          label: 'Rollback',
+          outcome: 'rollback',
+          status: 'Finished',
+          timestamp: 2,
+        },
+      ],
+      error: undefined,
+      isPending: false,
+      refetch,
+    });
+
+    render(
+      <MetricApprovalTab
+        currentUser={reviewer}
+        metric={{ ...metric, entityStatus: EntityStatus.Approved }}
+        onStatusChange={jest.fn()}
+      />,
+      { wrapper }
+    );
+
+    expect(screen.getByTestId('metric-approval-rollback')).toBeVisible();
   });
 });

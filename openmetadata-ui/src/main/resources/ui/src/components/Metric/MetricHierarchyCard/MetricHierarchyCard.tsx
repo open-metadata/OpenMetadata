@@ -183,7 +183,7 @@ const MetricTreeRow = ({
     </>
   );
   const className = `tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:px-3 tw:py-2.5 ${
-    isCurrent ? 'tw:bg-brand-primary' : 'tw:hover:bg-secondary'
+    isCurrent ? 'tw:bg-brand-primary_alt' : 'tw:hover:bg-secondary'
   } ${isNested ? 'tw:pl-8' : ''}`;
 
   return isCurrent ? (

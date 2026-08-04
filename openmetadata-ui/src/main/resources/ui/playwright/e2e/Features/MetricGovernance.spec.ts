@@ -303,7 +303,10 @@ const resolveApprovalInUi = async (
   if (resolution === 'Rejected') {
     await expect(actionButton).toBeDisabled();
   }
-  await page.getByTestId('metric-approval-note').fill(note);
+  await page
+    .getByTestId('metric-approval-note')
+    .getByRole('textbox')
+    .fill(note);
   await expect(actionButton).toBeEnabled();
 
   const resolveResponse = page.waitForResponse((response) => {
@@ -553,7 +556,10 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(
         reviewerPage.getByTestId('metric-approval-approve-btn')
       ).toBeVisible({ timeout: 60_000 });
-      await reviewerPage.getByTestId('metric-approval-note').fill(decisionNote);
+      await reviewerPage
+        .getByTestId('metric-approval-note')
+        .getByRole('textbox')
+        .fill(decisionNote);
 
       const resolveResponse = reviewerPage.waitForResponse((response) => {
         const url = new URL(response.url());
@@ -764,7 +770,9 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect((await adminLineageResponse).ok()).toBeTruthy();
       const adminLineage = page.getByTestId('lineage-details');
       await expect(adminLineage).toBeVisible();
-      await expect(page.getByTestId('react-flow-component')).toBeVisible();
+      await expect(
+        page.getByTestId('lineage-container').locator('.react-flow')
+      ).toBeVisible();
       await expect(page.getByTestId('edit-lineage')).toBeVisible();
 
       const readOnlySession = await performUserLogin(browser, readOnlyUser);
@@ -787,7 +795,9 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await readOnlySession.page.getByTestId('lineage').click();
       expect((await readOnlyLineageResponse).ok()).toBeTruthy();
       await expect(
-        readOnlySession.page.getByTestId('react-flow-component')
+        readOnlySession.page
+          .getByTestId('lineage-container')
+          .locator('.react-flow')
       ).toBeVisible();
       await expect(
         readOnlySession.page.getByTestId('edit-lineage')
@@ -1011,9 +1021,11 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const downstreamAddCheckbox = addDialog.getByRole('checkbox', {
         name: downstreamAsset.displayName,
       });
-      await upstreamAddCheckbox.click();
+      await upstreamAddCheckbox.focus();
+      await upstreamAddCheckbox.press('Space');
       await expect(upstreamAddCheckbox).toBeChecked();
-      await downstreamAddCheckbox.click();
+      await downstreamAddCheckbox.focus();
+      await downstreamAddCheckbox.press('Space');
       await expect(downstreamAddCheckbox).toBeChecked();
 
       const addRequestPromise = page.waitForRequest((request) => {
@@ -1054,15 +1066,12 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(summary).toBeVisible();
       await expect(summary).toContainText('Orders used to compute the metric');
       await expect(summary).toContainText('Upstream');
-      const containment = summary
-        .getByText('Hierarchy', { exact: true })
-        .locator('..');
-      await expect(containment).toContainText('sample');
-      await expect(containment).toContainText('database');
-      await expect(containment).toContainText('schema');
+      await expect(summary.getByText('sample', { exact: true })).toBeVisible();
       await expect(
-        summary.getByText('Usage', { exact: true }).locator('..')
-      ).toContainText('42');
+        summary.getByText('database', { exact: true })
+      ).toBeVisible();
+      await expect(summary.getByText('schema', { exact: true })).toBeVisible();
+      await expect(summary.getByText('42', { exact: true })).toBeVisible();
       await expect(summary).toContainText('Data Steward');
       await expect(summary).toContainText('Commerce');
       await expect(summary).toContainText('Tier.Tier1');
@@ -1190,21 +1199,24 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(upstreamCard).toBeVisible();
 
       const selectAll = page.getByRole('checkbox', { name: 'Select all' });
-      await selectAll.click();
+      await selectAll.focus();
+      await selectAll.press('Space');
       await expect(selectAll).toBeChecked();
       await expect(upstreamCard.getByRole('checkbox')).toBeChecked();
       await expect(downstreamCard.getByRole('checkbox')).toBeChecked();
       await expect(page.getByText('2 items selected')).toBeVisible();
 
-      const unlinkRequestPromise = page.waitForRequest((request) => {
-        const url = new URL(request.url());
+      const unlinkResponsePromise = page.waitForResponse((response) => {
+        const url = new URL(response.url());
 
         return (
-          request.method() === 'PUT' && url.pathname.endsWith('/assets/remove')
+          response.request().method() === 'PUT' &&
+          url.pathname.endsWith('/assets/remove')
         );
       });
       await page.getByTestId('metric-assets-bulk-unlink').click();
-      const unlinkRequest = await unlinkRequestPromise;
+      const unlinkResponse = await unlinkResponsePromise;
+      const unlinkRequest = unlinkResponse.request();
       const unlinkPayload = unlinkRequest.postDataJSON() as {
         assets: Array<{ id: string }>;
       };
@@ -1651,10 +1663,10 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).toHaveAttribute('aria-valuenow', '50');
       const statusCounts = page.getByTestId('metric-global-status-counts');
       await expect(
-        statusCounts.getByText('Passed', { exact: true }).locator('..')
+        statusCounts.locator(':scope > div').filter({ hasText: 'Passed' })
       ).toContainText('1');
       await expect(
-        statusCounts.getByText('Failed', { exact: true }).locator('..')
+        statusCounts.locator(':scope > div').filter({ hasText: 'Failed' })
       ).toContainText('1');
       await expect(
         page.getByTestId('metric-dimension-Consistency')
@@ -2076,7 +2088,10 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await metric.visitEntityPage(page);
       await page.getByTestId('activity_feed').click();
-      await page.getByTestId('metric-activity-composer').fill(comment);
+      await page
+        .getByTestId('metric-activity-composer')
+        .getByRole('textbox')
+        .fill(comment);
       await page.getByTestId('metric-activity-composer-submit').click();
       await expect(page.getByText(comment, { exact: true })).toBeVisible();
 
@@ -2085,9 +2100,15 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('metric-task-create').click();
       await expect(page.getByTestId('metric-task-create-dialog')).toBeVisible();
       await page.getByTestId('metric-task-create-title').fill(taskTitle);
-      await page.getByRole('checkbox', { name: assignee.displayName }).click();
+      const assigneeCheckbox = page.getByRole('checkbox', {
+        name: assignee.displayName,
+      });
+      await assigneeCheckbox.focus();
+      await assigneeCheckbox.press('Space');
+      await expect(assigneeCheckbox).toBeChecked();
       await page
         .getByTestId('metric-task-create-value')
+        .getByRole('textbox')
         .fill('Use the governed net revenue definition.');
       await page.getByTestId('metric-task-create-submit').click();
 

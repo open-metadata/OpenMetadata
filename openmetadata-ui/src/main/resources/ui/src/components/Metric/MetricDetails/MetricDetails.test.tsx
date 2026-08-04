@@ -559,13 +559,24 @@ describe('MetricDetails', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('navigates through the route when a tab is selected', () => {
+  it('preserves route-key test ids and navigates through the selected tab', () => {
     renderDetails();
 
-    fireEvent.click(screen.getByRole('tab', { name: /label.lineage/i }));
+    [
+      EntityTabs.OVERVIEW,
+      EntityTabs.LINEAGE,
+      EntityTabs.ASSETS,
+      EntityTabs.DATA_OBSERVABILITY,
+      EntityTabs.ACTIVITY_FEED,
+      EntityTabs.APPROVAL,
+    ].forEach((tab) => {
+      expect(screen.getByTestId(tab)).toHaveAttribute('role', 'tab');
+    });
+
+    fireEvent.click(screen.getByTestId(EntityTabs.ACTIVITY_FEED));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      expect.stringContaining(EntityTabs.LINEAGE),
+      expect.stringContaining(`/${EntityTabs.ACTIVITY_FEED}/all`),
       { replace: true }
     );
   });
@@ -641,15 +652,14 @@ describe('MetricDetails', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('passes the current user and explicit task permissions to workflow tabs', async () => {
+  it('passes current-user and Metric permissions to workflow tabs', async () => {
     activeTab = EntityTabs.ACTIVITY_FEED;
-    const { unmount } = renderDetails({
-      metricPermissions: {
-        ...DEFAULT_ENTITY_PERMISSION,
-        EditAll: false,
-        CloseTask: false,
-      },
-    });
+    const metricPermissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditAll: false,
+      EditDescription: true,
+    };
+    const activityRender = renderDetails({ metricPermissions });
 
     await screen.findByTestId('metric-activity-tab');
 
@@ -658,11 +668,14 @@ describe('MetricDetails', () => {
         currentUser: props.currentUser,
         canCreateThread: false,
         canCreateTasks: false,
-        canResolveTasks: false,
+        metricPermissions,
       })
     );
+    expect(mockActivityTab).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ canResolveTasks: expect.anything() })
+    );
 
-    unmount();
+    activityRender.unmount();
 
     activeTab = EntityTabs.APPROVAL;
     renderDetails();

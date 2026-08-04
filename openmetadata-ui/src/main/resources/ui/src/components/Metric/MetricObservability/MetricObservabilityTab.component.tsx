@@ -29,7 +29,6 @@ import {
   AssetRollup,
   DimensionRollup,
   Health,
-  ReasonCode,
   StatusCounts,
   TestResult,
 } from '../../../generated/api/data/metricObservability';
@@ -198,30 +197,6 @@ const MetricObservabilityTab: FC<MetricObservabilityTabProps> = ({
       : health === Health.Degraded
       ? t('label.degraded')
       : t('label.unknown');
-  const hasNoSources =
-    sourceCoverage?.upstreamTables === 0 ||
-    (observability.score === undefined &&
-      sourceRollups.length === 0 &&
-      [ReasonCode.NoLinkedAssets, ReasonCode.NoUpstreamTables].includes(
-        observability.reasonCode ?? ReasonCode.Unavailable
-      ));
-
-  if (hasNoSources) {
-    return (
-      <Box
-        className="tw:relative tw:min-h-80 tw:px-4 tw:py-6 tw:md:px-8"
-        data-testid="metric-observability-empty">
-        <EmptyPlaceholder
-          description={t('message.only-upstream-assets-scored')}
-          title={
-            observability.reasonCode === ReasonCode.NoLinkedAssets
-              ? t('label.no-assets-linked-yet')
-              : t('label.no-data-found')
-          }
-        />
-      </Box>
-    );
-  }
 
   return (
     <Box

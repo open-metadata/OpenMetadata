@@ -168,6 +168,12 @@ describe('MetricHierarchyCard', () => {
     expect(screen.getByTestId('metric-tree-current')).toHaveTextContent(
       'gross_margin_rate'
     );
+    expect(screen.getByTestId('metric-tree-current')).toHaveClass(
+      'tw:bg-brand-primary_alt'
+    );
+    expect(screen.getByTestId('metric-tree-current')).not.toHaveClass(
+      'tw:bg-brand-primary'
+    );
     expect(
       screen.getByTestId('metric-tree-child-child-id')
     ).toBeInTheDocument();

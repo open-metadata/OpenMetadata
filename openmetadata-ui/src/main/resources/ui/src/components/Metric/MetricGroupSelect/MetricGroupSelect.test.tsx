@@ -12,7 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import {
   getMetricGroupByFqn,
   getMetricGroups,
@@ -48,9 +48,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => <button onClick={onPress}>{children}</button>,
   Box: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   ComboBox: ({
+    children,
     hint,
     inputValue,
     items,
+    onKeyDown,
     onInputChange,
     onSelectionChange,
     'data-testid': testId,
@@ -58,6 +60,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     hint?: string;
     inputValue: string;
     items: MockItem[];
+    onKeyDown: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
     onInputChange: (value: string) => void;
     onSelectionChange: (key: string | null) => void;
     'data-testid'?: string;
@@ -68,20 +71,34 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         data-testid="group-input"
         value={inputValue}
         onChange={(event) => onInputChange(event.target.value)}
+        onKeyDown={(event) => {
+          onKeyDown(event);
+          if (event.key === 'Enter') {
+            onSelectionChange(null);
+          }
+        }}
+      />
+      <button
+        aria-label="group-null-selection"
+        data-testid="group-null-selection"
+        type="button"
+        onClick={() => onSelectionChange(null)}
       />
       {hint && <span>{hint}</span>}
       {items.map((item) => (
-        <button
-          data-testid={`group-option-${item.id}`}
-          key={item.id}
-          type="button"
-          onClick={() => onSelectionChange(item.id)}>
-          {item.label}
-        </button>
+        <div key={item.id}>
+          {children(item)}
+          <button
+            data-testid={`group-option-${item.id}`}
+            type="button"
+            onClick={() => onSelectionChange(item.id)}>
+            {item.label}
+          </button>
+        </div>
       ))}
     </div>
   ),
-  SelectItem: () => null,
+  SelectItem: jest.fn(() => null),
   Skeleton: () => <div data-testid="group-loading" />,
 }));
 
@@ -132,8 +149,36 @@ describe('MetricGroupSelect', () => {
 
     fireEvent.click(await screen.findByTestId('group-option-retention'));
 
-    expect(onChange).toHaveBeenCalledWith('retention', true);
+    expect(onChange).toHaveBeenLastCalledWith('retention', true);
     expect(getMetricGroupByFqn).toHaveBeenCalledWith('retention');
+  });
+
+  it('preserves unresolved input when the ComboBox reports a null selection', async () => {
+    const onChange = renderSelect();
+
+    await screen.findByTestId('group-option-profitability');
+    fireEvent.change(screen.getByTestId('group-input'), {
+      target: { value: 'retention' },
+    });
+    fireEvent.click(screen.getByTestId('group-null-selection'));
+
+    expect(screen.getByTestId('group-input')).toHaveValue('retention');
+    expect(onChange).not.toHaveBeenCalled();
+    expect(await screen.findByTestId('group-option-retention')).toBeVisible();
+  });
+
+  it('commits a synthetic create option with the Enter key', async () => {
+    const onChange = renderSelect();
+
+    await screen.findByTestId('group-option-profitability');
+    fireEvent.change(screen.getByTestId('group-input'), {
+      target: { value: 'retention' },
+    });
+    await screen.findByTestId('group-option-retention');
+
+    fireEvent.keyDown(screen.getByTestId('group-input'), { key: 'Enter' });
+
+    expect(onChange).toHaveBeenCalledWith('retention', true);
   });
 
   it('does not offer to create a group that already exists', async () => {

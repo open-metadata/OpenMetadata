@@ -1952,8 +1952,8 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, relationType, json) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, :json) "
-                + "ON DUPLICATE KEY UPDATE json = :json",
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, CONVERT(:json USING utf8mb4)) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =

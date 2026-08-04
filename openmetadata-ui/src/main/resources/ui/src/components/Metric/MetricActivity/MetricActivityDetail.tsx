@@ -18,6 +18,7 @@ import {
   Card,
   CloseButton,
   Divider,
+  Skeleton,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -42,7 +43,9 @@ export interface MetricActivityDetailProps {
   canComment: boolean;
   canResolveTasks: boolean;
   isCommenting: boolean;
+  isResolvePermissionLoading: boolean;
   isResolvingTask: boolean;
+  resolvePermissionError?: unknown;
   selection: MetricActivitySelection;
   onClose: () => void;
   onCreateComment: (
@@ -50,6 +53,7 @@ export interface MetricActivityDetailProps {
     message: string
   ) => Promise<unknown>;
   onReply: (threadId: string, message: string) => Promise<unknown>;
+  onRetryResolvePermission: () => void;
   onResolveTask: (
     taskId: string,
     transitionId?: string,
@@ -62,11 +66,14 @@ const MetricActivityDetail = ({
   canComment,
   canResolveTasks,
   isCommenting,
+  isResolvePermissionLoading,
   isResolvingTask,
+  resolvePermissionError,
   selection,
   onClose,
   onCreateComment,
   onReply,
+  onRetryResolvePermission,
   onResolveTask,
   onTaskComment,
 }: MetricActivityDetailProps) => {
@@ -269,7 +276,26 @@ const MetricActivityDetail = ({
             {task.resolution.comment}
           </Alert>
         )}
-        {canResolveTasks && isTaskOpen && (
+        {isResolvePermissionLoading && isTaskOpen && (
+          <span aria-label={t('label.loading')} role="status">
+            <Skeleton height={36} variant="rounded" />
+          </span>
+        )}
+        {Boolean(resolvePermissionError) && isTaskOpen && (
+          <Alert
+            title={t('server.fetch-entity-permissions-error', {
+              entity: t('label.task'),
+            })}
+            variant="error">
+            <Button
+              color="secondary"
+              size="sm"
+              onPress={onRetryResolvePermission}>
+              {t('label.try-again')}
+            </Button>
+          </Alert>
+        )}
+        {!isResolvePermissionLoading && canResolveTasks && isTaskOpen && (
           <Box direction="col" gap={3}>
             <TextArea
               aria-label={t('label.note')}

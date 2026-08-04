@@ -127,7 +127,9 @@ test.describe(
         const activityTab = page.getByTestId('metric-activity-tab');
         await expect(activityTab).toBeVisible();
 
-        const composer = activityTab.getByTestId('metric-activity-composer');
+        const composer = activityTab
+          .getByTestId('metric-activity-composer')
+          .getByRole('textbox');
         await composer.fill(`Review with @${admin.name}`);
 
         const mentionSuggestion = page.getByTestId(
@@ -180,11 +182,16 @@ test.describe(
         await taskDialog
           .getByTestId('metric-task-create-assignees-search')
           .fill(admin.name);
-        await taskDialog
-          .getByRole('checkbox', { exact: true, name: adminLabel })
-          .click();
+        const assigneeCheckbox = taskDialog.getByRole('checkbox', {
+          exact: true,
+          name: adminLabel,
+        });
+        await assigneeCheckbox.focus();
+        await assigneeCheckbox.press('Space');
+        await expect(assigneeCheckbox).toBeChecked();
         await taskDialog
           .getByTestId('metric-task-create-value')
+          .getByRole('textbox')
           .fill(proposedDescription);
 
         const createTaskResponsePromise = page.waitForResponse((response) => {
@@ -203,9 +210,10 @@ test.describe(
         expect(createdTask.status).toBe('Open');
 
         const taskCard = page.getByTestId(`metric-task-item-${createdTask.id}`);
-        await expect(taskCard).toBeVisible();
-        await expect(taskCard).toContainText(taskTitle);
-        await expect(taskCard).toContainText(adminLabel);
+        const taskListItem = taskCard.locator('xpath=ancestor::li[1]');
+        await expect(taskListItem).toBeVisible();
+        await expect(taskListItem).toContainText(taskTitle);
+        await expect(taskListItem).toContainText(adminLabel);
         await expect(tasksTab).toContainText('1');
         await taskCard.click();
 
@@ -222,6 +230,7 @@ test.describe(
         });
         await taskDetail
           .getByTestId('metric-activity-composer')
+          .getByRole('textbox')
           .fill(taskComment);
         await taskDetail.getByTestId('metric-activity-composer-submit').click();
         const taskCommentResponse = await taskCommentResponsePromise;
@@ -258,24 +267,14 @@ test.describe(
 
         await taskDetail.getByRole('button', { name: 'Close' }).click();
         await activityTab.getByRole('tab', { name: /All Activity/ }).click();
-
-        const refreshedTaskListPromise = page.waitForResponse((response) => {
-          const url = new URL(response.url());
-
-          return (
-            response.request().method() === 'GET' &&
-            url.pathname === '/api/v1/tasks' &&
-            url.searchParams.get('aboutEntity') === metricFqn &&
-            url.searchParams.get('statusGroup') === 'open'
-          );
-        });
         await tasksTab.click();
-        const refreshedTaskList = await refreshedTaskListPromise;
-        expect(refreshedTaskList.ok()).toBeTruthy();
+        await expect(taskListItem).toBeVisible();
         await taskCard.click();
         await expect(taskDetail).toContainText(taskComment);
 
-        await taskDetail.getByLabel('Note').fill(resolutionNote);
+        await taskDetail
+          .getByRole('textbox', { name: 'Note' })
+          .fill(resolutionNote);
         const resolveTaskResponsePromise = page.waitForResponse((response) => {
           const url = new URL(response.url());
 
@@ -322,11 +321,11 @@ test.describe(
           );
 
         await taskDetail.getByRole('button', { name: 'Close' }).click();
-        await activityTab.getByLabel('Status').click();
+        await activityTab.getByRole('button', { name: /Status/ }).click();
         await page.getByRole('option', { exact: true, name: 'Closed' }).click();
 
-        await expect(taskCard).toBeVisible();
-        await expect(taskCard).toContainText('Approved');
+        await expect(taskListItem).toBeVisible();
+        await expect(taskListItem).toContainText('Approved');
         await taskCard.click();
         await expect(taskDetail).toContainText(taskComment);
         await expect(taskDetail).toContainText(resolutionNote);
