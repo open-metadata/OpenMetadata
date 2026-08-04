@@ -17,7 +17,6 @@ from datetime import datetime
 from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -79,7 +78,12 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
             if queries:
                 yield TableQueries(queries=queries)
 
-        except OperationalError as err:
+        except Exception as err:
+            if query:
+                logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
+            logger.debug(traceback.format_exc())
+            # Register every source failure (connection, missing pg_stat_statements,
+            # permissions, ...) so the run does not report Errors: 0 / Success 100%.
             self.status.failed(
                 StackTraceError(
                     name="Usage",
@@ -87,12 +91,6 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-        except Exception as err:
-            if query:
-                logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
-            logger.error(f"Source usage processing error - {err}")
-            logger.debug(traceback.format_exc())
 
     def get_filters(self) -> str:
         if filter_condition := self.source_config.filterCondition:  # pyright: ignore[reportAttributeAccessIssue]
