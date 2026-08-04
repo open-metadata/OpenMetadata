@@ -684,7 +684,16 @@ test.describe('Context Center Articles', () => {
     const targetArticle =
       listKnowledgeCenter.knowledgePages[MIN_CARDS - 1].displayName;
     const node = await scrollHierarchyToNode(page, targetArticle);
+    const articleLoaded = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/v1/contextCenter/pages/name/') &&
+        resp.status() === 200
+    );
     await node.click();
+    await articleLoaded;
+    await expect(
+      page.getByTestId('article-detail-header-skeleton')
+    ).not.toBeVisible();
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
       targetArticle
@@ -1387,8 +1396,16 @@ test.describe('Context Center Articles', () => {
           page,
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
+        const articleLoaded = page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/v1/contextCenter/pages/name/') &&
+            resp.status() === 200
+        );
         await node.click();
-        await waitForAllLoadersToDisappear(page);
+        await articleLoaded;
+        await expect(
+          page.getByTestId('article-detail-header-skeleton')
+        ).not.toBeVisible();
         await assertArticleEditorSaved(page);
       });
 
@@ -1453,8 +1470,16 @@ test.describe('Context Center Articles', () => {
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
         await updateDisplayNameResponse;
+        const articleLoaded = page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/v1/contextCenter/pages/name/') &&
+            resp.status() === 200
+        );
         await node.click();
-        await waitForAllLoadersToDisappear(page);
+        await articleLoaded;
+        await expect(
+          page.getByTestId('article-detail-header-skeleton')
+        ).not.toBeVisible();
         await assertArticleEditorSaved(page);
       });
 
