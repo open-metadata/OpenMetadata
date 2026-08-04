@@ -63,6 +63,7 @@ const DATA_MODE_RING_SAFETY_PAD = 60;
 // compresses the same way G6's Dagre does at high node counts.
 const adaptiveCircleSpacing = adaptiveSpacing;
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 export function computeGlossaryGroupPositions(
   inputNodes: OntologyNode[],
   layoutType: LayoutEngineType,

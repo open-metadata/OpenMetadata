@@ -234,9 +234,11 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             const next = new Map(prev);
             const { availableRoles, mappings } = searchStateRef.current;
             const currentMapping = mappings.find(
+              // eslint-disable-next-line sonarjs/no-nested-functions -- inline find predicate
               (mapping) => mapping.id === mappingId
             );
             const selectedRoles = new Set(currentMapping?.roles ?? []);
+            // eslint-disable-next-line sonarjs/no-nested-functions -- inline filter predicate
             const selectedRoleOptions = availableRoles.filter((role) =>
               selectedRoles.has(role.value)
             );
@@ -245,6 +247,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
               uniqBy(
                 [
                   ...selectedRoleOptions,
+                  // eslint-disable-next-line sonarjs/no-nested-functions -- inline map
                   ...results.map((role) => ({
                     label: role.displayName || role.name,
                     value: role.name,

@@ -90,6 +90,7 @@ const ClassificationDetails = forwardRef(
       handleToggleDisable,
     }: Readonly<ClassificationDetailsProps>,
     ref
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   ) => {
     const { theme } = useApplicationStore();
     const { permissions } = usePermissionProvider();
@@ -194,6 +195,7 @@ const ClassificationDetails = forwardRef(
       editDisplayNamePermission,
       editOwnerPermission,
       editDomainPermission,
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
     } = useMemo(() => {
       const isEditable = !isClassificationDisabled && !isClassificationDeleted;
 

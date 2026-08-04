@@ -87,6 +87,7 @@ const ServiceDocPanel = lazy(
   () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
 );
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const AddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

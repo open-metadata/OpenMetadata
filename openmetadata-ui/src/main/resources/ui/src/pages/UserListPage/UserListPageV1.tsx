@@ -161,6 +161,7 @@ const UserListPageV1 = () => {
       })
         .then((res) => {
           if (currentSearchId === latestSearchIdRef.current) {
+            // eslint-disable-next-line sonarjs/no-nested-functions -- pure source extractor
             const data = res.hits.hits.map(({ _source }) => _source);
             handlePagingChange({
               total: res.hits.total.value,
@@ -441,7 +442,10 @@ const UserListPageV1 = () => {
   }, [isAdminPage, searchValue]);
 
   const tablePlaceholder = useMemo(() => {
-    return isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue ? (
+    const showErrorPlaceholder =
+      isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue;
+
+    return showErrorPlaceholder ? (
       errorPlaceHolder
     ) : (
       <FilterTablePlaceHolder placeholderText={emptyPlaceHolderText} />

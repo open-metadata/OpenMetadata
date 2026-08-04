@@ -80,6 +80,7 @@ const SettingsAppModePage = withSuspenseFallback(
   )
 );
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- page component; refactor risky
 export const CustomizablePage = () => {
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();

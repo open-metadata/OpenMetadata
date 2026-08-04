@@ -48,7 +48,8 @@ export const OwnerLabel = ({
   onEditClick,
   ownerLabelClassName,
   placement,
-}: OwnerLabelProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+OwnerLabelProps) => {
   const { t } = useTranslation();
 
   const { isMultipleTeam, isMultipleUser, isMultipleUserAndTeam } =
@@ -133,6 +134,7 @@ export const OwnerLabel = ({
       data-testid="owner-label">
       {ownerElementsNonCompactView}
       <div className="tw:flex tw:items-center tw:justify-center tw:max-w-full">
+        {/* eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order */}
         {!isCompactView ? (
           <>
             <OwnerAvatarStack

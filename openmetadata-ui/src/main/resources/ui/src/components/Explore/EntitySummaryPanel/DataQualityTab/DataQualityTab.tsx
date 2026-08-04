@@ -510,6 +510,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   // Filter incidents based on active incident filter and search text
   const filteredIncidents = useMemo(() => {
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- filter predicate; refactor risky
     return incidents.filter((incident) => {
       const status = incident.testCaseResolutionStatusType;
       if (!status) {

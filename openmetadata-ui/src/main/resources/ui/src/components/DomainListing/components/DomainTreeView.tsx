@@ -759,13 +759,10 @@ const DomainTreeView = ({
 
   const handleScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
-      if (
-        !hasMore ||
-        isLoadingMore ||
-        isHierarchyLoading ||
-        searchQuery ||
-        hasActiveFilters
-      ) {
+      const isLoadingState = isLoadingMore || isHierarchyLoading;
+      const isFilteredView = searchQuery || hasActiveFilters;
+      const shouldSkipScroll = !hasMore || isLoadingState || isFilteredView;
+      if (shouldSkipScroll) {
         return;
       }
 
@@ -787,6 +784,7 @@ const DomainTreeView = ({
 
   const renderTreeItems = useCallback(
     (nodes: Domain[]) => {
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- node mapper; refactor risky
       return nodes.map((node) => {
         const identifier = node?.fullyQualifiedName || node?.name || node?.id;
 

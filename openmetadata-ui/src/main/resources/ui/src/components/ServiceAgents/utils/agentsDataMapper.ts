@@ -236,6 +236,7 @@ const buildRecentRuns = (statuses: PipelineStatus[]): AgentRecentRun[] =>
       status: toRunStatus(status.pipelineState),
     }));
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
   const agentType = getAgentTypeFromPipelineType(pipeline.pipelineType);
   const { unit, verb } = getAgentUnitVerb(pipeline.pipelineType);

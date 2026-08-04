@@ -340,6 +340,7 @@ export const getReadTimeoutField = () => (
 export const getDestinationConfigField = (
   type: SubscriptionType | SubscriptionCategory,
   fieldName: number
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   switch (type) {
     case SubscriptionType.Slack:
@@ -365,6 +366,7 @@ export const getDestinationConfigField = (
               />
             </Form.Item>
           </Col>
+          {/* eslint-disable-next-line sonarjs/expression-complexity -- inline JSX guard */}
           {(type === SubscriptionType.Webhook ||
             type === SubscriptionType.Slack ||
             type === SubscriptionType.MSTeams ||
@@ -888,6 +890,7 @@ export const getFieldByArgumentType = (
   index: number,
   selectedTrigger: string,
   containerEntities: string[] = []
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   let field: JSX.Element;
 

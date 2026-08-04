@@ -276,6 +276,7 @@ export function useCanvasEdgeRenderer({
     const hitPaths: EdgeHitEntry[] = [];
     const canvasButtons: CanvasButtonHitData[] = [];
 
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     visibleEdges.forEach((edge) => {
       ctx.save();
       const path = drawEdge(ctx, edge);

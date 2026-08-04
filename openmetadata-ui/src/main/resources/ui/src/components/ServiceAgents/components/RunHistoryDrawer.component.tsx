@@ -146,6 +146,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   onClose,
   onOpenLogs,
   onRun,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 }) => {
   const { t } = useTranslation();
   const { runs, isLoading } = useAgentRuns(agent.fqn, true, fetchRuns);

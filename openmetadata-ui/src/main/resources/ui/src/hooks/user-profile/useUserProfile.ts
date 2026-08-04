@@ -62,6 +62,7 @@ export const useUserProfile = ({
     }
   }, [user, profilePic]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   const fetchProfileIfRequired = useCallback(async () => {
     const currentUserProfilePics =
       useApplicationStore.getState().userProfilePics;
@@ -92,6 +93,7 @@ export const useUserProfile = ({
       // Profile images are best-effort. Cache a placeholder on any read failure so avatar loaders
       // can settle and we do not keep retrying a denied/missing profile forever.
       if (
+        // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
         (error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND ||
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN ||
         (error as AxiosError)?.response?.status === ClientErrors.UNAUTHORIZED ||

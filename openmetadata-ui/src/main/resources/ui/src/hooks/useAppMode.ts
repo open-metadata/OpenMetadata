@@ -133,6 +133,7 @@ const readHint = (): AppModeHint | null => {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
       parsed !== null &&
       typeof parsed === 'object' &&
       'mode' in parsed &&

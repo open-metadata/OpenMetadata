@@ -44,6 +44,7 @@ const SAMPLING_METHOD_TYPE_OPTIONS = [
   { id: SamplingMethodType.System, label: 'SYSTEM' },
 ];
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const { formData, onChange } = props;
   const { t } = useTranslation();

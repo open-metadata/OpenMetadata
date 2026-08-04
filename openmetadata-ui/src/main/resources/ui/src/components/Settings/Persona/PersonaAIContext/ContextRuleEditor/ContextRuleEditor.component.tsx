@@ -109,6 +109,7 @@ const ViewInExploreIcon: FC<{ className?: string }> = ({ className }) => (
   <LinkExternal01 className={`${className ?? ''} tw:size-4!`} />
 );
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const getDefaultRule = (rule?: ContextRule): ContextRule => {
   const entityType = rule?.entityType ?? PERSONA_CONTEXT_ASSET_TYPES[0];
   const knowledgeType = PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
@@ -495,7 +496,8 @@ export const ContextRuleEditor = ({
                   {t(
                     isKnowledgeRule
                       ? 'message.persona-context-knowledge-fully-rendered'
-                      : entityType === EntityType.DATA_PRODUCT
+                      : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+                      entityType === EntityType.DATA_PRODUCT
                       ? 'message.persona-context-data-product-fully-rendered-description'
                       : 'message.persona-context-fully-rendered-description'
                   )}

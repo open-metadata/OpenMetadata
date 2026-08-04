@@ -30,12 +30,13 @@ type SerializedEntityReference = Record<string, unknown> & { type: string };
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isEmptyExtensionValue = (value: unknown): boolean =>
-  value === undefined ||
-  value === null ||
-  value === '' ||
-  (Array.isArray(value) && value.length === 0) ||
-  (isRecord(value) && Object.keys(value).length === 0);
+const isEmptyExtensionValue = (value: unknown): boolean => {
+  const isNullishValue = value === undefined || value === null || value === '';
+  const isEmptyArray = Array.isArray(value) && value.length === 0;
+  const isEmptyRecord = isRecord(value) && Object.keys(value).length === 0;
+
+  return isNullishValue || isEmptyArray || isEmptyRecord;
+};
 
 const unwrapPickerValue = (value: unknown): unknown =>
   isRecord(value) && 'value' in value ? value.value : value;
@@ -161,6 +162,7 @@ export const getCustomPropertyTypeDisplayName = (propertyTypeName?: string) => {
 export const serializeExtensionValue = (
   definition: CustomProperty,
   raw: unknown
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): unknown => {
   if (isEmptyExtensionValue(raw)) {
     return undefined;
@@ -307,6 +309,7 @@ interface PageHeader {
 
 export const getCustomPropertyPageHeaderFromEntity = (
   entityType: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): PageHeader => {
   switch (entityType) {
     case ENTITY_PATH.tables:

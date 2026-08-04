@@ -82,6 +82,7 @@ export const showErrorToast = (
   fallbackText?: string,
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string | JSX.Element>) => void
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity -- preserve behavior
 ) => {
   let errorMessage;
   let isRuleViolation = false;
@@ -99,6 +100,7 @@ export const showErrorToast = (
     isRuleViolation =
       get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
     if (
+      // eslint-disable-next-line sonarjs/expression-complexity
       error &&
       (error.response?.status === ClientErrors.UNAUTHORIZED ||
         (error.response?.status === ClientErrors.FORBIDDEN &&

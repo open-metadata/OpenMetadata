@@ -56,6 +56,7 @@ const shouldRenderSegmentedOptions = (
   );
 
   return (
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
     options.length > 1 &&
     options.length <= MAX_SEGMENTED_OPTION_COUNT &&
     !id.includes(SAMPLE_DATA_STORAGE_CONFIG_ID) &&
@@ -67,6 +68,7 @@ const shouldRenderSegmentedOptions = (
   );
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 const CoreOneOfField = (props: FieldProps) => {
   const {
     schema,

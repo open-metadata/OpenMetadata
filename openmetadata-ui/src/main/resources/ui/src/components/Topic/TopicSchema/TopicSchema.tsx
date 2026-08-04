@@ -92,6 +92,7 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   className,
   schemaTypePlaceholder,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
@@ -464,6 +465,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           )}
         </Col>
       )}
+      {/* eslint-disable-next-line sonarjs/expression-complexity -- inline JSX ternary */}
       {isEmpty(messageSchema?.schemaFields) &&
       isEmpty(messageSchema?.schemaText) ? (
         <ErrorPlaceHolder />

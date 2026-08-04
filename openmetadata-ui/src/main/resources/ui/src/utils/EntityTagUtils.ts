@@ -21,6 +21,7 @@ import { getTableTags } from './TagsPureUtils';
 export const getEntityTags = (
   type: string,
   entityDetail: EntityDetailUnion
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): Array<TagLabel> => {
   switch (type) {
     case EntityType.TABLE: {

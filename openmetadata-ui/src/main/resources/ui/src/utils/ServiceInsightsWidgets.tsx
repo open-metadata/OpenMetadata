@@ -90,6 +90,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
   height?: number;
   width?: number;
   theme: ThemeConfiguration;
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- widget selection; refactor risky
 }) => {
   let Icon = NoDataPlaceholderIcon;
   let localizationKey = `server.no-records-found`;

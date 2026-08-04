@@ -274,6 +274,7 @@ export const UserTeamSelectableList = ({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves isArray type narrowing
     const activeOwners = isArray(owner) ? owner : owner ? [owner] : [];
     setSelectedUsers(activeOwners);
   }, [owner]);

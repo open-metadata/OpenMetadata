@@ -72,7 +72,8 @@ export function resolveCellValue<T>(
           (obj as Record<string, unknown>)?.[key as string],
         record as unknown
       )
-    : typeof dataIndex === 'string'
+    : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+    typeof dataIndex === 'string'
     ? (record as Record<string, unknown>)[dataIndex]
     : undefined;
 

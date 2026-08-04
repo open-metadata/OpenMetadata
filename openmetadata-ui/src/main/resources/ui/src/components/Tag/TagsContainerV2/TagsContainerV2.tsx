@@ -84,7 +84,8 @@ const TagsContainerV2 = ({
   useGenericControls,
   tagNewLook = false,
   multiSelect,
-}: TagsContainerV2Props) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+TagsContainerV2Props) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const { t } = useTranslation();

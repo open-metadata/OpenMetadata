@@ -623,6 +623,7 @@ export const AuthProvider = ({
                 // clear the queue. Called on any path where the refresh does
                 // not yield a new token (null-return or thrown error) so the
                 // callers don't hang waiting for a retry that will never come.
+                // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local queue state
                 const rejectPending = (rejectionError: unknown) => {
                   pendingRequests.forEach(({ reject }) =>
                     reject(rejectionError)
@@ -633,6 +634,7 @@ export const AuthProvider = ({
                 // Refresh the token and retry the requests in the queue
                 tokenService.current
                   .refreshToken()
+                  // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local queue state
                   .then(async (token) => {
                     if (token) {
                       // Retry the pending requests
@@ -648,6 +650,7 @@ export const AuthProvider = ({
                       resetUserDetails(true);
                     }
                   })
+                  // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local queue state
                   .catch((refreshError) => {
                     rejectPending(refreshError);
                     resetUserDetails(true);
@@ -718,6 +721,7 @@ export const AuthProvider = ({
     }
   };
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const getProtectedApp = () => {
     // Show loader if application is loading or authenticating
     const childElement =

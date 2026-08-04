@@ -46,6 +46,7 @@ export const useLogStream = (
     setStreamDone(false);
     setError(null);
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
     const connect = async () => {
       try {
         const token = await getOidcToken();

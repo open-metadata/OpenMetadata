@@ -264,6 +264,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           label={t('label.category-plural')}
           name="categories"
           normalize={(val) =>
+            // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
             Array.isArray(val) ? val : val != null ? [val] : []
           }
           rules={[
@@ -288,6 +289,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           label={t(LABEL_CONTEXT)}
           name="contexts"
           normalize={(val) =>
+            // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
             Array.isArray(val) ? val : val != null ? [val] : []
           }
           rules={[

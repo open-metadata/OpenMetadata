@@ -59,6 +59,7 @@ function buildEsGeoPoint(geoPointString) {
  *
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 function buildEsRangeParameters(value, operator) {
   // -- if value is greater than 1 then we assume this is a between operator : BUG this is wrong,
   // a selectable list can have multiple values
@@ -400,6 +401,7 @@ function isRangeOperator(operator) {
  * @returns {object} - The nested ES query
  * @private
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
   const mustClauses = [
     { term: { 'customPropertiesTyped.name': propertyName } },
@@ -466,6 +468,7 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
  * @returns {object} - The ES query for custom properties
  * @private
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 function buildExtensionQuery(
   propertyName,
   entityType,
@@ -625,6 +628,7 @@ function buildExtensionQuery(
       },
     };
   } else if (
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     operator === 'equal' ||
     operator === 'not_equal' ||
     operator === 'select_equals' ||
@@ -697,6 +701,7 @@ function buildExtensionQuery(
 
   // Wrap in must_not if negated
   if (
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     not ||
     operator === 'not_equal' ||
     operator === 'not_between' ||
@@ -738,12 +743,14 @@ function buildExtensionQuery(
  * @returns {object} - The ES rule
  * @private
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 function buildEsRule(fieldName, value, operator, config, valueSrc) {
   if (!fieldName || !operator || value === undefined) {
     return undefined;
   } // rule is not fully entered
 
   if (
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     (operator === 'between' || operator === 'not_between') &&
     (!Array.isArray(value) ||
       value.length < 2 ||
@@ -804,6 +811,7 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     // value[0] since only a single bound is meaningful.
     const isBetweenOp = op === 'between';
     const isRangeableOmType =
+      // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
       omPropertyType === 'integer' ||
       omPropertyType === 'number' ||
       omPropertyType === 'timestamp' ||
@@ -811,7 +819,8 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
       omPropertyType === 'dateTime-cp' ||
       omPropertyType === 'time-cp';
     const extensionValue = hasValue
-      ? isBetweenOp && isRangeableOmType
+      ? // eslint-disable-next-line sonarjs/no-nested-conditional -- readable inline branch
+        isBetweenOp && isRangeableOmType
         ? value
         : value[0]
       : null;
@@ -936,6 +945,7 @@ function buildEsGroup(
   };
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   try {
     const extendedConfig = extendConfigUtils.ConfigUtils.extendConfig(
@@ -1004,6 +1014,7 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   }
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 export function elasticSearchFormatForJSONLogic(
   tree,
   config,

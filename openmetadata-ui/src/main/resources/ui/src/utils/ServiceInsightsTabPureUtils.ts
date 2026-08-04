@@ -114,6 +114,7 @@ export const getChartTypeForWidget = (chartType: SystemChartType) => {
 
 export const getPlatformInsightsChartDataFormattingMethod =
   (chartsData: Record<SystemChartType, DataInsightCustomChartResult>) =>
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   (chartType: SystemChartType) => {
     if (
       isNil(chartsData) ||

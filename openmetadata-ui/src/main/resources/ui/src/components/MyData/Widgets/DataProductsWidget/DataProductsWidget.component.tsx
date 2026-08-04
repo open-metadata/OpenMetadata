@@ -279,6 +279,7 @@ const DataProductsWidget = ({
       loading={loading}>
       <div className="data-products-widget-container">
         <div className="widget-content flex-1">
+          {/* eslint-disable sonarjs/no-nested-conditional -- chained ternary render */}
           {error ? (
             <ErrorPlaceHolder
               className="data-products-widget-error border-none"
@@ -290,6 +291,7 @@ const DataProductsWidget = ({
           ) : (
             dataProductsList
           )}
+          {/* eslint-enable sonarjs/no-nested-conditional */}
         </div>
         {!isEmpty(dataProducts) && footer}
       </div>

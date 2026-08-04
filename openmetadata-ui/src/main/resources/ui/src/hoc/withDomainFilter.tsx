@@ -22,6 +22,7 @@ import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 ): InternalAxiosRequestConfig => {
   const isGetRequest = config.method === 'get';
   const activeDomain = useDomainStore.getState().activeDomain;

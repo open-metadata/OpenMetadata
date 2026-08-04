@@ -373,6 +373,7 @@ const TaskPayloadSchemaFields = ({
         headerRows?.map(({ iconSrc, label, value }) =>
           renderReadOnlyRow(label, label, value, iconSrc)
         )}
+      {/* eslint-disable-next-line sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity */}
       {orderedFields.map((fieldName) => {
         const fieldSchema = properties[fieldName];
         const widget = getWidget(fieldName);

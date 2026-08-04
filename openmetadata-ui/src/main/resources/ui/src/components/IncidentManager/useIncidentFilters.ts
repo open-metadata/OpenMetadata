@@ -291,13 +291,11 @@ export const useIncidentFilters = ({
     ]
   );
 
-  const hasActiveFilters = Boolean(
-    filters.testCaseFQN ||
-      filters.testCaseResolutionStatusType ||
-      filters.assignee ||
-      filters.startTs ||
-      filters.endTs
-  );
+  const hasCaseFilters =
+    filters.testCaseFQN || filters.testCaseResolutionStatusType;
+  const hasAssigneeOrTimeFilters =
+    filters.assignee || filters.startTs || filters.endTs;
+  const hasActiveFilters = Boolean(hasCaseFilters || hasAssigneeOrTimeFilters);
 
   const clearAllFilters = useCallback(() => {
     setAssigneeOwnerRefs([]);

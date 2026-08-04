@@ -160,6 +160,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   height = 'calc(100vh - 200px)',
   onStatsChange,
   onLoadingChange,
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
 }) => {
   const { t } = useTranslation();
   const contextData = useGenericContext<GlossaryTerm>();
@@ -243,6 +244,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     }
   }, [filters.searchQuery]);
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
       !graphDataToShow || graphDataToShow.nodes.length === 0;
@@ -457,6 +459,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   // chrome (filter toolbar, mode/search/export bar, zoom controls) has nothing
   // to act on, so it is hidden to match the clean empty layout.
   const showOnboardingEmptyState =
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
     !loading &&
     graphDataToShow !== null &&
     graphDataToShow.nodes.length === 0 &&

@@ -416,6 +416,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return () => window.cancelAnimationFrame(raf);
   }, [applyNodePresentation, level]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   useEffect(() => {
     if (!selectedNodeId) {
       return;

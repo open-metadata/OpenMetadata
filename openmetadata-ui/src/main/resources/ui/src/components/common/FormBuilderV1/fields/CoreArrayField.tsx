@@ -22,6 +22,7 @@ import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const CoreArrayField = (props: FieldProps) => {
   const {
     idSchema,

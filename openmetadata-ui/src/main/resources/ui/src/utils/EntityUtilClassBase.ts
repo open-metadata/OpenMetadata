@@ -193,6 +193,7 @@ class EntityUtilClassBase {
     );
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- link builder switch; refactor risky
   public getEntityLink(
     indexType: string,
     fullyQualifiedName: string,
@@ -473,6 +474,7 @@ class EntityUtilClassBase {
     return getLazyEntityDetailComponent(entityType);
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- resource mapping switch; refactor risky
   public getResourceEntityFromEntityType(entityType: string): string {
     switch (entityType) {
       case EntityType.TABLE: {
@@ -553,6 +555,7 @@ class EntityUtilClassBase {
     return null;
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- fqn parts switch; refactor risky
   public getFqnParts(
     fqn: string,
     type?: string

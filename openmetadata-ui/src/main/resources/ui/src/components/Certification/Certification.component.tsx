@@ -164,6 +164,11 @@ const Certification = ({
                   alt: title,
                 })
               : null;
+            const renderedIconContent = isIcon ? (
+              <div className="certification-icon">{renderedIcon}</div>
+            ) : (
+              renderedIcon
+            );
 
             return (
               <div
@@ -181,11 +186,7 @@ const Certification = ({
                 />
                 <div className="certification-card-content">
                   {renderedIcon ? (
-                    isIcon ? (
-                      <div className="certification-icon">{renderedIcon}</div>
-                    ) : (
-                      renderedIcon
-                    )
+                    renderedIconContent
                   ) : (
                     <div className="certification-icon">
                       <CertificationIcon height={28} width={28} />

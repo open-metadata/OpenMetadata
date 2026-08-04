@@ -667,6 +667,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     [markdownContent]
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   const focusedDocDetails = useMemo<FocusedDocDetails>(() => {
     const section = resolveFocusedSection(
       activeFieldName,

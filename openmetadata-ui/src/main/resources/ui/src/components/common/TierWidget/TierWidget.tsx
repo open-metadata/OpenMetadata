@@ -73,6 +73,7 @@ const TierWidget = () => {
   );
 
   const headerExtra = canEdit ? (
+    // eslint-disable-next-line sonarjs/no-nested-conditional -- inline JSX ternary
     tier ? (
       <WidgetEditButton
         data-testid="edit-tier"

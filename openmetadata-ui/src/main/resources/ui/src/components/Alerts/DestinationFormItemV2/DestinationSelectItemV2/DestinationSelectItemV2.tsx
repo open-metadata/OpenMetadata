@@ -69,6 +69,7 @@ function buildGroupedOptions(
   ];
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 function DestinationSelectItemV2({
   selectorKey,
   id,
@@ -197,6 +198,7 @@ function DestinationSelectItemV2({
             />
           )}
 
+          {/* eslint-disable-next-line sonarjs/expression-complexity */}
           {destinationType && isInternalDestinationSelected && (
             <>
               {(destinationType === SubscriptionCategory.Teams ||

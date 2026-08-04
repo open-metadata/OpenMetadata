@@ -125,6 +125,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   hasEditPermissions,
   property,
   isRenderedInRightPanel = false,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 }) => {
   const { propertyName, propertyType, value, isTableType } = useMemo(() => {
     const propertyName = property.name;
@@ -215,6 +216,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
   };
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
   const getPropertyInput = () => {
     const commonStyle: CSSProperties = {
       marginBottom: '0px',
@@ -912,6 +914,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     </Link>
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   const getPropertyValue = () => {
     if (isVersionView) {
       const isKeyAdded = versionDataKeys?.includes(propertyName);

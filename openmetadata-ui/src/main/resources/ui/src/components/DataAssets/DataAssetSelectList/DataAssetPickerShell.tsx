@@ -42,6 +42,7 @@ const nextFocusIndex = (
   key: 'ArrowDown' | 'ArrowUp',
   hasAll: boolean,
   itemCount: number
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- keyboard index arithmetic
 ): number | null => {
   const hasItems = itemCount > 0;
   const lastIdx = itemCount - 1;
@@ -94,6 +95,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   popoverClassName,
   popoverPlacement = 'bottom start',
   placeholder,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent presentational branching
 }) => {
   const { t } = useTranslation();
   const wrapperRef = useRef<HTMLDivElement>(null);

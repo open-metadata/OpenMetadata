@@ -351,6 +351,7 @@ const customTaskSchema: TaskFormSchema = {
 export const getDefaultTaskFormSchema = (
   taskType: TaskEntityType,
   taskCategory: TaskCategory
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 ): TaskFormSchema | undefined => {
   if (
     taskType === TaskEntityType.DescriptionUpdate &&

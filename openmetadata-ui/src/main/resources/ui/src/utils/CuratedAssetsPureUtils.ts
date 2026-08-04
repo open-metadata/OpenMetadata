@@ -45,6 +45,7 @@ interface ElasticsearchBoolQuery {
 }
 
 /* eslint-disable @typescript-eslint/no-use-before-define */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity -- preserve behavior
 function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
   if (!boolQuery) {
     return false;

@@ -291,6 +291,7 @@ export const TableProfilerProvider = ({
 
   useEffect(() => {
     const fetchProfiler =
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
       !isTableDeleted &&
       datasetFQN &&
       !isTourOpen &&

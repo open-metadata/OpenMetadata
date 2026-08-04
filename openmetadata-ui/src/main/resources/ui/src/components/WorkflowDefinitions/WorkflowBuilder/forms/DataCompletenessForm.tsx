@@ -98,6 +98,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
   const selectedFieldItems = useListData<SelectItemType>({ initialItems: [] });
   const initDoneRef = useRef(false);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   useEffect(() => {
     if (node?.data) {
       setDisplayName(node.data.displayName || node.data.label || '');

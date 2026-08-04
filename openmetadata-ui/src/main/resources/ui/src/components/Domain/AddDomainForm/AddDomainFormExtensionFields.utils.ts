@@ -66,6 +66,7 @@ export const getExtensionPropertyNameFromFormKey = (formKey: string) => {
 
 export const getExtensionFieldKind = (
   propertyTypeName?: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ): ExtensionFieldKind => {
   switch (propertyTypeName) {
     case 'date-cp':

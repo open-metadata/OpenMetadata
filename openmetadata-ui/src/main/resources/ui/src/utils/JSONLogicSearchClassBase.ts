@@ -783,6 +783,7 @@ class JSONLogicSearchClassBase {
   ) => {
     const processNotContains = (
       logic: Record<string, unknown>
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
     ): Record<string, unknown> | unknown => {
       if (!logic || typeof logic !== 'object') {
         return logic;

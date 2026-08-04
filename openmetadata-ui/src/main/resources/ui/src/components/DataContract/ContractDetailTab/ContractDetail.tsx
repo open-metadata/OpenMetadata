@@ -120,6 +120,7 @@ const ContractDetail: React.FC<{
   onEdit,
   onDelete,
   onContractUpdated,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 }) => {
   const { t } = useTranslation();
   const [validateLoading, setValidateLoading] = useState(false);

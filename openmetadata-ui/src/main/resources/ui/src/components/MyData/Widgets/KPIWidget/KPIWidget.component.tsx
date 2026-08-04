@@ -272,6 +272,7 @@ const KPIWidget = ({
 
         kpiNames.forEach((kpiName) => {
           const kpiData = kpiResults[kpiName];
+          // eslint-disable-next-line sonarjs/no-nested-functions -- inline find predicate
           const dayData = kpiData?.find((d) => d.day === day);
 
           dataPoint[kpiName] = dayData?.count || 0;

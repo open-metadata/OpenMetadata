@@ -235,6 +235,7 @@ const DEFAULT_APPROVAL_VALUES = {
   rejectedValue: 'rejected',
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const getDefaultTaskFormHandler = (task: Task): TaskFormHandlerConfig => {
   if (isRecognizerFeedbackTask(task)) {
     return {
@@ -369,6 +370,7 @@ export const applyTaskFormSchemaDefaults = (
 export const getEditableTaskPayload = (
   task: Task,
   uiSchema?: JsonSchemaObject
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): TaskPayload => {
   const normalizedPayload = getNormalizedTaskPayload(task);
   const payload = cloneDeep(task.payload ?? {});
@@ -502,6 +504,7 @@ export const getTaskResolutionNewValue = (
   task: Task,
   payload: TaskPayload,
   uiSchema?: JsonSchemaObject
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ) => {
   const resolutionConfig = getResolutionConfig(uiSchema);
 

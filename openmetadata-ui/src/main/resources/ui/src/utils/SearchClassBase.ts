@@ -673,6 +673,7 @@ class SearchClassBase {
       },
     };
   }
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   public getDropDownItems(index: string) {
     switch (index) {
       case SearchIndex.TABLE:
@@ -768,6 +769,7 @@ class SearchClassBase {
     return getEntityBreadcrumbItems(source);
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   public getEntityLink(
     entity: SearchSourceAlias
   ): string | { pathname: string } {

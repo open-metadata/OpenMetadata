@@ -40,7 +40,8 @@ const AppSchedule = ({
   onSave,
   onDemandTrigger,
   onDeployTrigger,
-}: AppScheduleProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
+AppScheduleProps) => {
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const appRunsHistoryRef = useRef<AppRunsHistoryRef>(null);

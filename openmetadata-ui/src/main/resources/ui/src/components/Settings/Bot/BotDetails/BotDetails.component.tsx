@@ -135,6 +135,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                 <IconBotProfile widths="280px" />
 
                 <div className="d-flex gap-2 items-center">
+                  {/* eslint-disable-next-line sonarjs/expression-complexity -- inline JSX ternary */}
                   {isDisplayNameEdit ? (
                     <>
                       <Input

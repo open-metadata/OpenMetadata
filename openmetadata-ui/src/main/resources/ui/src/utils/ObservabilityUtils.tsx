@@ -27,6 +27,7 @@ import {
 import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 export const getAlertDestinationCategoryIcons = (type: string) => {
   let Icon;
 

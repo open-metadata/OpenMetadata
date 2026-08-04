@@ -194,6 +194,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   };
 
   // handle menu item click
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- inherent branching
   const handleMenuItemClick: MenuItemProps['onClick'] = (info) => {
     const currentKey = info.key;
     const option = options.find((op) => op.key === currentKey);
@@ -408,6 +409,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
           {getDropdownBody(menuNode)}
           {immediateApply ? (
+            // eslint-disable-next-line sonarjs/no-nested-conditional -- inline JSX ternary
             helperText ? (
               <div
                 className="p-x-sm p-y-xss search-dropdown-helper-text"

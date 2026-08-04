@@ -48,6 +48,7 @@ import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import './global-search-bar.less';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { searchCriteria, updateSearchCriteria, currentUser } =
@@ -228,6 +229,7 @@ export const GlobalSearchBar = () => {
       <Popover
         align={{ offset: [0, 12] }}
         content={
+          // eslint-disable-next-line sonarjs/expression-complexity -- popover gate
           !isTourOpen &&
           (searchValue || isNLPActive) &&
           (isInPageSearchAllowed(pathname) ? (

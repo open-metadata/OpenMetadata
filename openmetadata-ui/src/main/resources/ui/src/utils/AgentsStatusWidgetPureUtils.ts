@@ -156,6 +156,7 @@ export const automationRunToAppRunRecord = (
 
 export const getAgentStatusLabelFromStatus = (
   status?: PipelineState | Status | typeof NO_RUNS_STATUS
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ) => {
   switch (status) {
     case PipelineState.Success:

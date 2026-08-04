@@ -80,17 +80,12 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   const { activeDomain } = useDomainStore();
   const { theme } = useApplicationStore();
 
-  const isQuery = useMemo(
-    () =>
-      Boolean(
-        search ||
-          queryFilter ||
-          quickFilter ||
-          browsePath ||
-          showDeleted === 'true'
-      ),
-    [search, queryFilter, quickFilter, browsePath, showDeleted]
-  );
+  const isQuery = useMemo(() => {
+    const hasSearchParams = search || queryFilter || quickFilter;
+    const hasBrowseOrDeleted = browsePath || showDeleted === 'true';
+
+    return Boolean(hasSearchParams || hasBrowseOrDeleted);
+  }, [search, queryFilter, quickFilter, browsePath, showDeleted]);
 
   const noRecordForES = useMemo(() => {
     if (isQuery) {

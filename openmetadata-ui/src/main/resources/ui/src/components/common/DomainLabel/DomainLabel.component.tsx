@@ -76,7 +76,7 @@ export const DomainLabel = ({
             ...entityDetailsResponse,
             domains: Array.isArray(selectedDomain)
               ? selectedDomain
-              : isEmpty(selectedDomain)
+              : isEmpty(selectedDomain) // eslint-disable-line sonarjs/no-nested-conditional
               ? []
               : [selectedDomain],
           });

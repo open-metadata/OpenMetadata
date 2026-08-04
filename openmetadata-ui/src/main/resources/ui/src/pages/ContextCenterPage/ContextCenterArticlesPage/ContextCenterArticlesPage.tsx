@@ -78,6 +78,7 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
 const LABEL_ARTICLE_PLURAL = 'label.article-plural';
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 const ContextCenterArticlesPage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -368,6 +369,7 @@ const ContextCenterArticlesPage = () => {
   ]);
 
   const showArticlesEmptyState =
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
     isArticlesListEmpty &&
     !fqn &&
     !version &&

@@ -110,6 +110,7 @@ export const useLimitStore = create<{
     resource: string,
     showBanner = true,
     force = false
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   ) => {
     const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
 
@@ -152,8 +153,9 @@ export const useLimitStore = create<{
 
       const plan = config?.limits?.config.plan ?? 'FREE';
 
-      (softLimitExceed || hardLimitExceed || limitReached) &&
-        showBanner &&
+      const shouldShowBanner =
+        (softLimitExceed || hardLimitExceed || limitReached) && showBanner;
+      shouldShowBanner &&
         setBannerDetails({
           header: `You have reached ${
             hardLimitExceed ? '100%' : '75%'

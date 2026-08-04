@@ -451,6 +451,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   ]);
 
   // Function to fetch nodes based on current filters and pagination
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
   const fetchNodes = useCallback(async () => {
     try {
       setLoading(true);

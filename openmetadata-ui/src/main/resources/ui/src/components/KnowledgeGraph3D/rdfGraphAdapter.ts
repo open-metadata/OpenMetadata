@@ -497,6 +497,7 @@ const collectSharedAssets = (
 ): SharedConceptRow[] => {
   const seen = new Set<string>();
   const shared: SharedConceptRow[] = [];
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- edge scanner; refactor risky
   links.forEach((link) => {
     if (link.kind !== 'ontology' || link.label !== MAPPED_TO_LABEL) {
       return;
@@ -507,11 +508,8 @@ const collectSharedAssets = (
     // this correct for reverse-direction (concept->table) mappings.
     const source = idOf(link.source);
     const target = idOf(link.target);
-    const conceptId = expanded.has(source)
-      ? source
-      : expanded.has(target)
-      ? target
-      : undefined;
+    const fallbackConceptId = expanded.has(target) ? target : undefined;
+    const conceptId = expanded.has(source) ? source : fallbackConceptId;
     const assetId = conceptId === source ? target : source;
     const asset = conceptId ? byId.get(assetId) : undefined;
     if (asset?.type === 'table' && assetId !== selfId && !seen.has(assetId)) {

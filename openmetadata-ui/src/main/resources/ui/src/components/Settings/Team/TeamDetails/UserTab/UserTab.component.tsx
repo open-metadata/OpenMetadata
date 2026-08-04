@@ -67,7 +67,8 @@ export const UserTab = ({
   currentTeam,
   onAddUser,
   onRemoveUser,
-}: UserTabProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
+UserTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 

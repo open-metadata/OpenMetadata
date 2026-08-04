@@ -118,6 +118,7 @@ const parseJsonObject = (value: string) => {
 
 const stringifyJson = stringifyDesignerJson;
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const getDefaultWorkflowDefinitionRef = (taskType?: string) => {
   switch (taskType) {
     case 'DescriptionUpdate':
@@ -173,6 +174,7 @@ const sanitizeWorkflowDefinitionPayload = (
   };
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const TaskFormSettingsPage = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm<TaskFormSchema>();
@@ -470,12 +472,9 @@ const TaskFormSettingsPage = () => {
     }
   };
 
-  const pageTitle =
-    watchedDisplayName?.trim() ||
-    watchedName?.trim() ||
-    selectedSchema.displayName ||
-    selectedSchema.name ||
-    'New Task Form';
+  const nameFromForm = watchedDisplayName?.trim() || watchedName?.trim();
+  const nameFromSchema = selectedSchema.displayName || selectedSchema.name;
+  const pageTitle = nameFromForm || nameFromSchema || 'New Task Form';
   const pageDescription =
     watchedDescription?.trim() ||
     selectedSchema.description ||

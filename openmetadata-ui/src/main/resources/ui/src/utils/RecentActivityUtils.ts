@@ -30,7 +30,7 @@ export const arraySorterByKey = <T extends object>(
     return (
       (elementOne[key] < elementTwo[key]
         ? -1
-        : elementOne[key] > elementTwo[key]
+        : elementOne[key] > elementTwo[key] // eslint-disable-line sonarjs/no-nested-conditional
         ? 1
         : 0) * sortOrder
     );

@@ -38,6 +38,7 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
   );
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
 
@@ -175,7 +176,8 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     (newValue: string[]) => {
       // Handle scope field conversion from array (UI) to string (backend)
       const convertedValue = isScopeField
-        ? Array.isArray(newValue)
+        ? // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+          Array.isArray(newValue)
           ? newValue.join(' ')
           : newValue
         : newValue;

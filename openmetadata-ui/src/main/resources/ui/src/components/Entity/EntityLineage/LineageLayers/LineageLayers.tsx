@@ -85,6 +85,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       entityType !== EntityType.DOMAIN &&
       !isEmpty(entity?.domains));
   const showDataProduct =
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
     isPlatformLineage ||
     (entityType &&
       entityType !== EntityType.DOMAIN &&

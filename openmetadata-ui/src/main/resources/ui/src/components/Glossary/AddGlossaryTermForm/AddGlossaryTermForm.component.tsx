@@ -61,7 +61,8 @@ const AddGlossaryTermForm = ({
   onSave,
   glossaryTerm,
   formRef: form,
-}: AddGlossaryTermFormProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+AddGlossaryTermFormProps) => {
   const { currentUser } = useApplicationStore();
   const { entityRules } = useEntityRules(EntityType.GLOSSARY_TERM);
   const selectedOwners =
@@ -211,6 +212,7 @@ const AddGlossaryTermForm = ({
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const handleSave: FormProps['onFinish'] = async (formObj) => {
     const {
       name,

@@ -69,6 +69,7 @@ const parseValue = (value: unknown): unknown => {
   return value;
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const formatChangeValue = (value: unknown): string => {
   const parsed = parseValue(value);
   if (parsed === null || parsed === undefined) {
@@ -140,6 +141,7 @@ const extractEntityInfo = (value: unknown): EntityInfo[] => {
 const getEntityLinkForField = (
   fieldName: string,
   entityInfo: EntityInfo
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): string | null => {
   const field = fieldName.toLowerCase();
 
@@ -210,6 +212,7 @@ const resolveEntityType = (value?: string): EntityType | undefined => {
   );
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   const { t } = useTranslation();
 
@@ -221,6 +224,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     log.changeEvent?.entityFullyQualifiedName ??
     log.changeEvent?.entity?.fullyQualifiedName;
   const entityLabel =
+    // eslint-disable-next-line sonarjs/expression-complexity -- fallback chain
     getEntityName(log.changeEvent?.entity) ||
     (log.changeEvent?.entity as { name?: string })?.name ||
     (entityFQN ? Fqn.split(entityFQN).pop() : undefined) ||
@@ -352,6 +356,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             <span className="change-detail" key={`updated-${change.name}`}>
               <span className="change-action">{updatedLabel}</span>{' '}
               <span className="change-field">{label || fallbackField}</span>
+              {/* eslint-disable-next-line sonarjs/expression-complexity -- JSX gate */}
               {(oldValueNode || newValueNode) && (
                 <>
                   : {oldValueNode}
@@ -396,6 +401,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     return [];
   }, [log, getChangeDetails]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const entityLink = useMemo(() => {
     if (normalizedType === EntityType.USER) {
       const userNameForLink =

@@ -48,6 +48,7 @@ import { formatLogPart } from './LogViewerModal.utils';
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 40;
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
     open,
@@ -138,7 +139,8 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
         Math.abs(clientHeight + scrollTop - scrollHeight) <
         SCROLL_BOTTOM_THRESHOLD_PX;
 
-      if (isBottom && hasMore && !loadingMore && !query && onLoadMore) {
+      const canLoadMore = hasMore && !loadingMore && !query;
+      if (isBottom && canLoadMore && onLoadMore) {
         onLoadMore();
       }
     },
@@ -337,7 +339,8 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
                   <Loader />
                 </div>
-              ) : showEmptyState ? (
+              ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- JSX loading/empty/content branches
+              showEmptyState ? (
                 <div
                   className="lvm-empty tw:flex tw:h-full tw:items-center tw:justify-center"
                   data-testid="log-viewer-empty">

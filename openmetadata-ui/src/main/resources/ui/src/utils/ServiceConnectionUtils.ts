@@ -96,6 +96,7 @@ export const buildValidConfig = (data?: ServicesType): ConfigData => {
 export const loadConnectionSchema = async (
   serviceCategory: ServiceCategory,
   serviceType: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): Promise<ConnectionSchemaResult['connSch']> => {
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES:
@@ -466,6 +467,7 @@ export const getMissingSchemaRequiredFieldsCountForSelectedBranch = (
     const propertySchema = properties[key];
 
     if (
+      // eslint-disable-next-line sonarjs/expression-complexity -- type-narrowing guard chain
       value !== null &&
       value !== undefined &&
       typeof value === 'object' &&

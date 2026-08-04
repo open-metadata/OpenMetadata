@@ -90,7 +90,8 @@ const AddCustomProperty = ({
   open,
   onClose,
   onCancel,
-}: AddCustomPropertyProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+AddCustomPropertyProps) => {
   const [localForm] = Form.useForm();
   const form = formRef ?? localForm;
   const { entityType: entityTypeParam } = useRequiredParams<{

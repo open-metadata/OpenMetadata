@@ -56,6 +56,7 @@ interface TestSummaryCustomTooltipProps {
   testCaseFqn?: string;
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
   const { t } = useTranslation();
   const { active, payload = [], testCaseFqn: testCaseFqnProp } = props;

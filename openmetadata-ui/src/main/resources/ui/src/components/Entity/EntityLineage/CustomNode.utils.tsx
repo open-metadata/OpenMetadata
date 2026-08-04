@@ -313,17 +313,19 @@ const ColumnContentInner = ({
   );
 };
 
-export const ColumnContent = memo(
-  ColumnContentInner,
-  (prev, next) =>
+export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
+  const isCoreEqual =
     prev.column === next.column &&
     prev.isConnectable === next.isConnectable &&
-    prev.isLoading === next.isLoading &&
+    prev.isLoading === next.isLoading;
+  const isDisplayEqual =
     prev.showDataObservabilitySummary === next.showDataObservabilitySummary &&
     prev.summary === next.summary &&
     prev.depth === next.depth &&
-    prev.className === next.className
-);
+    prev.className === next.className;
+
+  return isCoreEqual && isDisplayEqual;
+});
 
 export function getNodeClassNames({
   isSelected,

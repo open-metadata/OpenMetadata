@@ -33,66 +33,70 @@ export const calculateEdgeMidpoints = (
   tracedNodes: Set<string> = new Set(),
   tracedColumns: Set<string> = new Set()
 ): EdgeMidpoint[] => {
-  return edges
-    .map((edge) => {
-      const computedPath = edge.data?.computedPath;
-      let centerX: number, centerY: number;
+  return (
+    edges
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+      .map((edge) => {
+        const computedPath = edge.data?.computedPath;
+        let centerX: number, centerY: number;
 
-      if (computedPath) {
-        centerX = computedPath.edgeCenterX;
-        centerY = computedPath.edgeCenterY;
-      } else {
-        const coords = getEdgeCoordinates(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          columnsInCurrentPages
-        );
+        if (computedPath) {
+          centerX = computedPath.edgeCenterX;
+          centerY = computedPath.edgeCenterY;
+        } else {
+          const coords = getEdgeCoordinates(
+            edge,
+            getNode(edge.source),
+            getNode(edge.target),
+            columnsInCurrentPages
+          );
 
-        if (!coords) {
-          return null;
+          if (!coords) {
+            return null;
+          }
+
+          const pathData = getEdgePathData(edge.source, edge.target, {
+            sourceX: coords.sourceX,
+            sourceY: coords.sourceY,
+            targetX: coords.targetX,
+            targetY: coords.targetY,
+            sourcePosition: Position.Right,
+            targetPosition: Position.Left,
+          });
+
+          centerX = pathData.edgeCenterX;
+          centerY = pathData.edgeCenterY;
         }
 
-        const pathData = getEdgePathData(edge.source, edge.target, {
-          sourceX: coords.sourceX,
-          sourceY: coords.sourceY,
-          targetX: coords.targetX,
-          targetY: coords.targetY,
-          sourcePosition: Position.Right,
-          targetPosition: Position.Left,
-        });
+        const {
+          isColumnLineage,
+          edge: edgeDetails,
+          columnFunctionValue,
+          isExpanded,
+        } = edge.data || {};
 
-        centerX = pathData.edgeCenterX;
-        centerY = pathData.edgeCenterY;
-      }
+        const hasPipeline =
+          !isColumnLineage &&
+          edgeDetails?.pipeline &&
+          getEntityName(edgeDetails.pipeline);
+        const hasFunction =
+          !isColumnLineage && columnFunctionValue && isExpanded;
 
-      const {
-        isColumnLineage,
-        edge: edgeDetails,
-        columnFunctionValue,
-        isExpanded,
-      } = edge.data || {};
+        let dataTestId = edge.data?.dataTestId;
 
-      const hasPipeline =
-        !isColumnLineage &&
-        edgeDetails?.pipeline &&
-        getEntityName(edgeDetails.pipeline);
-      const hasFunction = !isColumnLineage && columnFunctionValue && isExpanded;
+        if ((hasPipeline || hasFunction) && edgeDetails) {
+          dataTestId = `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
+        }
 
-      let dataTestId = edge.data?.dataTestId;
-
-      if ((hasPipeline || hasFunction) && edgeDetails) {
-        dataTestId = `pipeline-label-${edgeDetails.fromEntity.fullyQualifiedName}-${edgeDetails.toEntity.fullyQualifiedName}`;
-      }
-
-      return {
-        id: edge.id,
-        dataTestId,
-        canvasX: centerX,
-        canvasY: centerY,
-        edge,
-        visualState: computeEdgeVisualState(edge, tracedNodes, tracedColumns),
-      };
-    })
-    .filter(Boolean) as EdgeMidpoint[];
+        return {
+          id: edge.id,
+          dataTestId,
+          canvasX: centerX,
+          canvasY: centerY,
+          edge,
+          visualState: computeEdgeVisualState(edge, tracedNodes, tracedColumns),
+        };
+      })
+      .filter(Boolean) as EdgeMidpoint[]
+  );
 };

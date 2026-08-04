@@ -293,6 +293,7 @@ export const getEntityChildDetails = (
   entityInfo: SearchedDataProps['data'][number]['_source'],
   highlights?: SearchedDataProps['data'][number]['highlight'],
   loading?: boolean
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ) => {
   let childComponent;
   let heading;

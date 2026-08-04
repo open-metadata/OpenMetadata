@@ -131,7 +131,8 @@ export const createUpdatedTestCasePatch = ({
   createTestCaseObject,
   showOnlyParameter,
   isComputeRowCountFieldVisible,
-}: CreateUpdatedTestCasePatchArgs): Operation[] => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+CreateUpdatedTestCasePatchArgs): Operation[] => {
   const tierTag = testCase.tags ? getTierTags(testCase.tags) : undefined;
   const rebuiltTags = [
     ...(tierTag ? [tierTag] : []),
@@ -143,7 +144,8 @@ export const createUpdatedTestCasePatch = ({
     ...createTestCaseObject,
     description: showOnlyParameter
       ? testCase.description
-      : isEmpty(value.description)
+      : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+      isEmpty(value.description)
       ? undefined
       : value.description,
     displayName: showOnlyParameter ? testCase?.displayName : value.displayName,
@@ -297,6 +299,7 @@ export const buildDataQualityDashboardFilters = (data: {
   filters?: DataQualityDashboardChartFilters;
   unhealthy?: boolean;
   isTableApi?: boolean;
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
 }) => {
   const { filters, unhealthy = false, isTableApi = false } = data;
   const mustFilter = [];

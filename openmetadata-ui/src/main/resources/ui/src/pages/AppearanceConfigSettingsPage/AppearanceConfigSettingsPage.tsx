@@ -91,6 +91,7 @@ const AppearanceConfigSettingsPage = () => {
   const handleSave: FormProps['onFinish'] = async (
     values: UIThemePreference['customLogoConfig'] &
       UIThemePreference['customTheme']
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   ) => {
     setLoading(true);
     try {

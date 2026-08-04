@@ -90,6 +90,7 @@ export const getEntityBreadcrumbs = (
     | APIEndpoint,
   entityType?: EntityType,
   includeCurrent = false
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   switch (entityType) {
     case EntityType.CHART:

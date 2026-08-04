@@ -62,6 +62,7 @@ export const EntityTitleSection = ({
     typeof entityLink === 'string' ? entityLink : entityLink.pathname;
 
   const handleDisplayNameUpdate = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     async (data: EntityName) => {
       if (!entityDetails.id || !entityType) {
         setIsEditModalOpen(false);

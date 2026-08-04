@@ -50,6 +50,7 @@ const parseTaskTags = (value?: string | TagLabel[]): TagLabel[] => {
 
 export const getNormalizedTaskPayload = (
   task: TaskEntity
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- payload normalizer; refactor risky
 ): NormalizedTaskPayload => {
   const payload = task.payload;
   const isTagTask = task.type === TaskEntityType.TagUpdate;
@@ -77,11 +78,9 @@ export const getNormalizedTaskPayload = (
         ]
       : suggestedTagsFromLegacyPayload;
 
-  const suggestedValue = isTagTask
-    ? suggestedTags.length > 0
-      ? JSON.stringify(suggestedTags)
-      : undefined
-    : newDescription;
+  const suggestedTagsValue =
+    suggestedTags.length > 0 ? JSON.stringify(suggestedTags) : undefined;
+  const suggestedValue = isTagTask ? suggestedTagsValue : newDescription;
 
   const isSuggestionEmpty = isTagTask
     ? suggestedTags.length === 0

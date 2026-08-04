@@ -53,7 +53,8 @@ const ProfileSectionUserDetailsCard = ({
   afterDeleteAction,
   updateUserDetails,
   handleRestoreUser,
-}: ProfileSectionUserDetailsCardProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+ProfileSectionUserDetailsCardProps) => {
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();

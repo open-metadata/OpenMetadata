@@ -86,7 +86,8 @@ const GlossaryHeader = ({
   onAssetAdd,
   onAddGlossaryTerm,
   updateVote,
-}: GlossaryHeaderProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();

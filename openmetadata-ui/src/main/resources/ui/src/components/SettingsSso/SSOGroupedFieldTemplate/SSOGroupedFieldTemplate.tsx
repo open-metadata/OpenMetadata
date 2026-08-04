@@ -73,12 +73,10 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
     idSchema.$id === 'root/authenticationConfiguration/samlConfiguration';
 
   // Only apply special grouping to these specific main configuration objects
-  const shouldApplyGrouping =
-    isAuthConfigRoot ||
-    isAuthorizerConfig ||
-    isOIDCConfig ||
-    isLDAPConfig ||
-    isSAMLConfig;
+  const isCoreAuthConfig =
+    isAuthConfigRoot || isAuthorizerConfig || isOIDCConfig;
+  const isProtocolConfig = isLDAPConfig || isSAMLConfig;
+  const shouldApplyGrouping = isCoreAuthConfig || isProtocolConfig;
 
   const filterVisibleProperties = (
     properties: ObjectFieldTemplatePropertyType[]
@@ -117,6 +115,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
   // Define field groups for SSO forms with logical grouping
   const getFieldGroups = (
     properties: ObjectFieldTemplatePropertyType[]
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
   ): FieldGroup[] => {
     // For non-main configuration objects, use default rendering without extra background
     if (!shouldApplyGrouping) {

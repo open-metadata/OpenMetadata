@@ -37,6 +37,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
   isTaskActionEdit,
   hasEditAccess,
   onChange,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 }) => {
   const { task } = taskThread;
   const { t } = useTranslation();

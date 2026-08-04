@@ -217,6 +217,7 @@ describe('DestinationSelectItem component', () => {
         setFieldValue: jest.fn(),
         getFieldValue: jest
           .fn()
+          // eslint-disable-next-line sonarjs/cyclomatic-complexity -- test mock
           .mockImplementation((val: string | string[]) => {
             if (isString(val)) {
               return [{ category: 'External' }];
@@ -310,6 +311,7 @@ describe('DestinationSelectItem component', () => {
         setFieldValue: jest.fn(),
         getFieldValue: jest
           .fn()
+          // eslint-disable-next-line sonarjs/cyclomatic-complexity -- test mock
           .mockImplementation((val: string | string[]) => {
             if (isString(val)) {
               return [{ category: 'External' }];
@@ -403,6 +405,7 @@ describe('DestinationSelectItem component', () => {
         setFieldValue: jest.fn(),
         getFieldValue: jest
           .fn()
+          // eslint-disable-next-line sonarjs/cyclomatic-complexity -- test mock
           .mockImplementation((val: string | string[]) => {
             if (isString(val)) {
               return [{ category: 'External' }];
@@ -496,6 +499,7 @@ describe('DestinationSelectItem component', () => {
         setFieldValue: jest.fn(),
         getFieldValue: jest
           .fn()
+          // eslint-disable-next-line sonarjs/cyclomatic-complexity -- test mock
           .mockImplementation((val: string | string[]) => {
             if (isString(val)) {
               return [{ category: 'External' }];

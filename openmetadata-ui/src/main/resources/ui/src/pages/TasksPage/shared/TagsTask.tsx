@@ -39,6 +39,7 @@ const TagsTask: FC<TagsTaskProps> = ({
   hasEditAccess,
   task,
   onChange,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
 

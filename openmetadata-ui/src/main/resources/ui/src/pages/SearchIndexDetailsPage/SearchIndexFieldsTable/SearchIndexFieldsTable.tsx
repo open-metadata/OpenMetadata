@@ -244,6 +244,7 @@ const SearchIndexFieldsTable = ({
 
       return (
         <div data-testid={`${record.name}-data-type`}>
+          {/* eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order */}
           {isReadOnly ||
           (displayValue && displayValue.length < 25 && !isReadOnly) ? (
             toLower(displayValue)

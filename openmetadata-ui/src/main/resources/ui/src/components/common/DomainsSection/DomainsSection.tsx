@@ -126,7 +126,8 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
 
         const domainsToSave = Array.isArray(selectedDomain)
           ? selectedDomain
-          : isEmpty(selectedDomain)
+          : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+          isEmpty(selectedDomain)
           ? []
           : [selectedDomain];
 

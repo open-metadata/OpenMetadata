@@ -612,6 +612,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   }, [visible]);
 
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     const loadSelectedDomainChildren = async () => {
       if (value?.length === 0 || !visible || isEmpty(domainMapper)) {
         return;

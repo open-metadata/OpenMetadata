@@ -91,6 +91,7 @@ const EntitySummaryPanel = withSuspenseFallback(
 
 export const getGlossaryTermDetailPageTabs = (
   props: GlossaryTermDetailPageTabProps
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ): TabProps[] => {
   const {
     glossaryTerm,

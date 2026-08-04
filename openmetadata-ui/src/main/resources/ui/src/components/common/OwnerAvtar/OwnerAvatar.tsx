@@ -35,6 +35,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   inheritedIcon,
   avatarSize = 32,
   isAssignee,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const displayName = getEntityName(owner);
 

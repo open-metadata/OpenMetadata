@@ -68,7 +68,8 @@ export const DataProductDomainWidget = () => {
       try {
         const rawDomains = Array.isArray(selectedDomain)
           ? selectedDomain
-          : isEmpty(selectedDomain)
+          : // eslint-disable-next-line sonarjs/no-nested-conditional -- Array.isArray narrows the single-domain branch
+          isEmpty(selectedDomain)
           ? []
           : [selectedDomain];
 

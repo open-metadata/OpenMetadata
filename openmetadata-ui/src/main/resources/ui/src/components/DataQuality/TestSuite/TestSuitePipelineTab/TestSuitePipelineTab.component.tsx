@@ -528,7 +528,8 @@ const TestSuitePipelineTab = ({
                     <Table.Cell className="tw:align-middle tw:w-60">
                       {isFetchingStatus ? (
                         <ButtonSkeleton size="default" />
-                      ) : isPlatformDisabled ? (
+                      ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+                      isPlatformDisabled ? (
                         NO_DATA_PLACEHOLDER
                       ) : (
                         <PipelineActions

@@ -177,7 +177,8 @@ function TeamAndUserSelectItemV2({
                   />
                 ))}
               </div>
-            ) : isEmpty(options) ? (
+            ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- ternary chain renders loading/empty/list states inline in JSX
+            isEmpty(options) ? (
               <p className="tw:p-2 tw:text-center tw:text-sm tw:text-tertiary">
                 {t('label.no-data-found')}
               </p>

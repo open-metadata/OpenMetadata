@@ -139,6 +139,7 @@ const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
 const GLOSSARY_TABLE_SCROLL = { y: 'calc(100vh - 350px)' };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- large component; refactor risky
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
@@ -296,6 +297,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   };
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
   const fetchAllTerms = async (loadMore = false) => {
     // `fetchSearchTerm` / `fetchStatusKey` record the search and status filter
     // this request was issued for so its response can be discarded if either has
@@ -490,13 +492,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   useEffect(() => {
     const currentFQN = activeGlossary?.fullyQualifiedName;
 
-    if (
-      currentFQN &&
-      !isLoadingMore &&
-      currentFQN !== previousGlossaryFQN &&
-      !toggleExpandBtn &&
-      !searchTerm // Don't fetch if there's an active search
-    ) {
+    const isDifferentGlossary =
+      currentFQN && currentFQN !== previousGlossaryFQN;
+    // Don't fetch while loading, expanding, or with an active search
+    const isIdleState = !isLoadingMore && !toggleExpandBtn && !searchTerm;
+    if (isDifferentGlossary && isIdleState) {
       // Clear existing terms when switching glossaries
       setGlossaryChildTerms([]);
       handlePagingChange((prev) => ({ ...prev, after: undefined }));
@@ -562,13 +562,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ? searchPaging.hasMore
         : paging.after !== undefined;
 
-      if (
-        scrollContainer &&
-        canLoadMore &&
-        !isLoadingMore &&
-        !toggleExpandBtn &&
-        !isTableLoading // Added check to prevent multiple fetches
-      ) {
+      const isScrollReady = scrollContainer && canLoadMore;
+      // Prevent multiple simultaneous fetches
+      const isIdle = !isLoadingMore && !toggleExpandBtn && !isTableLoading;
+      if (isScrollReady && isIdle) {
         const { scrollHeight, clientHeight } = scrollContainer;
         // If content doesn't fill the viewport, load more
         if (scrollHeight <= clientHeight + 10) {
@@ -609,13 +606,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ? searchPaging.hasMore
         : paging.after !== undefined;
 
-      if (
-        scrollContainer &&
-        canLoadMore &&
-        !isLoadingMore &&
-        !isTableLoading &&
-        !toggleExpandBtn
-      ) {
+      const isScrollReady = scrollContainer && canLoadMore;
+      const isIdle = !isLoadingMore && !isTableLoading && !toggleExpandBtn;
+      if (isScrollReady && isIdle) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
         // Load more when user is 200px from the bottom
         if (scrollHeight - scrollTop - clientHeight < 200) {
@@ -711,6 +704,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       data: ResolveTask,
       taskId: string | number,
       glossaryTermFqn: string
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
     ) => {
       try {
         if (!taskId) {
@@ -1383,7 +1377,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           </AriaButton>
         );
 
-        return (childrenCount ?? children?.length ?? 0) > 0 ? (
+        const childCount = childrenCount ?? children?.length ?? 0;
+
+        return childCount > 0 ? (
           <>
             {dragHandle}
             {isLoading ? (
@@ -1436,11 +1432,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       rowExpandable: (record) => {
         const rec = record;
         const isLoadMoreRow = rec.isLoadMoreButton;
+        const hasChildCount = (rec.childrenCount ?? 0) > 0;
+        const hasChildArray = (rec.children?.length ?? 0) > 0;
 
-        return (
-          !isLoadMoreRow &&
-          ((rec.childrenCount ?? 0) > 0 || (rec.children?.length ?? 0) > 0)
-        );
+        return !isLoadMoreRow && (hasChildCount || hasChildArray);
       },
     }),
     [

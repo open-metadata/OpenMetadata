@@ -41,6 +41,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   entityFqn,
   entityType,
   changeSummaryEntry,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);

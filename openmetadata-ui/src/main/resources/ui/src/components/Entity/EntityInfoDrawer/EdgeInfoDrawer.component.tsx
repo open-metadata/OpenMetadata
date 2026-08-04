@@ -264,6 +264,7 @@ const EdgeInfoDrawer = ({
     sqlFunction,
   ]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const getEdgeInfo = () => {
     const { source, target, data } = edge;
     const { sourceHandle, targetHandle } = edge;

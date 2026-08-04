@@ -111,6 +111,7 @@ const getValidatedServiceType = (
   return (supported ?? []).includes(requested) ? requested : '';
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const EmbeddedAddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

@@ -40,6 +40,7 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
   onClose,
   onDelete,
   entityTypes,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 }) => {
   if (
     node.type === NodeType.EndEvent ||

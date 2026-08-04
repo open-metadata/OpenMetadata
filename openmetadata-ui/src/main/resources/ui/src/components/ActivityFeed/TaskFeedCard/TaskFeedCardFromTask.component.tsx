@@ -80,7 +80,8 @@ const TaskFeedCardFromTask = ({
   onUpdateEntityDetails,
   isOpenInDrawer = false,
   onTaskClick,
-}: TaskFeedCardFromTaskProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+TaskFeedCardFromTaskProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { setActiveTask, showTaskDrawer } = useActivityFeedProvider();
@@ -270,6 +271,7 @@ const TaskFeedCardFromTask = ({
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id ?? '') : false
   );
   const hasEditAccess =
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
     (isAdminUser && !isTaskApprovalRequest) ||
     isAssignee ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
@@ -295,7 +297,8 @@ const TaskFeedCardFromTask = ({
           gutter={
             isTaskTestCaseResult || isTaskApprovalRequest
               ? [0, 6]
-              : isTaskDescription
+              : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+              isTaskDescription
               ? undefined
               : [0, 14]
           }>

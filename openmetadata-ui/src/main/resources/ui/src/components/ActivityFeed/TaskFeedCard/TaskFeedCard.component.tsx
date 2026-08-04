@@ -59,7 +59,8 @@ const TaskFeedCard = ({
   showThread = true,
   isActive,
   hidePopover = false,
-}: TaskFeedCardProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent presentational branching
+TaskFeedCardProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { showDrawer, setActiveThread } = useActivityFeedProvider();

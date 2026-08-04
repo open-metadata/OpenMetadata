@@ -38,6 +38,7 @@ import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubT
 export const getCanvasNodeIcon = (
   subType: NodeSubType | undefined,
   props?: React.SVGProps<SVGSVGElement>
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): React.ReactElement => {
   const defaultProps = { style: { width: '32px', height: '32px' }, ...props };
 
@@ -81,6 +82,7 @@ export const getCanvasNodeIcon = (
 export const getNodeIcon = (
   subType: NodeSubType | undefined,
   props?: React.SVGProps<SVGSVGElement>
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): React.ReactElement => {
   const defaultProps = { style: { width: '32px', height: '32px' }, ...props };
 

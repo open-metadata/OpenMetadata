@@ -34,6 +34,7 @@ import { RelatedMetricsForm } from './RelatedMetricsForm';
 
 const LABEL_RELATED_METRIC_PLURAL = 'label.related-metric-plural' as const;
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const RelatedMetrics: FC = () => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -148,6 +149,7 @@ const RelatedMetrics: FC = () => {
   );
 
   const headerExtra =
+    // eslint-disable-next-line sonarjs/expression-complexity -- render gate
     !isEdit &&
     permissions.EditAll &&
     !metricDetails.deleted &&

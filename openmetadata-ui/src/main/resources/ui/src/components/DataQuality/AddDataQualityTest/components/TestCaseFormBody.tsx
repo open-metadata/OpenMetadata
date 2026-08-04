@@ -120,7 +120,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   isEditMode = false,
   showOnlyParameter = false,
   editDefinition,
-}: TestCaseFormBodyProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- form body branches over many test-definition field types
+TestCaseFormBodyProps) => {
   const { t } = useTranslation();
   const { config } = useLimitStore();
   const { permissions, getEntityPermissionByFqn } = usePermissionProvider();
@@ -719,13 +720,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   ]);
 
   useEffect(() => {
-    if (
-      !isEditMode &&
-      selectedTableFqn &&
-      selectedTestDefinition &&
-      selectedTestLevel &&
-      !isTestNameManuallyEdited
-    ) {
+    const hasRequiredTestSelections =
+      selectedTableFqn && selectedTestDefinition && selectedTestLevel;
+    if (!isEditMode && hasRequiredTestSelections && !isTestNameManuallyEdited) {
       const dynamicName = generateDynamicTestName();
       if (dynamicName) {
         form.setValue('testName', dynamicName);
@@ -1200,6 +1197,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         </div>
       )}
 
+      {/* eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value */}
       {!showOnlyParameter &&
         !isEditMode &&
         selectedTableFqn &&

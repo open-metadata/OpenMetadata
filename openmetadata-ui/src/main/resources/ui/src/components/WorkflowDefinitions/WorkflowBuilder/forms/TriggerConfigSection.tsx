@@ -87,6 +87,7 @@ export const TriggerConfigSection: React.FC<TriggerConfigSectionProps> = ({
   lockNonIncludeExcludeFields = false,
   lockPeriodicBatchFields,
   lockScheduleTypeField,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
 }) => {
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();

@@ -26,11 +26,8 @@ export const getCountBadge = (
   className = '',
   isActive?: boolean
 ) => {
-  const clsBG = isUndefined(isActive)
-    ? ''
-    : isActive
-    ? 'bg-primary text-white no-border'
-    : 'ant-tag';
+  const activeClass = isActive ? 'bg-primary text-white no-border' : 'ant-tag';
+  const clsBG = isUndefined(isActive) ? '' : activeClass;
 
   return (
     <span

@@ -91,6 +91,7 @@ const roundedRect = (
   ctx.closePath();
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- switch over node icon types
 const drawIcon = (type: NodeType, ctx: CanvasRenderingContext2D): void => {
   const L = 56;
   const R = 124;

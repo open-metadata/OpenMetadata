@@ -72,7 +72,8 @@ const TableConstraints = ({
       title={t('label.add-entity', { entity: t(LABEL_TABLE_CONSTRAINTS) })}
       onClick={handleOpenEditConstraintModal}
     />
-  ) : showEditConstraint ? (
+  ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- inline JSX ternary
+  showEditConstraint ? (
     <WidgetEditButton
       data-testid="edit-table-constraint-button"
       title={t('label.edit-entity', { entity: t(LABEL_TABLE_CONSTRAINTS) })}

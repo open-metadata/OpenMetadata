@@ -153,7 +153,8 @@ export const DataAssetsHeader = ({
   onCertificationUpdate,
   onStyleUpdate,
   disableRunAgentsButtonMessage,
-}: DataAssetsHeaderProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
@@ -457,6 +458,7 @@ export const DataAssetsHeader = ({
   );
 
   const hasEditableMetadata =
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
     editDomainPermission ||
     editOwnerPermission ||
     editTierPermission ||
@@ -710,6 +712,7 @@ export const DataAssetsHeader = ({
             </TitleBreadcrumbSkeleton>
           </div>
           <div className="tw:flex tw:items-center tw:gap-4">
+            {/* eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order */}
             {!excludeEntityService &&
               !deleted &&
               !isCustomizedView &&

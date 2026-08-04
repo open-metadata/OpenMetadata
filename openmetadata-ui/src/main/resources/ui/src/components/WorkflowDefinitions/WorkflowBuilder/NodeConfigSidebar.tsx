@@ -86,6 +86,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   const [localDescription, setLocalDescription] = useState<string | null>(null);
   const [localConfig, setLocalConfig] = useState<NodeConfig | null>(null);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- config builder; refactor risky
   const config = useMemo(() => {
     if (isStartNode(node) && node) {
       const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);

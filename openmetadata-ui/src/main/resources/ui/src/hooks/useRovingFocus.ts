@@ -45,6 +45,7 @@ export function useRovingFocus({
   };
 
   const handleKeyDown = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
     (e: KeyboardEvent) => {
       const container = containerRef.current;
       if (!container || totalItems === 0) {

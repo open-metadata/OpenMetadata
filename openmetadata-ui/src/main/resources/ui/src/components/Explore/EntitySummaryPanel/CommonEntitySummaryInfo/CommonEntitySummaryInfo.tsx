@@ -47,6 +47,7 @@ function CommonEntitySummaryInfo({
               </Col>
               <Col span={16}>
                 {info.isLink ? (
+                  // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
                   info.isExternal ? (
                     <a
                       className="summary-item-link"

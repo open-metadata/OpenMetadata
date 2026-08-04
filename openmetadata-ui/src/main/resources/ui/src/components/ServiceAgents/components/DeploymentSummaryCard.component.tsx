@@ -52,6 +52,7 @@ const SummaryStat: FC<SummaryStatProps> = ({
   </div>
 );
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
   const { t } = useTranslation();
   // Agents with status 'none' have never run — they are not part of any

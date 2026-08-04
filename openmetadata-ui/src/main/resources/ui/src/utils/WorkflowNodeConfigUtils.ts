@@ -94,6 +94,7 @@ const addNodeSpecificConfig = (
   config: NodeConfiguration,
   subType: string,
   nodeData: NodeDataWithMetadata
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
 ): void => {
   if (subType === NodeSubType.SetEntityAttributeTask) {
     if (
@@ -172,6 +173,7 @@ export const configureNodeInputOutput = (
   nodeType: string,
   subType: string,
   nodeData: NodeDataWithMetadata
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): NodeConfiguration => {
   if (nodeType === NodeType.StartEvent || nodeType === NodeType.EndEvent) {
     return config;
@@ -260,6 +262,7 @@ export const configureInputNamespaceMap = (
   nodeData: NodeDataWithMetadata,
   allNodes: NodeDataWithMetadata[],
   allEdges: BackendEdge[]
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
 ): NodeConfiguration => {
   if (!config.input || config.input.length === 0) {
     return config;

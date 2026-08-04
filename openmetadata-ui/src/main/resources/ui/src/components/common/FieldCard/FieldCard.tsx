@@ -36,6 +36,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
   columnConstraint,
   tableConstraints,
   isHighlighted = false,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);

@@ -32,6 +32,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
   showLearningIcon = false,
   learningPageId = LEARNING_PAGE_IDS.EXPLORE,
   learningTitle,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);

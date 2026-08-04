@@ -55,6 +55,7 @@ const getSafeOptionIndex = (option: number, optionCount: number) => {
  * data, which is the "password OR key, never both" guarantee. Activated via
  * `ui:field: 'authSelect'` — see {@link getUISchemaWithAuthFieldsAsSelect}.
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 const AuthSelectField = (props: FieldProps) => {
   const {
     schema,

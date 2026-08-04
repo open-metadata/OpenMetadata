@@ -69,7 +69,8 @@ function ParameterTooltipText({
 const TestCaseResultTab = ({
   showSidePanel,
   editVariant = getDefaultTestCaseFormVariant(),
-}: TestCaseTabProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,

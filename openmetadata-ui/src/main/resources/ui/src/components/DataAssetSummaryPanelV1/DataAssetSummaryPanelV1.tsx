@@ -312,9 +312,11 @@ export const DataAssetSummaryPanelV1 = ({
     editDescriptionPermission,
     editGlossaryTermsPermission,
   } = useMemo(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     () => ({
       // Columns inherit domain from table - not editable
       editDomainPermission:
+        // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
         canEditSummary &&
         !isColumnEntity &&
         entityPermissions?.EditAll &&
@@ -330,12 +332,14 @@ export const DataAssetSummaryPanelV1 = ({
         !dataAsset.deleted,
       // Columns inherit owners from table - not editable
       editOwnerPermission:
+        // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
         canEditSummary &&
         !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
         !dataAsset.deleted,
       // Columns inherit tier from table - not editable
       editTierPermission:
+        // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
         canEditSummary &&
         !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
@@ -416,6 +420,7 @@ export const DataAssetSummaryPanelV1 = ({
     }
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   const commonEntitySummaryInfo = useMemo(() => {
     const descriptionChangeSummaryEntry = isColumnEntity
       ? changeSummary?.[changeSummaryParams.fieldPrefix]

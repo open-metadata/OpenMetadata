@@ -71,7 +71,8 @@ export const useEntityLogs = ({
   logEntityType,
   fqn,
   runId,
-}: UseEntityLogsParams): UseEntityLogsResult => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+UseEntityLogsParams): UseEntityLogsResult => {
   const { progress, reset, updateProgress } = useDownloadProgressStore();
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);

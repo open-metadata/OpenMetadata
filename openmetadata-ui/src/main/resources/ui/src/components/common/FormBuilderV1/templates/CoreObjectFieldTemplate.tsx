@@ -50,6 +50,7 @@ const PropertyItem: FunctionComponent<PropertyItemProps> = ({
   uiSchema,
   flatPropertyLayout,
   isRoot,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 }) => {
   const isDisabled =
     isIamAuthEnabled && STATIC_AWS_CREDENTIAL_PROPERTIES.has(element.name);
@@ -208,6 +209,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   properties,
   idSchema,
   uiSchema,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity -- preserve behavior
 }) => {
   const { t } = useTranslation();
   const {

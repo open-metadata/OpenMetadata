@@ -41,6 +41,7 @@ export const FormActionButtons: React.FC<FormActionButtonsProps> = ({
   saveLabel,
   cancelLabel,
   deleteLabel,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 }) => {
   const { t } = useTranslation();
   const { allowStructuralGraphEdits, canSave } = useWorkflowModeContext();

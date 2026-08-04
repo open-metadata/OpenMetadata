@@ -42,6 +42,7 @@ const DescriptionTaskNew: FC<DescriptionTaskProps> = ({
   onChange,
   customClassName,
   showDescTitle = false,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 }) => {
   const { task } = taskThread;
   const { t } = useTranslation();

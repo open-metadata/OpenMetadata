@@ -68,7 +68,8 @@ export const ContextRuleCard = ({
   rule,
   onDelete,
   onEdit,
-}: ContextRuleCardProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+ContextRuleCardProps) => {
   const { t } = useTranslation();
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -139,7 +140,8 @@ export const ContextRuleCard = ({
                 </Typography>
               )}
             </>
-          ) : conditionCount > 0 ? (
+          ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- inline JSX ternary
+          conditionCount > 0 ? (
             <Typography
               as="span"
               className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"

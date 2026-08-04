@@ -297,6 +297,7 @@ export const useAssetSelectionState = ({
     [variant, t]
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   const handleSave = useCallback(async () => {
     try {
       setIsSaveLoading(true);

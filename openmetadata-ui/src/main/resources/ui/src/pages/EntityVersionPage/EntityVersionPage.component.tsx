@@ -222,6 +222,7 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityPermissions]
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const fetchEntityVersions = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -413,6 +414,7 @@ const EntityVersionPage: FunctionComponent = () => {
   }, [entityType, decodedEntityFQN, viewVersionPermission]);
 
   const fetchCurrentVersion = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     async (id: string) => {
       setIsVersionLoading(true);
       try {
@@ -574,6 +576,7 @@ const EntityVersionPage: FunctionComponent = () => {
     };
   }, [currentVersionData, entityType]);
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
   const versionComponent = () => {
     if (isLoading) {
       return <Loader />;

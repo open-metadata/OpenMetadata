@@ -79,6 +79,7 @@ import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component'
 const LABEL_GLOSSARY = 'label.glossary' as const;
 const LABEL_GLOSSARY_TERM = 'label.glossary-term' as const;
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();

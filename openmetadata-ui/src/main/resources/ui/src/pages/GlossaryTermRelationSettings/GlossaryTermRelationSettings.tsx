@@ -629,6 +629,7 @@ function GlossaryTermRelationSettingsPage() {
                   </Table.Head>
                 </Table.Header>
                 <Table.Body items={relationTypes}>
+                  {/* eslint-disable-next-line sonarjs/cyclomatic-complexity */}
                   {(record: GlossaryTermRelationType) => {
                     let deleteTooltip = t('label.delete');
                     if (record.isSystemDefined) {
@@ -775,6 +776,7 @@ function GlossaryTermRelationSettingsPage() {
               handleModalCancel();
             }
           }}>
+          {/* eslint-disable-next-line sonarjs/cyclomatic-complexity */}
           {() => (
             <>
               <SlideoutMenu.Header onClose={handleModalCancel}>

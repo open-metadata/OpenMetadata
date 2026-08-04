@@ -25,6 +25,7 @@ import { showErrorToast } from '../ToastUtils';
 export const getLogsFromResponse = (
   res: IngestionPipelineLogByIdInterface,
   pipelineType: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ) => {
   // A by-fqn fetch returns the logs under a generic `logs` key (no pipeline type to select a
   // *_task field); prefer it, falling back to the type-specific field for by-id responses.

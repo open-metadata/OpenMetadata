@@ -73,6 +73,7 @@ const TotalDataAssetsWidget = lazy(
 // should only become reachable through the deferred widget render path.
 export const getMyDataWidgetFromKey = (
   widgetKey: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): ComponentType<WidgetCommonProps> => {
   if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
     return DataAssetsWidget;

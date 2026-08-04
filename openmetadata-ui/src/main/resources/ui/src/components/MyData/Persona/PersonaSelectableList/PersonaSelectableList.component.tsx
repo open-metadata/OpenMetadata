@@ -70,7 +70,8 @@ export const PersonaSelectableList = ({
   personaList,
   isDefaultPersona,
   multiSelect,
-}: PersonaSelectableListProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
   const [allPersona, setAllPersona] = useState<EntityReference[]>(

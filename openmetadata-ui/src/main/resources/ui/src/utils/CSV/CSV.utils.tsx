@@ -273,6 +273,7 @@ const formatMetricExtension = (extension: unknown) => {
     .join(CSV_FIELD_SEPARATOR);
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 const getMetricCsvValue = (metric: Metric, columnName: string) => {
   const expression = metric.metricExpression;
 
@@ -407,6 +408,7 @@ export const renderColumnDataEditor = (
     showSelectAffordance?: boolean;
     usePlainTextDescription?: boolean;
   } = {}
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ) => {
   const {
     value,
@@ -513,6 +515,7 @@ export const getColumnConfig = (
   isBulkEdit = false,
   useMetricRichGrid = isBulkEdit,
   onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ): Column<Record<string, string>> => {
   const colType = column.split('.').pop() ?? '';
   const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);

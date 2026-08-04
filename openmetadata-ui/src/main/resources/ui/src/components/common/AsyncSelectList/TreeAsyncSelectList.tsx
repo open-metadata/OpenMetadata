@@ -301,6 +301,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
           label: React.ReactNode;
           value: string;
         }[]
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- inline logic preserves behavior
   ) => {
     if (isMultiSelect) {
       // Handle multi-select mode

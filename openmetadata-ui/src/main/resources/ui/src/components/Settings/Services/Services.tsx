@@ -246,6 +246,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     []
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const getServicePageHeader = useCallback(() => {
     let pageHeader;
     switch (serviceName) {

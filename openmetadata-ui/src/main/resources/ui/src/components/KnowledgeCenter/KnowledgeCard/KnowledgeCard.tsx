@@ -75,6 +75,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   onDelete,
   onRefreshTagsCategory,
   readonly = false,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 }) => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
 

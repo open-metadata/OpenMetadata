@@ -109,7 +109,8 @@ export const ActivityFeedTab = ({
   layoutType,
   feedCount,
   urlFqn = '',
-}: ActivityFeedTabProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
+ActivityFeedTabProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -262,10 +263,11 @@ export const ActivityFeedTab = ({
         isUserEntity &&
         Boolean(fqn) &&
         [currentUser?.name, currentUser?.fullyQualifiedName].includes(fqn);
+      const userTaskParams = isCurrentUserProfile
+        ? { view: 'visible' as const, domain }
+        : { assignee: fqn, domain };
       const taskCountParams = isUserEntity
-        ? isCurrentUserProfile
-          ? { view: 'visible' as const, domain }
-          : { assignee: fqn, domain }
+        ? userTaskParams
         : { aboutEntity: fqn, view: 'entity' as const, domain };
 
       const taskCounts = await getTaskCounts(taskCountParams);
@@ -716,6 +718,9 @@ export const ActivityFeedTab = ({
     );
   }, [activeTab, selectedThread]);
 
+  const hasRightPanelSelection =
+    selectedThread || selectedTask || selectedActivity;
+
   return (
     <div
       className={classNames('activity-feed-tab', {
@@ -883,7 +888,7 @@ export const ActivityFeedTab = ({
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}>
         {loader}
-        {(selectedThread || selectedTask || selectedActivity) && !loading
+        {hasRightPanelSelection && !loading
           ? getRightPanelContent()
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">

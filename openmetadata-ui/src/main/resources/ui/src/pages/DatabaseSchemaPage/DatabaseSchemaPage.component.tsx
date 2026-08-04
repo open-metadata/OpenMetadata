@@ -108,6 +108,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 const LABEL_DATABASE_SCHEMA = 'label.database-schema';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();

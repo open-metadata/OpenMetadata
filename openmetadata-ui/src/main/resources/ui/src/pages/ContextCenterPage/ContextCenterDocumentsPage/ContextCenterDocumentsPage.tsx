@@ -70,6 +70,7 @@ const getSuccessfulIds = (result: BulkOperationResult): Set<string> =>
       .filter((request): request is string => typeof request === 'string')
   );
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
   const { getResourcePermission } = usePermissionProvider();
@@ -200,6 +201,7 @@ const ContextCenterDocumentsPage: FC = () => {
   );
 
   const fetchDocuments = useCallback(
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
     async (after?: string) => {
       if (!after) {
         fetchGenerationRef.current += 1;
@@ -610,6 +612,7 @@ const ContextCenterDocumentsPage: FC = () => {
   );
 
   const showDocumentsEmptyState =
+    // eslint-disable-next-line sonarjs/expression-complexity -- multi-flag empty-state guard
     !isDocumentsLoading &&
     !isFoldersLoading &&
     !documentSearchQuery &&

@@ -53,7 +53,8 @@ const Assignees: FC<Props> = ({
   ) => {
     const newValues = isUndefined(newOptions)
       ? newOptions
-      : (isArray(newOptions) ? newOptions : [newOptions]).map((option) => ({
+      : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+        (isArray(newOptions) ? newOptions : [newOptions]).map((option) => ({
           label: option['data-label'],
           value: option.value,
           type: option.type,

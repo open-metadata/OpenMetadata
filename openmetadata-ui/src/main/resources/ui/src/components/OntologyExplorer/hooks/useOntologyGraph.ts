@@ -825,6 +825,7 @@ export function useOntologyGraph({
           typeof datum.type === 'string' && datum.type.length > 0
             ? datum.type
             : 'rect',
+        // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
         style: (datum: NodeData) => {
           const d = (datum.data ?? {}) as GraphNodeMeta;
           const nodeColor = d?.color;
@@ -876,7 +877,8 @@ export function useOntologyGraph({
               remaining > 0;
             const badgeText = isLoadingAssets
               ? '...'
-              : assetsExpanded
+              : // eslint-disable-next-line sonarjs/no-nested-conditional -- readable inline branch
+              assetsExpanded
               ? '\u2212'
               : `+${assetCount}`;
             const label = d?.label ?? datum.id;
@@ -1071,6 +1073,7 @@ export function useOntologyGraph({
         animation: {
           enter: false,
         },
+        // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
         style: (datum) => {
           const d = (datum.data ?? {}) as GraphEdgeMeta;
           const isHighlighted = d?.isHighlighted ?? false;
@@ -1211,6 +1214,7 @@ export function useOntologyGraph({
       const g = graphRef.current;
       const c = containerRef.current;
       if (
+        // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
         !g ||
         !c ||
         !onScrollNearEdgeRef.current ||
@@ -1282,6 +1286,7 @@ export function useOntologyGraph({
     };
 
     let renderCancelled = false;
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
     const runRender = async () => {
       suppressEdgeCheck(1500);
       try {
@@ -1377,6 +1382,7 @@ export function useOntologyGraph({
     emitPagePositions,
   ]);
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
   useEffect(() => {
     const graph = graphRef.current;
     if (!graph || inputNodes.length === 0) {
@@ -1657,6 +1663,7 @@ export function useOntologyGraph({
       cancelled = true;
     };
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
     const runUpdate = async () => {
       suppressEdgeCheck(1500);
       try {

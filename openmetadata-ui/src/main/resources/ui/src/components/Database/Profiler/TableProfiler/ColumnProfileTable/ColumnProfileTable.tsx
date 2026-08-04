@@ -145,6 +145,7 @@ const ColumnProfileTable = () => {
       return data;
     }
 
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- sort comparator switch; refactor risky
     const sorted = [...data].sort((a, b) => {
       switch (sortDescriptor.column) {
         case 'name':
@@ -278,6 +279,7 @@ const ColumnProfileTable = () => {
     record: ModifiedColumn,
     depth: number,
     hasChildren: boolean
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- row renderer; refactor risky
   ) => {
     const rowKey = id;
     const isExpanded = expandedKeys.has(rowKey);

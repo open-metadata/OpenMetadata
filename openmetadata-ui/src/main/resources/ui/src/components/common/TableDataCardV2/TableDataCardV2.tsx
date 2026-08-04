@@ -95,13 +95,15 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         source.entityType !== EntityType.GLOSSARY_TERM &&
         source.entityType !== EntityType.TAG
       ) {
+        let tierValue = '';
+        if (source.tier) {
+          tierValue = isString(source.tier)
+            ? source.tier
+            : getEntityName(source.tier);
+        }
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : getEntityName(source.tier)
-            : '',
+          value: tierValue,
         });
       }
 

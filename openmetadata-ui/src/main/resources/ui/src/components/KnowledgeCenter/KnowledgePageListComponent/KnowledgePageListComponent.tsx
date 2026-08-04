@@ -106,6 +106,7 @@ const KnowledgePageListComponent = forwardRef<
       isPermissionsLoading = false,
     },
     ref
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   ) => {
     const { currentUser, theme } = useApplicationStore();
     const { t } = useTranslation();
@@ -298,6 +299,7 @@ const KnowledgePageListComponent = forwardRef<
               return {
                 ...page,
                 followers: (page?.followers ?? []).filter(
+                  // eslint-disable-next-line sonarjs/no-nested-functions -- inline filter predicate
                   (follower) => follower.id !== oldValue[0].id
                 ),
               };
@@ -355,13 +357,9 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
-      if (
-        isInView &&
-        hasMore &&
-        !isLoadingMore &&
-        !searchQuery &&
-        hasViewPermission
-      ) {
+      const canLoadMore = isInView && hasMore && !isLoadingMore;
+      const shouldLoadMore = canLoadMore && !searchQuery && hasViewPermission;
+      if (shouldLoadMore) {
         const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);
