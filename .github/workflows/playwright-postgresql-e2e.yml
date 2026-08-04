@@ -1846,15 +1846,22 @@ jobs:
           git config user.name "github-actions[bot]"
           # Reset the tracked branch to the latest state — a single tracked
           # PR gets updated across successive runs rather than accumulating
-          # one PR per merge_group.
+          # one PR per merge_group. Plain `--force` (not `--force-with-lease`)
+          # because Checkout only fetched `main`, so no remote-tracking ref
+          # exists for this bot-owned branch and a lease would be rejected
+          # with "stale info" on the second and every subsequent run.
           git checkout -B "$branch"
           git add .github/playwright/timing-baseline.json
           git commit -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID}"
-          git push --force-with-lease origin "$branch"
+          git push --force origin "$branch"
 
           summary_body="$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")"
           pr_body=$(printf '## Summary\n\nAuto-refreshed from [merge_group run %s](%s).\n\n```\n%s\n```\n\nA human still clicks merge. If this drift looks unreasonable, close the PR — the next successful merge_group run will open a fresh one.\n' "$RUN_ID" "$RUN_URL" "$summary_body")
-          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number' || echo "")
+          # `.[0].number` on an empty array yields the literal string "null",
+          # not an empty string; the `// empty` fallback turns that into a
+          # real empty string so the -n test below correctly picks the
+          # `gh pr create` branch on the very first run.
+          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty' || echo "")
           if [[ -n "$existing" ]]; then
             gh pr edit "$existing" --body "$pr_body"
             echo "Updated existing PR #$existing"
