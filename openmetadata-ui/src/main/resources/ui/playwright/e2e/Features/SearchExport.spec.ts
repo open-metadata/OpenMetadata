@@ -427,52 +427,20 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
     const jobId = await startAsyncExport(page);
 
-      await test.step('Jobs tray surfaces the export job', async () => {
-        // PR #30615 added a useEffect that calls setOpen(true) when a job
-        // reaches a terminal state, auto-opening the tray and hiding the
-        // launcher button ({!open && !isEmpty(visibleJobs) && ...} renders
-        // nothing once open=true).
-        //
-        // Race: right after startAsyncExport, visibleJobs may still be
-        // empty (socket event not yet received), so neither the launcher
-        // nor the tray has rendered yet. A bare click() on the launcher
-        // fails during this window.
-        //
-        // Fix: wait for whichever surface appears first, then open the tray
-        // only if it has not already been auto-opened.
-        const launcherButton = page.getByRole('button', {
-          name: /Background jobs|jobs running/,
-        });
-        const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-        // Block until the launcher (job in progress) or the tray (job
-        // completed and auto-opened by the useEffect) is in the DOM.
-        await expect(launcherButton.or(trayPopover)).toBeVisible();
-
-        // Open the tray only if it has not already been auto-opened.
-        // When the job finished fast, the tray is already visible and the
-        // launcher is gone from the DOM — clicking it would throw.
-        if (!(await trayPopover.isVisible())) {
-          await launcherButton.click();
-        }
+    await test.step('Jobs tray auto-opens and surfaces the export job', async () => {
+      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+        timeout: 30_000,
+      });
 
       await expect(page.getByText(/Exporting|Exported/).first()).toBeVisible();
     });
 
     await test.step('Download from the tray serves the job result CSV', async () => {
-      // The Download button only renders once the async job finishes, so waiting
-      // blind on it spent up to 90s of the test budget before the download waits
-      // even started -- the remainder then ran out mid-wait and surfaced as
-      // "Target page, context or browser has been closed". Poll the job over the
-      // API first (the same way fetchCompletedExportCsv does), so a stalled job is
-      // named as such and the UI waits that follow are short.
-      await waitForExportJobCompleted(page.request, jobId);
-
       const downloadButton = page
         .getByRole('button', { name: 'Download' })
         .first();
 
-      await expect(downloadButton).toBeVisible();
+      await expect(downloadButton).toBeVisible({ timeout: 90_000 });
 
       const resultResponsePromise = page.waitForResponse(
         (response) =>
