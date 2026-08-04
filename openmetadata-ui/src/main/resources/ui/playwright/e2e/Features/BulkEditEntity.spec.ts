@@ -265,7 +265,7 @@ test.describe('Bulk Edit Entity', () => {
   });
 
   test('Database', async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(300_000); // 5 minutes
     let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 

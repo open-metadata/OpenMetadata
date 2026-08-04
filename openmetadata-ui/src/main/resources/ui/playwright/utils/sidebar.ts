@@ -65,11 +65,25 @@ export const settingClick = async (
       ];
   }
 
+  // Set up the API-response listener before any navigation so the promise is
+  // already pending when the custom-properties page loads its data.
+  const customPropertyResponse = isCustomProperty
+    ? page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/metadata/types/name/') &&
+          response.status() === 200
+      )
+    : null;
+
   await sidebarClick(page, SidebarItem.SETTINGS);
 
   for (const path of paths ?? []) {
     await page.click(`[data-testid="${path}"]`);
   }
 
-  await waitForAllLoadersToDisappear(page);
+  if (customPropertyResponse) {
+    await customPropertyResponse;
+  } else {
+    await waitForAllLoadersToDisappear(page);
+  }
 };
