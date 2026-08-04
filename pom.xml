@@ -769,17 +769,17 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcutil-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <!-- Jackson 3.x BOM — jsonschema2pojo-core 1.3.1 (provided scope, used by the
            jsonschema2pojo-maven-plugin) pulls tools.jackson 3.0.2 transitively
