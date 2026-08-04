@@ -517,24 +517,7 @@ export default [
       'om-playwright/require-response-listener-before-action': 'error',
       'om-playwright/no-blanket-test-slow': 'error',
       'om-playwright/no-positional-locator': 'error',
-
-      // Heuristic rules — expect false positives, hence justified-rule-disable
-      // as an escape hatch (append ` -- <why>` to an eslint-disable comment).
-      'om-playwright/no-unscoped-count-assertion': 'error',
       'om-playwright/justified-rule-disable': 'error',
-
-      // 'om-playwright/require-unique-entity-name' is intentionally NOT
-      // enabled here. A raw pass (suppressions neutralised) found 1625
-      // violations against a codebase-wide `Property` check on any key
-      // named `name`; a hand-sampled 25-violation check found 0/25 true
-      // positives — matches were overwhelmingly Playwright's own
-      // `getByRole(role, { name })` accessible-name option, static
-      // permission-rule/config keys, and table column names, not entity
-      // creation. Snapshotting that baseline would ratchet ~1625 lines of
-      // noise going forward. The rule and its tests are implemented and
-      // registered in the plugin (see index.js) for a follow-up to narrow
-      // the heuristic (e.g. scope it to `new <Entity>Class({ name })` /
-      // API `.create()` call sites) before promoting it here.
     },
   },
 

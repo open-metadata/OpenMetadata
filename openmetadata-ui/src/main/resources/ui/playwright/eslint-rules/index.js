@@ -17,8 +17,6 @@ const requireResponseListenerBeforeAction = require('./require-response-listener
 const noBlanketTestSlow = require('./no-blanket-test-slow.js');
 const requireAssertionPerTest = require('./require-assertion-per-test.js');
 const noPositionalLocator = require('./no-positional-locator.js');
-const noUnscopedCountAssertion = require('./no-unscoped-count-assertion.js');
-const requireUniqueEntityName = require('./require-unique-entity-name.js');
 const justifiedRuleDisable = require('./justified-rule-disable.js');
 
 module.exports = {
@@ -28,8 +26,6 @@ module.exports = {
     'no-blanket-test-slow': noBlanketTestSlow,
     'require-assertion-per-test': requireAssertionPerTest,
     'no-positional-locator': noPositionalLocator,
-    'no-unscoped-count-assertion': noUnscopedCountAssertion,
-    'require-unique-entity-name': requireUniqueEntityName,
     'justified-rule-disable': justifiedRuleDisable,
   },
 };
