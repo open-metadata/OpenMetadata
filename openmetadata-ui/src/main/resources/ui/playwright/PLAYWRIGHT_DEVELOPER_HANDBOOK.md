@@ -795,31 +795,36 @@ yarn lint:playwright
 
 ### Rule Levels
 
-**Blocking (error)** — these fail CI and must be fixed before merging:
+Every rule below runs at `error` — there is no warn tier. Existing violations at the time each rule
+was promoted are snapshotted in `eslint-suppressions.json`; that file may shrink as violations are
+fixed, never grow. This table is generated from `eslint.config.mjs` by
+`scripts/generate-playwright-rule-table.js` — do not hand-edit it, run
+`yarn generate:playwright-rules` instead.
 
-| Rule | What It Catches |
-|------|----------------|
-| `no-networkidle` | `waitForLoadState('networkidle')` — unreliable with websockets/polling |
-| `no-page-pause` | `page.pause()` — debug statement left in code |
-| `no-focused-test` | `test.only()` / `describe.only()` — accidentally committed focus |
+<!-- BEGIN GENERATED RULE TABLE -->
 
-**Aspirational (warn)** — reported but don't block CI; fix when touching a file:
+| Rule | Severity | What it catches |
+|---|---|---|
+| `om-playwright/justified-rule-disable` | error | Require a justification comment when disabling a playwright lint rule |
+| `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
+| `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
+| `om-playwright/require-assertion-per-test` | error | Flag tests that only perform page interactions and verify nothing |
+| `om-playwright/require-response-listener-before-action` | error | Require waitForResponse listeners to be registered before the action that triggers them |
+| `playwright/missing-playwright-await` | error | Identify false positives when async Playwright APIs are not properly awaited. |
+| `playwright/no-element-handle` | error | The use of ElementHandle is discouraged, use Locator instead |
+| `playwright/no-eval` | error | The use of `page.$eval` and `page.$$eval` are discouraged, use `locator.evaluate` or `locator.evaluateAll` instead |
+| `playwright/no-focused-test` | error | Prevent usage of `.only()` focus test annotation |
+| `playwright/no-force-option` | error | Prevent usage of `{ force: true }` option. |
+| `playwright/no-networkidle` | error | Prevent usage of the networkidle option |
+| `playwright/no-page-pause` | error | Prevent usage of page.pause() |
+| `playwright/no-skipped-test` | error | Prevent usage of the `.skip()` skip test annotation. |
+| `playwright/no-useless-await` | error | Disallow unnecessary awaits for Playwright methods |
+| `playwright/no-wait-for-selector` | error | Prevent usage of page.waitForSelector() |
+| `playwright/no-wait-for-timeout` | error | Prevent usage of page.waitForTimeout() |
+| `playwright/prefer-web-first-assertions` | error | Prefer web first assertions |
+| `playwright/valid-expect` | error | Enforce valid `expect()` usage |
 
-| Rule | What It Catches |
-|------|----------------|
-| `missing-playwright-await` | Missing `await` on `expect()` matchers and Playwright API calls |
-| `no-wait-for-timeout` | `page.waitForTimeout()` — use event-driven waits instead |
-| `no-force-option` | `{ force: true }` — hides real interaction issues |
-| `no-element-handle` | `page.$()` / `page.$$()` — use locators with auto-retry |
-| `no-eval` | `page.$eval()` / `page.$$eval()` — use locators instead |
-| `no-skipped-test` | `test.skip()` — skipped tests should be fixed or removed |
-| `prefer-web-first-assertions` | `textContent()` / `isVisible()` — use `toHaveText()` / `toBeVisible()` |
-| `no-useless-await` | Unnecessary `await` on non-async methods |
-| `no-wait-for-selector` | `page.waitForSelector()` — use `expect().toBeVisible()` instead |
-
-### Promoting Rules
-
-As existing violations are fixed, warning-level rules should be promoted to error level to prevent regressions.
+<!-- END GENERATED RULE TABLE -->
 
 ---
 
