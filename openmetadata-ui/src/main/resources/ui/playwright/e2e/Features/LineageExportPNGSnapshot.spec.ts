@@ -30,8 +30,8 @@ import { performZoomOut } from '../../utils/lineage';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const LINEAGE_URL =
-  '/table/sample_data.ecommerce_db.shopify.raw_customer/lineage?fullscreen=true';
+const ROOT_ENTITY_FQN = 'sample_data.ecommerce_db.shopify.raw_customer';
+const LINEAGE_URL = `/table/${ROOT_ENTITY_FQN}/lineage?fullscreen=true`;
 
 test.describe(
   'Lineage PNG export — snapshot regression',
@@ -45,12 +45,11 @@ test.describe(
       await page.goto(LINEAGE_URL);
       await lineageResponsePromise;
 
-      // Wait for nodes to render, then wait until the canvas has been drawn.
-      // CanvasEdgeRenderer draws on requestAnimationFrame — polling the canvas
-      // dimensions confirms the draw cycle has completed.
+      // Wait for the root node to render, then wait until the canvas has
+      // been drawn. CanvasEdgeRenderer draws on requestAnimationFrame —
+      // polling the canvas dimensions confirms the draw cycle has completed.
       await page
-        .locator('.react-flow__node')
-        .first()
+        .getByTestId(`lineage-node-${ROOT_ENTITY_FQN}`)
         .waitFor({ state: 'visible' });
       await page.waitForFunction(() => {
         const canvas = document.querySelector(

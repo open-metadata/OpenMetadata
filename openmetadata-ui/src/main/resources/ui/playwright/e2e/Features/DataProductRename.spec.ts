@@ -131,10 +131,13 @@ test.describe('Data Product Rename', () => {
     // Wait for navigation to new URL (URL should change to new name)
     await page.waitForURL(`**/dataProduct/${newName}/**`);
 
-    // Verify the data product header shows the new name (use first() as there may be multiple elements)
-    await expect(
-      page.getByTestId('entity-header-display-name').first()
-    ).toBeVisible();
+    // Verify the data product header shows the new name. Scoped by the
+    // owned, uuid-suffixed newName itself rather than position — EntityHeader
+    // renders exactly one entity-header-display-name on this page, and
+    // asserting the text also confirms the rename actually took effect.
+    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+      newName
+    );
 
     // Update the data product response data for cleanup
     dataProduct.responseData.name = newName;

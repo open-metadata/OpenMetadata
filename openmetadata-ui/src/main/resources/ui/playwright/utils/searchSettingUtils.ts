@@ -115,11 +115,13 @@ export async function setSliderValue(
 // configuration rows) is collapsed and not mounted. Expand it before
 // interacting with any field-configuration control.
 export const openMatchingFieldsPanel = async (page: Page) => {
-  const firstFieldHeader = page.getByTestId('field-container-header').first();
+  const fieldHeaders = page.getByTestId('field-container-header');
 
-  const isMatchingFieldsPanelOpen = await firstFieldHeader
-    .isVisible()
-    .catch(() => false);
+  const isMatchingFieldsPanelOpen =
+    (await fieldHeaders
+      .filter({ visible: true })
+      .count()
+      .catch(() => 0)) > 0;
 
   if (!isMatchingFieldsPanelOpen) {
     await page
@@ -128,7 +130,7 @@ export const openMatchingFieldsPanel = async (page: Page) => {
       .getByText('Matching Fields')
       .click();
 
-    await firstFieldHeader.waitFor({ state: 'visible' });
+    await expect(fieldHeaders).not.toHaveCount(0);
   }
 };
 

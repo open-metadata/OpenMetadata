@@ -32,6 +32,7 @@ import {
   expectBreadcrumbToContainAncestor,
   openBreadcrumbOverflowMenu,
 } from '../../utils/headerBreadcrumbUtils';
+import { getRowByName } from '../../utils/scopedLocators';
 import { test } from '../fixtures/pages';
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -264,7 +265,10 @@ test.describe('Container entity specific tests ', () => {
 
     await expect(page.getByTestId('container-data-model-table')).toBeVisible();
 
-    const copyButton = page.getByTestId('copy-column-link-button').first();
+    const firstColumnName = container.entity.dataModel.columns[0].name;
+    const copyButton = getRowByName(page, firstColumnName).getByTestId(
+      'copy-column-link-button'
+    );
     await expect(copyButton).toBeVisible();
 
     const clipboardText = await copyAndGetClipboardText(page, copyButton);

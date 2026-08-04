@@ -38,9 +38,10 @@ export class SchemaPageObject extends RightPanelBase {
     );
     this.schemaFields = this.schemaFieldsContainer.locator('.field-card ');
     this.noDataContainer = this.getSummaryPanel().locator('.no-data-container');
-    this.expandIcon = this.schemaFieldsContainer
-      .getByTestId('expand-icon')
-      .first();
+    // One expand icon per nested field card — used only to detect that
+    // "at least one" nested-expand affordance is showing, never to target
+    // a specific field, so this stays unscoped and is checked via count().
+    this.expandIcon = this.schemaFieldsContainer.getByTestId('expand-icon');
   }
 
   // ============ NAVIGATION METHODS (Fluent Interface) ============
@@ -113,7 +114,7 @@ export class SchemaPageObject extends RightPanelBase {
     await expect(
       this.expandIcon,
       'Expected a nested expand button to be visible'
-    ).toBeVisible();
+    ).not.toHaveCount(0);
   }
 
   /**

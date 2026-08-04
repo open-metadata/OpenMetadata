@@ -321,9 +321,7 @@ export const addTagToTableColumn = async (
   await page.click('[data-testid="saveAssociatedTag"]');
   await saveAssociatedTag;
 
-  await page.locator('.ant-select-dropdown:visible').waitFor({
-    state: 'detached',
-  });
+  await expect(page.locator('.ant-select-dropdown')).toHaveCount(0);
 
   await expect(
     page.getByRole('row', { name: rowName }).getByTestId('tags-container')

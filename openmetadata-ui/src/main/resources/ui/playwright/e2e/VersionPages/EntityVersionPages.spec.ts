@@ -381,6 +381,10 @@ test.describe('Entity Version pages', () => {
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
 
+        // Soft-delete has no patch response to read the exact version number
+        // from (see comment above), so "latest" is expressed via DOM order —
+        // a genuine ordinal, not a defensive position pick.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- version panel entries are rendered newest-first with no other way to identify "latest" here
         const latestVersionEntry = page
           .locator('[data-testid^="version-entry-"]')
           .first();

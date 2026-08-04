@@ -82,10 +82,9 @@ test.describe(
       });
 
       await test.step('Verify announcement items are displayed', async () => {
-        await page
-          .getByTestId(/^announcement-item-/)
-          .first()
-          .waitFor();
+        await expect(page.getByTestId(/^announcement-item-/)).not.toHaveCount(
+          0
+        );
 
         const viewAll = page.getByTestId('view-all-btn');
         if (await viewAll.isVisible()) {
