@@ -313,11 +313,25 @@ jobs:
           # Full corpus, not changed-files-only: --prune-suppressions treats any
           # unlinted file's suppressions as unused and deletes them, which would
           # silently un-grandfather every violation in a file this PR didn't touch.
-          if ! { yarn test:eslint-rules && \
-                 yarn lint:playwright:suppressions && \
-                 node scripts/generate-playwright-rule-table.js --check; } > /tmp/pw-guardrails.out 2>&1; then
+          if { yarn test:eslint-rules && \
+               yarn lint:playwright:suppressions && \
+               node scripts/generate-playwright-rule-table.js --check; } > /tmp/pw-guardrails.out 2>&1; then
+            RESULT=0
+          else
+            RESULT=$?
+          fi
+          # --prune-suppressions above WRITES eslint-suppressions.json when it
+          # drops a stale entry. That's a check outcome, not a mutation we want to
+          # keep — restore it on every path (pass or fail): left dirty, it fails a
+          # later step's repo-wide `git status --porcelain` (e.g.
+          # lint_core_components, ~L331) and misattributes this failure to it.
+          git checkout -- eslint-suppressions.json
+          if [ "$RESULT" -ne 0 ]; then
             cat /tmp/pw-guardrails.out
-            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30)
+            # `|| true`: under GitHub's default `bash -eo pipefail`, a `grep` that
+            # matches nothing exits 1 and would abort the script here, skipping
+            # the GITHUB_OUTPUT writes below and leaving the PR comment blank.
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/pw-guardrails.out | grep -E 'error|Error|not ok|fail|stale' | head -30) || true
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
             echo "$OUT" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
