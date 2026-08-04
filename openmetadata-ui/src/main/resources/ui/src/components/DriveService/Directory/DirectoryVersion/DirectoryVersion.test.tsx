@@ -481,7 +481,11 @@ describe('DirectoryVersion', () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+      delete (
+        permissionsWithUndefinedViewCustomFields as Partial<
+          typeof permissionsWithUndefinedViewCustomFields
+        >
+      ).ViewCustomFields;
 
       renderDirectoryVersion({
         entityPermissions: permissionsWithUndefinedViewCustomFields,

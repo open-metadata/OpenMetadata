@@ -169,7 +169,11 @@ export const getAllTracedEdges = (
   const queue: string[] = [selectedColumn];
 
   while (queue.length > 0) {
-    const currentColumn = queue.shift()!;
+    const currentColumn = queue.shift();
+
+    if (currentColumn === undefined) {
+      continue;
+    }
 
     if (currentColumn !== selectedColumn) {
       result.push(currentColumn);

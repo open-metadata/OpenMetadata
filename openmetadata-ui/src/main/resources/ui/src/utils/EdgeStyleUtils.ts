@@ -129,8 +129,9 @@ export function computeEdgeStyle(
     isEdgeHovered
   );
 
-  if (edgeStyleCache.has(cacheKey)) {
-    return edgeStyleCache.get(cacheKey)!;
+  const cachedStyle = edgeStyleCache.get(cacheKey);
+  if (cachedStyle) {
+    return cachedStyle;
   }
 
   const style = calculateEdgeStyle(

@@ -12,25 +12,32 @@
  */
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/entity/type';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
 
 jest.mock('../../../utils/formUtils', () => ({
   generateFormFields: jest.fn((fields) =>
-    fields.map((field: any) => (
-      <div data-testid={field.props?.['data-testid']} key={field.name}>
-        <label htmlFor={field.props?.['data-testid']}>
-          {field.label}
-          <input
-            aria-label={field.name}
-            data-testid={field.props?.['data-testid']}
-            id={field.props?.['data-testid']}
-            name={field.name}
-          />
-        </label>
-      </div>
-    ))
+    fields.map(
+      (field: {
+        name: string;
+        label?: ReactNode;
+        props?: Record<string, string>;
+      }) => (
+        <div data-testid={field.props?.['data-testid']} key={field.name}>
+          <label htmlFor={field.props?.['data-testid']}>
+            {field.label}
+            <input
+              aria-label={field.name}
+              data-testid={field.props?.['data-testid']}
+              id={field.props?.['data-testid']}
+              name={field.name}
+            />
+          </label>
+        </div>
+      )
+    )
   ),
 }));
 

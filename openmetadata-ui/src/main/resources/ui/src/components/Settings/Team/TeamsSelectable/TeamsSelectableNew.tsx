@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Alert, TreeSelect } from 'antd';
+import { Alert, RefSelectProps, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 
@@ -26,7 +26,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
-const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
+const TeamsSelectableNew = forwardRef<RefSelectProps, TeamsSelectableProps>(
   (
     {
       showTeamsAlert,
@@ -129,7 +129,7 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
           placeholder={placeholder}
           placement="bottomLeft"
           popupClassName="teams-custom-dropdown-class"
-          ref={ref as any}
+          ref={ref}
           showCheckedStrategy={TreeSelect.SHOW_CHILD}
           style={{ width: '100%' }}
           tagRender={TagRenderer}

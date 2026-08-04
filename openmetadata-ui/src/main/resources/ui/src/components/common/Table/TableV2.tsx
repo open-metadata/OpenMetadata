@@ -200,7 +200,7 @@ const TableV2 = <T extends object>(
 
         return col?.onFilter
           ? selectedKeys.some((key) =>
-              col.onFilter!(key as React.Key | boolean, record)
+              col.onFilter?.(key as React.Key | boolean, record)
             )
           : true;
       })

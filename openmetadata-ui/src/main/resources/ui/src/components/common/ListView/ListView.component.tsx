@@ -27,7 +27,7 @@ import Searchbar from '../SearchBarComponent/SearchBar.component';
 import Table from '../Table/Table';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
 
-export const ListView = <T extends object = any>({
+export const ListView = <T extends object = Record<string, unknown>>({
   tableProps,
   cardRenderer,
   searchProps: { search, onSearch },

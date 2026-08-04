@@ -655,7 +655,9 @@ describe('convertSecondsToHumanReadableFormat', () => {
       const nov27 = formattedResults.find((r) => r.days === 362.6);
       const nov19 = formattedResults.find((r) => r.days === 366.6);
 
-      expect(Math.abs(nov27!.seconds)).toBeLessThan(Math.abs(nov19!.seconds));
+      expect(
+        Math.abs((nov27 as NonNullable<typeof nov27>).seconds)
+      ).toBeLessThan(Math.abs((nov19 as NonNullable<typeof nov19>).seconds));
 
       // Verify we have 16 consecutive days
       expect(formattedResults).toHaveLength(16);
@@ -725,8 +727,8 @@ describe('convertSecondsToHumanReadableFormat', () => {
       // Verify 361 days shows as 1Y 1d (not wrapping incorrectly)
       const day361 = results.find((r) => r.description.includes('361 days'));
 
-      expect(day361!.formatted).toContain('1Y');
-      expect(day361!.formatted).toContain('1d');
+      expect((day361 as NonNullable<typeof day361>).formatted).toContain('1Y');
+      expect((day361 as NonNullable<typeof day361>).formatted).toContain('1d');
     });
   });
 });

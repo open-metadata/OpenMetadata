@@ -63,14 +63,20 @@ jest.mock('../../common/Table/Table', () => {
     loading,
     rowSelection,
     rowKey,
-  }: any) {
+  }: {
+    columns?: unknown[];
+    dataSource?: Array<Record<string, string>>;
+    loading?: boolean;
+    rowSelection?: { onChange?: (selectedRowKeys: string[]) => void };
+    rowKey: string;
+  }) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Row Selection: {rowSelection ? 'enabled' : 'disabled'}</div>
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
-        {dataSource?.map((item: any) => (
+        {dataSource?.map((item) => (
           <div data-testid={`table-row-${item.id}`} key={item[rowKey]}>
             <button
               data-testid={`select-row-${item.id}`}
@@ -159,9 +165,9 @@ const mockTestCases: TestCase[] = [
     fullyQualifiedName: 'test.case.1',
     updatedAt: 1640995200000,
     testCaseResult: {
-      result: 'Success' as any,
+      result: 'Success',
       timestamp: 1640995200000,
-    } as any,
+    },
   },
   {
     id: 'test-2',
@@ -170,11 +176,11 @@ const mockTestCases: TestCase[] = [
     fullyQualifiedName: 'test.case.2',
     updatedAt: 1640995200000,
     testCaseResult: {
-      result: 'Failed' as any,
+      result: 'Failed',
       timestamp: 1640995200000,
-    } as any,
+    },
   },
-] as any;
+] as unknown as TestCase[];
 
 describe('ContractQualityFormTab', () => {
   beforeEach(() => {

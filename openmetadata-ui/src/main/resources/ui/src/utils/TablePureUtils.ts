@@ -620,7 +620,7 @@ export const getParentKeysToExpand = <
         item.fullyQualifiedName ?? item.name ?? '',
       ];
       const result = getParentKeysToExpand(
-        item.children!,
+        item.children ?? [],
         targetFqn,
         newParentKeys
       );

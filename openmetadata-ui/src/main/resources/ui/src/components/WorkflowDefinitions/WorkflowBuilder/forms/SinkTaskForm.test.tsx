@@ -346,7 +346,9 @@ describe('SinkTaskForm', () => {
 
       const tokenWrapper = screen.getByTestId('token-input');
       const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, { target: { value: 'ghp_test' } });
+      fireEvent.change(tokenInput as HTMLInputElement, {
+        target: { value: 'ghp_test' },
+      });
 
       const saveButton = screen.getByTestId('save-button');
 
@@ -415,7 +417,7 @@ describe('SinkTaskForm', () => {
 
       const tokenWrapper = screen.getByTestId('token-input');
       const tokenInput = tokenWrapper.querySelector('input');
-      fireEvent.change(tokenInput!, {
+      fireEvent.change(tokenInput as HTMLInputElement, {
         target: { value: 'ghp_secrettoken123' },
       });
 

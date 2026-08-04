@@ -420,7 +420,7 @@ const extractTempLineageNodes = (
   const existingByFqn = new Map(
     existingNodes
       .filter((n) => n.fullyQualifiedName)
-      .map((n) => [n.fullyQualifiedName!, n])
+      .map((n) => [n.fullyQualifiedName ?? '', n])
   );
 
   edges.forEach((edge) => {

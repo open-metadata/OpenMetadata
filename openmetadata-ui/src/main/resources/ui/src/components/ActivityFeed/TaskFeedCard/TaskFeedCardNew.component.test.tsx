@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { Thread } from '../../../generated/entity/feed/thread';
 import {
   TASK_FEED,
   TASK_FEED_RECOGNIZER_FEEDBACK,
@@ -386,7 +387,7 @@ describe('TaskFeedCardNew Component', () => {
     const feedWithEmptySuggestion = {
       ...TASK_FEED,
       task: {
-        ...TASK_FEED.task!,
+        ...(TASK_FEED.task ?? {}),
         suggestion: '[]',
       },
     };
@@ -394,7 +395,7 @@ describe('TaskFeedCardNew Component', () => {
     useAuth.mockReturnValue({ isAdminUser: true });
 
     await act(async () => {
-      render(<TaskFeedCard feed={feedWithEmptySuggestion} />, {
+      render(<TaskFeedCard feed={feedWithEmptySuggestion as Thread} />, {
         wrapper: MemoryRouter,
       });
     });

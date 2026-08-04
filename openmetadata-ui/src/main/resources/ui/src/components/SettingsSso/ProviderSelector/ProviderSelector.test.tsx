@@ -157,7 +157,7 @@ describe('ProviderSelector', () => {
 
       expect(googleCard).toBeInTheDocument();
 
-      fireEvent.click(googleCard!);
+      fireEvent.click(googleCard as Element);
 
       expect(googleCard).toHaveClass('selected');
 
@@ -183,7 +183,7 @@ describe('ProviderSelector', () => {
 
       expect(customOidcCard).toBeInTheDocument();
 
-      fireEvent.click(customOidcCard!);
+      fireEvent.click(customOidcCard as Element);
 
       const configureButton = screen.getByRole('button', {
         name: /label.configure/i,
@@ -202,7 +202,7 @@ describe('ProviderSelector', () => {
 
       expect(samlCard).toBeInTheDocument();
 
-      fireEvent.click(samlCard!);
+      fireEvent.click(samlCard as Element);
 
       const configureButton = screen.getByRole('button', {
         name: /label.configure/i,
@@ -218,7 +218,7 @@ describe('ProviderSelector', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
       const googleCard = screen.getByText('Google').closest('.provider-item');
-      fireEvent.click(googleCard!);
+      fireEvent.click(googleCard as Element);
 
       const configureButton = screen.getByRole('button', {
         name: /label.configure/i,
@@ -236,7 +236,7 @@ describe('ProviderSelector', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
       const googleCard = screen.getByText('Google').closest('.provider-item');
-      fireEvent.click(googleCard!);
+      fireEvent.click(googleCard as Element);
 
       expect(googleCard).toHaveClass('selected');
     });
@@ -247,11 +247,11 @@ describe('ProviderSelector', () => {
       const googleCard = screen.getByText('Google').closest('.provider-item');
       const oktaCard = screen.getByText('Okta').closest('.provider-item');
 
-      fireEvent.click(googleCard!);
+      fireEvent.click(googleCard as Element);
 
       expect(googleCard).toHaveClass('selected');
 
-      fireEvent.click(oktaCard!);
+      fireEvent.click(oktaCard as Element);
 
       expect(oktaCard).toHaveClass('selected');
 

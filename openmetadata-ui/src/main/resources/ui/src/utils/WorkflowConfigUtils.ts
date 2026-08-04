@@ -16,6 +16,7 @@ import { NodeConfig } from '../interface/workflow-builder-components.interface';
 
 export const getSelectedEntityTypes = (
   config: NodeConfig,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic backend definition shape
   workflowDefinition: any
 ): EntityType | EntityType[] => {
   if (config.dataAssets && config.dataAssets.length > 0) {

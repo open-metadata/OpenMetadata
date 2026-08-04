@@ -221,7 +221,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     expect(screen.getByText('test.pdf')).toBeInTheDocument();
@@ -231,7 +231,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     const attachBtn = screen.getByText(/attach-file-plural/i);
@@ -243,7 +243,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'remove-me.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], 'remove-me.pdf')));
     });
 
     expect(screen.getByText('remove-me.pdf')).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -291,7 +291,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnSizeLimitExceed!(
+      mockOnSizeLimitExceed?.(
         makeFileList(new File(['x'.repeat(6 * 1024 * 1024)], 'huge.pdf'))
       );
     });
@@ -310,7 +310,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -328,7 +328,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -345,7 +345,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));

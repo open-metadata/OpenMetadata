@@ -23,14 +23,14 @@ const mockOnCancel = jest.fn();
 const mockProps = {
   selectedData: {
     ...mockedGlossaryTerms[0],
-    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
+    children: mockedGlossaryTerms[0].children?.map((child) => ({
       id: child.id,
       name: child.name,
       displayName: child.displayName,
       description: child.description,
       fullyQualifiedName: child.fullyQualifiedName,
       type: PageType.GlossaryTerm, // Required field for EntityReference
-      deleted: child.deleted || false,
+      deleted: (child as { deleted?: boolean }).deleted || false,
     })),
   },
   onCancel: mockOnCancel,
