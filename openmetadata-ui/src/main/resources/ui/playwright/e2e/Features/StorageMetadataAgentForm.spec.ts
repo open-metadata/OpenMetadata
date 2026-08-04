@@ -238,7 +238,10 @@ test.describe(
   }
 );
 
-const openAutoClassificationAgentForm = async (page: Page, svc: StorageServiceClass) => {
+const openAutoClassificationAgentForm = async (
+  page: Page,
+  svc: StorageServiceClass
+) => {
   await redirectToHomePage(page);
   await svc.visitEntityPage(page);
   await page.getByTestId('data-assets-header').waitFor();
@@ -281,9 +284,10 @@ test.describe(
     test('confidence field rejects values outside 0-100 and blocks next step', async ({
       page,
     }) => {
-
       await openAutoClassificationAgentForm(page, acService);
-      await page.getByRole('button', { name: 'Advanced Config Driver-level' }).click();
+      await page
+        .getByRole('button', { name: 'Advanced Config Driver-level' })
+        .click();
       const confidenceField = page.locator('#root\\/confidence');
       await confidenceField.clear();
       await confidenceField.fill('1000');
@@ -297,9 +301,7 @@ test.describe(
       });
 
       await test.step('Wizard stays on the configuration step', async () => {
-        await expect(
-          page.getByTestId('add-ingestion-container')
-        ).toBeVisible();
+        await expect(page.getByTestId('add-ingestion-container')).toBeVisible();
         await expect(
           page.locator('[data-testid="schedular-schedule"]')
         ).not.toBeVisible();
@@ -318,9 +320,10 @@ test.describe(
     test('sampleDataCount rejects non-positive values and blocks next step', async ({
       page,
     }) => {
-
       await openAutoClassificationAgentForm(page, acService);
-      await page.getByRole('button', { name: 'Advanced Config Driver-level' }).click();
+      await page
+        .getByRole('button', { name: 'Advanced Config Driver-level' })
+        .click();
 
       const sampleCountField = page.locator('#root\\/sampleDataCount');
       await sampleCountField.clear();
@@ -330,14 +333,15 @@ test.describe(
 
       await test.step('Error message is shown for negative sample count', async () => {
         await expect(
-          page.locator('[id="root/sampleDataCount"]').locator('..').locator('..')
+          page
+            .locator('[id="root/sampleDataCount"]')
+            .locator('..')
+            .locator('..')
         ).toContainText('1');
       });
 
       await test.step('Wizard stays on the configuration step', async () => {
-        await expect(
-          page.getByTestId('add-ingestion-container')
-        ).toBeVisible();
+        await expect(page.getByTestId('add-ingestion-container')).toBeVisible();
         await expect(
           page.locator('[data-testid="schedular-schedule"]')
         ).not.toBeVisible();
