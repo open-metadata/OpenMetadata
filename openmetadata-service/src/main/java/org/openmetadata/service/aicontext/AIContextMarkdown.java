@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
@@ -311,6 +312,32 @@ public final class AIContextMarkdown {
       String headingPrefix) {
     if (assetContext != null && assetContext.getTable() != null) {
       appendTableContext(markdown, assetContext.getTable(), sections, headingPrefix);
+    }
+    if (assetContext != null && assetContext.getGeneric() != null) {
+      appendGenericContext(markdown, assetContext.getGeneric(), sections, headingPrefix);
+    }
+  }
+
+  /**
+   * The fallback sub-context: an asset's fields plus the definition backing it (a metric's
+   * expression, a stored procedure's code, a query). Gated on SCHEMA like the table equivalent.
+   */
+  private static void appendGenericContext(
+      StringBuilder markdown,
+      GenericAssetContext generic,
+      Set<ContextSection> sections,
+      String headingPrefix) {
+    if (sections.contains(ContextSection.SCHEMA)) {
+      appendSchemaTable(markdown, generic.getFields(), headingPrefix);
+      appendDefinition(markdown, generic.getDefinition(), headingPrefix);
+    }
+  }
+
+  private static void appendDefinition(
+      StringBuilder markdown, String definition, String headingPrefix) {
+    if (!nullOrEmpty(definition)) {
+      appendHeading(markdown, headingPrefix, "Definition");
+      appendSqlBlock(markdown, definition);
     }
   }
 

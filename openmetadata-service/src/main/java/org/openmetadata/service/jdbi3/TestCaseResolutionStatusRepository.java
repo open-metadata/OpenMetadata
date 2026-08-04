@@ -55,6 +55,8 @@ import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -629,7 +631,57 @@ public class TestCaseResolutionStatusRepository
         "Incident task created on test failure: id={}, testCase={}",
         task.getId(),
         fullTestCase.getFullyQualifiedName());
+    advanceAutoAssignedIncident(taskRepository, task.getId(), assignees, updatedBy);
     return task.getId();
+  }
+
+  /**
+   * Moves an incident that was auto-assigned from the test case owners out of the workflow's {@code
+   * new} stage and into {@code assigned}, by driving the same {@code assign} transition a manual
+   * assignment uses.
+   *
+   * <p>Without this the incident stays in {@code New}, and because the TCRS mirror only carries
+   * assignee details on {@code Assigned} records, the Incident Manager renders it as unassigned even
+   * though the task itself has assignees.
+   */
+  private static void advanceAutoAssignedIncident(
+      TaskRepository taskRepository,
+      UUID taskId,
+      List<EntityReference> assignees,
+      String updatedBy) {
+    if (!nullOrEmpty(assignees)) {
+      try {
+        Task current = taskRepository.get(null, taskId, taskRepository.getFields("*"));
+        if (canAdvanceToAssignedStage(current)) {
+          taskRepository.resolveTaskWithWorkflow(
+              current,
+              IncidentWorkflowStages.ASSIGN_TRANSITION_ID,
+              null,
+              null,
+              null,
+              null,
+              updatedBy);
+          LOG.info("Incident task {} auto-advanced to the assigned stage", taskId);
+        } else {
+          LOG.warn(
+              "Incident task {} has assignees but sits at stage '{}' instead of '{}'; it stays New and renders as unassigned",
+              taskId,
+              current.getWorkflowStageId(),
+              IncidentWorkflowStages.NEW_STAGE_ID);
+        }
+      } catch (Exception e) {
+        // Best effort: an incident that fails to advance is still a usable incident sitting in
+        // New, so never fail test result ingestion over it.
+        LOG.warn("Failed to auto-advance incident task {} to the assigned stage", taskId, e);
+      }
+    }
+  }
+
+  private static boolean canAdvanceToAssignedStage(Task task) {
+    return IncidentWorkflowStages.NEW_STAGE_ID.equals(task.getWorkflowStageId())
+        && TaskWorkflowLifecycleResolver.findTransition(
+                task, IncidentWorkflowStages.ASSIGN_TRANSITION_ID)
+            != null;
   }
 
   private void setResolutionMetrics(

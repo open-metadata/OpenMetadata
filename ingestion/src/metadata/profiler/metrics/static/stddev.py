@@ -193,7 +193,7 @@ class StdDev(StaticMetric):
         Returns:
             Updated accumulator with new chunk's statistics added
         """
-        import pandas as pd  # noqa: PLC0415
+        import pandas as pd
 
         clean_df = df[column.name].dropna()
 

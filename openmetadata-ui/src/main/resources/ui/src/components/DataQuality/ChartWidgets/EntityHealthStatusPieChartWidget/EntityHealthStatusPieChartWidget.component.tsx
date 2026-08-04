@@ -49,14 +49,14 @@ const EntityHealthStatusPieChartWidget = ({
     (_entry: CustomPieChartData, index: number) => {
       const status = BINARY_STATUS_PIE_SEGMENT_ORDER[index];
       if (status) {
-        const redirectPath = getTestCaseTabPath(status);
+        const redirectPath = getTestCaseTabPath(status, chartFilter);
         navigate({
           ...redirectPath,
           pathname: testCasesPath ?? redirectPath.pathname,
         });
       }
     },
-    [navigate, testCasesPath]
+    [chartFilter, navigate, testCasesPath]
   );
 
   const { data, chartLabel } = useMemo(
@@ -84,14 +84,10 @@ const EntityHealthStatusPieChartWidget = ({
   const fetchEntityHealthSummary = async () => {
     setIsLoading(true);
     try {
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        true
-      );
-      const { data: totalData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        false
-      );
+      const [{ data: unhealthyData }, { data: totalData }] = await Promise.all([
+        fetchEntityCoveredWithDQ(chartFilter, true),
+        fetchEntityCoveredWithDQ(chartFilter, false),
+      ]);
       if (unhealthyData.length === 0 || totalData.length === 0) {
         setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
 

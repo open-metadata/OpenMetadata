@@ -30,6 +30,7 @@ import { DriveServiceType } from '../generated/entity/services/driveService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../generated/entity/services/searchService';
 import { t } from './i18next/LocalUtil';
 import { replaceAllSpacialCharWith_ } from './StringUtils';
 
@@ -66,6 +67,7 @@ export const shouldTestConnection = (serviceType: string) => {
     serviceType !== MlModelServiceType.CustomMlModel &&
     serviceType !== PipelineServiceType.CustomPipeline &&
     serviceType !== StorageServiceType.CustomStorage &&
+    serviceType !== SearchServiceType.CustomSearch &&
     serviceType !== DriveServiceType.CustomDrive
   );
 };
