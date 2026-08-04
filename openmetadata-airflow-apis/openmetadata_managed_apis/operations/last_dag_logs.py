@@ -149,7 +149,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 
     # Try to use file streaming for better performance
     try:
-        from airflow.configuration import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from airflow.configuration import (  # pylint: disable=import-outside-toplevel
             conf,
         )
 
