@@ -17,13 +17,35 @@ import { expect, Locator, Page } from '@playwright/test';
  * Scopes a row lookup to the test's own entity by unique name rather than by
  * position. Position-based lookups break as soon as unrelated rows appear,
  * which is the dominant source of order-dependent failures in a shared instance.
+ *
+ * Defaults to `page.getByRole('row')` rather than a `[role="row"]` CSS
+ * selector: this repo's Ant Design tables render `<tr>` with an *implicit*
+ * ARIA row role that a CSS attribute selector never matches (there is no
+ * literal `role` attribute in the DOM), while `getByRole` resolves the
+ * computed accessible role either way. Pass an explicit `rowSelector` (e.g.
+ * `.rdg-row`) for react-data-grid tables, which render rows as `div`s.
+ *
+ * `hasText` matches by substring, so a `name` that is a prefix of another
+ * row's text (e.g. "Team" vs. "Team A") yields a multi-element locator and a
+ * Playwright strict-mode violation on the first action against it. That
+ * failure is loud and immediate — the acceptable tradeoff versus silently
+ * acting on the wrong row — so callers with colliding names should pass a
+ * more specific `name` or `rowSelector` rather than work around it here.
  */
 export const getRowByName = (
   page: Page,
   name: string,
-  rowSelector = '[role="row"]'
-): Locator => page.locator(rowSelector).filter({ hasText: name });
+  rowSelector?: string
+): Locator => {
+  const rows = rowSelector ? page.locator(rowSelector) : page.getByRole('row');
 
-export const expectRowFor = async (page: Page, name: string): Promise<void> => {
-  await expect(getRowByName(page, name)).toBeVisible();
+  return rows.filter({ hasText: name });
+};
+
+export const expectRowFor = async (
+  page: Page,
+  name: string,
+  rowSelector?: string
+): Promise<void> => {
+  await expect(getRowByName(page, name, rowSelector)).toBeVisible();
 };

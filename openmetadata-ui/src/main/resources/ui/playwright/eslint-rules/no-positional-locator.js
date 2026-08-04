@@ -14,17 +14,46 @@
 'use strict';
 
 const POSITIONAL = new Set(['first', 'last', 'nth']);
+const ZERO_ARG_METHODS = new Set(['first', 'last']);
+
+// The three receiver shapes a Playwright Locator reference actually takes in
+// this codebase: the tail of an inline chain (`page.locator('x').first()`),
+// a locator hoisted into a variable (`const rows = page.locator('x'); rows.first()`),
+// and a locator stored as a property (`this.nameLink.first()`). A
+// call-expression-only receiver check is trivially evaded by hoisting the
+// locator into a variable first, so all three shapes must be covered.
+const LOCATOR_RECEIVER_TYPES = new Set([
+  'CallExpression',
+  'Identifier',
+  'MemberExpression',
+]);
 
 /**
- * Only flags calls whose receiver is itself a call expression — i.e. the tail of
- * a locator chain such as `page.locator('x').first()`. That excludes array
- * `.at()`-style usage and bare property reads, which share the method names but
- * are not Playwright positional selectors.
+ * Argument count discriminates the real Playwright API from same-named
+ * calls that share a method name but not the shape — e.g. lodash's
+ * `_.first(arr)`, which always passes the collection explicitly. Playwright's
+ * `.first()` / `.last()` take zero arguments; `.nth(index)` takes exactly one.
  */
-const isLocatorChainTail = (node) =>
-  node.callee?.type === 'MemberExpression' &&
-  POSITIONAL.has(node.callee.property?.name) &&
-  node.callee.object?.type === 'CallExpression';
+const hasPositionalArity = (node, methodName) =>
+  ZERO_ARG_METHODS.has(methodName)
+    ? node.arguments.length === 0
+    : node.arguments.length === 1;
+
+const isPositionalLocatorCall = (node) => {
+  const { callee } = node;
+
+  if (callee?.type !== 'MemberExpression') {
+    return false;
+  }
+
+  const methodName = callee.property?.name;
+
+  return (
+    POSITIONAL.has(methodName) &&
+    LOCATOR_RECEIVER_TYPES.has(callee.object?.type) &&
+    hasPositionalArity(node, methodName)
+  );
+};
 
 module.exports = {
   meta: {
@@ -42,7 +71,7 @@ module.exports = {
   create(context) {
     return {
       CallExpression(node) {
-        if (isLocatorChainTail(node)) {
+        if (isPositionalLocatorCall(node)) {
           context.report({ node, messageId: 'positional' });
         }
       },
