@@ -35,7 +35,9 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
     build_upstream_node,
@@ -3303,8 +3305,7 @@ class TestStorageStreamingBehavior(TestCase):
 
     @patch("metadata.ingestion.source.database.dbt.dbt_config.download_dbt_files")
     @patch("metadata.ingestion.source.database.dbt.dbt_config.get_blobs_grouped_by_dir")
-    @patch("metadata.ingestion.source.database.dbt.dbt_config.list_s3_objects")
-    def test_s3_passes_generator_to_grouping(self, mock_list_s3, mock_get_blobs, mock_download):
+    def test_s3_passes_generator_to_grouping(self, mock_get_blobs, mock_download):
         """Test that S3 handler passes a generator (not a list) to get_blobs_grouped_by_dir"""
         from types import GeneratorType
 
@@ -3316,8 +3317,6 @@ class TestStorageStreamingBehavior(TestCase):
         # Get the registered handler for DbtS3Config directly
         s3_handler = get_dbt_details.dispatch(DbtS3Config)
 
-        mock_list_s3.return_value = iter([{"Key": "project/manifest.json"}, {"Key": "project/catalog.json"}])
-
         mock_get_blobs.return_value = {}
         mock_download.return_value = iter([])
 
@@ -3326,6 +3325,9 @@ class TestStorageStreamingBehavior(TestCase):
         config.dbtPrefixConfig.dbtObjectPrefix = None
 
         mock_client = MagicMock()
+        mock_client.get_paginator.return_value.paginate.return_value = iter(
+            [{"Contents": [{"Key": "project/manifest.json"}, {"Key": "project/catalog.json"}]}]
+        )
 
         with patch("metadata.ingestion.source.database.dbt.dbt_config.AWSClient") as mock_aws:
             mock_aws.return_value.get_client.return_value = mock_client
@@ -3789,3 +3791,158 @@ class TestRemoveManifestNonRequiredKeys(TestCase):
         assert manifest_dict["parent_map"] == {}
         assert manifest_dict["child_map"] == {}
         assert manifest_dict["group_map"] == []
+
+
+class TestDbtLineageUnresolvedUpstream:
+    """create_dbt_lineage / create_dbt_exposures_lineage must report dropped edges."""
+
+    def _source(self):
+        source = MagicMock(spec=DbtSource)
+        source.status = MagicMock()
+        source.source_config = MagicMock(overrideLineage=False)
+        source.reported_unresolved_upstreams = set()
+        return source
+
+    def test_unresolved_upstream_records_a_status_warning(self):
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        to_entity = MagicMock()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+
+        results = list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert results == []
+        source.status.warning.assert_called_once()
+        _key, reason = source.status.warning.call_args[0]
+        assert "svc.db.sch.raw_orders" in reason
+        assert "svc.db.sch.orders" in reason
+
+    def test_resolved_upstream_emits_no_warning(self):
+        source = self._source()
+        from_entity = MagicMock()
+        from_entity.id.root = uuid.uuid4()
+        source._get_table_entity.return_value = from_entity
+
+        to_entity = MagicMock()
+        to_entity.id.root = uuid.uuid4()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.datamodel.sql = None
+
+        results = list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert len(results) == 1
+        assert results[0].right is not None
+        source.status.warning.assert_not_called()
+
+    def test_unresolved_upstream_does_not_over_assert_the_cause(self):
+        """_get_table_entity returns None for a search outage too, so the reason must not
+        claim the table was never ingested."""
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        to_entity = MagicMock()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+
+        list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        _key, reason = source.status.warning.call_args[0]
+        assert "could not be resolved" not in reason
+        assert "lookup itself failed" in reason
+
+    def test_same_missing_upstream_is_reported_once_per_run(self):
+        """A never-ingested source database is referenced by every model in the project;
+        one warning per (model x upstream) buries everything else in the report."""
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        for model in ("orders", "customers", "payments"):
+            to_entity = MagicMock()
+            to_entity.fullyQualifiedName.root = f"svc.db.sch.{model}"
+            data_model_link = MagicMock()
+            data_model_link.table_entity = to_entity
+            data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+            list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert source.status.warning.call_count == 1
+        assert source.reported_unresolved_upstreams == {"svc.db.sch.raw_orders"}
+
+    def test_distinct_missing_upstreams_are_each_reported(self):
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        to_entity = MagicMock()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders", "svc.db.sch.raw_customers"]
+
+        list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert source.status.warning.call_count == 2
+
+
+class TestAddDbtTestResultFailureReporting:
+    """The outer handler must report, not swallow at debug."""
+
+    def _source(self):
+        from datetime import datetime
+
+        source = MagicMock(spec=DbtSource)
+        source.status = MagicMock()
+        source.metadata = MagicMock()
+        source.context.get.return_value.run_results_generate_time = datetime(2026, 7, 29, 9, 0, 0)
+        return source
+
+    def _dbt_test(self):
+        manifest_node = MagicMock()
+        manifest_node.name = "not_null_orders_id"
+        manifest_node.column_name = None
+        manifest_node.test_metadata = None
+        result = MagicMock()
+        result.message = "FAIL 3"
+        result.status.value = "fail"
+        result.unique_id = "test.demo.not_null_orders_id"
+        result.timing = []
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: manifest_node,
+            DbtCommonEnum.RESULTS.value: result,
+            DbtCommonEnum.UPSTREAM.value: ["svc.db.sch.orders"],
+        }
+
+    def test_api_error_is_recorded_as_failed(self):
+        source = self._source()
+        source.metadata.add_test_case_results.side_effect = APIError({"code": 500, "message": "boom"})
+
+        DbtSource.add_dbt_test_result(source, self._dbt_test())
+
+        source.status.failed.assert_called_once()
+        recorded = source.status.failed.call_args[0][0]
+        assert "not_null_orders_id" in recorded.name
+        assert isinstance(recorded.error, str)
+
+    def test_conflict_409_is_not_recorded_as_failed(self):
+        source = self._source()
+        source.metadata.add_test_case_results.side_effect = APIError({"code": 409, "message": "already exists"})
+
+        DbtSource.add_dbt_test_result(source, self._dbt_test())
+
+        source.status.failed.assert_not_called()
+
+    def test_malformed_input_does_not_raise_from_the_handler(self):
+        source = self._source()
+
+        DbtSource.add_dbt_test_result(source, "not-a-dict")
+
+        source.status.failed.assert_called_once()
+        recorded = source.status.failed.call_args[0][0]
+        assert "unknown" in recorded.name
