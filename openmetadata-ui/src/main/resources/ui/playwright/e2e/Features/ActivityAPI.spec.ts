@@ -322,7 +322,7 @@ test.describe(
               .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
             response.request().method() === 'PATCH'
         );
-        await firstReplyCard.getByTestId('send-button').click();
+        await firstReplyCard.getByTestId('save-button').click();
         await editResponse;
 
         const editedReplyCard = page

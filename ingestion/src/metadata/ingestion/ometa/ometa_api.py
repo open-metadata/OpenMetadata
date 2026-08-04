@@ -62,6 +62,7 @@ from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationPro
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.announcement_mixin import OMetaAnnouncementMixin
 from metadata.ingestion.ometa.mixins.container_mixin import OMetaContainerMixin
+from metadata.ingestion.ometa.mixins.conversation_mixin import OMetaConversationMixin
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
@@ -71,7 +72,6 @@ from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContrac
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
-from metadata.ingestion.ometa.mixins.feed_mixin import OMetaFeedMixin
 from metadata.ingestion.ometa.mixins.file_mixin import OMetaFileMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
@@ -278,7 +278,7 @@ class OpenMetadata(
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
     OMetaCustomPropertyMixin,
-    OMetaFeedMixin,
+    OMetaConversationMixin,
     OMetaAnnouncementMixin,
     OMetaTaskMixin,
     OMetaDomainMixin,

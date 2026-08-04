@@ -275,14 +275,11 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
 };
 
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
-  const waitForTaskFilterResponse = (filterType: string) =>
+  const waitForTaskResponse = (predicate: (url: URL) => boolean) =>
     page.waitForResponse((response) => {
-      const url = response.url();
+      const url = new URL(response.url());
 
-      return (
-        url.includes('/api/v1/tasks') &&
-        url.includes(`filterType=${filterType}`)
-      );
+      return response.request().method() === 'GET' && predicate(url);
     });
 
   const widget = await getWidgetForFilters(page, widgetKey);
@@ -290,7 +287,10 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   await expect(widget.getByTestId('task-feed-card').first()).toBeVisible();
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
-  const mentionsTaskFilter = waitForTaskFilterResponse('MENTIONS');
+  const mentionsTaskFilter = waitForTaskResponse(
+    (url) =>
+      url.pathname === '/api/v1/tasks' && url.searchParams.has('mentionedUser')
+  );
   await page.getByRole('menuitem', { name: 'Mentions' }).click();
   await mentionsTaskFilter;
   await widget.locator('entity-list-skeleton').waitFor({
@@ -298,7 +298,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   });
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
-  const assignedTasksFilter = waitForTaskFilterResponse('ASSIGNED_TO');
+  const assignedTasksFilter = waitForTaskResponse(
+    (url) => url.pathname === '/api/v1/tasks/assigned'
+  );
   await page.getByRole('menuitem', { name: 'Assigned' }).click();
   await assignedTasksFilter;
   await widget.locator('entity-list-skeleton').waitFor({
@@ -306,7 +308,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   });
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
-  const allTasksFilter = waitForTaskFilterResponse('OWNER_OR_FOLLOWS');
+  const allTasksFilter = waitForTaskResponse(
+    (url) => url.pathname === '/api/v1/tasks/visible'
+  );
   await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
   await widget.locator('entity-list-skeleton').waitFor({

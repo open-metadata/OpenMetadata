@@ -163,12 +163,7 @@
       "description": "Nonblank text in Markdown format.",
       "type": "string",
       "minLength": 1,
-      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$",
-      "allOf": [
-        {
-          "$ref": "#/definitions/markdown"
-        }
-      ]
+      "pattern": "^[\\s\\S]*\\S[\\s\\S]*$"
     },
     "expression": {
       "description": "Expression in SpEL.",

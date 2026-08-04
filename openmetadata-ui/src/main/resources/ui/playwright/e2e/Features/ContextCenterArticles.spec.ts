@@ -1145,13 +1145,18 @@ test.describe('Context Center Articles', () => {
       ).toHaveCount(11);
 
       const conversationMessage = `Test Conversation Message ${uuid()}`;
+      await page.getByTestId('add-new-conversation').click();
       const editor = page.locator(
         '[data-testid="editor-wrapper"] [contenteditable="true"]'
       );
       await editor.click();
       await editor.fill(conversationMessage);
 
-      const feedResponse = page.waitForResponse('/api/v1/conversations');
+      const feedResponse = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/conversations' &&
+          response.request().method() === 'POST'
+      );
       await page.locator('[data-testid="send-button"]').click();
       const createdConversationResponse = await feedResponse;
       const createdConversation = await createdConversationResponse.json();

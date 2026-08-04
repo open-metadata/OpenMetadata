@@ -526,9 +526,13 @@ test.describe('Mention notifications in Notification Box', () => {
 
     await test.step('User1 mentions admin user in a reply', async () => {
       await entity.visitEntityPage(user1Page);
-
-      await user1Page.getByTestId('activity_feed').click();
-
+      const conversationsResponse = user1Page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/conversations' &&
+          response.request().method() === 'GET'
+      );
+      await user1Page.getByTestId('conversation').click();
+      await conversationsResponse;
       await waitForAllLoadersToDisappear(user1Page);
 
       const seededThread = user1Page

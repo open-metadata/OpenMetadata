@@ -309,9 +309,7 @@ export const handleAdminUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse('/api/v1/conversations');
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -321,11 +319,7 @@ export const handleUserUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse(
-    '/api/v1/conversations?filterType=OWNER_OR_FOLLOWS&userId=*'
-  );
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);

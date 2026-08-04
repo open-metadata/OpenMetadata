@@ -577,10 +577,14 @@ test.describe('User Profile Feed Interactions', () => {
     const { page, afterAction } = await performUserLogin(browser, user3);
 
     await redirectToHomePage(page);
-    const feedResponse = page.waitForResponse('/api/v1/conversations');
-
-    await visitOwnProfilePage(page);
-    await feedResponse;
+    await tableEntity.visitEntityPage(page);
+    const conversationsResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/conversations' &&
+        response.request().method() === 'GET'
+    );
+    await page.getByTestId('conversation').click();
+    await conversationsResponse;
 
     await page
       .getByTestId('message-container')
@@ -1397,12 +1401,15 @@ base.describe(
             entity.entityResponseData.name
           );
 
-          const feedResponse = page.waitForResponse(
-            '/api/v1/conversations?entityLink=*'
+          const activityResponse = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname.startsWith(
+                '/api/v1/activity/entity/'
+              ) && response.request().method() === 'GET'
           );
 
           await page.getByTestId('activity_feed').click();
-          await feedResponse;
+          await activityResponse;
 
           await waitForAllLoadersToDisappear(page);
 
