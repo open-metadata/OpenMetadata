@@ -22,8 +22,14 @@ ruleTester.run('no-blanket-test-slow', rule, {
   valid: [
     // Inside a single test body — legal, scoped to one slow scenario.
     `test('a slow one', async ({ page }) => { test.slow(); await page.goto('/'); });`,
-    // Inside a hook belonging to one test.
+    // A conditional nested inside a test body — still per-test scope.
     `test('x', async ({ page }) => { if (isCI) { test.slow(); } });`,
+    // beforeAll runs on its own timeout slot, not any test's.
+    `test.beforeAll(async () => { test.slow(); });`,
+    // afterEach also runs on its own timeout slot, not any test's.
+    `test.afterEach(async () => { test.slow(); });`,
+    // test.step's callback runs once per test, same as the test body itself.
+    `test('a', async () => { await test.step('step1', async () => { test.slow(); }); });`,
   ],
   invalid: [
     {
@@ -34,6 +40,27 @@ ruleTester.run('no-blanket-test-slow', rule, {
     {
       // Describe scope — applies to every test in the block.
       code: `test.describe('suite', () => { test.slow(); test('a', async () => {}); });`,
+      errors: [{ messageId: 'blanketSlow' }],
+    },
+    {
+      // beforeEach runs on the test's own default timeout slot before every
+      // test in scope — same blast radius as a describe-scope call.
+      code: `test.describe('suite', () => { test.beforeEach(async () => { test.slow(); }); test('a', async () => {}); });`,
+      errors: [{ messageId: 'blanketSlow' }],
+    },
+    {
+      // Aliased test object (e.g. `const base = test.extend(...)`) — still
+      // describe scope, still blanket.
+      code: `base.describe('suite', () => { base.slow(true); base('a', async () => {}); });`,
+      errors: [{ messageId: 'blanketSlow' }],
+    },
+    {
+      // A variable bound directly to the `describe` function (e.g.
+      // `const describeInParallel = test.describe;`, seen in
+      // TagsSuggestion.spec.ts) called directly — structurally identical to
+      // a per-test invocation, but it's still a describe call. Must not be
+      // mistaken for a legal per-test scope.
+      code: `const describeInParallel = test.describe; describeInParallel('suite', () => { test.slow(); test('a', async () => {}); });`,
       errors: [{ messageId: 'blanketSlow' }],
     },
   ],

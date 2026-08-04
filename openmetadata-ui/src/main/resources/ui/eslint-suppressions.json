@@ -115,6 +115,31 @@
       "count": 1
     }
   },
+  "playwright/e2e/Features/OntologyExplorer.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/OntologyExplorerCardinality.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/OntologyExplorerE2E.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/OntologyExplorerFilters.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/OntologyExplorerInteractions.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 3
+    }
+  },
   "playwright/e2e/Features/TagsSuggestion.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1
@@ -225,12 +250,22 @@
       "count": 1
     }
   },
+  "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1
     }
   },
   "playwright/e2e/Pages/ODCSImportExport.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/Policies.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1
     }
@@ -262,6 +297,11 @@
   },
   "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts": {
     "playwright/no-wait-for-selector": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/Users.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
       "count": 1
     }
   },
