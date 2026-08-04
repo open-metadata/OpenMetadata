@@ -131,8 +131,8 @@ class ParquetDataFrameReader(DataFrameReader):
         Read the Parquet file from the gcs bucket and return a dataframe
         """
         # pylint: disable=import-outside-toplevel
-        from gcsfs import GCSFileSystem  # noqa: PLC0415
-        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
+        from gcsfs import GCSFileSystem
+        from pyarrow.parquet import ParquetFile
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -181,7 +181,7 @@ class ParquetDataFrameReader(DataFrameReader):
         (e.g., when called from profiler).
         """
         # pylint: disable=import-outside-toplevel
-        from s3fs import S3FileSystem  # noqa: PLC0415
+        from s3fs import S3FileSystem
 
         kwargs = {}
         if self.session:
@@ -212,7 +212,7 @@ class ParquetDataFrameReader(DataFrameReader):
     @_read_parquet_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         # pylint: disable=import-outside-toplevel
-        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
+        from pyarrow.parquet import ParquetFile
 
         s3_fs = self._build_s3fs_filesystem()
         file_path = f"{bucket_name}/{key}"
@@ -251,10 +251,10 @@ class ParquetDataFrameReader(DataFrameReader):
 
     @_read_parquet_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
-        from pyarrow.fs import FSSpecHandler, PyFileSystem  # noqa: PLC0415
-        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+        from adlfs import AzureBlobFileSystem
+        from pyarrow.fs import FSSpecHandler, PyFileSystem
+        from pyarrow.parquet import ParquetFile
 
         storage_options = return_azure_storage_options(self.config_source)
         account_url = AZURE_PATH.format(
@@ -313,10 +313,10 @@ class ParquetDataFrameReader(DataFrameReader):
         key: str,
         bucket_name: str,  # pylint: disable=unused-argument
     ) -> DatalakeColumnWrapper:
-        import os  # noqa: F811, PLC0415
+        import os  # noqa: F811
 
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-        from pyarrow.parquet import ParquetFile  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+        from pyarrow.parquet import ParquetFile
 
         # Check file size to determine reading strategy
         try:

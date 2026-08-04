@@ -521,4 +521,25 @@ class ListFilterTest {
     assertTrue(condition.contains(":folderIdParam"), condition);
     assertEquals(hostile, filter.getQueryParam("folderIdParam"));
   }
+
+  @Test
+  void test_getServiceCondition_filtersDatabaseHierarchyTables() {
+    // The database hierarchy below `databases` is FQN-prefixed by the service, so the
+    // generic service condition applies to it unchanged.
+    List<String> tableNames =
+        List.of("table_entity", "database_schema_entity", "stored_procedure_entity");
+    for (String tableName : tableNames) {
+      ListFilter filter =
+          new ListFilter(Include.NON_DELETED).addQueryParam("service", "my_service");
+      assertEquals(tableName + ".fqnHash LIKE :serviceHash", filter.getServiceCondition(tableName));
+      assertEquals(
+          FullyQualifiedName.buildHash("my_service") + ".%",
+          filter.getQueryParams().get("serviceHash"));
+    }
+  }
+
+  @Test
+  void test_getServiceCondition_absentServiceYieldsNoCondition() {
+    assertEquals("", new ListFilter(Include.NON_DELETED).getServiceCondition("table_entity"));
+  }
 }

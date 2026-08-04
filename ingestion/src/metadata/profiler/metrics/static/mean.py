@@ -164,8 +164,8 @@ class Mean(StaticMetric):
         Instead of storing per-chunk means, directly accumulates sum and count.
         This reduces memory from O(chunks) to O(1).
         """
-        import pandas as pd  # noqa: PLC0415
-        from numpy import vectorize  # noqa: PLC0415
+        import pandas as pd
+        from numpy import vectorize
 
         length_vectorize_func = vectorize(len)
         clean_df = df[column.name].dropna()
