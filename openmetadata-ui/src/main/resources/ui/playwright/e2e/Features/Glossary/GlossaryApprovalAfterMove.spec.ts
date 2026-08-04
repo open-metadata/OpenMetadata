@@ -19,6 +19,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../../utils/common';
 import {
+  getGlossaryApprovalWorkflowSnapshot,
   performExpandAll,
   selectActiveGlossary,
   verifyTaskCreated,
@@ -53,28 +54,13 @@ const queryApprovalWorkflowStage = async (
   apiContext: APIRequestContext,
   termFqn: string
 ): Promise<string | null> => {
-  const entityLink = encodeURIComponent(`<#E::glossaryTerm::${termFqn}>`);
-  const startTs = Date.now() - 24 * 60 * 60 * 1000;
-  const endTs = Date.now();
+  const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+    apiContext,
+    termFqn
+  );
 
-  const instances = await apiContext
-    .get(
-      `/api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
-    )
-    .then((r) => r.json());
-
-  const instanceId = instances?.data?.[0]?.id;
-  if (!instanceId) {
-    return null;
-  }
-
-  const states = await apiContext
-    .get(
-      `/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${instanceId}?startTs=${startTs}&endTs=${endTs}`
-    )
-    .then((r) => r.json());
-
-  return states?.data?.[0]?.stage?.displayName ?? null;
+  // Stages are newest first.
+  return snapshot.instances[0]?.stages[0] ?? null;
 };
 const waitForApprovalWorkflowReady = async (
   apiContext: APIRequestContext,
