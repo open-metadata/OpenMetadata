@@ -88,7 +88,7 @@ describe('Test Sorting DropDown Component', () => {
 
     expect(dropdownButton).toBeInTheDocument();
 
-    fireEvent.click(dropdownButton!);
+    fireEvent.click(dropdownButton as HTMLElement);
 
     const dropdownMenu = await findByRole('menu');
 
@@ -114,7 +114,7 @@ describe('Test Sorting DropDown Component', () => {
 
     expect(dropdownButton).toBeInTheDocument();
 
-    fireEvent.click(dropdownButton!);
+    fireEvent.click(dropdownButton as HTMLElement);
 
     const dropdownMenu = await findByRole('menu');
 

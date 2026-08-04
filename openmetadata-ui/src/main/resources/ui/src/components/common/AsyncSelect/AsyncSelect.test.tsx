@@ -29,7 +29,7 @@ jest.mock('../Loader/Loader', () => {
 // Mock debounce to make tests synchronous
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  debounce: (fn: any) => fn,
+  debounce: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
 const mockOptions: DefaultOptionType[] = [

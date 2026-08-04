@@ -227,7 +227,7 @@ export const getAllTracedNodes = (
   const queue: Node[] = [node];
 
   while (queue.length > 0) {
-    const currentNode = queue.shift()!;
+    const currentNode = queue.shift() as Node;
 
     if (currentNode !== node) {
       result.push(currentNode);

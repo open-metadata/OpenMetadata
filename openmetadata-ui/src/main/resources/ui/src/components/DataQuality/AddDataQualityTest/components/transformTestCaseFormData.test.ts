@@ -230,7 +230,7 @@ describe('buildTestSuitePipelinePayload', () => {
     );
 
     expect(payload.pipelineType).toBe('TestSuite');
-    expect(payload.sourceConfig.config!.testCases).toEqual(['tc1', 'tc2']);
+    expect(payload.sourceConfig.config?.testCases).toEqual(['tc1', 'tc2']);
     expect(payload.loggerLevel).toBe('DEBUG');
     expect(payload.raiseOnError).toBe(false);
   });
@@ -248,7 +248,7 @@ describe('buildTestSuitePipelinePayload', () => {
       }
     );
 
-    expect(payload.sourceConfig.config!.testCases).toBeUndefined();
+    expect(payload.sourceConfig.config?.testCases).toBeUndefined();
   });
 });
 

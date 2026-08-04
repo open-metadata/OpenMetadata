@@ -102,7 +102,7 @@ const ServiceConnectionDetails = ({
   serviceFQN,
   extraInfo,
 }: Readonly<ServiceConnectionDetailsProps>) => {
-  const [schema, setSchema] = useState<Record<string, any>>({});
+  const [schema, setSchema] = useState<Record<string, unknown>>({});
   const [data, setData] = useState<ReactNode>();
 
   useEffect(() => {
@@ -129,7 +129,7 @@ const ServiceConnectionDetails = ({
       setData(
         getKeyValues({
           obj: connectionDetails as unknown as Record<string, unknown>,
-          schemaPropertyObject: schema.properties,
+          schemaPropertyObject: schema.properties as Record<string, unknown>,
           schema,
           serviceCategory,
         })

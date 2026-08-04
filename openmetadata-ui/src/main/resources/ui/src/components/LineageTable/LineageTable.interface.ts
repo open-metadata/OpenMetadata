@@ -5,6 +5,11 @@ import {
   LineageNode,
 } from '../Lineage/Lineage.interface';
 
+export type {
+  ColumnLevelLineageNode,
+  LineageNode,
+} from '../Lineage/Lineage.interface';
+
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");

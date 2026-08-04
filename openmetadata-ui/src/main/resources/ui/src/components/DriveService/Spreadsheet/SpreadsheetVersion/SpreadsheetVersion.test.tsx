@@ -648,7 +648,11 @@ describe('SpreadsheetVersion', () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+      delete (
+        permissionsWithUndefinedViewCustomFields as Partial<
+          typeof permissionsWithUndefinedViewCustomFields
+        >
+      ).ViewCustomFields;
 
       renderSpreadsheetVersion({
         entityPermissions: permissionsWithUndefinedViewCustomFields,

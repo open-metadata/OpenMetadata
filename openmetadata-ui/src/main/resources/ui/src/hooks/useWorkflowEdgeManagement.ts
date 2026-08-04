@@ -179,11 +179,15 @@ export const useWorkflowEdgeManagement = ({
           ? conditions[0].value
           : `${conditions.length} conditions`;
 
+      if (!connection.source || !connection.target) {
+        return;
+      }
+
       const edgeId = `reactflow__edge-${connection.source}-${connection.target}`;
       const newEdge = {
         id: edgeId,
-        source: connection.source!,
-        target: connection.target!,
+        source: connection.source,
+        target: connection.target,
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
         type: 'straight',

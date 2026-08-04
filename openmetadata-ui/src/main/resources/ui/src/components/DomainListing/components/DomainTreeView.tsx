@@ -199,6 +199,7 @@ const DomainTreeView = ({
       const firstDomain = selectDomain(domains, resetExpandedItems, domainFqn);
 
       if ((firstDomain?.childrenCount || 0) > 0 && shouldLoadChildren) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- hoisted-below useCallback
         loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },

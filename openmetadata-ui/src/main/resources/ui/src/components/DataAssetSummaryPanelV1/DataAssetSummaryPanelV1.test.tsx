@@ -431,7 +431,11 @@ describe('DataAssetSummaryPanelV1', () => {
     );
     (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
     (getEntityOverview as jest.Mock).mockImplementation(
-      (_entityType: any, _dataAsset: any, additionalInfo: any) => [
+      (
+        _entityType: string,
+        _dataAsset: unknown,
+        additionalInfo?: Record<string, number | string>
+      ) => [
         { name: 'Type', value: 'Table', visible: ['explore'] },
         { name: 'Rows', value: 1000, visible: ['explore'] },
         { name: 'Columns', value: 15, visible: ['explore'] },

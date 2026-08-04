@@ -142,7 +142,7 @@ describe('ExplorePageV1', () => {
     };
 
     act(() => {
-      capturedCallback!(testFilter);
+      capturedCallback?.(testFilter);
     });
 
     expect(mockNavigate).toHaveBeenCalledTimes(1);

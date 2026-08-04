@@ -225,9 +225,9 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
             setTimeout(() => toggleMentionList(false), 0);
           },
           onSelect: (
-            item: Record<string, any>,
+            item: Record<string, unknown>,
 
-            insertItem: (item: Record<string, any>) => void
+            insertItem: (item: Record<string, unknown>) => void
           ) => {
             insertItem(item);
           },

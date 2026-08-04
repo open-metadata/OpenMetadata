@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../generated/settings/settings';
 import * as securityConfigAPI from '../../rest/securityConfigAPI';
@@ -61,7 +62,11 @@ jest.mock('../../utils/SSOUtilClassBase', () => ({
 }));
 
 jest.mock('./ProviderSelector/ProviderSelector', () => {
-  return function ProviderSelector({ onProviderSelect }: any) {
+  return function ProviderSelector({
+    onProviderSelect,
+  }: {
+    onProviderSelect: (provider: AuthProvider) => void;
+  }) {
     return (
       <div data-testid="provider-selector">
         <button
@@ -80,7 +85,9 @@ jest.mock('./ProviderSelector/ProviderSelector', () => {
 });
 
 jest.mock('./SSOConfigurationForm/SSOConfigurationForm', () => {
-  return function SSOConfigurationForm(props: any) {
+  return function SSOConfigurationForm(props: {
+    onChangeProvider?: () => void;
+  }) {
     return (
       <div data-testid="sso-configuration-form">
         <button
@@ -121,7 +128,13 @@ jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
 });
 
 jest.mock('../PageLayoutV1/PageLayoutV1', () => {
-  return function PageLayoutV1({ children, className }: any) {
+  return function PageLayoutV1({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) {
     return (
       <div className={className} data-testid="page-layout-v1">
         {children}
@@ -159,7 +172,7 @@ describe('SettingsSso', () => {
     jest.clearAllMocks();
     mockGetSecurityConfiguration.mockResolvedValue({
       data: mockSecurityConfig,
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof securityConfigAPI.getSecurityConfiguration>>);
   });
 
   describe('Initial Loading', () => {
@@ -211,7 +224,7 @@ describe('SettingsSso', () => {
     it('should handle SSO toggle', async () => {
       mockPatchSecurityConfiguration.mockResolvedValue({
         data: mockSecurityConfig,
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof securityConfigAPI.patchSecurityConfiguration>>);
       renderComponent();
 
       await waitFor(() => {
@@ -244,7 +257,9 @@ describe('SettingsSso', () => {
 
   describe('Provider Configuration', () => {
     it('should show provider selector when no configuration exists', async () => {
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as Awaited<ReturnType<typeof securityConfigAPI.getSecurityConfiguration>>);
       renderComponent();
 
       await waitFor(() => {
@@ -337,7 +352,9 @@ describe('SettingsSso', () => {
 
   describe('Provider Selection', () => {
     it('should handle provider selection', async () => {
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as Awaited<ReturnType<typeof securityConfigAPI.getSecurityConfiguration>>);
       renderComponent();
 
       await waitFor(() => {
@@ -398,7 +415,9 @@ describe('SettingsSso', () => {
 
   describe('Configuration Persistence', () => {
     it('should handle provider selection', async () => {
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as Awaited<ReturnType<typeof securityConfigAPI.getSecurityConfiguration>>);
       renderComponent();
 
       await waitFor(() => {
@@ -416,7 +435,9 @@ describe('SettingsSso', () => {
     });
 
     it('should show configuration form when provider is in URL', async () => {
-      mockGetSecurityConfiguration.mockResolvedValue({ data: null } as any);
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: null,
+      } as unknown as Awaited<ReturnType<typeof securityConfigAPI.getSecurityConfiguration>>);
       renderComponent(`provider=${AuthProvider.Okta}`);
 
       await waitFor(() => {
@@ -494,7 +515,7 @@ describe('SettingsSso', () => {
             provider: AuthProvider.Azure,
           },
         },
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof securityConfigAPI.getSecurityConfiguration>>);
 
       renderComponent();
 

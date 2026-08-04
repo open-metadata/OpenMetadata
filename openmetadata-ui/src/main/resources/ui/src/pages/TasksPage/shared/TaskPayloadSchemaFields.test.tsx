@@ -25,17 +25,23 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { act } from 'react';
+import { act, ReactNode } from 'react';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: any) => <div>{children}</div>,
-  Button: ({ children, onPress }: any) => (
-    <button onClick={onPress}>{children}</button>
+  Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Button: ({
+    children,
+    onPress,
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+  }) => <button onClick={onPress}>{children}</button>,
+  Typography: ({ children }: { children?: ReactNode }) => (
+    <span>{children}</span>
   ),
-  Typography: ({ children }: any) => <span>{children}</span>,
 }));
 
 jest.mock('./DescriptionTabs', () => ({

@@ -343,20 +343,30 @@ const ColumnProfileTable = () => {
 
         <Table.Cell className="tw:w-50">
           {!isNil(record.profile?.nullProportion)
-            ? calculatePercentage(record.profile!.nullProportion, 1, 2, true)
+            ? calculatePercentage(
+                record.profile?.nullProportion ?? 0,
+                1,
+                2,
+                true
+              )
             : '--'}
         </Table.Cell>
 
         <Table.Cell className="tw:w-50">
           {!isNil(record.profile?.uniqueProportion)
-            ? calculatePercentage(record.profile!.uniqueProportion, 1, 2, true)
+            ? calculatePercentage(
+                record.profile?.uniqueProportion ?? 0,
+                1,
+                2,
+                true
+              )
             : '--'}
         </Table.Cell>
 
         <Table.Cell className="tw:w-50">
           {!isNil(record.profile?.distinctProportion)
             ? calculatePercentage(
-                record.profile!.distinctProportion,
+                record.profile?.distinctProportion ?? 0,
                 1,
                 2,
                 true

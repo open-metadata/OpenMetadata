@@ -109,6 +109,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- antd option augmented with custom `field`
   const handleTagChange = (value: string, option: any) => {
     const updatedData = {
       ...termBoostData,

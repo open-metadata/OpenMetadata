@@ -43,7 +43,7 @@ describe('useCurrentUserStore', () => {
       const mockState = {
         currentUser: null,
         // Add other properties as needed
-      } as any;
+      } as unknown as Parameters<typeof selector>[0];
 
       return selector(mockState);
     });
@@ -86,7 +86,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'testUser' },
-        } as any;
+        } as unknown as Parameters<typeof selector>[0];
 
         return selector(mockState);
       });
@@ -112,7 +112,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'oldUser' },
-        } as any;
+        } as unknown as Parameters<typeof selector>[0];
 
         return selector(mockState);
       });
@@ -125,7 +125,9 @@ describe('useCurrentUserStore', () => {
             isSidebarCollapsed: true,
             selectedEntityTableColumns: { table1: ['col1', 'col2'] },
             // Note: language key is missing - simulating old user data
-          } as any,
+          } as unknown as ReturnType<
+            typeof usePersistentStorage.getState
+          >['preferences'][string],
         },
       });
 
@@ -149,7 +151,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'userWithLanguage' },
-        } as any;
+        } as unknown as Parameters<typeof selector>[0];
 
         return selector(mockState);
       });
@@ -193,7 +195,7 @@ describe('useCurrentUserStore', () => {
       mockUseApplicationStore.mockImplementation((selector) => {
         const mockState = {
           currentUser: { name: 'stableUser' },
-        } as any;
+        } as unknown as Parameters<typeof selector>[0];
 
         return selector(mockState);
       });
