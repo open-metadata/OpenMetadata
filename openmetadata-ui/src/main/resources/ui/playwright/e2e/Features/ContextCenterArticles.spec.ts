@@ -684,8 +684,10 @@ test.describe('Context Center Articles', () => {
     const targetArticle =
       listKnowledgeCenter.knowledgePages[MIN_CARDS - 1].displayName;
     const node = await scrollHierarchyToNode(page, targetArticle);
-    const articleLoaded = page.waitForResponse((resp) =>
-      resp.url().includes('/api/v1/contextCenter/pages/name/')
+    const articleLoaded = page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/api/v1/contextCenter/pages/name/') &&
+        resp.status() === 200
     );
     await node.click();
     await articleLoaded;
@@ -1394,8 +1396,10 @@ test.describe('Context Center Articles', () => {
           page,
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
-        const articleLoaded = page.waitForResponse((resp) =>
-          resp.url().includes('/api/v1/contextCenter/pages/name/')
+        const articleLoaded = page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/v1/contextCenter/pages/name/') &&
+            resp.status() === 200
         );
         await node.click();
         await articleLoaded;
@@ -1466,8 +1470,10 @@ test.describe('Context Center Articles', () => {
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
         await updateDisplayNameResponse;
-        const articleLoaded = page.waitForResponse((resp) =>
-          resp.url().includes('/api/v1/contextCenter/pages/name/')
+        const articleLoaded = page.waitForResponse(
+          (resp) =>
+            resp.url().includes('/api/v1/contextCenter/pages/name/') &&
+            resp.status() === 200
         );
         await node.click();
         await articleLoaded;
