@@ -286,7 +286,7 @@ test.describe(
     }) => {
       await openAutoClassificationAgentForm(page, acService);
       await page
-        .getByRole('button', { name: 'Advanced Config Driver-level' })
+        .getByTestId('ingestion-section-advanced-toggle')
         .click();
       const confidenceField = page.locator('#root\\/confidence');
       await confidenceField.clear();
@@ -322,7 +322,7 @@ test.describe(
     }) => {
       await openAutoClassificationAgentForm(page, acService);
       await page
-        .getByRole('button', { name: 'Advanced Config Driver-level' })
+        .getByTestId('ingestion-section-advanced-toggle')
         .click();
 
       const sampleCountField = page.locator('#root\\/sampleDataCount');
