@@ -1,4 +1,9 @@
 {
+  "playwright/e2e/Auth/OktaSelfSignupClaims.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Auth/SSOAuthentication.spec.ts": {
     "playwright/no-skipped-test": {
       "count": 2
@@ -7,12 +12,87 @@
       "count": 19
     }
   },
+  "playwright/e2e/Auth/SSOLogin.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Auth/SSORenewal.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Auth/SSOSelfSignup.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/Container.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 3
+    }
+  },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "playwright/no-wait-for-selector": {
       "count": 1
     },
     "playwright/no-wait-for-timeout": {
       "count": 6
+    }
+  },
+  "playwright/e2e/Features/ContextCenterDocument.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/ContextCenterPermission.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/CuratedAssets.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 2
+    }
+  },
+  "playwright/e2e/Features/Dashboards.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 2
+    }
+  },
+  "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/DescriptionSuggestion.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/DomainIsolation/DomainLineageIsolation.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/DomainIsolation/DomainListingIsolation.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/DomainIsolation/DomainSearchIsolation.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/DomainIsolation/DomainTaskIsolation.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
@@ -25,6 +105,21 @@
       "count": 11
     }
   },
+  "playwright/e2e/Features/IncidentManager.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/TagsSuggestion.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Features/Tasks.spec.ts": {
     "playwright/no-wait-for-selector": {
       "count": 3
@@ -35,8 +130,48 @@
       "count": 1
     }
   },
+  "playwright/e2e/Features/TeamsHierarchy.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Features/Topic.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Flow/IngestionBot.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Flow/Metric.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
   "playwright/e2e/Http2/SmokeH2.spec.ts": {
     "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/Bots.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/DataContracts.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
       "count": 1
     }
   },
@@ -55,8 +190,68 @@
       "count": 1
     }
   },
+  "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 4
+    }
+  },
+  "playwright/e2e/Pages/DataProducts.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/DescriptionVisibility.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/DomainAdvanced.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 11
+    }
+  },
+  "playwright/e2e/Pages/DomainUIInteractions.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 11
+    }
+  },
+  "playwright/e2e/Pages/Domains.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 8
+    }
+  },
+  "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/ODCSImportExport.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/SubDomainPagination.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 1
+    }
+  },
+  "playwright/e2e/Pages/Tag.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
+      "count": 4
+    }
+  },
   "playwright/e2e/Pages/TasksUIFlow.spec.ts": {
     "playwright/no-wait-for-selector": {
+      "count": 4
+    }
+  },
+  "playwright/e2e/Pages/Teams.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
       "count": 4
     }
   },

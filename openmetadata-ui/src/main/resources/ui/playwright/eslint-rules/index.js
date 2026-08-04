@@ -14,10 +14,12 @@
 'use strict';
 
 const requireResponseListenerBeforeAction = require('./require-response-listener-before-action.js');
+const noBlanketTestSlow = require('./no-blanket-test-slow.js');
 
 module.exports = {
   rules: {
     'require-response-listener-before-action':
       requireResponseListenerBeforeAction,
+    'no-blanket-test-slow': noBlanketTestSlow,
   },
 };
