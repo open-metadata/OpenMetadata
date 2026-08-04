@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { getEncodedFqn } from './entity';
+import { getEncodedFqn, escapeESReservedCharacters } from './entity';
 
 type EntityFields = {
   id: string;
@@ -305,12 +305,14 @@ export const fillRule = async (
         '.widget--widget input[role="combobox"]'
       );
 
-      // Use encodeURIComponent directly — escapeESReservedCharacters would add
-      // backslashes before '-' and '/' that are then percent-encoded to %5C,
-      // but the aggregate URL contains raw (unescaped) dashes. The mismatch
-      // means the waitForResponse never fires for any FQN with hyphens.
       const aggregateRes2 = page.waitForResponse(
-        `/api/v1/search/aggregate?*${encodeURIComponent(searchData)}*`
+        (response) =>
+          response.url().includes(`/api/v1/search/aggregate`) &&
+          response
+            .url()
+            .includes(
+              encodeURIComponent(escapeESReservedCharacters(searchData))
+            )
       );
 
       await dropdownInput.fill(searchData);
