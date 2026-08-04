@@ -66,7 +66,10 @@ const PAGES: {
   {
     name: 'incident-manager',
     route: '/incident-manager',
-    mask: ['[data-testid="test-case-incident-manager-table"] tbody'],
+    // Sample-data incidents carry run-specific timestamps and can change
+    // ordering as indexing completes. Keep the surrounding page under test.
+    mask: ['[data-testid="test-case-incident-manager-table"]'],
+    maskColor: '#ffffff',
   },
   { name: 'users', route: '/settings/members/users' },
   { name: 'teams', route: '/settings/members/teams' },
