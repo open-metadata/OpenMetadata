@@ -114,7 +114,7 @@ ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 
 # Refresh the interpreter-level pip before dropping privileges. The per-user
-# `pip install --upgrade pip` below only writes to ~/.local, so the base image's
+# pip upgrade below only writes to ~/.local, so the base image's
 # /usr/local copy stays on disk and image scanners keep reporting it
 # (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
 RUN pip install --no-cache-dir --upgrade "pip==26.2"
@@ -129,7 +129,7 @@ ENV PIP_QUIET=1
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip==26.2" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 

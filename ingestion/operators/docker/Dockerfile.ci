@@ -115,7 +115,7 @@ ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 
 # Refresh the interpreter-level pip before dropping privileges. The per-user
-# `pip install --upgrade pip` below only writes to ~/.local, so the base image's
+# pip upgrade below only writes to ~/.local, so the base image's
 # /usr/local copy stays on disk and image scanners keep reporting it
 # (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
 RUN pip install --no-cache-dir --upgrade "pip==26.2"
@@ -130,7 +130,7 @@ ENV PIP_QUIET=1
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip==26.2" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
@@ -155,13 +155,6 @@ RUN [ $(uname -m) = "x86_64" ] \
 # pyspark install rather than silently shipping unpatched jars.
 COPY --chown=openmetadata:openmetadata ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
 RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
-
-# datamodel-code-generator (and the black it depends on) exist only to run the codegen
-# step above -- nothing imports them at runtime. Drop them so the shipped image stops
-# reporting their CVEs. Runs after the final pip install so an extra cannot pull them
-# back in. Bumping the pin instead is not an option: the codegen script monkeypatches
-# datamodel_code_generator.model.pydantic.types.IMPORT_SECRET_STR, gone in 0.26+.
-RUN pip uninstall -y datamodel-code-generator black
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .

@@ -91,9 +91,9 @@ COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/ex
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
 # Refresh the interpreter-level pip before dropping privileges. The per-user
-# `pip install --upgrade pip` below only reaches ~/.local, leaving the base image's
+# pip upgrade below only reaches ~/.local, leaving the base image's
 # own copy (/usr/python/lib/python3.12/site-packages, pip 25.0.1) on disk for image
-# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- 26.1.2).
+# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
 # The explicit interpreter path is required, not stylistic: as root, `pip` resolves to
 # airflow's /root/bin/pip wrapper, which exits 1 (and for non-root execs ~/.local/bin/pip),
 # and bare `python` resolves to /home/airflow/.local/bin/python. Both would miss the very
@@ -112,7 +112,7 @@ ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip==26.2" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.12.txt"

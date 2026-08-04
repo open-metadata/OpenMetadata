@@ -97,9 +97,9 @@ COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/airflow-constraints-3.2.2.txt /home/airflow/airflow-constraints-3.2.2.txt
 
 # Refresh the interpreter-level pip before dropping privileges. The per-user
-# `pip install --upgrade pip` below only reaches ~/.local, leaving the base image's
+# pip upgrade below only reaches ~/.local, leaving the base image's
 # own copy (/usr/python/lib/python3.12/site-packages, pip 25.0.1) on disk for image
-# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- 26.1.2).
+# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
 # The explicit interpreter path is required, not stylistic: as root, `pip` resolves to
 # airflow's /root/bin/pip wrapper, which exits 1 (and for non-root execs ~/.local/bin/pip),
 # and bare `python` resolves to /home/airflow/.local/bin/python. Both would miss the very
@@ -116,7 +116,7 @@ ENV PIP_QUIET=1
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip==26.2" "setuptools<81"
 
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
@@ -180,13 +180,6 @@ EXPOSE 8080
 # can leave stale 0.2.6 `upath` module files in site-packages that cause import
 # errors at runtime. Force-remove the stale registration then pin to the required version.
 RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
-
-# datamodel-code-generator (and the black it depends on) exist only to run the codegen
-# step earlier in this file -- nothing imports them at runtime. Drop them so the shipped
-# image stops reporting their CVEs. Runs after every pip install so an extra cannot pull
-# them back in. Bumping the pin instead is not an option: the codegen script monkeypatches
-# datamodel_code_generator.model.pydantic.types.IMPORT_SECRET_STR, gone in 0.26+.
-RUN pip uninstall -y datamodel-code-generator black
 
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
