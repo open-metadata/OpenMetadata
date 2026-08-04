@@ -547,8 +547,8 @@ class SqlColumnHandlerMixin:
         # We explicitly define columns to avoid expensive DESCRIBE/introspection
         # queries that autoload_with would trigger for every table.
         try:
-            from sqlalchemy import Column as SaColumn  # noqa: PLC0415
-            from sqlalchemy import MetaData, Table, select  # noqa: PLC0415
+            from sqlalchemy import Column as SaColumn
+            from sqlalchemy import MetaData, Table, select
 
             metadata = MetaData()
 
@@ -583,7 +583,7 @@ class SqlColumnHandlerMixin:
             )
         # Attempt 2: text() fallback (option 2) but dialect-safe
         try:
-            from sqlalchemy import text  # noqa: PLC0415
+            from sqlalchemy import text
 
             quoted_columns = ", ".join(quote(c) for c in column_names)
             query = text(f"SELECT {quoted_columns} FROM {full_table_name} LIMIT :limit")

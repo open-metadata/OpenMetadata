@@ -15,9 +15,9 @@ import classNames from 'classnames';
 import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import { DataAssetServiceLogo } from './DataAssetServiceUtils';
+import { EntityIconSize, ENTITY_ICON_SIZE_CLASS_MAP } from './EntityIconUtils';
 import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
 import searchClassBase from './SearchClassBase';
-import { EntityIconSize, ENTITY_ICON_SIZE_CLASS_MAP } from './TableUtils';
 
 export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
