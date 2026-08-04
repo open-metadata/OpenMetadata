@@ -849,6 +849,33 @@ class TestAirflow(TestCase):
             assert "_flt_3_task_id=" in url
             assert "flt1_dag_id_equals" not in url
 
+    def test_task_description_uses_doc_fallback(self):
+        """Tasks documented via doc/doc_yaml (not doc_md) still get a description (P1-14)."""
+        self.airflow._is_remote_airflow_3 = False
+        dag = AirflowDagDetails(
+            dag_id="d",
+            fileloc="/d.py",
+            data=AirflowDag.model_validate(SERIALIZED_DAG),
+            tasks=[
+                AirflowTask(task_id="plain", doc="PLAIN DOC"),
+                AirflowTask(task_id="yml", doc_yaml="k: v"),
+                AirflowTask(task_id="md", doc_md="# MD"),
+                AirflowTask(task_id="empty"),
+            ],
+            schedule_interval=None,
+            owner=None,
+        )
+
+        def description_of(task):
+            return task.description.root if task.description else None
+
+        by_name = {str(task.name): task for task in self.airflow.get_tasks_from_dag(dag, "http://localhost:8080")}
+
+        assert description_of(by_name["plain"]) == "PLAIN DOC"
+        assert description_of(by_name["yml"]) == "k: v"
+        assert description_of(by_name["md"]) == "# MD"
+        assert by_name["empty"].description is None
+
     def test_task_source_url_with_special_characters(self):
         """Test URL encoding for DAG and task IDs with special characters (Airflow 2.x)"""
         # Mock remote Airflow as version 2.x
