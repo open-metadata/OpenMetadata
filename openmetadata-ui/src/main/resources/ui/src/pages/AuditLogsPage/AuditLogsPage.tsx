@@ -22,7 +22,6 @@ import {
 import { SearchLg, XClose } from '@untitledui/icons';
 import { Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
-import dayjs from 'dayjs';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -218,8 +217,8 @@ const AuditLogsPage = () => {
     const element = document.createElement('a');
     const file = new Blob([data], { type: 'application/json' });
 
-    const now = dayjs();
-    const fileName = `audit_logs_${now.format('YYYYMMDD_HHmmss')}.json`;
+    const now = DateTime.now();
+    const fileName = `audit_logs_${now.toFormat('yyyyMMdd_HHmmss')}.json`;
 
     element.href = URL.createObjectURL(file);
     element.download = fileName;

@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NonNull;
@@ -741,26 +742,38 @@ public final class Entity {
 
   /**
    * Whether an entity instance should be written to the search index, per its repository's {@link
-   * EntityRepository#isSearchIndexable} policy (e.g. {@code ContextMemoryRepository} excludes
-   * non-org-wide memories). Defaults to {@code true} for entity types with no regular entity
-   * repository (index-only / time-series sub-entities), so the live index paths never throw on an
-   * indexable but repository-less type. Returns {@code false} when the entity or its reference is
-   * missing.
+   * EntityRepository#isSearchIndexable} policy. Defaults to {@code true} for entity types with no
+   * regular entity repository (index-only / time-series sub-entities), so the live index paths
+   * never throw on an indexable but repository-less type. Returns {@code false} when the entity or
+   * its reference is missing.
    */
   public static boolean isSearchIndexable(EntityInterface entity) {
-    if (entity == null) {
-      return false;
+    return repositoryPolicyAllows(entity, EntityRepository::isSearchIndexable);
+  }
+
+  /**
+   * Whether an entity instance should be embedded into the vector/semantic index, per its
+   * repository's {@link EntityRepository#isVectorEmbeddable} policy (e.g. {@code
+   * ContextMemoryRepository} keeps non-org-wide memories out because the vector query path carries
+   * no per-document visibility filter). Defaults and null-handling match {@link
+   * #isSearchIndexable}.
+   */
+  public static boolean isVectorEmbeddable(EntityInterface entity) {
+    return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
+  }
+
+  private static boolean repositoryPolicyAllows(
+      EntityInterface entity,
+      BiPredicate<EntityRepository<? extends EntityInterface>, EntityInterface> policy) {
+    boolean allowed = false;
+    EntityReference entityReference = entity == null ? null : entity.getEntityReference();
+    String entityType = entityReference == null ? null : entityReference.getType();
+    if (entityType != null) {
+      EntityRepository<? extends EntityInterface> repository =
+          ENTITY_REPOSITORY_MAP.get(entityType);
+      allowed = repository == null || policy.test(repository, entity);
     }
-    EntityReference entityReference = entity.getEntityReference();
-    if (entityReference == null) {
-      return false;
-    }
-    String entityType = entityReference.getType();
-    if (entityType == null) {
-      return false;
-    }
-    EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    return repository == null || repository.isSearchIndexable(entity);
+    return allowed;
   }
 
   /**

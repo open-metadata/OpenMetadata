@@ -15,10 +15,13 @@ Source connection handler
 
 from __future__ import annotations
 
+import threading
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.event import listen
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import text
 
@@ -55,7 +58,10 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
+from metadata.ingestion.source.database.redshift.models import (
+    RedshiftIamCredential,
+    RedshiftInstanceType,
+)
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_DATABASE_NAMES,
@@ -112,7 +118,7 @@ def _non_standard_host_hint(host: str) -> str:
     return hint
 
 
-def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
+def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> RedshiftIamCredential:
     workgroup = connection.workgroupName or _get_serverless_workgroup(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_serverless_client()
@@ -120,7 +126,11 @@ def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: 
         kwargs = {"workgroupName": workgroup, "dbName": connection.database or "dev"}
 
         response = aws_client.get_credentials(**kwargs)
-        return response["dbUser"], response["dbPassword"]
+        return RedshiftIamCredential(
+            user=response["dbUser"],
+            password=response["dbPassword"],
+            expiration=response.get("expiration"),
+        )
     except Exception as exc:
         hint = "" if connection.workgroupName else _non_standard_host_hint(host)
         raise SourceConnectionException(
@@ -128,7 +138,7 @@ def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: 
         ) from exc
 
 
-def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
+def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> RedshiftIamCredential:
     cluster_identifier = connection.clusterIdentifier or _get_provisioned_cluster_identifier(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_client()
@@ -142,7 +152,11 @@ def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host:
             kwargs["DbName"] = connection.database
 
         response = aws_client.get_cluster_credentials(**kwargs)
-        return response["DbUser"], response["DbPassword"]
+        return RedshiftIamCredential(
+            user=response["DbUser"],
+            password=response["DbPassword"],
+            expiration=response.get("Expiration"),
+        )
     except Exception as exc:
         hint = "" if connection.clusterIdentifier else _non_standard_host_hint(host)
         raise SourceConnectionException(
@@ -150,7 +164,7 @@ def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host:
         ) from exc
 
 
-def _get_redshift_iam_credentials(connection: RedshiftConnectionConfig) -> tuple:
+def _get_redshift_iam_credentials(connection: RedshiftConnectionConfig) -> RedshiftIamCredential:
     """
     Get temporary credentials for Redshift using IAM authentication.
     An explicit clusterIdentifier or workgroupName on the connection takes
@@ -175,20 +189,111 @@ def _get_redshift_iam_credentials(connection: RedshiftConnectionConfig) -> tuple
     return _get_provisioned_iam_credentials(connection, host)
 
 
+def _is_iam_auth(connection: RedshiftConnectionConfig) -> bool:
+    return (
+        hasattr(connection, "authType")
+        and connection.authType is not None
+        and isinstance(connection.authType, IamAuthConfigurationSource)
+    )
+
+
+REDSHIFT_IAM_CREDENTIAL_DEFAULT_TTL = timedelta(minutes=15)
+REDSHIFT_IAM_CREDENTIAL_REFRESH_THRESHOLD = timedelta(minutes=5)
+
+
+class RedshiftIamCredentialManager:
+    """
+    Caches a Redshift IAM temporary credential and regenerates it before expiry.
+
+    Redshift temporary credentials are short-lived (default ~15 minutes). A long
+    ingestion that opens new pooled connections after the credential expires would
+    otherwise authenticate with a stale credential and fail. The engine shares one
+    manager across all worker threads (each ``do_connect`` calls ``get_credentials``),
+    so the check-and-refresh is serialized to avoid pairing a credential with a
+    stale expiry.
+    """
+
+    def __init__(
+        self,
+        connection: RedshiftConnectionConfig,
+        refresh_threshold: timedelta = REDSHIFT_IAM_CREDENTIAL_REFRESH_THRESHOLD,
+    ):
+        self._connection = connection
+        self._refresh_threshold = refresh_threshold
+        self._credential: RedshiftIamCredential | None = None
+        self._expires_at: datetime | None = None
+        self._lock = threading.Lock()
+
+    def get_credentials(self) -> RedshiftIamCredential:
+        with self._lock:
+            if self._needs_refresh():
+                self._refresh()
+            if self._credential is None:
+                raise SourceConnectionException("Failed to generate Redshift IAM credentials")
+            return self._credential
+
+    def _needs_refresh(self) -> bool:
+        needs_refresh = True
+        if self._credential is not None and self._expires_at is not None:
+            time_left = self._expires_at - datetime.now(timezone.utc)
+            needs_refresh = time_left <= self._refresh_threshold
+        return needs_refresh
+
+    def _refresh(self) -> None:
+        try:
+            credential = _get_redshift_iam_credentials(self._connection)
+        except Exception as exc:
+            # A proactive refresh (fired within the threshold) that fails must not fail
+            # a connection while the current credential is still valid; keep serving it
+            # and retry on the next connection.
+            if self._credential is not None and not self._is_expired():
+                logger.warning(f"Redshift IAM credential refresh failed ({exc}); reusing cached credential")
+                return
+            raise
+        expiration = credential.expiration
+        if expiration is not None and expiration.tzinfo is None:
+            expiration = expiration.replace(tzinfo=timezone.utc)
+        self._credential = credential
+        self._expires_at = expiration or (datetime.now(timezone.utc) + REDSHIFT_IAM_CREDENTIAL_DEFAULT_TTL)
+
+    def _is_expired(self) -> bool:
+        return self._expires_at is None or self._expires_at <= datetime.now(timezone.utc)
+
+
+def _build_iam_engine(connection: RedshiftConnectionConfig) -> Engine:
+    """
+    Build a Redshift engine for IAM auth with no credential baked into the URL.
+
+    A ``do_connect`` listener injects a fresh credential from the manager on every
+    connection, so connections opened later in a long ingestion never authenticate
+    with an expired credential.
+    """
+    engine = create_generic_db_connection(
+        connection=connection,
+        get_connection_url_fn=get_redshift_connection_url,
+        get_connection_args_fn=get_connection_args_common,
+    )
+    manager = RedshiftIamCredentialManager(connection)
+
+    def _inject_iam_credentials(_dialect, _conn_rec, _cargs, cparams: dict) -> None:
+        credential = manager.get_credentials()
+        cparams["user"] = credential.user
+        cparams["password"] = credential.password
+
+    listen(engine, "do_connect", _inject_iam_credentials)
+    return engine
+
+
 def get_redshift_connection_url(connection: RedshiftConnectionConfig) -> str:
     """
     Build the Redshift connection URL.
-    Handles both basic auth and IAM auth.
-    """
-    if (
-        hasattr(connection, "authType")
-        and connection.authType
-        and isinstance(connection.authType, IamAuthConfigurationSource)
-    ):
-        username, password = _get_redshift_iam_credentials(connection)
 
+    For IAM auth the URL carries no credential; a ``do_connect`` listener injects a
+    fresh credential per connection (see ``_build_iam_engine``).
+    """
+    if _is_iam_auth(connection):
         url = f"{connection.scheme.value}://"
-        url += f"{quote_plus(username)}:{quote_plus(password)}@"
+        url += f"{quote_plus(connection.username)}@"
         url += connection.hostPort
         url += f"/{connection.database}" if connection.database else ""
 
@@ -389,11 +494,15 @@ class RedshiftChecks:
 
 class RedshiftConnection(BaseConnection[RedshiftConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
-        engine = create_generic_db_connection(
-            connection=self.service_connection,
-            get_connection_url_fn=get_redshift_connection_url,
-            get_connection_args_fn=get_connection_args_common,
-        )
+        connection = self.service_connection
+        if _is_iam_auth(connection):
+            engine = _build_iam_engine(connection)
+        else:
+            engine = create_generic_db_connection(
+                connection=connection,
+                get_connection_url_fn=get_redshift_connection_url,
+                get_connection_args_fn=get_connection_args_common,
+            )
         self._on_close(engine.dispose)
         return engine
 

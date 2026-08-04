@@ -14,7 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
@@ -25,8 +25,14 @@ import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
-const dashboard = new DashboardClass();
+// Explore tree's service bucket is capped at 166 and sorted alphabetically
+// (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
+// a digit guarantees these services land within that bucket regardless of how
+// many other `pw-*` services have accumulated.
+const table = new TableClass(undefined, undefined, {
+  name: `0-pw-database-service-${uuid()}`,
+});
+const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.

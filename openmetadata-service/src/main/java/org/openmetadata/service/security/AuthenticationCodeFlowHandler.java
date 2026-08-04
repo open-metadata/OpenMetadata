@@ -1086,12 +1086,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private String requireRedirectUri(String redirectUri) {
-    return org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-        redirectUri,
+    Set<String> trusted =
         trustedRedirects(
             authenticationConfiguration.getCallbackUrl(),
             serverUrl + "/auth/callback",
-            serverUrl + "/mcp/callback"));
+            serverUrl + "/mcp/callback");
+    trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
+    return org.openmetadata.service.security.SecurityUtil.validateRedirectUri(redirectUri, trusted);
   }
 
   private User getSessionUser(UserSession session) {

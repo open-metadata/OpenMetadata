@@ -243,10 +243,10 @@ jobs:
       toolchain: ${{ steps.fingerprints.outputs.toolchain }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -308,10 +308,10 @@ jobs:
           disable-reviews: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -428,7 +428,7 @@ jobs:
       lineage_representative_only: ${{ steps.select.outputs.lineage_representative_only }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -476,10 +476,10 @@ jobs:
       requires_airflow: ${{ steps.plan.outputs.requires_airflow }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -544,6 +544,7 @@ jobs:
         env:
           PLAYWRIGHT_IS_OSS: "true"
           PW_DEDICATED_INGESTION: "true"
+          PW_DEDICATED_IMPORT_EXPORT: "true"
           PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
           PW_LINEAGE_REPRESENTATIVE_ONLY: ${{ needs.detect-changes.outputs.lineage_representative_only }}
         run: |
@@ -551,6 +552,7 @@ jobs:
             --project=chromium \
             --project=Basic \
             --project=Ingestion \
+            --project=ImportExport \
             --project=DataAssetRulesEnabled \
             --project=DataAssetRulesDisabled \
             --project=SearchRBAC \
@@ -599,10 +601,10 @@ jobs:
       ingestion_cache_hit: ${{ steps.validate-ingestion.outputs.usable }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -726,10 +728,10 @@ jobs:
 
       - name: Checkout
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -786,6 +788,24 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
+      # Restore Playwright's Chromium system deps (fonts + xfonts) from the
+      # GH Actions cache before install-deps runs. On cache hit the action
+      # extracts the previously-installed files (~/usr/share/fonts and
+      # /var/cache/fontconfig) directly, so the subsequent `install-deps`
+      # sees every package as already-installed and skips fetching from the
+      # Ubuntu mirror entirely. This closes the failure mode where a slow
+      # Azure mirror hit chromium-18 with a 40 kB/s download and pushed the
+      # shard past the 30-min elapsed-before-upload gate (run 30788758311).
+      # `install-deps` still runs as a safety net so a Playwright version
+      # bump that adds a new dep does not silently miss it.
+      - name: Cache Playwright system deps
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        continue-on-error: true
+        with:
+          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
+          version: playwright-chromium-deps-v1
+
       - name: Install fixture-state browser
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -799,6 +819,7 @@ jobs:
         env:
           PLAYWRIGHT_IS_OSS: "true"
           PW_DEDICATED_INGESTION: "true"
+          PW_DEDICATED_IMPORT_EXPORT: "true"
         run: |
           npx playwright test --project=entity-data-setup --reporter=line
           test -s playwright/.auth/admin.json
@@ -900,7 +921,12 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budget breakdown: 20 min planner shard target + up to 25 min playwright
+    # timeout wrapper (line ~1090) + ~5-8 min for setup (env, node, browser,
+    # bundle verify) and teardown/artifact upload. 30 min was tight enough
+    # that slow shards were being cancelled by the job clock while playwright
+    # itself still had time on the inner wrapper; 35 gives real headroom.
+    timeout-minutes: 35
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
@@ -925,10 +951,10 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -1041,6 +1067,17 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
+      # Same rationale as the Cache Playwright system deps step in the
+      # fixture builder above — cache the Chromium system deps so every
+      # shard skips the ~30 s Ubuntu-mirror fetch (or a multi-minute crawl
+      # on a bad-mirror day, see run 30788758311).
+      - name: Cache Playwright system deps
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        continue-on-error: true
+        with:
+          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
+          version: playwright-chromium-deps-v1
+
       - name: Install Playwright Browsers
         id: install-browsers
         working-directory: openmetadata-ui/src/main/resources/ui/
@@ -1081,7 +1118,7 @@ jobs:
           jq '{shardId, lane, workers, predictedWorkerMs, predictedExecutionMs, testCount, projects, files: (.files | length)}' "$plan_file"
           started_at=$(date +%s)
           set +e
-          timeout --signal=TERM --kill-after=30s 21m \
+          timeout --signal=TERM --kill-after=30s 25m \
             npx playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
@@ -1393,7 +1430,7 @@ jobs:
       - name: Checkout
         id: checkout
         continue-on-error: true
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
@@ -1703,3 +1740,106 @@ jobs:
           path: ${{ runner.temp }}/playwright-pr-comment/summary.json
           retention-days: 5
           if-no-files-found: ignore
+
+  # Auto-refresh the checked-in timing baseline from every successful
+  # full-mode merge_group run. Without this, `.github/playwright/timing-baseline.json`
+  # only gets updated by hand — and it drifts fast (see PR #30871 for the
+  # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
+  #
+  # The step opens/updates a single tracked PR against `main`. A human still
+  # clicks merge — the auto-PR just eliminates the "regenerate the file"
+  # busywork.
+  #
+  # Guards:
+  #   * merge_group event only (skip on PR/schedule/dispatch — the ci-status
+  #     signal on merge_group is the safest known-good snapshot)
+  #   * full execution mode only (targeted PR plans do not exercise every
+  #     spec — a targeted refresh would lose coverage)
+  #   * playwright-summary success only (no partial data on gate failures)
+  #   * a drift cap in refresh_timing_baseline.py refuses > 40 % churn as a
+  #     safety valve against an accidentally-broken source run
+  refresh-timing-baseline:
+    name: Refresh timing baseline
+    needs: [detect-changes, playwright-summary]
+    if: |
+      always() &&
+      github.event_name == 'merge_group' &&
+      needs.detect-changes.outputs.mode == 'full' &&
+      needs.playwright-summary.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download timing history artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-timing-history-full-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/timing-history
+
+      - name: Locate merged history file
+        id: locate
+        run: |
+          history=$(find "$RUNNER_TEMP/timing-history" -name 'playwright-timing-history.json' -type f | head -1)
+          if [[ -z "$history" ]]; then
+            echo "No playwright-timing-history.json found under $RUNNER_TEMP/timing-history" >&2
+            find "$RUNNER_TEMP/timing-history" -type f >&2 || true
+            exit 1
+          fi
+          echo "history_path=$history" >> "$GITHUB_OUTPUT"
+
+      - name: Build refreshed baseline
+        run: |
+          python3 .github/scripts/refresh_timing_baseline.py \
+            --history "${{ steps.locate.outputs.history_path }}" \
+            --current .github/playwright/timing-baseline.json \
+            --output .github/playwright/timing-baseline.json \
+            --source-run-id "${{ github.run_id }}" \
+            --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
+
+      - name: Skip if baseline unchanged
+        id: diff
+        run: |
+          if git diff --quiet -- .github/playwright/timing-baseline.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push refresh branch and open/update PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          branch="ci/auto-refresh-timing-baseline"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          # Reset the tracked branch to the latest state — a single tracked
+          # PR gets updated across successive runs rather than accumulating
+          # one PR per merge_group.
+          git checkout -B "$branch"
+          git add .github/playwright/timing-baseline.json
+          git commit -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID}"
+          git push --force-with-lease origin "$branch"
+
+          summary_body="$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")"
+          pr_body=$(printf '## Summary\n\nAuto-refreshed from [merge_group run %s](%s).\n\n```\n%s\n```\n\nA human still clicks merge. If this drift looks unreasonable, close the PR — the next successful merge_group run will open a fresh one.\n' "$RUN_ID" "$RUN_URL" "$summary_body")
+          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number' || echo "")
+          if [[ -n "$existing" ]]; then
+            gh pr edit "$existing" --body "$pr_body"
+            echo "Updated existing PR #$existing"
+          else
+            gh pr create --base main --head "$branch" \
+              --title "chore(playwright): auto-refresh timing-baseline.json" \
+              --body "$pr_body"
+          fi

@@ -151,6 +151,7 @@ const SectionHeader = ({
   description,
   index,
   open,
+  sectionKey,
   title,
   onToggle,
 }: {
@@ -158,11 +159,13 @@ const SectionHeader = ({
   description: string;
   index?: number;
   open: boolean;
+  sectionKey: string;
   title: string;
   onToggle: () => void;
 }) => (
   <button
     className="tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+    data-testid={`ingestion-section-${sectionKey}-toggle`}
     type="button"
     onClick={() => {
       if (collapsible) {
@@ -308,6 +311,7 @@ const SectionCard = ({ section }: { section: IngestionSectionConfig }) => {
         description={section.description}
         index={section.index}
         open={showBody}
+        sectionKey={section.key}
         title={section.title}
         onToggle={() => setOpen((prev) => !prev)}
       />
@@ -366,7 +370,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           </Typography>
           <Button
             aria-label={t('label.add-entity', { entity: t('label.property') })}
-            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-[6px] tw:p-0 tw:leading-none"
+            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
             color="primary"
             size="sm"
             type="button"

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -39,6 +41,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -384,6 +387,53 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite fetched = client.testSuites().get(testSuite.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
     assertFalse(fetched.getOwners().isEmpty());
+  }
+
+  @Test
+  void get_byName_honorsIncludeRelations_hidesSoftDeletedOwner(TestNamespace ns) {
+    // The Test Suite detail page fetches getByName with includeRelations=owners:non-deleted so a
+    // soft-deleted owner is hidden and the owner-edit diff stays aligned with the server's
+    // NON_DELETED PATCH base - otherwise a positional patch throws "array item index out of range".
+    // getByName previously ignored includeRelations (unlike getById); this guards that wiring.
+    // See issue #30117.
+    OpenMetadataClient client = SdkClients.adminClient();
+    User active = UserTestFactory.createUser(ns, "aaa_active");
+    User doomed = UserTestFactory.createUser(ns, "zzz_doomed");
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_getbyname_includerel"));
+    request.setOwners(List.of(active.getEntityReference(), doomed.getEntityReference()));
+    String fqn = createEntity(request).getFullyQualifiedName();
+    client.users().delete(doomed.getId().toString());
+
+    // include=all with no includeRelations still surfaces the soft-deleted owner...
+    assertTrue(
+        ownerIdsByName(fqn, "").contains(doomed.getId()),
+        "include=all should surface the soft-deleted owner");
+
+    // ...but getByName must honor includeRelations=owners:non-deleted and filter it out.
+    List<UUID> filtered = ownerIdsByName(fqn, "&includeRelations=owners:non-deleted");
+    assertFalse(
+        filtered.contains(doomed.getId()),
+        "getByName must hide the soft-deleted owner when includeRelations=owners:non-deleted");
+    assertTrue(filtered.contains(active.getId()), "the active owner must remain");
+  }
+
+  private List<UUID> ownerIdsByName(String fqn, String extraQuery) {
+    String body =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/name/"
+                    + fqn
+                    + "?fields=owners&include=all"
+                    + extraQuery,
+                null);
+    List<UUID> ids = new ArrayList<>();
+    for (JsonNode owner : JsonUtils.readTree(body).path("owners")) {
+      ids.add(UUID.fromString(owner.path("id").asText()));
+    }
+    return ids;
   }
 
   @Test

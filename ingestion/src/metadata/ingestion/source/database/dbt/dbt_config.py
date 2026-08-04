@@ -230,8 +230,8 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
     dbt_run_results = None
     try:
         # pylint: disable=import-outside-toplevel
-        from metadata.ingestion.connections.source_api_client import TrackedREST  # noqa: PLC0415
-        from metadata.ingestion.ometa.client import ClientConfig  # noqa: PLC0415
+        from metadata.ingestion.connections.source_api_client import TrackedREST
+        from metadata.ingestion.ometa.client import ClientConfig
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -564,8 +564,8 @@ def _(config: DbtGcsConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         # pylint: disable=import-outside-toplevel
-        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError  # noqa: PLC0415
-        from google.cloud import storage  # noqa: PLC0415
+        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
+        from google.cloud import storage
 
         try:
             set_google_credentials(gcp_credentials=config.dbtSecurityConfig, single_project=True)
@@ -646,7 +646,7 @@ def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
         # pylint: disable=import-outside-toplevel
-        from azure.core.exceptions import AzureError, ClientAuthenticationError  # noqa: PLC0415
+        from azure.core.exceptions import AzureError, ClientAuthenticationError
 
         try:
             client = AzureClient(config.dbtSecurityConfig).create_blob_client()

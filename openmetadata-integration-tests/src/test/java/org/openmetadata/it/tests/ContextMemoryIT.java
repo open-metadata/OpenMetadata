@@ -10,7 +10,9 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -28,6 +30,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -59,18 +62,16 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
 
-  // Default to ENTITY (org-wide) visibility so the generic search-index tests have a searchable
-  // memory: only ENTITY memories are indexed — PRIVATE/SHARED are excluded at index time (see
-  // ContextMemoryRepository.isSearchIndexable / getReindexFilter). The exclusion is covered by
-  // privateAndSharedMemoriesAreExcludedFromSearchIndex below.
+  // No shareConfig, so these fall back to the default (PRIVATE) visibility. The generic
+  // search-index tests in BaseEntityIT therefore double as the regression guard that a restricted
+  // memory still reaches the index — visibility is enforced at query time, not at index time.
   @Override
   protected CreateContextMemory createMinimalRequest(TestNamespace ns) {
     return new CreateContextMemory()
         .withName(ns.prefix("context-memory"))
         .withDescription("Test context memory")
         .withQuestion("How do I find certified tables?")
-        .withAnswer("Filter the Explore page by the Certification tag.")
-        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+        .withAnswer("Filter the Explore page by the Certification tag.");
   }
 
   @Override
@@ -79,8 +80,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         .withName(name)
         .withDescription("Test context memory")
         .withQuestion("What is the data quality SLA?")
-        .withAnswer("Critical tables must pass tests every 24 hours.")
-        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+        .withAnswer("Critical tables must pass tests every 24 hours.");
   }
 
   @Override
@@ -422,76 +422,105 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertEquals(MemoryVisibility.PRIVATE, memory.getShareConfig().getVisibility());
   }
 
+  /**
+   * The ContextCenter serves its listing from search whenever it passes a query, filter, sort or
+   * offset — which it always does. Restricted memories must therefore reach the search index and be
+   * filtered per subject at query time: an owner and a shared principal see their own restricted
+   * memories, everyone else sees only the org-wide ones.
+   */
   @Test
-  void privateAndSharedMemoriesAreExcludedFromSearchIndex(TestNamespace ns) throws Exception {
-    ContextMemory privateMemory =
-        createEntity(memoryWithVisibility(ns, "private-mem", MemoryVisibility.PRIVATE));
-    ContextMemory sharedMemory =
-        createEntity(memoryWithVisibility(ns, "shared-mem", MemoryVisibility.SHARED));
-    // Create the ENTITY memory last. Once it is searchable, keep checking the earlier PRIVATE and
-    // SHARED memories across a stability window so delayed or out-of-order indexing cannot make the
-    // test pass before a leaked document appears.
-    ContextMemory entityMemory =
-        createEntity(memoryWithVisibility(ns, "entity-mem", MemoryVisibility.ENTITY));
+  void restrictedMemoriesAreSearchableByOwnerAndSharedPrincipalOnly(TestNamespace ns) {
+    ContextMemory ownedByUser1 =
+        createEntity(
+            memoryWithVisibility(ns, "owned-private", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemory sharedWithUser1 =
+        createEntity(
+            memoryWithVisibility(ns, "shared-with-user1", MemoryVisibility.SHARED)
+                .withShareConfig(
+                    new MemoryShareConfig()
+                        .withVisibility(MemoryVisibility.SHARED)
+                        .withSharedWith(
+                            List.of(new MemorySharedPrincipal().withPrincipal(testUser1Ref())))));
+    ContextMemory ownedByAdmin =
+        createEntity(memoryWithVisibility(ns, "admin-private", MemoryVisibility.PRIVATE));
+    ContextMemory orgWide =
+        createEntity(memoryWithVisibility(ns, "org-wide", MemoryVisibility.ENTITY));
 
-    Awaitility.await("ENTITY-visibility memory indexed")
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .atMost(Duration.ofSeconds(180))
-        .ignoreExceptions()
-        .untilAsserted(
-            () ->
-                assertTrue(
-                    searchForEntity(entityMemory.getId().toString())
-                        .contains(entityMemory.getId().toString()),
-                    "ENTITY-visibility memory must be searchable"));
+    // Admin bypasses the visibility filter, so an admin-visible listing containing all four is the
+    // barrier proving every document — restricted ones included — reached the index.
+    awaitSearchBackedListContains(
+        SdkClients.adminClient(),
+        List.of(ownedByUser1, sharedWithUser1, ownedByAdmin, orgWide),
+        "every memory must be indexed regardless of visibility");
 
-    Awaitility.await("PRIVATE and SHARED memories remain excluded")
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .during(Duration.ofSeconds(10))
-        .atMost(Duration.ofSeconds(30))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              assertFalse(
-                  searchForEntity(privateMemory.getId().toString())
-                      .contains(privateMemory.getId().toString()),
-                  "PRIVATE memory must not be in the search index");
-              assertFalse(
-                  searchForEntity(sharedMemory.getId().toString())
-                      .contains(sharedMemory.getId().toString()),
-                  "SHARED memory must not be in the search index");
-            });
+    Set<String> visibleToUser1 = searchBackedListIds(SdkClients.user1Client());
+
+    assertTrue(
+        visibleToUser1.contains(ownedByUser1.getId().toString()),
+        "an owner must find their own PRIVATE memory through the search-backed listing");
+    assertTrue(
+        visibleToUser1.contains(sharedWithUser1.getId().toString()),
+        "a shared principal must find the SHARED memory through the search-backed listing");
+    assertTrue(
+        visibleToUser1.contains(orgWide.getId().toString()),
+        "org-wide memories stay visible to everyone");
+    assertFalse(
+        visibleToUser1.contains(ownedByAdmin.getId().toString()),
+        "another user's PRIVATE memory must never surface");
   }
 
   @Test
-  void memoryVisibilityFlipAddsAndRemovesFromSearchIndex(TestNamespace ns) throws Exception {
+  void memoryStaysInSearchIndexAcrossVisibilityFlips(TestNamespace ns) throws Exception {
     ContextMemory memory = createEntity(memoryWithVisibility(ns, "flip", MemoryVisibility.ENTITY));
     String id = memory.getId().toString();
-    awaitSearchPresence(id, true, "ENTITY-visibility memory must be searchable");
+    awaitSearchPresence(id, "ENTITY-visibility memory must be searchable");
 
-    // Flip ENTITY -> PRIVATE: the live update must delete the doc from the index.
     ContextMemory toPrivate = getEntity(id);
     toPrivate.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
     patchEntity(id, toPrivate);
-    awaitSearchPresence(
-        id, false, "Memory flipped to PRIVATE must be removed from the search index");
+    awaitSearchPresence(id, "a memory flipped to PRIVATE stays indexed for its owner");
 
-    // Flip PRIVATE -> ENTITY: the live update must re-index the doc.
     ContextMemory toEntity = getEntity(id);
     toEntity.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
     patchEntity(id, toEntity);
-    awaitSearchPresence(id, true, "Memory flipped back to ENTITY must be searchable again");
+    awaitSearchPresence(id, "a memory flipped back to ENTITY stays searchable");
   }
 
-  private void awaitSearchPresence(String id, boolean present, String message) {
+  private void awaitSearchPresence(String id, String message) {
     Awaitility.await(message)
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
-        .untilAsserted(() -> assertEquals(present, searchForEntity(id).contains(id), message));
+        .untilAsserted(() -> assertTrue(searchForEntity(id).contains(id), message));
+  }
+
+  private void awaitSearchBackedListContains(
+      OpenMetadataClient client, List<ContextMemory> memories, String message) {
+    Awaitility.await(message)
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(180))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Set<String> listed = searchBackedListIds(client);
+              for (ContextMemory memory : memories) {
+                assertTrue(listed.contains(memory.getId().toString()), message);
+              }
+            });
+  }
+
+  /** Lists memories through the search-backed branch of the endpoint (offset forces it). */
+  private Set<String> searchBackedListIds(OpenMetadataClient client) {
+    ListParams params = new ListParams();
+    params.setLimit(1000);
+    params.setOffset(0);
+    return new ContextMemoryService(client.getHttpClient())
+        .list(params).getData().stream()
+            .map(memory -> memory.getId().toString())
+            .collect(Collectors.toSet());
   }
 
   private CreateContextMemory memoryWithVisibility(
@@ -500,7 +529,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         .withName(ns.prefix(name))
         .withDescription("Visibility indexing test")
         .withQuestion("Is this memory searchable?")
-        .withAnswer("Only when visibility is Entity.")
+        .withAnswer("Visibility is enforced at query time, not at index time.")
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }
 

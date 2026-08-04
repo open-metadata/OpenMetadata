@@ -43,8 +43,9 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     if (entity.getDeleted() != null && entity.getDeleted()) {
       return;
     }
-    if (!Entity.isSearchIndexable(entity)) {
+    if (!Entity.isVectorEmbeddable(entity)) {
       deleteChunks(entity);
+      clearEntityEmbedding(entity);
       return;
     }
     updateEmbedding(entity);
@@ -66,6 +67,23 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
       deleteChunks(entity);
     } else {
       updateEmbedding(entity);
+    }
+  }
+
+  /**
+   * Entity-doc embedding writes are partial merges, so an entity that stops being embeddable keeps
+   * its stale {@code embedding} — and stays kNN-matchable — unless the field is removed explicitly.
+   */
+  private void clearEntityEmbedding(EntityInterface entity) {
+    if (entity != null && entity.getId() != null && isSupported(entity)) {
+      try {
+        String entityIndexName = resolveEntityIndexName(extractEntityType(entity));
+        if (entityIndexName != null) {
+          vectorService.clearEntityEmbedding(entityIndexName, entity.getId().toString());
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to clear embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
+      }
     }
   }
 
@@ -92,7 +110,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     if (!isSupported(entity)) {
       return;
     }
-    if (!Entity.isSearchIndexable(entity)) {
+    if (!Entity.isVectorEmbeddable(entity)) {
       return;
     }
     try {

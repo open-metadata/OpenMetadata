@@ -16,7 +16,7 @@ Source connection handler
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import quote_plus
 
 from pydantic import ValidationError
@@ -57,7 +57,10 @@ from metadata.ingestion.source.database.hive.custom_hive_connection import (
     CustomHiveConnection,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import check_ssl_and_init
+
+logger = ingestion_logger()
 
 HIVE_POSTGRES_SCHEME = "hive+postgres"
 HIVE_MYSQL_SCHEME = "hive+mysql"
@@ -102,6 +105,15 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         connection = self.service_connection
 
+        # A configured metastore replaces HiveServer2 entirely: it reads the same catalog from the
+        # metastore database in bulk, so only one of the two engines is ever live.
+        metastore_conn = get_validated_metastore_connection(connection.metastoreConnection)
+        if metastore_conn:
+            connection.metastoreConnection = metastore_conn
+            metastore_engine = get_metastore_connection(metastore_conn)
+            self._on_close(metastore_engine.dispose)
+            return metastore_engine
+
         if connection.auth:
             auth_key = (
                 "auth"
@@ -125,11 +137,13 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
         if hasattr(connection, "useSSL") and connection.useSSL:
             self._connection_arguments_root(connection)["use_ssl"] = True
 
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
+        return engine
 
     @staticmethod
     def _connection_arguments_root(connection: HiveConnectionConfig) -> dict[str, Any]:
@@ -143,37 +157,58 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
-        engine = self.client
-        service_connection = self.service_connection
-        metastore_conn = service_connection.metastoreConnection
-
-        if metastore_conn:
-            if isinstance(metastore_conn, (PostgresConnection, MysqlConnection)):
-                engine = get_metastore_connection(metastore_conn)
-            elif isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-                try:
-                    service_connection.metastoreConnection = PostgresConnection.model_validate(metastore_conn)
-                except ValidationError:
-                    try:
-                        service_connection.metastoreConnection = MysqlConnection.model_validate(metastore_conn)
-                    except ValidationError:
-                        raise ValueError("Invalid metastore connection")  # noqa: B904
-                engine = get_metastore_connection(service_connection.metastoreConnection)
-
         return test_connection_db_schema_sources(
             metadata=metadata,
-            engine=engine,
-            service_connection=service_connection,
+            engine=self.client,
+            service_connection=self.service_connection,
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )
+
+
+def get_validated_metastore_connection(
+    metastore_connection: Any,
+) -> PostgresConnection | MysqlConnection | None:
+    """
+    Return the metastore connection as a validated model, or None when no metastore is configured.
+    """
+    validated = None
+    if isinstance(metastore_connection, (PostgresConnection, MysqlConnection)):
+        validated = metastore_connection
+    # Picking "None" for the metastore in the UI submits an empty object, which the server expands
+    # into a defaults-only payload carrying no hostPort. That means "no metastore", not a broken one.
+    elif isinstance(metastore_connection, dict) and metastore_connection.get("hostPort"):
+        validated = _validate_metastore_dict(metastore_connection)
+    return validated
+
+
+def _validate_metastore_dict(
+    metastore_connection: dict[str, Any],
+) -> PostgresConnection | MysqlConnection | None:
+    """
+    Validate a raw metastore payload against the supported metastore backends.
+    """
+    validated = None
+    for candidate in (PostgresConnection, MysqlConnection):
+        try:
+            validated = candidate.model_validate(metastore_connection)
+            break
+        except ValidationError:
+            continue
+
+    if validated is None:
+        logger.warning(
+            "Ignoring the Hive metastore connection: it matches neither a Postgres nor a MySQL "
+            "metastore. Falling back to HiveServer2 for metadata extraction."
+        )
+    return validated
 
 
 @singledispatch
@@ -188,7 +223,7 @@ def get_metastore_connection(connection: Any) -> Engine:
 def _(connection: PostgresConnection):
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
-    from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (  # nopycln: import  # noqa: PLC0415
+    from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (  # nopycln: import
         HivePostgresMetaStoreDialect,  # noqa: F401
     )
 
@@ -196,7 +231,7 @@ def _(connection: PostgresConnection):
         HIVE_POSTGRES = HIVE_POSTGRES_SCHEME
 
     class CustomPostgresConnection(PostgresConnection):
-        scheme: Optional[CustomPostgresScheme]  # noqa: UP045
+        scheme: CustomPostgresScheme | None
 
     connection_copy = deepcopy(connection.__dict__)
     connection_copy["scheme"] = CustomPostgresScheme.HIVE_POSTGRES
@@ -214,7 +249,7 @@ def _(connection: PostgresConnection):
 def _(connection: MysqlConnection):
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
-    from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (  # nopycln: import  # noqa: PLC0415
+    from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (  # nopycln: import
         HiveMysqlMetaStoreDialect,  # noqa: F401
     )
 
@@ -222,7 +257,7 @@ def _(connection: MysqlConnection):
         HIVE_MYSQL = HIVE_MYSQL_SCHEME
 
     class CustomMysqlConnection(MysqlConnection):
-        scheme: Optional[CustomMysqlScheme]  # noqa: UP045
+        scheme: CustomMysqlScheme | None
 
     connection_copy = deepcopy(connection.__dict__)
     connection_copy["scheme"] = CustomMysqlScheme.HIVE_MYSQL

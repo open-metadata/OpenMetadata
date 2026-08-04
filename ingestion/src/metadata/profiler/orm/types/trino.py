@@ -27,7 +27,7 @@ logger = ingestion_logger()
 class TrinoTypesMixin:
     def process_result_value(self, value: Any, dialect: Dialect) -> Any:
         # pylint: disable=import-outside-toplevel
-        from trino.types import NamedRowTuple  # noqa: PLC0415
+        from trino.types import NamedRowTuple
 
         def _convert_value(obj: Any) -> Any:
             if isinstance(obj, NamedRowTuple):
