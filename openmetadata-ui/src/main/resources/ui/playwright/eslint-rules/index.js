@@ -16,6 +16,7 @@
 const requireResponseListenerBeforeAction = require('./require-response-listener-before-action.js');
 const noBlanketTestSlow = require('./no-blanket-test-slow.js');
 const requireAssertionPerTest = require('./require-assertion-per-test.js');
+const noPositionalLocator = require('./no-positional-locator.js');
 
 module.exports = {
   rules: {
@@ -23,5 +24,6 @@ module.exports = {
       requireResponseListenerBeforeAction,
     'no-blanket-test-slow': noBlanketTestSlow,
     'require-assertion-per-test': requireAssertionPerTest,
+    'no-positional-locator': noPositionalLocator,
   },
 };
