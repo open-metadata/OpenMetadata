@@ -68,6 +68,7 @@ export const DOMAIN_DUMMY_DATA: Domain = {
       fullyQualifiedName: 'brittney_thomas3',
       displayName: 'Brittney Thomas',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/users/9a6687fa-8bd5-446c-aa8f-81416c88fe67',
     },
   ],

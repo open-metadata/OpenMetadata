@@ -110,6 +110,7 @@ const mockData = {
     storage: 's3://path-to-pickle',
     imageRepository: 'https://docker.hub.com/image',
   },
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a network call
   server: 'http://my-server.ai',
   href: 'http://localhost:8585/api/v1/mlmodels/1b561c2d-f449-4640-b893-94077cf1c35b',
   followers: [],

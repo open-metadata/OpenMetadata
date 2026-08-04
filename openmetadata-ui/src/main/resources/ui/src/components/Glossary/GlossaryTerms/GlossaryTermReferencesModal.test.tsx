@@ -105,6 +105,7 @@ describe('GlossaryTermReferencesModal', () => {
     await act(async () => {
       fireEvent.change(nameInputs[0], { target: { value: 'BBC' } });
       fireEvent.change(endpointInputs[0], {
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test input fixture, not a network call
         target: { value: 'http://www.bbc.co.uk' },
       });
 
@@ -112,6 +113,7 @@ describe('GlossaryTermReferencesModal', () => {
     });
 
     expect(mockOnSave).toHaveBeenCalledWith([
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test expectation fixture, not a network call
       { name: 'BBC', endpoint: 'http://www.bbc.co.uk' },
     ]);
   });

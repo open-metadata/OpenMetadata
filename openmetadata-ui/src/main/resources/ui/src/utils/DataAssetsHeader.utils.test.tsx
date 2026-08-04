@@ -330,6 +330,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.server');
     expect(JSON.stringify(assetData.extraInfo)).toContain(
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a network call
       'http://my-server.ai'
     );
 
@@ -374,6 +375,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       'label.server'
     );
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a network call
       'http://my-server.ai'
     );
 

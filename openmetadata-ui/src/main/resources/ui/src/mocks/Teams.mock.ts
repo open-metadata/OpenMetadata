@@ -33,6 +33,7 @@ export const MOCK_CURRENT_TEAM = {
         'Users with Data Consumer role use different data assets for their day to day work.',
       displayName: 'Data Consumer',
       fullyQualifiedName: 'DataConsumer',
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
       id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
       name: 'DataConsumer',
@@ -44,6 +45,7 @@ export const MOCK_CURRENT_TEAM = {
     'Organization under which all the other team hierarchy is created',
   displayName: 'Organization',
   fullyQualifiedName: 'Organization',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/f9578f16-363a-4788-80fb-d05816c9e169',
   id: 'f9578f16-363a-4788-80fb-d05816c9e169',
   inheritedRoles: [],
@@ -57,6 +59,7 @@ export const MOCK_CURRENT_TEAM = {
       description: 'Policy for all the users of an organization.',
       displayName: 'Organization Policy',
       fullyQualifiedName: 'OrganizationPolicy',
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/policies/09f4480c-ef57-4239-b2aa-c87053ad4f46',
       id: '09f4480c-ef57-4239-b2aa-c87053ad4f46',
       name: 'OrganizationPolicy',
@@ -118,6 +121,7 @@ export const MOCK_TABLE_DATA = [
     defaultRoles: [],
     deleted: false,
     fullyQualifiedName: 'Engineering',
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/49d060a2-ad14-48a7-840a-836cd99aaffb',
     id: '49d060a2-ad14-48a7-840a-836cd99aaffb',
     inheritedRoles: [
@@ -127,6 +131,7 @@ export const MOCK_TABLE_DATA = [
           'Users with Data Consumer role use different data assets for their day to day work.',
         displayName: 'Data Consumer',
         fullyQualifiedName: 'DataConsumer',
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
         id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
         name: 'DataConsumer',
@@ -148,6 +153,7 @@ export const MOCK_TABLE_DATA = [
     defaultRoles: [],
     deleted: false,
     fullyQualifiedName: 'Finance',
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/b201a5b2-b0e8-461d-9fa1-cd5212d09eee',
     id: 'b201a5b2-b0e8-461d-9fa1-cd5212d09eee',
     inheritedRoles: [
@@ -157,6 +163,7 @@ export const MOCK_TABLE_DATA = [
           'Users with Data Consumer role use different data assets for their day to day work.',
         displayName: 'Data Consumer',
         fullyQualifiedName: 'DataConsumer',
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
         id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
         name: 'DataConsumer',
@@ -178,6 +185,7 @@ export const MOCK_TABLE_DATA = [
     defaultRoles: [],
     deleted: false,
     fullyQualifiedName: 'Legal',
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/e64afbd0-aab5-4aed-952d-c5a5b8ba06bb',
     id: 'e64afbd0-aab5-4aed-952d-c5a5b8ba06bb',
     inheritedRoles: [
@@ -187,6 +195,7 @@ export const MOCK_TABLE_DATA = [
           'Users with Data Consumer role use different data assets for their day to day work.',
         displayName: 'Legal',
         fullyQualifiedName: 'Legal',
+        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
         id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
         name: 'Legal',

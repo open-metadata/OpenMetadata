@@ -44,11 +44,13 @@ export const MOCK_TAG_DATA = {
     description: 'advanceSearch',
     displayName: '',
     deleted: false,
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/classifications/16c5865a-8804-4474-a1dd-14ee9da443b2',
   },
   version: 0.1,
   updatedAt: 1704261482857,
   updatedBy: 'ashish',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://sandbox-beta.open-metadata.org/api/v1/tags/e8bc85c8-a87f-471c-872e-46904c5ea888',
   deprecated: false,
   deleted: false,

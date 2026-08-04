@@ -89,12 +89,15 @@ const fullFile: ContextFile = {
   updatedAt: Date.now() - 60000,
 };
 
+// eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+const MOCK_FILE_URL = 'http://x';
+
 describe('DocumentPreviewPanel', () => {
   it('renders the preview panel container', () => {
     render(
       <DocumentPreviewPanel
         file={baseFile}
-        url="http://x"
+        url={MOCK_FILE_URL}
         onClose={jest.fn()}
       />
     );
@@ -106,7 +109,7 @@ describe('DocumentPreviewPanel', () => {
     render(
       <DocumentPreviewPanel
         file={baseFile}
-        url="http://x"
+        url={MOCK_FILE_URL}
         onClose={jest.fn()}
       />
     );
@@ -120,7 +123,7 @@ describe('DocumentPreviewPanel', () => {
     render(
       <DocumentPreviewPanel
         file={{ ...baseFile, displayName: 'Report Display Name' }}
-        url="http://x"
+        url={MOCK_FILE_URL}
         onClose={jest.fn()}
       />
     );
@@ -134,7 +137,7 @@ describe('DocumentPreviewPanel', () => {
     render(
       <DocumentPreviewPanel
         file={baseFile}
-        url="http://x"
+        url={MOCK_FILE_URL}
         onClose={jest.fn()}
       />
     );
@@ -146,7 +149,7 @@ describe('DocumentPreviewPanel', () => {
     render(
       <DocumentPreviewPanel
         file={baseFile}
-        url="http://x"
+        url={MOCK_FILE_URL}
         onClose={jest.fn()}
       />
     );
@@ -158,7 +161,7 @@ describe('DocumentPreviewPanel', () => {
     render(
       <DocumentPreviewPanel
         file={fullFile}
-        url="http://x"
+        url={MOCK_FILE_URL}
         onClose={jest.fn()}
       />
     );
@@ -171,7 +174,7 @@ describe('DocumentPreviewPanel', () => {
     render(
       <DocumentPreviewPanel
         file={baseFile}
-        url="http://x"
+        url={MOCK_FILE_URL}
         onClose={jest.fn()}
       />
     );
@@ -183,7 +186,11 @@ describe('DocumentPreviewPanel', () => {
   it('calls onClose when the close button is clicked', () => {
     const onClose = jest.fn();
     render(
-      <DocumentPreviewPanel file={baseFile} url="http://x" onClose={onClose} />
+      <DocumentPreviewPanel
+        file={baseFile}
+        url={MOCK_FILE_URL}
+        onClose={onClose}
+      />
     );
 
     fireEvent.click(screen.getByTestId('close-preview-btn'));

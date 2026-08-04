@@ -107,6 +107,7 @@ const createMockPost = (from: string, message: string): Post => ({
 
 const createMockFeed = (): Thread => ({
   id: 'thread-123',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a network call
   href: 'http://test',
   threadTs: 1234567890,
   about: '<#E::table::test>',

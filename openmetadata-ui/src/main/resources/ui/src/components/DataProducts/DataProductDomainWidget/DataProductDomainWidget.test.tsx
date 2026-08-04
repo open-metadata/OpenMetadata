@@ -85,6 +85,7 @@ describe('DataProductDomainWidget', () => {
       fullyQualifiedName: 'target',
       displayName: 'Target',
       description: 'should be stripped',
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://ignored',
       deleted: false,
       inherited: false,

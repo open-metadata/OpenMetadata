@@ -233,6 +233,7 @@ jest.mock('../../../common/TestConnection/TestConnection', () =>
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getPipelineServiceHostIp: jest.fn().mockReturnValue({
+    // eslint-disable-next-line sonarjs/no-hardcoded-ip -- test fixture / mock IP
     data: { ip: '192.168.0.1' },
     status: 200,
   }),

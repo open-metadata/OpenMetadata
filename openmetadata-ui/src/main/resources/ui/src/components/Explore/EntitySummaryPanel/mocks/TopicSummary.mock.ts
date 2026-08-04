@@ -28,6 +28,7 @@ export const mockTopicEntityDetails: Topic = {
   version: 0.1,
   updatedAt: 1672627828429,
   updatedBy: 'admin',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://openmetadata-server:8585/api/v1/topics/67e1dbbb-054c-4833-ba28-f95d71f0826f',
   deleted: false,
   service: {
@@ -36,6 +37,7 @@ export const mockTopicEntityDetails: Topic = {
     name: 'sample_kafka',
     fullyQualifiedName: 'sample_kafka',
     deleted: false,
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://openmetadata-server:8585/api/v1/services/messagingServices/5d6f73f0-1811-49c8-8d1d-7a478ffd8177',
   },
   partitions: 0,

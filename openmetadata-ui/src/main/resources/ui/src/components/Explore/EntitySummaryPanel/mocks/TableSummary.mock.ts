@@ -30,6 +30,7 @@ export const mockTableEntityDetails: Table = {
   version: 0.2,
   updatedAt: 1672668265493,
   updatedBy: 'admin',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://openmetadata-server:8585/api/v1/tables/8dd1f238-6ba0-46c6-a091-7db81f2a6bed',
   columns: [
     {
