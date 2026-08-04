@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { KPIData } from '../constant/dataInsight.interface';
 import { descriptionBox } from './common';
 
@@ -24,6 +24,72 @@ export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
       );
     }
   }
+};
+
+export const runDataInsightApplication = async (
+  page: Page,
+  apiRequest: APIRequestContext
+) => {
+  await expect(
+    await apiRequest.patch(
+      '/api/v1/apps/marketplace/name/DataInsightsApplication',
+      {
+        data: [
+          {
+            op: 'replace',
+            path: '/appConfiguration/batchSize',
+            value: 1000,
+          },
+          {
+            op: 'replace',
+            path: '/appConfiguration/recreateDataAssetsIndex',
+            value: false,
+          },
+          {
+            op: 'replace',
+            path: '/appConfiguration/backfillConfiguration/enabled',
+            value: false,
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    )
+  ).toBeOK();
+
+  await expect(
+    await apiRequest.post('/api/v1/apps/trigger/DataInsightsApplication')
+  ).toBeOK();
+
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to start before polling status
+  await page.waitForTimeout(2000);
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiRequest
+          .get(
+            '/api/v1/apps/name/DataInsightsApplication/status?offset=0&limit=1'
+          )
+          .then((res) => res.json());
+
+        return response.data[0].status;
+      },
+      {
+        message: 'Wait for the Data Insight Application run to be successful',
+        ...(process.env.PLAYWRIGHT_IS_OSS
+          ? {
+              timeout: 120_000,
+              intervals: [5_000, 10_000],
+            }
+          : {
+              timeout: 5_400_000,
+              intervals: [300_000, 300_000, 120_000],
+            }),
+      }
+    )
+    .toEqual(expect.stringMatching(/(success|partialSuccess)/));
 };
 
 export const addKpi = async (page: Page, data: KPIData) => {
