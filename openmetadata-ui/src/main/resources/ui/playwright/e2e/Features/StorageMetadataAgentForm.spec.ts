@@ -285,9 +285,7 @@ test.describe(
       page,
     }) => {
       await openAutoClassificationAgentForm(page, acService);
-      await page
-        .getByTestId('ingestion-section-advanced-toggle')
-        .click();
+      await page.getByTestId('ingestion-section-advanced-toggle').click();
       const confidenceField = page.locator('#root\\/confidence');
       await confidenceField.clear();
       await confidenceField.fill('1000');
@@ -321,9 +319,7 @@ test.describe(
       page,
     }) => {
       await openAutoClassificationAgentForm(page, acService);
-      await page
-        .getByTestId('ingestion-section-advanced-toggle')
-        .click();
+      await page.getByTestId('ingestion-section-advanced-toggle').click();
 
       const sampleCountField = page.locator('#root\\/sampleDataCount');
       await sampleCountField.clear();
