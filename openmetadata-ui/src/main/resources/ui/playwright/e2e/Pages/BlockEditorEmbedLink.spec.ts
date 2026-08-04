@@ -58,7 +58,7 @@ test.beforeEach(async ({ page }) => {
  * Fix: pass the error through Input's own `hint` prop so the HintText is rendered
  * inside Input's own AriaTextField where the errorMessage slot is valid.
  */
-test.describe('BlockEditor embed-link form', () => {
+test.describe('BlockEditor embed-link form', { tag: ['@Discovery'] }, () => {
   test('entering an invalid URL shows validation error and does not crash the editor', async ({
     page,
   }) => {
