@@ -13,7 +13,11 @@
 import { expect } from '@playwright/test';
 import { SLASH_COMMANDS } from '../../constant/KnowledgeCenter.constant';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, descriptionBox, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  descriptionBox,
+  redirectToHomePage,
+} from '../../utils/common';
 import { executeSlashCommand } from '../../utils/KnowledgeCenter';
 import { test } from '../fixtures/pages';
 
