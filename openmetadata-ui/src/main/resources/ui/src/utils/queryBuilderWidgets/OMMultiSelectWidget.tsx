@@ -55,7 +55,23 @@ const OMMultiSelectWidget = ({
     [JSON.stringify(listValues ?? null)]
   );
 
-  const [asyncItems, setAsyncItems] = useState<SelectItemType[]>([]);
+  // Accumulate every fetched option in a bounded, id-keyed map. Async results
+  // are additive: a later fetch — the eager default ('') seed, or a transient
+  // empty value react-aria emits on focus/blur — can only ADD entries, never
+  // drop the option the user just searched for. That makes the widget immune to
+  // the order in which react-aria fires searches, which under load caused the
+  // list to snap back to the unfiltered default catalogue mid-selection (the
+  // server did return the typed option; the default reload simply overwrote it).
+  // The list is shown unfiltered (see filterOption below), so once the typed
+  // option has been fetched it stays selectable regardless of later fetches.
+  const ASYNC_ITEM_CAP = 500;
+  const [asyncItemMap, setAsyncItemMap] = useState<Map<string, SelectItemType>>(
+    () => new Map()
+  );
+  const asyncItems = useMemo(
+    () => Array.from(asyncItemMap.values()),
+    [asyncItemMap]
+  );
   const allItems = isAsync ? asyncItems : staticItems;
 
   const selectedItems = useMemo(
@@ -67,42 +83,43 @@ const OMMultiSelectWidget = ({
     [valueArray.join(','), allItems]
   );
 
-  // The search string of the most recent fetch request. A response may only
-  // publish its results if the user is still searching for that exact string,
-  // so a slower or later request — in particular the eager default ('') load
-  // or a transient empty value emitted by react-aria — can never overwrite the
-  // options for what the user has actually typed. Keying on the search string
-  // (rather than a monotonic counter) is what makes this safe: with a counter,
-  // a late '' request has the highest id and wins, repopulating the list with
-  // the unfiltered default catalogue while the input still holds the query.
-  const latestSearchRef = useRef<string | null>(null);
-
   const loadAsync = useCallback(
     async (search: string) => {
       if (!asyncFetch) {
         return;
       }
-      latestSearchRef.current = search;
       const result = await asyncFetch(search);
-      if (latestSearchRef.current !== search) {
+      const fetched = (result.values as ListItem[]).map((item) => ({
+        id: String(item.value),
+        label: String(item.title ?? item.value),
+      }));
+      if (fetched.length === 0) {
         return;
       }
-      setAsyncItems(
-        (result.values as ListItem[]).map((item) => ({
-          id: String(item.value),
-          label: String(item.title ?? item.value),
-        }))
-      );
+      setAsyncItemMap((prev) => {
+        const next = new Map(prev);
+        fetched.forEach((item) => {
+          // Re-insert so the entry counts as most-recently-seen for eviction.
+          next.delete(item.id);
+          next.set(item.id, item);
+        });
+        while (next.size > ASYNC_ITEM_CAP) {
+          const oldest = next.keys().next().value;
+          if (oldest === undefined) {
+            break;
+          }
+          next.delete(oldest);
+        }
+
+        return next;
+      });
     },
     [asyncFetch]
   );
 
-  // Seed the default catalogue exactly once when async search activates. Keying
-  // this on the field config (which react-awesome-query-builder rebuilds on
-  // every rule re-render) re-ran the effect mid-interaction, and its
-  // setAsyncItems([]) + loadAsync('') wiped the options the user had just
-  // narrowed to. The value widget remounts when the field itself changes, so a
-  // once-per-mount seed still refreshes for a new field.
+  // Seed the default catalogue once when async search activates so the list has
+  // options before the user types. Results accumulate, so this can never
+  // clobber a query already in progress.
   const didSeedRef = useRef(false);
 
   useEffect(() => {
@@ -137,8 +154,12 @@ const OMMultiSelectWidget = ({
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}
       onItemInserted={handleItemInserted}
-      // For async catalogues the results are already filtered server-side, so
-      // skip the built-in client filter and drive fetches from the search box.
+      // Results are filtered server-side, so keep the built-in client filter
+      // off (filterOption: () => true) — the option label need not literally
+      // contain the raw query (e.g. an owner's display name vs the typed value),
+      // and client-filtering it would wrongly hide valid server matches. The
+      // accumulated result set keeps the typed option present regardless of any
+      // later default ('') fetch, so the list always still contains it.
       {...(isAsync
         ? { filterOption: () => true, onSearchChange: loadAsync }
         : {})}>
