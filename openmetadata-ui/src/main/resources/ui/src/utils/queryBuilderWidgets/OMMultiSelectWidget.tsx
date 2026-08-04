@@ -45,30 +45,21 @@ const OMMultiSelectWidget = ({
   listValues,
   asyncFetch,
   useAsyncSearch,
+  field,
 }: MultiSelectWidgetProps) => {
   const valueArray = Array.isArray(value) ? value.map(String) : [];
   const isAsync = Boolean(useAsyncSearch && asyncFetch);
+  const fieldKey = typeof field === 'string' ? field : JSON.stringify(field);
 
-  // Static options come straight from the current field's `listValues`. RAQB
-  // reuses this widget instance when the rule's field changes (Owners -> Tier),
-  // so deriving the options from props each render — instead of caching them in
-  // state on mount — is what makes the dropdown reflect the newly selected
-  // field instead of the previous one. Keyed on serialized content so the
-  // memoized reference stays stable across content-equal renders (a new array
-  // each render would retrigger Autocomplete's selectedItems effect in a loop).
   const staticItems = useMemo(
     () => toSelectItems(listValues),
 
     [JSON.stringify(listValues ?? null)]
   );
 
-  // Async fields fetch their catalogue on demand; kept separate from the static
-  // list so switching between async and static fields can't cross-contaminate.
   const [asyncItems, setAsyncItems] = useState<SelectItemType[]>([]);
   const allItems = isAsync ? asyncItems : staticItems;
 
-  // Resolve the selected ids into items using the current catalogue; ids not
-  // yet present (async results still loading) fall back to the raw id.
   const selectedItems = useMemo(
     () =>
       valueArray.map(
@@ -101,25 +92,12 @@ const OMMultiSelectWidget = ({
     [asyncFetch]
   );
 
-  // Reload the default catalogue only when the FIELD changes — never on the
-  // config churn a value selection causes. RAQB rebuilds `asyncFetch` on every
-  // tree change (selecting a value, adding a rule to a group, …), so keying the
-  // reload on its identity alone would refetch the unfiltered `''` list
-  // mid-interaction and clobber the user's active search (that late `''` fetch
-  // wins the requestId race). A field change clears the rule's value, whereas a
-  // selection leaves it non-empty — so gate the reload on an empty value.
-  const lastAsyncFetchRef = useRef<MultiSelectWidgetProps['asyncFetch']>();
   useEffect(() => {
-    if (!isAsync) {
-      return;
-    }
-    const fieldChanged = lastAsyncFetchRef.current !== asyncFetch;
-    lastAsyncFetchRef.current = asyncFetch;
-    if (fieldChanged && valueArray.length === 0) {
+    if (isAsync) {
       setAsyncItems([]);
       loadAsync('');
     }
-  }, [isAsync, asyncFetch, valueArray.length, loadAsync]);
+  }, [fieldKey, isAsync]);
 
   const handleItemInserted = useCallback(
     (key: Key) => {

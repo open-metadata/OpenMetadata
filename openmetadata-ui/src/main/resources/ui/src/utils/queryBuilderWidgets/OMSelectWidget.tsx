@@ -45,10 +45,12 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   listValues,
   asyncFetch,
   useAsyncSearch,
+  field,
 }) => {
   const staticItems = toSelectItems(listValues);
   const [items, setItems] = useState<SelectItemType[]>(staticItems);
   const requestIdRef = useRef(0);
+  const fieldKey = typeof field === 'string' ? field : JSON.stringify(field);
 
   const loadAsync = useCallback(
     async (search: string) => {
@@ -71,27 +73,11 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
     [asyncFetch]
   );
 
-  // Reload the default catalogue only when the FIELD changes — never on the
-  // config churn a value selection causes. RAQB rebuilds `asyncFetch` on every
-  // tree change (selecting a value, adding a rule to a group, …), so keying the
-  // reload on its identity alone would refetch the unfiltered `''` list
-  // mid-interaction and clobber the user's active search (that late `''` fetch
-  // wins the requestId race). A field change clears the rule's value, whereas a
-  // selection leaves it set — so gate the reload on an empty value.
-  const lastAsyncFetchRef = useRef<SelectWidgetProps['asyncFetch']>();
   useEffect(() => {
-    if (!useAsyncSearch || !asyncFetch) {
-      return;
-    }
-    const fieldChanged = lastAsyncFetchRef.current !== asyncFetch;
-    lastAsyncFetchRef.current = asyncFetch;
-    if (
-      fieldChanged &&
-      (value === null || value === undefined || value === '')
-    ) {
+    if (useAsyncSearch && asyncFetch) {
       loadAsync('');
     }
-  }, [useAsyncSearch, asyncFetch, value, loadAsync]);
+  }, [fieldKey, useAsyncSearch]);
 
   if (useAsyncSearch && asyncFetch) {
     return (
