@@ -101,6 +101,18 @@ describe('MetricSemanticList', () => {
     ).toHaveTextContent('TIME');
   });
 
+  it('renders the item count beside the title', () => {
+    renderList();
+
+    expect(screen.getByTestId('semantic-list-count')).toHaveTextContent('2');
+  });
+
+  it('hides the item count when there are no items', () => {
+    renderList({ items: [] });
+
+    expect(screen.queryByTestId('semantic-list-count')).not.toBeInTheDocument();
+  });
+
   it('hides the edit button when the user lacks permission', () => {
     setContext({ permissions: { EditAll: false, EditDescription: false } });
     renderList();

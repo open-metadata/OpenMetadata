@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,56 +85,59 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
       const badge = getBadge(item);
 
       return (
-        <div
-          className="tw:flex tw:flex-col tw:gap-1 tw:border-b tw:border-border-secondary tw:py-3 tw:last:border-b-0"
+        <Box
+          className="tw:border-b tw:border-secondary tw:py-3 tw:last:border-b-0"
           data-testid={`semantic-item-${item.name}`}
+          direction="col"
+          gap={1}
           key={item.name}>
-          <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
-            <Typography as="span" size="text-sm" weight="semibold">
-              {item.name}
-            </Typography>
-            {badge && (
-              <Badge
-                color="gray"
-                data-testid={`semantic-item-badge-${item.name}`}
-                size="sm">
-                {badge}
-              </Badge>
-            )}
-            {item.expression && (
-              <Typography
-                as="code"
-                className="tw:truncate tw:rounded tw:bg-bg-secondary tw:px-1.5 tw:py-0.5 tw:font-mono tw:text-tertiary"
-                size="text-xs"
-                title={item.expression}>
-                {item.expression}
+          <Box align="center" gap={2} justify="between">
+            <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
+              <Typography as="span" size="text-sm" weight="semibold">
+                {item.name}
               </Typography>
-            )}
-          </div>
-          <div className="tw:flex tw:items-start tw:gap-2">
-            <div className="tw:min-w-0 tw:flex-1">
-              {isEmpty(item.description) ? (
+              {badge && (
+                <Badge
+                  color="blue"
+                  data-testid={`semantic-item-badge-${item.name}`}
+                  size="sm">
+                  {badge}
+                </Badge>
+              )}
+            </Box>
+            <Box align="center" className="tw:shrink-0" gap={2}>
+              {item.expression && (
                 <Typography
                   as="span"
-                  className="tw:text-placeholder"
-                  size="text-xs">
-                  {t('label.no-description')}
+                  className="tw:inline-block tw:max-w-xs tw:truncate tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:px-2 tw:py-1 tw:text-secondary"
+                  size="text-xs"
+                  title={item.expression}
+                  weight="regular">
+                  {item.expression}
                 </Typography>
-              ) : (
-                <RichTextEditorPreviewNew markdown={item.description ?? ''} />
               )}
-            </div>
-            {hasEditPermission && (
-              <WidgetEditButton
-                data-testid={`edit-description-${item.name}`}
-                title={t('label.edit-entity', {
-                  entity: t('label.description'),
-                })}
-                onClick={() => setSelectedItem(item)}
-              />
-            )}
-          </div>
-        </div>
+              {hasEditPermission && (
+                <WidgetEditButton
+                  data-testid={`edit-description-${item.name}`}
+                  title={t('label.edit-entity', {
+                    entity: t('label.description'),
+                  })}
+                  onClick={() => setSelectedItem(item)}
+                />
+              )}
+            </Box>
+          </Box>
+          {isEmpty(item.description) ? (
+            <Typography
+              as="span"
+              className="tw:text-placeholder"
+              size="text-xs">
+              {t('label.no-description')}
+            </Typography>
+          ) : (
+            <RichTextEditorPreviewNew markdown={item.description ?? ''} />
+          )}
+        </Box>
       );
     },
     [getBadge, hasEditPermission, t]
@@ -143,6 +146,17 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
   return (
     <WidgetCard
       dataTestId={dataTestId}
+      headerExtra={
+        isEmpty(items) ? undefined : (
+          <Badge
+            color="gray"
+            data-testid="semantic-list-count"
+            size="sm"
+            type="color">
+            {items.length}
+          </Badge>
+        )
+      }
       isExpandDisabled={isEmpty(items)}
       title={title}>
       {!isEmpty(items) && (

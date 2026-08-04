@@ -142,6 +142,12 @@ test.describe(
       await expect(page.getByTestId('semantic-item-engagements')).toBeVisible();
 
       await expect(
+        page
+          .getByTestId('metric-dimensions-widget')
+          .getByTestId('semantic-list-count')
+      ).toHaveText('2');
+
+      await expect(
         page.getByTestId('semantic-item-badge-order_date')
       ).toContainText('TIME');
       await expect(
