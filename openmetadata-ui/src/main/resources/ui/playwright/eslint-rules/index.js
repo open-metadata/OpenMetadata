@@ -13,6 +13,11 @@
 
 'use strict';
 
+const requireResponseListenerBeforeAction = require('./require-response-listener-before-action.js');
+
 module.exports = {
-  rules: {},
+  rules: {
+    'require-response-listener-before-action':
+      requireResponseListenerBeforeAction,
+  },
 };
