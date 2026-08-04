@@ -305,6 +305,11 @@
       "count": 1
     }
   },
+  "playwright/e2e/nightly/ServiceIngestion.spec.ts": {
+    "om-playwright/require-assertion-per-test": {
+      "count": 1
+    }
+  },
   "playwright/utils/ContextCenterUtil.ts": {
     "playwright/no-wait-for-timeout": {
       "count": 2

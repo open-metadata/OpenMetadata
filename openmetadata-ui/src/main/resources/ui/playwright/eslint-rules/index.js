@@ -15,11 +15,13 @@
 
 const requireResponseListenerBeforeAction = require('./require-response-listener-before-action.js');
 const noBlanketTestSlow = require('./no-blanket-test-slow.js');
+const requireAssertionPerTest = require('./require-assertion-per-test.js');
 
 module.exports = {
   rules: {
     'require-response-listener-before-action':
       requireResponseListenerBeforeAction,
     'no-blanket-test-slow': noBlanketTestSlow,
+    'require-assertion-per-test': requireAssertionPerTest,
   },
 };
