@@ -1326,6 +1326,22 @@ public class LineageResourceIT {
       assertFalse(hasSceneNode(scene, deniedTable.getFullyQualifiedName()));
       assertTrue(scene.getSampled());
 
+      LineageScene focusedScene =
+          getLineageScene(
+              restrictedClient,
+              allowedTable.getFullyQualifiedName(),
+              Entity.TABLE,
+              LineageBand.ASSET,
+              990);
+      assertTrue(hasSceneNode(focusedScene, allowedTable.getFullyQualifiedName()));
+      assertFalse(hasSceneNode(focusedScene, deniedTable.getFullyQualifiedName()));
+      assertFalse(
+          hasSceneEdge(
+              focusedScene,
+              deniedTable.getFullyQualifiedName(),
+              allowedTable.getFullyQualifiedName()));
+      assertTrue(focusedScene.getSampled());
+
       LineageScene layerScene =
           getRootLineageScene(restrictedClient, LineageLens.SERVICE, LineageBand.LAYER, 990);
       assertFalse(hasSceneNode(layerScene, deniedService.getFullyQualifiedName()));

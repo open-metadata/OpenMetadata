@@ -167,7 +167,7 @@ public class LineageSceneResolver {
       throws IOException {
     LineageLens sceneLens = lens == null ? LineageLens.SERVICE : lens;
     LineageBand sceneBand = defaultBand(band);
-    boolean authorizeRoot = shouldAuthorizeRoot(focusFqn, subjectContext);
+    boolean authorizeScene = requiresEntityAuthorization(subjectContext);
     boolean cacheable = canUseSharedRootCache(focusFqn, subjectContext);
     LineageSceneCache.Key cacheKey =
         new LineageSceneCache.Key(
@@ -221,7 +221,7 @@ public class LineageSceneResolver {
           includeDeleted,
           subjectContext);
     }
-    if (authorizeRoot) {
+    if (authorizeScene) {
       Include include = includeDeleted ? Include.DELETED : Include.NON_DELETED;
       hydrator.pruneUnauthorizedLineage(
           securityContext, lineage, include, LineageDomainFilter.shouldApply(subjectContext));
@@ -234,10 +234,6 @@ public class LineageSceneResolver {
       LineageSceneCache.getInstance().put(cacheKey, scene);
     }
     return scene;
-  }
-
-  private static boolean shouldAuthorizeRoot(String focusFqn, SubjectContext subjectContext) {
-    return nullOrEmpty(focusFqn) && requiresEntityAuthorization(subjectContext);
   }
 
   private static boolean canUseSharedRootCache(String focusFqn, SubjectContext subjectContext) {
