@@ -75,8 +75,10 @@ import { t } from './i18next/LocalUtil';
 // drags the entity-icon graph into every consumer. Re-exported because downstream repos (Collate)
 // still import them from here; they tree-shake away for callers that do not use them.
 export {
-  ENTITY_ICON_SIZE_CLASS_MAP, EntityIconSize, getEntityIcon,
-  getEntityTypeIcon
+  EntityIconSize,
+  ENTITY_ICON_SIZE_CLASS_MAP,
+  getEntityIcon,
+  getEntityTypeIcon,
 } from './EntityIconUtils';
 export { getServiceIcon } from './EntityServiceIconUtils';
 
