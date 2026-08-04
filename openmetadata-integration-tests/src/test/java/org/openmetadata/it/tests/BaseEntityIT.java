@@ -2337,13 +2337,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
 
     DataProduct dataProduct =
-        SdkClients.adminClient()
-            .dataProducts()
-            .create(
-                new CreateDataProduct()
-                    .withName(ns.prefix("minimal_data_product"))
-                    .withDescription("Data product for minimal reference PATCH test")
-                    .withDomains(List.of(testDomain().getFullyQualifiedName())));
+        ns.trackRoot(
+            Entity.DATA_PRODUCT,
+            SdkClients.adminClient()
+                .dataProducts()
+                .create(
+                    new CreateDataProduct()
+                        .withName(ns.prefix("minimal_data_product"))
+                        .withDescription("Data product for minimal reference PATCH test")
+                        .withDomains(List.of(testDomain().getFullyQualifiedName()))));
     T entity = createEntity(createMinimalRequest(ns));
 
     EntityReference domainReference =
