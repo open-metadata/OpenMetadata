@@ -94,7 +94,7 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
     await expect(page.getByTestId('upload-ontology-dragger')).not.toBeVisible();
 
     // The imported concept shows up in the glossary term tree.
-    await expect(page.getByText('Healthcare Provider').first()).toBeVisible();
+    await expect(page.getByText('Healthcare Provider')).toBeVisible();
 
     // RDF round-trip: with the triplestore enabled, exporting the glossary as an
     // ontology reproduces the canonical concept IRI we imported.

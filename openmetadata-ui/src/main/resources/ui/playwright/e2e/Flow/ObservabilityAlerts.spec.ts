@@ -374,8 +374,7 @@ test('Data Contract Name filter lists matching data contracts', async ({
       .getByTitle(dataContractFqn);
     const searchFailureAlert = page
       .getByTestId('alert-bar')
-      .filter({ hasText: 'Search failed' })
-      .first();
+      .filter({ hasText: 'Search failed' });
 
     await test.expect
       .poll(async () => {

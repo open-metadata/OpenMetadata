@@ -140,7 +140,7 @@ export const validateViewPermissions = async (
     const editDisplayNameButton = page.locator(
       '[data-testid="edit-displayName-button"]'
     );
-    await expect(editDisplayNameButton.first()).toBeVisible({
+    await expect(editDisplayNameButton).toBeVisible({
       timeout: 30_000,
     });
   } else {

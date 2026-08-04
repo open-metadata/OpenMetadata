@@ -32,7 +32,7 @@ const E2E_ID_TOKEN_KEY = '__OM_E2E_SSO_TEST_ID_TOKEN__';
 const OIDC_PROVIDERS = ['google', 'okta', 'auth0'];
 
 const switchToPublicClient = async (page: Page) => {
-  const publicRadio = page.getByRole('radio', { name: /public/i }).first();
+  const publicRadio = page.getByRole('radio', { name: /public/i });
   await publicRadio.click();
   await expect(publicRadio).toBeChecked();
 };

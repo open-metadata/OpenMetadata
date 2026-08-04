@@ -373,7 +373,7 @@ entities.forEach((EntityClass) => {
       if (parentCrumbName) {
         await clickBreadcrumbAncestor(page, parentCrumbName);
       } else {
-        await page.getByTestId('breadcrumb').getByRole('link').first().click();
+        await page.getByTestId('breadcrumb').getByRole('link').click();
       }
 
       await assignSingleSelectDomain(page, domain.responseData);

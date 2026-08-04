@@ -64,7 +64,6 @@ test.describe('Verify RTL Layout for landing page', () => {
         .getByTestId('explore-tree')
         .locator('span')
         .filter({ hasText: serviceType })
-        .first()
     ).toHaveClass(/ant-tree-node-selected/);
   });
 

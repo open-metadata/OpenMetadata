@@ -63,7 +63,7 @@ export const getActivityFeedItems = (page: Page) =>
   page.locator('#center-container').getByTestId('message-container');
 
 export const getFeedItemByText = async (page: Page, text: string) => {
-  const feedItem = getActivityFeedItems(page).filter({ hasText: text }).first();
+  const feedItem = getActivityFeedItems(page).filter({ hasText: text });
 
   await expect(feedItem).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
   await expect(feedItem).toContainText(text);

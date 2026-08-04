@@ -82,9 +82,7 @@ export class TeamClass {
 
     await searchTeam(page, expectedDisplayName);
 
-    const teamLink = page
-      .getByRole('link', { name: expectedDisplayName })
-      .first();
+    const teamLink = page.getByRole('link', { name: expectedDisplayName });
     await expect(teamLink).toBeVisible({ timeout: 60000 });
     const teamHref = await teamLink.getAttribute('href');
 

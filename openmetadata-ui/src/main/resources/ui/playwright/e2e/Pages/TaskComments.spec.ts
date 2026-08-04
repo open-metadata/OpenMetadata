@@ -528,9 +528,9 @@ test.describe('Task Comments - UI Tests', () => {
         .click();
       await taskFeeds;
 
-      const taskCard = page
-        .locator('[data-testid="task-feed-card"], .task-feed-card-v1-new')
-        .first();
+      const taskCard = page.locator(
+        '[data-testid="task-feed-card"], .task-feed-card-v1-new'
+      );
       await expect(taskCard).toBeVisible({ timeout: 10000 });
     } finally {
       await deleteTaskViaAPI(apiContext, task.id);

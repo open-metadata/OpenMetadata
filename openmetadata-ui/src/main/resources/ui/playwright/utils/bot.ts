@@ -174,7 +174,10 @@ export const updateBotDetails = async (page: Page) => {
 
   // Click on the breadcrumb link to go back to the bots listing page
   const getBotsPageResponse = page.waitForResponse('/api/v1/bots*');
-  await page.locator('[data-testid="breadcrumb-link"]').first().click();
+  await page
+    .locator('[data-testid="breadcrumb-link"]')
+    .filter({ hasText: 'Bots' })
+    .click();
   await getBotsPageResponse;
 
   // Verify the updated name is displayed in the Bots listing page

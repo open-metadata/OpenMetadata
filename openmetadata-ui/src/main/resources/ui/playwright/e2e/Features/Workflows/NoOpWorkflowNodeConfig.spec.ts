@@ -101,10 +101,7 @@ async function openNodeConfigSidebar(page: Page) {
   await expect(fitViewButton).toBeVisible();
   await fitViewButton.click();
 
-  const node = page
-    .locator('.react-flow__node')
-    .filter({ hasText: 'Run App' })
-    .first();
+  const node = page.locator('.react-flow__node').filter({ hasText: 'Run App' });
 
   await expect(node).toBeVisible();
   await node.click();

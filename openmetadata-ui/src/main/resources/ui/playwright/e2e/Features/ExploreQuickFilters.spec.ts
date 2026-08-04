@@ -529,7 +529,7 @@ test.describe('Metric search result highlight', () => {
       const highlightedSpan = displayNameHeader.locator(
         'span.text-highlighter'
       );
-      await expect(highlightedSpan.first()).toBeVisible();
+      await expect(highlightedSpan).toBeVisible();
 
       const fullText = await displayNameHeader.textContent();
       expect(fullText?.trim()).toBe(metric.entity.name);

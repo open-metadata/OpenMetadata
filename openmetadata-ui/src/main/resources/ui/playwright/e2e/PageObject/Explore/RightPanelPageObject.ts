@@ -780,8 +780,7 @@ export class RightPanelPageObject {
     const pattern = new RegExp(normalized.replace(/\s+/g, '\\s*'), 'i');
     return this.getSummaryPanel()
       .locator('li.ant-menu-item')
-      .filter({ hasText: pattern })
-      .first();
+      .filter({ hasText: pattern });
   }
 
   /**

@@ -435,7 +435,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       // Team member should see approve/reject buttons for team-assigned task
