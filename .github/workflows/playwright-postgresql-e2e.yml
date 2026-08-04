@@ -1257,10 +1257,13 @@ jobs:
       - name: Upload flake report
         if: always()
         uses: actions/upload-artifact@v6
+        continue-on-error: true
         with:
           name: flake-report-${{ matrix.shardId }}
+          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/playwright/output/flake-report.json
           retention-days: 30
+          if-no-files-found: ignore
 
       - name: Upload Playwright blob report
         uses: actions/upload-artifact@v6
