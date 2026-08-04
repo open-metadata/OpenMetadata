@@ -1102,4 +1102,120 @@ test.describe.serial('Persona AI Context', () => {
     await expect(adminPage.getByRole('dialog')).toBeVisible();
     await expect(adminPage.getByText('7 truncated')).toBeVisible();
   });
+
+  // The drawer opens with no visible condition row. "Add condition" adds one that already carries a
+  // field and an operator — Owners / Is — with its value left empty, which is exactly the unfinished
+  // state under test, so there is nothing further to fill in.
+  const startConditionWithoutValue = async (page: Page) => {
+    await page.getByTestId('add-context-condition').click();
+
+    await expect(
+      page.getByTestId('delete-condition-button').last()
+    ).toBeVisible();
+  };
+
+  // A condition with a field but no value serializes to `{"term":{}}`, which the search engines
+  // reject outright. The emitted filter now drops it, so saving such a rule would silently widen it
+  // to match everything — the editor has to stop that at the source. See issue #30715.
+  test('blocks saving a rule whose condition has no value entered', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('context-rule-name').fill('Unfinished filter');
+    await startConditionWithoutValue(adminPage);
+
+    // Observe rather than intercept, so the debounced preview call is left alone.
+    let saveRequested = false;
+    adminPage.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        request.url().endsWith('/aiContext/rules')
+      ) {
+        saveRequested = true;
+      }
+    });
+
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).toBeVisible();
+    // The drawer only closes on a successful submit, so it staying open is the block.
+    await expect(adminPage.getByTestId('form-heading')).toBeVisible();
+
+    expect(saveRequested).toBe(false);
+  });
+
+  // Guards the other side of the same check: "Empty selects every entity of the configured type" is
+  // documented behaviour, so a rule whose conditions were never filled in must stay saveable — the
+  // drawer's own empty condition row included.
+  test('saves a rule that has no filter conditions entered', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('context-rule-name').fill('Every table');
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+
+    const createdRule = (await createRuleRequest).postDataJSON() as ContextRule;
+
+    expect(createdRule).toMatchObject({ name: 'Every table', queryFilter: '' });
+  });
+
+  // Removing the unfinished condition has to clear the error rather than leave the drawer stuck.
+  test('clears the filter error once the unfinished condition is removed', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('context-rule-name').fill('Recovered rule');
+    await startConditionWithoutValue(adminPage);
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).toBeVisible();
+
+    // Remove the row that was added, the same way the entity-type test does.
+    await adminPage.getByTestId('delete-condition-button').last().click();
+    await expect(
+      adminPage.getByTestId('context-rule-filter-error')
+    ).toBeHidden();
+
+    const createRuleRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext/rules') &&
+        request.method() === 'POST'
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    const recoveredRule = (
+      await createRuleRequest
+    ).postDataJSON() as ContextRule;
+
+    expect(recoveredRule).toMatchObject({ name: 'Recovered rule' });
+  });
 });
