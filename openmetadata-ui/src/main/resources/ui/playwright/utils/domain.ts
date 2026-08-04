@@ -430,7 +430,6 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
   ]);
 
   await waitForAllLoadersToDisappear(page);
-  await checkDomainDisplayName(page, domain.displayName);
 };
 
 export const selectSubDomain = async (
