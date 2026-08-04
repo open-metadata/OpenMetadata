@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { SHORTCUTS, SLASH_COMMANDS } from '../../constant/KnowledgeCenter.constant';
+import {
+  SHORTCUTS,
+  SLASH_COMMANDS,
+} from '../../constant/KnowledgeCenter.constant';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
