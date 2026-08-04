@@ -607,6 +607,7 @@ const NavBar = () => {
             <Dropdown
               destroyPopupOnHide
               className="cursor-pointer"
+              // eslint-disable-next-line react/no-unstable-nested-components -- antd render prop over local state
               dropdownRender={() => (
                 <NotificationBox
                   activeTab={activeTab}

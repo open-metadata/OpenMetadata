@@ -33,11 +33,16 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  TooltipProps,
   XAxis,
   YAxis,
 } from 'recharts';
 import { CategoricalChartState } from 'recharts/types/chart/generateCategoricalChart';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
+import {
+  NameType,
+  ValueType,
+} from 'recharts/types/component/DefaultTooltipContent';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import {
   GREEN_3,
@@ -182,6 +187,19 @@ function TestSummaryGraph({
     );
   };
 
+  const renderTooltipContent = ({
+    active,
+    payload,
+  }: TooltipProps<ValueType, NameType>) => (
+    <TestSummaryCustomTooltip
+      active={active}
+      payload={
+        payload as Array<{ payload: Record<string, unknown> }> | undefined
+      }
+      testCaseFqn={chartData?.testCaseFqn}
+    />
+  );
+
   const referenceArea = useMemo(() => {
     const params = testCaseParameterValue ?? [];
 
@@ -247,17 +265,7 @@ function TestSummaryGraph({
           width={80}
         />
         <Tooltip
-          content={({ active, payload }) => (
-            <TestSummaryCustomTooltip
-              active={active}
-              payload={
-                payload as
-                  | Array<{ payload: Record<string, unknown> }>
-                  | undefined
-              }
-              testCaseFqn={chartData?.testCaseFqn}
-            />
-          )}
+          content={renderTooltipContent}
           offset={tooltipOffset}
           position={{ y: 100 }}
           wrapperStyle={{ pointerEvents: 'auto' }}

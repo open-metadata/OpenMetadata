@@ -55,7 +55,7 @@ export const renderLegend = (
         return (
           <li
             className="recharts-legend-item custom-data-insight-legend-item"
-            key={`item-${index}`}
+            key={`item-${entry.value}`}
             onClick={(e) =>
               legendData.onClick && legendData.onClick(entry, index, e)
             }
@@ -121,7 +121,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         <ul
           className="custom-data-insight-tooltip-container"
           style={listContainerStyles}>
-          {payloadValue.map((entry, index) => {
+          {payloadValue.map((entry) => {
             const value = customValueKey
               ? entry.payload[customValueKey]
               : entry.value;
@@ -129,7 +129,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
             return (
               <li
                 className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-                key={`item-${index}`}>
+                key={`item-${entry.dataKey}`}>
                 <span className="flex items-center text-grey-muted">
                   <Surface
                     className="mr-2"
@@ -140,13 +140,18 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
                   </Surface>
                   <span style={labelStyles}>
                     {transformLabel
-                      ? startCase(entry.name ?? (entry.dataKey as string))
+                      ? startCase(
+                          (entry.name ?? entry.dataKey) as string | undefined
+                        )
                       : entry.name ?? (entry.dataKey as string)}
                   </span>
                 </span>
                 <span className="font-medium" style={valueStyles}>
                   {valueFormatter
-                    ? valueFormatter(value, entry.name ?? entry.dataKey)
+                    ? valueFormatter(
+                        value,
+                        (entry.name ?? entry.dataKey) as string | undefined
+                      )
                     : getEntryFormattedValue(value, isPercentage)}
                 </span>
               </li>

@@ -1346,6 +1346,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
+      // eslint-disable-next-line react/no-unstable-nested-components -- antd Table render prop, cannot hoist
       expandIcon: ({ expanded, onExpand, record }) => {
         const isLoadMoreRow = record.isLoadMoreButton;
 

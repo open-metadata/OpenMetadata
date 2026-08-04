@@ -14,7 +14,14 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Divider, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { UnitOfMeasurement } from '../../../generated/entity/data/metric';
 import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
@@ -135,35 +142,37 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
   // Determine display value
   const displayValue = value === UnitOfMeasurement.Other ? customValue : value;
 
+  const renderDropdown = (menu: ReactElement) => (
+    <>
+      {menu}
+      <Divider className="m-y-sm m-x-0" />
+      <div className="p-x-sm gap-2 d-flex items-center">
+        <Input
+          placeholder={t('label.enter-custom-unit-of-measurement')}
+          value={newCustomUnit}
+          onChange={handleNameChange}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+              handleAddCustomUnit();
+            }
+          }}
+        />
+        <Button
+          icon={<PlusOutlined />}
+          type="text"
+          onClick={handleAddCustomUnit}>
+          {t('label.add')}
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <Select
       data-testid={dataTestId}
       disabled={disabled}
-      dropdownRender={(menu) => (
-        <>
-          {menu}
-          <Divider className="m-y-sm m-x-0" />
-          <div className="p-x-sm gap-2 d-flex items-center">
-            <Input
-              placeholder={t('label.enter-custom-unit-of-measurement')}
-              value={newCustomUnit}
-              onChange={handleNameChange}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === 'Enter') {
-                  handleAddCustomUnit();
-                }
-              }}
-            />
-            <Button
-              icon={<PlusOutlined />}
-              type="text"
-              onClick={handleAddCustomUnit}>
-              {t('label.add')}
-            </Button>
-          </div>
-        </>
-      )}
+      dropdownRender={renderDropdown}
       loading={loading}
       options={allOptions}
       placeholder={placeholder}

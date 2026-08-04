@@ -207,6 +207,7 @@ export const VersionHistoryDrawer = ({
               </Box>
 
               <Box className="tw:gap-1.5" direction="col">
+                {/* eslint-disable react/no-array-index-key -- change.key may repeat */}
                 {entry.changes.map((change, changeIndex) => (
                   <Box
                     align="start"
@@ -220,6 +221,7 @@ export const VersionHistoryDrawer = ({
                     </Typography>
                   </Box>
                 ))}
+                {/* eslint-enable react/no-array-index-key */}
               </Box>
 
               {entry.updatedBy && (

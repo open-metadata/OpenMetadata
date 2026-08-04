@@ -48,40 +48,42 @@ function AgentsStatusWidget({
     return getAgentStatusSummary(agentsInfo);
   }, [agentsInfo]);
 
+  const renderExpandIcon = () => (
+    <div
+      className="expand-icon-container"
+      data-testid="agent-status-widget-expand-icon">
+      {isLoading ? (
+        <Skeleton.Input active size="small" />
+      ) : (
+        <div className="agent-status-summary-container">
+          {Object.entries(agentStatusSummary).map(([key, value]) => (
+            <div
+              className={classNames('agent-status-summary-item', key)}
+              data-testid={`agent-status-summary-item-${key}`}
+              key={key}>
+              {getIconFromStatus(key)}
+              <Typography.Text data-testid="pipeline-count">
+                {value}
+              </Typography.Text>
+              <Typography.Text>{key}</Typography.Text>
+            </div>
+          ))}
+        </div>
+      )}
+      <Typography.Text
+        className="text-primary"
+        data-testid="agent-status-widget-view-more">
+        {t('label.view-more')}
+      </Typography.Text>
+      <ArrowSvg className="text-primary" height={14} width={14} />
+    </div>
+  );
+
   return (
     <Collapse
       className="service-insights-collapse-widget agents-status-widget"
       data-testid="agent-status-widget"
-      expandIcon={() => (
-        <div
-          className="expand-icon-container"
-          data-testid="agent-status-widget-expand-icon">
-          {isLoading ? (
-            <Skeleton.Input active size="small" />
-          ) : (
-            <div className="agent-status-summary-container">
-              {Object.entries(agentStatusSummary).map(([key, value]) => (
-                <div
-                  className={classNames('agent-status-summary-item', key)}
-                  data-testid={`agent-status-summary-item-${key}`}
-                  key={key}>
-                  {getIconFromStatus(key)}
-                  <Typography.Text data-testid="pipeline-count">
-                    {value}
-                  </Typography.Text>
-                  <Typography.Text>{key}</Typography.Text>
-                </div>
-              ))}
-            </div>
-          )}
-          <Typography.Text
-            className="text-primary"
-            data-testid="agent-status-widget-view-more">
-            {t('label.view-more')}
-          </Typography.Text>
-          <ArrowSvg className="text-primary" height={14} width={14} />
-        </div>
-      )}
+      expandIcon={renderExpandIcon}
       expandIconPosition="end">
       <Collapse.Panel
         header={
@@ -112,6 +114,7 @@ function AgentsStatusWidget({
             ? Array(8)
                 .fill(null)
                 .map((_, index) => (
+                  // eslint-disable-next-line react/no-array-index-key
                   <Col key={index} span={6}>
                     <Card className="agent-status-card">
                       <Skeleton.Input active />

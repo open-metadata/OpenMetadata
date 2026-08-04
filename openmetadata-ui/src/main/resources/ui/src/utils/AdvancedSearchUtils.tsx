@@ -33,6 +33,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/EntityDisplayPureUtils';
+import { getSanitizeContent } from '../utils/sanitize.utils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
@@ -140,8 +141,11 @@ export const generateSearchDropdownLabel = (
             className="dropdown-option-label"
             title={option.label}>
             <span
+              // eslint-disable-next-line react/no-danger -- output sanitized via getSanitizeContent (DOMPurify)
               dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
+                __html: getSanitizeContent(
+                  getSearchLabel(option.label, searchKey)
+                ),
               }}
             />
           </Typography.Text>

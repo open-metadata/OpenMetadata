@@ -65,6 +65,7 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
           : LINK_ONTOLOGY_COLOR;
 
         return (
+          // eslint-disable-next-line react/no-array-index-key -- path steps may repeat; static chain
           <div key={`${step}-${index}`}>
             <div className="tw:flex tw:items-center tw:gap-2.5">
               <span

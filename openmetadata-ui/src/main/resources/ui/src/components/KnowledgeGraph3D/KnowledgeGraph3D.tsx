@@ -321,6 +321,15 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   const isEmpty = !loading && adapted.nodes.length === 0;
   const hasGraph = !loading && adapted.nodes.length > 0;
 
+  const renderWebglFallback = () => (
+    <ErrorPlaceHolder
+      className="knowledge-graph-3d-empty"
+      icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
+      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      {t('message.knowledge-graph-3d-webgl-unavailable')}
+    </ErrorPlaceHolder>
+  );
+
   return (
     <div
       className={classNames('knowledge-graph-3d', {
@@ -383,15 +392,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
             {t('message.no-knowledge-graph-data')}
           </ErrorPlaceHolder>
         ) : (
-          <ErrorBoundary
-            fallbackRender={() => (
-              <ErrorPlaceHolder
-                className="knowledge-graph-3d-empty"
-                icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
-                type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                {t('message.knowledge-graph-3d-webgl-unavailable')}
-              </ErrorPlaceHolder>
-            )}>
+          <ErrorBoundary fallbackRender={renderWebglFallback}>
             <Suspense fallback={<Loader />}>
               <KnowledgeGraph3DScene
                 data={view}

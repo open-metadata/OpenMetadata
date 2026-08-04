@@ -20,6 +20,7 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -52,6 +53,13 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
     </Space>
   );
 };
+
+const getMaxTagPlaceholder = (t: TFunction) => (omittedValues: unknown[]) =>
+  (
+    <span className="max-tag-text">
+      {t('label.plus-count-more', { count: omittedValues.length }) as string}
+    </span>
+  );
 
 export const PersonaSelectableList = ({
   hasPermission,
@@ -235,11 +243,7 @@ export const PersonaSelectableList = ({
                 overflow: 'auto',
               }}
               maxTagCount={3}
-              maxTagPlaceholder={(omittedValues) => (
-                <span className="max-tag-text">
-                  {t('label.plus-count-more', { count: omittedValues.length })}
-                </span>
-              )}
+              maxTagPlaceholder={getMaxTagPlaceholder(t)}
               mode={isDefaultPersona ? undefined : 'multiple'}
               open={isDropdownOpen}
               options={selectOptions?.map((persona) => ({

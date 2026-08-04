@@ -288,6 +288,7 @@ const AdminPermissionDebugger: React.FC = () => {
                     <div>
                       <Text>{t('label.condition-plural')}:</Text>
                       {step.conditionEvaluations.map((cond, idx) => (
+                        // eslint-disable-next-line react/no-array-index-key -- read-only debug output
                         <div className="condition-eval" key={idx}>
                           <Text code>{cond.condition}</Text>
                           <Text>
@@ -312,6 +313,7 @@ const AdminPermissionDebugger: React.FC = () => {
             <div className="decision-reasons">
               <Title level={5}>{t('label.reasons-for-decision')}:</Title>
               {evaluationInfo.summary.reasonsForDecision.map((reason, idx) => (
+                // eslint-disable-next-line react/no-array-index-key -- read-only debug output
                 <Text key={idx}>
                   {'• '}
                   <span>{reason}</span>
