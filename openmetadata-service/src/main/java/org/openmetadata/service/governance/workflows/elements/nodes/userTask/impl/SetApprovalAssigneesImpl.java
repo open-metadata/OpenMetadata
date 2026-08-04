@@ -38,6 +38,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -251,10 +252,18 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       final WorkflowVariableHandler varHandler, final DelegateExecution execution) {
     Set<String> requesterEntityLinks = new LinkedHashSet<>();
     try {
-      addRequesterEntityLink(requesterEntityLinks, (String) execution.getVariable("taskUpdatedBy"));
-      addRequesterEntityLink(
-          requesterEntityLinks,
-          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE));
+      // Flowable stores process variables as untyped Object; instanceof pattern-matches on String
+      // instead of a blind cast so a non-string / null variable does not throw and reintroduce the
+      // self-approval leak via the catch-all below (Copilot review, 2026-08-04).
+      Object taskUpdatedBy = execution.getVariable(WorkflowStartVariables.TASK_UPDATED_BY);
+      if (taskUpdatedBy instanceof String taskUpdatedByStr) {
+        addRequesterEntityLink(requesterEntityLinks, taskUpdatedByStr);
+      }
+      Object globalUpdatedBy =
+          varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+      if (globalUpdatedBy instanceof String globalUpdatedByStr) {
+        addRequesterEntityLink(requesterEntityLinks, globalUpdatedByStr);
+      }
     } catch (Exception exc) {
       LOG.warn(
           "Failed to retrieve updatedBy variables for self-approval prevention: {}",

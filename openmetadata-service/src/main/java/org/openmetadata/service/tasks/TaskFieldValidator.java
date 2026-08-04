@@ -106,36 +106,52 @@ public final class TaskFieldValidator {
     if (about == null || nullOrEmpty(about.getType())) {
       return;
     }
+    String aboutType = about.getType();
+    // Report M10: DAR is meant only for data assets that a policy agent (or manual owner
+    // process) can enforce access on — table / schema / database / storedProcedure / data
+    // product. Non-data assets (dashboard, topic, container, pipeline, mlmodel, …) have no
+    // enforcement path, so accepting a DAR against them creates a phantom "granted" record
+    // that can never actually be applied.
+    boolean isDataProduct = Entity.DATA_PRODUCT.equals(aboutType);
+    boolean isDatabaseFamily = isDatabaseFamilyEntity(aboutType);
+    if (!isDataProduct && !isDatabaseFamily) {
+      throw new IllegalArgumentException(
+          "Data Access Request is only supported for tables, schemas, databases, stored"
+              + " procedures, and data products. Received entity type: '%s'.".formatted(aboutType));
+    }
     DataAccessRequestPayload payload = readDataAccessPayload(task.getPayload());
     if (payload == null || payload.getAccessType() == null) {
       return;
     }
     DataAccessType accessType = payload.getAccessType();
-    String aboutType = about.getType();
 
-    if (Entity.DATA_PRODUCT.equals(aboutType)) {
+    if (isDataProduct) {
       rejectColumnLevelForDataProduct(accessType);
-    } else if (isDatabaseFamilyEntity(aboutType)) {
+    } else if (isDatabaseFamily) {
       enforceConnectorCapability(about, accessType);
     }
   }
 
   /**
-   * Require a Data Access Request to carry a future {@code expirationDate}. Every approved DAR
-   * reaches an {@code expiryTimer} boundary node, so a missing or expired timestamp would leave that
-   * boundary timer unschedulable and fail the task mid-workflow. Validating at creation turns that
-   * latent failure into a clean 400. No-op for non-DAR tasks.
-   */
-  /**
-   * Upper bound on {@code expirationDate} — ten years from the task's creation. Blocks the
-   * QA-reported {@code 1e400} exploit (Jackson parses that literal as {@code Double.POSITIVE_INFINITY}
-   * and Long-coercing swallowed the payload silently), rejects legitimate but nonsensical
-   * year-9999 timestamps (~2.5e14) that would leave a Data Access grant effectively forever, and
-   * still leaves a comfortable envelope for real "long-lived research access" requests.
+   * Ten-year upper bound on {@code expirationDate}, measured from {@link
+   * System#currentTimeMillis()}. Blocks the QA-reported {@code 1e400} exploit (Jackson parses that
+   * literal as {@code Double.POSITIVE_INFINITY} and the Long coercion used to swallow the payload
+   * silently), rejects year-9999 timestamps that would leave a Data Access grant effectively
+   * forever, and still leaves a comfortable envelope for real "long-lived research access".
    */
   private static final long MAX_DATA_ACCESS_EXPIRY_HORIZON_MILLIS =
       10L * 365L * 24L * 60L * 60L * 1000L;
 
+  /**
+   * Require a Data Access Request to carry a future {@code expirationDate} that fits within
+   * {@link #MAX_DATA_ACCESS_EXPIRY_HORIZON_MILLIS}. Every approved DAR reaches an {@code
+   * expiryTimer} boundary node, so a missing or already-expired timestamp would leave that
+   * boundary timer unschedulable and fail the task mid-workflow. Called on create only —
+   * PATCH/PUT is guarded by the JSON-Schema bound on expirationDate plus the "payload frozen
+   * after Open" patch guard in {@link
+   * org.openmetadata.service.resources.tasks.TaskResource#validatePatchOperations}. No-op for
+   * non-DAR tasks.
+   */
   public static void validateDataAccessRequestExpiry(Task task) {
     if (task.getType() != TaskEntityType.DataAccessRequest) {
       return;

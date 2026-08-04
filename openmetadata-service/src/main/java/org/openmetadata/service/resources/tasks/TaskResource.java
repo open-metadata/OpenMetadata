@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -918,6 +919,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTask create) {
+    // Report M11: POST /tasks with an empty body arrived as create=null, hit an NPE inside
+    // getTask, and surfaced as a 500 whose class/method leaked in the log line. Convert the
+    // "no body" case to a clean 400 up front.
+    if (create == null) {
+      throw BadRequestException.of("Request body is required to create a task.");
+    }
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
@@ -946,6 +953,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTask create) {
+    if (create == null) {
+      throw BadRequestException.of("Request body is required to create or update a task.");
+    }
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
@@ -1073,7 +1083,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                             "[{\"op\": \"add\", \"path\": \"/status\", \"value\": \"InProgress\"}]")
                       }))
           JsonPatch patch) {
-    Task task = repository.get(uriInfo, id, getFields(FIELDS));
+    // Only status is read here to decide the payload/about freeze in validatePatchOperations;
+    // avoid pulling comments / assignees / availableTransitions / payload just to reject a
+    // forged JSON-Patch (Copilot review, 2026-08-03). status is a generated column on the base
+    // row so EMPTY_FIELDS is enough.
+    // workflowInstanceId is on the base row via a generated column, but we need it plus
+    // status to decide H4/H5/H6. Small extra field cost vs. the alternative of pulling
+    // FIELDS which includes payload/comments/availableTransitions.
+    Task task = repository.get(uriInfo, id, EntityUtil.Fields.EMPTY_FIELDS);
     validatePatchOperations(task, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
@@ -1664,28 +1681,31 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   private static final Set<String> WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS =
       Set.of(
-          "status",
-          "workflowStageId",
-          "workflowStageDisplayName",
-          "workflowInstanceId",
-          "workflowDefinitionId",
-          "availableTransitions",
+          // Forge-attribution fields: /resolution names the "Approved by" type + comment,
+          // /approvedBy* names the approver. If a user PATCHes these, the audit trail lies.
           "resolution",
           "approvedBy",
           "approvedById",
           "approvedAt",
-          "aboutFqnHash",
-          "taskId",
-          "id",
-          "name",
-          "fullyQualifiedName",
-          "createdBy",
-          "createdById",
-          "createdAt",
-          "updatedBy",
-          "updatedAt",
-          "version",
-          "changeDescription");
+          // /aboutFqnHash is the dup-check key. Rewriting it decouples the check from the real
+          // /about.
+          "aboutFqnHash");
+
+  /**
+   * Statuses that mean an authorization / resolution decision has been made. PATCH must not be
+   * allowed to land the task in any of these — that would skip the workflow's side-effects
+   * (PolicyAgent grant / revoke, revoke boundary timer, notifications). The workflow drives
+   * these transitions through {@code /resolve} and {@code /close}. Other statuses (Open,
+   * InProgress, Pending) are progress markers and can be PATCHed by admin state-repair /
+   * test setup without skipping any authorization gate.
+   */
+  private static final Set<TaskEntityStatus> WORKFLOW_DECISION_STATUSES =
+      Set.of(
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Rejected,
+          TaskEntityStatus.Granted,
+          TaskEntityStatus.ManualRevoke,
+          TaskEntityStatus.Cancelled);
 
   /**
    * Reject JSON-Patch operations that would either forge workflow/audit state (H4) or edit
@@ -1710,6 +1730,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   private void rejectRestrictedPatchOp(final Task task, final JsonObject op) {
     final String rawPath = op.containsKey("path") ? op.getString("path", "") : "";
     checkRestrictedTarget(task, rawPath);
+    checkStatusPatchIsNotWorkflowDecision(task, op, rawPath);
     // move/copy operations carry a second pointer that names the SOURCE. A restricted
     // source is just as unsafe as a restricted target — {"op":"move","from":"/payload/x",
     // "path":"/foo"} would silently strip a field out of the frozen payload while the
@@ -1719,9 +1740,51 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
   }
 
-  private void checkRestrictedTarget(final Task task, final String rawPath) {
-    if (rawPath == null || rawPath.isEmpty()) {
+  /**
+   * H4: PATCH of {@code /status} is allowed for progress markers (Open, InProgress, Pending)
+   * — this covers the legit "start work" seed used in test setup and admin state-repair. It
+   * is rejected when the destination is a workflow-decision status
+   * ({@link #WORKFLOW_DECISION_STATUSES}) because those transitions carry authorization
+   * side-effects (PolicyAgent, revoke timers) that only the workflow can run. Callers must
+   * take those steps through {@code /resolve} or {@code /close}.
+   */
+  private void checkStatusPatchIsNotWorkflowDecision(
+      final Task task, final JsonObject op, final String rawPath) {
+    if (rawPath == null || !rawPath.equals("/status")) {
       return;
+    }
+    JsonValue value = op.get("value");
+    if (!(value instanceof JsonString jsonStr)) {
+      return;
+    }
+    TaskEntityStatus target = null;
+    try {
+      target = TaskEntityStatus.fromValue(jsonStr.getString());
+    } catch (IllegalArgumentException unknownStatus) {
+      // Unknown status value — the underlying updater will reject it with its own 400; nothing
+      // to add from H4's perspective since the caller has not landed the task in a decision
+      // state.
+      target = null;
+    }
+    if (target != null && WORKFLOW_DECISION_STATUSES.contains(target)) {
+      throw BadRequestException.of(
+          ("Status '%s' can only be reached through the workflow /resolve or /close endpoints"
+                  + " — PATCH cannot skip the authorization / notification side-effects those"
+                  + " transitions run.")
+              .formatted(target));
+    }
+  }
+
+  private void checkRestrictedTarget(final Task task, final String rawPath) {
+    if (rawPath == null) {
+      return;
+    }
+    // RFC 6901: an empty JSON-Pointer ("") targets the whole document, so a client could
+    // wholesale replace the task JSON (including workflow-owned fields) and bypass every
+    // top-level restriction below. Reject explicitly (Copilot review, 2026-08-04).
+    if (rawPath.isEmpty()) {
+      throw BadRequestException.of(
+          "PATCH with an empty JSON-Pointer is not allowed — targets must name a field.");
     }
     final String topLevel = topLevelField(rawPath);
     if (WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS.contains(topLevel)) {
@@ -1816,6 +1879,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
+
+    // Report M4 note: QA flagged that this endpoint returns the full Task with private
+    // payload / assignee / comment history to whoever calls it. That is a *view-side*
+    // information-disclosure concern that belongs on the GET / listing paths, not here — add-
+    // comment is intentionally open (any collaborator can add a comment, same as the feed),
+    // so we do NOT gate this on EDIT_TASK. Follow-up: redact `payload` on GET responses for
+    // callers that don't hold viewer-level permission on the DAR's target entity.
 
     TaskComment comment =
         new TaskComment()

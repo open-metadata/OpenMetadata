@@ -66,14 +66,6 @@ CREATE INDEX IF NOT EXISTS idx_task_status_about ON task_entity (status, aboutfq
 CREATE INDEX IF NOT EXISTS idx_task_created_by_id ON task_entity (createdbyid);
 CREATE INDEX IF NOT EXISTS idx_task_created_by_category ON task_entity (createdbyid, category);
 
--- Enforce "one active Data Access Request per (creator, target entity)" at the DB layer to
--- close the SELECT-then-INSERT TOCTOU that lets concurrent creates both succeed. Partial
--- unique index: only active DARs collide, terminal rows are ignored.
-CREATE UNIQUE INDEX IF NOT EXISTS uk_task_active_dar_creator_target
-  ON task_entity (createdbyid, aboutfqnhash)
-  WHERE type = 'DataAccessRequest'
-    AND status IN ('Open', 'Approved', 'Granted', 'InProgress', 'ManualRevoke', 'Pending');
-
 -- For 2.0.0 environments that ran the CREATE TABLE above before the
 -- approvedbyid generated column was added inline, attach it now. CREATE TABLE
 -- IF NOT EXISTS is a no-op on those environments so the column would never

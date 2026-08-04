@@ -38,12 +38,12 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -424,40 +424,6 @@ public class TaskRepository extends EntityRepository<Task> {
     }
   }
 
-  /**
-   * Postgres names the partial unique index {@code uk_task_active_dar_creator_target}; MySQL's
-   * unique index sits on the {@code activeDarCreatorTargetKey} generated column. Match on both
-   * so either engine's driver message resolves to the same friendly IllegalArgumentException.
-   */
-  private static final String ACTIVE_DAR_UNIQUE_CONSTRAINT_MARKER =
-      "uk_task_active_dar_creator_target";
-
-  private static final String ACTIVE_DAR_MYSQL_KEY_MARKER = "activeDarCreatorTargetKey";
-
-  private RuntimeException translateActiveDarConstraintViolation(
-      Task task, UnableToExecuteStatementException dbFailure) {
-    String message = String.valueOf(dbFailure.getMessage());
-    Throwable cause = dbFailure.getCause();
-    String causeMessage = cause == null ? "" : String.valueOf(cause.getMessage());
-    boolean isActiveDarCollision =
-        message.contains(ACTIVE_DAR_UNIQUE_CONSTRAINT_MARKER)
-            || message.contains(ACTIVE_DAR_MYSQL_KEY_MARKER)
-            || causeMessage.contains(ACTIVE_DAR_UNIQUE_CONSTRAINT_MARKER)
-            || causeMessage.contains(ACTIVE_DAR_MYSQL_KEY_MARKER);
-    RuntimeException translated = dbFailure;
-    if (isActiveDarCollision) {
-      String entityFqn =
-          task.getAbout() == null ? "<unknown>" : task.getAbout().getFullyQualifiedName();
-      translated =
-          new IllegalArgumentException(
-              String.format(
-                  "An active data access request already exists for '%s'. "
-                      + "Resolve or cancel the existing request before submitting another.",
-                  entityFqn));
-    }
-    return translated;
-  }
-
   private boolean isDuplicateDataAccessRequestCheckable(Task task) {
     return task.getType() == TaskEntityType.DataAccessRequest
         && task.getAbout() != null
@@ -632,23 +598,15 @@ public class TaskRepository extends EntityRepository<Task> {
         .withReviewers(null)
         .withWatchers(null);
 
-    try {
-      if (update) {
-        daoCollection
-            .taskDAO()
-            .update(task.getId(), task.getFullyQualifiedName(), JsonUtils.pojoToJson(task));
-      } else {
-        daoCollection
-            .taskDAO()
-            .insertTask(
-                task.getId().toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
-      }
-    } catch (UnableToExecuteStatementException dbFailure) {
-      // Belt-and-suspenders for H8: the partial unique index on active DAR (creator, target)
-      // catches the race the application-level SELECT-then-INSERT check cannot. Translate the
-      // driver's constraint-violation into the same friendly 400 IllegalArgumentException the
-      // pre-check throws so both paths return identical error text.
-      throw translateActiveDarConstraintViolation(task, dbFailure);
+    if (update) {
+      daoCollection
+          .taskDAO()
+          .update(task.getId(), task.getFullyQualifiedName(), JsonUtils.pojoToJson(task));
+    } else {
+      daoCollection
+          .taskDAO()
+          .insertTask(
+              task.getId().toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
     }
 
     task.withDomains(domains)
@@ -1818,8 +1776,40 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     private void updatePayload() {
+      // Report M7: create-time validation rejects a past expirationDate but the update path used
+      // to accept it, so a client could PATCH an Open DAR's payload to a past date. If the field
+      // actually changed and the new value is not in the future, reject. Same failure text as the
+      // create-time check so callers see one consistent message.
+      if (updated.getType() == TaskEntityType.DataAccessRequest) {
+        Long previousExpiry = readExpirationDate(original.getPayload());
+        Long nextExpiry = readExpirationDate(updated.getPayload());
+        if (!Objects.equals(previousExpiry, nextExpiry)
+            && nextExpiry != null
+            && nextExpiry <= System.currentTimeMillis()) {
+          throw new IllegalArgumentException(
+              "Data Access Request expirationDate must be a future timestamp: '%s'."
+                  .formatted(nextExpiry));
+        }
+      }
       recordChange(
           FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
+    }
+
+    private Long readExpirationDate(Object payload) {
+      Long expirationDate = null;
+      if (payload != null) {
+        try {
+          DataAccessRequestPayload typed =
+              JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+          expirationDate = typed == null ? null : typed.getExpirationDate();
+        } catch (IllegalArgumentException malformed) {
+          // Malformed payload is separately caught at the API boundary by
+          // TaskFieldValidator.readDataAccessPayload; here we just refuse to compare instead
+          // of surfacing the parse failure twice.
+          expirationDate = null;
+        }
+      }
+      return expirationDate;
     }
 
     private void updateResolution() {
