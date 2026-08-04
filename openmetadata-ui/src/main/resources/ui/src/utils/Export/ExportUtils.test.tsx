@@ -18,6 +18,7 @@ import {
   downloadBlob,
   downloadFile,
   exportPNGImageFromElement,
+  shouldIncludeInExport,
 } from './ExportUtils';
 
 jest.mock('html-to-image', () => ({
@@ -366,6 +367,15 @@ describe('ExportUtils', () => {
       );
     });
 
+    it('passes a filter callback to toCanvas', async () => {
+      await exportPNGImageFromElement(mockExportData);
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({ filter: expect.any(Function) })
+      );
+    });
+
     it('applies viewport transformation when provided', async () => {
       const exportDataWithViewport = {
         ...mockExportData,
@@ -512,5 +522,68 @@ describe('ExportUtils', () => {
         );
       });
     });
+  });
+});
+
+// Kept out of the `ExportUtils` describe because that block mocks
+// `document.createElement` — which the html() helper here calls, and mocking
+// it would recurse. These tests use the real DOM.
+describe('shouldIncludeInExport (DOM filter)', () => {
+  const html = (markup: string): HTMLElement => {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = markup;
+
+    return wrapper.firstElementChild as HTMLElement;
+  };
+
+  it('keeps normal DOM elements', () => {
+    expect(shouldIncludeInExport(html('<div class="node">card</div>'))).toBe(
+      true
+    );
+    expect(shouldIncludeInExport(html('<span>text</span>'))).toBe(true);
+    expect(shouldIncludeInExport(html('<button>click</button>'))).toBe(true);
+  });
+
+  it('skips React Flow handle pips (invisible in the export)', () => {
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__handle"></div>'))
+    ).toBe(false);
+    expect(
+      shouldIncludeInExport(
+        html('<div class="react-flow__handle react-flow__handle-right"></div>')
+      )
+    ).toBe(false);
+  });
+
+  it('honors data-export-hide="true" as an opt-out', () => {
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="true">hidden</div>'))
+    ).toBe(false);
+    // Only literal "true" — anything else stays included so a partial
+    // `data-export-hide` attribute doesn't silently drop content.
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="false">v</div>'))
+    ).toBe(true);
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="">v</div>'))
+    ).toBe(true);
+  });
+
+  it('skips screen-reader-only content (.sr-only, .visually-hidden)', () => {
+    expect(
+      shouldIncludeInExport(html('<span class="sr-only">for AT</span>'))
+    ).toBe(false);
+    expect(
+      shouldIncludeInExport(html('<span class="visually-hidden">for AT</span>'))
+    ).toBe(false);
+  });
+
+  it('passes through non-HTMLElement nodes without inspecting them', () => {
+    // SVGElements are Elements but not HTMLElements — filter must return true
+    // so SVG lineage icons keep rendering. Guards against a `.classList` /
+    // `.dataset` access path that only works on HTMLElement.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+    expect(shouldIncludeInExport(svg as unknown as Element)).toBe(true);
   });
 });

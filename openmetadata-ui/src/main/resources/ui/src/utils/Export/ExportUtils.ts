@@ -53,6 +53,48 @@ const computeSafePixelRatio = (
   return Math.min(DESIRED_PIXEL_RATIO, byArea, byDim);
 };
 
+// Called per DOM node by html-to-image while cloning the export subtree.
+// Returning false skips the node AND everything under it — no cloneNode, no
+// getComputedStyle, no serialization. On lineage exports the DOM clone step
+// dominates toCanvas cost (linear in element count), so pruning subtrees
+// that contribute zero pixels is the highest-leverage optimization
+// available here.
+//
+// Rules (each must be strictly non-visual — a false positive shows up as a
+// missing element in the exported PNG):
+//   1. `.react-flow__handle` — React Flow's edge-attachment pips. Invisible
+//      in a static export; edges are drawn by renderEdgesOverlay on a
+//      separate canvas.
+//   2. `[data-export-hide="true"]` — explicit opt-out for components that
+//      know they don't paint during export (loading spinners, hover-only
+//      chrome, dev overlays).
+//   3. `.sr-only` / `.visually-hidden` — screen-reader-only content.
+//
+// Must be O(1) per node — anything that walks the tree here defeats the
+// point.
+// Exported for testing — the rules are load-bearing on PNG-export
+// correctness (a false positive silently drops an element from the image)
+// so each rule must be covered in isolation, not just through the public
+// wrapper.
+export const shouldIncludeInExport = (node: Element): boolean => {
+  if (!(node instanceof HTMLElement)) {
+    return true;
+  }
+  const classList = node.classList;
+  if (
+    classList?.contains('react-flow__handle') ||
+    classList?.contains('sr-only') ||
+    classList?.contains('visually-hidden')
+  ) {
+    return false;
+  }
+  if (node.dataset?.exportHide === 'true') {
+    return false;
+  }
+
+  return true;
+};
+
 const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
   new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -146,6 +188,9 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       height: fullLogicalHeight,
       pixelRatio,
       quality: 1.0,
+      // Prune non-visual subtrees before html-to-image clones them —
+      // biggest lever we have for cutting DOM-clone time on large exports.
+      filter: shouldIncludeInExport,
       style: {
         width: imageWidth.toString(),
         height: imageHeight.toString(),
