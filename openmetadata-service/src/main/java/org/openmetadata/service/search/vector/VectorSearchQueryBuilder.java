@@ -174,6 +174,23 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "parentId", values);
           }
+            // Metric facets: semantic_search returns these on every metric result, so a caller
+            // that sees "granularity": "MONTH" will reasonably filter by it.
+          case "metricType" -> {
+            sb.append(',');
+            appendFlat(sb, "metricType", values);
+          }
+          case "granularity" -> {
+            sb.append(',');
+            appendFlat(sb, "granularity", values);
+          }
+            // Matches the raw enum or the custom text, because a metric whose unit is OTHER
+            // displays its customUnitOfMeasurement ("basis points") and a caller will filter by
+            // what they saw. Accepting only the stored enum would match nothing, silently.
+          case "unitOfMeasurement" -> {
+            sb.append(',');
+            appendFlatOr(sb, "unitOfMeasurement", "customUnitOfMeasurement", values);
+          }
           default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }
       }

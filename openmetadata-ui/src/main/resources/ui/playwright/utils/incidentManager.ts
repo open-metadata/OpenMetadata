@@ -106,6 +106,32 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await expect(page.getByRole('tab', { name: 'Data Quality' })).toBeVisible();
 };
 
+/**
+ * Asserts a failed test case's incident sits at `status`, then opens the test
+ * case details page. Drives no transition, but leaves the page where
+ * {@link acknowledgeTask} does so callers can go on to the Incident tab.
+ */
+export const verifyIncidentStatus = async (data: {
+  testCase: string;
+  page: Page;
+  table: TableClass;
+  status: string;
+}) => {
+  const { testCase, page, table, status } = data;
+  await visitProfilerTab(page, table);
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+
+  await expect(
+    page.locator(`[data-testid="status-badge-${testCase}"]`)
+  ).toContainText('Failed');
+
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText(status);
+  await page.getByTestId(testCase).getByText(testCase).click();
+  await waitForAllLoadersToDisappear(page);
+};
+
 export const acknowledgeTask = async (data: {
   testCase: string;
   page: Page;
@@ -455,16 +481,28 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
     latestRun.runId !== previousRun?.runId ||
     (latestRun.timestamp ?? 0) > (previousRun?.timestamp ?? 0);
 
-  // Wait for a genuinely new run to surface after a trigger. Returns false if
-  // none appears within the window, which means the trigger raced an
-  // unserialized DAG and produced an empty run that wrote no status.
+  // Wait for a genuinely new run to actually START after a trigger. Returns
+  // false if none does within the window, which means the trigger raced an
+  // unserialized DAG.
+  //
+  // The race has two shapes: the trigger produces no status at all, OR it
+  // produces a transient `queued` run that then vanishes because the empty DAG
+  // finished instantly and wrote nothing. A plain "a run exists" check is
+  // fooled by that transient `queued` and skips the re-trigger, so require the
+  // run to have LEFT the queue (running/success/…) — a real run does so within
+  // seconds, the empty-DAG run never does.
   const waitForNewRunToAppear = async () => {
     const startedAt = Date.now();
 
     while (Date.now() - startedAt < NEW_RUN_APPEARANCE_TIMEOUT) {
       const { run } = await fetchLatestPipelineStatus();
 
-      if (run && isNewRun(run)) {
+      if (
+        run &&
+        isNewRun(run) &&
+        run.pipelineState !== undefined &&
+        run.pipelineState !== PipelineState.Queued
+      ) {
         return true;
       }
 
