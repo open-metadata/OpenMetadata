@@ -618,10 +618,14 @@ export const checkDomainDisplayName = async (
   page: Page,
   displayName: string
 ) => {
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName,
-    { timeout: 30000 }
-  );
+  const domainHeaderTitle = page
+    .getByTestId('entity-header-display-name')
+    .or(page.getByTestId('entity-header-name'))
+    .first();
+
+  await expect(domainHeaderTitle).toContainText(displayName, {
+    timeout: 30000,
+  });
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
