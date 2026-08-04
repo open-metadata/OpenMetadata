@@ -164,7 +164,10 @@ test.describe(
         .fill('Updated dimension description.');
 
       const patchPromise = page.waitForResponse(
-        (response) => response.request().method() === 'PATCH'
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response.url().includes('/api/v1/metrics/') &&
+          response.ok()
       );
 
       await page

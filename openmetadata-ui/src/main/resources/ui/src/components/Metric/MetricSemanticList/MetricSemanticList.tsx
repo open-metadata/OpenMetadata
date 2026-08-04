@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -177,14 +182,14 @@ const MetricSemanticList = <T extends MetricSemanticItem>({
         <div data-testid="semantic-list-body">
           {visibleItems.map(renderRow)}
           {items.length > VISIBLE_ITEM_COUNT && (
-            <Typography
-              as="span"
-              className="tw:cursor-pointer tw:text-brand-secondary tw:underline"
+            <Button
+              className="tw:text-xs tw:text-brand-secondary tw:underline"
+              color="link-color"
               data-testid={isShowMore ? 'show-less' : 'show-more'}
-              size="text-xs"
+              size="sm"
               onClick={() => setIsShowMore(!isShowMore)}>
               {isShowMore ? t('label.show-less') : t('label.show-more')}
-            </Typography>
+            </Button>
           )}
         </div>
       )}
