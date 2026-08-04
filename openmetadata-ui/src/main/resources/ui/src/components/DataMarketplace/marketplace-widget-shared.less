@@ -14,28 +14,28 @@
 .marketplace-widget-section {
   background: var(--tw-color-bg-primary);
   border: 1px solid @border-color;
-  border-radius: 12px;
-  padding: 20px 24px;
+  border-radius: var(--om-radius-xl);
+  padding: var(--om-space-20) var(--om-space-24);
 }
 
 .marketplace-widget-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: var(--om-space-16);
 
   .marketplace-widget-title {
-    margin-bottom: 1px !important;
+    margin-bottom: var(--om-space-1) !important;
   }
 
   .marketplace-widget-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--om-space-12);
 
     .view-all-link {
-      font-weight: 500;
-      font-size: 14px;
+      font-weight: var(--om-font-weight-medium);
+      font-size: var(--om-font-size-sm);
       white-space: nowrap;
     }
   }
@@ -43,5 +43,5 @@
 
 .marketplace-widget-cards {
   display: flex;
-  gap: 12px;
+  gap: var(--om-space-12);
 }

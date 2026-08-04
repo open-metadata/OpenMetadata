@@ -397,6 +397,55 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testBuildsQueryWithMetricFacetFilters() throws Exception {
+    float[] vector = {0.1f};
+    Map<String, List<String>> filters =
+        Map.of("granularity", List.of("MONTH"), "metricType", List.of("COUNT"));
+
+    String query = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
+
+    JsonNode mustFilters =
+        MAPPER
+            .readTree(query)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must");
+
+    String filtersJson = mustFilters.toString();
+    assertTrue(filtersJson.contains("granularity"));
+    assertTrue(filtersJson.contains("MONTH"));
+    assertTrue(filtersJson.contains("metricType"));
+    assertTrue(filtersJson.contains("COUNT"));
+  }
+
+  @Test
+  void testUnitOfMeasurementFilterAlsoMatchesTheCustomUnit() throws Exception {
+    float[] vector = {0.1f};
+    // A metric whose unit is OTHER displays its customUnitOfMeasurement, so filtering by the
+    // displayed value must match; otherwise the filter silently returns nothing.
+    Map<String, List<String>> filters = Map.of("unitOfMeasurement", List.of("basis points"));
+
+    String query = VectorSearchQueryBuilder.build(vector, 10, 0, 100, filters, 0.0);
+
+    String filtersJson =
+        MAPPER
+            .readTree(query)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must")
+            .toString();
+    assertTrue(filtersJson.contains("unitOfMeasurement"));
+    assertTrue(filtersJson.contains("customUnitOfMeasurement"));
+    assertTrue(filtersJson.contains("basis points"));
+  }
+
+  @Test
   void testIgnoresEmptyFilterValues() throws Exception {
     float[] vector = {0.1f};
     int size = 10;

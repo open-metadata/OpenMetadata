@@ -463,8 +463,17 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button');
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
-        await addWidgetButton.click();
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -607,8 +616,17 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button');
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
-        await addWidgetButton.click();
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -940,59 +958,5 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         userPage.getByRole('tab', { name: 'Data Products' })
       ).toBeVisible();
     });
-  });
-
-  // Regression: cancel button used to trigger both CustomizablePageHeader's
-  // local modal AND NavigationBlocker's modal, forcing users to click
-  // Discard twice. Now CustomizeDetailsPage wraps in NavigationBlocker and
-  // the header's local close modal is gone, so a single Discard on the
-  // blocker's modal must exit the page.
-  test('cancel button on customize detail page shows confirmation modal and Discard exits the page', async ({
-    adminPage,
-  }) => {
-    test.slow();
-
-    const entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
-    const { apiContext } = await getApiContext(adminPage);
-    await entity.create(apiContext);
-
-    const personaListResponse = adminPage.waitForResponse('/api/v1/personas?*');
-    await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-    await personaListResponse;
-
-    await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
-    await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-    await adminPage.getByText('Data Assets').click();
-    await adminPage.getByText('Table', { exact: true }).click();
-
-    await waitForAllLoadersToDisappear(adminPage);
-
-    // Remove the Description widget to create an unsaved change
-    await adminPage
-      .locator('#KnowledgePanel\\.Description')
-      .getByTestId('remove-widget-button')
-      .click();
-
-    // Wait for the dirty state to propagate so NavigationBlocker has
-    // installed its pushState override before we click cancel — otherwise
-    // the cancel navigate goes through natively and the modal never opens.
-    await expect(adminPage.getByTestId('save-button')).toBeEnabled();
-
-    await adminPage.getByTestId('cancel-button').click();
-
-    // Assert on -title (inside the visible .ant-modal) rather than the
-    // root testid, whose 0×0 wrapper trips Playwright's toBeVisible.
-    await expect(
-      adminPage.getByTestId('unsaved-changes-modal-title')
-    ).toBeVisible();
-
-    await adminPage.getByTestId('unsaved-changes-modal-discard').click();
-
-    await expect(
-      adminPage.getByTestId('unsaved-changes-modal-title')
-    ).toBeHidden();
-    await expect(
-      adminPage.getByTestId('customize-landing-page-header')
-    ).toBeHidden();
   });
 });

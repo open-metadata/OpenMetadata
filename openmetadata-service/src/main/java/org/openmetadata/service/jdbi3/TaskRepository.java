@@ -1399,13 +1399,13 @@ public class TaskRepository extends EntityRepository<Task> {
   protected void postCreate(Task entity) {
     super.postCreate(entity);
     triggerWorkflowManagedTask(entity);
-    IncidentTcrsSyncHandler.handleTaskCreate(entity);
+    IncidentTcrsSyncHandler.sync(entity);
   }
 
   @Override
   protected void postUpdate(Task original, Task updated) {
     super.postUpdate(original, updated);
-    IncidentTcrsSyncHandler.handleTaskUpdate(original, updated);
+    IncidentTcrsSyncHandler.sync(updated);
   }
 
   private void initializeWorkflowManagedTask(Task task, boolean update) {

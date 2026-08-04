@@ -14,7 +14,7 @@
 @import (reference) '../variables.less';
 
 .om-rdg {
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   border: 1px solid @om-rdg-border-color;
   overflow: hidden;
   user-select: none;
@@ -50,7 +50,7 @@
 
   .rdg-header-row {
     background-color: @grey-50;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
     color: @om-rdg-header-color;
   }
 
@@ -60,7 +60,7 @@
       min-width: -webkit-fill-available;
       height: auto !important;
       width: auto !important;
-      z-index: 999;
+      z-index: var(--om-z-999);
       overflow: visible;
       position: absolute;
       top: 0;
@@ -89,7 +89,7 @@
       min-width: -webkit-fill-available;
       height: auto !important;
       width: auto !important;
-      z-index: 999;
+      z-index: var(--om-z-999);
       overflow: visible;
       position: absolute;
       top: 0;
@@ -114,7 +114,7 @@
 
   .rdg-cell-entityType {
     &.rdg-editor-container {
-      padding: 2px @size-xxs;
+      padding: var(--om-space-2) @size-xxs;
 
       .ant-select-focused .ant-select-selector {
         border: none;

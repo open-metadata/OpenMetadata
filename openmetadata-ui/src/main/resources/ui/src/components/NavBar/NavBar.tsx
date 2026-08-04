@@ -274,7 +274,7 @@ const NavBar = () => {
                 isAxiosError: true,
                 message: 'Invalid job arguments: entityType is required',
               } as AxiosError,
-              t('message.unexpected-error')
+              t('server.unexpected-error')
             );
 
             break;

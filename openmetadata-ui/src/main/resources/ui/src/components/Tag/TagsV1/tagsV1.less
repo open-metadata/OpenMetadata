@@ -16,12 +16,12 @@
 .ant-tag.tag-chip {
   max-width: 100%;
   display: flex;
-  gap: 4px;
+  gap: var(--om-space-4);
   align-items: center;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--om-font-size-xs);
+  font-weight: var(--om-font-weight-medium);
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--om-radius-sm);
   cursor: pointer;
   overflow: hidden;
   border-color: @border-color;
@@ -30,17 +30,17 @@
 .ant-tag.tag-highlight {
   .tags-label {
     background-color: @text-highlighter!important;
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
+    padding-left: var(--om-space-4);
+    padding-right: var(--om-space-4);
   }
 }
 
 .ant-tag.tag-chip-content {
   width: max-content;
   max-width: 200px;
-  margin: 0px;
+  margin: 0;
   border: none;
-  padding: 2px 0;
+  padding: var(--om-space-2) 0;
   background: @tag-background-color;
   border-radius: @border-rad-xs;
 
@@ -82,7 +82,7 @@
   }
 }
 .ant-tag.tag-chip-add-button {
-  padding: 3px 8px;
+  padding: var(--om-space-3) var(--om-space-8);
   background: var(--tw-color-bg-primary);
 }
 
@@ -92,8 +92,8 @@
 
 .tags-label {
   display: block;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--om-font-size-xs);
+  font-weight: var(--om-font-weight-medium);
   color: inherit;
   overflow: hidden;
   text-overflow: ellipsis;

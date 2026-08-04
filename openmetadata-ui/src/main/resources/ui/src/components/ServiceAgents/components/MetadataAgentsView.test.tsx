@@ -15,6 +15,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ServicesType } from '../../../interface/service.interface';
+import { getErrorPlaceHolder } from '../../../utils/IngestionUtils';
 import { Agent } from '../AgentsPage.interface';
 import MetadataAgentsView from './MetadataAgentsView.component';
 
@@ -181,6 +182,16 @@ describe('MetadataAgentsView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDeleteIngestionPipelineById.mockResolvedValue({});
+  });
+
+  it('should request the empty placeholder with the agents card styling', () => {
+    renderView();
+
+    const lastCall = (getErrorPlaceHolder as jest.Mock).mock.calls.at(-1);
+
+    expect(lastCall?.[4]).toBe(
+      'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl'
+    );
   });
 
   it('should toggle the agent when the pause action is dispatched', () => {
