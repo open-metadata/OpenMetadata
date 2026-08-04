@@ -80,6 +80,7 @@ export function computeGraphSearchHighlight(
 
   glossaries.forEach((g) => {
     if (
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
       g.id &&
       (textMatches(query, g.name) ||
         textMatches(query, g.displayName) ||

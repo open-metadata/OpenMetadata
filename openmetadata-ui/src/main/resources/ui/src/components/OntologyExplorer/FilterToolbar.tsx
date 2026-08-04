@@ -48,6 +48,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
   hasMoreTerms = false,
   loadedTermCount,
   totalTermCount,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
 

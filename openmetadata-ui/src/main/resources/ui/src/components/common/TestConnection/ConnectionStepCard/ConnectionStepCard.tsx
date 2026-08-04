@@ -40,7 +40,8 @@ const ConnectionStepCard = ({
   testConnectionStep,
   testConnectionStepResult,
   isTestingConnection,
-}: ConnectionStepCardProp) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+ConnectionStepCardProp) => {
   const { t } = useTranslation();
   const isSkipped =
     isUndefined(testConnectionStepResult) && !isTestingConnection;

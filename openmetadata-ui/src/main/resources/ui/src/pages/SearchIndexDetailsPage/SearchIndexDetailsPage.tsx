@@ -88,6 +88,7 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const LABEL_SEARCH_INDEX = 'label.search-index';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } = useRequiredParams<{

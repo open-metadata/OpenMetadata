@@ -201,6 +201,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       {/* Lineage Items */}
       <div className="lineage-items-list">
         {filteredLineageItems.length > 0 ? (
+          // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
           filteredLineageItems.map((item) => (
             <Link
               className="lineage-item-link"

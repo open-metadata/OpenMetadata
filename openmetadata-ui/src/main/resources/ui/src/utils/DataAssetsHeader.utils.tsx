@@ -194,6 +194,7 @@ export const getDataAssetsHeaderInfo = (
   dataAsset: DataAssetsHeaderProps['dataAsset'],
   entityName: string,
   parentContainers: EntityReference[]
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ) => {
   const returnData: DataAssetHeaderInfo = {
     extraInfo: <></>,

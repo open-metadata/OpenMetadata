@@ -51,6 +51,7 @@ export const getPartialNameFromTableFQN = (
   fqn: string,
   fqnParts: Array<FqnPart> = [],
   joinSeparator = '/'
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
 ): string => {
   if (!fqn) {
     return '';

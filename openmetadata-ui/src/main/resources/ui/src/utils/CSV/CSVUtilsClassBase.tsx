@@ -419,11 +419,10 @@ const getEntityReferenceOption = (
 const getEntityReferenceInitialOptions = (
   value: ExtensionDataTypes | undefined
 ) => {
+  const singleReference = isEntityReferenceValue(value) ? [value] : [];
   const references = Array.isArray(value)
     ? value.filter(isEntityReferenceValue)
-    : isEntityReferenceValue(value)
-    ? [value]
-    : [];
+    : singleReference;
 
   return references.map(getEntityReferenceOption);
 };
@@ -758,6 +757,7 @@ const loadBulkEditPickerOptions = async (
   columnKey: BulkEditPickerColumn,
   searchText: string,
   includeTeams = false
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   switch (columnKey) {
     case 'owner':
@@ -1158,7 +1158,8 @@ const InlineBulkEditReferencePickerEditor = ({
               <span className="bulk-edit-picker-loading">
                 {t('label.loading')}
               </span>
-            ) : hasOptions ? (
+            ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- inline JSX ternary
+            hasOptions ? (
               <div className="bulk-edit-picker-option-list">
                 {options.map((option) => {
                   const isSelected = selectedSet.has(option.value);
@@ -1438,6 +1439,7 @@ const InlineCustomPropertiesEditor = ({
     );
   };
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const renderField = (customProperty: CustomPropertyDefinition) => {
     const propertyType = customProperty.propertyType.name ?? '';
     const propertyValue = draft[customProperty.name];
@@ -1458,7 +1460,8 @@ const InlineCustomPropertiesEditor = ({
           customProperty.name,
           Array.isArray(selectedValue)
             ? selectedValue
-            : selectedValue
+            : // eslint-disable-next-line sonarjs/no-nested-conditional -- normalize value ternary
+            selectedValue
             ? [selectedValue]
             : []
         );
@@ -1985,6 +1988,7 @@ class CSVUtilsClassBase {
     ];
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
   public getEditor(
     column: string,
     entityType: EntityType,

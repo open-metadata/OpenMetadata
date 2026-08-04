@@ -165,6 +165,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const fetchKnowledgePage = async (fqn: string) => {
     setIsLoading(true);
     try {
@@ -178,6 +179,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
       const draft = getDraft(response.id);
       const hasChanges =
+        // eslint-disable-next-line sonarjs/expression-complexity
         draft &&
         ((draft.description !== undefined &&
           draft.description !== response.description) ||

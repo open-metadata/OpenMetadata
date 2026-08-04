@@ -162,6 +162,7 @@ export const isFilterPatternConfig = (
 export const isFilterSchemaProperty = (
   fieldName: string,
   property: unknown
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): property is FilterSchemaProperty => {
   if (!property || typeof property !== 'object' || Array.isArray(property)) {
     return false;

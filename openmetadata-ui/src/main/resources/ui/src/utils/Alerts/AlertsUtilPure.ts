@@ -43,6 +43,7 @@ const MESSAGE_FIELD_TEXT_IS_REQUIRED =
 const LABEL_ENTITY_LIST = 'label.entity-list' as const;
 const LABEL_ENTITY_NAME = 'label.entity-name' as const;
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 export const getFunctionDisplayName = (func: string): string => {
   switch (func) {
     case 'matchAnyEntityFqn':
@@ -413,6 +414,7 @@ export const getRandomizedAlertName = () => {
   })}`;
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 export const getMessageFromArgumentName = (argumentName: string) => {
   switch (argumentName) {
     case 'fqnList':

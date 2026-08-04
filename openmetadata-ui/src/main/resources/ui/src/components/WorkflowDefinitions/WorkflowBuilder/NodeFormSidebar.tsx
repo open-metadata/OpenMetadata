@@ -66,6 +66,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const entityTypes = useMemo(() => {
     if (
       currentWorkflowConfig?.dataAssets &&
@@ -160,12 +161,14 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
                   ? (nodeId: string) => {
                       if (setNodes) {
                         setNodes((nodes) =>
+                          // eslint-disable-next-line sonarjs/no-nested-functions -- local closure
                           nodes.filter((n) => n.id !== nodeId)
                         );
                       }
                       if (setEdges) {
                         setEdges((edges) =>
                           edges.filter(
+                            // eslint-disable-next-line sonarjs/no-nested-functions -- local closure
                             (e) => e.source !== nodeId && e.target !== nodeId
                           )
                         );

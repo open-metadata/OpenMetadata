@@ -195,7 +195,8 @@ export const getTableDetailPageBaseTabs = ({
   fetchTableDetails,
   isViewTableType,
   labelMap,
-}: TableDetailPageTabProps): TabProps[] => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+TableDetailPageTabProps): TabProps[] => {
   return [
     {
       label: (

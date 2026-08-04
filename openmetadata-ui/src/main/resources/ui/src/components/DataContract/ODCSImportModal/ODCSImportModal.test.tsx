@@ -141,6 +141,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         const files: File[] = raw ? Array.from(raw as unknown as File[]) : [];
         const accepted = accept
           ? files.filter((f) =>
+              // eslint-disable-next-line sonarjs/no-nested-functions -- test helper
               accept.split(',').some((ext) => f.name.endsWith(ext.trim()))
             )
           : files;
@@ -242,6 +243,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         }
 
         const cloneChildren = (node: React.ReactNode): React.ReactNode =>
+          // eslint-disable-next-line sonarjs/no-nested-functions -- recursive test helper
           React.Children.map(node, (c) => {
             if (!React.isValidElement(c)) {
               return c;

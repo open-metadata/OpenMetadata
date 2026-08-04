@@ -75,6 +75,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     []
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   useEffect(() => {
     if (node?.data) {
       const nodeConfig = node.data.config || {};

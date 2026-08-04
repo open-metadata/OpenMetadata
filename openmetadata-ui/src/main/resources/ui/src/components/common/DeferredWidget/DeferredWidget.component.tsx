@@ -121,6 +121,7 @@ export const DeferredWidget = ({
   // this wrapper exists to measure and protect.
   // Cheap one-time check.
   const ioUnsupported = useRef(
+    // eslint-disable-next-line sonarjs/expression-complexity -- short-circuit guards must stay inline
     typeof window === 'undefined' ||
       typeof window.IntersectionObserver === 'undefined' ||
       process.env.NODE_ENV === 'test' ||

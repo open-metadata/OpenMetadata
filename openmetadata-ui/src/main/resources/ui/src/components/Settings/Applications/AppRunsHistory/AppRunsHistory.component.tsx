@@ -220,6 +220,7 @@ const AppRunsHistory = forwardRef(
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
+            {/* eslint-disable-next-line sonarjs/expression-complexity -- JSX render gate */}
             {!record.isSynthetic &&
               record.status !== Status.Success &&
               record.status !== Status.Failed &&

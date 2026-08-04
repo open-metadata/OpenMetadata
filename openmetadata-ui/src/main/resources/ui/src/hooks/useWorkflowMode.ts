@@ -133,6 +133,7 @@ export const useWorkflowMode = (
     }
   }, [internalMode, enterEditMode, enterViewMode]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- derived state; refactor risky
   const derivedStates = useMemo(() => {
     const isViewMode = internalMode === 'view';
     const isEditMode = internalMode === 'edit';

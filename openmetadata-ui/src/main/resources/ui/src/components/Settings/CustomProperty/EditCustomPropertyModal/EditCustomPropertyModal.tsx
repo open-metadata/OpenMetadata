@@ -240,6 +240,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
           entityType={EntityType.TYPE}>
           {generateFormFields(formFields)}
         </EntityAttachmentProvider>
+        {/* eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value */}
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
             {hasEnumConfig && (

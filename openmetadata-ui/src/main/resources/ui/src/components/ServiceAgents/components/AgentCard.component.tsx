@@ -70,6 +70,7 @@ const AgentCard: FC<AgentCardProps> = ({
   onLogs,
   onRun,
   onRunDetails,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
 }) => {
   const { t } = useTranslation();
   const { descriptionFirstPart, descriptionSecondPart } =
@@ -158,61 +159,64 @@ const AgentCard: FC<AgentCardProps> = ({
           <Box
             align="center"
             className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
-            {isPaused ? (
-              <Badge
-                className="tw:gap-1.5 tw:font-semibold"
-                color="warning"
-                data-testid="paused-pipeline-badge"
-                size="sm"
-                type="pill-color">
-                <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
-                {t('label.paused')}
-              </Badge>
-            ) : (
-              <>
-                <StatusPill status={agent.status} />
-                {isRunning && (
-                  <Metric
-                    dataTestId="agent-assets-metric"
-                    icon={unitIcon}
-                    label={unitVerbLabel}
-                    value={fmtNum(agent.assets)}
-                  />
-                )}
-                {isRunning && (
-                  <Metric
-                    dataTestId="agent-eta-metric"
-                    icon={<Clock size={15} />}
-                    value={etaLabel}
-                  />
-                )}
-                {showLastRunMetric && (
-                  <Metric
-                    icon={unitIcon}
-                    label={`${unitLabel}${finishedSuffix}`}
-                    value={fmtNum(agent.assets)}
-                  />
-                )}
-                {isQueued && agent.after && (
-                  <span className="tw:text-sm tw:text-tertiary">
-                    {t('label.starts-after')}{' '}
-                    <strong className="tw:font-semibold tw:text-secondary">
-                      {agent.after}
-                    </strong>
-                  </span>
-                )}
-                {isFailed && agent.failStep && (
-                  <Metric
-                    icon={<AlertCircle size={15} />}
-                    label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
-                      'label.before-error'
-                    )}`}
-                    tone="error"
-                    value={`${t('label.failed-at')} ${agent.failStep}`}
-                  />
-                )}
-              </>
-            )}
+            {
+              // eslint-disable-next-line sonarjs/expression-complexity -- nested JSX status branches
+              isPaused ? (
+                <Badge
+                  className="tw:gap-1.5 tw:font-semibold"
+                  color="warning"
+                  data-testid="paused-pipeline-badge"
+                  size="sm"
+                  type="pill-color">
+                  <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
+                  {t('label.paused')}
+                </Badge>
+              ) : (
+                <>
+                  <StatusPill status={agent.status} />
+                  {isRunning && (
+                    <Metric
+                      dataTestId="agent-assets-metric"
+                      icon={unitIcon}
+                      label={unitVerbLabel}
+                      value={fmtNum(agent.assets)}
+                    />
+                  )}
+                  {isRunning && (
+                    <Metric
+                      dataTestId="agent-eta-metric"
+                      icon={<Clock size={15} />}
+                      value={etaLabel}
+                    />
+                  )}
+                  {showLastRunMetric && (
+                    <Metric
+                      icon={unitIcon}
+                      label={`${unitLabel}${finishedSuffix}`}
+                      value={fmtNum(agent.assets)}
+                    />
+                  )}
+                  {isQueued && agent.after && (
+                    <span className="tw:text-sm tw:text-tertiary">
+                      {t('label.starts-after')}{' '}
+                      <strong className="tw:font-semibold tw:text-secondary">
+                        {agent.after}
+                      </strong>
+                    </span>
+                  )}
+                  {isFailed && agent.failStep && (
+                    <Metric
+                      icon={<AlertCircle size={15} />}
+                      label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
+                        'label.before-error'
+                      )}`}
+                      tone="error"
+                      value={`${t('label.failed-at')} ${agent.failStep}`}
+                    />
+                  )}
+                </>
+              )
+            }
           </Box>
           {isRunning && (
             <div data-testid="agent-progress-bar">

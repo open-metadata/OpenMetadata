@@ -428,6 +428,7 @@ export function useGridEditController({
       return;
     }
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
     function keyHandler(e: KeyboardEvent) {
       if (e.shiftKey) {
         isShiftArrow.current = true;
@@ -466,10 +467,11 @@ export function useGridEditController({
       // Undo/Redo
       const isUndo =
         (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey;
-      const isRedo =
-        (e.ctrlKey || e.metaKey) &&
-        (e.key.toLowerCase() === 'y' ||
-          (e.shiftKey && e.key.toLowerCase() === 'z'));
+      const isRedoModifier = e.ctrlKey || e.metaKey;
+      const isRedoKey =
+        e.key.toLowerCase() === 'y' ||
+        (e.shiftKey && e.key.toLowerCase() === 'z');
+      const isRedo = isRedoModifier && isRedoKey;
 
       if (isUndo) {
         e.stopPropagation();

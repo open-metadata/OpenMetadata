@@ -112,6 +112,7 @@ export const getCustomMarkdownComponents = (
     ),
 
     // Pre component for code blocks
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
     pre: (props: React.HTMLAttributes<HTMLPreElement>) => {
       const { children, ...restProps } = props;
       // Check if this is a SQL code block

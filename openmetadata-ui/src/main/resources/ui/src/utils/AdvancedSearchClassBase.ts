@@ -1362,6 +1362,7 @@ class AdvancedSearchClassBase {
     return Array.isArray(result) ? result.map(attachType) : attachType(result);
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   private buildCustomPropertiesSubFields(
     field: CustomPropertySummary,
     searchOutputType: SearchOutputType

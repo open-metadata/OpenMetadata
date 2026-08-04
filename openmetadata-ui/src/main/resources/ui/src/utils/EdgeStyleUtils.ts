@@ -160,6 +160,7 @@ export type EdgeVisualState = 'traced' | 'dimmed' | 'hidden' | 'default';
 // Node-click and column-click are mutually exclusive tracing modes
 // (LineageProvider clears the other set when either fires), so we can key
 // off which set is non-empty to decide the current mode.
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 export function computeEdgeVisualState(
   edge: Edge,
   tracedNodes: Set<string>,

@@ -92,6 +92,7 @@ import { AddAlertPageLoadingState } from './AddNotificationPage.interface';
 
 const SERVER_ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
 const LABEL_ALERT = 'label.alert';
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- page component; refactor risky
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const navigate = useNavigate();

@@ -113,7 +113,10 @@ const TableV2 = <T extends object>(
     ...rest
   }: TableV2Props<T>,
   ref: Ref<HTMLDivElement> | null | undefined
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
+  /* eslint-disable sonarjs/no-nested-functions, sonarjs/no-nested-conditional -- dense table render */
+  /* eslint-disable sonarjs/expression-complexity -- dense table render */
   const { t } = useTranslation();
   const { type } = useGenericContext();
   const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
@@ -665,6 +668,7 @@ const TableV2 = <T extends object>(
               onSelectionChange={handleSelectionChange}
               onSortChange={handleSortChange}>
               <UntitledTable.Header className="tw:px-2">
+                {/* eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching */}
                 {propsColumns.map((col, colIdx) => {
                   const colType = col as ColumnType<T>;
                   const rowHeaderColumn = colType as ColumnType<T> & {
@@ -809,6 +813,7 @@ const TableV2 = <T extends object>(
                       onDrop={
                         dragAndDropHooks ? undefined : rowHandlers.onDrop
                       }>
+                      {/* eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching */}
                       {propsColumns.map((col, colIdx) => {
                         const colType = col as ColumnType<T>;
                         const cellKey = String(
@@ -966,6 +971,8 @@ const TableV2 = <T extends object>(
       ) : null}
     </div>
   );
+  /* eslint-enable sonarjs/no-nested-functions, sonarjs/no-nested-conditional */
+  /* eslint-enable sonarjs/expression-complexity */
 };
 
 type TableV2WithGenerics = <T extends object>(

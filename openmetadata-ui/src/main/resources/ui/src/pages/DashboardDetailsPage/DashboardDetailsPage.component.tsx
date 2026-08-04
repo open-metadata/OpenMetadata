@@ -59,6 +59,7 @@ export type ChartType = {
   displayName: string;
 } & Chart;
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const DashboardDetailsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();

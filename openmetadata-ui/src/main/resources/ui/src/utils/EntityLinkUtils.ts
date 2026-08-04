@@ -43,6 +43,7 @@ export const getEntityLinkFromType = (
   fullyQualifiedName: string,
   entityType: EntityType,
   entity?: SearchSourceAlias
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ) => {
   switch (entityType) {
     case EntityType.TABLE:

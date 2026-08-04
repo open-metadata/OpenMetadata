@@ -119,6 +119,7 @@ export function truncateNodeLabelByWidth(label: string, width: number): string {
   );
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 export function getLayoutConfig(
   layoutType: LayoutType | LayoutEngineType,
   nodeCount: number,

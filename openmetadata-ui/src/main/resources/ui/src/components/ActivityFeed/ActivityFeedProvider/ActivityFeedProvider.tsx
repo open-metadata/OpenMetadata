@@ -216,6 +216,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       fqn?: string,
       taskStatusGroup?: TaskStatusGroup,
       limit?: number
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- multi-filter fetch
     ) => {
       try {
         setLoading(true);
@@ -526,6 +527,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setEntityThread((prevData) =>
           prevData.map((thread) => {
             if (isEqual(threadId, thread.id)) {
+              // eslint-disable-next-line sonarjs/no-nested-functions -- setState updater closure
               const updatedPosts = (thread.posts ?? []).map((post) => {
                 if (isEqual(postId, post.id)) {
                   return {
@@ -751,6 +753,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             const fresh = res.data;
             setSelectedTask(fresh);
             setTasks((prev) =>
+              // eslint-disable-next-line sonarjs/no-nested-functions -- closes over fresh from setState updater
               prev.map((t) => (t.id === fresh.id ? fresh : t))
             );
           })

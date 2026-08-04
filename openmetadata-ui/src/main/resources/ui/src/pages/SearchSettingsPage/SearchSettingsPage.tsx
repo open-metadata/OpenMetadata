@@ -57,6 +57,7 @@ import { UpdateConfigParams } from './searchSettings.interface';
 const SERVER_UPDATE_ENTITY_SUCCESS = 'server.update-entity-success';
 const LABEL_SEARCH_SETTING_PLURAL = 'label.search-setting-plural';
 const LABEL_RESET = 'label.reset';
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- page component; refactor risky
 const SearchSettingsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();

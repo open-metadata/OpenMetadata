@@ -85,6 +85,7 @@ export const formatServerContent = (htmlString: string) => {
     // Validate href to only allow safe protocols before embedding into entity link string.
     // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
     const href =
+      // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
       rawHref &&
       (rawHref.startsWith('http://') ||
         rawHref.startsWith('https://') ||

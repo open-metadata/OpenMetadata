@@ -93,15 +93,14 @@ export const parseBucketsData = (
 
     const actualValue =
       sourceFields && topHitsSource
-        ? sourceFields
-            .split('.')
-            .reduce(
-              (obj: unknown, key: string): unknown =>
-                obj && typeof obj === 'object' && obj !== null && key in obj
-                  ? (obj as Record<string, unknown>)[key]
-                  : undefined,
-              topHitsSource
-            ) ?? bucket.key
+        ? sourceFields.split('.').reduce(
+            (obj: unknown, key: string): unknown =>
+              // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
+              obj && typeof obj === 'object' && obj !== null && key in obj
+                ? (obj as Record<string, unknown>)[key]
+                : undefined,
+            topHitsSource
+          ) ?? bucket.key
         : bucket.key;
 
     return {

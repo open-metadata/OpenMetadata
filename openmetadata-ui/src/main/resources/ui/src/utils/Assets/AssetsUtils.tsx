@@ -99,6 +99,7 @@ export const getAPIfromSource = (
 ): ((
   id: string,
   jsonPatch: Operation[]
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- dispatch switch; refactor risky
 ) => Promise<MapPatchAPIResponse[typeof source]>) => {
   switch (source) {
     case EntityType.TABLE:
@@ -182,6 +183,7 @@ export const getEntityAPIfromSource = (
 ): ((
   fqn: string,
   params?: ListParams
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- dispatch switch; refactor risky
 ) => Promise<MapPatchAPIResponse[typeof source]>) => {
   switch (source) {
     case EntityType.TABLE:

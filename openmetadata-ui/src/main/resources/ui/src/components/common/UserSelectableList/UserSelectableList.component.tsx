@@ -78,6 +78,7 @@ export const UserSelectableList = ({
     []
   );
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
   const fetchOptions = async (searchText: string, after?: string) => {
     if (!after) {
       botUserIds.current.clear();

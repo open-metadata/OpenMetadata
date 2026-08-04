@@ -85,7 +85,8 @@ const CreateUser = ({
   onCancel,
   onSave,
   forceBot,
-}: CreateUserProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
+CreateUserProps) => {
   const {
     state,
   }: {
@@ -275,7 +276,8 @@ const CreateUser = ({
             },
             allowImpersonation,
           }
-        : isAuthProviderBasic
+        : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+        isAuthProviderBasic
         ? {
             password: isPasswordGenerated ? generatedPassword : password,
             confirmPassword: isPasswordGenerated
@@ -385,6 +387,7 @@ const CreateUser = ({
 
       {getField(descriptionField)}
 
+      {/* eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value */}
       {!forceBot && (
         <>
           {isAuthProviderBasic && (

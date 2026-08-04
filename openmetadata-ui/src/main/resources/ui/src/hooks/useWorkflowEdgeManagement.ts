@@ -115,6 +115,7 @@ export const useWorkflowEdgeManagement = ({
   const fixMissingEdgeLabels = useCallback(() => {
     setEdges((currentEdges) => {
       return currentEdges.map((edge) => {
+        // eslint-disable-next-line sonarjs/no-nested-functions -- inline find predicate
         const sourceNode = nodes.find((n) => n.id === edge.source);
         if (
           edge.label &&

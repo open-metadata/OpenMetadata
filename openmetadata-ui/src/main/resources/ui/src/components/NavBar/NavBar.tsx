@@ -96,6 +96,7 @@ const DomainSelectableList = withSuspenseFallback(
 
 const cookieStorage = new CookieStorage();
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();

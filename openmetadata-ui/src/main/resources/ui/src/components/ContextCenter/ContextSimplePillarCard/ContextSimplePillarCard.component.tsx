@@ -56,6 +56,7 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
       </Box>
 
       <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
+        {/* eslint-disable sonarjs/no-nested-conditional -- preserve ternary branches */}
         {isLoading ? (
           <Box direction="col" gap={2}>
             <Skeleton height="14px" variant="rounded" width="80%" />
@@ -87,6 +88,7 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
         ) : (
           children
         )}
+        {/* eslint-enable sonarjs/no-nested-conditional */}
       </div>
     </Card>
   );

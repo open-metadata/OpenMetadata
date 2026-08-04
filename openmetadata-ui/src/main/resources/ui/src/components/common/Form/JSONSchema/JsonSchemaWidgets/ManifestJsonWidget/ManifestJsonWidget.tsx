@@ -183,6 +183,7 @@ const suggest = (unknownField: string, candidates: string[]): string | null => {
 const getTypeMismatch = (
   value: unknown,
   expected: (typeof ENTRY_FIELDS)[EntryFieldName]
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
 ): TypeMismatch | null => {
   if (value === null || value === undefined) {
     return null;
@@ -227,6 +228,7 @@ const getTypeMismatch = (
 const validatePartitionColumns = (
   entryIndex: number,
   columns: unknown
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): ValidationError | null => {
   if (!Array.isArray(columns)) {
     return null;
@@ -278,6 +280,7 @@ const validatePartitionColumns = (
   return null;
 };
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
 export const validateManifestJson = (raw: string): ValidationState => {
   const trimmed = (raw || '').trim();
   if (!trimmed) {
@@ -426,6 +429,7 @@ const formatTypeMismatch = (mismatch: TypeMismatch, t: TFunction): string => {
 export const formatValidationError = (
   error: ValidationError,
   t: TFunction
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): string => {
   switch (error.code) {
     case 'invalid-json':

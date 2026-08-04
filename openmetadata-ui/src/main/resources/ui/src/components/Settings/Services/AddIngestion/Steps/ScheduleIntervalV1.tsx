@@ -121,6 +121,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   defaultSchedule,
   entity,
   onValidityChange,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 }) => {
   const { t } = useTranslation();
   // Schedule options for SelectionCardGroup

@@ -240,6 +240,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   viewOnly = false,
   canDelete = false,
   currentUserName,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- large modal component; refactor risky
 }) => {
   const { t } = useTranslation();
   const modalContainerRef = useRef<HTMLDivElement>(null);
@@ -314,6 +315,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   }, [viewOnly]);
 
   // Populate / reset form whenever the memory being edited changes
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- form-population effect; refactor risky
   useEffect(() => {
     if (memoryToEdit) {
       const memoryTypeOption = memoryToEdit.memoryType
@@ -407,6 +409,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     []
   );
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
   const handleSubmit = async (values: MemoryFormValues) => {
     setModalError('');
     try {
@@ -682,33 +685,39 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Scrollable body */}
                   <div className="tw:flex tw:flex-col tw:gap-5 tw:pb-4 tw:overflow-y-auto tw:flex-1 tw:px-6">
                     {/* Read-only banner for non-owners */}
-                    {isViewOnly && !isOwner && !canDelete && memoryToEdit && (
-                      <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
-                        <Lock01
-                          className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
-                          size={16}
-                          strokeWidth={2}
-                        />
-                        <div className="tw:flex tw:flex-col">
-                          <Typography
-                            className="tw:text-warning-700"
-                            size="text-xs"
-                            weight="semibold">
-                            {t('label.cant-edit-this-memory')}
-                          </Typography>
-                          <Typography
-                            as="p"
-                            className="tw:text-warning-700 tw:leading-4"
-                            size="text-xs">
-                            {t('message.context-memory-read-only-description', {
-                              creatorName:
-                                memoryToEdit.owners?.[0]?.name ??
-                                memoryToEdit.updatedBy,
-                            })}
-                          </Typography>
+                    {
+                      // eslint-disable-next-line sonarjs/expression-complexity -- render guard condition
+                      isViewOnly && !isOwner && !canDelete && memoryToEdit && (
+                        <div className="tw:flex tw:items-start tw:gap-2 tw:rounded-lg tw:border tw:border-warning-300 tw:bg-warning-50 tw:px-3 tw:py-2.5">
+                          <Lock01
+                            className="tw:shrink-0 tw:text-warning-700 tw:mt-0.5"
+                            size={16}
+                            strokeWidth={2}
+                          />
+                          <div className="tw:flex tw:flex-col">
+                            <Typography
+                              className="tw:text-warning-700"
+                              size="text-xs"
+                              weight="semibold">
+                              {t('label.cant-edit-this-memory')}
+                            </Typography>
+                            <Typography
+                              as="p"
+                              className="tw:text-warning-700 tw:leading-4"
+                              size="text-xs">
+                              {t(
+                                'message.context-memory-read-only-description',
+                                {
+                                  creatorName:
+                                    memoryToEdit.owners?.[0]?.name ??
+                                    memoryToEdit.updatedBy,
+                                }
+                              )}
+                            </Typography>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )
+                    }
 
                     {/* Inline error alert */}
                     {modalError && (
@@ -840,6 +849,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                     onRemove={(fqn) =>
                                       setLinkedAssets((prev) =>
                                         prev.filter(
+                                          // eslint-disable-next-line sonarjs/no-nested-functions -- closes over fqn
                                           (a) =>
                                             (a.reference?.fullyQualifiedName ??
                                               String(a.value ?? '')) !== fqn

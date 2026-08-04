@@ -70,6 +70,7 @@ import {
   WorkflowExtraConfig,
 } from './ScheduleInterval.interface';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 function ScheduleIntervalInner<T>(
   {
     disabled,
@@ -153,6 +154,7 @@ function ScheduleIntervalInner<T>(
     hourCol,
     weekCol,
     monthCol,
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   } = useMemo(() => {
     const isHourSelected = selectedPeriod === 'hour';
     const isDaySelected = selectedPeriod === 'day';

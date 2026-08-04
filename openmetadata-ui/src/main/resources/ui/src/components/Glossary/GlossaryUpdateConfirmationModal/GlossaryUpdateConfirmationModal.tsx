@@ -108,13 +108,11 @@ export const GlossaryUpdateConfirmationModal = ({
     ];
   }, []);
 
+  const updatingProgress = updateState === UpdateState.UPDATING ? 60 : 100;
   const progress =
-    updateState === UpdateState.VALIDATING
-      ? 10
-      : updateState === UpdateState.UPDATING
-      ? 60
-      : 100;
+    updateState === UpdateState.VALIDATING ? 10 : updatingProgress;
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const data = useMemo(() => {
     const footer = (
       <div className="d-flex justify-between">

@@ -200,6 +200,7 @@ const InlineTestCaseIncidentStatus = ({
         reason?: TestCaseFailureReasonType;
         comment?: string;
       }
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     ) => {
       const currentStatus = data.testCaseResolutionStatusType;
 

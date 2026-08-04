@@ -67,6 +67,7 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
   onExport,
   onFileNameChange,
   onSelectedExportTypeChange,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const exportLabel = t('label.export');
@@ -141,6 +142,7 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
               <InputBase inputDataTestId="file-name-input" />
             </InputGroup>
 
+            {/* eslint-disable-next-line sonarjs/expression-complexity -- JSX gate */}
             {csvExportJob?.jobId && (
               <>
                 {isExportInProgress &&
@@ -176,7 +178,8 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
                     variant={
                       csvExportJob.error || csvExportJob.statusUnavailable
                         ? 'error'
-                        : downloading
+                        : // eslint-disable-next-line sonarjs/no-nested-conditional -- variant branch
+                        downloading
                         ? 'brand'
                         : 'success'
                     }

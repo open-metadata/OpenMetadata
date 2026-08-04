@@ -96,6 +96,7 @@ export const getConstraintIcon = ({
   width?: string;
   isConstraintAdded?: boolean;
   isConstraintDeleted?: boolean;
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- constraint switch; refactor risky
 }) => {
   let title: string, icon: SvgComponent, dataTestId: string;
   switch (constraint) {

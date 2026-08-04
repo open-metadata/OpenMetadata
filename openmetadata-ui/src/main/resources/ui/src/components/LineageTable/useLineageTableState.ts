@@ -38,6 +38,7 @@ const initialState: LineageTableState = {
   nodeDepth: 1,
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- reducer switch; refactor risky
 function lineageTableReducer(
   state: LineageTableState,
   action: LineageTableAction

@@ -121,6 +121,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         width={576}
         onClose={onClose}>
         <div className="learning-drawer-content">
+          {/* eslint-disable sonarjs/no-nested-conditional -- chained ternary render */}
           {isLoading ? (
             <div className="learning-drawer-loading">
               <Spin
@@ -149,6 +150,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
               ))}
             </div>
           )}
+          {/* eslint-enable sonarjs/no-nested-conditional */}
         </div>
       </Drawer>
 

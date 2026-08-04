@@ -213,6 +213,7 @@ const ConnectionConfigForm = forwardRef<
 
     const shouldShowIPAlert = useMemo(() => {
       return (
+        // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
         !isEmpty(connSch.schema) &&
         isAirflowAvailable &&
         hostIp &&

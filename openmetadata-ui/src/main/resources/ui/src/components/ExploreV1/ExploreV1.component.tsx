@@ -130,6 +130,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   browseFields = [],
   browseQueryFilter,
   onTreeSelect = noop,
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();

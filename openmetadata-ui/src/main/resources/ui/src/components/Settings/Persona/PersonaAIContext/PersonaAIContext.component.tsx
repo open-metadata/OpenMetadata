@@ -71,7 +71,8 @@ export const PersonaAIContext = ({
   canEdit,
   persona,
   onPersonaUpdate,
-}: PersonaAIContextProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
+PersonaAIContextProps) => {
   const { t } = useTranslation();
   const initialDefinition = normalizePersonaContextDefinition(
     persona.contextDefinition

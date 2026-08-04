@@ -291,7 +291,8 @@ const DomainsWidget = ({
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               {error}
             </ErrorPlaceHolder>
-          ) : isEmpty(domains) ? (
+          ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+          isEmpty(domains) ? (
             emptyState
           ) : (
             domainsList

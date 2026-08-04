@@ -65,6 +65,16 @@ const EntityDetailHeader = ({
     onTabChange?.(String(key));
   };
 
+  const iconLeading = icon ? (
+    <FeaturedIcon
+      color="brand"
+      icon={icon}
+      shape="square"
+      size="md"
+      theme="gradient"
+    />
+  ) : undefined;
+
   const resolvedLeading =
     leading ??
     (serviceLogoUrl ? (
@@ -78,15 +88,9 @@ const EntityDetailHeader = ({
           src={serviceLogoUrl}
         />
       </Box>
-    ) : icon ? (
-      <FeaturedIcon
-        color="brand"
-        icon={icon}
-        shape="square"
-        size="md"
-        theme="gradient"
-      />
-    ) : undefined);
+    ) : (
+      iconLeading
+    ));
 
   const actions =
     primaryAction || secondaryActions ? (

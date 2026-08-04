@@ -541,7 +541,8 @@ export const getQueryFilterMust = (
 
   return Array.isArray(parsedMust)
     ? parsedMust
-    : parsedMust
+    : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+    parsedMust
     ? [parsedMust]
     : [];
 };

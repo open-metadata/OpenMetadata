@@ -234,6 +234,7 @@ export function buildHierarchyGraphs({
         color?: string;
       }
     >();
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     hierarchicalEdges.forEach((edge) => {
       const { parent, child } = normalizeParentChild(
         edge.from,

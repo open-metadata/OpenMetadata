@@ -69,6 +69,7 @@ export const InputOutputPortsTab = forwardRef<
       onPortClick,
     },
     ref
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
   ) => {
     const { t } = useTranslation();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);

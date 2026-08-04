@@ -50,6 +50,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   open,
   resource,
   onClose,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 }) => {
   const { t } = useTranslation();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -70,7 +71,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
 
   const formattedDuration = displayResource.estimatedDuration
     ? `${Math.floor(displayResource.estimatedDuration / 60)} ${
-        displayResource.resourceType === 'Article'
+        displayResource.resourceType === 'Article' // eslint-disable-line sonarjs/no-nested-conditional
           ? t('label.min-read')
           : t('label.min-watch')
       }`

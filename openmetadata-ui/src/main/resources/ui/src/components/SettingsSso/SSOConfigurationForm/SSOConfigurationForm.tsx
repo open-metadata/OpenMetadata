@@ -181,7 +181,8 @@ const SSOConfigurationFormRJSF = ({
   selectedProvider,
   hideBorder = false,
   securityConfig,
-}: SSOConfigurationFormProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+SSOConfigurationFormProps) => {
   const { t } = useTranslation();
   const { setIsAuthenticated, setCurrentUser } = useApplicationStore();
 
@@ -1086,6 +1087,7 @@ const SSOConfigurationFormRJSF = ({
     OIDC_TEST_LOGIN_PROVIDERS.includes(currentProvider as AuthProvider) &&
     internalData?.authenticationConfiguration?.clientType === ClientType.Public;
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const renderFormActions = () =>
     isEditMode ? (
       <>

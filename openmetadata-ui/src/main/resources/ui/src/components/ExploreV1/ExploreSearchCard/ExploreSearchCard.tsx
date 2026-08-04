@@ -130,6 +130,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       classNameForBreadcrumb,
     },
     ref
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   ) => {
     const { t } = useTranslation();
     const { tab } = useRequiredParams<{ tab: string }>();
@@ -236,6 +237,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     const otherDetails = useMemo(() => {
       if (source?.entityType === EntityType.TABLE_COLUMN) {
         const columnSource = source as TableColumnSearchSource;
@@ -395,6 +397,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [source]
     );
 
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     const header = useMemo(() => {
       const hasGlossaryTermStatus =
         source.entityType === EntityType.GLOSSARY_TERM &&

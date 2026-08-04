@@ -133,6 +133,7 @@ export const getKeyValues = ({
   serviceCategory,
 }: KeyValuesProps): ReactNode => {
   try {
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
     return Object.keys(obj).map((key) => {
       const value = obj[key];
 
@@ -218,6 +219,7 @@ const handleSpecialServiceConfig = (
   schemaPropertyObject: Record<string, unknown>,
   schema: Record<string, unknown>,
   serviceCategory: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ): ReactNode | null => {
   // Pipeline service - Airflow connection
   if (

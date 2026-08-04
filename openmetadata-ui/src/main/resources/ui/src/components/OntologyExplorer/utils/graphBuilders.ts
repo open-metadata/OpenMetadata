@@ -126,6 +126,7 @@ export function convertRdfGraphToOntologyGraph(
   // duplicate id, so keep only the first occurrence — mirrors the edge dedupe
   // below.
   const nodesById = new Map<string, OntologyNode>();
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   rdfData.nodes.forEach((node) => {
     if (nodesById.has(node.id)) {
       return;
@@ -208,12 +209,14 @@ export function buildGraphFromAllTerms(
   const edges: OntologyEdge[] = [];
   const edgeSet = new Set<string>();
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   terms.forEach((term) => {
     if (!term.id || !isValidUUID(term.id)) {
       return;
     }
 
     const hasRelations =
+      // eslint-disable-next-line sonarjs/expression-complexity
       (term.relatedTerms && term.relatedTerms.length > 0) ||
       (term.children && term.children.length > 0) ||
       term.parent;

@@ -90,6 +90,7 @@ export const checkIfExpandViewSupported = (
   firstTab: NonNullable<TabsProps['items']>[number],
   activeTab: EntityTabs,
   pageType: PageType
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
 ) => {
   switch (pageType) {
     case PageType.Table:

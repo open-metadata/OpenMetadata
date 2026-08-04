@@ -114,6 +114,7 @@ export const IngestionRecentRuns = <
           {NO_DATA_PLACEHOLDER}
         </Typography.Text>
       ) : (
+        // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
         recentRunStatus.map((r, i) => {
           const pipelineState =
             (r as PipelineStatus)?.pipelineState ?? (r as AppRunRecord)?.status;

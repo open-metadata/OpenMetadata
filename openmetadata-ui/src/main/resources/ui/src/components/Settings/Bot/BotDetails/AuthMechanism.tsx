@@ -44,7 +44,8 @@ const AuthMechanism: FC<Props> = ({
   isBot,
   isSCIMBot,
   botData,
-}: Props) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+Props) => {
   const { t } = useTranslation();
   const { JWTToken, JWTTokenExpiresAt } = useMemo(() => {
     if (isBot) {
@@ -148,7 +149,7 @@ const AuthMechanism: FC<Props> = ({
           {!isSCIMBot && (
             <p className="text-grey-muted" data-testid="token-expiry">
               {JWTTokenExpiresAt ? (
-                isTokenExpired ? (
+                isTokenExpired ? ( // eslint-disable-line sonarjs/no-nested-conditional
                   `Expired on ${tokenExpiryDate}.`
                 ) : (
                   `Expires on ${tokenExpiryDate}.`

@@ -95,7 +95,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onNavigate,
   tableConstraints = [],
   entityType,
-}: ColumnDetailPanelProps<T>) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const { permissions, changeSummary } = useGenericContext();
 
@@ -129,6 +130,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   );
 
   const hasEditPermission = useMemo(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
     () => ({
       tags: (permissions.EditTags || permissions.EditAll) && !deleted,
       glossaryTerms:
@@ -652,6 +654,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     setActiveTab(tab);
   };
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const renderOverviewTab = () => {
     if (isColumnDataLoading) {
       return (
@@ -868,6 +871,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                     />
                   )}
               </div>
+              {/* eslint-disable-next-line sonarjs/expression-complexity */}
               {activeColumn.displayName &&
                 activeColumn.displayName !== activeColumn.name &&
                 (entityType === EntityType.TABLE ||

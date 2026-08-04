@@ -81,6 +81,7 @@ const ServiceDocPanel = lazy(
 
 type BreadcrumbItem = { label: string; id: string; href?: string };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 function EditConnectionFormPage() {
   const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;

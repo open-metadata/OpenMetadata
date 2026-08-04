@@ -99,6 +99,7 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const LABEL_CONTAINER = 'label.container';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

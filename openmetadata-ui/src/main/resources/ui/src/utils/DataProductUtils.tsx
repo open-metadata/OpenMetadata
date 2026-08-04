@@ -187,7 +187,8 @@ export const getDataProductDetailTabs = ({
   feedCount,
   getEntityFeedCount,
   labelMap,
-}: DataProductDetailPageTabProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+DataProductDetailPageTabProps) => {
   const totalPortsCount = (inputPortsCount ?? 0) + (outputPortsCount ?? 0);
 
   return [

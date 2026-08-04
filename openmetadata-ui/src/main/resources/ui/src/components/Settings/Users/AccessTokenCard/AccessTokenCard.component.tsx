@@ -49,7 +49,8 @@ const AccessTokenCard: FC<MockProps> = ({
   revokeTokenHandlerBot,
   disabled = false,
   isSCIMBot = false,
-}: MockProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+MockProps) => {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isTokenRemoving, setIsTokenRemoving] = useState<boolean>(false);
@@ -307,13 +308,13 @@ const AccessTokenCard: FC<MockProps> = ({
     </Card>
   );
 
-  return isLoading ? (
-    <Loader />
-  ) : disabled ? (
+  const cardContent = disabled ? (
     <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>
   ) : (
     tokenCard
   );
+
+  return isLoading ? <Loader /> : cardContent;
 };
 
 export default AccessTokenCard;

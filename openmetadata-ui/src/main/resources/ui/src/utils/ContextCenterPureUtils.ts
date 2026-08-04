@@ -81,7 +81,8 @@ export const knowledgePageToArticleItem = (
   href:
     data.pageType === PageType.QUICK_LINK
       ? (data.page as QuickLink)?.url
-      : data.fullyQualifiedName
+      : // eslint-disable-next-line sonarjs/no-nested-conditional -- href resolution branches
+      data.fullyQualifiedName
       ? contextCenterClassBase.getArticlePath(data.fullyQualifiedName)
       : undefined,
   id: data.id,

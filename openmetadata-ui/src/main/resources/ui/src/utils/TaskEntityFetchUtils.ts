@@ -76,6 +76,7 @@ const API_ENDPOINT_TASK_FORM_FIELDS = [
 export const getBreadCrumbList = (
   entityData: EntityData,
   entityType: EntityType
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   const activeEntity = {
     name: getEntityName(entityData),
@@ -231,6 +232,7 @@ export const fetchEntityDetail = (
   entityFQN: string,
   setEntityData: (value: React.SetStateAction<EntityData>) => void,
   setChartData?: (value: React.SetStateAction<Chart[]>) => void
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   switch (entityType) {
     case EntityType.TABLE:

@@ -97,6 +97,7 @@ const handleTaskDiffAdded = (
     const formatTaskData = (arr: Pipeline['tasks']) => {
       arr?.forEach((i) => {
         if (isEqual(i.name, task.name)) {
+          // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
           i.tags = task.tags?.map((tag) => ({ ...tag, added: true }));
           i.description = getTextDiff('', task.description ?? '');
           i.taskType = getTextDiff('', task.taskType ?? '');

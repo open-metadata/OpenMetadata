@@ -36,6 +36,7 @@ import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.componen
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
 export const TestCases = () => {
   const { t } = useTranslation();
   const { createActions } = useDataQualityProvider();

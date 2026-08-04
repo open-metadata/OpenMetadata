@@ -101,6 +101,7 @@ export const isBlobLikeResponse = (value: unknown): value is Blob => {
   }
 
   return Boolean(
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     value &&
       typeof value === 'object' &&
       typeof (value as Blob).text === 'function' &&

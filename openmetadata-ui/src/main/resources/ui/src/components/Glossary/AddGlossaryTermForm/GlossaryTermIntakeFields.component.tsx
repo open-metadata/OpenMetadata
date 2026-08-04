@@ -58,6 +58,7 @@ const GlossaryTermIntakeFields = forwardRef<
         >((result, [formKey, rawValue]) => {
           const propertyName = getExtensionPropertyNameFromFormKey(formKey);
           const definition = customProperties.find(
+            // eslint-disable-next-line sonarjs/no-nested-functions -- inline find predicate
             (property) => property.name === propertyName
           );
           const serializedValue = definition

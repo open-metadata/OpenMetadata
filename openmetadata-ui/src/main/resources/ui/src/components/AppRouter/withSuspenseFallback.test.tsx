@@ -25,6 +25,7 @@ describe('withSuspenseFallback', () => {
         new Promise<{ default: () => JSX.Element }>((resolve) => {
           setTimeout(() => {
             resolve({
+              // eslint-disable-next-line sonarjs/no-nested-functions -- test fixture nesting
               default: () => <div>Loaded component</div>,
             });
           }, 0);

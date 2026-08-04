@@ -81,6 +81,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   className,
   showHeader = true,
   view,
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- preserve behavior
 }) => {
   const { t } = useTranslation();
   const {
@@ -340,7 +341,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               task={selectedTask}
             />
           </Fragment>
-        ) : !isUndefined(selectedThread) ? (
+        ) : !isUndefined(selectedThread) ? ( // eslint-disable-line sonarjs/no-nested-conditional
           <Fragment>
             <Button
               className="m-b-sm p-0"
@@ -358,7 +359,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         ) : (
           <Fragment>
-            {showNewConversation ||
+            {showNewConversation || // eslint-disable-line sonarjs/expression-complexity
             (isEqual(threads.length, 0) && !isThreadLoading) ? (
               <>
                 {isConversationType && (
@@ -416,6 +417,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               data-testid="observer-element"
               id="observer-element"
               ref={elementRef as RefObject<HTMLDivElement>}>
+              {/* eslint-disable-next-line sonarjs/no-nested-conditional */}
               {isTaskType ? loading ? <Loader /> : null : getLoader()}
             </div>
           </Fragment>

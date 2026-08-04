@@ -16,6 +16,7 @@ import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 import { OntologyNode } from './OntologyExplorer.interface';
 import { ASSET_NODE_TYPE, METRIC_NODE_TYPE } from './utils/graphBuilders';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export function buildOntologySlideoutEntityDetails(
   node: OntologyNode
 ): EntityDetailsObjectInterface {

@@ -100,6 +100,7 @@ interface TermFilter {
 export const buildTermQuery = (
   filters: TermFilter | TermFilter[],
   returnAsString = true
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ): string | Record<string, unknown> => {
   const filterArray = Array.isArray(filters) ? filters : [filters];
 

@@ -81,6 +81,7 @@ const CustomYAxisTick = (props: {
         cursor="pointer"
         dy={4}
         fill={
+          // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
           isSelected ? CHART_BLUE_1 : isHighlighted ? COLOR_GREY_400 : GRAY_600
         }
         fontSize={12}
@@ -308,7 +309,8 @@ const CardinalityDistributionChart = ({
                                   fill={
                                     isSelected
                                       ? CHART_BLUE_1
-                                      : isHighlighted
+                                      : // eslint-disable-next-line sonarjs/no-nested-conditional -- nested ternary
+                                      isHighlighted
                                       ? COLOR_GREY_300
                                       : CHART_BLUE_1
                                   }

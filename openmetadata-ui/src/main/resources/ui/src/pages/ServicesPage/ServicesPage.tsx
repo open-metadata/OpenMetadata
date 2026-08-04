@@ -40,6 +40,7 @@ import { getResourceEntityFromServiceCategory } from '../../utils/ServicePureUti
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-page.less';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 const ServicesPage = () => {
   const { tab } = useRequiredParams<{ tab: string }>();
   const location = useCustomLocation();

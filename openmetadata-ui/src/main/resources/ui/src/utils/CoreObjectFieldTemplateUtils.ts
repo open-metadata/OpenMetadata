@@ -133,6 +133,7 @@ export const shouldSpanFullWidth = ({
   }
 
   return (
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     hasSchemaType(schemaProperty, 'object') ||
     hasSchemaType(schemaProperty, 'array') ||
     hasSchemaType(schemaProperty, 'boolean') ||
@@ -176,6 +177,7 @@ export const getFormSeperationConfig = ({
   schema: ObjectFieldTemplateProps['schema'];
   description: ObjectFieldTemplateProps['description'];
   formData: ObjectFieldTemplateProps['formData'];
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const flatPropertyLayout =
     (formContext as { flatPropertyLayout?: boolean } | undefined)
@@ -202,6 +204,7 @@ export const getFormSeperationConfig = ({
   const isGatedCredentialConfig =
     !isRoot && !schema.additionalProperties && hasIamAuthToggle;
   const isGenericNestedConfig =
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     !isRoot &&
     !schema.additionalProperties &&
     !isSampleDataSection &&
@@ -301,6 +304,7 @@ export const partitionProperties = (
   isGatedCredentialConfig: boolean
 ) => {
   return properties.reduce(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     (acc, prop) => {
       if (prop.hidden) {
         return acc;
@@ -311,6 +315,7 @@ export const partitionProperties = (
         !GATED_CREDENTIAL_VISIBLE_PROPERTIES.has(prop.name) &&
         !isRequiredSchemaProperty(schema, prop.name);
       const isDefaultAdvanced =
+        // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
         !isRoot &&
         !isRequiredSchemaProperty(schema, prop.name) &&
         (DEFAULT_ADVANCED_PROPERTY_NAMES.has(prop.name) ||

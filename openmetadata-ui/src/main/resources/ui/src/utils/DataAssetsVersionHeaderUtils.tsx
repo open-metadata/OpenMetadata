@@ -129,6 +129,7 @@ export const getExtraInfoSourceUrl = (
 export const getDataAssetsVersionHeaderInfo = (
   entityType: DataAssetsVersionHeaderProps['entityType'],
   currentVersionData: DataAssetsVersionHeaderProps['currentVersionData']
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ) => {
   const changeDescription = currentVersionData.changeDescription ?? {};
 

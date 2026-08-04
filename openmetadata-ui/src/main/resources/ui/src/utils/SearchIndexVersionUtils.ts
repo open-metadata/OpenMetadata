@@ -97,6 +97,7 @@ const handleFieldDiffAdded = (
     const formatFieldData = (arr: SearchIndex['fields']) => {
       arr?.forEach((i) => {
         if (isEqual(i.name, field.name)) {
+          // eslint-disable-next-line sonarjs/no-nested-functions -- pure tag mapper
           i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
           i.description = getTextDiff('', field.description ?? '');
           i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');

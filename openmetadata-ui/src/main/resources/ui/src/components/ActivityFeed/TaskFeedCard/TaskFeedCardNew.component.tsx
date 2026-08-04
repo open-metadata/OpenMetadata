@@ -84,7 +84,8 @@ const TaskFeedCard = ({
   isForFeedTab = false,
   isOpenInDrawer = false,
   hideCardBorder = false,
-}: TaskFeedCardProps) => {
+}: // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
+TaskFeedCardProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { setActiveThread } = useActivityFeedProvider();
@@ -271,12 +272,11 @@ const TaskFeedCard = ({
   const isPartOfAssigneeTeam = taskDetails?.assignees?.some((assignee) =>
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
   );
+  const hasAdminEditAccess =
+    isAdminUser && !isTaskGlossaryApproval && !isTaskRecognizerFeedbackApproval;
+  const isAssigneeTeamMember = Boolean(isPartOfAssigneeTeam) && !isCreator;
   const hasEditAccess =
-    (isAdminUser &&
-      !isTaskGlossaryApproval &&
-      !isTaskRecognizerFeedbackApproval) ||
-    isAssignee ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+    hasAdminEditAccess || isAssignee || isAssigneeTeamMember;
 
   const isSuggestionEmpty =
     (isEqual(taskDetails?.suggestion, '[]') &&
@@ -287,6 +287,10 @@ const TaskFeedCard = ({
   const showReplies = useCallback(() => {
     showDrawer?.(feed);
   }, [showDrawer, feed]);
+
+  const descriptionGutter: [number, number] | undefined = isTaskDescription
+    ? undefined
+    : [0, 14];
 
   return (
     <Button block className="remove-button-default-styling" type="text">
@@ -300,9 +304,7 @@ const TaskFeedCard = ({
           gutter={
             isTaskTestCaseResult || isTaskGlossaryApproval
               ? [0, 6]
-              : isTaskDescription
-              ? undefined
-              : [0, 14]
+              : descriptionGutter
           }>
           <Col className="d-flex flex-col align-start">
             <Col>

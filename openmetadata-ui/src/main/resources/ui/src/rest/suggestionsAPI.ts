@@ -193,7 +193,8 @@ export const updateSuggestionStatus = async (
   const newValue =
     data.type === SuggestionType.SuggestDescription
       ? data.description
-      : data.tagLabels
+      : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+      data.tagLabels
       ? JSON.stringify(data.tagLabels)
       : undefined;
 
@@ -240,7 +241,8 @@ export const approveRejectAllSuggestions = async (
     const newValue =
       suggestion.type === SuggestionType.SuggestDescription
         ? suggestion.description
-        : suggestion.tagLabels
+        : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+        suggestion.tagLabels
         ? JSON.stringify(suggestion.tagLabels)
         : undefined;
 

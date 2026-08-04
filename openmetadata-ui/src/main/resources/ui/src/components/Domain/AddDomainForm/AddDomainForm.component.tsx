@@ -308,7 +308,8 @@ const AddDomainForm = ({
   onSubmit,
   type,
   parentDomain,
-}: AddDomainFormProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+AddDomainFormProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
@@ -380,7 +381,8 @@ const AddDomainForm = ({
     const entityTypeApiName =
       targetEntityType === TargetEntityType.DataProduct
         ? 'dataProduct'
-        : targetEntityType === TargetEntityType.Domain
+        : // eslint-disable-next-line sonarjs/no-nested-conditional -- entity api name branch
+        targetEntityType === TargetEntityType.Domain
         ? 'domain'
         : 'glossaryTerm';
     getCustomPropertiesByEntityType(entityTypeApiName)

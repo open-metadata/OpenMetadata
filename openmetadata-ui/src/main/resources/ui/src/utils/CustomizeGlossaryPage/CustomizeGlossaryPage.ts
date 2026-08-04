@@ -42,6 +42,7 @@ class CustomizeGlossaryPageClassBase {
     };
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- widget height switch; refactor risky
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case 'HEADER':

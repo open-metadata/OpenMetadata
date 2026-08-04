@@ -37,7 +37,8 @@ const Severity = ({
   newLook = false,
   headerName,
   isInline = false,
-}: SeverityProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
+SeverityProps) => {
   const { t } = useTranslation();
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();

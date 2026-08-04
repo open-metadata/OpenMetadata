@@ -158,6 +158,7 @@ const AddIngestionPage = () => {
         .then((res) => {
           if (res) {
             setIngestionId(res.id ?? '');
+            // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
             onIngestionDeploy(res.id).finally(() => resolve());
           } else {
             showErrorToast(
@@ -179,6 +180,7 @@ const AddIngestionPage = () => {
             reject();
           } else {
             getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
+              // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
               .then((res) => {
                 if (res) {
                   resolve();
@@ -192,6 +194,7 @@ const AddIngestionPage = () => {
                   throw t('server.unexpected-response');
                 }
               })
+              // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
               .catch(() => {
                 showErrorToast(
                   err,

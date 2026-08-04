@@ -82,13 +82,19 @@ export const getTeamOptionsFromType = (parentType: TeamType) => {
 export const isDropRestricted = (
   dragTeamType?: TeamType,
   dropTeamType?: TeamType
-) =>
-  dropTeamType === TeamType.Group ||
-  (dropTeamType === TeamType.Division &&
-    dragTeamType === TeamType.BusinessUnit) ||
-  (dropTeamType === TeamType.Department &&
-    dragTeamType === TeamType.BusinessUnit) ||
-  (dropTeamType === TeamType.Department && dragTeamType === TeamType.Division);
+) => {
+  const isGroupDrop = dropTeamType === TeamType.Group;
+  const isDivisionDrop =
+    dropTeamType === TeamType.Division &&
+    dragTeamType === TeamType.BusinessUnit;
+  const isDepartmentDrop =
+    (dropTeamType === TeamType.Department &&
+      dragTeamType === TeamType.BusinessUnit) ||
+    (dropTeamType === TeamType.Department &&
+      dragTeamType === TeamType.Division);
+
+  return isGroupDrop || isDivisionDrop || isDepartmentDrop;
+};
 
 export const getNonDeletedTeams = (teams: EntityReference[]) => {
   return teams.filter((t) => !t.deleted);

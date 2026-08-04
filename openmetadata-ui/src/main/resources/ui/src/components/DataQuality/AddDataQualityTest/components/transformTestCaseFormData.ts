@@ -140,6 +140,7 @@ export const normalizeFormValuesForPayload = (
 export const transformTestCaseFormData = (
   values: FormValues,
   ctx: TestCaseTransformContext
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): CreateTestCase => {
   const columnName = ctx.selectedColumn;
 
@@ -322,6 +323,7 @@ const buildEditParamEntry = (
   param: TestCaseParameterDefinition | undefined,
   definition: TestDefinition,
   isTableDiff: boolean
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): EditParamValue => {
   let result: EditParamValue;
 

@@ -251,6 +251,7 @@ class CustomizeGlossaryTermPageClassBase {
     this.detailPageWidgetDefaultHeights = obj;
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   public getKeyFromWidgetName(
     widgetName: string
   ): GlossaryTermDetailPageWidgetKeys {
@@ -305,6 +306,7 @@ class CustomizeGlossaryTermPageClassBase {
     }
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case GlossaryTermDetailPageWidgetKeys.HEADER:

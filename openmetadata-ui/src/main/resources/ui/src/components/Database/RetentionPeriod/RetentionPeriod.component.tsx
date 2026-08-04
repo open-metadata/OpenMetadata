@@ -38,6 +38,7 @@ import { RetentionPeriodProps } from './RetentionPeriod.interface';
 
 const LABEL_RETENTION_PERIOD = 'label.retention-period';
 // Helper function to detect and format ISO 8601 duration
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (!retentionPeriod) {
     return NO_DATA_PLACEHOLDER;
@@ -49,6 +50,7 @@ const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (isoDurationRegex.test(retentionPeriod)) {
     const duration = Duration.fromISO(retentionPeriod);
 
+    /* eslint-disable sonarjs/no-nested-conditional -- pluralization ternaries in template literals */
     const years = duration.years
       ? `${duration.years} year${duration.years > 1 ? 's' : ''}`
       : '';
@@ -70,6 +72,7 @@ const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
     const seconds = duration.seconds
       ? `${duration.seconds} second${duration.seconds > 1 ? 's' : ''}`
       : '';
+    /* eslint-enable sonarjs/no-nested-conditional */
 
     const formattedDuration = [
       years,

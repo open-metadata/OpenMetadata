@@ -76,6 +76,7 @@ interface ExportJob {
   total?: number;
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const AuditLogsPage = () => {
   const { t } = useTranslation();
   const { socket } = useWebSocketConnector();

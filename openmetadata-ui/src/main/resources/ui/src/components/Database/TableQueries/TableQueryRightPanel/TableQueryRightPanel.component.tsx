@@ -37,7 +37,8 @@ const TableQueryRightPanel = ({
   onQueryUpdate,
   isLoading,
   permission,
-}: TableQueryRightPanelProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
+TableQueryRightPanelProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;

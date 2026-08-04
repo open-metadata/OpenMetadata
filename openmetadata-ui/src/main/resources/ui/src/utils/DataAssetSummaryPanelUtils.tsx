@@ -137,6 +137,7 @@ const getCommonOverview = (
 const getTableOverview = (
   tableDetails: Table,
   additionalInfo?: Record<string, number | string>
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   const {
     fullyQualifiedName,
@@ -1146,6 +1147,7 @@ const getWorksheetOverview = (worksheetDetails: Worksheet) => {
 
 const getColumnOverview = (
   columnDetails: ColumnSearchResult
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): BasicEntityOverviewInfo[] => {
   const {
     dataType,
@@ -1242,6 +1244,7 @@ export const getEntityOverview = (
   type: string,
   entityDetail: DataAssetSummaryPanelProps['dataAsset'],
   additionalInfo?: Record<string, number | string>
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): Array<BasicEntityOverviewInfo> => {
   switch (type) {
     case ExplorePageTabs.TABLES:

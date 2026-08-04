@@ -199,6 +199,7 @@ export const getInitialNodeConfig = (
     isNewWorkflow?: boolean;
     id?: string;
   } | null
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
 ): NodeConfig => {
   if (node.data && (node.data.lastSaved || node.data.userModified)) {
     return {
@@ -265,7 +266,8 @@ export const getInitialNodeConfig = (
       scheduleType:
         config.schedule?.scheduleTimeline === ScheduleTimeline.None
           ? 'OnDemand'
-          : config.schedule?.scheduleTimeline === ScheduleTimeline.Custom &&
+          : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+          config.schedule?.scheduleTimeline === ScheduleTimeline.Custom &&
             config.schedule?.cronExpression
           ? 'Scheduled'
           : '',

@@ -154,7 +154,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               color={
                 policy.effect === 'ALLOW'
                   ? 'success'
-                  : policy.effect === 'DENY'
+                  : policy.effect === 'DENY' // eslint-disable-line sonarjs/no-nested-conditional
                   ? 'error'
                   : 'warning'
               }>

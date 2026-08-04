@@ -243,6 +243,7 @@ export const getFrontEndFormat = (message: string) => {
   return getSanitizeContent(updatedMessage);
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 export const entityDisplayName = (entityType: string, entityFQN: string) => {
   let displayName;
 

@@ -135,6 +135,7 @@ export const TestCaseStatusModal = ({
   const buildResolveRequest = (
     status: TestCaseResolutionStatusTypes,
     formData: CreateTestCaseResolutionStatus
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   ): ResolveTask | null => {
     if (status === TestCaseResolutionStatusTypes.New) {
       return { transitionId: 'new' };

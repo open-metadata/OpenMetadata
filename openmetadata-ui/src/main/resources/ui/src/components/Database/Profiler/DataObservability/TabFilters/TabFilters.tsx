@@ -43,6 +43,7 @@ import ColumnPickerMenu from '../../TableProfiler/ColumnPickerMenu';
 import profilerClassBase from '../../TableProfiler/ProfilerClassBase';
 import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const TabFilters = () => {
   const { isTourOpen } = useTourProvider();
   const location = useCustomLocation();
@@ -219,6 +220,7 @@ const TabFilters = () => {
         </div>
       )}
 
+      {/* eslint-disable-next-line sonarjs/expression-complexity -- nested JSX conditionals */}
       {!isTableDeleted && (
         <>
           {(editDataProfile || createTestCasePermission) && (

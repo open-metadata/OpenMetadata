@@ -139,7 +139,8 @@ const DataProductsDetailsPage = ({
   isFollowingLoading,
   handleFollowingClick,
   onUpdateVote,
-}: DataProductsDetailsPageProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();

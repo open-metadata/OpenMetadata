@@ -63,6 +63,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   useEffect(() => {
     if (node?.data) {
       const nodeConfig = node.data.config || {};

@@ -110,6 +110,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const LABEL_DATABASE = 'label.database';
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
 

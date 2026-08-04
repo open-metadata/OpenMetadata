@@ -89,10 +89,12 @@ export const getSelectEqualsNotEqualsProperties = (
   const id = generateUUID();
   const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
   const valueType = isEqualNotEqualOp
-    ? isBoolean(value)
+    ? // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+      isBoolean(value)
       ? ['boolean']
       : ['text']
-    : Array.isArray(value)
+    : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+    Array.isArray(value)
     ? ['multiselect']
     : ['select'];
 
@@ -108,7 +110,8 @@ export const getSelectEqualsNotEqualsProperties = (
         valueType: valueType,
         asyncListValues: isEqualNotEqualOp
           ? undefined
-          : Array.isArray(value)
+          : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+          Array.isArray(value)
           ? value.map((item) => ({ key: item, value: item, children: item }))
           : [{ key: value, value, children: value }],
       },
@@ -257,6 +260,7 @@ export const getJsonTreePropertyFromQueryFilter = (
   fields?: Fields
 ) => {
   const convertedObj = queryFilter.reduce(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
     (acc, curr: QueryFieldInterface): Record<string, unknown> => {
       if (!isUndefined(curr.term?.deleted)) {
         return {
@@ -466,6 +470,7 @@ const flattenAndClauses = (clauses: JsonLogic[]): JsonLogic[] => {
 
 export const elasticsearchToJsonLogic = (
   query: ElasticsearchQuery
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
 ): JsonLogic => {
   if (query.bool) {
     const boolQuery = query.bool;
@@ -607,6 +612,7 @@ export const jsonLogicToElasticsearch = (
   configFields: Fields,
   parentField?: string,
   parentOp?: JSONLOGIC_OPERATORS
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
 ): ElasticsearchQuery => {
   if (logic.and) {
     return {
@@ -663,6 +669,7 @@ export const jsonLogicToElasticsearch = (
 
     const [parentKey] = field.var.split('.');
     if (
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
       typeof field === 'object' &&
       field.var &&
       field.var.includes('.') &&
@@ -811,6 +818,7 @@ export const migrateJsonLogic = (
 
   const isVarObject = (value: unknown): value is { var: string } => {
     return (
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
       typeof value === 'object' &&
       value !== null &&
       !Array.isArray(value) &&

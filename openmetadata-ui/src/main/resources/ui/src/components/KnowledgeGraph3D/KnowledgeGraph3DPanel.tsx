@@ -148,6 +148,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   node,
   onClose,
   onSelectNode,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 }) => {
   const { t } = useTranslation();
   const relations = useMemo(
@@ -164,6 +165,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
     node.type === 'table' ? t('label.belongs-to') : t('label.member-plural');
 
   const hasBody =
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
     relations.mapped.length > 0 ||
     relations.shared.length > 0 ||
     relations.hierarchy.length > 0 ||

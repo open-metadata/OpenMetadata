@@ -101,6 +101,7 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
   target,
   onClose,
   onSelectNode,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const isOntology = link.kind === 'ontology';
@@ -131,7 +132,8 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
               }}>
               {isDerived
                 ? t('label.ontology-inferred')
-                : isOntology
+                : // eslint-disable-next-line sonarjs/no-nested-conditional -- label branch
+                isOntology
                 ? t('label.ontology')
                 : t('label.knowledge-graph')}
             </span>

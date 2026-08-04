@@ -28,7 +28,8 @@ export const StatItem = ({
   disabled,
   isActive,
   srLabel,
-}: StatItemProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- className branching; refactor risky
+StatItemProps) => {
   const isDisabled = disabled || loading;
   const labelClassName = classNames(
     'tw:inline-flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',

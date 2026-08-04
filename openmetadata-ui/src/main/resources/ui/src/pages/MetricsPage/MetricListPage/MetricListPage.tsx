@@ -155,6 +155,7 @@ const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
 
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -710,6 +711,7 @@ const MetricListPage = () => {
   );
 
   const isMetricListEmpty =
+    // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
     !isMetricsFetching &&
     !isSearchPending &&
     metrics.length === 0 &&

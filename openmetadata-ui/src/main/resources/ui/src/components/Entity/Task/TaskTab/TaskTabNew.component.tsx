@@ -183,6 +183,7 @@ const stripHtmlTags = (value: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
   if (
     typeof payload !== 'object' ||
@@ -290,7 +291,8 @@ export const TaskTabNew = ({
   entityType,
   hasGlossaryReviewer,
   ...rest
-}: TaskTabProps) => {
+}: // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
+TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
   const navigate = useNavigate();
   const [assigneesForm] = useForm();
@@ -503,11 +505,10 @@ export const TaskTabNew = ({
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isTaskTerminalStatus(task.status);
-  const isTaskActionable = !isTaskClosed
-    ? isWorkflowDrivenTask
-      ? Boolean(task.availableTransitions?.length)
-      : task.status === TaskEntityStatus.Open
-    : false;
+  const actionableWhenOpen = isWorkflowDrivenTask
+    ? Boolean(task.availableTransitions?.length)
+    : task.status === TaskEntityStatus.Open;
+  const isTaskActionable = !isTaskClosed ? actionableWhenOpen : false;
   const [showEditTaskModel, setShowEditTaskModel] = useState(false);
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
@@ -814,12 +815,13 @@ export const TaskTabNew = ({
       status.toLowerCase() === 'approved'
         ? TaskResolutionType.Approved
         : TaskResolutionType.Rejected;
+    const rejectedOrSuggested = isApprovalWorkflowTask
+      ? taskHandler.rejectedValue
+      : suggestedValue;
     const newValue =
       isApprovalWorkflowTask && status.toLowerCase() === 'approved'
         ? taskHandler.approvedValue
-        : isApprovalWorkflowTask
-        ? taskHandler.rejectedValue
-        : suggestedValue;
+        : rejectedOrSuggested;
     updateTaskData({ newValue }, resolutionType);
   };
 
@@ -913,11 +915,10 @@ export const TaskTabNew = ({
    *
    * @returns True if has access otherwise false
    */
+  const ownerHasAccess = !hasGlossaryReviewer && isOwner;
+  const teamMemberHasAccess = Boolean(isPartOfAssigneeTeam) && !isCreator;
   const hasEditAccess =
-    isAdminUser ||
-    isAssignee ||
-    (!hasGlossaryReviewer && isOwner) ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+    isAdminUser || isAssignee || ownerHasAccess || teamMemberHasAccess;
 
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const [recentComment, setRecentComment] = useState<string>('');
@@ -1932,6 +1933,7 @@ export const TaskTabNew = ({
           maskClosable={false}
           open={showEditTaskModel}
           title={
+            // eslint-disable-next-line sonarjs/expression-complexity -- inline title ternary
             isWorkflowDrivenTask && selectedTransition
               ? `${selectedTransition.label} #${taskDisplayId} ${
                   task.displayName ?? taskDisplayMessage

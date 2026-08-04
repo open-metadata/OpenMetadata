@@ -648,11 +648,11 @@ const TeamDetailsV1 = ({
       addTeamButtonTitle = t(MESSAGE_THIS_ACTION_IS_NOT_ALLOWED);
     }
 
+    const isSearchAndChildListEmpty =
+      isEmpty(searchTerm) && isEmpty(childTeamList);
+    const hasNoChildTeams = (currentTeam.childrenCount ?? 0) === 0;
     const showEmptyTeamPlaceholder =
-      isEmpty(searchTerm) &&
-      isEmpty(childTeamList) &&
-      (currentTeam.childrenCount ?? 0) === 0 &&
-      !isTeamBasicDataLoading;
+      isSearchAndChildListEmpty && hasNoChildTeams && !isTeamBasicDataLoading;
 
     return showEmptyTeamPlaceholder ? (
       <ErrorPlaceHolder
@@ -928,6 +928,7 @@ const TeamDetailsV1 = ({
 
   const teamActionButton = useMemo(
     () =>
+      // eslint-disable-next-line sonarjs/expression-complexity -- inline JSX conditional render
       !isOrganization &&
       !isUndefined(currentUser) &&
       isGroupType &&

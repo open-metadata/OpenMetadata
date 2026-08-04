@@ -55,6 +55,7 @@ export const prepareColumnLevelNodesFromEdges = (
   const entityKey =
     direction === LineageDirection.Upstream ? 'fromEntity' : 'toEntity';
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
   return edges.reduce((acc: ColumnLevelLineageNode[], node: EdgeDetails) => {
     if ((node.columns?.length ?? 0) > 0) {
       const entityData = get(

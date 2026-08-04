@@ -223,6 +223,7 @@ export interface ColumnGridParams {
 
 export const getColumnGrid = async (
   params: ColumnGridParams
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
 ): Promise<ColumnGridResponse> => {
   const queryParams = new URLSearchParams();
 

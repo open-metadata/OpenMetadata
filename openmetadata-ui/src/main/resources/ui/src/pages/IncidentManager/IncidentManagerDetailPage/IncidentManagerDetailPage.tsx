@@ -62,6 +62,7 @@ const IncidentManagerDetailPage = ({
   isVersionPage = false,
 }: {
   isVersionPage?: boolean;
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();

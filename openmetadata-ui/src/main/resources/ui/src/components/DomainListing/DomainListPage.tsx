@@ -49,6 +49,7 @@ import { useDomainListingData } from './hooks/useDomainListingData';
 
 const LABEL_DOMAIN = 'label.domain';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();

@@ -574,6 +574,7 @@ interface ConnectionFormContext {
 
 const ConnectionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity -- preserve behavior
 > = (props) => {
   const { t } = useTranslation();
   const { formContext, formData, properties, schema } = props;

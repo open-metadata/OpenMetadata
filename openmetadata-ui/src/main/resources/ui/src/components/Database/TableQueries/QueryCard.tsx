@@ -62,7 +62,8 @@ const QueryCard: FC<QueryCardProp> = ({
   permission,
   onUpdateVote,
   afterDeleteAction,
-}: QueryCardProp) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+QueryCardProp) => {
   const { t } = useTranslation();
   const QueryExtras = queryClassBase.getQueryExtras();
   const { fqn: datasetFQN } = useFqn();

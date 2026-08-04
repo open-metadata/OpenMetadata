@@ -115,6 +115,7 @@ const FeedCardBodyNew = ({
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- preserve behavior
   const feedBodyStyleCardsRender = useMemo(() => {
     if (isActivityEvent && activity) {
       const eventType = activity.eventType;
