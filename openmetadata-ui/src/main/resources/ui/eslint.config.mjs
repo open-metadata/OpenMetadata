@@ -515,6 +515,7 @@ export default [
 
       // Local OpenMetadata Playwright rules.
       'om-playwright/require-response-listener-before-action': 'error',
+      'om-playwright/no-blanket-test-slow': 'error',
     },
   },
 
