@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
@@ -332,10 +333,12 @@ const UserListPageV1 = () => {
                     : t(ADMIN_ONLY_ACTION)
                 }>
                 <Button
+                  color="tertiary"
                   data-testid={`restore-user-btn-${record.name}`}
-                  disabled={!isAdminUser}
-                  icon={<IconRestore name={t('label.restore')} width="16px" />}
-                  type="text"
+                  iconLeading={
+                    <IconRestore name={t('label.restore')} width="16px" />
+                  }
+                  isDisabled={!isAdminUser}
                   onClick={() => {
                     setSelectedUser(record);
                     setShowReactiveModal(true);
@@ -353,16 +356,16 @@ const UserListPageV1 = () => {
                   : t(ADMIN_ONLY_ACTION)
               }>
               <Button
-                disabled={!isAdminUser}
-                icon={
+                color="tertiary"
+                iconLeading={
                   <IconDelete
                     data-testid={`delete-user-btn-${record.name}`}
                     name={t('label.delete')}
                     width="16px"
                   />
                 }
-                size="small"
-                type="text"
+                isDisabled={!isAdminUser}
+                size="xs"
                 onClick={() => {
                   setSelectedUser(record);
                   setShowDeleteModal(true);
@@ -503,8 +506,8 @@ const UserListPageV1 = () => {
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
+                  color="primary"
                   data-testid="add-user"
-                  type="primary"
                   onClick={handleAddNewUser}>
                   {t('label.add-entity', {
                     entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),

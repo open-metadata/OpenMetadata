@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Select, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Select, Space } from 'antd';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -209,18 +209,19 @@ const GlossaryTermSynonyms = () => {
           <Space className="justify-end w-full m-b-xs" size={8}>
             <Button
               className="w-6 p-x-05"
+              color="secondary"
               data-testid="cancel-synonym-btn"
-              icon={<CloseOutlined size={12} />}
-              size="small"
+              iconLeading={<CloseOutlined size={12} />}
+              size="xs"
               onClick={handleCancel}
             />
             <Button
               className="w-6 p-x-05"
+              color="primary"
               data-testid="save-synonym-btn"
-              icon={<CheckOutlined size={12} />}
-              loading={saving}
-              size="small"
-              type="primary"
+              iconLeading={<CheckOutlined size={12} />}
+              isLoading={saving}
+              size="xs"
               onClick={handleSynonymsSave}
             />
           </Space>

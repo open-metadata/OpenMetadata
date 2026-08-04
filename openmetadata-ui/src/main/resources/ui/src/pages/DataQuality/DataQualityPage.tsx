@@ -12,7 +12,8 @@
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -170,8 +171,8 @@ const DataQualityPage = () => {
                 {activeTab === DataQualityPageTabs.TEST_SUITES &&
                   testSuitePermission?.Create && (
                     <Button
+                      color="primary"
                       data-testid="add-test-suite-btn"
-                      type="primary"
                       onClick={handleOpenBundleSuiteModal}>
                       {t('label.add-a-entity', {
                         entity: t('label.bundle-suite'),
@@ -180,8 +181,8 @@ const DataQualityPage = () => {
                   )}
                 {activeTab === DataQualityPageTabs.TEST_CASES && (
                   <Button
+                    color="primary"
                     data-testid="add-test-case-btn"
-                    type="primary"
                     onClick={handleOpenTestCaseModal}>
                     {t('label.add-a-entity', {
                       entity: t('label.test-case'),
@@ -200,8 +201,8 @@ const DataQualityPage = () => {
                       placement="bottomRight"
                       trigger={['click']}>
                       <Button
-                        data-testid="data-quality-add-button-menu"
-                        type="primary">
+                        color="primary"
+                        data-testid="data-quality-add-button-menu">
                         <Space>
                           {t('label.add')}
                           <DownOutlined />

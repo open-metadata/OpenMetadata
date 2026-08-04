@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import { Button, Card, Col, Row, Tooltip } from 'antd';
+import { Card, Col, Row, Tooltip } from 'antd';
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -152,8 +152,8 @@ const TaskFeedCard = ({
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
         <Button
           className="p-0 task-feed-header"
+          color="link-gray"
           data-testid="redirect-task-button-link"
-          type="link"
           onClick={handleTaskLinkClick}>
           <Typography className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography>
 
@@ -291,7 +291,9 @@ const TaskFeedCard = ({
   }, [showDrawer, feed]);
 
   return (
-    <Button block className="remove-button-default-styling" type="text">
+    <Button
+      className="remove-button-default-styling tw:w-full"
+      color="tertiary">
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
@@ -382,8 +384,8 @@ const TaskFeedCard = ({
                   {feed?.postsCount && feed?.postsCount > 0 ? (
                     <Button
                       className="posts-length m-r-xss p-0 remove-button-default-styling"
+                      color="link-gray"
                       data-testid="replies-count"
-                      type="link"
                       onClick={isForFeedTab ? showReplies : undefined}>
                       {t(
                         feed.postsCount === 1
@@ -414,8 +416,9 @@ const TaskFeedCard = ({
                   {feed.task?.status === ThreadTaskStatus.Open && (
                     <Button
                       className="task-card-approve-btn d-flex items-center"
+                      color="secondary"
                       data-testid="approve-button"
-                      icon={<CheckCircleFilled />}
+                      iconLeading={<CheckCircleFilled />}
                       onClick={onTaskResolve}>
                       {t('label.approve')}
                     </Button>
@@ -423,9 +426,9 @@ const TaskFeedCard = ({
                   {feed.task?.status === ThreadTaskStatus.Open && (
                     <Button
                       className="task-card-reject-btn d-flex items-center"
+                      color="secondary"
                       data-testid="reject-button"
-                      icon={<CloseCircleFilled />}
-                      type="default"
+                      iconLeading={<CloseCircleFilled />}
                       onClick={onTaskReject}>
                       {t('label.reject')}
                     </Button>

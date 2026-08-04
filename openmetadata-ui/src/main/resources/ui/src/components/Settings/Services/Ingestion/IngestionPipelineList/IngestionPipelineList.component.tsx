@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, TablePaginationConfig } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, TablePaginationConfig } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { FilterValue, TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -249,10 +250,10 @@ export const IngestionPipelineList = ({
     <Row className={className} gutter={[16, 16]}>
       <Col className="text-right" span={24}>
         <Button
+          color="primary"
           data-testid="bulk-re-deploy-button"
-          disabled={selectedPipelines?.length === 0}
-          loading={deploying}
-          type="primary"
+          isDisabled={selectedPipelines?.length === 0}
+          isLoading={deploying}
           onClick={handleBulkRedeploy}>
           {t('label.re-deploy')}
         </Button>

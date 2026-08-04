@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,18 +63,18 @@ export const ModalWithMarkdownEditor: FunctionComponent<
       footer={
         <KeyDownStopPropagationWrapper>
           <Button
+            color="link-gray"
             data-testid="cancel"
-            disabled={isLoading}
+            isDisabled={isLoading}
             key="cancelButton"
-            type="link"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="save"
+            isLoading={isLoading}
             key="saveButton"
-            loading={isLoading}
-            type="primary"
             onClick={handleSaveData}>
             {t('label.save')}
           </Button>

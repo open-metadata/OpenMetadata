@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Col, Row, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
@@ -184,7 +184,8 @@ const EntityHeaderTitle = ({
             }>
             <Button
               className="remove-button-default-styling copy-button flex-center p-xss "
-              icon={<Icon component={ShareIcon} />}
+              color="secondary"
+              iconLeading={<Icon component={ShareIcon} />}
               onClick={handleShareButtonClick}
             />
           </Tooltip>
@@ -200,10 +201,11 @@ const EntityHeaderTitle = ({
                 })}>
                 <Button
                   className="entity-follow-button flex-center gap-1 text-sm "
+                  color="secondary"
                   data-testid="entity-follow-button"
-                  disabled={deleted}
-                  icon={<Icon component={StarFilledIcon} />}
-                  loading={isFollowingLoading}
+                  iconLeading={<Icon component={StarFilledIcon} />}
+                  isDisabled={deleted}
+                  isLoading={isFollowingLoading}
                   onClick={handleFollowingClick}>
                   <Typography>
                     {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}

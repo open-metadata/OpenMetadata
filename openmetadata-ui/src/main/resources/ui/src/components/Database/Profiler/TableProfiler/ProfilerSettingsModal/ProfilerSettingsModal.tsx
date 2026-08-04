@@ -13,9 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Drawer,
   Input,
   InputNumber,
@@ -451,14 +450,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const drawerFooter = (
     <div className="drawer-footer-actions">
       <Space size={16}>
-        <Button type="link" onClick={handleCancel}>
+        <Button color="link-gray" onClick={handleCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          color="primary"
           form="profiler-setting-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.save')}
         </Button>
       </Space>
@@ -606,9 +605,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     </p>
                     <Button
                       className="include-columns-add-button flex-center"
-                      icon={<PlusOutlined />}
-                      size="small"
-                      type="primary"
+                      color="primary"
+                      iconLeading={<PlusOutlined />}
+                      size="xs"
                       onClick={() => add({ metrics: ['all'] })}
                     />
                   </div>
@@ -653,14 +652,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           </Form.Item>
                           <Button
                             className="delete-btn"
-                            icon={
+                            color="tertiary"
+                            iconLeading={
                               <Icon
                                 className="align-middle"
                                 component={IconDelete}
                                 style={{ fontSize: '16px' }}
                               />
                             }
-                            type="text"
                             onClick={() => remove(name)}
                           />
                         </Col>
@@ -889,9 +888,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           </p>
                           <Button
                             className="include-columns-add-button flex-center"
-                            icon={<PlusOutlined />}
-                            size="small"
-                            type="primary"
+                            color="primary"
+                            iconLeading={<PlusOutlined />}
+                            size="xs"
                             onClick={() => add()}
                           />
                         </div>
@@ -925,14 +924,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               </Form.Item>
                               <Button
                                 className="delete-btn"
-                                icon={
+                                color="tertiary"
+                                iconLeading={
                                   <Icon
                                     className="align-middle"
                                     component={IconDelete}
                                     style={{ fontSize: '16px' }}
                                   />
                                 }
-                                type="text"
                                 onClick={() => remove(name)}
                               />
                             </Col>
@@ -959,8 +958,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       extra={
         <Button
           className="drawer-close-icon flex-center"
-          icon={<CloseIcon />}
-          type="link"
+          color="link-gray"
+          iconLeading={<CloseIcon />}
           onClick={handleCancel}
         />
       }

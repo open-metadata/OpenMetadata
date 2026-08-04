@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Modal, Popover } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Modal, Popover } from 'antd';
 import { AxiosError } from 'axios';
-import { useMemo, useState } from 'react';
+import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
@@ -147,6 +147,7 @@ const ProfileSectionUserDetailsCard = ({
       {isLoggedInUser && (
         <Button
           className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+          color="secondary"
           data-testid="edit-displayname"
           onClick={() => {
             setEditProfile(!editProfile);
@@ -167,6 +168,7 @@ const ProfileSectionUserDetailsCard = ({
       {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
         <Button
           className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+          color="secondary"
           data-testid="change-password-button"
           onClick={() => {
             setIsChangePassword(true);
@@ -187,6 +189,7 @@ const ProfileSectionUserDetailsCard = ({
       {userData?.deleted ? (
         <Button
           className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+          color="secondary"
           onClick={() => {
             setShowRestoreModal(true);
             setisPopoverVisible(false);
@@ -204,6 +207,7 @@ const ProfileSectionUserDetailsCard = ({
         isAdminUser && (
           <Button
             className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+            color="secondary"
             onClick={() => {
               setIsDelete(true);
               setisPopoverVisible(false);
@@ -313,7 +317,8 @@ const ProfileSectionUserDetailsCard = ({
       {showRestoreModal && (
         <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+          color="secondary"
+          onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
           <Modal
             centered
             cancelButtonProps={{

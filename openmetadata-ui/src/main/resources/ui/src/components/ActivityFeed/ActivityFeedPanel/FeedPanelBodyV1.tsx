@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, useCallback, useMemo } from 'react';
 import { Post } from '../../../generated/entity/feed/thread';
@@ -66,10 +66,12 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
 
   return (
     <Button
-      block
-      className={classNames('activity-feed-card-container ', className)}
+      className={classNames(
+        'activity-feed-card-container tw:w-full',
+        className
+      )}
+      color="tertiary"
       data-testid="message-container"
-      type="text"
       onClick={handleFeedClick}>
       {renderFeedContent()}
     </Button>

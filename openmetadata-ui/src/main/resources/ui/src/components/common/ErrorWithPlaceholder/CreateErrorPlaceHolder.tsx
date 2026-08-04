@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -90,11 +90,10 @@ const CreateErrorPlaceHolder = ({
               placement="top"
               title={!permission && t('message.admin-only-action')}>
               <Button
-                ghost
                 className="p-x-lg"
+                color="tertiary"
                 data-testid={buttonId ?? 'add-placeholder-button'}
-                icon={<PlusOutlined />}
-                type="primary"
+                iconLeading={<PlusOutlined />}
                 onClick={onClick}>
                 {t('label.add')}
               </Button>

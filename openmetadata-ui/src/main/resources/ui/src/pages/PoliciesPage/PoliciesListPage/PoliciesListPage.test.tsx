@@ -27,8 +27,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
   Button: jest
     .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
+    .mockImplementation(({ children, onClick, isDisabled, ...rest }) => (
+      <button disabled={isDisabled} onClick={onClick} {...rest}>
+        {children}
+      </button>
     )),
   ButtonUtility: jest
     .fn()

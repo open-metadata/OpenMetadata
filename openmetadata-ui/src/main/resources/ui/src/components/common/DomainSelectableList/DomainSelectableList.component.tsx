@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover } from 'antd';
-import { lazy, useCallback, useMemo, useState } from 'react';
+import { Button } from '@openmetadata/ui-core-components';
+import { Popover } from 'antd';
+import { MouseEvent, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -168,8 +169,9 @@ const DomainSelectableList = ({
     return (
       <Button
         className="remove-button-default-styling flex-center"
-        disabled={disabled}
-        onClick={(e) => e.stopPropagation()}>
+        color="secondary"
+        isDisabled={disabled}
+        onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
         {popoverContent}
       </Button>
     );

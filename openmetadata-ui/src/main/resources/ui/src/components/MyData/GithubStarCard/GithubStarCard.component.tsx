@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card, Skeleton, Space } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Affix, Card, Skeleton, Space } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -138,9 +137,11 @@ const GithubStarCard = () => {
           </Space>
           <Button
             className="flex-center m--t-xss"
+            color="tertiary"
             data-testid="close-github-star-popup-card"
-            icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
-            type="text"
+            iconLeading={
+              <CloseIcon color={BLACK_COLOR} height={12} width={12} />
+            }
             onClick={handleClosePopup}
           />
         </Space>
@@ -149,17 +150,18 @@ const GithubStarCard = () => {
           {t('message.star-on-github-description')}
         </Typography>
 
-        <ButtonGroup className="github-action-button-group">
+        <div className="github-action-button-group tw:flex tw:items-center">
           <Typography as="a" href={OMD_REPOSITORY_LINK} target="_blank">
             <Button
               className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}>
+              color="secondary"
+              iconLeading={<Icon component={StarGithubIcon} size={12} />}>
               {t('label.star')}
             </Button>
           </Typography>
 
           <Typography as="a" href={OMD_REPOSITORY_LINK} target="_blank">
-            <Button className="github-modal-action-button">
+            <Button className="github-modal-action-button" color="secondary">
               {isLoading ? (
                 <div data-testid="skeleton-loader">
                   <Skeleton.Button active size="small" />
@@ -169,7 +171,7 @@ const GithubStarCard = () => {
               )}
             </Button>
           </Typography>
-        </ButtonGroup>
+        </div>
       </Card>
     </Affix>
   ) : null;

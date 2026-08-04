@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -461,9 +460,9 @@ const GlossaryHeader = ({
       return isGlossary ? (
         <Button
           className="m-l-xs"
+          color="primary"
           data-testid="add-new-tag-button-header"
-          size="middle"
-          type="primary"
+          size="sm"
           onClick={handleAddGlossaryTermClick}>
           {t('label.add-entity', { entity: t('label.term-lowercase') })}
         </Button>
@@ -479,8 +478,8 @@ const GlossaryHeader = ({
                 placement="bottomRight"
                 trigger={['click']}>
                 <Button
-                  data-testid="glossary-term-add-button-menu"
-                  type="primary">
+                  color="primary"
+                  data-testid="glossary-term-add-button-menu">
                   <Space>
                     {t('label.add')}
                     <DownOutlined />
@@ -566,7 +565,7 @@ const GlossaryHeader = ({
           <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
-            <ButtonGroup className="spaced" size="small">
+            <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}
@@ -588,8 +587,9 @@ const GlossaryHeader = ({
                     className={classNames('', {
                       'text-primary border-primary': version,
                     })}
+                    color="secondary"
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    iconLeading={<Icon component={VersionIcon} />}
                     onClick={handleVersionClick}>
                     <Typography
                       className={classNames('', {
@@ -623,8 +623,9 @@ const GlossaryHeader = ({
                     })}>
                     <Button
                       className="glossary-manage-dropdown-button"
+                      color="secondary"
                       data-testid="manage-button"
-                      icon={
+                      iconLeading={
                         <IconDropdown
                           className="vertical-align-inherit manage-dropdown-icon"
                           height={16}
@@ -636,7 +637,7 @@ const GlossaryHeader = ({
                   </Tooltip>
                 </Dropdown>
               )}
-            </ButtonGroup>
+            </div>
           </div>
         </div>
       </div>

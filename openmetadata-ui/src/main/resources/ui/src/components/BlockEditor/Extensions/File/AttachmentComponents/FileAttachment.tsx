@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownloadOutlined, FileOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import { NodeViewProps } from '@tiptap/react';
-import { Button } from 'antd';
 import React from 'react';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import { bytesToSize } from '../../../../../utils/StringUtils';
@@ -69,10 +69,10 @@ const FileAttachment = ({
                 <span className="separator">|</span>
                 <Button
                   className="file-percentage"
-                  icon={<DownloadOutlined />}
-                  loading={isFileLoading}
-                  size="small"
-                  type="text"
+                  color="tertiary"
+                  iconLeading={<DownloadOutlined />}
+                  isLoading={isFileLoading}
+                  size="xs"
                   onClick={onFileClick}
                 />
               </>

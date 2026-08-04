@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import './inline-edit.less';
 import { InlineEditProps } from './InlineEdit.interface';
@@ -43,23 +44,27 @@ const InlineEdit = ({
       onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}>
       {children}
-
       <Space className="w-full justify-end" data-testid="buttons" size={4}>
+        {/* The spread stays last, as it was before the antd migration:
+        callers pass overrides through cancelButtonProps/saveButtonProps
+        (e.g. PropertyValue passes `type: 'submit'` + `form`), and those must
+        win over the defaults here. The codemod moved the converted props
+        after the spread, which silently inverted that precedence. */}
         <Button
+          color="primary"
           data-testid="inline-cancel-btn"
-          disabled={isLoading}
-          icon={<CloseOutlined />}
-          size="small"
-          type="primary"
+          iconLeading={<CloseOutlined />}
+          isDisabled={isLoading}
+          size="xs"
           onClick={onCancel}
           {...cancelButtonProps}
         />
         <Button
+          color="primary"
           data-testid="inline-save-btn"
-          icon={<CheckOutlined />}
-          loading={isLoading}
-          size="small"
-          type="primary"
+          iconLeading={<CheckOutlined />}
+          isLoading={isLoading}
+          size="xs"
           onClick={onSave}
           {...saveButtonProps}
         />

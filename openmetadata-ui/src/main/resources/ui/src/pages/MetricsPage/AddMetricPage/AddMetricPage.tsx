@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { omit, startCase } from 'lodash';
 import { FocusEvent, lazy, useCallback, useMemo, useState } from 'react';
@@ -320,18 +320,18 @@ const AddMetricPage = () => {
                   <Row justify="end">
                     <Col>
                       <Button
+                        color="link-gray"
                         data-testid="back-button"
-                        type="link"
                         onClick={() => navigate(ROUTES.METRICS)}>
                         {t('label.back')}
                       </Button>
                     </Col>
                     <Col>
                       <Button
+                        color="primary"
                         data-testid="create-button"
-                        htmlType="submit"
-                        loading={isCreating}
-                        type="primary">
+                        isLoading={isCreating}
+                        type="submit">
                         {t('label.create')}
                       </Button>
                     </Col>

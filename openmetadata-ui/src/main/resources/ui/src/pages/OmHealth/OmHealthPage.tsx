@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { map, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -78,7 +79,7 @@ const OmHealthPage = () => {
               />
             </Col>
             <Col>
-              <Button type="primary" onClick={getHealthData}>
+              <Button color="primary" onClick={getHealthData}>
                 {t('label.refresh')}
               </Button>
             </Col>

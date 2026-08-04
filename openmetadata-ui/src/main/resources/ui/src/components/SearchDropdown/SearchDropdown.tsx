@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Card,
   Checkbox,
   Col,
@@ -364,8 +363,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
               <Divider className="m-t-xs m-b-0" />
               <Button
                 className="p-0 m-l-sm"
+                color="link-gray"
                 data-testid="clear-button"
-                type="link"
                 onClick={handleClear}>
                 {t('label.clear-entity', {
                   entity: t('label.all'),
@@ -420,15 +419,16 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             <Space className="p-sm p-t-xss">
               <Button
                 className="update-btn"
+                color="secondary"
                 data-testid="update-btn"
-                size="small"
+                size="xs"
                 onClick={handleUpdate}>
                 {t('label.update')}
               </Button>
               <Button
+                color="link-gray"
                 data-testid="close-btn"
-                size="small"
-                type="link"
+                size="xs"
                 onClick={handleDropdownClose}>
                 {t('label.close')}
               </Button>
@@ -483,8 +483,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         trigger="hover">
         <Button
           className="quick-filter-dropdown-trigger-btn"
+          color="secondary"
           data-testid={`search-dropdown-${searchKey}`}
-          size={triggerButtonSize}>
+          size={
+            triggerButtonSize === 'small'
+              ? 'xs'
+              : triggerButtonSize === 'middle'
+              ? 'sm'
+              : 'md'
+          }>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space
               className={classNames({

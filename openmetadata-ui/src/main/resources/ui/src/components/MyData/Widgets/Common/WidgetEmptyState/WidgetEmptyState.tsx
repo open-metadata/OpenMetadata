@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -52,14 +51,14 @@ const WidgetEmptyState = ({
   };
 
   const actionButton = showActionButton && (
-    <Button className="m-t-md" type="primary" onClick={handleActionClick}>
+    <Button className="m-t-md" color="primary" onClick={handleActionClick}>
       {actionButtonText || t('label.explore')}
     </Button>
   );
 
   const actionLink = actionButtonLink && (
     <Link to={actionButtonLink}>
-      <Button className="m-t-md" type="primary">
+      <Button className="m-t-md" color="primary">
         {actionButtonText || t('label.explore')}
       </Button>
     </Link>

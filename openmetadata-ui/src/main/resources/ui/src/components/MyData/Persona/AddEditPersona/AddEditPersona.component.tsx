@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Form, Space } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
@@ -161,10 +162,12 @@ export const AddEditPersonaForm = ({
         hasPermission: true,
         children: (
           <Button
+            color="primary"
             data-testid="add-users"
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-            size="small"
-            type="primary"
+            iconLeading={
+              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+            }
+            size="xs"
           />
         ),
       },

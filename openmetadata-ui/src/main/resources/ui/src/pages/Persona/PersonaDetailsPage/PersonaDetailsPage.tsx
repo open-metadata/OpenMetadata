@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Button,
   FeaturedIcon,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { User03 } from '@untitledui/icons';
-import { Button, Col, Modal, Row } from 'antd';
+import { Col, Modal, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -420,9 +421,9 @@ export const PersonaDetailsPage = () => {
                       await handlePersonaUpdate({ users }, true);
                     }}>
                     <Button
+                      color="primary"
                       data-testid="add-persona-button"
-                      size="small"
-                      type="primary">
+                      size="xs">
                       {t('label.add-entity', { entity: t('label.user') })}
                     </Button>
                   </UserSelectableList>

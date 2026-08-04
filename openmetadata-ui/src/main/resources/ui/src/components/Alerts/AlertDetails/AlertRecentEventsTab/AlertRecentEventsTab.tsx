@@ -13,11 +13,12 @@
 
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
-import { Button, Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';
+import { Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -348,8 +349,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               trigger={['click']}>
               <Button
                 className="flex-center"
+                color="secondary"
                 data-testid="filter-button"
-                icon={<FilterIcon height={16} />}>
+                iconLeading={<FilterIcon height={16} />}>
                 {filter !== AlertRecentEventFilters.ALL && (
                   <Typography
                     className="font-medium"

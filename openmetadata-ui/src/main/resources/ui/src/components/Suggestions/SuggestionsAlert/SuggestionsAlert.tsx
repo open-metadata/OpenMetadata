@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
@@ -81,20 +81,19 @@ const SuggestionsAlert = ({
         {hasEditAccess && (
           <div className="d-flex justify-end gap-2">
             <Button
-              ghost
+              color="tertiary"
               data-testid="reject-suggestion"
-              icon={<CloseOutlined />}
-              size="small"
-              type="primary"
+              iconLeading={<CloseOutlined />}
+              size="xs"
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
               }
             />
             <Button
+              color="primary"
               data-testid="accept-suggestion"
-              icon={<CheckOutlined />}
-              size="small"
-              type="primary"
+              iconLeading={<CheckOutlined />}
+              size="xs"
               onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
               }

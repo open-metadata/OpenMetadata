@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  queryByAttribute,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
@@ -320,9 +314,7 @@ describe('AddTestCaseList', () => {
     const submitBtn = screen.getByTestId('submit');
     fireEvent.click(submitBtn);
     await waitFor(() => {
-      const loader = queryByAttribute('aria-label', submitBtn, 'loading');
-
-      expect(loader).toBeInTheDocument();
+      expect(submitBtn).toHaveAttribute('data-loading', 'true');
     });
 
     expect(mockProps.onSubmit).toHaveBeenCalledWith({
@@ -1165,9 +1157,7 @@ describe('AddTestCaseList', () => {
       });
 
       await waitFor(() => {
-        const loader = queryByAttribute('aria-label', submitBtn, 'loading');
-
-        expect(loader).toBeInTheDocument();
+        expect(submitBtn).toHaveAttribute('data-loading', 'true');
       });
 
       await waitFor(() => {

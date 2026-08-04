@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Input, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -274,14 +274,17 @@ const RequestTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button data-testid="cancel-btn" type="link" onClick={back}>
+                    <Button
+                      color="link-gray"
+                      data-testid="cancel-btn"
+                      onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
+                      color="primary"
                       data-testid="submit-tag-request"
-                      htmlType="submit"
-                      loading={isLoading}
-                      type="primary">
+                      isLoading={isLoading}
+                      type="submit">
                       {(payload.tagsToAdd as TagLabel[] | undefined)?.length
                         ? t('label.suggest')
                         : t('label.save')}

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Popover, Tooltip } from 'antd';
-import { useMemo, useState } from 'react';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Popover, Tooltip } from 'antd';
+import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -64,7 +64,8 @@ const DomainSelectableListNew = ({
   return (
     <Button
       className="remove-button-default-styling"
-      onClick={(e) => e.stopPropagation()}>
+      color="secondary"
+      onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
       <Popover
         destroyTooltipOnHide
         content={

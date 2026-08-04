@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Divider, Form, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { Fragment, useMemo, useState } from 'react';
@@ -139,17 +140,16 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                   )}
                 </Fragment>
               ))}
-
               {!isViewMode && (
                 <Col span={24}>
                   <Row gutter={[16, 16]}>
                     <Col>
                       <Button
+                        color="primary"
                         data-testid="add-destination-button"
-                        disabled={
+                        isDisabled={
                           isEmpty(selectedSource) || isNil(selectedSource)
                         }
-                        type="primary"
                         onClick={() => add({})}>
                         {t('label.add-entity', {
                           entity: t('label.destination'),
@@ -161,8 +161,9 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                         placement="right"
                         title={t('message.external-destination-selection')}>
                         <Button
+                          color="secondary"
                           data-testid="test-destination-button"
-                          disabled={disableTestDestinationButton}
+                          isDisabled={disableTestDestinationButton}
                           onClick={handleTestDestinationClick}>
                           {t('label.test-entity', {
                             entity: t('label.destination-plural'),
@@ -173,7 +174,6 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                   </Row>
                 </Col>
               )}
-
               <Col span={24}>
                 <Form.ErrorList errors={errors} />
               </Col>

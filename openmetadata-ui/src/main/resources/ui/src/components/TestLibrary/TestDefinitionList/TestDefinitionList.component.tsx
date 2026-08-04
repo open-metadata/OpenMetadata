@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -116,8 +116,8 @@ const TestDefinitionList = () => {
               {createPermission && (
                 <Col>
                   <Button
+                    color="primary"
                     data-testid="add-test-definition-button"
-                    type="primary"
                     onClick={openCreateForm}>
                     {t('label.add-entity', {
                       entity: t('label.test-definition'),

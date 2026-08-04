@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -102,13 +101,13 @@ const RelatedMetrics: FC = () => {
                 )}>
                 <Button
                   className="metric-entity-button flex-center p-0 m--ml-1"
-                  icon={
+                  color="tertiary"
+                  iconLeading={
                     <div className="entity-button-icon m-r-xs">
                       {getEntityIcon(item.type)}
                     </div>
                   }
-                  title={getEntityName(item)}
-                  type="text">
+                  title={getEntityName(item)}>
                   <Typography
                     className="w-72 text-left text-xs"
                     ellipsis={{ tooltip: true }}>

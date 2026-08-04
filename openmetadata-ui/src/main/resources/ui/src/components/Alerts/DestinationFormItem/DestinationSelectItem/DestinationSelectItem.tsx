@@ -12,10 +12,9 @@
  */
 
 import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Alert,
-  Button,
   Col,
   Form,
   Input,
@@ -439,8 +438,9 @@ function DestinationSelectItem({
 
         {!isViewMode && (
           <Button
+            color="secondary"
             data-testid={`remove-destination-${id}`}
-            icon={<CloseOutlined />}
+            iconLeading={<CloseOutlined />}
             onClick={() => remove(id)}
           />
         )}

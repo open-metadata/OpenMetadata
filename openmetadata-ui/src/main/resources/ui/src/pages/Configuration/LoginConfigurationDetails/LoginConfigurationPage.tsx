@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -106,8 +106,9 @@ const LoginConfigurationPage = () => {
             </Col>
             <Col>
               <Button
+                color="secondary"
                 data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
+                iconLeading={<Icon component={IconEdit} size={12} />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>

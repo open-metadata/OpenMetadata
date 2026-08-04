@@ -103,7 +103,7 @@ describe('FileAttachment', () => {
 
     const downloadButton = screen.getByRole('button');
 
-    expect(downloadButton).toHaveClass('ant-btn-loading');
+    expect(downloadButton).toHaveAttribute('data-loading', 'true');
   });
 
   it('uses tempFile details when available', () => {

@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Modal, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Modal, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -326,7 +326,8 @@ const ManageButton: FC<ManageButtonProps> = ({
     return (
       <Button
         className="remove-button-default-styling p-0"
-        onClick={(e) => e.stopPropagation()}>
+        color="secondary"
+        onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
         <Dropdown
           align={{ targetOffset: [-12, 0] }}
           dropdownRender={renderDropdownContainer}
@@ -342,8 +343,8 @@ const ManageButton: FC<ManageButtonProps> = ({
             })}>
             <Button
               className={classNames('flex-center px-1.5', buttonClassName)}
-              data-testid="manage-button"
-              type="default">
+              color="secondary"
+              data-testid="manage-button">
               <IconDropdown className="anticon self-center manage-dropdown-icon" />
             </Button>
           </Tooltip>
@@ -412,7 +413,8 @@ const ManageButton: FC<ManageButtonProps> = ({
         // TeamDetailsV1 and User.component collapsible panel.
         <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+          color="secondary"
+          onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
           <Modal
             centered
             cancelButtonProps={{

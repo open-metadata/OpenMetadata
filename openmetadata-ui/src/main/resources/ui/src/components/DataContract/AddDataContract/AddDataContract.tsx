@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, RadioChangeEvent, Tabs } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, RadioChangeEvent, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -518,16 +518,16 @@ const AddDataContract: React.FC<{
         <div>
           <Button
             className="add-contract-cancel-button"
-            type="default"
+            color="secondary"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>
           <Button
             className="add-contract-save-button"
+            color="primary"
             data-testid="save-contract-btn"
-            disabled={isSaveDisabled}
-            loading={isSubmitting}
-            type="primary"
+            isDisabled={isSaveDisabled}
+            isLoading={isSubmitting}
             onClick={handleSave}>
             {t('label.save')}
           </Button>

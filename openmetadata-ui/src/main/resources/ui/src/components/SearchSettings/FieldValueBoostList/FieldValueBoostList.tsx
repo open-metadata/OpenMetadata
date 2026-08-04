@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Table } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Table } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -96,16 +97,16 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
           <div className="d-flex items-center gap-2">
             <Button
               className="edit-field-value-boost-btn"
+              color="tertiary"
               data-testid="edit-field-value-boost-btn"
-              icon={<Icon className="text-md" component={EditIcon} />}
-              type="text"
+              iconLeading={<Icon className="text-md" component={EditIcon} />}
               onClick={() => handleEditFieldValueBoost(record)}
             />
             <Button
               className="delete-field-value-boost-btn"
+              color="tertiary"
               data-testid="delete-field-value-boost-btn"
-              icon={<Icon className="text-md" component={Delete} />}
-              type="text"
+              iconLeading={<Icon className="text-md" component={Delete} />}
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />
           </div>

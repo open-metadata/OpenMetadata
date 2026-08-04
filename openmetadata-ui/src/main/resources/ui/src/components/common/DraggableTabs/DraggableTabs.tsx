@@ -16,7 +16,8 @@ import {
   EditOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps, Space } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
@@ -118,6 +119,7 @@ export const TabItem = ({
         trigger={['click']}>
         <Button
           className="draggable-tab-item"
+          color="secondary"
           data-testid={`tab-${item.name}`}
           onClick={() => onItemClick?.(item.id)}>
           <Space>

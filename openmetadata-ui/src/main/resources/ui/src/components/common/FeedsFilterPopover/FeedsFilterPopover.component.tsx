@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, List, Popover, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Checkbox, List, Popover, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
@@ -51,16 +51,16 @@ const FeedsFilterPopover = ({
         footer={
           <Space className="w-full justify-end">
             <Button
-              color="primary"
+              color="secondary"
               data-testid="cancel-button"
-              size="small"
+              size="xs"
               onClick={() => setPopupVisible(false)}>
               {t('label.cancel')}
             </Button>
             <Button
+              color="primary"
               data-testid="selectable-list-update-btn"
-              size="small"
-              type="primary"
+              size="xs"
               onClick={onFilterUpdate}>
               {t('label.update')}
             </Button>
@@ -110,8 +110,9 @@ const FeedsFilterPopover = ({
       <Tooltip title={t('label.feed-filter-plural')}>
         <Button
           className="feed-filter-icon"
+          color="secondary"
           data-testid="filter-button"
-          icon={<FilterIcon height={16} />}
+          iconLeading={<FilterIcon height={16} />}
         />
       </Tooltip>
     </Popover>

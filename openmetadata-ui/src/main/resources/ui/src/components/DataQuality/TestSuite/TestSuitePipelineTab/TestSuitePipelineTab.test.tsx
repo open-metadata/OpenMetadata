@@ -163,6 +163,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => <Component {...props}>{children}</Component>;
 
   return {
+    Button: jest
+      .fn()
+      .mockImplementation(({ children, onClick, isDisabled, ...rest }) => (
+        <button disabled={isDisabled} onClick={onClick} {...rest}>
+          {children}
+        </button>
+      )),
     Table: MockTable,
     TableCard: MockTableCard,
     Tooltip: MockTooltip,

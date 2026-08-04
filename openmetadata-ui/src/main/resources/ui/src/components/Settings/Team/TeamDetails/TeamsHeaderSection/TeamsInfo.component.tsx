@@ -15,11 +15,11 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Form, Input, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Divider, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -185,17 +185,17 @@ const TeamsInfo = ({
               })}>
               <Button
                 className="flex-center teams-info-email-edit-button p-0"
+                color="tertiary"
                 data-testid="edit-email"
-                icon={
+                iconLeading={
                   <EditIcon
                     color={DE_ACTIVE_COLOR}
                     {...ICON_DIMENSION}
                     width="12px"
                   />
                 }
-                size="small"
-                type="text"
-                onClick={(e) => {
+                size="xs"
+                onClick={(e: MouseEvent<HTMLButtonElement>) => {
                   // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                   e.stopPropagation();
                   setIsEmailEdit(true);
@@ -235,20 +235,20 @@ const TeamsInfo = ({
               <Space size={4}>
                 <Button
                   className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="cancel-edit-email"
-                  disabled={isLoading}
-                  size="small"
-                  type="primary"
+                  isDisabled={isLoading}
+                  size="xs"
                   onClick={() => setIsEmailEdit(false)}>
                   <CloseOutlined />
                 </Button>
                 <Button
                   className="h-8 p-x-xss"
+                  color="primary"
                   data-testid="save-edit-email"
-                  htmlType="submit"
-                  loading={isLoading}
-                  size="small"
-                  type="primary">
+                  isLoading={isLoading}
+                  size="xs"
+                  type="submit">
                   <CheckOutlined />
                 </Button>
               </Space>
@@ -289,17 +289,17 @@ const TeamsInfo = ({
                 })}>
                 <Button
                   className="flex-center edit-team-type-icon p-0"
+                  color="tertiary"
                   data-testid="edit-team-type-icon"
-                  icon={
+                  iconLeading={
                     <EditIcon
                       color={DE_ACTIVE_COLOR}
                       {...ICON_DIMENSION}
                       width={12}
                     />
                   }
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
+                  size="xs"
+                  onClick={(e: MouseEvent<HTMLButtonElement>) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     setShowTypeSelector(true);

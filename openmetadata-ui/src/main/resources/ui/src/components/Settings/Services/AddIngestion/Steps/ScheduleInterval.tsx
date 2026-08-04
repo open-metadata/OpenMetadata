@@ -12,9 +12,8 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Card,
   Col,
   Form,
@@ -431,26 +430,26 @@ function ScheduleIntervalInner<T>(
           <Col className="d-flex justify-end" span={24}>
             <Button
               className="m-r-xs"
+              color="link-gray"
               data-testid="back-button"
-              type="link"
               onClick={onBack}>
               <span>{buttonProps?.cancelText ?? t('label.back')}</span>
             </Button>
 
             {status === 'success' ? (
               <Button
-                disabled
+                isDisabled
                 className="w-16 opacity-100 p-x-md p-y-xxs"
-                type="primary">
+                color="primary">
                 <CheckOutlined />
               </Button>
             ) : (
               <Button
                 className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+                color="primary"
                 data-testid="deploy-button"
-                htmlType="submit"
-                loading={status === LOADING_STATE.WAITING}
-                type="primary">
+                isLoading={status === LOADING_STATE.WAITING}
+                type="submit">
                 {buttonProps?.okText ?? t('label.create')}
               </Button>
             )}

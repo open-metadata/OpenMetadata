@@ -13,22 +13,12 @@
 
 import { EllipsisOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Modal,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Dropdown, Modal, Row, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -345,11 +335,13 @@ const PoliciesDetailPage = () => {
               entity: t('label.rule'),
             })}>
             <Button
+              color="tertiary"
               data-testid={`manage-button-${rule.name}`}
-              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-              size="small"
-              type="text"
-              onClick={(e) => {
+              iconLeading={
+                <EllipsisOutlined className="text-grey-body" rotate={90} />
+              }
+              size="xs"
+              onClick={(e: MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
               }}
             />
@@ -379,8 +371,8 @@ const PoliciesDetailPage = () => {
           <>
             <div className="flex justify-end m-b-md">
               <Button
+                color="primary"
                 data-testid="add-rule"
-                type="primary"
                 onClick={() => navigate(getAddPolicyRulePath(fqn))}>
                 {t('label.add-entity', {
                   entity: t('label.rule'),
@@ -541,8 +533,8 @@ const PoliciesDetailPage = () => {
                   })}
                 </p>
                 <Button
-                  size="small"
-                  type="primary"
+                  color="primary"
+                  size="xs"
                   onClick={() => navigate(policiesPath)}>
                   {t('label.go-back')}
                 </Button>

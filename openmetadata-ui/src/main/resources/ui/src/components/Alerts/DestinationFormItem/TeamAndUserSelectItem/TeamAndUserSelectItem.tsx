@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Card,
   Checkbox,
   Col,
@@ -237,6 +236,7 @@ function TeamAndUserSelectItem({
       trigger={['click']}>
       <Button
         className="select-trigger"
+        color="secondary"
         data-testid="dropdown-trigger-button"
         ref={triggerRef}
         onClick={handleTriggerClick}>

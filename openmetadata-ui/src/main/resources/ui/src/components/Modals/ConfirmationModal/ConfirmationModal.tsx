@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -53,19 +52,22 @@ const ConfirmationModal = ({
         <div className={classNames('justify-end', footerClassName)}>
           <Button
             className={classNames('mr-2', cancelButtonCss)}
+            color="tertiary"
             data-testid="cancel"
             key="remove-edge-btn"
-            type="text"
             onClick={onCancel}>
             {cancelText}
           </Button>
           <Button
             className={confirmButtonCss}
-            danger={confirmText === t('label.delete')}
+            color={
+              confirmText === t('label.delete')
+                ? 'primary-destructive'
+                : 'primary'
+            }
             data-testid={isLoading ? 'loading-button' : 'save-button'}
+            isLoading={isLoading}
             key="save-btn"
-            loading={isLoading}
-            type="primary"
             onClick={onConfirm}>
             {confirmText}
           </Button>

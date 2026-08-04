@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Card, Select, Space } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -120,18 +121,18 @@ const RolesCard = ({
               <div className="flex justify-end" data-testid="buttons">
                 <Button
                   className="text-sm mr-1"
+                  color="primary"
                   data-testid="cancel-roles"
-                  icon={<CloseOutlined />}
-                  size="small"
-                  type="primary"
+                  iconLeading={<CloseOutlined />}
+                  size="xs"
                   onMouseDown={() => setIsRolesEdit(false)}
                 />
                 <Button
                   className="text-sm"
+                  color="primary"
                   data-testid="save-roles"
-                  icon={<CheckOutlined />}
-                  size="small"
-                  type="primary"
+                  iconLeading={<CheckOutlined />}
+                  size="xs"
                   onClick={handleRolesChange}
                 />
               </div>

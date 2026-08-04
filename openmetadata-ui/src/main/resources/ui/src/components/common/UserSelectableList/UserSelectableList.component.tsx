@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Popover, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
@@ -211,11 +212,11 @@ export const UserSelectableList = ({
           title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
           <Button
             className="p-0 flex-center"
+            color="tertiary"
             data-testid="add-user"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
+            iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            isDisabled={!hasPermission}
+            size="xs"
           />
         </Tooltip>
       )}

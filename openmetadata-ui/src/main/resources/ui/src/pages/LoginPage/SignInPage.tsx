@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import classNames from 'classnames';
 import {
   useCallback,
@@ -260,14 +260,13 @@ const SignInPage = () => {
                 </Form.Item>
 
                 <Button
-                  block
-                  className="login-btn"
+                  className="login-btn tw:w-full"
+                  color="primary"
                   data-testid="login"
-                  disabled={loading}
-                  htmlType="submit"
-                  loading={loading}
-                  size="large"
-                  type="primary">
+                  isDisabled={loading}
+                  isLoading={loading}
+                  size="md"
+                  type="submit">
                   {t('label.sign-in')}
                 </Button>
               </Form>
@@ -280,8 +279,8 @@ const SignInPage = () => {
                       </Typography>
                       <Button
                         className="link-btn"
+                        color="link-gray"
                         data-testid="signup"
-                        type="link"
                         onClick={onClickSignUp}>
                         {t('label.create-entity', {
                           entity: t('label.account'),

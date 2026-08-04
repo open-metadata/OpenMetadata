@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,17 +72,18 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           editAction={
             <div className="d-flex">
               <Button
+                color="secondary"
                 data-testid="cancel-button"
-                size="small"
+                size="xs"
                 onClick={handleCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-button"
-                disabled={!postMessage.length}
-                size="small"
-                type="primary"
-                onClick={(e) => {
+                isDisabled={!postMessage.length}
+                size="xs"
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   handleSave();
                 }}>

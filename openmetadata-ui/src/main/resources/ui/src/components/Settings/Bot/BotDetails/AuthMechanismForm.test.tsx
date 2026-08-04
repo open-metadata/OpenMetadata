@@ -283,7 +283,7 @@ describe('AuthMechanismForm', () => {
 
       const saveButton = screen.getByTestId('save-edit');
 
-      expect(saveButton).toHaveClass('ant-btn-loading');
+      expect(saveButton).toHaveAttribute('data-loading', 'true');
     });
 
     it('should initialize form with default values for bot', () => {

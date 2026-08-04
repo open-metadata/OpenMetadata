@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row, Select, Switch } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Select, Switch } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,8 +116,9 @@ function ObservabilityFormTriggerItem({
                       </div>
                       {!isViewMode && (
                         <Button
+                          color="secondary"
                           data-testid={`remove-trigger-${name}`}
-                          icon={<CloseOutlined />}
+                          iconLeading={<CloseOutlined />}
                           onClick={() => remove(name)}
                         />
                       )}
@@ -141,11 +142,11 @@ function ObservabilityFormTriggerItem({
               {showAddTriggerButton && (
                 <Col span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-trigger"
-                    disabled={
+                    isDisabled={
                       isEmpty(selectedTrigger) || isNil(selectedTrigger)
                     }
-                    type="primary"
                     onClick={() =>
                       add({
                         effect: Effect.Include,

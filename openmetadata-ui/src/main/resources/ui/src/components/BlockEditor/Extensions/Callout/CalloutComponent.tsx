@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Popover } from 'antd';
+import { Popover } from 'antd';
 import { startCase } from 'lodash';
 import { FC, useState } from 'react';
 import { CALLOUT_CONTENT } from '../../../../constants/BlockEditor.constants';
@@ -26,12 +27,12 @@ const PopoverContent = ({
       {Object.entries(CALLOUT_CONTENT).map(([key, CalloutIcon]) => {
         return (
           <Button
+            color="tertiary"
             data-testid={`callout-${key}`}
-            icon={
+            iconLeading={
               <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
             }
             key={key}
-            type="text"
             onClick={() => onSelect(key)}>
             {startCase(key)}
           </Button>
@@ -82,8 +83,8 @@ const CalloutComponent: FC<NodeViewProps> = ({
           onOpenChange={handlePopoverVisibleChange}>
           <Button
             className="callout-type-btn"
-            data-testid={`callout-${calloutType}-btn`}
-            type="text">
+            color="tertiary"
+            data-testid={`callout-${calloutType}-btn`}>
             <CallOutIcon width={28} />
           </Button>
         </Popover>

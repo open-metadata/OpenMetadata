@@ -12,11 +12,12 @@
  */
 import {
   Breadcrumbs,
+  Button,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Checkbox, Col, Row, Space } from 'antd';
+import { Checkbox, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
@@ -451,7 +452,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             }${source.name}`}
             span={24}>
             {isTourOpen ? (
-              <Button data-testid={source.fullyQualifiedName} type="link">
+              <Button color="link-gray" data-testid={source.fullyQualifiedName}>
                 <Typography
                   className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Col,
   Divider,
   Dropdown,
@@ -264,8 +263,8 @@ const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
       {hasOverflow && (
         <Button
           className="p-0 text-xs font-medium"
-          size="small"
-          type="link"
+          color="link-gray"
+          size="xs"
           onClick={() => setExpanded((prev) => !prev)}>
           {expanded ? t('label.show-less') : t('label.show-more')}
         </Button>
@@ -653,8 +652,8 @@ export const TaskTabNew = ({
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
             className="p-0 task-feed-message font-medium text-md"
+            color="link-gray"
             data-testid="task-title"
-            type="link"
             onClick={handleTaskLinkClick}>
             <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
@@ -1140,9 +1139,9 @@ export const TaskTabNew = ({
   const renderCommentButton = useMemo(() => {
     return (
       <Button
+        color="primary"
         data-testid="comment-button"
-        disabled={isEmpty(comment)}
-        type="primary"
+        isDisabled={isEmpty(comment)}
         onClick={onSave}>
         {t('label.comment')}
       </Button>
@@ -1199,10 +1198,10 @@ export const TaskTabNew = ({
           size="small">
           <Button
             className="task-action-button"
+            color="primary"
             data-testid="workflow-task-action-primary"
-            disabled={!hasWorkflowAccess}
-            loading={isActionLoading}
-            type="primary"
+            isDisabled={!hasWorkflowAccess}
+            isLoading={isActionLoading}
             onClick={() =>
               handleWorkflowTransitionSelect(selectedTransition.id)
             }>
@@ -1356,7 +1355,10 @@ export const TaskTabNew = ({
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
-          <Button data-testid="close-button" onClick={onTaskClose}>
+          <Button
+            color="secondary"
+            data-testid="close-button"
+            onClick={onTaskClose}>
             {t('label.close')}
           </Button>
         )}
@@ -1664,6 +1666,7 @@ export const TaskTabNew = ({
   const editTaskModalFooter = useMemo(
     () => [
       <Button
+        color="secondary"
         key="cancel"
         onClick={() => {
           form.resetFields();
@@ -1672,11 +1675,11 @@ export const TaskTabNew = ({
         {t('label.cancel')}
       </Button>,
       showRejectInEditModal ? (
-        <Button key="reject" onClick={onTaskReject}>
+        <Button color="secondary" key="reject" onClick={onTaskReject}>
           {t('label.reject')}
         </Button>
       ) : null,
-      <Button key="submit" type="primary" onClick={() => form.submit()}>
+      <Button color="primary" key="submit" onClick={() => form.submit()}>
         {t('label.ok')}
       </Button>,
     ],

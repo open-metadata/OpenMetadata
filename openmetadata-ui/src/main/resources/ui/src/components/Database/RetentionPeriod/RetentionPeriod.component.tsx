@@ -10,17 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Button,
-  Form,
-  FormProps,
-  Input,
-  Modal,
-  Space,
-  Tooltip,
-} from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Alert, Form, FormProps, Input, Modal, Space, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { Duration } from 'luxon';
@@ -133,9 +124,11 @@ const RetentionPeriod = ({
                   })}>
                   <Button
                     className="remove-button-default-styling  flex-center edit-retention-period-button p-0"
+                    color="tertiary"
                     data-testid="edit-retention-period-button"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-                    type="text"
+                    iconLeading={
+                      <EditIcon color={DE_ACTIVE_COLOR} width="12px" />
+                    }
                     onClick={() => setIsEdit(true)}
                   />
                 </Tooltip>

@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { isNodeSelection, type Editor } from '@tiptap/core';
 import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,
 } from '@tiptap/react';
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import { FC, useMemo } from 'react';
+import { FC, MouseEvent, useMemo } from 'react';
 import { ReactComponent as FormatBoldIcon } from '../../../assets/svg/ic-format-bold.svg';
 import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
 import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
@@ -141,8 +141,8 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
               className={classNames('p-0', className, {
                 'is-format-active': isActive(),
               })}
-              type="text"
-              onMouseDown={(e) => {
+              color="tertiary"
+              onMouseDown={(e: MouseEvent<HTMLButtonElement>) => {
                 // To prevent losing focus from editor
                 // The mouseDown event fires before the click event and before focus changes,
                 // so we can intercept it and prevent the default focus behavior.

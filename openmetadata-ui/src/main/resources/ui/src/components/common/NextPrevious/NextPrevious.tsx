@@ -12,9 +12,10 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
 import classNames from 'classnames';
-import { FC } from 'react';
+import { FC, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
 import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
@@ -98,15 +99,15 @@ const NextPrevious: FC<NextPreviousProps> = ({
       data-testid="pagination">
       <Button
         className="pagination-button hover-button"
+        color="tertiary"
         data-testid="previous"
-        disabled={computePrevDisableState() || isLoading}
-        icon={
+        iconLeading={
           <Icon
             className="pagination-prev-icon"
             component={ArrowRightOutlined}
           />
         }
-        type="text"
+        isDisabled={computePrevDisableState() || isLoading}
         onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
       </Button>
@@ -115,9 +116,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
       )} ${currentPage} ${t('label.of')} ${displayTotalPages} `}</span>
       <Button
         className="pagination-button hover-button"
+        color="tertiary"
         data-testid="next"
-        disabled={computeNextDisableState() || isLoading}
-        type="text"
+        isDisabled={computeNextDisableState() || isLoading}
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
         <Icon className="pagination-next-icon" component={ArrowRightOutlined} />
@@ -135,9 +136,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
           }}>
           <Button
             className="pagination-button"
+            color="tertiary"
             data-testid="page-size-selection-dropdown"
-            type="text"
-            onClick={(e) => e.preventDefault()}>
+            onClick={(e: MouseEvent<HTMLButtonElement>) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
             <Icon component={DownOutlined} style={ICON_DIMENSION} />
           </Button>

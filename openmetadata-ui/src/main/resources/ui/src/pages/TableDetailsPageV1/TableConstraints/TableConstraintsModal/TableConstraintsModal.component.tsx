@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Empty, Form, Modal, Select, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Empty, Form, Modal, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -285,17 +285,17 @@ const TableConstraintsModal = ({
       data-testid="table-constraint-modal"
       footer={[
         <Button
-          disabled={isLoading}
+          color="link-gray"
+          isDisabled={isLoading}
           key="cancel-btn"
-          type="link"
           onClick={onClose}>
           {t('label.cancel')}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-btn"
+          isLoading={isLoading}
           key="save-btn"
-          loading={isLoading}
-          type="primary"
           onClick={form.submit}>
           {t('label.save')}
         </Button>,
@@ -545,25 +545,26 @@ const TableConstraintsModal = ({
                     </Form.Item>
                     <Button
                       className="delete-constraint-button"
+                      color="tertiary"
                       data-testid={`${key}-delete-constraint-button`}
-                      icon={
+                      iconLeading={
                         <Icon
                           className="align-middle text-grey-muted"
                           component={IconDelete}
                           style={{ fontSize: '16px' }}
                         />
                       }
-                      size="small"
-                      type="text"
+                      size="xs"
                       onClick={() => remove(name)}
                     />
                   </div>
                 ))}
                 <Button
                   className="text-primary d-flex items-center m-t-md"
+                  color="secondary"
                   data-testid="add-constraint-button"
-                  icon={<PlusIcon className="anticon" />}
-                  size="small"
+                  iconLeading={<PlusIcon className="anticon" />}
+                  size="xs"
                   onClick={() => add()}>
                   {t('label.add-entity', {
                     entity: t('label.constraint-plural'),

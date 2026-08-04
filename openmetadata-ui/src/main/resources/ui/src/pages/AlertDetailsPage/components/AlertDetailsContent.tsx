@@ -12,7 +12,8 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -114,9 +115,10 @@ function AlertDetailsContent({
                   })}>
                   <Button
                     className="flex flex-center"
+                    color="secondary"
                     data-testid="sync-button"
-                    icon={<SyncOutlined height={16} width={16} />}
-                    loading={isSyncing}
+                    iconLeading={<SyncOutlined height={16} width={16} />}
+                    isLoading={isSyncing}
                     onClick={handleAlertSync}
                   />
                 </Tooltip>
@@ -128,8 +130,9 @@ function AlertDetailsContent({
                       })}>
                       <Button
                         className="flex flex-center"
+                        color="secondary"
                         data-testid="edit-button"
-                        icon={
+                        iconLeading={
                           <EditIcon
                             color={DE_ACTIVE_COLOR}
                             height={16}
@@ -148,8 +151,9 @@ function AlertDetailsContent({
                       })}>
                       <Button
                         className="flex flex-center"
+                        color="secondary"
                         data-testid="delete-button"
-                        icon={<DeleteIcon height={16} width={16} />}
+                        iconLeading={<DeleteIcon height={16} width={16} />}
                         onClick={() => setShowDeleteModal(true)}
                       />
                     </Tooltip>

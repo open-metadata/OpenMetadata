@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Divider, Row, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Space } from 'antd';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,9 +50,9 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       extra={
         <Button
           className="flex-center welcome-screen-close-btn"
+          color="tertiary"
           data-testid="welcome-screen-close-btn"
-          icon={<CloseIcon height={12} width={12} />}
-          type="text"
+          iconLeading={<CloseIcon height={12} width={12} />}
           onClick={onClose}
         />
       }>

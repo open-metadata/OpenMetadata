@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   Alert,
-  Button,
   Checkbox,
   Col,
   Dropdown,
@@ -804,8 +803,8 @@ const AssetsTabs = forwardRef(
                         })}>
                         <Button
                           className={classNames('flex-center px-1.5')}
-                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                          type="text">
+                          color="tertiary"
+                          data-testid={`manage-button-${_source.fullyQualifiedName}`}>
                           <IconDropdown className="anticon self-center manage-dropdown-icon" />
                         </Button>
                       </Tooltip>
@@ -1043,8 +1042,9 @@ const AssetsTabs = forwardRef(
                     trigger={['click']}>
                     <Button
                       className={classNames('feed-filter-icon')}
+                      color="secondary"
                       data-testid="asset-filter-button"
-                      icon={<FilterIcon height={16} />}
+                      iconLeading={<FilterIcon height={16} />}
                     />
                   </Dropdown>
                   <div className="flex-1">
@@ -1151,10 +1151,9 @@ const AssetsTabs = forwardRef(
                 {selectedItems.size} {t('label.items-selected-lowercase')}
               </Typography>
               <Button
-                danger
+                color="primary-destructive"
                 data-testid="delete-all-button"
-                loading={assetRemoving}
-                type="primary"
+                isLoading={assetRemoving}
                 onClick={handleBulkDeleteClick}>
                 {t('label.delete')}
               </Button>

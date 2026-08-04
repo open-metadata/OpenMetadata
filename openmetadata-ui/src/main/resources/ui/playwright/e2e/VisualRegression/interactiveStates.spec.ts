@@ -126,8 +126,17 @@ test('add team form (form inside modal) matches baseline', async ({ page }) => {
   // labels rendered by an antd <Form> nested inside an antd <Modal> —
   // AddTeamForm.tsx (src/pages/TeamsPage/AddTeamForm.tsx), opened from the
   // `teams` static page (staticPages.spec.ts) via its "add-team" button.
-  // The form is blank on open (no seeded/random data rendered), so no
-  // masking is required.
+  // The form itself is blank on open, but this asserts on the *modal*, not
+  // the page. An earlier version screenshotted `page`, which also captured
+  // the teams table behind the modal - and that table is full of
+  // playwright-generated fixtures with random name suffixes
+  // ("PW Data Consumer Team b4d7cdd9") plus a "Total Users" count that moves
+  // as other specs create users. The baseline could never be stable, and the
+  // resulting churn is indistinguishable from a real regression.
+  //
+  // Scoping to `.ant-modal` keeps the assertion on this test's actual
+  // subject - the form inside the modal - and makes it immune to whatever
+  // the page behind it happens to be showing.
   await gotoForScreenshot(page, '/settings/members/teams');
   await page.getByTestId('add-team').click();
   await page.getByTestId('name').waitFor({ state: 'visible' });
@@ -145,7 +154,11 @@ test('add team form (form inside modal) matches baseline', async ({ page }) => {
     (document.activeElement as HTMLElement | null)?.blur()
   );
 
-  await expect(page).toHaveScreenshot('add-team-form.png', {
-    ...SCREENSHOT_OPTS,
-  });
+  // `.ant-modal-content`, not `.ant-modal`: the latter is antd's transparent
+  // positioning wrapper, so screenshotting it captures whatever shows through
+  // from the page behind rather than the dialog itself.
+  await expect(page.locator('.ant-modal-content')).toHaveScreenshot(
+    'add-team-form.png',
+    SCREENSHOT_OPTS
+  );
 });

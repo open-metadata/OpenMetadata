@@ -91,7 +91,10 @@ describe('UnsavedChangesModal', () => {
 
     const saveButton = screen.getByText('Save changes');
 
-    expect(saveButton.closest('.ant-btn')).toHaveClass('ant-btn-loading');
+    expect(saveButton.closest('button')).toHaveAttribute(
+      'data-loading',
+      'true'
+    );
   });
 
   it('should not render when open is false', () => {

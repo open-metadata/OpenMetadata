@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Label, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
+import { Button, Label, Typography } from '@openmetadata/ui-core-components';
+import { Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -724,6 +724,7 @@ const SchemaTable = () => {
                 <Tooltip placement="top" title={t('label.edit')}>
                   <Button
                     className="cursor-pointer hover-cell-icon flex-center"
+                    color="secondary"
                     data-testid="edit-displayName-button"
                     style={{
                       color: DE_ACTIVE_COLOR,
@@ -786,8 +787,8 @@ const SchemaTable = () => {
         title: (
           <Button
             className="d-flex items-center cursor-pointer bg-transparent border-none p-0 h-auto hover:bg-transparent"
+            color="tertiary"
             data-testid="name-column-header"
-            type="text"
             onClick={handleColumnHeaderSortToggle}>
             <span
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
@@ -1013,10 +1014,10 @@ const SchemaTable = () => {
                 trigger={['click']}>
                 <Button
                   className="flex-center gap-2"
+                  color="tertiary"
                   data-testid="sort-dropdown"
-                  icon={<IconSort height={14} width={14} />}
-                  size="small"
-                  type="text">
+                  iconLeading={<IconSort height={14} width={14} />}
+                  size="xs">
                   {t('label.sort')}
                 </Button>
               </Dropdown>

@@ -12,7 +12,8 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, List, Space, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { List, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
@@ -100,8 +101,9 @@ export const SelectableList = ({
 
   const checkActiveSelectedItem = (item: EntityReference) => {
     return (
+      // Name in case of Bulk Action, since we are using the name as the id
       selectedItemsInternal.has(item.id) ||
-      selectedItemsInternal.has(item.name ?? '') // Name in case of Bulk Action, since we are using the name as the id
+      selectedItemsInternal.has(item.name ?? '')
     );
   };
 
@@ -253,26 +255,25 @@ export const SelectableList = ({
           <div className="d-flex justify-between">
             <Button
               className="p-0"
-              color="primary"
+              color="tertiary"
               data-testid="clear-all-button"
-              size="small"
-              type="text"
+              size="xs"
               onClick={handleClearAllClick}>
               {t('label.clear-entity', { entity: t('label.all-lowercase') })}
             </Button>
             <Space className="m-l-auto text-right">
               <Button
-                color="primary"
+                color="secondary"
                 data-testid="cancel-button"
-                size="small"
+                size="xs"
                 onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="selectable-list-update-btn"
-                loading={updating}
-                size="small"
-                type="primary"
+                isLoading={updating}
+                size="xs"
                 onClick={handleUpdateClick}>
                 {t('label.update')}
               </Button>

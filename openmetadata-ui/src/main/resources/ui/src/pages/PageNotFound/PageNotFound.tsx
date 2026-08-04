@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import notFoundImage from '../../assets/img/404-image.png';
@@ -34,12 +34,10 @@ const PageNotFound = () => {
         </Typography>
         <Space data-testid="route-links" size="middle">
           <Link to={ROUTES.HOME}>
-            <Button type="primary">{t('label.go-to-home-page')}</Button>
+            <Button color="primary">{t('label.go-to-home-page')}</Button>
           </Link>
           <Link to={ROUTES.EXPLORE}>
-            <Button ghost type="primary">
-              {t('label.explore')}
-            </Button>
+            <Button color="tertiary">{t('label.explore')}</Button>
           </Link>
         </Space>
       </Col>

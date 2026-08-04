@@ -12,7 +12,8 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import { createElement, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -115,15 +116,15 @@ const Emoji: FC<EmojiProps> = ({
       onOpenChange={setVisible}>
       <Button
         className={classNames(
-          'ant-btn-reaction m-r-xss flex-center transparent',
+          'ant-btn-reaction m-r-xss flex-center transparent tw:rounded-full',
           {
             'ant-btn-isReacted': isReacted,
           }
         )}
+        color="secondary"
         data-testid="emoji-button"
         key={reaction}
-        shape="round"
-        size="small"
+        size="xs"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         {element}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Divider, Popover, Select, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Divider, Popover, Select, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -301,9 +301,10 @@ const UserProfileRoles = ({
                 <div className="flex justify-end gap-2 mt-4">
                   <Button
                     className="profile-edit-save"
+                    color="primary"
                     data-testid="user-profile-edit-roles-cancel-button"
-                    icon={<ClosePopoverIcon height={24} />}
-                    size="small"
+                    iconLeading={<ClosePopoverIcon height={24} />}
+                    size="xs"
                     style={{
                       width: '30px',
                       height: '30px',
@@ -312,15 +313,15 @@ const UserProfileRoles = ({
                       bottom: '0px',
                       right: '38px',
                     }}
-                    type="primary"
                     onClick={handleCloseEditRole}
                   />
                   <Button
                     className="profile-edit-cancel"
+                    color="primary"
                     data-testid="user-profile-edit-roles-save-button"
-                    icon={<SavePopoverIcon height={24} />}
-                    loading={isLoading}
-                    size="small"
+                    iconLeading={<SavePopoverIcon height={24} />}
+                    isLoading={isLoading}
+                    size="xs"
                     style={{
                       width: '30px',
                       height: '30px',
@@ -328,7 +329,6 @@ const UserProfileRoles = ({
                       position: 'absolute',
                       bottom: '0px',
                     }}
-                    type="primary"
                     onClick={handleRolesSave}
                   />
                 </div>

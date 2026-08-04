@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,10 +44,11 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           className={classNames('ant-button-vote flex-center', {
             'ant-button-vote-active': voteStatus === QueryVoteType.votedUp,
           })}
+          color="secondary"
           data-testid="up-vote-btn"
-          disabled={disabled}
-          icon={<ThumbsUpOutline height={15} width={15} />}
-          loading={loading === QueryVoteType.votedUp}
+          iconLeading={<ThumbsUpOutline height={15} width={15} />}
+          isDisabled={disabled}
+          isLoading={loading === QueryVoteType.votedUp}
           onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
           <Typography className="m-l-xs" data-testid="up-vote-count">
             {votes?.upVotes ?? 0}
@@ -59,16 +60,17 @@ const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {
           className={classNames('ant-button-vote flex-center', {
             'ant-button-vote-active': voteStatus === QueryVoteType.votedDown,
           })}
+          color="secondary"
           data-testid="down-vote-btn"
-          disabled={disabled}
-          icon={
+          iconLeading={
             <ThumbsUpOutline
               className="rotate-inverse"
               height={15}
               width={15}
             />
           }
-          loading={loading === QueryVoteType.votedDown}
+          isDisabled={disabled}
+          isLoading={loading === QueryVoteType.votedDown}
           onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
           <Typography className="m-l-xs" data-testid="down-vote-count">
             {votes?.downVotes ?? 0}

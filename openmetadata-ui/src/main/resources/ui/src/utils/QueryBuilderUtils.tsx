@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import type { RenderSettings } from '@react-awesome-query-builder/antd';
-import { Button } from 'antd';
 import { t } from './i18next/LocalUtil';
 
 export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
@@ -24,8 +24,9 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--DELETE"
+        color="secondary"
         data-testid="delete-condition-button"
-        icon={<CloseOutlined />}
+        iconLeading={<CloseOutlined />}
         onClick={props?.onClick}
       />
     );
@@ -33,8 +34,9 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--DELETE-GROUP"
+        color="secondary"
         data-testid="delete-group-condition-button"
-        icon={<CloseOutlined />}
+        iconLeading={<CloseOutlined />}
         onClick={props?.onClick}
       />
     );
@@ -42,8 +44,8 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--ADD-RULE"
+        color="primary"
         data-testid="add-condition-button"
-        type="primary"
         onClick={props?.onClick}>
         {t('label.add-entity', {
           entity: t('label.condition'),
@@ -63,8 +65,9 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
       return (
         <Button
           className="action action--DELETE ant-btn-sm"
+          color="secondary"
           data-testid="delete-condition-button"
-          icon={<CloseOutlined width={14} />}
+          iconLeading={<CloseOutlined width={14} />}
           onClick={props?.onClick}
         />
       );
@@ -72,8 +75,9 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
       return (
         <Button
           className="action action--DELETE-GROUP ant-btn-sm"
+          color="secondary"
           data-testid="delete-group-condition-button"
-          icon={<CloseOutlined width={14} />}
+          iconLeading={<CloseOutlined width={14} />}
           onClick={props?.onClick}
         />
       );
@@ -81,9 +85,9 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
       return (
         <Button
           className="action action--ADD-RULE ant-btn-sm"
+          color="primary"
           data-testid="add-condition-button"
-          icon={<PlusOutlined width={14} />}
-          type="primary"
+          iconLeading={<PlusOutlined width={14} />}
           onClick={props?.onClick}
         />
       );

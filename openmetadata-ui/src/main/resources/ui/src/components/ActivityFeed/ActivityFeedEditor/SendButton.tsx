@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { ReactComponent as IconPaperPlanePrimary } from '../../../assets/svg/paper-plane-fill.svg';
@@ -31,10 +31,10 @@ export const SendButton: FC<SendButtonProp> = ({
 }) => (
   <Button
     className={classNames('send-button', className)}
+    color="tertiary"
     data-testid="send-button"
-    disabled={editorValue.length === 0}
-    icon={<Icon component={IconPaperPlanePrimary} />}
-    type="text"
+    iconLeading={<Icon component={IconPaperPlanePrimary} />}
+    isDisabled={editorValue.length === 0}
     onClick={onSaveHandler}
   />
 );

@@ -12,11 +12,11 @@
  */
 
 import {
+  Button,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -154,10 +154,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'upstream' ? 'active' : ''
           }`}
+          color="secondary"
           data-testid={`upstream-button-${
             filter === 'upstream' ? 'active' : ''
           }`}
-          size="small"
+          size="xs"
           onClick={() => onFilterChange('upstream')}>
           <span
             className="lineage-filter-button-text"
@@ -175,10 +176,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'downstream' ? 'active' : ''
           }`}
+          color="secondary"
           data-testid={`downstream-button-${
             filter === 'downstream' ? 'active' : ''
           }`}
-          size="small"
+          size="xs"
           onClick={() => onFilterChange('downstream')}>
           <span
             className="lineage-filter-button-text"

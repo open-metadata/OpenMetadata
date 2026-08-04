@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { UploadOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Button, UploadProps } from 'antd';
+import { UploadProps } from 'antd';
 import Upload, { UploadChangeParam, UploadFile } from 'antd/lib/upload';
 import { AxiosError } from 'axios';
 import { FC, useMemo } from 'react';
@@ -84,14 +85,16 @@ const FileUploadWidget: FC<WidgetProps> = ({
       maxCount={1}
       multiple={false}
       onChange={handleChange}>
-      <Button
-        data-testid="upload-file-widget-content"
-        disabled={disabled}
-        icon={<UploadOutlined />}
-        size="small"
-        onFocus={() => onFocus(rest.id, rest.value)}>
-        {t('message.upload-file')}
-      </Button>
+      <span onFocus={() => onFocus(rest.id, rest.value)}>
+        <Button
+          color="secondary"
+          data-testid="upload-file-widget-content"
+          iconLeading={<UploadOutlined />}
+          isDisabled={disabled}
+          size="xs">
+          {t('message.upload-file')}
+        </Button>
+      </span>
     </Upload>
   );
 };

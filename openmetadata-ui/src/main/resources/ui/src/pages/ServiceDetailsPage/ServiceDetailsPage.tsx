@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
@@ -1728,10 +1729,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
                   : t('message.no-permission-for-action')
               }>
               <Button
-                ghost
+                color="tertiary"
                 data-testid="edit-connection-button"
-                disabled={!servicePermission.EditAll}
-                type="primary"
+                isDisabled={!servicePermission.EditAll}
                 onClick={goToEditConnection}>
                 {t('label.edit-entity', {
                   entity: t('label.connection'),
@@ -1754,7 +1754,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
             )}
           </Space>
         </div>
-
         <ServiceConnectionDetails
           connectionDetails={connectionDetails ?? {}}
           extraInfo={extraInfoData}

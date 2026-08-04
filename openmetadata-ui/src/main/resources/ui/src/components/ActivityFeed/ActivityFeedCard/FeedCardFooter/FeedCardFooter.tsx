@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Divider } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Divider } from 'antd';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,9 +37,9 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       isFooterVisible ? (
         <Button
           className="d-flex  p-0 items-center"
+          color="link-gray"
           data-testid="reply-count"
-          size="small"
-          type="link"
+          size="xs"
           onClick={() => onThreadSelect?.(threadId as string)}>
           {repliedUsers?.map((u, i) => (
             <ProfilePicture

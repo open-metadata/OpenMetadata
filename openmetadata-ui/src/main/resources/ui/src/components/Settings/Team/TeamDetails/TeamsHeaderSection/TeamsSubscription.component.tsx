@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input, Modal, Select, Space, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -148,9 +148,10 @@ const TeamsSubscription = ({
             <Button
               className="flex-center teams-info-email-edit-button p-0"
               data-testid="edit-team-subscription"
-              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
               {...ICON_DIMENSION}
-              onClick={(e) => {
+              color="secondary"
+              iconLeading={<EditIcon {...ICON_DIMENSION} width="12px" />}
+              onClick={(e: MouseEvent<HTMLButtonElement>) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 setEditSubscription(true);
@@ -165,15 +166,16 @@ const TeamsSubscription = ({
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
+              color="secondary"
               data-testid="edit-team-subscription"
-              icon={
+              iconLeading={
                 <EditIcon
                   color={DE_ACTIVE_COLOR}
                   {...ICON_DIMENSION}
                   width="12px"
                 />
               }
-              onClick={(e) => {
+              onClick={(e: MouseEvent<HTMLButtonElement>) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 setEditSubscription(true);
@@ -187,7 +189,8 @@ const TeamsSubscription = ({
         // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
         <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+          color="secondary"
+          onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
           <Modal
             centered
             open

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Badge } from 'antd';
 import classNames from 'classnames';
 import { RefObject, useCallback, useRef } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
@@ -55,12 +56,12 @@ const AvatarCarouselItem = ({
 
   const button = (
     <Button
-      className={classNames('p-0 m-r-xss avatar-item', {
+      className={classNames('p-0 m-r-xss avatar-item tw:rounded-full', {
         active: isActive,
       })}
+      color="secondary"
       data-testid={`avatar-carousel-item-${avatar.id}`}
       ref={buttonRef}
-      shape="circle"
       onClick={handleAvatarClick}>
       <ProfilePicture name={avatar.name ?? ''} width="28" />
     </Button>

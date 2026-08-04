@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -552,7 +553,7 @@ export const DataInsightChartCard = ({
             </Col>
             {activeKeys.length > 0 && (
               <Col className="flex justify-end" span={24}>
-                <Button type="link" onClick={() => setActiveKeys([])}>
+                <Button color="link-gray" onClick={() => setActiveKeys([])}>
                   {t('label.clear')}
                 </Button>
               </Col>
@@ -581,8 +582,8 @@ export const DataInsightChartCard = ({
               })}>
               <Button
                 className="text-primary d-flex items-center gap-1"
-                size="small"
-                type="text">
+                color="tertiary"
+                size="xs">
                 {t('label.explore-asset-plural-with-type', {
                   type:
                     type ===

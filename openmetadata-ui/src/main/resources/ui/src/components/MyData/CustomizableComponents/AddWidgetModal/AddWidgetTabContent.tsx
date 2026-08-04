@@ -12,17 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Image,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Space,
-  Tooltip,
-} from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Image, Radio, RadioChangeEvent, Row, Space, Tooltip } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
@@ -108,10 +99,10 @@ function AddWidgetTabContent({
                 title={widgetAddable ? '' : t('message.can-not-add-widget')}>
                 <Button
                   className="p-x-lg m-t-md"
+                  color="primary"
                   data-testid="add-widget-button"
-                  disabled={!widgetAddable}
-                  icon={<PlusOutlined />}
-                  type="primary"
+                  iconLeading={<PlusOutlined />}
+                  isDisabled={!widgetAddable}
                   onClick={getAddWidgetHandler(widget, selectedWidgetSize)}>
                   {t('label.add')}
                 </Button>

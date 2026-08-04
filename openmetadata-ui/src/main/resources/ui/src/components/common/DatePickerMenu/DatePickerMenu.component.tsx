@@ -12,14 +12,15 @@
  */
 
 import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Dropdown, MenuProps, Space } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
@@ -262,8 +263,9 @@ const DatePickerMenu = ({
           size === 'small' &&
             (isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-72')
         )}
+        color="secondary"
         data-testid="date-picker-menu"
-        size={size}>
+        size={size === 'small' ? 'xs' : size === 'large' ? 'md' : 'sm'}>
         <Space align="center" size={8}>
           <span
             className={classNames(
@@ -302,11 +304,11 @@ const DatePickerMenu = ({
             'tw:border-0 tw:bg-transparent tw:p-0! tw:text-disabled tw:shadow-none',
             'tw:hover:bg-transparent tw:hover:text-secondary'
           )}
+          color="tertiary"
           data-testid="clear-date-picker"
-          icon={<CloseCircleFilled />}
-          size="small"
-          type="text"
-          onClick={(event) => {
+          iconLeading={<CloseCircleFilled />}
+          size="xs"
+          onClick={(event: MouseEvent<HTMLButtonElement>) => {
             event.stopPropagation();
             handleClear();
           }}

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, FormProps, Input, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Form, FormProps, Input, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { useMemo, useState } from 'react';
@@ -210,10 +210,10 @@ const SignUp = () => {
 
           <Space align="center" className="w-full justify-end d-flex">
             <Button
+              color="primary"
               data-testid="create-button"
-              htmlType="submit"
-              loading={loading}
-              type="primary">
+              isLoading={loading}
+              type="submit">
               {t('label.create')}
             </Button>
           </Space>

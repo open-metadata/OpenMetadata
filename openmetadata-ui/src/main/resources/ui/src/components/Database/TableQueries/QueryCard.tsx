@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Row, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -212,8 +212,9 @@ const QueryCard: FC<QueryCardProp> = ({
           <Space className="query-entity-button" size={8}>
             <Button
               className="flex-center bg-white"
+              color="secondary"
               data-testid="query-entity-expand-button"
-              icon={
+              iconLeading={
                 isExpanded ? (
                   <Tooltip title={t('label.exit-fit-to-screen')}>
                     <ExitFullScreen height={16} width={16} />
@@ -229,9 +230,10 @@ const QueryCard: FC<QueryCardProp> = ({
             <Tooltip title={t('message.copy-to-clipboard')}>
               <Button
                 className="flex-center bg-white"
+                color="secondary"
                 data-testid="query-entity-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
-                onClick={onCopyToClipBoard}
+                iconLeading={<CopyIcon height={16} width={16} />}
+                onClick={() => onCopyToClipBoard()}
               />
             </Tooltip>
           </Space>
@@ -274,19 +276,20 @@ const QueryCard: FC<QueryCardProp> = ({
                   className="w-full justify-end p-r-md"
                   size={16}>
                   <Button
+                    color="secondary"
                     data-testid="cancel-query-btn"
                     key="cancel"
-                    size="small"
+                    size="xs"
                     onClick={() => setIsEditMode(false)}>
                     {t('label.cancel')}
                   </Button>
 
                   <Button
+                    color="primary"
                     data-testid="save-query-btn"
+                    isLoading={sqlQuery.isLoading}
                     key="save"
-                    loading={sqlQuery.isLoading}
-                    size="small"
-                    type="primary"
+                    size="xs"
                     onClick={updateSqlQuery}>
                     {t('label.save')}
                   </Button>

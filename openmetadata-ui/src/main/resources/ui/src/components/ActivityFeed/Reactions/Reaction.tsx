@@ -12,7 +12,7 @@
  */
 
 import '@github/g-emoji-element';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import { createElement, FC } from 'react';
@@ -68,11 +68,11 @@ const Reaction: FC<ReactionProps> = ({
       className={classNames('ant-btn-popover-reaction', {
         'ant-btn-popover-isReacted': isReacted,
       })}
+      color="tertiary"
       data-testid="reaction-button"
       key={uniqueId()}
-      size="small"
+      size="xs"
       title={reaction.reaction}
-      type="text"
       onClick={handleOnClick}>
       {element}
     </Button>

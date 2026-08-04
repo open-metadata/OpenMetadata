@@ -12,10 +12,11 @@
  */
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, Col, Divider, List, Row, Space } from 'antd';
+import { Checkbox, Col, Divider, List, Row, Space } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
@@ -826,8 +827,8 @@ export const AddTestCaseList = ({
                 </Typography>
                 <Button
                   className="h-auto p-0 font-normal"
+                  color="link-gray"
                   data-testid="select-all-total-test-cases"
-                  type="link"
                   onClick={handleSelectAllMatchingTotal}>
                   {t('label.select-all-count-test-cases', {
                     count: totalCount,
@@ -841,13 +842,13 @@ export const AddTestCaseList = ({
       {renderList}
       {showButton && (
         <Col className="d-flex justify-end items-center p-y-sm gap-4" span={24}>
-          <Button data-testid="cancel" type="link" onClick={onCancel}>
+          <Button color="link-gray" data-testid="cancel" onClick={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="submit"
-            loading={isLoading}
-            type="primary"
+            isLoading={isLoading}
             onClick={handleSubmit}>
             {submitText ?? t('label.create')}
           </Button>

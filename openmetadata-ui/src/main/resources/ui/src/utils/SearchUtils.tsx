@@ -12,7 +12,7 @@
  */
 
 import { SearchOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
@@ -192,10 +192,10 @@ export const getSuggestionElement = (
 
   return (
     <Button
-      block
-      className="text-left truncate p-y-0 p-x-lg"
+      className="text-left truncate p-y-0 p-x-lg tw:w-full"
+      color="tertiary"
       data-testid={dataTestId}
-      icon={
+      iconLeading={
         <img
           alt={serviceType}
           className="m-r-sm"
@@ -204,8 +204,7 @@ export const getSuggestionElement = (
           width="16px"
         />
       }
-      key={fqdn}
-      type="text">
+      key={fqdn}>
       <Link
         className="text-sm no-underline"
         data-testid="data-name"

@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
+import {
+  Button,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Dropdown, MenuProps, Row, Skeleton, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -557,10 +561,9 @@ const KnowledgePageListComponent = forwardRef<
                   <LimitWrapper resource="knowledgeCenter">
                     <Dropdown menu={{ items }} trigger={['click']}>
                       <Button
-                        ghost
                         className="p-x-lg"
-                        data-testid="add-knowledge-page-btn"
-                        type="primary">
+                        color="tertiary"
+                        data-testid="add-knowledge-page-btn">
                         <PlusOutlined />
                         {t('label.add')}
                       </Button>

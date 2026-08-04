@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Col,
   Form,
   FormProps,
@@ -369,17 +368,17 @@ const AddKPIPage = () => {
 
               <Space align="center" className="w-full justify-end">
                 <Button
+                  color="link-gray"
                   data-testid="cancel-btn"
-                  type="link"
                   onClick={handleCancel}>
                   {t('label.cancel')}
                 </Button>
                 <Button
+                  color="primary"
                   data-testid="submit-btn"
                   form="kpi-form"
-                  htmlType="submit"
-                  loading={isCreatingKPI}
-                  type="primary">
+                  isLoading={isCreatingKPI}
+                  type="submit">
                   {t('label.create')}
                 </Button>
               </Space>

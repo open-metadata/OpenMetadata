@@ -13,12 +13,12 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
-import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import { Card, Col, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
@@ -429,9 +429,9 @@ const ClassificationDetails = forwardRef(
                 {createPermission && (
                   <Tooltip title={addTagButtonToolTip}>
                     <Button
+                      color="primary"
                       data-testid="add-new-tag-button"
-                      disabled={isClassificationDisabled}
-                      type="primary"
+                      isDisabled={isClassificationDisabled}
                       onClick={handleAddNewTagClick}>
                       {t('label.add-entity', {
                         entity: t('label.tag'),
@@ -440,7 +440,7 @@ const ClassificationDetails = forwardRef(
                   </Tooltip>
                 )}
 
-                <ButtonGroup className="spaced" size="small">
+                <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
                   <Tooltip
                     title={t(
                       `label.${
@@ -451,8 +451,9 @@ const ClassificationDetails = forwardRef(
                     )}>
                     <Button
                       className="w-16 p-0"
+                      color="secondary"
                       data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
+                      iconLeading={<Icon component={VersionIcon} />}
                       onClick={versionHandler}>
                       <Typography>{currentVersion}</Typography>
                     </Button>
@@ -476,7 +477,7 @@ const ClassificationDetails = forwardRef(
                       onEditDisplayName={handleUpdateDisplayName}
                     />
                   )}
-                </ButtonGroup>
+                </div>
               </Space>
             </Col>
           </Row>

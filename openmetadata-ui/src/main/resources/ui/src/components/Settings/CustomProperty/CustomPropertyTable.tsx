@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isArray, isEmpty, isString, isUndefined, startCase } from 'lodash';
 import { FC, Fragment, useEffect, useMemo, useState } from 'react';
@@ -214,10 +214,10 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               }>
               <Button
                 className="cursor-pointer p-0"
+                color="tertiary"
                 data-testid="edit-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
+                isDisabled={!hasAccess}
+                size="xs"
                 onClick={() => {
                   setSelectedProperty(record);
                   setOperation(OPERATION.UPDATE);
@@ -235,10 +235,10 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               }>
               <Button
                 className="cursor-pointer p-0"
+                color="tertiary"
                 data-testid="delete-button"
-                disabled={!hasAccess}
-                size="small"
-                type="text"
+                isDisabled={!hasAccess}
+                size="xs"
                 onClick={() => {
                   setSelectedProperty(record);
                   setOperation(OPERATION.DELETE);

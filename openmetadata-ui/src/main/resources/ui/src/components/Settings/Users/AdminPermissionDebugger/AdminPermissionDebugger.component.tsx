@@ -13,8 +13,11 @@
 
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import {
-  AutoComplete,
   Button,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import {
+  AutoComplete,
   Card,
   Col,
   Form,
@@ -452,9 +455,9 @@ const AdminPermissionDebugger: React.FC = () => {
 
                   <Form.Item>
                     <Button
-                      htmlType="submit"
-                      loading={loadingEvaluation}
-                      type="primary">
+                      color="primary"
+                      isLoading={loadingEvaluation}
+                      type="submit">
                       {t('label.evaluate')}
                     </Button>
                   </Form.Item>

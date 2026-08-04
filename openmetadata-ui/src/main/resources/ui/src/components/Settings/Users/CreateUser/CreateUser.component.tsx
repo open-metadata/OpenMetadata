@@ -13,16 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Form,
-  FormProps,
-  Input,
-  Radio,
-  Select,
-  Space,
-  Switch,
-} from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Input, Radio, Select, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import {
   compact,
@@ -119,10 +111,12 @@ const CreateUser = ({
       multiple: true,
       children: (
         <Button
+          color="primary"
           data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
     },
@@ -382,9 +376,7 @@ const CreateUser = ({
           <Switch data-testid="allow-impersonation" />
         </Form.Item>
       )}
-
       {getField(descriptionField)}
-
       {!forceBot && (
         <>
           {isAuthProviderBasic && (
@@ -558,7 +550,6 @@ const CreateUser = ({
           </Form.Item>
         </>
       )}
-
       {!isBot && (
         <div className="m-t-xs">
           {getField(domainsField)}
@@ -577,17 +568,16 @@ const CreateUser = ({
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
-
       <Space className="w-full justify-end" size={4}>
-        <Button data-testid="cancel-user" type="link" onClick={onCancel}>
+        <Button color="link-gray" data-testid="cancel-user" onClick={onCancel}>
           {t('label.cancel')}
         </Button>
         <Button
+          color="primary"
           data-testid="save-user"
           form="create-user-bot-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.create')}
         </Button>
       </Space>

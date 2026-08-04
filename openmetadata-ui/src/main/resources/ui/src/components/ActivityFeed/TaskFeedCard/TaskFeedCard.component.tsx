@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -121,8 +121,8 @@ const TaskFeedCard = ({
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
             className="p-0 task-feed-message"
+            color="link-gray"
             data-testid="redirect-task-button-link"
-            type="link"
             onClick={handleTaskLinkClick}>
             <Typography className="p-0 text-primary">{`#${taskDetails.id} `}</Typography>
 
@@ -153,9 +153,8 @@ const TaskFeedCard = ({
 
   return (
     <Button
-      block
-      className="remove-button-default-styling"
-      type="text"
+      className="remove-button-default-styling tw:w-full"
+      color="tertiary"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}>
       <div

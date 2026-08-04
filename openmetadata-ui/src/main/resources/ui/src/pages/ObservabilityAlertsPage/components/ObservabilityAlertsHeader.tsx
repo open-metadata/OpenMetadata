@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Row } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -47,8 +48,8 @@ function ObservabilityAlertsHeader({
           {canCreate && (
             <LimitWrapper resource="eventsubscription">
               <Button
+                color="primary"
                 data-testid="create-observability"
-                type="primary"
                 onClick={onAddAlert}>
                 {t('label.add-entity', { entity: t('label.alert') })}
               </Button>

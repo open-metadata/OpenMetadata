@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -162,8 +161,9 @@ const CustomiseLandingPageHeader = ({
             {!hideCustomiseButton && (
               <Button
                 className="customise-header-btn"
+                color="secondary"
                 data-testid="customise-header-btn"
-                icon={
+                iconLeading={
                   <Icon
                     component={FilterIcon}
                     style={{ fontSize: '16px', color: 'white' }}

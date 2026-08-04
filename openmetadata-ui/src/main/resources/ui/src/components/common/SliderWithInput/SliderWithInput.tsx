@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, InputNumber, Row, Slider, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, InputNumber, Row, Slider, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { percentageFormatter } from '../../../utils/ChartUtils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
@@ -52,8 +53,8 @@ const SliderWithInput = ({
           <Tooltip title={t('label.clear')}>
             <Button
               className="p-0"
+              color="tertiary"
               data-testid="clear-slider-input"
-              type="text"
               onClick={() => onChange(null)}>
               <CloseOutlined />
             </Button>

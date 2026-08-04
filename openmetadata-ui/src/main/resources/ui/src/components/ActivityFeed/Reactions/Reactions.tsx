@@ -12,9 +12,10 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
-import { FC, useState } from 'react';
+import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
@@ -111,16 +112,15 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
         zIndex={9999}
         onOpenChange={handleVisibleChange}>
         <Button
-          className="flex-center p-0"
+          className="flex-center p-0 tw:rounded-full"
+          color="tertiary"
           data-testid="add-reactions"
-          icon={<AddReactionIcon height={16} />}
-          shape="circle"
-          size="small"
+          iconLeading={<AddReactionIcon height={16} />}
+          size="xs"
           title={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
-          type="text"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
         />
       </Popover>
     </div>

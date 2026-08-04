@@ -10,17 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Col, Divider, Dropdown, Row, Space, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -842,8 +834,8 @@ const TagPage = () => {
   const addAssetsButton =
     !isCertificationClassification && !tagItem.disabled ? (
       <Button
+        color="primary"
         data-testid="data-classification-add-button"
-        type="primary"
         onClick={() => setAssetModalVisible(true)}>
         {t('label.add-entity', {
           entity: t('label.asset-plural'),
@@ -871,8 +863,9 @@ const TagPage = () => {
           })}>
           <Button
             className="flex-center"
+            color="secondary"
             data-testid="manage-button"
-            icon={<IconDropdown className="manage-dropdown-icon" />}
+            iconLeading={<IconDropdown className="manage-dropdown-icon" />}
             onClick={() => setShowActions(true)}
           />
         </Tooltip>

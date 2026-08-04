@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -159,6 +158,7 @@ const DataProductsWidget = ({
                 'data-product-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              color="secondary"
               data-testid={`data-product-card-${dataProduct.id}`}
               key={dataProduct.id}
               onClick={() => handleDataProductClick(dataProduct)}>

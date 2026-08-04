@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, Input, Row } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Form, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useMemo } from 'react';
@@ -147,9 +147,9 @@ const ResetPassword = () => {
 
               <Button
                 className="w-full m-t-lg"
+                color="primary"
                 data-testid="submit-button"
-                htmlType="submit"
-                type="primary">
+                type="submit">
                 {t('label.save')}
               </Button>
             </Form>

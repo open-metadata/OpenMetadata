@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Space, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
@@ -284,8 +284,8 @@ const AddQueryPage = () => {
                 <Form.Item>
                   <Space className="w-full justify-end" size={16}>
                     <Button
+                      color="secondary"
                       data-testid="cancel-btn"
-                      type="default"
                       onClick={handleCancelClick}>
                       {t('label.cancel')}
                     </Button>
@@ -296,11 +296,11 @@ const AddQueryPage = () => {
                         t(NO_PERMISSION_FOR_ACTION)
                       }>
                       <Button
+                        color="primary"
                         data-testid="save-btn"
-                        disabled={!permissions.query?.Create}
-                        htmlType="submit"
-                        loading={isSaving}
-                        type="primary">
+                        isDisabled={!permissions.query?.Create}
+                        isLoading={isSaving}
+                        type="submit">
                         {t('label.save')}
                       </Button>
                     </Tooltip>

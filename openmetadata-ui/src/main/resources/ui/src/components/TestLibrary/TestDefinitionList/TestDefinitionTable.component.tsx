@@ -13,13 +13,14 @@
 
 import {
   Box,
+  Button,
   EmptyPlaceholder,
   Skeleton,
   Table,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
-import { Button, Space, Switch, Tooltip } from 'antd';
+import { Space, Switch, Tooltip } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -156,20 +157,19 @@ const TestDefinitionTable = ({
       <Space size={0}>
         <Tooltip title={editTooltip}>
           <Button
+            color="tertiary"
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasEditPermission}
-            icon={<IconEdit height={16} width={16} />}
-            type="text"
+            iconLeading={<IconEdit height={16} width={16} />}
+            isDisabled={isSystemProvider || !hasEditPermission}
             onClick={() => onEdit(record)}
           />
         </Tooltip>
-
         <Tooltip title={deleteTooltip}>
           <Button
+            color="tertiary"
             data-testid={`delete-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasDeletePermission}
-            icon={<IconDelete height={16} width={16} />}
-            type="text"
+            iconLeading={<IconDelete height={16} width={16} />}
+            isDisabled={isSystemProvider || !hasDeletePermission}
             onClick={() => onDelete(record)}
           />
         </Tooltip>

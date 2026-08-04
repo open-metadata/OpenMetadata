@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Input, Popover, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Input, Popover, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -200,15 +201,15 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
             className={classNames('nlp-search-button w-6 h-6', {
               active: isNLPActive,
             })}
+            color="tertiary"
             data-testid="nlp-suggestions-button"
-            icon={
+            iconLeading={
               <Icon
                 component={
                   isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
                 }
               />
             }
-            type="text"
             onClick={() => setNLPActive(!isNLPActive)}
           />
         </Tooltip>

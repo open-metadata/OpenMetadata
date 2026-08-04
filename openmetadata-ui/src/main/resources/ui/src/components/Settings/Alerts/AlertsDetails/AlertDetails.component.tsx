@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Divider, Row, Space } from 'antd';
+import {
+  Button,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import { Card, Col, Divider, Row, Space } from 'antd';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,7 +66,8 @@ export const AlertDetailsComponent = ({
               <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
                 <Button
                   className="flex flex-center"
-                  icon={<IconEdit height={12} />}>
+                  color="secondary"
+                  iconLeading={<IconEdit height={12} />}>
                   {t('label.edit')}
                 </Button>
               </Link>
@@ -71,7 +75,8 @@ export const AlertDetailsComponent = ({
             {allowDelete && (
               <Button
                 className="flex flex-center"
-                icon={<IconDelete height={12} />}
+                color="secondary"
+                iconLeading={<IconDelete height={12} />}
                 onClick={onDelete}>
                 {t('label.delete')}
               </Button>

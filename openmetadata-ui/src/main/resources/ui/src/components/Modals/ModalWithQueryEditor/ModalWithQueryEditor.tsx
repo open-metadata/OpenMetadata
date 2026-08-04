@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Modal } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, Modal } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { lazy, useEffect, useState } from 'react';
@@ -66,17 +66,17 @@ export const ModalWithQueryEditor = ({
       data-testid="markdown-editor"
       footer={[
         <Button
+          color="link-gray"
           data-testid="cancel"
-          disabled={isLoading}
+          isDisabled={isLoading}
           key="cancelButton"
-          type="link"
           onClick={onCancel}>
           {t('label.cancel')}
         </Button>,
         <Button
+          color="primary"
           data-testid="save"
           key="saveButton"
-          type="primary"
           onClick={() => form.submit()}>
           {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
         </Button>,

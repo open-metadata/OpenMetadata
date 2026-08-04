@@ -12,9 +12,9 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { WidgetProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
@@ -117,18 +117,18 @@ const FormBuilder = forwardRef<Form, Props>(
       if (status === 'waiting') {
         return (
           <Button
-            disabled
+            isDisabled
             className="p-x-md p-y-xxs h-auto rounded-6"
-            type="primary">
+            color="primary">
             <Loader size="small" type="white" />
           </Button>
         );
       } else if (status === 'success') {
         return (
           <Button
-            disabled
+            isDisabled
             className="p-x-md p-y-xxs h-auto rounded-6"
-            type="primary">
+            color="primary">
             <CheckOutlined />
           </Button>
         );
@@ -136,11 +136,11 @@ const FormBuilder = forwardRef<Form, Props>(
         return (
           <Button
             className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+            color="primary"
             data-testid="submit-btn"
-            disabled={isSubmitDisabled}
-            htmlType="submit"
-            loading={isLoading}
-            type="primary">
+            isDisabled={isSubmitDisabled}
+            isLoading={isLoading}
+            type="submit">
             {okText}
           </Button>
         );
@@ -180,7 +180,7 @@ const FormBuilder = forwardRef<Form, Props>(
           className="m-t-lg d-flex justify-end text-right"
           data-testid="buttons">
           {!hideCancelButton && (
-            <Button type="link" onClick={handleCancel}>
+            <Button color="link-gray" onClick={handleCancel}>
               {cancelText}
             </Button>
           )}

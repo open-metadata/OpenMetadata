@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { diffWordsWithSpace } from 'diff';
 import { isEmpty, map, toString } from 'lodash';
@@ -174,8 +174,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
               className={classNames('', {
                 'text-primary border-primary': version,
               })}
+              color="secondary"
               data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
+              iconLeading={<Icon component={VersionIcon} />}
               onClick={handleVersionClick}>
               <Typography
                 className={classNames('', {

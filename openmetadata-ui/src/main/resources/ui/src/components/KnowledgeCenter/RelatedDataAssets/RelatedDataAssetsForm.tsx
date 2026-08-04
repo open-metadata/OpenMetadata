@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Space } from 'antd';
 import DataAssetAsyncSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
@@ -62,20 +63,21 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
           <Space align="center">
             <Button
               className="p-x-05"
+              color="secondary"
               data-testid="cancelDataAssets"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
+              iconLeading={<CloseOutlined size={12} />}
+              isDisabled={isSubmitLoading}
+              size="xs"
               onClick={onCancel}
             />
             <Button
               className="p-x-05"
+              color="primary"
               data-testid="saveDataAssets"
-              htmlType="submit"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
+              iconLeading={<CheckOutlined size={12} />}
+              isLoading={isSubmitLoading}
+              size="xs"
+              type="submit"
             />
           </Space>
         </Col>

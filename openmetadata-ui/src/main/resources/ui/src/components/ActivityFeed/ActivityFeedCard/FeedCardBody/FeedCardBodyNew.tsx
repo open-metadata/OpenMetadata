@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -211,17 +211,18 @@ const FeedCardBodyNew = ({
             <div className="d-flex justify-end gap-2 m-r-xss">
               <Button
                 className="border border-primary text-primary rounded-4"
+                color="secondary"
                 data-testid="cancel-button"
-                size="small"
+                size="xs"
                 onClick={onEditCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
                 className="rounded-4"
+                color="primary"
                 data-testid="save-button"
-                disabled={!message.length}
-                size="small"
-                type="primary"
+                isDisabled={!message.length}
+                size="xs"
                 onClick={handleSave}>
                 {t('label.save')}
               </Button>

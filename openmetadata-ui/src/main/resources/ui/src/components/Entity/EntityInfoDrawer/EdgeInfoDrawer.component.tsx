@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { GitMerge, X } from '@untitledui/icons';
-import { Button, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -416,9 +416,10 @@ const EdgeInfoDrawer = ({
             <Button
               aria-label={t('label.close')}
               className="drawer-close-icon flex-center mr-2"
+              color="secondary"
               data-testid="drawer-close-icon"
-              icon={<X height={16} width={16} />}
-              size="small"
+              iconLeading={<X height={16} width={16} />}
+              size="xs"
               onClick={onClose}
             />
           </div>

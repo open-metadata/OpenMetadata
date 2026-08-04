@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Card,
   Collapse,
   Popover,
@@ -202,14 +201,14 @@ const TierCard = ({
                 <div
                   className={`flex justify-end text-lg gap-2 mt-4 ${footerActionButtonsClassName}`}>
                   <Button
+                    color="secondary"
                     data-testid="close-tier-card"
-                    type="default"
                     onClick={handleCloseTier}>
                     <CloseOutlined />
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="update-tier-card"
-                    type="primary"
                     onClick={() => updateTierData(selectedTier)}>
                     <CheckOutlined />
                   </Button>

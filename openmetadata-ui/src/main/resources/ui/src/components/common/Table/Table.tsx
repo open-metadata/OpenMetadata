@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  SpinProps,
-  Table as AntdTable,
-} from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Dropdown, Row, SpinProps, Table as AntdTable } from 'antd';
 import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -164,8 +157,8 @@ const Table = <T extends object>(
               </Typography>
               <Button
                 className="text-primary text-sm p-0"
+                color="tertiary"
                 data-testid="column-dropdown-action-button"
-                type="text"
                 onClick={handleBulkColumnAction}>
                 {dropdownColumnList.length === columnDropdownSelections.length
                   ? t('label.hide-all')
@@ -298,11 +291,11 @@ const Table = <T extends object>(
                   onOpenChange={setIsDropdownVisible}>
                   <Button
                     className="remove-button-background-hover"
+                    color="tertiary"
                     data-testid="column-dropdown"
-                    icon={<ColumnIcon />}
-                    size="small"
-                    title={t('label.show-or-hide-column-plural')}
-                    type="text">
+                    iconLeading={<ColumnIcon />}
+                    size="xs"
+                    title={t('label.show-or-hide-column-plural')}>
                     {t('label.customize')}
                   </Button>
                 </Dropdown>
@@ -311,7 +304,6 @@ const Table = <T extends object>(
           )}
         </Row>
       </Col>
-
       <Col span={24}>
         <AntdTable
           {...rest}

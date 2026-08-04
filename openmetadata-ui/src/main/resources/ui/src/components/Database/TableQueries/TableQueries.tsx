@@ -16,8 +16,8 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -497,9 +497,9 @@ const TableQueries: FC<TableQueriesProp> = ({
       placement="top"
       title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
       <Button
+        color="primary"
         data-testid="add-query-btn"
-        disabled={!permissions?.query.Create}
-        type="primary"
+        isDisabled={!permissions?.query.Create}
         onClick={handleAddQueryClick}>
         {t('label.add')}
       </Button>
@@ -605,7 +605,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                       />
                       <Button
                         className="p-x-0"
-                        type="text"
+                        color="tertiary"
                         onClick={() => {
                           setIsClickedCalendar(true);
                         }}>
@@ -636,8 +636,8 @@ const TableQueries: FC<TableQueriesProp> = ({
                       />
                       <Button
                         className="p-0"
+                        color="tertiary"
                         data-testid="sort-order-button"
-                        type="text"
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC

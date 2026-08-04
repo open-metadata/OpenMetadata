@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Empty,
   Form,
   Select,
@@ -188,17 +187,19 @@ const AsyncSelectList: FC<
         <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
           <Button
             className="update-btn"
+            color="secondary"
             data-testid="saveAssociatedTag"
-            disabled={isEmpty(tagOptions)}
-            htmlType="submit"
-            loading={isSubmitLoading}
-            size="small"
+            isDisabled={isEmpty(tagOptions)}
+            isLoading={isSubmitLoading}
+            size="xs"
+            type="submit"
             onClick={() => form.submit()}>
             {t('label.update')}
           </Button>
           <Button
+            color="secondary"
             data-testid="cancelAssociatedTag"
-            size="small"
+            size="xs"
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>

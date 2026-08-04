@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,10 +90,10 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
               <Tooltip placement="right" title={t('label.expand')}>
                 <Button
                   className="mr-2"
+                  color="tertiary"
                   data-testid="sidebar-toggle"
-                  icon={<SidebarCollapsedIcon height={20} width={20} />}
-                  size="middle"
-                  type="text"
+                  iconLeading={<SidebarCollapsedIcon height={20} width={20} />}
+                  size="sm"
                   onClick={handleCollapse}
                 />
               </Tooltip>

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Dataflow01, Plus } from '@untitledui/icons';
-import { Button, Skeleton } from 'antd';
+import { Skeleton } from 'antd';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -147,22 +147,22 @@ export const getCollapseHandle = (
   return (
     <Button
       className={classNames(
-        'absolute lineage-node-minus lineage-node-handle flex-center',
+        'absolute lineage-node-minus lineage-node-handle flex-center tw:rounded-full',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
+      color="secondary"
       data-testid={
         direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      icon={
+      iconLeading={
         <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
       }
-      shape="circle"
-      size="small"
-      onClick={(e) => {
+      size="xs"
+      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();
       }}

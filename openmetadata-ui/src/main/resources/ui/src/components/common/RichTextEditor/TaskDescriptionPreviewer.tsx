@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,9 +87,9 @@ const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
       {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (
         <Button
           className="text-xs text-right"
+          color="link-gray"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
           style={{ fontSize: '14px', color: '#175CD3 !important' }}
-          type="link"
           onClick={handleReadMoreToggle}>
           {readMore ? t('label.view-less') : t('label.view-more')}
         </Button>

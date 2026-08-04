@@ -683,8 +683,8 @@ describe('AddDataContract', () => {
         fireEvent.click(saveButton);
       });
 
-      // Should show loading state (Ant Design Button shows loading via classes)
-      expect(saveButton).toHaveClass('ant-btn-loading');
+      // Should show loading state (core Button reflects loading via data-loading)
+      expect(saveButton).toHaveAttribute('data-loading', 'true');
     });
   });
 

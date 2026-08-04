@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal, Space } from 'antd';
+import { Modal, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -196,19 +196,19 @@ const AppRunsHistory = forwardRef(
           <>
             <Button
               className="p-0"
+              color="link-gray"
               data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
+              isDisabled={showLogAction(record)}
+              size="xs"
               onClick={() => handleRowExpandable(record.id, record)}>
               {t('label.log-plural')}
             </Button>
             <Button
               className="m-l-xs p-0"
+              color="link-gray"
               data-testid="app-historical-config"
-              disabled={!jsonSchema}
-              size="small"
-              type="link"
+              isDisabled={!jsonSchema}
+              size="xs"
               onClick={() => showAppRunConfig(record)}>
               {t('label.config')}
             </Button>
@@ -221,9 +221,9 @@ const AppRunsHistory = forwardRef(
               Boolean(appData?.supportsInterrupt) && (
                 <Button
                   className="m-l-xs p-0"
+                  color="link-gray"
                   data-testid="stop-button"
-                  size="small"
-                  type="link"
+                  size="xs"
                   onClick={() => {
                     const rawRunId = record.properties?.pipelineRunId;
                     setSelectedRunId(
@@ -525,8 +525,8 @@ const AppRunsHistory = forwardRef(
           footer={
             <Space className="w-full justify-end">
               <Button
+                color="primary"
                 data-testid="app-run-config-close"
-                type="primary"
                 onClick={() => setShowConfigModal(false)}>
                 {t('label.close')}
               </Button>

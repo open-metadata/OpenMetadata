@@ -12,8 +12,8 @@
  */
 
 import { SaveOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import './unsaved-changes-modal.less';
@@ -67,15 +67,16 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
         <div className="unsaved-changes-modal-actions">
           <Button
             className="unsaved-changes-modal-discard"
+            color="secondary"
             data-testid="unsaved-changes-modal-discard"
             onClick={onDiscard}>
             {discardText || t('message.unsaved-changes-discard')}
           </Button>
           <Button
             className="unsaved-changes-modal-save"
+            color="primary"
             data-testid="unsaved-changes-modal-save"
-            loading={loading}
-            type="primary"
+            isLoading={loading}
             onClick={onSave}>
             {saveText || t('message.unsaved-changes-save')}
           </Button>

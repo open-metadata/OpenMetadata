@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
@@ -208,10 +209,12 @@ const PoliciesListPage = () => {
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
+                color="tertiary"
                 data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!deletePolicyPermission}
-                icon={<IconDelete name={t('label.delete')} width="16px" />}
-                type="text"
+                iconLeading={
+                  <IconDelete name={t('label.delete')} width="16px" />
+                }
+                isDisabled={!deletePolicyPermission}
                 onClick={() => setSelectedPolicy(record)}
               />
             </Tooltip>
@@ -308,8 +311,8 @@ const PoliciesListPage = () => {
 
             {addPolicyPermission && (
               <Button
+                color="primary"
                 data-testid="add-policy"
-                type="primary"
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>

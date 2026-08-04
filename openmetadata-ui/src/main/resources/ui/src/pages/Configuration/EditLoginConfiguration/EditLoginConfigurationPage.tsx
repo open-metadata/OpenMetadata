@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -175,18 +176,18 @@ const EditLoginConfiguration = () => {
         <Row justify="end">
           <Col>
             <Button
+              color="link-gray"
               data-testid="cancel-button"
-              type="link"
               onClick={handleGoBack}>
               {t('label.cancel')}
             </Button>
           </Col>
           <Col>
             <Button
+              color="primary"
               data-testid="save-button"
-              htmlType="submit"
-              loading={updating}
-              type="primary">
+              isLoading={updating}
+              type="submit">
               {t('label.save')}
             </Button>
           </Col>

@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row, Select, Switch } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Select, Switch } from 'antd';
 import { isEmpty, isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -119,8 +119,9 @@ function ObservabilityFormFiltersItem({
 
                       {!isViewMode && (
                         <Button
+                          color="secondary"
                           data-testid={`remove-filter-${name}`}
-                          icon={<CloseOutlined />}
+                          iconLeading={<CloseOutlined />}
                           onClick={() => remove(name)}
                         />
                       )}
@@ -142,11 +143,11 @@ function ObservabilityFormFiltersItem({
               {showAddFilterButton ? (
                 <Col span={24}>
                   <Button
+                    color="primary"
                     data-testid="add-filters"
-                    disabled={
+                    isDisabled={
                       isEmpty(selectedTrigger) || isNil(selectedTrigger)
                     }
-                    type="primary"
                     onClick={() =>
                       add({
                         effect: Effect.Include,

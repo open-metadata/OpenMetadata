@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Space } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -65,9 +65,9 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
           </Typography>
           {onCancel && (
             <Button
+              color="tertiary"
               data-testid="close-drawer-button"
-              icon={<CloseOutlined />}
-              type="text"
+              iconLeading={<CloseOutlined />}
               onClick={onCancel}
             />
           )}

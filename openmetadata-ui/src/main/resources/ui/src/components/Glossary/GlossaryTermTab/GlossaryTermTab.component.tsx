@@ -14,13 +14,12 @@
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
-  Button as CoreButton,
+  Button,
   EmptyPlaceholder,
   TableCard,
 } from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
 import {
-  Button,
   Checkbox,
   Col,
   Dropdown,
@@ -842,10 +841,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             return (
               <Button
                 className="text-primary"
+                color="link-gray"
                 data-testid="load-more-children-button"
-                loading={isLoading}
-                size="small"
-                type="link"
+                isLoading={isLoading}
+                size="xs"
                 onClick={() =>
                   parentRecord && handleLoadMoreChildren(parentRecord)
                 }>
@@ -1045,29 +1044,30 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                   })}>
                   <Button
                     className="add-new-term-btn text-grey-muted flex-center"
+                    color="tertiary"
                     data-testid="add-classification"
-                    icon={
+                    iconLeading={
                       <PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />
                     }
-                    size="small"
-                    type="text"
+                    size="xs"
                     onClick={() => {
                       onAddGlossaryTerm(record as GlossaryTerm);
                     }}
                   />
                 </Tooltip>
               )}
-
               <Tooltip
                 title={t('label.edit-entity', {
                   entity: t('label.glossary-term'),
                 })}>
                 <Button
                   className="cursor-pointer flex-center"
+                  color="tertiary"
                   data-testid="edit-button"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
+                  iconLeading={
+                    <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                  }
+                  size="xs"
                   onClick={() => onEditGlossaryTerm(record as GlossaryTerm)}
                 />
               </Tooltip>
@@ -1197,15 +1197,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               <Space>
                 <Button
                   className="custom-glossary-dropdown-action-btn"
+                  color="primary"
                   data-testid="glossary-status-save-btn"
-                  type="primary"
                   onClick={handleStatusSelectionDropdownSave}>
                   {t('label.save')}
                 </Button>
                 <Button
                   className="custom-glossary-dropdown-action-btn"
+                  color="secondary"
                   data-testid="glossary-status-cancel-btn"
-                  type="default"
                   onClick={handleStatusSelectionDropdownCancel}>
                   {t('label.cancel')}
                 </Button>
@@ -1264,7 +1264,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           value={searchInput}
           onChange={handleSearchChange}
         />
-
         <div className="d-flex items-center gap-5 flex-shrink">
           <Dropdown
             className="custom-glossary-dropdown-menu status-dropdown"
@@ -1274,9 +1273,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             onOpenChange={setIsStatusDropdownVisible}>
             <Button
               className="text-primary remove-button-background-hover"
+              color="tertiary"
               data-testid="glossary-status-dropdown"
-              size="small"
-              type="text">
+              size="xs">
               <Space>
                 {t('label.status')}
                 <DownOutlined />
@@ -1288,10 +1287,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
           <Button
             className="text-primary remove-button-background-hover"
+            color="tertiary"
             data-testid="expand-collapse-all-button"
-            disabled={isExpandingAll}
-            size="small"
-            type="text"
+            isDisabled={isExpandingAll}
+            size="xs"
             onClick={toggleExpandAll}>
             <Space align="center" size={4}>
               {isExpandingAll ? (
@@ -1766,14 +1765,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           description={t('message.glossary-term-empty-description')}
           footer={
             canCreateTerm ? (
-              <CoreButton
+              <Button
                 color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 size="sm"
                 onPress={handleAddGlossaryTermClick}>
                 {t('label.new-term')}
-              </CoreButton>
+              </Button>
             ) : undefined
           }
           icon={<File02 className="tw:text-fg-warning-primary" />}

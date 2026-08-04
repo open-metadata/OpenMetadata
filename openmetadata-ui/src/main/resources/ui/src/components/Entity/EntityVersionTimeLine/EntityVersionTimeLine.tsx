@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Divider, Drawer, Row, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Divider, Drawer, Row, Tooltip } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -80,10 +80,9 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </Typography>
 
               <Button
-                block
-                className="m-t-lg"
-                href="/settings/billing/plans"
-                type="primary">
+                className="m-t-lg tw:w-full"
+                color="primary"
+                href="/settings/billing/plans">
                 See Upgrade Options
               </Button>
             </div>

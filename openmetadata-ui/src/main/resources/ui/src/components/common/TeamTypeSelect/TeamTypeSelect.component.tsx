@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Select, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
@@ -67,17 +68,17 @@ function TeamTypeSelect({
       <Space className="m-l-xs" size={4}>
         <Button
           className="h-8 p-x-xss"
+          color="primary"
           data-testid="cancel-btn"
-          size="small"
-          type="primary"
+          size="xs"
           onClick={handleCancel}>
           <CloseOutlined />
         </Button>
         <Button
           className="h-8 p-x-xss"
+          color="primary"
           data-testid="save-btn"
-          size="small"
-          type="primary"
+          size="xs"
           onClick={handleSubmit}>
           <CheckOutlined />
         </Button>

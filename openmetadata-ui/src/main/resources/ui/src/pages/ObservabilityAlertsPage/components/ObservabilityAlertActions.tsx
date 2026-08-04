@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Skeleton, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Skeleton, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
+import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -49,12 +50,12 @@ function ObservabilityAlertActions({
   const editButton = (
     <Button
       className="flex flex-center"
+      color="tertiary"
       data-testid={`alert-edit-${record.name}`}
-      icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
-      type="text"
+      iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
       onClick={
         onEditAlert
-          ? (event) => {
+          ? (event: MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               event.stopPropagation();
               onEditAlert(record);
@@ -84,10 +85,10 @@ function ObservabilityAlertActions({
         <Tooltip placement="bottom" title={t('label.delete')}>
           <Button
             className="flex flex-center"
+            color="tertiary"
             data-testid={`alert-delete-${record.name}`}
-            disabled={record.provider === ProviderType.System}
-            icon={<DeleteIcon height={16} width={16} />}
-            type="text"
+            iconLeading={<DeleteIcon height={16} width={16} />}
+            isDisabled={record.provider === ProviderType.System}
             onClick={() => onSelectAlert(record)}
           />
         </Tooltip>

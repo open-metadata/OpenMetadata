@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { isEmpty, omit } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import type { Column } from 'react-data-grid';
@@ -91,25 +91,26 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
         <KeyDownStopPropagationWrapper>
           <div className="d-flex justify-between">
             <Button
+              color="primary"
               data-testid="add-new-row"
-              disabled={isUpdating}
-              type="primary"
+              isDisabled={isUpdating}
               onClick={handleAddRow}>
               {t('label.add-entity', { entity: t('label.row') })}
             </Button>
 
             <div className="d-flex gap-2">
               <Button
+                color="secondary"
                 data-testid="cancel-update-table-type-property"
-                disabled={isUpdating}
+                isDisabled={isUpdating}
                 onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="update-table-type-property"
-                disabled={isUpdating}
-                loading={isUpdating}
-                type="primary"
+                isDisabled={isUpdating}
+                isLoading={isUpdating}
                 onClick={handleUpdate}>
                 {t('label.update')}
               </Button>

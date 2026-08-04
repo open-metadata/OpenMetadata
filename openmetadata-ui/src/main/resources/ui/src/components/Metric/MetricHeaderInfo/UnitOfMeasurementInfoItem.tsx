@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, List, Popover, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { List, Popover, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -197,11 +197,13 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
                   })}>
                   <Button
                     className="flex-center edit-metrics p-0"
+                    color="tertiary"
                     data-testid={`edit-${modiFiedLabel}-button`}
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-                    loading={isUpdating}
-                    size="small"
-                    type="text"
+                    iconLeading={
+                      <EditIcon color={DE_ACTIVE_COLOR} width="12px" />
+                    }
+                    isLoading={isUpdating}
+                    size="xs"
                   />
                 </Tooltip>
               </Popover>

@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -153,10 +153,10 @@ const KPIList = () => {
                 }>
                 <Button
                   className="flex-center"
+                  color="tertiary"
                   data-testid={`edit-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={<EditIcon width="16px" />}
-                  type="text"
+                  iconLeading={<EditIcon width="16px" />}
+                  isDisabled={!isAdminUser}
                   onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
@@ -168,12 +168,12 @@ const KPIList = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <Button
+                  color="tertiary"
                   data-testid={`delete-action-${getEntityName(record)}`}
-                  disabled={!isAdminUser}
-                  icon={
+                  iconLeading={
                     <Icon component={IconDelete} style={{ fontSize: '16px' }} />
                   }
-                  type="text"
+                  isDisabled={!isAdminUser}
                   onClick={() => setSelectedKpi(record)}
                 />
               </Tooltip>

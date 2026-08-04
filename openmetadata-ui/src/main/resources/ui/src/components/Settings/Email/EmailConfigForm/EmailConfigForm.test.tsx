@@ -15,12 +15,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TransportationStrategy } from '../../../../generated/email/smtpSettings';
 import EmailConfigForm from './EmailConfigForm.component';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest
     .fn()
-    .mockImplementation(({ loading, onClick, children }) => (
-      <button onClick={onClick}>{loading ? 'Loader.Button' : children}</button>
+    .mockImplementation(({ isLoading, onClick, children }) => (
+      <button onClick={onClick}>
+        {isLoading ? 'Loader.Button' : children}
+      </button>
     )),
 }));
 

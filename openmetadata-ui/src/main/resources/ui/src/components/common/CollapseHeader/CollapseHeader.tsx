@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
 import './collapse-header.less';
@@ -47,20 +48,20 @@ const CollapseHeader = ({
           trigger={['click']}>
           <Button
             className="add-field-btn"
+            color="primary"
             data-testid={dataTestId}
-            icon={<Icon className="text-xs" component={PlusOutlined} />}
-            type="primary"
-            onClick={(e) => e.stopPropagation()}>
+            iconLeading={<Icon className="text-xs" component={PlusOutlined} />}
+            onClick={(e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()}>
             {t('label.add')}
           </Button>
         </Dropdown>
       ) : (
         <Button
           className="add-field-btn"
+          color="primary"
           data-testid={dataTestId}
-          icon={<Icon className="text-xs" component={PlusOutlined} />}
-          type="primary"
-          onClick={(e) => {
+          iconLeading={<Icon className="text-xs" component={PlusOutlined} />}
+          onClick={(e: MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
             handleAddNewBoost?.();
           }}>

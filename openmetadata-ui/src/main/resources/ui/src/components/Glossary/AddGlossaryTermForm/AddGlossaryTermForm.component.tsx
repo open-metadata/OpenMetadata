@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
@@ -483,10 +484,12 @@ const AddGlossaryTermForm = ({
       hasPermission: true,
       children: (
         <Button
+          color="primary"
           data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
       multiple: {
@@ -517,10 +520,12 @@ const AddGlossaryTermForm = ({
       label: t('label.reviewer-plural'),
       children: (
         <Button
+          color="primary"
           data-testid="add-reviewers"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
+          iconLeading={
+            <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+          }
+          size="xs"
         />
       ),
     },
@@ -550,14 +555,14 @@ const AddGlossaryTermForm = ({
                 colon={false}
                 label={t('label.reference-plural')}>
                 <Button
+                  color="primary"
                   data-testid="add-reference"
-                  icon={
+                  iconLeading={
                     <PlusOutlined
                       style={{ color: 'white', fontSize: '12px' }}
                     />
                   }
-                  size="small"
-                  type="primary"
+                  size="xs"
                   onClick={() => {
                     add();
                   }}
@@ -604,9 +609,9 @@ const AddGlossaryTermForm = ({
                   </Col>
                   <Col span={2}>
                     <Button
-                      icon={<DeleteIcon width={16} />}
-                      size="small"
-                      type="text"
+                      color="tertiary"
+                      iconLeading={<DeleteIcon width={16} />}
+                      size="xs"
                       onClick={() => {
                         remove(field.name);
                       }}
@@ -636,7 +641,6 @@ const AddGlossaryTermForm = ({
           )}
         </div>
       </Form>
-
       {/* Rendered as a sibling of the antd Form, not inside it: this emits its
           own <form> element and nesting forms is invalid HTML. The modal's Save
           button sits in the footer outside both forms, so it still drives

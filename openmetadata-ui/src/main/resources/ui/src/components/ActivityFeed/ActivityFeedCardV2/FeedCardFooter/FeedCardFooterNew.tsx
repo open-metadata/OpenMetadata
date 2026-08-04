@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Col, Row } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Avatar, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { min, noop, sortBy } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -82,12 +83,12 @@ function FeedCardFooterNew({
                 {repliedUniqueUsersList.map((user, index) => (
                   <Button
                     className="p-0"
+                    color="tertiary"
                     key={user}
                     style={{
                       marginLeft: index === 0 ? '0px' : '-8px',
                       zIndex: repliedUniqueUsersList.length - index,
                     }}
-                    type="text"
                     onClick={isForFeedTab ? showReplies : undefined}>
                     <UserPopOverCard userName={user}>
                       <div className="d-flex items-center">
@@ -102,8 +103,8 @@ function FeedCardFooterNew({
             {!isPost && (
               <Button
                 className="p-0 flex-center"
+                color="tertiary"
                 data-testid="reply-button"
-                type="text"
                 onClick={isForFeedTab ? showReplies : undefined}>
                 <ThreadIcon data-testid="reply-count" height={18} width={18} />
               </Button>

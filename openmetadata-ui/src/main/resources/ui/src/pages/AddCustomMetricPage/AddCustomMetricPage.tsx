@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -240,16 +240,17 @@ const AddCustomMetricPage = () => {
                 />
                 <Space className="w-full justify-end">
                   <Button
+                    color="secondary"
                     data-testid="cancel-button"
-                    disabled={isActionLoading}
+                    isDisabled={isActionLoading}
                     onClick={handleBackClick}>
                     {t('label.cancel')}
                   </Button>
                   <Button
+                    color="primary"
                     data-testid="submit-button"
-                    htmlType="submit"
-                    loading={isActionLoading}
-                    type="primary"
+                    isLoading={isActionLoading}
+                    type="submit"
                     onClick={() => form.submit()}>
                     {t('label.create')}
                   </Button>

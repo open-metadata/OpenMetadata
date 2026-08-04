@@ -12,11 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse, Space } from 'antd';
+import { Collapse, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -90,21 +91,25 @@ export const ObjectFieldTemplate: FunctionComponent<
             {t('label.additional-property-plural')}
           </label>
 
-          <Button
-            data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-            id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
-            onClick={() => {
-              onAddClick(schema)();
-            }}
+          <span
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
                 formContext.handleFocus(idSchema.$id);
               }
-            }}
-          />
+            }}>
+            <Button
+              color="primary"
+              data-testid={`add-item-${title}`}
+              iconLeading={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
+              id={`${idSchema.$id}`}
+              size="xs"
+              onClick={() => {
+                onAddClick(schema)();
+              }}
+            />
+          </span>
         </Space>
       )}
 

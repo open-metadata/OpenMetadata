@@ -17,10 +17,10 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Col, Dropdown, Row, Space, Tabs, Tooltip } from 'antd';
+import { Col, Dropdown, Row, Space, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -529,9 +529,9 @@ const AppDetails = () => {
         <Col className="d-flex" flex="auto">
           <Button
             className="p-0"
-            icon={<LeftOutlined />}
-            size="small"
-            type="text"
+            color="tertiary"
+            iconLeading={<LeftOutlined />}
+            size="xs"
             onClick={onBrowseAppsClick}>
             <Typography className="font-medium">
               {t('label.browse-app-plural')}
@@ -559,8 +559,9 @@ const AppDetails = () => {
                 })}>
                 <Button
                   className="glossary-manage-dropdown-button p-x-xs"
+                  color="secondary"
                   data-testid="manage-button"
-                  icon={
+                  iconLeading={
                     <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
                   }
                   onClick={() => setShowActions(true)}

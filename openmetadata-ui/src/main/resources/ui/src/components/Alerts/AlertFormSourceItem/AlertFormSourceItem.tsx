@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  MenuItemProps,
-  MenuProps,
-  Select,
-} from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Dropdown, Form, MenuItemProps, MenuProps, Select } from 'antd';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -137,7 +129,7 @@ function AlertFormSourceItem({
               }}
               placement="bottomRight"
               trigger={['click']}>
-              <Button data-testid="add-source-button" type="primary">
+              <Button color="primary" data-testid="add-source-button">
                 {t('label.add-entity', {
                   entity: t('label.source'),
                 })}

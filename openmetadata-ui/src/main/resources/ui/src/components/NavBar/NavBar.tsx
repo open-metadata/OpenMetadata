@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Alert, Badge, Dropdown, InputRef, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -510,16 +510,16 @@ const NavBar = () => {
               }>
               <Button
                 className="w-6 h-6 p-0 flex-center"
+                color="tertiary"
                 data-testid="sidebar-toggle"
-                icon={
+                iconLeading={
                   isSidebarCollapsed ? (
                     <SidebarCollapsedIcon height={20} width={20} />
                   ) : (
                     <SidebarExpandedIcon height={20} width={20} />
                   )
                 }
-                size="middle"
-                type="text"
+                size="sm"
                 onClick={() =>
                   setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
@@ -559,6 +559,7 @@ const NavBar = () => {
                             activeDomain !== DEFAULT_DOMAIN_VALUE,
                         }
                       )}
+                      color="secondary"
                       data-testid="domain-dropdown"
                       onClick={() =>
                         setIsDomainDropdownOpen(!isDomainDropdownOpen)
@@ -591,8 +592,8 @@ const NavBar = () => {
               trigger={['click']}>
               <Button
                 className="flex-center gap-2 p-x-xs font-medium"
-                data-testid="language-selector-button"
-                type="text">
+                color="tertiary"
+                data-testid="language-selector-button">
                 {currentLanguage}
                 <DropDownIcon width={12} />
               </Button>
@@ -621,7 +622,8 @@ const NavBar = () => {
               onOpenChange={handleBellClick}>
               <Button
                 className="flex-center"
-                icon={
+                color="tertiary"
+                iconLeading={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
                     offset={[-3, 3]}>
@@ -629,7 +631,6 @@ const NavBar = () => {
                   </Badge>
                 }
                 title={t('label.notification-plural')}
-                type="text"
               />
             </Dropdown>
             <Dropdown
@@ -641,10 +642,10 @@ const NavBar = () => {
               trigger={['click']}>
               <Button
                 className="flex-center"
+                color="tertiary"
                 data-testid="help-icon"
-                icon={<Help width={20} />}
+                iconLeading={<Help width={20} />}
                 title={t('label.need-help')}
-                type="text"
               />
             </Dropdown>
             <UserProfileIcon />
@@ -656,8 +657,8 @@ const NavBar = () => {
           showIcon
           action={
             <Button
-              size="small"
-              type="link"
+              color="link-gray"
+              size="xs"
               onClick={() => {
                 navigate(0);
               }}>

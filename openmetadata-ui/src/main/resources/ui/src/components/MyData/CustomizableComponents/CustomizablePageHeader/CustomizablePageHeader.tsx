@@ -16,8 +16,8 @@ import {
   RedoOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Space } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Space } from 'antd';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -141,34 +141,36 @@ export const CustomizablePageHeader = ({
         <Space>
           {showWidgetActions && (
             <Button
+              color="primary"
               data-testid="add-widget-button"
-              icon={<PlusOutlined />}
-              type="primary"
+              iconLeading={<PlusOutlined />}
               onClick={onAddWidget}>
               {t('label.add-widget-plural')}
             </Button>
           )}
           <Button
+            color="secondary"
             data-testid="reset-button"
-            disabled={saving}
-            icon={<RedoOutlined />}
+            iconLeading={<RedoOutlined />}
+            isDisabled={saving}
             onClick={handleOpenResetModal}>
             {t('label.reset')}
           </Button>
           <Button
+            color="primary"
             data-testid="save-button"
-            disabled={disableSave}
-            icon={<SaveOutlined />}
-            loading={saving}
-            type="primary"
+            iconLeading={<SaveOutlined />}
+            isDisabled={disableSave}
+            isLoading={saving}
             onClick={handleSave}>
             {t('label.save')}
           </Button>
           <Button
             className="landing-page-cancel-button"
+            color="secondary"
             data-testid="cancel-button"
-            disabled={saving}
-            icon={<CloseOutlined />}
+            iconLeading={<CloseOutlined />}
+            isDisabled={saving}
             onClick={handleClose}
           />
         </Space>

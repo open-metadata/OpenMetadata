@@ -96,6 +96,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   );
 
+  const ButtonMock = ({
+    children,
+    onClick,
+    isDisabled,
+    ...rest
+  }: React.PropsWithChildren<{
+    onClick?: () => void;
+    isDisabled?: boolean;
+    [key: string]: unknown;
+  }>) => (
+    <button disabled={isDisabled} onClick={onClick} {...rest}>
+      {children}
+    </button>
+  );
+
   interface MockFeature {
     key: string;
     title?: React.ReactNode;
@@ -140,7 +155,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Table: MockTable,
     TableCard: MockTableCard,
     Box: Passthrough,
-    Button: Passthrough,
+    Button: ButtonMock,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Popover: Passthrough,
     PopoverTrigger: Passthrough,

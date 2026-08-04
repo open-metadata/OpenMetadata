@@ -12,7 +12,8 @@
  */
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Card, Col, Dropdown, Input, Modal, Space } from 'antd';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -402,8 +403,8 @@ export const CustomizeTabWidget = () => {
           data-testid="customize-tab-card"
           extra={
             <Button
-              icon={<PlusOutlined />}
-              type="primary"
+              color="primary"
+              iconLeading={<PlusOutlined />}
               onClick={() => setShowAddTabModal(true)}>
               {t('label.add-entity', {
                 entity: t('label.tab'),
@@ -440,6 +441,7 @@ export const CustomizeTabWidget = () => {
                 trigger={['click']}>
                 <Button
                   className="draggable-hidden-tab-item bg-grey"
+                  color="secondary"
                   data-testid={`tab-${item.name}`}>
                   <Space>
                     {getTabDisplayName(item)}
@@ -457,8 +459,8 @@ export const CustomizeTabWidget = () => {
           bordered={false}
           extra={
             <Button
-              icon={<PlusOutlined />}
-              type="primary"
+              color="primary"
+              iconLeading={<PlusOutlined />}
               onClick={handleOpenAddWidgetModal}>
               {t('label.add-entity', {
                 entity: t('label.widget'),
@@ -490,7 +492,6 @@ export const CustomizeTabWidget = () => {
           </ReactGridLayout>
         </Card>
       </Col>
-
       {currentPageType && (
         <AddDetailsPageWidgetModal
           handleAddWidget={handleMainPanelAddWidget}

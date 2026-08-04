@@ -12,12 +12,13 @@
  */
 
 import {
+  Button,
   Toggle,
   Tooltip as UTTooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
@@ -168,9 +169,9 @@ export const getTagsTableColumn = ({
               }>
               <Button
                 className="p-0 flex-center"
+                color="tertiary"
                 data-testid="edit-button"
-                disabled={disableEditButton}
-                icon={
+                iconLeading={
                   <EditIcon
                     data-testid="editTagDescription"
                     height={14}
@@ -178,28 +179,27 @@ export const getTagsTableColumn = ({
                     width={14}
                   />
                 }
-                size="small"
-                type="text"
+                isDisabled={disableEditButton}
+                size="xs"
                 onClick={() =>
                   handleEditTagClick ? handleEditTagClick(record) : null
                 }
               />
             </Tooltip>
-
             <Tooltip
               placement="topRight"
               title={disableDeleteButton && disabledDeleteMessage}>
               <Button
                 className="p-0 flex-center"
+                color="tertiary"
                 data-testid="delete-tag"
-                disabled={disableDeleteButton}
-                icon={getDeleteIcon({
+                iconLeading={getDeleteIcon({
                   deleteTagId: deleteTags?.data?.id,
                   status: deleteTags?.data?.status,
                   id: record.id ?? '',
                 })}
-                size="small"
-                type="text"
+                isDisabled={disableDeleteButton}
+                size="xs"
                 onClick={() =>
                   handleActionDeleteTag ? handleActionDeleteTag(record) : null
                 }

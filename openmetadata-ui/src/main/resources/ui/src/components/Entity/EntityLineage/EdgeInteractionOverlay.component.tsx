@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import React, { useMemo } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
@@ -70,8 +70,9 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
       <div key={`edit-${edge.id}`} style={buttonPosition}>
         <Button
           className="cursor-pointer d-flex"
+          color="link-gray"
           data-testid="add-pipeline"
-          icon={
+          iconLeading={
             <Icon
               alt="edit-circle"
               className="align-middle"
@@ -79,7 +80,6 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
               style={{ fontSize: '16px' }}
             />
           }
-          type="link"
           onClick={() => onPipelineClick?.()}
         />
       </div>
@@ -97,8 +97,9 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
       <div key={`delete-${edge.id}`} style={buttonPosition}>
         <Button
           className="cursor-pointer d-flex"
+          color="link-gray"
           data-testid="delete-button"
-          icon={
+          iconLeading={
             <Icon
               alt="times-circle"
               className="align-middle"
@@ -106,7 +107,6 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
               style={{ fontSize: '16px' }}
             />
           }
-          type="link"
           onClick={() => onEdgeRemove?.()}
         />
       </div>

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Badge } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
@@ -92,10 +92,10 @@ const AnnouncementsWidgetV1 = ({
           </div>
           <Button
             className="close-button"
+            color="tertiary"
             data-testid="announcements-widget-v1-close"
-            disabled={disabled}
-            icon={<CloseOutlined />}
-            type="text"
+            iconLeading={<CloseOutlined />}
+            isDisabled={disabled}
             onClick={handleClose}
           />
         </div>

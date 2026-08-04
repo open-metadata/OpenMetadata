@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Popover, RefSelectProps, Select, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Popover, RefSelectProps, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -255,23 +255,23 @@ export const PersonaSelectableList = ({
           <div className="flex justify-end gap-2">
             <Button
               className="persona-profile-edit-save"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              icon={<ClosePopoverIcon height={24} />}
-              size="small"
-              type="primary"
+              iconLeading={<ClosePopoverIcon height={24} />}
+              size="xs"
               onClick={handleCloseEditTeam}
             />
             <Button
               className="persona-profile-edit-cancel"
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              icon={<SavePopoverIcon height={24} />}
-              loading={isSaving}
-              size="small"
-              type="primary"
+              iconLeading={<SavePopoverIcon height={24} />}
+              isLoading={isSaving}
+              size="xs"
               onClick={handlePersonaUpdate}
             />
           </div>

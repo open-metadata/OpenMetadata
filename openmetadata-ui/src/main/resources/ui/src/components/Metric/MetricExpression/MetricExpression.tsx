@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, Row, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Card, Col, Form, Row, Tooltip } from 'antd';
 import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -106,11 +106,11 @@ const MetricExpression: FC = () => {
           })}>
           <Button
             className="flex-center p-0"
+            color="tertiary"
             data-testid="edit-expression-button"
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            loading={isUpdating}
-            size="small"
-            type="text"
+            iconLeading={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            isLoading={isUpdating}
+            size="xs"
             onClick={() => setIsEditing(true)}
           />
         </Tooltip>
@@ -147,19 +147,19 @@ const MetricExpression: FC = () => {
           <Row justify="end">
             <Col>
               <Button
+                color="link-gray"
                 data-testid="cancel-button"
-                disabled={isUpdating}
-                type="link"
+                isDisabled={isUpdating}
                 onClick={() => setIsEditing(false)}>
                 {t('label.cancel')}
               </Button>
             </Col>
             <Col>
               <Button
+                color="primary"
                 data-testid="update-button"
-                htmlType="submit"
-                loading={isUpdating}
-                type="primary">
+                isLoading={isUpdating}
+                type="submit">
                 {t('label.update')}
               </Button>
             </Col>

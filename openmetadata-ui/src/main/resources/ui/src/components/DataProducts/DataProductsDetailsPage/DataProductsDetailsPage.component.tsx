@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
+import { Dropdown, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -748,8 +747,9 @@ const DataProductsDetailsPage = ({
             'data-contract-latest-result-button',
             toLower(dataContract.latestResult.status)
           )}
+          color="secondary"
           data-testid="data-contract-latest-result-btn"
-          icon={icon ? <Icon component={icon} /> : null}
+          iconLeading={icon ? <Icon component={icon} /> : null}
           onClick={() => {
             handleTabChange(EntityTabs.CONTRACT);
           }}>
@@ -846,8 +846,8 @@ const DataProductsDetailsPage = ({
 
                 {!isVersionsView && dataProductPermission.Create && (
                   <Button
+                    color="primary"
                     data-testid="data-product-details-add-button"
-                    type="primary"
                     onClick={openAssetDrawer}>
                     {t('label.add-entity', {
                       entity: t('label.asset-plural'),
@@ -855,7 +855,7 @@ const DataProductsDetailsPage = ({
                   </Button>
                 )}
 
-                <ButtonGroup className="spaced" size="small">
+                <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
                   {dataContractLatestResultButton}
 
                   {onUpdateVote && (
@@ -879,8 +879,9 @@ const DataProductsDetailsPage = ({
                         className={classNames('', {
                           'text-primary border-primary': version,
                         })}
+                        color="secondary"
                         data-testid="version-button"
-                        icon={<Icon component={VersionIcon} />}
+                        iconLeading={<Icon component={VersionIcon} />}
                         onClick={handleVersionClick}>
                         <Typography
                           className={classNames('', {
@@ -912,8 +913,9 @@ const DataProductsDetailsPage = ({
                         })}>
                         <Button
                           className="domain-manage-dropdown-button tw-px-1.5"
+                          color="secondary"
                           data-testid="manage-button"
-                          icon={
+                          iconLeading={
                             <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
                           }
                           onClick={() => setShowActions(true)}
@@ -921,7 +923,7 @@ const DataProductsDetailsPage = ({
                       </Tooltip>
                     </Dropdown>
                   )}
-                </ButtonGroup>
+                </div>
 
                 {activeAnnouncement && (
                   <AnnouncementCard

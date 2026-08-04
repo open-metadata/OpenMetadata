@@ -13,9 +13,8 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
   Form,
   FormItemProps,
   Input,
@@ -248,9 +247,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                       <span>{data.displayName}</span>
                       <Button
                         className="m-x-sm list-add-btn"
-                        icon={<PlusOutlined />}
-                        size="small"
-                        type="primary"
+                        color="primary"
+                        iconLeading={<PlusOutlined />}
+                        size="xs"
                         onClick={() => add()}
                       />
                     </>
@@ -280,14 +279,14 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                         )}
                       </Form.Item>
                       <Button
-                        icon={
+                        color="tertiary"
+                        iconLeading={
                           <Icon
                             className="align-middle"
                             component={IconDelete}
                             style={{ fontSize: '16px' }}
                           />
                         }
-                        type="text"
                         onClick={() => remove(name)}
                       />
                     </div>

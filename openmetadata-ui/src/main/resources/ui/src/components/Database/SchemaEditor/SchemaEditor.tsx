@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Tooltip } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
 import 'codemirror/addon/display/placeholder';
@@ -233,14 +234,14 @@ const SchemaEditor = ({
             }>
             <Button
               className="query-editor-copy-button"
+              color="secondary"
               data-testid="query-copy-button"
-              icon={<Icon component={CopyIcon} />}
+              iconLeading={<Icon component={CopyIcon} />}
               onClick={() => onCopyToClipBoard(internalValue)}
             />
           </Tooltip>
         </div>
       )}
-
       {uncontrolled ? (
         <UnControlledCodeMirror
           className={editorClass}

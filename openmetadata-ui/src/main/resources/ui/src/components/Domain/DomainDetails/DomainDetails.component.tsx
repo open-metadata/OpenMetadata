@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tabs, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import {
+  Avatar,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Dropdown, Space, Tabs, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -1026,7 +1030,7 @@ const DomainDetails = ({
                 }}
                 placement="bottomRight"
                 trigger={['click']}>
-                <Button data-testid="domain-details-add-button" type="primary">
+                <Button color="primary" data-testid="domain-details-add-button">
                   <Space>
                     {t('label.add')}
                     <DownOutlined />
@@ -1035,7 +1039,7 @@ const DomainDetails = ({
               </Dropdown>
             )}
 
-            <ButtonGroup className="spaced" size="small">
+            <div className="tw:flex tw:items-center tw:justify-center tw:gap-3">
               {onUpdateVote && (
                 <Voting
                   voteStatus={voteStatus}
@@ -1057,8 +1061,9 @@ const DomainDetails = ({
                     className={classNames('', {
                       'text-primary border-primary': version,
                     })}
+                    color="secondary"
                     data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
+                    iconLeading={<Icon component={VersionIcon} />}
                     onClick={handleVersionClick}>
                     <Typography
                       className={classNames('', {
@@ -1090,8 +1095,9 @@ const DomainDetails = ({
                     })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"
+                      color="secondary"
                       data-testid="manage-button"
-                      icon={
+                      iconLeading={
                         <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
                       }
                       onClick={() => setShowActions(true)}
@@ -1099,7 +1105,7 @@ const DomainDetails = ({
                   </Tooltip>
                 </Dropdown>
               )}
-            </ButtonGroup>
+            </div>
             {activeAnnouncement && (
               <AnnouncementCard
                 announcement={activeAnnouncement}

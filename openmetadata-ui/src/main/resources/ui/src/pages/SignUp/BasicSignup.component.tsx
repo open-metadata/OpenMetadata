@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Form, Input } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -175,11 +175,10 @@ const BasicSignUp = () => {
                 </Form.Item>
 
                 <Button
-                  block
-                  className="login-btn"
-                  htmlType="submit"
-                  size="large"
-                  type="primary">
+                  className="login-btn tw:w-full"
+                  color="primary"
+                  size="md"
+                  type="submit">
                   {t('label.create-entity', {
                     entity: t('label.account'),
                   })}
@@ -188,10 +187,9 @@ const BasicSignUp = () => {
                 <div className="mt-4 d-flex flex-center signup-text">
                   <Typography>{t('message.already-a-user')}</Typography>
                   <Button
-                    ghost
                     className="link-btn"
+                    color="tertiary"
                     data-testid="login"
-                    type="link"
                     onClick={handleLogin}>
                     {t('label.login')}
                   </Button>

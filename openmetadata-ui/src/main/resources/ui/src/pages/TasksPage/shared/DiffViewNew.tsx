@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { Change } from 'diff';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -189,6 +189,7 @@ export const DiffViewNew = ({
               <div className="mt-2">
                 <Button
                   className="view-more-less-button cursor-pointer remove-button-default-styling"
+                  color="secondary"
                   data-testid="view-more-button"
                   onClick={() => setExpanded(!expanded)}>
                   {expanded ? t('label.view-less') : t('label.view-more')}
