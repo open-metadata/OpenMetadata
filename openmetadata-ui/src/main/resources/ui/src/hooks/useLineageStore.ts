@@ -17,6 +17,7 @@ import type { LineageConfig } from '../components/Entity/EntityLineage/EntityLin
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
+import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
 
 interface LineageState {
@@ -41,6 +42,8 @@ interface LineageState {
   nodeFilterState: Map<string, boolean>;
   isRepositioning: boolean;
   isCanvasReady: boolean;
+  lineageMutationTick: number;
+  sceneBand?: LineageBand;
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -71,6 +74,8 @@ interface LineageState {
   setNodeFilterState: (nodeId: string, isVisible: boolean) => void;
   setIsRepositioning: (isRepositioning: boolean) => void;
   setIsCanvasReady: (isCanvasReady: boolean) => void;
+  bumpLineageMutationTick: () => void;
+  setSceneBand: (sceneBand?: LineageBand) => void;
   reset: () => void;
 }
 
@@ -98,6 +103,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   nodeFilterState: new Map(),
   isRepositioning: false,
   isCanvasReady: false,
+  lineageMutationTick: 0,
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -105,10 +111,14 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setIsEditMode: (isEditMode: boolean) => set({ isEditMode }),
 
   toggleEditMode: () => {
-    const { isEditMode, isColumnLevelLineage } = get();
+    const { isEditMode, isColumnLevelLineage, sceneBand } = get();
     const updatedEditMode = !isEditMode;
 
-    if (updatedEditMode && !isColumnLevelLineage) {
+    if (
+      updatedEditMode &&
+      sceneBand === LineageBand.Field &&
+      !isColumnLevelLineage
+    ) {
       set({
         activeLayer: [LineageLayer.ColumnLevelLineage],
         isColumnLevelLineage: true,
@@ -241,6 +251,13 @@ export const useLineageStore = create<LineageState>((set, get) => ({
 
   setIsCanvasReady: (isCanvasReady: boolean) => set({ isCanvasReady }),
 
+  bumpLineageMutationTick: () =>
+    set((state) => ({
+      lineageMutationTick: state.lineageMutationTick + 1,
+    })),
+
+  setSceneBand: (sceneBand?: LineageBand) => set({ sceneBand }),
+
   reset: () =>
     set({
       isEditMode: false,
@@ -263,5 +280,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       nodeFilterState: new Map(),
       isRepositioning: false,
       isCanvasReady: false,
+      lineageMutationTick: 0,
+      sceneBand: undefined,
     }),
 }));

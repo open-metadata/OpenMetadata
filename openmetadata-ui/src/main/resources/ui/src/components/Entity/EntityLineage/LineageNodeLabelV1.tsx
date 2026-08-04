@@ -79,6 +79,11 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
       })),
     [node]
   );
+  const serviceSubtitle = useMemo(
+    () => (breadcrumbItems.length === 0 ? node.serviceType : undefined),
+    [breadcrumbItems.length, node.serviceType]
+  );
+  const subtitle = node.lineageMapSubtitle ?? serviceSubtitle;
 
   const entityName = getEntityName(node);
 
@@ -106,13 +111,22 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             {entityName}
           </Typography>
 
-          <Breadcrumbs
-            autoCollapse
-            className="m-b-xs lineage-breadcrumbs"
-            data-testid="lineage-breadcrumbs"
-            items={breadcrumbItems}
-            size="xs"
-          />
+          {subtitle ? (
+            <Typography
+              as="span"
+              className="lineage-service-subtitle"
+              size="text-xs">
+              {subtitle}
+            </Typography>
+          ) : breadcrumbItems.length > 0 ? (
+            <Breadcrumbs
+              autoCollapse
+              className="m-b-xs lineage-breadcrumbs"
+              data-testid="lineage-breadcrumbs"
+              items={breadcrumbItems}
+              size="xs"
+            />
+          ) : null}
         </Box>
         {!showDeletedIcon && showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
