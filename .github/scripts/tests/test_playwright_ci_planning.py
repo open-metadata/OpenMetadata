@@ -589,15 +589,27 @@ def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_p
 
 def test_versioned_baseline_omits_all_zero_ids_from_weights():
     # Was previously "only_uses_zero_weight_for_skipped_ids". See the sibling
-    # test above for the rationale for the behavior change.
+    # test above for the rationale for the behavior change. The behavior we
+    # care about is that every zero-duration entry in the checked-in baseline
+    # is filtered out of `weights` — regardless of whether its recorded
+    # outcome was `skipped` (normal) or `expected` (rare 0-ms observation).
     planner = load_script("build_playwright_shards")
     baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
     payload = json.loads(baseline.read_text())
     zero_tests = [test for test in payload["tests"] if test["durationMs"] == 0]
 
+    # Ensure there's something to check — if a future baseline refresh
+    # produces a run with zero skipped/0-ms entries, the `all(...)` below
+    # would pass vacuously without exercising the filter. Fail loudly
+    # instead so whoever refreshed the baseline knows to either construct
+    # a synthetic fixture or convert this to a synthetic test.
+    assert zero_tests, (
+        "checked-in baseline has no zero-duration entries; this test can "
+        "no longer exercise the load_history filter path against real data"
+    )
+
     weights, _ = planner.load_history([baseline])
 
-    assert any(test["outcome"] == "expected" for test in zero_tests)
     assert all(test["id"] not in weights for test in zero_tests)
 
 
@@ -1024,6 +1036,47 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
         if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
     )
     assert "Ingestion" in schema_search["projects"]
+
+
+def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
+    """The Explore mapping's ``Flow/*Search*.spec.ts`` glob also matches
+    SearchRBAC.spec.ts, which ``chromium`` testIgnores and only the dedicated
+    ``SearchRBAC`` project runs. Without that project in the mapping the selector
+    resolves to zero units and build_playwright_shards.py aborts the whole plan.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
+        "QuickFilterDropdown.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    search_rbac = next(
+        entry
+        for entry in selection["selectors"]
+        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
+    )
+    assert "SearchRBAC" in search_rbac["projects"]
 
 
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
