@@ -231,8 +231,8 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
     dbt_run_results = None
     try:
         # pylint: disable=import-outside-toplevel
-        from metadata.ingestion.connections.source_api_client import TrackedREST  # noqa: PLC0415
-        from metadata.ingestion.ometa.client import APIError, ClientConfig, RestTransportError  # noqa: PLC0415
+        from metadata.ingestion.connections.source_api_client import TrackedREST
+        from metadata.ingestion.ometa.client import APIError, ClientConfig, RestTransportError
 
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
@@ -707,7 +707,7 @@ def _(config: DbtGcsConfig):
 
 def _get_azure_client(config: DbtAzureConfig):
     # pylint: disable=import-outside-toplevel
-    from azure.core.exceptions import AzureError, ClientAuthenticationError  # noqa: PLC0415
+    from azure.core.exceptions import AzureError, ClientAuthenticationError
 
     try:
         client = AzureClient(config.dbtSecurityConfig).create_blob_client()
@@ -724,7 +724,7 @@ def _get_azure_client(config: DbtAzureConfig):
 
 def _list_azure_containers(client):
     # pylint: disable=import-outside-toplevel
-    from azure.core.exceptions import ClientAuthenticationError, HttpResponseError  # noqa: PLC0415
+    from azure.core.exceptions import ClientAuthenticationError, HttpResponseError
 
     try:
         container_dicts = list(client.list_containers())
@@ -744,7 +744,7 @@ def _list_azure_containers(client):
 
 def _get_azure_container_client(client, bucket_name: str):
     # pylint: disable=import-outside-toplevel
-    from azure.core.exceptions import (  # noqa: PLC0415
+    from azure.core.exceptions import (
         ClientAuthenticationError,
         HttpResponseError,
         ResourceNotFoundError,
