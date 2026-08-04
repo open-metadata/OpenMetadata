@@ -169,6 +169,7 @@ const Certification = ({
               <div
                 className="certification-card-item cursor-pointer"
                 key={id}
+                role="presentation"
                 style={{ cursor: 'pointer' }}
                 onClick={() => {
                   setSelectedCertification(fullyQualifiedName ?? '');

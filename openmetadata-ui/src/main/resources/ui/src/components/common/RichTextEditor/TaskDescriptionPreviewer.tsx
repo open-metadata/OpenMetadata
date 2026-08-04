@@ -82,7 +82,7 @@ const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
               }
             : undefined
         }>
-        <BlockEditor autoFocus={false} content={content} editable={false} />
+        <BlockEditor content={content} editable={false} />
       </div>
       {isOverflowing && showReadMoreBtn && enableSeeMoreVariant && (
         <Button

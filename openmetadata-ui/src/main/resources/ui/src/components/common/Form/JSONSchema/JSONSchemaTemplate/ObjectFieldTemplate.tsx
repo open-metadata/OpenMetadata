@@ -73,22 +73,22 @@ export const ObjectFieldTemplate: FunctionComponent<
   const fieldElement = (
     <Fragment>
       <Space className="w-full justify-between header-title-wrapper m-t-sm">
-        <label
+        <span
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </label>
+        </span>
       </Space>
 
       {schema.additionalProperties && (
         <Space className="w-full justify-between m-t-sm">
-          <label
+          <span
             className="font-medium text-base-color text-md"
             id={`${idSchema.$id}__AdditionalProperties-label`}>
             {t('label.additional-property-plural')}
-          </label>
+          </span>
 
           <Button
             data-testid={`add-item-${title}`}

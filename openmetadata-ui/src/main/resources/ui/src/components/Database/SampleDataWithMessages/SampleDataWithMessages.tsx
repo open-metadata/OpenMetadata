@@ -69,6 +69,7 @@ const SampleDataWithMessages: FC<{
               i18nKey="message.view-sample-data-entity"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={WORKFLOWS_METADATA_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}

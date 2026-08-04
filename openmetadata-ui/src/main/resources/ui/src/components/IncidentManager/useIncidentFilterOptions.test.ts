@@ -220,7 +220,7 @@ describe('useIncidentFilterOptions', () => {
   });
 
   it('should toggle the loading flag and store only fqn-backed test-case options', async () => {
-    let resolveSearch: (value: unknown) => void = () => undefined;
+    let resolveSearch: (value: unknown) => void = (_value) => undefined;
     mockSearchQuery.mockImplementationOnce(
       () =>
         new Promise((resolve) => {

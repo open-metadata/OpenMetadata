@@ -160,6 +160,7 @@ export const UserProfileIcon = () => {
         <div
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
           data-testid="persona-label"
+          role="presentation"
           onClick={() => handleSelectedPersonaChange(item)}>
           <div className="d-flex items-center default-persona-container">
             <Typography.Text ellipsis={{ tooltip: true }}>
@@ -411,6 +412,7 @@ export const UserProfileIcon = () => {
         data-testid="dropdown-profile"
         icon={
           isImgUrlValid ? (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
             <img
               alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"

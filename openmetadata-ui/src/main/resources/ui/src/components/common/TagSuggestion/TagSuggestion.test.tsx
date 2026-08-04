@@ -104,10 +104,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
     return (
       <div>
-        {label && <label>{label}</label>}
+        {label && <span>{label}</span>}
         <input
           aria-controls={listboxId}
           aria-expanded={open}
+          aria-label="Tags"
           placeholder={placeholder}
           role="combobox"
           value={inputValue}

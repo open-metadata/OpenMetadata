@@ -91,24 +91,26 @@ jest.mock('antd', () => {
   return {
     ...actual,
     Menu: jest.fn().mockImplementation(({ items, onClick, selectedKeys }) => (
-      <ul
+      <div
         className="ant-menu ant-menu-root ant-menu-vertical ant-menu-light vertical-nav-menu"
         role="menu">
         {items.map(
           (item: { key: string; icon: React.ReactNode; label: string }) => (
-            <li
+            <div
               className={`ant-menu-item ${
                 selectedKeys.includes(item.key) ? 'ant-menu-item-selected' : ''
               }`}
               key={item.key}
               role="menuitem"
-              onClick={() => onClick({ key: item.key })}>
+              tabIndex={0}
+              onClick={() => onClick({ key: item.key })}
+              onKeyDown={() => onClick({ key: item.key })}>
               <span className="ant-menu-item-icon">{item.icon}</span>
               <span className="ant-menu-title-content">{item.label}</span>
-            </li>
+            </div>
           )
         )}
-      </ul>
+      </div>
     )),
     Typography: actual.Typography
       ? {

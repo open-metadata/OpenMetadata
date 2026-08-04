@@ -379,7 +379,16 @@ const TagsContainerV2 = ({
     return (
       <Space>
         {showAddTagButton ? (
-          <div onClick={handleAddClick}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleAddClick();
+              }
+            }}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -494,6 +503,7 @@ const TagsContainerV2 = ({
         {/* Since WidgetCard is another component without onClick, wrapping the content in a
             div to stop propagation */}
         <div
+          role="presentation"
           onClick={(e) => {
             e.stopPropagation();
           }}>
@@ -507,6 +517,7 @@ const TagsContainerV2 = ({
     <div
       className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
+      role="presentation"
       onClick={(e) => e.stopPropagation()}>
       {suggestionDataRender ?? (
         <>

@@ -222,7 +222,13 @@ const CustomiseHomeModal = ({
               key={item.key}
               role="button"
               tabIndex={0}
-              onClick={() => handleSidebarClick(item.key)}>
+              onClick={() => handleSidebarClick(item.key)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleSidebarClick(item.key);
+                }
+              }}>
               <span>{startCase(item.label)}</span>
               {isAllWidgetsTab && (
                 <span className="widget-count text-xs border-radius-md m-l-sm">

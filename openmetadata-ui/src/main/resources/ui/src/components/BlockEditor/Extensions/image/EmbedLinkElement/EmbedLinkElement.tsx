@@ -77,6 +77,7 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
         {({ field, fieldState }) => (
           <>
             <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the URL input when the embed link popover opens
               autoFocus
               inputDataTestId="embed-input"
               isInvalid={fieldState.invalid}

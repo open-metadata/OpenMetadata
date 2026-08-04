@@ -61,6 +61,7 @@ jest.mock('react-aria-components', () => ({
       onKeyDown,
     }: React.InputHTMLAttributes<HTMLInputElement>) => (
       <input
+        aria-label={placeholder}
         id={id}
         placeholder={placeholder}
         value={value}

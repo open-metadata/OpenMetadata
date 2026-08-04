@@ -131,9 +131,21 @@ const FileNodeView: FC<NodeViewProps> = ({
       return (
         <div className="media-wrapper">
           {isVideo ? (
-            <video controls className="video-player" src={mediaSrc} />
+            // eslint-disable-next-line jsx-a11y/media-has-caption -- user-uploaded media has no caption track
+            <video
+              controls
+              aria-label={fileName}
+              className="video-player"
+              src={mediaSrc}
+            />
           ) : (
-            <audio controls className="audio-player" src={mediaSrc} />
+            // eslint-disable-next-line jsx-a11y/media-has-caption -- user-uploaded media has no caption track
+            <audio
+              controls
+              aria-label={fileName}
+              className="audio-player"
+              src={mediaSrc}
+            />
           )}
         </div>
       );

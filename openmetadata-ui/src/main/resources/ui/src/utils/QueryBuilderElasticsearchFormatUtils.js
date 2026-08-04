@@ -89,6 +89,7 @@ function buildEsRangeParameters(value, operator) {
       };
 
     case 'greater_or_equal':
+    case 'greater':
       return {
         gte: ''.concat(dateTime),
       };
@@ -96,11 +97,6 @@ function buildEsRangeParameters(value, operator) {
     case 'less':
       return {
         lt: ''.concat(dateTime),
-      };
-
-    case 'greater':
-      return {
-        gte: ''.concat(dateTime),
       };
 
     default:
@@ -489,7 +485,12 @@ function buildExtensionQuery(
 
   // Use customPropertiesTyped for structured queries
   // Handle text search operators first (like, not_like, regexp) - these need special query types
-  if (operator === 'like' || operator === 'not_like') {
+  if (
+    operator === 'like' ||
+    operator === 'not_like' ||
+    operator === 'multiselect_contains' ||
+    operator === 'multiselect_not_contains'
+  ) {
     // Contains/Not contains: use wildcard query on stringValue (keyword field)
     // All searchable values are now stored in stringValue for wildcard support
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -591,17 +592,11 @@ function buildExtensionQuery(
       value,
       operator
     );
-  } else if (fieldType === 'hyperlink' && nestedField) {
-    // Hyperlink: both URL and displayText are stored in stringValue for exact/wildcard matching
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
-  } else if (fieldType === 'table' && nestedField) {
-    // Table: row data is stored in both stringValue (for wildcard) and textValue (for full-text)
-    // Use stringValue for exact match queries
+  } else if (
+    (fieldType === 'hyperlink' || fieldType === 'table') &&
+    nestedField
+  ) {
+    // Hyperlink/Table: values are stored in stringValue for exact/wildcard matching
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
       'stringValue',
@@ -674,32 +669,6 @@ function buildExtensionQuery(
         'equal'
       );
     }
-  } else if (
-    operator === 'multiselect_contains' ||
-    operator === 'multiselect_not_contains'
-  ) {
-    // Multiselect contains: use wildcard on stringValue (enum values are stored there)
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                wildcard: {
-                  'customPropertiesTyped.stringValue': {
-                    value: '*' + searchValue + '*',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
   } else {
     // Default text search: use match query on textValue
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -1003,19 +972,12 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
         return {
           bool: {
             [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
-              buildEsRule(
-                field,
-                [val],
-                operator,
-                extendedConfig,
-                valueSrc,
-                syntax
-              )
+              buildEsRule(field, [val], operator, extendedConfig, valueSrc)
             ),
           },
         };
       } else {
-        return buildEsRule(field, value, operator, config, valueSrc, syntax);
+        return buildEsRule(field, value, operator, config, valueSrc);
       }
     }
 

@@ -159,6 +159,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        role="presentation"
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
         }}>

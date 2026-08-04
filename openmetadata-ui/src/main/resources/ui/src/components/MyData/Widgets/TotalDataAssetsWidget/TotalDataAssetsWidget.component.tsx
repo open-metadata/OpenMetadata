@@ -302,9 +302,18 @@ const TotalDataAssetsWidget = ({
           <div className="date-selector-container">
             {availableDates.map(({ day, dayString }) => (
               <div
+                aria-label={dayString}
                 className={`date-box ${selectedDate === day ? 'selected' : ''}`}
                 key={day}
-                onClick={() => setSelectedDate(day)}>
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedDate(day)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedDate(day);
+                  }
+                }}>
                 <div className="day font-semibold text-sm">
                   {dayString.split(' ')[0]}
                 </div>

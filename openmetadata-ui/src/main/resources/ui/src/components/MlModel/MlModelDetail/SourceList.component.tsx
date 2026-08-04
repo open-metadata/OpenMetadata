@@ -32,7 +32,17 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
   return (
     <div className="m-t-sm">
       <Space className="m-b-xs">
-        <span onClick={() => setIsActive((prev) => !prev)}>
+        <span
+          aria-label={isActive ? t('label.collapse') : t('label.expand')}
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsActive((prev) => !prev)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsActive((prev) => !prev);
+            }
+          }}>
           {isActive ? (
             <DownOutlined className="text-xs text-primary cursor-pointer" />
           ) : (
