@@ -164,6 +164,11 @@ class DbtSource(DbtServiceSource):
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        # Upstream nodes already reported as unresolved, so a dbt project whose source
+        # database was never ingested reports each missing upstream once instead of once
+        # per referencing model. Bounded by the number of distinct upstream nodes in the
+        # project and reset per project in yield_data_models.
+        self.reported_unresolved_upstreams: set[str] = set()
         self._load_omd_custom_properties()
 
     @classmethod
@@ -760,6 +765,7 @@ class DbtSource(DbtServiceSource):
         """
         Yield the data models
         """
+        self.reported_unresolved_upstreams.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
@@ -1178,24 +1184,23 @@ class DbtSource(DbtServiceSource):
                             ),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Lineage upstream nodes",
-                                error=(
-                                    "Error to create DBT lineage from upstream nodes ",
-                                    f"{str(data_model_link.datamodel.upstream)}",  # noqa: RUF010
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt lineage edge dropped: upstream table '{upstream_node}' was not "
+                        f"returned by OpenMetadata, so no edge was created to "
+                        f"'{model_str(to_entity.fullyQualifiedName)}'. Either the table has not been "
+                        "ingested or the lookup itself failed - check the logs above for a "
+                        "search or API error. Further models referencing this upstream are not "
+                        "reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1282,24 +1287,22 @@ class DbtSource(DbtServiceSource):
                             lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Exposure lineage",
-                                error=(
-                                    "Error to create DBT Exposure lineage",
-                                    f"{str(exposure_spec)[:20]}...",
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt exposure lineage edge dropped: upstream table '{upstream_node}' was "
+                        f"not returned by OpenMetadata, so no edge was created to exposure "
+                        f"'{manifest_node.name}'. Either the table has not been ingested or the "
+                        "lookup itself failed - check the logs above for a search or API error. "
+                        "Further nodes referencing this upstream are not reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1959,11 +1962,13 @@ class DbtSource(DbtServiceSource):
         """
         After test cases has been processed, add the tests results info
         """
+        node_name = "unknown"
         try:
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(f"Adding DBT Test Case Results for node: {manifest_node.name}")
+                node_name = manifest_node.name
+                logger.debug(f"Adding DBT Test Case Results for node: {node_name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
                     logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
@@ -2046,7 +2051,13 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to capture tests results for node: {manifest_node.name} {err}")
+            self.status.failed(
+                StackTraceError(
+                    name=f"DBT Test Result {node_name}",
+                    error=f"Failed to capture test results for node '{node_name}': {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         self.metadata.close()
