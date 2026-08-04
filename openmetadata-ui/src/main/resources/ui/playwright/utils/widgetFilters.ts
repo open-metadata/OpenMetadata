@@ -40,13 +40,11 @@ export const verifyActivityFeedFilters = async (
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
 
-  // Wait for either old or new feed API response with timeout
   const myDataFilter = Promise.race([
     page.waitForResponse(
       (response) =>
-        (response.url().includes('/api/v1/feed') ||
-          response.url().includes('/api/v1/activities')) &&
-        response.url().includes('filterType=OWNER')
+        response.url().includes('/api/v1/activity') &&
+        response.url().includes('/my-feed')
     ),
     page.waitForTimeout(5000),
   ]);
@@ -61,9 +59,8 @@ export const verifyActivityFeedFilters = async (
   const followingFilter = Promise.race([
     page.waitForResponse(
       (response) =>
-        (response.url().includes('/api/v1/feed') ||
-          response.url().includes('/api/v1/activities')) &&
-        response.url().includes('filterType=FOLLOWS')
+        response.url().includes('/api/v1/activity') &&
+        response.url().includes('/my-feed')
     ),
     page.waitForTimeout(5000),
   ]);
@@ -76,10 +73,8 @@ export const verifyActivityFeedFilters = async (
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
   const allActivityFilter = Promise.race([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/feed') ||
-        response.url().includes('/api/v1/activities')
+    page.waitForResponse((response) =>
+      response.url().includes('/api/v1/activity')
     ),
     page.waitForTimeout(5000),
   ]);
@@ -285,10 +280,8 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
       const url = response.url();
 
       return (
-        url.includes('/api/v1/tasks') ||
-        (url.includes('/api/v1/feed') &&
-          url.includes('type=Task') &&
-          url.includes(`filterType=${filterType}`))
+        url.includes('/api/v1/tasks') &&
+        url.includes(`filterType=${filterType}`)
       );
     });
 

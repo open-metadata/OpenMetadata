@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.mysql.v200;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.v1130.MigrationUtil.addTableColumnSearchSettings;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskOperationToApplicationBotPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskAuthorPolicyToDataConsumerRole;
@@ -11,7 +12,10 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfi
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateRdfIndexAppScheduleToWeekly;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadConversationsToConversationEntity;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadReferencesToConversation;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.refreshConversationNotificationTemplates;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -41,9 +45,13 @@ public class Migration extends MigrationProcessImpl {
     migrateSuggestionsToTaskEntity(handle, MYSQL);
     migrateThreadTasksToTaskEntity(handle, MYSQL);
     migrateLegacyActivityThreadsToActivityStream(handle, MYSQL);
+    migrateThreadConversationsToConversationEntity(handle, MYSQL);
+    migrateThreadReferencesToConversation(handle, MYSQL);
+    refreshConversationNotificationTemplates();
     backfillAnnouncementRelationships(handle);
     addTaskAuthorPolicyToDataConsumerRole(collectionDAO);
     addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
+    addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
     addTaskRuleToDataConsumerPolicy(collectionDAO);
     addCreateTaskOperationToApplicationBotPolicy(collectionDAO);
 

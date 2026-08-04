@@ -7,43 +7,44 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.entity.feed.DomainFeedInfo;
 import org.openmetadata.schema.entity.feed.FeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 public class DomainFormatter extends DefaultFieldFormatter {
   private static final String HEADER_MESSAGE = "%s %s asset %s in Domain %s";
 
   public DomainFormatter(
-      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
     super(messageDecorator, thread, fieldChange);
   }
 
   @Override
   public String formatAddedField() {
     String message = super.formatAddedField();
-    populateDomainFeedInfo(Thread.FieldOperation.ADDED, message);
+    populateDomainFeedInfo(FormattedMessage.FieldOperation.ADDED, message);
     return message;
   }
 
   @Override
   public String formatUpdatedField() {
     String message = super.formatUpdatedField();
-    populateDomainFeedInfo(Thread.FieldOperation.UPDATED, message);
+    populateDomainFeedInfo(FormattedMessage.FieldOperation.UPDATED, message);
     return message;
   }
 
   @Override
   public String formatDeletedField() {
     String message = super.formatDeletedField();
-    populateDomainFeedInfo(Thread.FieldOperation.DELETED, message);
+    populateDomainFeedInfo(FormattedMessage.FieldOperation.DELETED, message);
     return message;
   }
 
-  private void populateDomainFeedInfo(Thread.FieldOperation operation, String threadMessage) {
+  private void populateDomainFeedInfo(
+      FormattedMessage.FieldOperation operation, String threadMessage) {
     DomainFeedInfo domainFeedInfo =
         new DomainFeedInfo()
             .withPreviousDomains(
@@ -65,7 +66,8 @@ public class DomainFormatter extends DefaultFieldFormatter {
             .withHeaderMessage(getHeaderForOwnerUpdate(operation.value(), domainUrls))
             .withFieldName(FIELD_DOMAINS)
             .withEntitySpecificInfo(domainFeedInfo);
-    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.DOMAIN, operation, feedInfo);
+    populateThreadFeedInfo(
+        thread, threadMessage, FormattedMessage.CardStyle.DOMAIN, operation, feedInfo);
   }
 
   private String getHeaderForOwnerUpdate(String eventTypeMessage, List<String> domainUrls) {

@@ -16,12 +16,12 @@ import round from 'lodash/round';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
-import { Thread } from '../../generated/entity/feed/thread';
 import {
   TestCaseParameterValue,
   TestCaseResult,
   TestCaseStatus,
 } from '../../generated/tests/testCase';
+import { Task } from '../../rest/tasksAPI';
 import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightPureUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
@@ -31,14 +31,14 @@ const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
   testCaseResults: TestCaseResult[];
-  entityThread: Thread[];
+  tasks: Task[];
   testCaseFqn?: string;
 };
 
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
-  entityThread,
+  tasks,
   testCaseFqn,
 }: PrepareChartDataType) => {
   // Bond will only be shown if params length is 2 and both values are present
@@ -91,9 +91,18 @@ export const prepareChartData = ({
       ...omitBy(metric, isUndefined),
       boundArea,
       incidentId: result.incidentId,
-      task: entityThread.find(
-        (task) => task.task?.testCaseResolutionStatusId === result.incidentId
-      ),
+      task: tasks.find((task) => {
+        const payload =
+          task.payload && typeof task.payload === 'object'
+            ? (task.payload as Record<string, unknown>)
+            : undefined;
+        const resolutionStatusId = payload?.testCaseResolutionStatusId;
+
+        return (
+          task.id === result.incidentId ||
+          resolutionStatusId === result.incidentId
+        );
+      }),
     });
   });
 

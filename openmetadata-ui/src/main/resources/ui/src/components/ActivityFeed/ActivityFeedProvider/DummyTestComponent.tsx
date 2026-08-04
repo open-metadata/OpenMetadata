@@ -16,8 +16,8 @@ import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
+import { TaskStatusGroup } from '../../../rest/tasksAPI';
 import { useActivityFeedProvider } from './ActivityFeedProvider';
 
 export const DummyChildrenComponent = () => {
@@ -38,7 +38,7 @@ export const DummyChildrenComponent = () => {
       undefined,
       EntityType.USER,
       'admin',
-      'open'
+      TaskStatusGroup.Open
     );
   }, []);
 
@@ -68,7 +68,7 @@ export const DummyChildrenTaskCloseComponent = () => {
       'after-234',
       EntityType.USER,
       'admin',
-      'closed'
+      TaskStatusGroup.Closed
     );
   }, []);
 
@@ -80,14 +80,7 @@ export const DummyChildrenEntityComponent = () => {
   const { getFeedData } = useActivityFeedProvider();
 
   useEffect(() => {
-    getFeedData(
-      FeedFilter.ALL,
-      undefined,
-      ThreadType.Conversation,
-      EntityType.TABLE,
-      'admin',
-      'open'
-    );
+    getFeedData(FeedFilter.ALL, undefined, EntityType.TABLE, 'admin');
   }, []);
 
   return <p>{t('label.children')}</p>;
@@ -98,13 +91,7 @@ export const DummyChildrenMentionsComponent = () => {
   const { getFeedData } = useActivityFeedProvider();
 
   useEffect(() => {
-    getFeedData(
-      FeedFilter.MENTIONS,
-      undefined,
-      ThreadType.Conversation,
-      EntityType.USER,
-      'admin'
-    );
+    getFeedData(FeedFilter.MENTIONS, undefined, EntityType.USER, 'admin');
   }, []);
 
   return <p>{t('label.children')}</p>;
@@ -206,7 +193,7 @@ export const DummyActivityCommentComponent = ({
   activity: ActivityEvent;
 }) => {
   const { t } = useTranslation();
-  const { postActivityComment, activityThread } = useActivityFeedProvider();
+  const { postActivityComment, activityReplies } = useActivityFeedProvider();
 
   const handlePostComment = () => {
     postActivityComment('Test comment', activity);
@@ -217,7 +204,33 @@ export const DummyActivityCommentComponent = ({
       <button data-testid="post-comment" onClick={handlePostComment}>
         {t('label.post-comment')}
       </button>
-      <span data-testid="thread-id">{activityThread?.id ?? 'no-thread'}</span>
+      <span data-testid="reply-count">{activityReplies.length}</span>
+    </div>
+  );
+};
+
+export const DummyActivityReplyEditComponent = ({
+  activity,
+}: {
+  activity: ActivityEvent;
+}) => {
+  const { t } = useTranslation();
+  const { activityReplies, updateFeed } = useActivityFeedProvider();
+
+  const handleEdit = () => {
+    updateFeed(activity.id, 'reply-1', false, [
+      { op: 'replace', path: '/message', value: 'Edited comment' },
+    ]);
+  };
+
+  return (
+    <div>
+      <button data-testid="edit-activity-reply" onClick={handleEdit}>
+        {t('label.edit')}
+      </button>
+      <span data-testid="activity-reply-messages">
+        {activityReplies.map((reply) => reply.message).join(',')}
+      </span>
     </div>
   );
 };
@@ -228,7 +241,7 @@ export const DummySetActiveActivityComponent = ({
   activity?: ActivityEvent;
 }) => {
   const { t } = useTranslation();
-  const { setActiveActivity, selectedActivity, activityThread } =
+  const { setActiveActivity, selectedActivity, activityReplies } =
     useActivityFeedProvider();
 
   const handleSetActive = () => {
@@ -243,9 +256,7 @@ export const DummySetActiveActivityComponent = ({
       <span data-testid="selected-activity-id">
         {selectedActivity?.id ?? 'none'}
       </span>
-      <span data-testid="activity-thread-id">
-        {activityThread?.id ?? 'no-thread'}
-      </span>
+      <span data-testid="activity-reply-count">{activityReplies.length}</span>
     </div>
   );
 };

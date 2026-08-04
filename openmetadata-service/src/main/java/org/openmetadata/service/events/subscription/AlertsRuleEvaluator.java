@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.Function.ParameterType.NOT_REQUIRED;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
+import static org.openmetadata.service.Entity.CONVERSATION;
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
@@ -14,7 +15,6 @@ import static org.openmetadata.service.Entity.TASK;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.List;
@@ -26,7 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -42,7 +43,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -74,8 +74,7 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
+    if (changeEvent.getEntityType().equals(CONVERSATION)) {
       return true;
     }
 
@@ -100,8 +99,7 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
+    if (changeEvent.getEntityType().equals(CONVERSATION)) {
       return true;
     }
 
@@ -146,8 +144,7 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
+    if (changeEvent.getEntityType().equals(CONVERSATION)) {
       return true;
     }
 
@@ -193,8 +190,7 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
+    if (changeEvent.getEntityType().equals(CONVERSATION)) {
       return true;
     }
 
@@ -480,8 +476,7 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
+    if (changeEvent.getEntityType().equals(CONVERSATION)) {
       return true;
     }
 
@@ -527,16 +522,6 @@ public class AlertsRuleEvaluator {
             JsonUtils.pojoToJson(event.getEntity())));
   }
 
-  public static Thread getThreadEntity(ChangeEvent event) {
-    Thread entity;
-    if (event.getEntity() instanceof String str) {
-      entity = JsonUtils.readValue(str, Thread.class);
-    } else {
-      entity = JsonUtils.convertValue(event.getEntity(), Thread.class);
-    }
-    return entity;
-  }
-
   @Function(
       name = "matchConversationUser",
       input = "List of comma separated user names to matchConversationUser",
@@ -549,8 +534,7 @@ public class AlertsRuleEvaluator {
     }
 
     boolean isTask = TASK.equals(changeEvent.getEntityType());
-    // Filter applies to conversation (Thread) and incident/task (Task) change events
-    if (!THREAD.equals(changeEvent.getEntityType()) && !isTask) {
+    if (!CONVERSATION.equals(changeEvent.getEntityType()) && !isTask) {
       return false;
     }
 
@@ -559,19 +543,19 @@ public class AlertsRuleEvaluator {
     }
 
     List<MessageParser.EntityLink> mentions =
-        isTask ? getTaskMentions(getTask(changeEvent)) : getThreadMentions(getThread(changeEvent));
+        isTask
+            ? getTaskMentions(getTask(changeEvent))
+            : getConversationMentions(getConversation(changeEvent));
     return matchesMentionedUserOrTeam(mentions, usersOrTeamName);
   }
 
-  private List<MessageParser.EntityLink> getThreadMentions(Thread thread) {
-    List<MessageParser.EntityLink> mentions;
-    if (thread.getPostsCount() == 0) {
-      mentions = MessageParser.getEntityLinks(thread.getMessage());
-    } else {
-      Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
-      mentions = MessageParser.getEntityLinks(latestPost.getMessage());
+  private List<MessageParser.EntityLink> getConversationMentions(Conversation conversation) {
+    String message = conversation.getMessage();
+    if (!nullOrEmpty(conversation.getReplies())) {
+      ConversationReply latestReply = conversation.getReplies().getLast();
+      message = latestReply.getMessage();
     }
-    return mentions;
+    return nullOrEmpty(message) ? List.of() : MessageParser.getEntityLinks(message);
   }
 
   // A mention notification must fire only for the comment that triggered this event. addComment
@@ -631,19 +615,19 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
-  public static Thread getThread(ChangeEvent event) {
+  public static Conversation getConversation(ChangeEvent event) {
     try {
-      Thread thread;
+      Conversation conversation;
       if (event.getEntity() instanceof String str) {
-        thread = JsonUtils.readValue(str, Thread.class);
+        conversation = JsonUtils.readValue(str, Conversation.class);
       } else {
-        thread = JsonUtils.convertValue(event.getEntity(), Thread.class);
+        conversation = JsonUtils.convertValue(event.getEntity(), Conversation.class);
       }
-      return thread;
+      return conversation;
     } catch (Exception ex) {
       throw new IllegalArgumentException(
           String.format(
-              "Change Event Data Asset is not an Thread %s",
+              "Change Event Data Asset is not a Conversation %s",
               JsonUtils.pojoToJson(event.getEntity())));
     }
   }

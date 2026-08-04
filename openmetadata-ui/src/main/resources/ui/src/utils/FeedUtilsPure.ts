@@ -12,8 +12,7 @@
  */
 
 import type { AxiosError } from 'axios';
-import type { Operation } from 'fast-json-patch';
-import { isEqual, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import type { Dispatch, SetStateAction } from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
@@ -30,22 +29,11 @@ import {
   teamsLinkRegEx,
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
-import type {
-  EntityTestResultSummaryObject,
-  Thread,
-} from '../generated/entity/feed/thread';
-import { TestCaseStatus, ThreadType } from '../generated/entity/feed/thread';
+import type { EntityTestResultSummaryObject } from '../generated/entity/feed/testCaseResult';
+import { TestCaseStatus } from '../generated/entity/feed/testCaseResult';
 import type { FeedCounts } from '../interface/feed.interface';
-import {
-  deletePostById,
-  deleteThread,
-  getEntityActivityByFqn,
-  getFeedById,
-  updatePost,
-  updateThread,
-} from '../rest/feedsAPI';
+import { getEntityActivityByFqn } from '../rest/activityAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
-import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
@@ -75,10 +63,9 @@ export const getEntityField = (entityLink: string) => {
 };
 
 /**
- * Helper to check if about field is an EntityReference object (Task entity)
- * vs a string entity link (Thread entity).
+ * Helper to check if about is a Task EntityReference or a Conversation entity link.
  * Task entities have about as EntityReference: { id, type, fullyQualifiedName }
- * Thread entities have about as string: <#E::table::fqn>
+ * Conversations have about as string: <#E::table::fqn>
  */
 export const isEntityReferenceAbout = (
   about: string | { type?: string; fullyQualifiedName?: string } | undefined
@@ -87,7 +74,7 @@ export const isEntityReferenceAbout = (
 };
 
 /**
- * Get entity type from about field, handling both Thread (string) and Task (EntityReference).
+ * Get entity type from a Conversation link or Task EntityReference.
  * @param about - Either a string entity link or an EntityReference object
  * @returns The entity type
  */
@@ -105,7 +92,7 @@ export const getEntityTypeFromAbout = (
 };
 
 /**
- * Get entity FQN from about field, handling both Thread (string) and Task (EntityReference).
+ * Get entity FQN from a Conversation link or Task EntityReference.
  * @param about - Either a string entity link or an EntityReference object
  * @returns The entity fully qualified name
  */
@@ -120,16 +107,6 @@ export const getEntityFQNFromAbout = (
   }
 
   return EntityLink.getEntityFqn(about);
-};
-
-export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
-  const updatedFeedList = feedList.map((feed) => ({
-    ...feed,
-    relativeDay: getRelativeCalendar(feed.updatedAt || 0),
-  }));
-  const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
-
-  return { updatedFeedList, relativeDays };
 };
 
 export const getReplyText = (
@@ -303,20 +280,6 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
   return displayName;
 };
 
-export const getFeedPanelHeaderText = (
-  threadType: ThreadType = ThreadType.Conversation
-) => {
-  switch (threadType) {
-    case ThreadType.Announcement:
-      return t('label.announcement');
-    case ThreadType.Task:
-      return t('label.task');
-    case ThreadType.Conversation:
-    default:
-      return t('label.conversation');
-  }
-};
-
 export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
   const fieldNameLabelMapping = {
     [EntityField.DESCRIPTION]: t('label.description'),
@@ -423,119 +386,6 @@ export const MarkdownToHTMLConverter = new Showdown.Converter({
   tasklists: true,
   simpleLineBreaks: true,
 });
-
-export const getUpdatedThread = (id: string) => {
-  return new Promise<Thread>((resolve, reject) => {
-    getFeedById(id)
-      .then((res) => {
-        if (res.status === 200) {
-          resolve(res.data);
-        } else {
-          reject(res.data);
-        }
-      })
-      .catch((error: AxiosError) => {
-        reject(error);
-      });
-  });
-};
-
-export const deletePost = async (
-  threadId: string,
-  postId: string,
-  isThread: boolean,
-  callback?: (value: SetStateAction<Thread[]>) => void
-) => {
-  if (isThread) {
-    try {
-      const data = await deleteThread(threadId);
-      callback?.((prev) => prev.filter((thread) => thread.id !== data.id));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  } else {
-    try {
-      const deleteResponse = await deletePostById(threadId, postId);
-      if (deleteResponse && callback) {
-        const data = await getUpdatedThread(threadId);
-        callback((pre) => {
-          return pre.map((thread) => {
-            if (thread.id === data.id) {
-              return {
-                ...thread,
-                posts: data.posts && data.posts.slice(-3),
-                postsCount: data.postsCount,
-              };
-            } else {
-              return thread;
-            }
-          });
-        });
-      } else {
-        throw t('server.fetch-updated-conversation-error');
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }
-};
-
-export const updateThreadData = async (
-  threadId: string,
-  postId: string,
-  isThread: boolean,
-  data: Operation[],
-  callback: (value: SetStateAction<Thread[]>) => void
-): Promise<void> => {
-  if (isThread) {
-    try {
-      const res = await updateThread(threadId, data);
-      callback((prevData) => {
-        return prevData.map((thread) => {
-          if (isEqual(threadId, thread.id)) {
-            return {
-              ...thread,
-              reactions: res.reactions,
-              message: res.message,
-              announcement: res?.announcement,
-            };
-          } else {
-            return thread;
-          }
-        });
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  } else {
-    try {
-      const res = await updatePost(threadId, postId, data);
-      callback((prevData) => {
-        return prevData.map((thread) => {
-          if (isEqual(threadId, thread.id)) {
-            const updatedPosts = (thread.posts || []).map((post) => {
-              if (isEqual(postId, post.id)) {
-                return {
-                  ...post,
-                  reactions: res.reactions,
-                  message: res.message,
-                };
-              } else {
-                return post;
-              }
-            });
-
-            return { ...thread, posts: updatedPosts };
-          } else {
-            return thread;
-          }
-        });
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }
-};
 
 export const prepareFeedLink = (
   entityType: string,

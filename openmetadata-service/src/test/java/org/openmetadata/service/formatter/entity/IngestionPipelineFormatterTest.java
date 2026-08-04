@@ -9,7 +9,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -20,6 +19,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.TestMessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 class IngestionPipelineFormatterTest {
@@ -27,7 +27,7 @@ class IngestionPipelineFormatterTest {
   @Test
   void formatHandlesPipelineStatusAndFallsBackToDefaultFormatting() {
     IngestionPipeline pipeline = new IngestionPipeline().withName("metadata_daily");
-    Thread thread = pipelineThread();
+    FormattedMessage thread = pipelineMessage();
     IngestionPipelineFormatter formatter = new IngestionPipelineFormatter();
     long timestamp = 1_700_000_000_000L;
     String expectedDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(timestamp));
@@ -204,8 +204,8 @@ class IngestionPipelineFormatterTest {
         "", IngestionPipelineFormatter.getDataContractUrl(decorator, Entity.TABLE, contract));
   }
 
-  private static Thread pipelineThread() {
-    return new Thread()
+  private static FormattedMessage pipelineMessage() {
+    return new FormattedMessage()
         .withId(UUID.randomUUID())
         .withEntityRef(
             new EntityReference()

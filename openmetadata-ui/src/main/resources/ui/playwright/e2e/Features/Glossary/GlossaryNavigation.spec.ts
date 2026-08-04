@@ -56,7 +56,7 @@ test.describe('Glossary Navigation', () => {
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByTestId('activity_feed');
 
-      const activityLoadResponse = page.waitForResponse('/api/v1/feed*');
+      const activityLoadResponse = page.waitForResponse('/api/v1/activity*');
       await activityTab.click();
       await activityLoadResponse;
 
@@ -269,7 +269,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = page.waitForResponse('/api/v1/activity*');
       await activityTab.click();
       await feedResponse;
 
@@ -298,7 +298,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = page.waitForResponse('/api/v1/activity*');
       await activityTab.click();
       await feedResponse;
 
@@ -325,7 +325,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = page.waitForResponse('/api/v1/activity*');
       await activityTab.click();
       await feedResponse;
 
@@ -356,7 +356,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      const feedResponse = page.waitForResponse('/api/v1/activity*');
       await activityTab.click();
       await feedResponse;
 

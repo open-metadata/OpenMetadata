@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/api/feed/createConversation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateConversationRequest",
+  "description": "Request to create a user conversation.",
+  "javaType": "org.openmetadata.schema.api.feed.CreateConversation",
+  "type": "object",
+  "properties": {
+    "message": {
+      "description": "Root message in Markdown format.",
+      "$ref": "../../type/basic.json#/definitions/nonBlankMarkdown"
+    },
+    "about": {
+      "description": "Entity or entity field this conversation is about.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    }
+  },
+  "required": ["message", "about"],
+  "additionalProperties": false
+}

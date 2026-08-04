@@ -22,16 +22,19 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
-import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
+import { Task } from '../../../../rest/tasksAPI';
 import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getTaskDetailPath } from '../../../../utils/TaskNavigationUtils';
+import {
+  getTaskDetailPathFromTask,
+  getTaskDisplayId,
+} from '../../../../utils/TaskNavigationUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import './test-summary-custom-tooltip.less';
 
@@ -46,8 +49,14 @@ const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
   'boundArea',
 ] as const;
 
-function isThread(value: unknown): value is Thread {
-  return typeof value === 'object' && value !== null && 'task' in value;
+function isTask(value: unknown): value is Task {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'status' in value &&
+    'type' in value
+  );
 }
 
 interface TestSummaryCustomTooltipProps {
@@ -87,7 +96,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       passedRows,
       failedRows,
       incidentId: payloadData.incidentId as string | undefined,
-      task: payloadData.task as Thread | undefined,
+      task: payloadData.task as Task | undefined,
       totalRows,
       formattedDateTime,
       statusColor,
@@ -96,8 +105,8 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
   }, [payload]);
 
   const tooltipRender = useCallback(
-    ([key, value]: [key: string, value: string | number | Thread]) => {
-      if (isThread(value)) {
+    ([key, value]: [key: string, value: string | number | Task]) => {
+      if (isTask(value)) {
         return null;
       }
 
@@ -168,7 +177,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
             </Typography>
           </li>
           {/* Incident (from task) */}
-          {task?.task && (
+          {task && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
@@ -181,14 +190,14 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
                 data-testid="incident">
                 <Link
                   className="tooltip-incident-link font-medium cursor-pointer"
-                  to={getTaskDetailPath(task)}>
-                  {`#${task.task.id}`}
+                  to={getTaskDetailPathFromTask(task)}>
+                  {`#${getTaskDisplayId(task.taskId) || task.id}`}
                 </Link>
               </Typography>
             </li>
           )}
           {/* Incident ID (if task not present) - show as link when testCaseFqn available */}
-          {incidentId && !task?.task && (
+          {incidentId && !task && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
@@ -252,10 +261,10 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
           )}
           {/* Other test result values */}
           {data.map((entry) =>
-            tooltipRender(entry as [string, string | number | Thread])
+            tooltipRender(entry as [string, string | number | Task])
           )}
           {/* Assignee (at the bottom) */}
-          {task?.task && (
+          {task && (
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
@@ -266,7 +275,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
                 as="span"
                 className="font-medium"
                 data-testid="assignee">
-                <OwnerLabel owners={task.task.assignees} />
+                <OwnerLabel owners={task.assignees} />
               </Typography>
             </li>
           )}

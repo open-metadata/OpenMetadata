@@ -24,6 +24,7 @@ import {
 const mockGetFeedData = jest.fn();
 const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
+const mockListConversations = jest.fn();
 const mockUseRequiredParams = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -81,10 +82,8 @@ jest.mock('../../../rest/tasksAPI', () => ({
   TaskStatusGroup: { Open: 'open', Closed: 'closed' },
 }));
 
-jest.mock('../../../rest/feedsAPI', () => ({
-  getFeedCount: jest
-    .fn()
-    .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
+jest.mock('../../../rest/conversationsAPI', () => ({
+  listConversations: (...args: unknown[]) => mockListConversations(...args),
 }));
 
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
@@ -92,19 +91,6 @@ jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
     <span data-testid="filter-count">{count}</span>
   ),
   getEntityUserLink: jest.fn().mockReturnValue(''),
-}));
-
-jest.mock('../../../utils/FeedUtilsPure', () => ({
-  getFeedCounts: jest.fn((_, __, ___, cb) =>
-    cb({
-      conversationCount: 0,
-      mentionCount: 0,
-      totalCount: 0,
-      totalTasksCount: 0,
-      openTaskCount: 0,
-      closedTaskCount: 0,
-    })
-  ),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -170,6 +156,10 @@ describe('ActivityFeedTab', () => {
       inProgress: 0,
       completed: 0,
       total: 0,
+    });
+    mockListConversations.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
     });
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);

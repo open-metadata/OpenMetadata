@@ -90,7 +90,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -172,7 +172,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -234,7 +234,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -273,7 +273,7 @@ describe('prepareChartData', () => {
         },
       ],
       testCaseResults: [],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -312,7 +312,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -365,7 +365,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -419,7 +419,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);

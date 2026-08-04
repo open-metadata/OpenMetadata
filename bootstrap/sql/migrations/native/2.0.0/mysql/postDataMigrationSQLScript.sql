@@ -291,3 +291,17 @@ UPDATE entity_extension
 SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfiguration', CAST('false' AS JSON))
 WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'McpApplication';
+-- Activity comments are retained indefinitely unless an administrator explicitly configures a
+-- positive retention period. Preserve any value already chosen by an administrator.
+UPDATE installed_apps
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE apps_marketplace
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE entity_extension
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'DataRetentionApplication';

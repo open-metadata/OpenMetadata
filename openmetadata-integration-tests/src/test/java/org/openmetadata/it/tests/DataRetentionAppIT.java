@@ -20,10 +20,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,28 +38,33 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.feed.CreateThread;
+import org.openmetadata.schema.api.feed.CreateConversation;
+import org.openmetadata.schema.api.feed.CreatePost;
+import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ActivityEventType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for the Data Retention application.
  *
- * <p>Regression coverage for the 2.0 activity-storage migration: the migration renames
- * thread_entity (e.g. to thread_entity_legacy) specifically to fail stale references, so the
- * retention job must resolve the current thread storage table instead of hardcoding the old name.
- * A failure in one cleanup step also aborts the steps after it, so a crash here silently disables
- * test-case-result, profile-data, and audit-log retention as well.
+ * <p>Regression coverage for Conversation V2 retention. User conversations retain the legacy
+ * policy, while Activity comments are retained indefinitely unless an administrator explicitly
+ * enables their policy. A failure in either cleanup also aborts later retention steps.
  */
 @Execution(ExecutionMode.SAME_THREAD)
 @Isolated
@@ -78,18 +83,16 @@ public class DataRetentionAppIT {
   }
 
   @Test
-  void test_retentionRun_cleansOldConversationsFromThreadStorage(TestNamespace ns)
-      throws Exception {
+  void test_retentionRun_cleansOldConversations(TestNamespace ns) throws Exception {
     assumeFalse(
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
 
     Table table = createTestTable(ns);
     String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
-    Thread oldThread = createConversation(about, "conversation past retention period");
-    Thread recentThread = createConversation(about, "recent conversation");
+    Conversation oldConversation = createConversation(about, "conversation past retention period");
+    Conversation recentConversation = createConversation(about, "recent conversation");
 
-    String threadTable = resolveThreadTableName();
-    backdateThread(threadTable, oldThread.getId(), System.currentTimeMillis() - NINETY_DAYS_MILLIS);
+    backdateConversation(oldConversation.getId(), System.currentTimeMillis() - NINETY_DAYS_MILLIS);
 
     AppRunRecord run = triggerAppAndWaitForCompletion();
 
@@ -99,12 +102,57 @@ public class DataRetentionAppIT {
         () -> "Data retention run did not succeed. failureContext=" + run.getFailureContext());
     assertEquals(
         0,
-        threadRowCount(threadTable, oldThread.getId()),
+        conversationRowCount(oldConversation.getId()),
         "conversation older than the retention period must be deleted");
     assertEquals(
         1,
-        threadRowCount(threadTable, recentThread.getId()),
+        conversationRowCount(recentConversation.getId()),
         "recent conversation must be retained");
+  }
+
+  @Test
+  void test_activityCommentsRequireExplicitRetentionPolicy(TestNamespace ns) throws Exception {
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
+
+    Table table = createTestTable(ns);
+    ActivityEvent activity = createActivity(table);
+    ConversationReply reply = addActivityReply(activity.getId());
+    assertEquals(activity.getId(), reply.getConversationId());
+    backdateConversation(activity.getId(), System.currentTimeMillis() - NINETY_DAYS_MILLIS);
+    ActivityEvent oldActivityWithRecentComment = createActivity(table);
+    addActivityReply(oldActivityWithRecentComment.getId());
+    backdateActivityTimestamp(
+        oldActivityWithRecentComment.getId(), System.currentTimeMillis() - NINETY_DAYS_MILLIS);
+
+    setActivityCommentsRetentionPeriod(0);
+    try {
+      AppRunRecord defaultRun = triggerAppAndWaitForCompletion();
+      assertEquals("success", defaultRun.getStatus().value());
+      assertEquals(
+          1,
+          conversationRowCount(activity.getId()),
+          "activity comments must be retained when no retention policy is enabled");
+      assertEquals(1, conversationRowCount(oldActivityWithRecentComment.getId()));
+
+      setActivityCommentsRetentionPeriod(1);
+      AppRunRecord configuredRun = triggerAppAndWaitForCompletion();
+      assertEquals("success", configuredRun.getStatus().value());
+      assertEquals(
+          0,
+          conversationRowCount(activity.getId()),
+          "an explicit activity-comment retention policy must remove expired comments");
+      assertEquals(
+          1,
+          activityRowCount(activity.getId()),
+          "comment retention must not remove the ActivityEvent");
+      assertEquals(
+          1,
+          conversationRowCount(oldActivityWithRecentComment.getId()),
+          "a recent comment on an old ActivityEvent must be retained");
+    } finally {
+      setActivityCommentsRetentionPeriod(0);
+    }
   }
 
   private Table createTestTable(TestNamespace ns) throws Exception {
@@ -119,63 +167,88 @@ public class DataRetentionAppIT {
     return TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
   }
 
-  private Thread createConversation(String about, String message) throws Exception {
-    CreateThread createThread =
-        new CreateThread().withMessage(message).withAbout(about).withType(ThreadType.Conversation);
+  private Conversation createConversation(String about, String message) throws Exception {
+    CreateConversation request = new CreateConversation().withMessage(message).withAbout(about);
     return SdkClients.adminClient()
         .getHttpClient()
-        .execute(HttpMethod.POST, "/v1/feed", createThread, Thread.class);
+        .execute(HttpMethod.POST, "/v1/conversations", request, Conversation.class);
   }
 
-  /** Mirrors FeedRepository's resolution across the pre/post-migration thread table names. */
-  private String resolveThreadTableName() throws SQLException {
-    return TestSuiteBootstrap.getJdbi()
-        .withHandle(
-            handle -> {
-              String tableExistsQuery =
-                  isPostgres(handle)
-                      ? "SELECT COUNT(*) FROM information_schema.tables "
-                          + "WHERE table_schema = current_schema() AND table_name = :name"
-                      : "SELECT COUNT(*) FROM information_schema.tables "
-                          + "WHERE table_schema = DATABASE() AND table_name = :name";
-              for (String candidate :
-                  List.of("thread_entity_legacy", "thread_entity_archived", "thread_entity")) {
-                Integer tableCount =
-                    handle
-                        .createQuery(tableExistsQuery)
-                        .bind("name", candidate)
-                        .mapTo(Integer.class)
-                        .one();
-                if (tableCount != null && tableCount > 0) {
-                  return candidate;
-                }
-              }
-              throw new IllegalStateException("No thread storage table found in test database");
-            });
+  private ActivityEvent createActivity(Table table) throws Exception {
+    User admin = SdkClients.adminClient().users().getByName("admin");
+    ActivityEvent event =
+        new ActivityEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(ActivityEventType.ENTITY_CREATED)
+            .withEntity(
+                new EntityReference()
+                    .withId(table.getId())
+                    .withType(Entity.TABLE)
+                    .withName(table.getName())
+                    .withFullyQualifiedName(table.getFullyQualifiedName()))
+            .withActor(
+                new EntityReference()
+                    .withId(admin.getId())
+                    .withType(Entity.USER)
+                    .withName(admin.getName())
+                    .withFullyQualifiedName(admin.getFullyQualifiedName()))
+            .withAbout("<#E::table::" + table.getFullyQualifiedName() + ">")
+            .withTimestamp(System.currentTimeMillis())
+            .withSummary("Activity comment retention test");
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.POST, "/v1/activity/test-insert", event, ActivityEvent.class);
   }
 
-  /** createdAt is a generated column over json->threadTs, so backdating rewrites the json. */
-  private void backdateThread(String threadTable, UUID threadId, long createdAtMillis)
+  private ConversationReply addActivityReply(UUID activityId) throws Exception {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/activity/" + activityId + "/replies",
+            new CreatePost().withMessage("Retain this activity comment"),
+            ConversationReply.class);
+  }
+
+  private void backdateConversation(UUID conversationId, long createdAtMillis) throws Exception {
+    updateConversationJson(
+        conversationId,
+        conversation -> {
+          conversation.put("createdAt", createdAtMillis);
+          conversation.put("updatedAt", createdAtMillis);
+          if ("Activity".equals(conversation.path("source").asText())) {
+            conversation.put("activityTimestamp", createdAtMillis);
+          }
+        });
+  }
+
+  private void backdateActivityTimestamp(UUID conversationId, long activityTimestamp)
+      throws Exception {
+    updateConversationJson(
+        conversationId, conversation -> conversation.put("activityTimestamp", activityTimestamp));
+  }
+
+  private void updateConversationJson(UUID conversationId, Consumer<ObjectNode> update)
       throws Exception {
     TestSuiteBootstrap.getJdbi()
         .useHandle(
             handle -> {
               String json =
                   handle
-                      .createQuery("SELECT json FROM " + threadTable + " WHERE id = :id")
-                      .bind("id", threadId.toString())
+                      .createQuery("SELECT json FROM conversation_entity WHERE id = :id")
+                      .bind("id", conversationId.toString())
                       .mapTo(String.class)
                       .one();
-              ObjectNode thread = (ObjectNode) MAPPER.readTree(json);
-              thread.put("threadTs", createdAtMillis);
-              String update =
+              ObjectNode conversation = (ObjectNode) MAPPER.readTree(json);
+              update.accept(conversation);
+              String updateSql =
                   isPostgres(handle)
-                      ? "UPDATE " + threadTable + " SET json = CAST(:json AS jsonb) WHERE id = :id"
-                      : "UPDATE " + threadTable + " SET json = :json WHERE id = :id";
+                      ? "UPDATE conversation_entity SET json = CAST(:json AS jsonb) WHERE id = :id"
+                      : "UPDATE conversation_entity SET json = :json WHERE id = :id";
               handle
-                  .createUpdate(update)
-                  .bind("json", thread.toString())
-                  .bind("id", threadId.toString())
+                  .createUpdate(updateSql)
+                  .bind("json", conversation.toString())
+                  .bind("id", conversationId.toString())
                   .execute();
             });
   }
@@ -189,15 +262,42 @@ public class DataRetentionAppIT {
         .contains("postgres");
   }
 
-  private int threadRowCount(String threadTable, UUID threadId) {
+  private int conversationRowCount(UUID conversationId) {
     return TestSuiteBootstrap.getJdbi()
         .withHandle(
             handle ->
                 handle
-                    .createQuery("SELECT COUNT(*) FROM " + threadTable + " WHERE id = :id")
-                    .bind("id", threadId.toString())
+                    .createQuery("SELECT COUNT(*) FROM conversation_entity WHERE id = :id")
+                    .bind("id", conversationId.toString())
                     .mapTo(Integer.class)
                     .one());
+  }
+
+  private int activityRowCount(UUID activityId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM activity_stream WHERE id = :id")
+                    .bind("id", activityId.toString())
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  private void setActivityCommentsRetentionPeriod(int days) throws Exception {
+    UUID appId = Apps.getByName(APP_NAME).getId();
+    String patch =
+        "[{\"op\":\"replace\",\"path\":\"/appConfiguration/"
+            + "activityCommentsRetentionPeriod\",\"value\":"
+            + days
+            + "}]";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/apps/" + appId,
+            patch,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
   }
 
   private AppRunRecord triggerAppAndWaitForCompletion() {

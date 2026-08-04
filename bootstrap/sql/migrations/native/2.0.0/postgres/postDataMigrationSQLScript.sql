@@ -287,3 +287,23 @@ UPDATE entity_extension
 SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', 'false'::jsonb)
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'McpApplication';
+-- Activity comments are retained indefinitely unless an administrator explicitly configures a
+-- positive retention period. Preserve any value already chosen by an administrator.
+UPDATE installed_apps
+SET json = jsonb_set(
+    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
+WHERE name = 'DataRetentionApplication'
+  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+UPDATE apps_marketplace
+SET json = jsonb_set(
+    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
+WHERE name = 'DataRetentionApplication'
+  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+UPDATE entity_extension
+SET json = jsonb_set(
+    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
+WHERE extension LIKE 'app.version.%'
+  AND json::jsonb ->> 'name' = 'DataRetentionApplication'
+  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');

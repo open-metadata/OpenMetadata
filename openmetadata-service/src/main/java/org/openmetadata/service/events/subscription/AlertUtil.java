@@ -15,8 +15,8 @@ package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.CONVERSATION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
@@ -27,7 +27,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -45,7 +44,7 @@ import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -153,7 +152,7 @@ public final class AlertUtil {
     }
 
     // Trigger Specific Settings
-    if (event.getEntityType().equals(THREAD)) {
+    if (event.getEntityType().equals(CONVERSATION)) {
       // Observability alerts (those with trigger actions) react to a measurable signal the
       // entity emits (test/pipeline status, …), never to threads/conversations on it. Routing
       // a thread here would let an EXCLUDE trigger flip and deliver it. Thread events still
@@ -161,7 +160,7 @@ public final class AlertUtil {
       if (!nullOrEmpty(config.getActions())) {
         return false;
       }
-      return shouldTriggerAlertForThread(event, config.getResources().get(0));
+      return shouldTriggerAlertForConversation(event, config.getResources().get(0));
     }
 
     // Test Suite
@@ -177,20 +176,16 @@ public final class AlertUtil {
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
-  private static final Set<String> THREAD_TYPE_RESOURCES =
-      Set.of("announcement", "task", "conversation");
-
-  private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
-    Thread thread = AlertsRuleEvaluator.getThread(event);
-    if (thread == null) {
+  private static boolean shouldTriggerAlertForConversation(ChangeEvent event, String resource) {
+    Conversation conversation = AlertsRuleEvaluator.getConversation(event);
+    if (conversation == null) {
       return false;
     }
-    if (THREAD_TYPE_RESOURCES.contains(resource.toLowerCase(Locale.ROOT))) {
-      return resource.equalsIgnoreCase(thread.getType().value());
+    if (CONVERSATION.equalsIgnoreCase(resource)) {
+      return true;
     }
-    // Entity-type resource (e.g., "glossaryTerm"): match threads whose parent entity type matches
-    return thread.getEntityRef() != null
-        && resource.equalsIgnoreCase(thread.getEntityRef().getType());
+    return conversation.getEntityRef() != null
+        && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
   }
 
   public static SubscriptionStatus buildSubscriptionStatus(

@@ -543,17 +543,16 @@ test.describe('User Profile Feed Interactions', () => {
     const testMessage = 'Initial conversation thread for mention test';
     const entityLink = `<#E::table::${tableEntity.entityResponseData.fullyQualifiedName}>`;
 
-    await apiContext.post('/api/v1/feed', {
+    await apiContext.post('/api/v1/conversations', {
       data: {
         message: testMessage,
         about: entityLink,
-        type: 'Conversation',
       },
     });
 
-    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+    const feedUrl = `/api/v1/conversations?entityLink=${encodeURIComponent(
       entityLink
-    )}&type=Conversation&limit=25`;
+    )}&limit=25`;
 
     await expect
       .poll(
@@ -578,7 +577,7 @@ test.describe('User Profile Feed Interactions', () => {
     const { page, afterAction } = await performUserLogin(browser, user3);
 
     await redirectToHomePage(page);
-    const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
+    const feedResponse = page.waitForResponse('/api/v1/conversations');
 
     await visitOwnProfilePage(page);
     await feedResponse;
@@ -1399,7 +1398,7 @@ base.describe(
           );
 
           const feedResponse = page.waitForResponse(
-            '/api/v1/feed?entityLink=*&type=Conversation'
+            '/api/v1/conversations?entityLink=*'
           );
 
           await page.getByTestId('activity_feed').click();

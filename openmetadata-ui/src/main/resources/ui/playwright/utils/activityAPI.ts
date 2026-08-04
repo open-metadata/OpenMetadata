@@ -41,13 +41,13 @@ export type ActivityApiResponse = {
   data?: ActivityApiEvent[];
 };
 
-type FeedThread = {
+type ConversationResponse = {
   id?: string;
   message?: string;
 };
 
-type FeedResponse = {
-  data?: FeedThread[];
+type ConversationListResponse = {
+  data?: ConversationResponse[];
 };
 
 export const getTableFqn = (table: TableClass) =>
@@ -186,10 +186,9 @@ const waitForConversationThread = async ({
   await expect
     .poll(
       async () => {
-        const response = await apiContext.get('/api/v1/feed', {
+        const response = await apiContext.get('/api/v1/conversations', {
           params: {
             entityLink,
-            type: 'Conversation',
             limit: '25',
           },
         });
@@ -198,7 +197,7 @@ const waitForConversationThread = async ({
           return false;
         }
 
-        const data = (await response.json()) as FeedResponse;
+        const data = (await response.json()) as ConversationListResponse;
 
         return (data.data ?? []).some(
           (thread) => thread.id === threadId || thread.message === message
@@ -219,7 +218,7 @@ export const createConversationThread = async (
   message: string
 ) => {
   const entityLink = getTableEntityLink(table);
-  const response = await apiContext.post('/api/v1/feed', {
+  const response = await apiContext.post('/api/v1/conversations', {
     data: {
       message,
       about: entityLink,
@@ -228,7 +227,7 @@ export const createConversationThread = async (
 
   expect(response.ok()).toBeTruthy();
 
-  const thread = (await response.json()) as FeedThread;
+  const thread = (await response.json()) as ConversationResponse;
 
   await waitForConversationThread({
     apiContext,
@@ -315,10 +314,11 @@ export const insertActivityEventForTest = async (
   const tableData = table.entityResponseData;
 
   const fqn = tableData.fullyQualifiedName ?? '';
+  const activityId = fullUuid();
 
   const response = await apiContext.post('/api/v1/activity/test-insert', {
     data: {
-      id: fullUuid(),
+      id: activityId,
       eventType,
       about: `<#E::table::${fqn}>`,
       entity: {
@@ -341,6 +341,8 @@ export const insertActivityEventForTest = async (
   });
 
   expect(response.ok()).toBeTruthy();
+
+  return activityId;
 };
 
 export const addTagToTable = async (
@@ -383,7 +385,7 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   const reactionResponse = page.waitForResponse(
     (response) =>
       (response.url().includes('/api/v1/activity') ||
-        response.url().includes('/api/v1/feed')) &&
+        response.url().includes('/api/v1/conversations')) &&
       response.url().includes(`/reaction/${THUMBS_UP_REACTION}`) &&
       response.ok()
   );

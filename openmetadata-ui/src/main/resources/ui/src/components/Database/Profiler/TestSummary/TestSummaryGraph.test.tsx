@@ -136,7 +136,7 @@ jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
-      entityThread: [],
+      tasks: [],
     })),
   })
 );

@@ -418,7 +418,7 @@ export const createMentionInConversation = async (
   await page.locator(`[data-value="@${userName}"]`).first().click();
 
   // Send the message
-  const feedResponse = page.waitForResponse('/api/v1/feed');
+  const feedResponse = page.waitForResponse('/api/v1/conversations');
   await page.locator('[data-testid="send-button"]').click();
   await feedResponse;
 
@@ -443,7 +443,7 @@ export const verifyNotificationAndClick = async (
 
   // Click on Mentions tab
   const mentionsTabResponse = page.waitForResponse(
-    '/api/v1/feed?userId=*&filterType=MENTIONS'
+    '/api/v1/conversations?userId=*&filterType=MENTIONS'
   );
 
   await page.getByRole('tab', { name: 'Mentions' }).click();

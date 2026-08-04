@@ -8,22 +8,22 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.feed.OwnerFeedInfo;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.TestMessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 
 class OwnerFormatterTest {
 
   @Test
   void formatOwnerChangesPopulateOwnerFeedInfo() {
-    Thread thread = baseThread();
+    FormattedMessage message = baseMessage();
     OwnerFormatter formatter =
         new OwnerFormatter(
             new TestMessageDecorator(),
-            thread,
+            message,
             new FieldChange()
                 .withName("owners")
                 .withOldValue(ownerJson("Alice"))
@@ -37,20 +37,20 @@ class OwnerFormatterTest {
     assertTrue(updated.contains("<ins>Bob</ins>"));
 
     assertEquals("Deleted <b>owners</b>: <del>Alice</del>", formatter.formatDeletedField());
-    assertEquals(Thread.CardStyle.OWNER, thread.getCardStyle());
-    assertEquals(Thread.FieldOperation.DELETED, thread.getFieldOperation());
-    assertEquals("owners", thread.getFeedInfo().getFieldName());
+    assertEquals(FormattedMessage.CardStyle.OWNER, message.getCardStyle());
+    assertEquals(FormattedMessage.FieldOperation.DELETED, message.getFieldOperation());
+    assertEquals("owners", message.getFeedInfo().getFieldName());
     assertTrue(
-        thread.getFeedInfo().getHeaderMessage().contains("alice deleted the owner for table"));
-    assertInstanceOf(OwnerFeedInfo.class, thread.getFeedInfo().getEntitySpecificInfo());
+        message.getFeedInfo().getHeaderMessage().contains("alice deleted the owner for table"));
+    assertInstanceOf(OwnerFeedInfo.class, message.getFeedInfo().getEntitySpecificInfo());
   }
 
   private static String ownerJson(String displayName) {
     return JsonUtils.pojoToJson(List.of(new EntityReference().withDisplayName(displayName)));
   }
 
-  private static Thread baseThread() {
-    return new Thread()
+  private static FormattedMessage baseMessage() {
+    return new FormattedMessage()
         .withId(UUID.randomUUID())
         .withAbout("<#E::table::service.sales.orders>")
         .withUpdatedBy("alice")

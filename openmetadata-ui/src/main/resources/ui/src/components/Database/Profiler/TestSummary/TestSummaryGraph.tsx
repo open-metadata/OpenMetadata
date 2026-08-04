@@ -86,7 +86,7 @@ function TestSummaryGraph({
   testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
-  const { entityThread = [] } = useActivityFeedProvider();
+  const { tasks = [] } = useActivityFeedProvider();
   const { setShowAILearningBanner } = useTestCaseStore();
   const chartRef = useRef(null);
   const [chartMouseEvent, setChartMouseEvent] =
@@ -110,7 +110,7 @@ function TestSummaryGraph({
     const data = prepareChartData({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
-      entityThread,
+      tasks,
       testCaseFqn,
     });
     const isFreshnessTest = data.information.some(
@@ -118,7 +118,7 @@ function TestSummaryGraph({
     );
 
     return { chartData: data, isFreshnessTest };
-  }, [testCaseResults, entityThread, testCaseParameterValue, testCaseFqn]);
+  }, [testCaseResults, tasks, testCaseParameterValue, testCaseFqn]);
 
   // A store write during render (inside the memo above) triggers React
   // update-depth loops; it must stay in an effect.

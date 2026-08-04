@@ -17,17 +17,16 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../generated/entity/feed/thread';
-import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
+import { Conversation } from '../../../generated/entity/feed/conversation';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 interface ActivityFeedListV1Props {
-  feedList?: Thread[];
+  feedList?: Conversation[];
   activityList?: ActivityEvent[];
   isLoading: boolean;
   showThread?: boolean;
-  onFeedClick?: (feed: Thread) => void;
+  onFeedClick?: (feed: Conversation) => void;
   onActivityClick?: (activity: ActivityEvent) => void;
   activeFeedId?: string;
   hidePopover: boolean;
@@ -37,7 +36,8 @@ interface ActivityFeedListV1Props {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
-  selectedThread?: Thread;
+  selectedThread?: Conversation;
+  selectedActivity?: ActivityEvent;
   onAfterClose?: () => void;
   onUpdateEntityDetails?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
@@ -63,31 +63,31 @@ const ActivityFeedListV1New = ({
   isFullWidth,
   emptyPlaceholderText,
   selectedThread,
+  selectedActivity,
   onAfterClose,
   onUpdateEntityDetails,
   handlePanelResize,
   isFeedWidget = false,
   isFullSizeWidget = false,
 }: ActivityFeedListV1Props) => {
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const [entityThread, setEntityThread] = useState<Conversation[]>([]);
   const isActivityMode = !isUndefined(activityList) && activityList.length > 0;
 
   useEffect(() => {
     if (feedList && !isActivityMode) {
-      const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
-      setEntityThread(updatedFeedList);
+      setEntityThread(feedList);
     }
   }, [feedList, isActivityMode]);
 
   useEffect(() => {
     if (isActivityMode) {
       const activity = activityList?.find(
-        (activity) => activity.id === selectedThread?.id
+        (activity) => activity.id === selectedActivity?.id
       );
 
       if (
         onActivityClick &&
-        (isUndefined(selectedThread) || isUndefined(activity))
+        (isUndefined(selectedActivity) || isUndefined(activity))
       ) {
         onActivityClick(activityList ? activityList[0] : ({} as ActivityEvent));
       }
@@ -100,7 +100,15 @@ const ActivityFeedListV1New = ({
         onFeedClick(entityThread[0]);
       }
     }
-  }, [entityThread, selectedThread, onFeedClick, isActivityMode]);
+  }, [
+    activityList,
+    entityThread,
+    isActivityMode,
+    onActivityClick,
+    onFeedClick,
+    selectedActivity,
+    selectedThread,
+  ]);
 
   useEffect(() => {
     const listToCheck = isActivityMode ? activityList : feedList;

@@ -75,6 +75,7 @@ import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -96,6 +97,8 @@ public class MigrationUtil {
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
   private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+  private static final String CREATE_CONVERSATION_RULE_NAME =
+      "DataConsumerPolicy-CreateConversation-Rule";
   private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
   private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
   private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
@@ -353,6 +356,43 @@ public class MigrationUtil {
     }
   }
 
+  /** Add the Conversation V2 create grant to existing DataConsumer policies. */
+  public static void addCreateConversationRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists =
+          policy.getRules().stream()
+              .anyMatch(rule -> CREATE_CONVERSATION_RULE_NAME.equals(rule.getName()));
+      if (!ruleExists) {
+        Rule rule =
+            new Rule()
+                .withName(CREATE_CONVERSATION_RULE_NAME)
+                .withDescription("Allow authenticated users to create conversations and replies.")
+                .withResources(List.of(Entity.CONVERSATION))
+                .withOperations(List.of(MetadataOperation.CREATE))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(rule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", CREATE_CONVERSATION_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping Conversation rule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to add {} to {}: {}",
+          CREATE_CONVERSATION_RULE_NAME,
+          DATA_CONSUMER_POLICY,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
   private static final String TASK_RULE_NAME = "DataConsumerPolicy-TaskRule";
 
   /**
@@ -360,7 +400,7 @@ public class MigrationUtil {
    * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
    * policies are create-if-not-exists, so without this migration upgraded deployments would lose
    * the ability for non-admin users to file or patch task threads (the new authorization wired into
-   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   * legacy task endpoints would reject them with 403).
    */
   public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
@@ -618,14 +658,9 @@ public class MigrationUtil {
    */
   public static void migrateThreadTasksToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of thread-based tasks to task_entity");
-    String threadTable;
-    if (tableExists(handle, "thread_entity")) {
-      threadTable = "thread_entity";
-    } else if (tableExists(handle, "thread_entity_legacy")) {
-      threadTable = "thread_entity_legacy";
-    } else {
-      LOG.info(
-          "Neither thread_entity nor thread_entity_legacy exists, skipping thread task migration");
+    String threadTable = ConversationMigration.findLegacyThreadTable(handle);
+    if (threadTable == null) {
+      LOG.info("No legacy thread table exists, skipping thread task migration");
       return;
     }
     List<Map<String, Object>> threads =
@@ -916,12 +951,13 @@ public class MigrationUtil {
       Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of legacy thread activity to activity_stream");
 
-    if (!tableExists(handle, "thread_entity")) {
-      LOG.info("thread_entity table does not exist, skipping activity stream migration");
+    String threadTable = ConversationMigration.findLegacyThreadTable(handle);
+    if (threadTable == null) {
+      LOG.info("No legacy thread table exists, skipping activity stream migration");
       return;
     }
 
-    List<Map<String, Object>> rows = listLegacyActivityThreadRows(handle);
+    List<Map<String, Object>> rows = listLegacyActivityThreadRows(handle, threadTable);
 
     if (rows.isEmpty()) {
       LOG.info("No legacy conversation rows found to inspect for activity migration");
@@ -959,6 +995,28 @@ public class MigrationUtil {
 
     LOG.info(
         "Legacy activity thread migration complete: migrated={}, skipped={}", migrated, skipped);
+  }
+
+  public static ConversationMigration.MigrationSummary
+      migrateThreadConversationsToConversationEntity(Handle handle, ConnectionType connectionType) {
+    return ConversationMigration.migrate(handle, connectionType);
+  }
+
+  public static ConversationReferenceMigration.MigrationSummary
+      migrateThreadReferencesToConversation(Handle handle, ConnectionType connectionType) {
+    return ConversationReferenceMigration.migrate(handle, connectionType);
+  }
+
+  public static void refreshConversationNotificationTemplates() {
+    try {
+      NotificationTemplateRepository repository =
+          (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
+      repository.initOrUpdateSeedDataFromResources();
+    } catch (Exception exception) {
+      LOG.warn(
+          "Could not refresh Conversation V2 system notification templates: {}",
+          exception.getMessage());
+    }
   }
 
   private static void setAboutFromEntityLink(
@@ -1400,13 +1458,18 @@ public class MigrationUtil {
     }
   }
 
-  private static List<Map<String, Object>> listLegacyActivityThreadRows(Handle handle) {
+  private static List<Map<String, Object>> listLegacyActivityThreadRows(
+      Handle handle, String threadTable) {
     String postgresQuery =
-        "SELECT json FROM thread_entity "
+        "SELECT json FROM "
+            + threadTable
+            + " "
             + "WHERE type = 'Conversation' AND json->>'generatedBy' = 'system' "
             + "ORDER BY updatedAt ASC, createdAt ASC";
     String mysqlQuery =
-        "SELECT json FROM thread_entity "
+        "SELECT json FROM "
+            + threadTable
+            + " "
             + "WHERE type = 'Conversation' "
             + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.generatedBy')) = 'system' "
             + "ORDER BY updatedAt ASC, createdAt ASC";

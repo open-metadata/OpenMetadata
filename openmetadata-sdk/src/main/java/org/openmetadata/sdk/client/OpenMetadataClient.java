@@ -42,7 +42,6 @@ import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.events.NotificationTemplateService;
 import org.openmetadata.sdk.services.feed.AnnouncementService;
-import org.openmetadata.sdk.services.feed.FeedService;
 import org.openmetadata.sdk.services.feed.TaskFormSchemaService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
@@ -87,9 +86,6 @@ public class OpenMetadataClient {
   private final OpenMetadataConfig config;
   private final HttpClient httpClient;
   private UUID cachedUserId = null;
-
-  // Feeds
-  private final FeedService feed;
 
   // Data Assets
   private final TableService tables;
@@ -336,14 +332,6 @@ public class OpenMetadataClient {
 
     // Initialize task form schema services
     this.taskFormSchemas = new TaskFormSchemaService(httpClient);
-
-    // Initialize feed service
-    this.feed = new FeedService(httpClient);
-  }
-
-  // Feed Service Getter
-  public FeedService feed() {
-    return feed;
   }
 
   public OpenMetadataConfig getConfig() {
