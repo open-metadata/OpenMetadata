@@ -519,6 +519,17 @@ export default [
     },
   },
 
+  // Custom rules that only make sense on e2e spec files
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    plugins: {
+      'om-playwright': omPlaywright,
+    },
+    rules: {
+      'om-playwright/require-assertion-per-test': 'error',
+    },
+  },
+
   // Local ESLint plugin (playwright/eslint-rules/**): plain CommonJS, not part
   // of the TypeScript/ESM playwright test sources above — needs `require`/
   // `module` as known globals and the ESM-oriented `no-require-imports` rule off.
