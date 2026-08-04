@@ -13,7 +13,9 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build",
+    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build && yarn bundle:check",
+    "analyze": "vite build --mode analyze",
+    "bundle:check": "node scripts/check-bundle-chunks.mjs",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
