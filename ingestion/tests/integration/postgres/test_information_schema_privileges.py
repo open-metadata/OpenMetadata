@@ -40,9 +40,12 @@ def lowpriv_engine(postgres_container):
     """
     admin_engine = create_engine(postgres_container.get_connection_url())
     with admin_engine.connect() as conn:
+        # Drop the schema (and its grants) before the role so a leftover from a
+        # crashed prior run does not make DROP ROLE fail on a dependent privilege.
+        conn.execute(text(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE"))
         conn.execute(text(f"DROP ROLE IF EXISTS {LOW_PRIV_ROLE}"))
         conn.execute(text(f"CREATE ROLE {LOW_PRIV_ROLE} LOGIN PASSWORD '{LOW_PRIV_PASSWORD}'"))
-        conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA}"))
+        conn.execute(text(f"CREATE SCHEMA {SCHEMA}"))
         conn.execute(text(f"GRANT USAGE ON SCHEMA {SCHEMA} TO {LOW_PRIV_ROLE}"))
         conn.execute(
             text(
