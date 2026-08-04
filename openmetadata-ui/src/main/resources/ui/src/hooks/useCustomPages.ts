@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Page, PageType } from '../generated/system/ui/page';
@@ -24,30 +24,55 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
   const [navigation, setNavigation] = useState<NavigationItem[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona?.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page | null) => p?.pageType === pageType)
-      );
-      setNavigation(doc.data?.navigation);
-    } catch (error) {
-      // Need to reset Navigation to avoid showing old navigation items
-      setNavigation([]);
-      setCustomizedPage(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedPersona?.fullyQualifiedName, pageType]);
-
   useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    } else {
-      setIsLoading(false);
-    }
-  }, [selectedPersona, pageType]);
+    let isMounted = true;
+
+    const fetchDocument = async () => {
+      if (!selectedPersona?.fullyQualifiedName) {
+        setCustomizedPage(null);
+        setNavigation(null);
+        setIsLoading(false);
+
+        return;
+      }
+
+      setIsLoading(true);
+
+      const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
+
+      try {
+        const doc = await getDocumentByFQN(pageFQN);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setCustomizedPage(
+          doc.data?.pages?.find((p: Page | null) => p?.pageType === pageType) ??
+            null
+        );
+        setNavigation(doc.data?.navigation ?? null);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        // Need to reset Navigation to avoid showing old navigation items
+        setNavigation([]);
+        setCustomizedPage(null);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchDocument();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedPersona?.fullyQualifiedName, pageType]);
 
   return {
     customizedPage,
