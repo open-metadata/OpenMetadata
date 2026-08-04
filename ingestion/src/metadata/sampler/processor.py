@@ -76,7 +76,12 @@ class SamplerProcessor(Processor):
 
         self.source_config = self.config.source.sourceConfig.config
 
-        self.profiler_config = profiler_config_class.model_validate(self.config.processor.model_dump().get("config"))
+        # Messaging and storage auto-classification have no processor to configure,
+        # so the block, or its inner config, is routinely omitted.
+        processor = self.config.processor
+        self.profiler_config = profiler_config_class.model_validate(
+            (processor.model_dump().get("config") if processor else None) or {}
+        )
 
         self._interface_type: str = config.source.type.lower()
 
