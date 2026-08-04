@@ -14,6 +14,8 @@ import { render, screen } from '@testing-library/react';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import { DqDashboardSectionContent } from './DqDashboardSectionContent.component';
 
+const DATA_HEIGHT = 'data-height';
+
 const mockTestCaseStatusAreaChartWidget = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -194,16 +196,16 @@ describe('DqDashboardSectionContent component', () => {
 
     expect(
       screen.getByTestId('incident-type-widget-open-incident')
-    ).toHaveAttribute('data-height', '60');
+    ).toHaveAttribute(DATA_HEIGHT, '60');
     expect(
       screen.getByTestId('incident-type-widget-resolved-incident')
-    ).toHaveAttribute('data-height', '60');
+    ).toHaveAttribute(DATA_HEIGHT, '60');
     expect(
       screen.getByTestId('incident-time-widget-response-time')
-    ).toHaveAttribute('data-height', '60');
+    ).toHaveAttribute(DATA_HEIGHT, '60');
     expect(
       screen.getByTestId('incident-time-widget-resolution-time')
-    ).toHaveAttribute('data-height', '60');
+    ).toHaveAttribute(DATA_HEIGHT, '60');
     expect(container.firstChild).toHaveClass(
       'tw:grid',
       'tw:grid-cols-1',

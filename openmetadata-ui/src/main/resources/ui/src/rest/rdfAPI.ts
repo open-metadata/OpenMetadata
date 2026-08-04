@@ -19,8 +19,10 @@ import {
   GraphData,
 } from './rdfAPI.interface';
 
+const APPLICATION_LD_JSON = 'application/ld+json';
+
 export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
-  jsonld: 'application/ld+json',
+  jsonld: APPLICATION_LD_JSON,
   turtle: 'text/turtle',
   rdfxml: 'application/rdf+xml',
   ntriples: 'application/n-triples',
@@ -103,7 +105,7 @@ export const exportEntityGraph = async (
     },
     responseType: 'blob',
     headers: {
-      Accept: format === 'jsonld' ? 'application/ld+json' : 'text/turtle',
+      Accept: format === 'jsonld' ? APPLICATION_LD_JSON : 'text/turtle',
     },
   });
 
@@ -177,7 +179,7 @@ export const exportGlossaryAsOntology = async (
 ): Promise<Blob> => {
   const { glossaryId, format = 'turtle', includeRelations = true } = params;
   const acceptHeader =
-    EXPORT_FORMAT_TO_ACCEPT_HEADER[format] || 'application/ld+json';
+    EXPORT_FORMAT_TO_ACCEPT_HEADER[format] || APPLICATION_LD_JSON;
 
   const response = await APIClient.get(`/rdf/glossary/${glossaryId}/export`, {
     params: {

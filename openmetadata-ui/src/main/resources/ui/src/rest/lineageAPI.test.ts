@@ -22,6 +22,9 @@ import {
   getLineagePagingData,
 } from './lineageAPI';
 
+const SERVICE_DB_SCHEMA_TABLE = 'service.db.schema.table';
+const NAME_ORDERS = 'name:orders';
+
 jest.mock('./index', () => ({
   get: jest.fn().mockResolvedValue({ data: {} }),
 }));
@@ -35,7 +38,7 @@ describe('lineageAPI', () => {
 
   it('getLineageByEntityCount sends entityType and maxDepth params', async () => {
     await getLineageByEntityCount({
-      fqn: 'service.db.schema.table',
+      fqn: SERVICE_DB_SCHEMA_TABLE,
       entityType: EntityType.TABLE,
       direction: LineageDirection.Upstream,
       nodeDepth: 4,
@@ -43,13 +46,13 @@ describe('lineageAPI', () => {
       downstreamDepth: 2,
       from: 10,
       size: 25,
-      query_filter: 'name:orders',
+      query_filter: NAME_ORDERS,
       include_pagination_info: true,
     });
 
     expect(mockGet).toHaveBeenCalledWith('lineage/getLineageByEntityCount', {
       params: {
-        fqn: 'service.db.schema.table',
+        fqn: SERVICE_DB_SCHEMA_TABLE,
         entityType: EntityType.TABLE,
         direction: LineageDirection.Upstream,
         nodeDepth: 4,
@@ -58,7 +61,7 @@ describe('lineageAPI', () => {
         downstreamDepth: 2,
         from: 10,
         size: 25,
-        query_filter: 'name:orders',
+        query_filter: NAME_ORDERS,
         include_pagination_info: true,
         type: undefined,
       },
@@ -67,7 +70,7 @@ describe('lineageAPI', () => {
 
   it('exportLineageByEntityCountAsync sends entityType and maxDepth params', async () => {
     await exportLineageByEntityCountAsync({
-      fqn: 'service.db.schema.table',
+      fqn: SERVICE_DB_SCHEMA_TABLE,
       type: EntityType.TABLE,
       direction: LineageDirection.Downstream,
       nodeDepth: 3,
@@ -76,7 +79,7 @@ describe('lineageAPI', () => {
 
     expect(mockGet).toHaveBeenCalledWith('lineage/exportByEntityCountAsync', {
       params: {
-        fqn: 'service.db.schema.table',
+        fqn: SERVICE_DB_SCHEMA_TABLE,
         type: undefined,
         entityType: EntityType.TABLE,
         direction: LineageDirection.Downstream,
@@ -89,7 +92,7 @@ describe('lineageAPI', () => {
 
   it('getLineagePagingData sends explicit directional depths', async () => {
     await getLineagePagingData({
-      fqn: 'service.db.schema.table',
+      fqn: SERVICE_DB_SCHEMA_TABLE,
       type: EntityType.TABLE,
       upstreamDepth: 2,
       downstreamDepth: 5,
@@ -98,7 +101,7 @@ describe('lineageAPI', () => {
 
     expect(mockGet).toHaveBeenCalledWith('lineage/getPaginationInfo', {
       params: {
-        fqn: 'service.db.schema.table',
+        fqn: SERVICE_DB_SCHEMA_TABLE,
         type: undefined,
         entityType: EntityType.TABLE,
         upstreamDepth: 2,
@@ -110,7 +113,7 @@ describe('lineageAPI', () => {
 
   it('getLineageDataByFQN uses directional endpoint when direction is provided', async () => {
     await getLineageDataByFQN({
-      fqn: 'service.db.schema.table',
+      fqn: SERVICE_DB_SCHEMA_TABLE,
       entityType: EntityType.TABLE,
       direction: LineageDirection.Downstream,
       config: {
@@ -119,17 +122,17 @@ describe('lineageAPI', () => {
         nodesPerLayer: 50,
         pipelineViewMode: PipelineViewMode.Node,
       },
-      queryFilter: 'name:orders',
+      queryFilter: NAME_ORDERS,
       columnFilter: 'columnName:customer_id',
     });
 
     expect(mockGet).toHaveBeenCalledWith('lineage/getLineage/Downstream', {
       params: {
-        fqn: 'service.db.schema.table',
+        fqn: SERVICE_DB_SCHEMA_TABLE,
         type: EntityType.TABLE,
         upstreamDepth: 0,
         downstreamDepth: 3,
-        query_filter: 'name:orders',
+        query_filter: NAME_ORDERS,
         column_filter: 'columnName:customer_id',
         includeDeleted: false,
         size: 50,

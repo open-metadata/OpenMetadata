@@ -27,6 +27,8 @@ import TierCard from '../TierCard/TierCard';
 import { TierSectionProps } from './TierSection.interface';
 import './TierSection.less';
 
+const LABEL_TIER = 'label.tier';
+
 const TierSection: React.FC<TierSectionProps> = ({
   tier,
   tags = [],
@@ -78,7 +80,7 @@ const TierSection: React.FC<TierSectionProps> = ({
         fieldName: 'tags',
         currentValue: tags,
         newValue: updatedTags,
-        entityLabel: t('label.tier'),
+        entityLabel: t(LABEL_TIER),
         onSuccess: (updatedTagsList) => {
           const newTier = updatedTagsList.find((tag) =>
             tag.tagFQN.startsWith('Tier.')
@@ -179,7 +181,7 @@ const TierSection: React.FC<TierSectionProps> = ({
         ) : (
           <span className="no-data-placeholder">
             {t('label.no-entity-assigned', {
-              entity: t('label.tier'),
+              entity: t(LABEL_TIER),
             })}
           </span>
         )}
@@ -205,7 +207,7 @@ const TierSection: React.FC<TierSectionProps> = ({
     <div className="tier-section">
       <div className="tier-header">
         <Typography.Text className="tier-title">
-          {t('label.tier')}
+          {t(LABEL_TIER)}
         </Typography.Text>
         {canShowEditButton && (
           <EditIconButton
@@ -215,7 +217,7 @@ const TierSection: React.FC<TierSectionProps> = ({
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
             size="small"
             title={t('label.edit-entity', {
-              entity: t('label.tier'),
+              entity: t(LABEL_TIER),
             })}
             onClick={handleEditClick}
           />

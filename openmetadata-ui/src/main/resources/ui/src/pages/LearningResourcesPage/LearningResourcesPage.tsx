@@ -65,6 +65,8 @@ import {
 import { useLearningResources } from './hooks/useLearningResources';
 import { LearningResourceForm } from './LearningResourceForm.component';
 
+const LABEL_LEARNING_RESOURCE = 'label.learning-resource';
+
 const CARD_GRID_STYLE: React.CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
 };
@@ -168,7 +170,7 @@ export const LearningResourcesPage: React.FC = () => {
         name: t('label.preference-plural'),
         url: getSettingPath(GlobalSettingsMenuCategory.PREFERENCES),
       },
-      { name: t('label.learning-resource'), url: '' },
+      { name: t(LABEL_LEARNING_RESOURCE), url: '' },
     ],
     [t]
   );
@@ -319,7 +321,7 @@ export const LearningResourcesPage: React.FC = () => {
         height: 'calc(100vh - 64px)',
         overflow: 'hidden',
       }}
-      pageTitle={t('label.learning-resource')}>
+      pageTitle={t(LABEL_LEARNING_RESOURCE)}>
       <Box
         className="tw:h-full tw:min-h-0 tw:overflow-hidden tw:px-0.5"
         data-testid="learning-resources-page"
@@ -336,7 +338,7 @@ export const LearningResourcesPage: React.FC = () => {
               className="tw:text-primary"
               size="text-md"
               weight="semibold">
-              {t('label.learning-resource')}
+              {t(LABEL_LEARNING_RESOURCE)}
             </Typography>
             <Typography className="tw:text-tertiary" size="text-sm">
               {t('message.learning-resources-management-description')}
@@ -381,7 +383,7 @@ export const LearningResourcesPage: React.FC = () => {
             <>
               <Table
                 stickyHeader
-                aria-label={t('label.learning-resource')}
+                aria-label={t(LABEL_LEARNING_RESOURCE)}
                 containerStyle={{
                   flex: 1,
                   minHeight: 0,
@@ -472,7 +474,7 @@ export const LearningResourcesPage: React.FC = () => {
             entityTitle={deletingResource.displayName || deletingResource.name}
             isDeleting={isDeleting}
             message={t('message.delete-entity-permanently', {
-              entityType: t('label.learning-resource'),
+              entityType: t(LABEL_LEARNING_RESOURCE),
             })}
             open={isDeleteModalOpen}
             onCancel={handleDeleteCancel}

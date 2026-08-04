@@ -14,11 +14,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { TitleComponent } from './TitleComponent';
 
+const TEST_VALUE = 'test-value';
+const ENTITY_HEADER_DISPLAY_NAME = 'entity-header-display-name';
+
 const mockHandleChange = jest.fn();
 const mockOnKeyDown = jest.fn();
 
 const mockProps = {
-  value: 'test-value',
+  value: TEST_VALUE,
   onChange: mockHandleChange,
   onKeyDown: mockOnKeyDown,
   autoFocus: true,
@@ -29,27 +32,23 @@ describe('TitleComponent', () => {
   it('should render TitleComponent', () => {
     render(<TitleComponent {...mockProps} />);
 
-    expect(
-      screen.getByTestId('entity-header-display-name')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)).toBeInTheDocument();
 
-    expect(screen.getByTestId('entity-header-display-name')).toHaveValue(
-      'test-value'
+    expect(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)).toHaveValue(
+      TEST_VALUE
     );
   });
 
   it('should render TitleComponent with readOnly', () => {
     render(<TitleComponent {...mockProps} readOnly />);
 
-    expect(
-      screen.getByTestId('entity-header-display-name')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)).toBeInTheDocument();
 
-    expect(screen.getByTestId('entity-header-display-name')).toHaveValue(
-      'test-value'
+    expect(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)).toHaveValue(
+      TEST_VALUE
     );
 
-    expect(screen.getByTestId('entity-header-display-name')).toHaveAttribute(
+    expect(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)).toHaveAttribute(
       'readOnly'
     );
   });
@@ -59,17 +58,15 @@ describe('TitleComponent', () => {
 
     render(<TitleComponent {...mockProps} ref={ref} />);
 
-    expect(
-      screen.getByTestId('entity-header-display-name')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)).toBeInTheDocument();
 
-    expect(ref.current).toBe(screen.getByTestId('entity-header-display-name'));
+    expect(ref.current).toBe(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME));
   });
 
   it('should render TitleComponent with onKeyDown', async () => {
     render(<TitleComponent {...mockProps} onKeyDown={mockOnKeyDown} />);
 
-    const input = screen.getByTestId('entity-header-display-name');
+    const input = screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME);
 
     expect(input).toBeInTheDocument();
 
@@ -81,7 +78,7 @@ describe('TitleComponent', () => {
   it('should render TitleComponent with onChange', async () => {
     render(<TitleComponent {...mockProps} onChange={mockHandleChange} />);
 
-    const input = screen.getByTestId('entity-header-display-name');
+    const input = screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME);
 
     expect(input).toBeInTheDocument();
 

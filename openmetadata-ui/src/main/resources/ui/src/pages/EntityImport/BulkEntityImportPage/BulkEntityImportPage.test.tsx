@@ -25,12 +25,21 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Include } from '../../../generated/type/include';
 import BulkEntityImportPage from './BulkEntityImportPage';
 
+const TEST_TABLE = 'test.table' as const;
+const TEST_JOB_ID = 'test-job-id' as const;
+const PAGE_LAYOUT = 'page-layout' as const;
+const UPLOAD_FILE = 'upload-file' as const;
+const UPLOAD_CSV_BUTTON = 'upload-csv-button' as const;
+const TITLE_BREADCRUMB = 'title-breadcrumb' as const;
+const METRIC_IMPORT = '/metric/*/import' as const;
+const BULK_EDIT_METRIC = '/bulk/edit/metric/*' as const;
+
 // Mock data
 const mockEntity = {
   id: 'test-id',
   name: 'test-table',
   displayName: 'Test Table',
-  fullyQualifiedName: 'test.table',
+  fullyQualifiedName: TEST_TABLE,
 };
 
 const mockCSVImportResult = {
@@ -55,7 +64,7 @@ const mockCSVImportResultAborted = {
 };
 
 const mockWebSocketResponse = {
-  jobId: 'test-job-id',
+  jobId: TEST_JOB_ID,
   status: 'COMPLETED' as const,
   result: mockCSVImportResult,
   error: null,
@@ -275,11 +284,11 @@ const renderComponent = (initialPath = '/table/test.table/import') => {
 
 const uploadCsv = async () => {
   await waitFor(() => {
-    expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
+    expect(screen.getByTestId(UPLOAD_CSV_BUTTON)).toBeInTheDocument();
   });
 
   await act(async () => {
-    fireEvent.click(screen.getByTestId('upload-csv-button'));
+    fireEvent.click(screen.getByTestId(UPLOAD_CSV_BUTTON));
   });
 };
 
@@ -306,7 +315,7 @@ describe('BulkEntityImportPage', () => {
     mockGetEntityByFqn = EntityUtilClassBase.getEntityByFqn as jest.Mock;
 
     const FqnHook = require('../../../hooks/useFqn');
-    FqnHook.useFqn.mockReturnValue({ fqn: 'test.table' });
+    FqnHook.useFqn.mockReturnValue({ fqn: TEST_TABLE });
 
     const RequiredParamsUtils = require('../../../utils/useRequiredParams');
     RequiredParamsUtils.useRequiredParams.mockReturnValue({
@@ -335,7 +344,7 @@ describe('BulkEntityImportPage', () => {
     jest.clearAllMocks();
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
     mockValidateCsvString.mockResolvedValue({
-      jobId: 'test-job-id',
+      jobId: TEST_JOB_ID,
       message: 'Import is in progress.',
     });
     mockGetImportValidateAPIEntityType.mockReturnValue(
@@ -379,7 +388,7 @@ describe('BulkEntityImportPage', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('page-layout')).toBeInTheDocument();
+        expect(screen.getByTestId(PAGE_LAYOUT)).toBeInTheDocument();
       });
     });
 
@@ -387,9 +396,9 @@ describe('BulkEntityImportPage', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
+        expect(screen.getByTestId(TITLE_BREADCRUMB)).toBeInTheDocument();
         expect(screen.getByTestId('stepper')).toBeInTheDocument();
-        expect(screen.getByTestId('upload-file')).toBeInTheDocument();
+        expect(screen.getByTestId(UPLOAD_FILE)).toBeInTheDocument();
       });
     });
 
@@ -397,7 +406,7 @@ describe('BulkEntityImportPage', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('upload-file')).toBeInTheDocument();
+        expect(screen.getByTestId(UPLOAD_FILE)).toBeInTheDocument();
       });
 
       // Data grid should not be visible initially
@@ -410,7 +419,7 @@ describe('BulkEntityImportPage', () => {
       await waitFor(() => {
         expect(mockGetEntityByFqn).toHaveBeenCalledWith(
           EntityType.TABLE,
-          'test.table'
+          TEST_TABLE
         );
       });
     });
@@ -432,10 +441,10 @@ describe('BulkEntityImportPage', () => {
       useFqn.mockReturnValue({ fqn: '*' });
       useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
 
-      renderComponent('/metric/*/import');
+      renderComponent(METRIC_IMPORT);
 
       await waitFor(() => {
-        expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
+        expect(screen.getByTestId(TITLE_BREADCRUMB)).toBeInTheDocument();
       });
 
       const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
@@ -453,7 +462,7 @@ describe('BulkEntityImportPage', () => {
       useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
       mockIsBulkEditRoute.mockReturnValue(true);
 
-      renderComponent('/bulk/edit/metric/*');
+      renderComponent(BULK_EDIT_METRIC);
 
       await waitFor(() => {
         expect(BulkEditEntity).toHaveBeenCalled();
@@ -476,10 +485,10 @@ describe('BulkEntityImportPage', () => {
       const { useRequiredParams } = require('../../../utils/useRequiredParams');
       useFqn.mockReturnValue({ fqn: '*' });
       useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
-      mockLocation.pathname = '/metric/*/import';
+      mockLocation.pathname = METRIC_IMPORT;
       const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
 
-      renderComponent('/metric/*/import');
+      renderComponent(METRIC_IMPORT);
 
       await uploadCsv();
       await startPreview();
@@ -500,9 +509,9 @@ describe('BulkEntityImportPage', () => {
       ];
       useFqn.mockReturnValue({ fqn: '*' });
       useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
-      mockLocation.pathname = '/metric/*/import';
+      mockLocation.pathname = METRIC_IMPORT;
 
-      renderComponent('/metric/*/import');
+      renderComponent(METRIC_IMPORT);
 
       await uploadCsv();
       await startPreview();
@@ -514,7 +523,7 @@ describe('BulkEntityImportPage', () => {
 
         socketCallback?.(
           JSON.stringify({
-            jobId: 'test-job-id',
+            jobId: TEST_JOB_ID,
             status: 'STARTED',
             error: null,
           })
@@ -570,7 +579,7 @@ describe('BulkEntityImportPage', () => {
       useFqn.mockReturnValue({ fqn: '*' });
       useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
       mockIsBulkEditRoute.mockReturnValue(true);
-      mockLocation.pathname = '/bulk/edit/metric/*';
+      mockLocation.pathname = BULK_EDIT_METRIC;
       mockLocation.state = {
         metricBulkEditScope: {
           mode: 'filtered',
@@ -589,7 +598,7 @@ describe('BulkEntityImportPage', () => {
           paging: {},
         });
 
-      renderComponent('/bulk/edit/metric/*');
+      renderComponent(BULK_EDIT_METRIC);
 
       await waitFor(() => {
         expect(mockGetMetrics).toHaveBeenCalledTimes(2);
@@ -630,14 +639,14 @@ describe('BulkEntityImportPage', () => {
       useFqn.mockReturnValue({ fqn: '*' });
       useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
       mockIsBulkEditRoute.mockReturnValue(true);
-      mockLocation.pathname = '/bulk/edit/metric/*';
+      mockLocation.pathname = BULK_EDIT_METRIC;
       mockLocation.state = null;
       mockGetMetrics.mockResolvedValueOnce({
         data: [metric],
         paging: {},
       });
 
-      renderComponent('/bulk/edit/metric/*');
+      renderComponent(BULK_EDIT_METRIC);
 
       await waitFor(() => {
         expect(mockGetMetrics).toHaveBeenCalledWith(
@@ -674,11 +683,11 @@ describe('BulkEntityImportPage', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('page-layout')).toBeInTheDocument();
+        expect(screen.getByTestId(PAGE_LAYOUT)).toBeInTheDocument();
       });
 
       // Should not crash
-      expect(screen.queryByTestId('title-breadcrumb')).toBeInTheDocument();
+      expect(screen.queryByTestId(TITLE_BREADCRUMB)).toBeInTheDocument();
     });
 
     it('should handle entity fetch error gracefully', async () => {
@@ -689,11 +698,11 @@ describe('BulkEntityImportPage', () => {
 
       // Component should still render even if entity fetch fails
       await waitFor(() => {
-        expect(screen.getByTestId('page-layout')).toBeInTheDocument();
+        expect(screen.getByTestId(PAGE_LAYOUT)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
-      expect(screen.getByTestId('upload-file')).toBeInTheDocument();
+      expect(screen.getByTestId(TITLE_BREADCRUMB)).toBeInTheDocument();
+      expect(screen.getByTestId(UPLOAD_FILE)).toBeInTheDocument();
     });
 
     it('should handle sourceEntityType from URL for test cases', async () => {
@@ -706,10 +715,10 @@ describe('BulkEntityImportPage', () => {
 
       // Component should render without crashing
       await waitFor(() => {
-        expect(screen.getByTestId('page-layout')).toBeInTheDocument();
+        expect(screen.getByTestId(PAGE_LAYOUT)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('upload-file')).toBeInTheDocument();
+      expect(screen.getByTestId(UPLOAD_FILE)).toBeInTheDocument();
     });
   });
 
@@ -740,7 +749,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
@@ -811,7 +820,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
@@ -841,7 +850,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
@@ -880,7 +889,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
@@ -897,7 +906,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'COMPLETED',
               result: {
                 ...mockCSVImportResultFailure,
@@ -930,7 +939,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
@@ -947,7 +956,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'COMPLETED',
               result: mockCSVImportResultAborted,
               error: null,
@@ -980,7 +989,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
@@ -997,7 +1006,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'FAILED',
               error: 'Processing failed',
             })
@@ -1112,14 +1121,14 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
           );
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'COMPLETED',
               result: mockCSVImportResultAborted,
               error: null,
@@ -1151,14 +1160,14 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
           );
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'COMPLETED',
               result: mockCSVImportResultAborted,
               error: null,
@@ -1178,7 +1187,7 @@ describe('BulkEntityImportPage', () => {
 
       // Should return to upload step
       await waitFor(() => {
-        expect(screen.getByTestId('upload-file')).toBeInTheDocument();
+        expect(screen.getByTestId(UPLOAD_FILE)).toBeInTheDocument();
       });
     });
 
@@ -1203,10 +1212,10 @@ describe('BulkEntityImportPage', () => {
 
       // Component should render without crashing despite network error
       await waitFor(() => {
-        expect(screen.getByTestId('page-layout')).toBeInTheDocument();
+        expect(screen.getByTestId(PAGE_LAYOUT)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('upload-file')).toBeInTheDocument();
+      expect(screen.getByTestId(UPLOAD_FILE)).toBeInTheDocument();
     });
 
     it('should handle invalid CSV data', async () => {
@@ -1244,7 +1253,7 @@ describe('BulkEntityImportPage', () => {
       });
 
       // Component should not crash
-      expect(screen.getByTestId('page-layout')).toBeInTheDocument();
+      expect(screen.getByTestId(PAGE_LAYOUT)).toBeInTheDocument();
     });
 
     it('should handle empty CSV file', async () => {
@@ -1258,7 +1267,7 @@ describe('BulkEntityImportPage', () => {
       await uploadCsv();
 
       // Should handle gracefully
-      expect(screen.getByTestId('page-layout')).toBeInTheDocument();
+      expect(screen.getByTestId(PAGE_LAYOUT)).toBeInTheDocument();
     });
 
     it('should handle API validation error', async () => {
@@ -1281,7 +1290,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })
@@ -1325,7 +1334,7 @@ describe('BulkEntityImportPage', () => {
       renderComponent();
 
       await waitFor(() => {
-        const uploadButton = screen.getByTestId('upload-csv-button');
+        const uploadButton = screen.getByTestId(UPLOAD_CSV_BUTTON);
 
         expect(uploadButton).toBeInTheDocument();
         expect(uploadButton).toHaveTextContent('Upload CSV');
@@ -1347,7 +1356,7 @@ describe('BulkEntityImportPage', () => {
         if (socketCallback) {
           socketCallback(
             JSON.stringify({
-              jobId: 'test-job-id',
+              jobId: TEST_JOB_ID,
               status: 'STARTED',
               error: null,
             })

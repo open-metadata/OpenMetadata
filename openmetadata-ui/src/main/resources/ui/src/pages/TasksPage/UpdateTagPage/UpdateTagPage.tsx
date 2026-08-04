@@ -68,6 +68,8 @@ import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
+const LABEL_TASK = 'label.task' as const;
+
 const UpdateTag = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
@@ -165,7 +167,7 @@ const UpdateTag = () => {
       await createTask(data);
       showSuccessToast(
         t('server.create-entity-success', {
-          entity: t('label.task'),
+          entity: t(LABEL_TASK),
         })
       );
       navigate(
@@ -248,7 +250,7 @@ const UpdateTag = () => {
                 ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
-                    entity: t('label.task'),
+                    entity: t(LABEL_TASK),
                   }),
                   activeTitle: true,
                   url: '',
@@ -260,7 +262,7 @@ const UpdateTag = () => {
                 className="text-base"
                 data-testid="form-title">
                 {t('label.create-entity', {
-                  entity: t('label.task'),
+                  entity: t(LABEL_TASK),
                 })}
               </Typography.Paragraph>
               <Form

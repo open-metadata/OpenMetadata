@@ -32,6 +32,12 @@ import {
 } from './EntityImportUtils';
 
 // Mock dependencies
+const TEST_ENTITY = 'Test Entity';
+const LABEL_IMPORT = 'label.import';
+const NAME_DESCRIPTION_TABLE1_TEST_TABLE =
+  'name,description\nTable1,Test table';
+const DATABASE_SCHEMA_TABLE = 'database.schema.table';
+
 jest.mock('../../rest/importExportAPI');
 jest.mock('../EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn((entity) => [
@@ -131,7 +137,7 @@ describe('EntityImportUtils', () => {
 
   describe('getBulkEntityBreadcrumbList', () => {
     const mockEntity = {
-      name: 'Test Entity',
+      name: TEST_ENTITY,
       fullyQualifiedName: 'test.entity.fqn',
     };
 
@@ -145,9 +151,9 @@ describe('EntityImportUtils', () => {
       expect(result).toHaveLength(3);
       expect(result[0].name).toBe('label.glossary-plural');
       expect(result[0].url).toBe('/glossary');
-      expect(result[1].name).toBe('Test Entity');
+      expect(result[1].name).toBe(TEST_ENTITY);
       expect(result[1].url).toBe('/glossary/test.entity.fqn');
-      expect(result[2].name).toBe('label.import');
+      expect(result[2].name).toBe(LABEL_IMPORT);
       expect(result[2].activeTitle).toBe(true);
     });
 
@@ -172,8 +178,8 @@ describe('EntityImportUtils', () => {
 
       expect(result).toHaveLength(3);
       expect(result[0].name).toBe('Parent');
-      expect(result[1].name).toBe('Test Entity');
-      expect(result[2].name).toBe('label.import');
+      expect(result[1].name).toBe(TEST_ENTITY);
+      expect(result[2].name).toBe(LABEL_IMPORT);
     });
 
     it('should include additional breadcrumbs when provided', () => {
@@ -189,7 +195,7 @@ describe('EntityImportUtils', () => {
 
       expect(result).toHaveLength(4);
       expect(result[2].name).toBe('Extra');
-      expect(result[3].name).toBe('label.import');
+      expect(result[3].name).toBe(LABEL_IMPORT);
     });
   });
 
@@ -257,8 +263,8 @@ describe('EntityImportUtils', () => {
     });
 
     it('should call correct API for TABLE entity type with import mode', async () => {
-      const csvData = 'name,description\nTable1,Test table';
-      const fqn = 'database.schema.table';
+      const csvData = NAME_DESCRIPTION_TABLE1_TEST_TABLE;
+      const fqn = DATABASE_SCHEMA_TABLE;
 
       await validateCsvString(csvData, EntityType.TABLE, fqn, false);
 
@@ -272,8 +278,8 @@ describe('EntityImportUtils', () => {
     });
 
     it('should call API with recursive false for bulk edit mode', async () => {
-      const csvData = 'name,description\nTable1,Test table';
-      const fqn = 'database.schema.table';
+      const csvData = NAME_DESCRIPTION_TABLE1_TEST_TABLE;
+      const fqn = DATABASE_SCHEMA_TABLE;
 
       await validateCsvString(csvData, EntityType.TABLE, fqn, true);
 
@@ -317,8 +323,8 @@ describe('EntityImportUtils', () => {
     });
 
     it('should return API response', async () => {
-      const csvData = 'name,description\nTable1,Test table';
-      const fqn = 'database.schema.table';
+      const csvData = NAME_DESCRIPTION_TABLE1_TEST_TABLE;
+      const fqn = DATABASE_SCHEMA_TABLE;
 
       const result = await validateCsvString(
         csvData,

@@ -50,6 +50,10 @@ import {
   mockTextBasedSummaryTitleResponse,
 } from './mocks/EntitySummaryPanelUtils.mock';
 
+const MOCK_SCHEMA_EDITOR = 'schema-editor';
+const MOCK_NO_CODE_AVAILABLE = 'No code available';
+const LABEL_CODE = 'label.code';
+
 jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
   ...jest.requireActual('../constants/EntitySummaryPanelUtils.constant'),
   SummaryListHighlightKeys: [
@@ -63,8 +67,8 @@ jest.mock('../components/Database/SchemaEditor/SchemaEditor', () => {
   return jest
     .fn()
     .mockImplementation(({ value }) => (
-      <div data-testid="schema-editor">
-        {isEmpty(value) ? 'No code available' : value}
+      <div data-testid={MOCK_SCHEMA_EDITOR}>
+        {isEmpty(value) ? MOCK_NO_CODE_AVAILABLE : value}
       </div>
     ));
 });
@@ -223,9 +227,9 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
-        const schemaEditor = await screen.findByTestId('schema-editor');
+        const schemaEditor = await screen.findByTestId(MOCK_SCHEMA_EDITOR);
 
-        expect(screen.getByText('label.code')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_CODE)).toBeInTheDocument();
         expect(schemaEditor).toBeInTheDocument();
         expect(schemaEditor).toHaveTextContent(
           'CREATE PROCEDURE test_stored_procedure() BEGIN SELECT * FROM users; END'
@@ -240,11 +244,11 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
-        const schemaEditor = await screen.findByTestId('schema-editor');
+        const schemaEditor = await screen.findByTestId(MOCK_SCHEMA_EDITOR);
 
-        expect(screen.getByText('label.code')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_CODE)).toBeInTheDocument();
         expect(schemaEditor).toBeInTheDocument();
-        expect(schemaEditor).toHaveTextContent('No code available');
+        expect(schemaEditor).toHaveTextContent(MOCK_NO_CODE_AVAILABLE);
       });
 
       it('should render stored procedure with empty code correctly', async () => {
@@ -255,11 +259,11 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
-        const schemaEditor = await screen.findByTestId('schema-editor');
+        const schemaEditor = await screen.findByTestId(MOCK_SCHEMA_EDITOR);
 
-        expect(screen.getByText('label.code')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_CODE)).toBeInTheDocument();
         expect(schemaEditor).toBeInTheDocument();
-        expect(schemaEditor).toHaveTextContent('No code available');
+        expect(schemaEditor).toHaveTextContent(MOCK_NO_CODE_AVAILABLE);
       });
 
       it('should render stored procedure with undefined code field correctly', async () => {
@@ -278,11 +282,11 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
-        const schemaEditor = await screen.findByTestId('schema-editor');
+        const schemaEditor = await screen.findByTestId(MOCK_SCHEMA_EDITOR);
 
-        expect(screen.getByText('label.code')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_CODE)).toBeInTheDocument();
         expect(schemaEditor).toBeInTheDocument();
-        expect(schemaEditor).toHaveTextContent('No code available');
+        expect(schemaEditor).toHaveTextContent(MOCK_NO_CODE_AVAILABLE);
       });
 
       it('should render stored procedure heading and testId correctly', () => {
@@ -294,9 +298,7 @@ describe('EntitySummaryPanelUtils tests', () => {
         renderWithRouter(result as JSX.Element);
 
         expect(screen.getByTestId('code-header')).toBeInTheDocument();
-        expect(screen.getByTestId('code-header')).toHaveTextContent(
-          'label.code'
-        );
+        expect(screen.getByTestId('code-header')).toHaveTextContent(LABEL_CODE);
       });
     });
   });

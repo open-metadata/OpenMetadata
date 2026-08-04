@@ -17,6 +17,8 @@ import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { getSampleDataByTableId } from '../../../rest/tableAPI';
 import SampleDataTable from './SampleDataTable.component';
 
+const SAMPLE_DATA_MANAGE_BUTTON = 'sample-data-manage-button';
+
 const mockProps = {
   tableId: 'id',
   owners: [{ type: 'user', id: 'ownerId' }],
@@ -73,7 +75,7 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const deleteButton = screen.getByTestId('sample-data-manage-button');
+    const deleteButton = screen.getByTestId(SAMPLE_DATA_MANAGE_BUTTON);
     const table = screen.getByTestId('sample-data-table');
 
     expect(deleteButton).toBeInTheDocument();
@@ -93,7 +95,7 @@ describe('Test SampleDataTable Component', () => {
       );
     });
 
-    expect(screen.getByTestId('sample-data-manage-button')).toBeInTheDocument();
+    expect(screen.getByTestId(SAMPLE_DATA_MANAGE_BUTTON)).toBeInTheDocument();
   });
 
   it('Render Delete Modal when delete sample data button is clicked', async () => {
@@ -101,7 +103,7 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const dropdown = screen.getByTestId('sample-data-manage-button');
+    const dropdown = screen.getByTestId(SAMPLE_DATA_MANAGE_BUTTON);
 
     expect(dropdown).toBeInTheDocument();
 
@@ -131,7 +133,7 @@ describe('Test SampleDataTable Component', () => {
       render(<SampleDataTable {...mockProps} />);
     });
 
-    const dropdown = screen.getByTestId('sample-data-manage-button');
+    const dropdown = screen.getByTestId(SAMPLE_DATA_MANAGE_BUTTON);
 
     expect(dropdown).toBeInTheDocument();
 
@@ -158,7 +160,7 @@ describe('Test SampleDataTable Component', () => {
         render(<SampleDataTable {...mockProps} />);
       });
 
-      const dropdown = screen.getByTestId('sample-data-manage-button');
+      const dropdown = screen.getByTestId(SAMPLE_DATA_MANAGE_BUTTON);
 
       fireEvent.click(dropdown);
 

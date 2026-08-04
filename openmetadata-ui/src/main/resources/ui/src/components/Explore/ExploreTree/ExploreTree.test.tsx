@@ -20,6 +20,15 @@ import * as miscAPI from '../../../rest/miscAPI';
 import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree, { getExploreTreeAggregationResponse } from './ExploreTree';
 
+const LABEL_DATABASE_PLURAL = 'label.database-plural';
+const LABEL_DASHBOARD_PLURAL = 'label.dashboard-plural';
+const LABEL_GOVERNANCE = 'label.governance';
+const ANT_TREE_TREENODE = '.ant-tree-treenode';
+const ANT_TREE_TREENODE_DISABLED = 'ant-tree-treenode-disabled';
+const ANT_TREE_SWITCHER = '.ant-tree-switcher';
+const TIER_TIER1 = 'Tier.Tier1';
+const SERVICE_DISPLAYNAME_KEYWORD = 'service.displayName.keyword';
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
@@ -67,14 +76,14 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    expect(getByText('label.database-plural')).toBeInTheDocument();
-    expect(getByText('label.dashboard-plural')).toBeInTheDocument();
+    expect(getByText(LABEL_DATABASE_PLURAL)).toBeInTheDocument();
+    expect(getByText(LABEL_DASHBOARD_PLURAL)).toBeInTheDocument();
     expect(getByText('label.topic-plural')).toBeInTheDocument();
     expect(getByText('label.container-plural')).toBeInTheDocument();
     expect(getByText('label.pipeline-plural')).toBeInTheDocument();
     expect(getByText('label.search-index-plural')).toBeInTheDocument();
     expect(getByText('label.ml-model-plural')).toBeInTheDocument();
-    expect(getByText('label.governance')).toBeInTheDocument();
+    expect(getByText(LABEL_GOVERNANCE)).toBeInTheDocument();
   });
 
   it('does not fetch entity counts while the product tour is open', async () => {
@@ -140,15 +149,15 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    const databaseNode = getByText('label.database-plural').closest(
-      '.ant-tree-treenode'
+    const databaseNode = getByText(LABEL_DATABASE_PLURAL).closest(
+      ANT_TREE_TREENODE
     );
-    const dashboardNode = getByText('label.dashboard-plural').closest(
-      '.ant-tree-treenode'
+    const dashboardNode = getByText(LABEL_DASHBOARD_PLURAL).closest(
+      ANT_TREE_TREENODE
     );
 
-    expect(databaseNode).not.toHaveClass('ant-tree-treenode-disabled');
-    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+    expect(databaseNode).not.toHaveClass(ANT_TREE_TREENODE_DISABLED);
+    expect(dashboardNode).toHaveClass(ANT_TREE_TREENODE_DISABLED);
   });
 
   it('reports a category-root click as a browse selection, not a quick filter', async () => {
@@ -165,7 +174,7 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    fireEvent.click(getByText('label.database-plural'));
+    fireEvent.click(getByText(LABEL_DATABASE_PLURAL));
 
     expect(onFieldValueSelect).not.toHaveBeenCalled();
     expect(onTreeSelect).toHaveBeenCalledTimes(1);
@@ -175,7 +184,7 @@ describe('ExploreTree', () => {
     expect(typeField).toBeUndefined();
     expect(browseFields).toHaveLength(1);
     expect(browseFields[0].key).toBe('entityType');
-    expect(browseFields[0].label).toBe('label.database-plural');
+    expect(browseFields[0].label).toBe(LABEL_DATABASE_PLURAL);
     expect(browseFields[0].value.map((v: { key: string }) => v.key)).toContain(
       'table'
     );
@@ -195,9 +204,9 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    const governanceSwitcher = getByText('label.governance')
-      .closest('.ant-tree-treenode')
-      ?.querySelector('.ant-tree-switcher');
+    const governanceSwitcher = getByText(LABEL_GOVERNANCE)
+      .closest(ANT_TREE_TREENODE)
+      ?.querySelector(ANT_TREE_SWITCHER);
     fireEvent.click(governanceSwitcher as Element);
 
     fireEvent.click(getByText('label.glossary-plural'));
@@ -214,7 +223,7 @@ describe('ExploreTree', () => {
 
   it('counts honor the active quick filter while category visibility tracks the whole estate', async () => {
     const quickFilter = {
-      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+      query: { bool: { must: [{ term: { 'tier.tagFQN': TIER_TIER1 } }] } },
     };
     const filteredBuckets = [{ key: 'table', doc_count: 5 }];
     const unfilteredBuckets = [
@@ -267,10 +276,10 @@ describe('ExploreTree', () => {
     expect(presenceCall).toBeDefined();
     // A category with no matches under the filter (Dashboards has 0 tables) is
     // still rendered, because visibility tracks the unfiltered estate.
-    expect(getByText('label.dashboard-plural')).toBeInTheDocument();
+    expect(getByText(LABEL_DASHBOARD_PLURAL)).toBeInTheDocument();
     expect(
-      getByText('label.dashboard-plural').closest('.ant-tree-treenode')
-    ).not.toHaveClass('ant-tree-treenode-disabled');
+      getByText(LABEL_DASHBOARD_PLURAL).closest(ANT_TREE_TREENODE)
+    ).not.toHaveClass(ANT_TREE_TREENODE_DISABLED);
   });
 
   it('grays out non-matching categories when a service browse path is active', async () => {
@@ -321,16 +330,16 @@ describe('ExploreTree', () => {
         mustLength(arg) > 0 &&
         JSON.stringify(arg.queryFilter).includes('serviceType')
     );
-    const databaseNode = getByText('label.database-plural').closest(
-      '.ant-tree-treenode'
+    const databaseNode = getByText(LABEL_DATABASE_PLURAL).closest(
+      ANT_TREE_TREENODE
     );
-    const dashboardNode = getByText('label.dashboard-plural').closest(
-      '.ant-tree-treenode'
+    const dashboardNode = getByText(LABEL_DASHBOARD_PLURAL).closest(
+      ANT_TREE_TREENODE
     );
 
     expect(filteredCall).toBeDefined();
-    expect(databaseNode).not.toHaveClass('ant-tree-treenode-disabled');
-    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+    expect(databaseNode).not.toHaveClass(ANT_TREE_TREENODE_DISABLED);
+    expect(dashboardNode).toHaveClass(ANT_TREE_TREENODE_DISABLED);
   });
 
   it('grays out non-matching categories when an advanced service filter is active', async () => {
@@ -373,17 +382,17 @@ describe('ExploreTree', () => {
         mustLength(arg) > 0 &&
         JSON.stringify(arg.queryFilter).includes('serviceType')
     );
-    const dashboardNode = getByText('label.dashboard-plural').closest(
-      '.ant-tree-treenode'
+    const dashboardNode = getByText(LABEL_DASHBOARD_PLURAL).closest(
+      ANT_TREE_TREENODE
     );
 
     expect(filteredCall).toBeDefined();
-    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+    expect(dashboardNode).toHaveClass(ANT_TREE_TREENODE_DISABLED);
   });
 
   it('reuses the cached unfiltered presence aggregation across filter changes', async () => {
     const filterA = {
-      query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+      query: { bool: { must: [{ term: { 'tier.tagFQN': TIER_TIER1 } }] } },
     };
     const filterB = {
       query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier2' } }] } },
@@ -501,13 +510,12 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    const governanceSwitcher = getByText('label.governance')
-      .closest('.ant-tree-treenode')
-      ?.querySelector('.ant-tree-switcher');
+    const governanceSwitcher = getByText(LABEL_GOVERNANCE)
+      .closest(ANT_TREE_TREENODE)
+      ?.querySelector(ANT_TREE_SWITCHER);
     fireEvent.click(governanceSwitcher as Element);
 
-    const tagsNode =
-      getByText('label.tag-plural').closest('.ant-tree-treenode');
+    const tagsNode = getByText('label.tag-plural').closest(ANT_TREE_TREENODE);
 
     // The latest filter (Tier2 → 5) wins; the stale Tier1 (→ 10) is dropped.
     expect(tagsNode).toHaveTextContent('5');
@@ -529,15 +537,15 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    expect(getByText('label.database-plural')).toBeInTheDocument();
-    expect(getByText('label.governance')).toBeInTheDocument();
+    expect(getByText(LABEL_DATABASE_PLURAL)).toBeInTheDocument();
+    expect(getByText(LABEL_GOVERNANCE)).toBeInTheDocument();
   });
 
   it('includes style top hits and search text for service name buckets', async () => {
     const postAggregateSpy = jest
       .spyOn(miscAPI, 'postAggregateFieldOptions')
       .mockResolvedValue(
-        buildFieldAggregationResponse('service.displayName.keyword', [
+        buildFieldAggregationResponse(SERVICE_DISPLAYNAME_KEYWORD, [
           {
             key: 'custom_bigquery',
             doc_count: 10,
@@ -568,7 +576,7 @@ describe('ExploreTree', () => {
 
     expect(postAggregateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        fieldName: 'service.displayName.keyword',
+        fieldName: SERVICE_DISPLAYNAME_KEYWORD,
         queryText: 'customer',
         sourceFields: ['service.style'],
         topHits: {
@@ -606,7 +614,7 @@ describe('ExploreTree', () => {
     jest
       .spyOn(miscAPI, 'postAggregateFieldOptions')
       .mockResolvedValue(
-        buildFieldAggregationResponse('service.displayName.keyword', [
+        buildFieldAggregationResponse(SERVICE_DISPLAYNAME_KEYWORD, [
           { key: 'bigquery_prod', doc_count: 900 },
         ])
       );
@@ -615,8 +623,8 @@ describe('ExploreTree', () => {
     // one level deeper into the service so a nested level is mounted.
     const bigQueryNode = await findByText('BigQuery');
     const switcher = bigQueryNode
-      .closest('.ant-tree-treenode')
-      ?.querySelector('.ant-tree-switcher');
+      .closest(ANT_TREE_TREENODE)
+      ?.querySelector(ANT_TREE_SWITCHER);
     fireEvent.click(switcher as Element);
 
     expect(await findByText('bigquery_prod')).toBeInTheDocument();
@@ -684,7 +692,7 @@ describe('ExploreTree', () => {
       `/explore?quickFilter=${encodeURIComponent(
         JSON.stringify({
           query: {
-            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+            bool: { must: [{ term: { 'tier.tagFQN': TIER_TIER1 } }] },
           },
         })
       )}`
@@ -696,7 +704,7 @@ describe('ExploreTree', () => {
     await waitFor(() => {
       expect(
         searchQuerySpy.mock.calls.some(([arg]) =>
-          JSON.stringify(arg.queryFilter ?? {}).includes('Tier.Tier1')
+          JSON.stringify(arg.queryFilter ?? {}).includes(TIER_TIER1)
         )
       ).toBe(true);
     });
@@ -750,7 +758,7 @@ describe('ExploreTree', () => {
       `/explore?browsePath=${browsePath}&quickFilter=${encodeURIComponent(
         JSON.stringify({
           query: {
-            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+            bool: { must: [{ term: { 'tier.tagFQN': TIER_TIER1 } }] },
           },
         })
       )}`
@@ -762,7 +770,7 @@ describe('ExploreTree', () => {
     await waitFor(() => {
       expect(
         searchQuerySpy.mock.calls.some(([arg]) =>
-          JSON.stringify(arg.queryFilter ?? {}).includes('Tier.Tier1')
+          JSON.stringify(arg.queryFilter ?? {}).includes(TIER_TIER1)
         )
       ).toBe(true);
     });
@@ -810,7 +818,7 @@ describe('ExploreTree', () => {
 
     // Selecting a category root is a browse click; reflect its browsePath so the
     // browse refresh fires without rebuilding (and so without the spinner).
-    fireEvent.click(getByText('label.database-plural'));
+    fireEvent.click(getByText(LABEL_DATABASE_PLURAL));
     window.history.pushState(
       {},
       '',
@@ -818,7 +826,7 @@ describe('ExploreTree', () => {
         JSON.stringify([
           {
             key: 'entityType',
-            label: 'label.database-plural',
+            label: LABEL_DATABASE_PLURAL,
             value: [{ key: 'table', label: 'table' }],
           },
         ])
@@ -833,7 +841,7 @@ describe('ExploreTree', () => {
     // A browse refresh keeps the tree on screen instead of swapping in the
     // full-screen spinner (the "page reload" symptom the user reported).
     expect(queryByTestId('loader')).not.toBeInTheDocument();
-    expect(getByText('label.database-plural')).toBeInTheDocument();
+    expect(getByText(LABEL_DATABASE_PLURAL)).toBeInTheDocument();
 
     await act(async () => {
       releaseRefresh?.();

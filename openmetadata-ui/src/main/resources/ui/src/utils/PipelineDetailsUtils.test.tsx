@@ -16,6 +16,8 @@ import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractPipelineTasks } from './PipelineDetailsUtils';
 
+const PIPELINE_TASK1 = 'pipeline.task1';
+
 type PipelineTestData = Partial<Pipeline> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;
 
@@ -27,7 +29,7 @@ describe('PipelineDetailsUtils', () => {
         tasks: [
           {
             name: 'task1',
-            fullyQualifiedName: 'pipeline.task1',
+            fullyQualifiedName: PIPELINE_TASK1,
             displayName: 'Task 1',
           },
           {
@@ -87,7 +89,7 @@ describe('PipelineDetailsUtils', () => {
         tasks: [
           {
             name: 'task1',
-            fullyQualifiedName: 'pipeline.task1',
+            fullyQualifiedName: PIPELINE_TASK1,
           },
         ],
       };
@@ -103,7 +105,7 @@ describe('PipelineDetailsUtils', () => {
         tasks: [
           {
             name: 'task1',
-            fullyQualifiedName: 'pipeline.task1',
+            fullyQualifiedName: PIPELINE_TASK1,
             tags: [
               {
                 tagFQN: 'tag1',
@@ -135,7 +137,7 @@ describe('PipelineDetailsUtils', () => {
         tasks: [
           {
             name: 'task1',
-            fullyQualifiedName: 'pipeline.task1',
+            fullyQualifiedName: PIPELINE_TASK1,
             tags: null as unknown as undefined,
           },
         ],
@@ -153,7 +155,7 @@ describe('PipelineDetailsUtils', () => {
         tasks: [
           {
             name: 'task1',
-            fullyQualifiedName: 'pipeline.task1',
+            fullyQualifiedName: PIPELINE_TASK1,
             displayName: 'Task 1',
             description: 'Test task description',
             sourceUrl: 'http://example.com/task1',
@@ -167,7 +169,7 @@ describe('PipelineDetailsUtils', () => {
       const result = extractPipelineTasks(mockPipeline);
 
       expect(result[0].name).toBe('task1');
-      expect(result[0].fullyQualifiedName).toBe('pipeline.task1');
+      expect(result[0].fullyQualifiedName).toBe(PIPELINE_TASK1);
       expect(result[0].displayName).toBe('Task 1');
       expect(result[0].description).toBe('Test task description');
       expect(result[0].sourceUrl).toBe('http://example.com/task1');
@@ -183,7 +185,7 @@ describe('PipelineDetailsUtils', () => {
         tasks: [
           {
             name: 'task1',
-            fullyQualifiedName: 'pipeline.task1',
+            fullyQualifiedName: PIPELINE_TASK1,
           },
           {
             name: 'task2',
@@ -219,7 +221,7 @@ describe('PipelineDetailsUtils', () => {
         tasks: [
           {
             name: 'task1',
-            fullyQualifiedName: 'pipeline.task1',
+            fullyQualifiedName: PIPELINE_TASK1,
             owners: [
               {
                 id: 'owner1',

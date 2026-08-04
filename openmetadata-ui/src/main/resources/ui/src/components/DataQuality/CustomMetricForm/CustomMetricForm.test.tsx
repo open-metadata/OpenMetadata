@@ -14,6 +14,8 @@ import { render, screen } from '@testing-library/react';
 import { Form } from 'antd';
 import CustomMetricForm from './CustomMetricForm.component';
 
+const CUSTOM_METRIC_NAME = 'custom-metric-name';
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     search:
@@ -26,7 +28,7 @@ describe('CustomMetricForm', () => {
     render(<CustomMetricForm isColumnMetric={false} onFinish={jest.fn()} />);
 
     expect(await screen.findByTestId('custom-metric-form')).toBeInTheDocument();
-    expect(await screen.findByTestId('custom-metric-name')).toBeInTheDocument();
+    expect(await screen.findByTestId(CUSTOM_METRIC_NAME)).toBeInTheDocument();
     expect(
       await screen.findByTestId('sql-editor-container')
     ).toBeInTheDocument();
@@ -43,7 +45,7 @@ describe('CustomMetricForm', () => {
   it('if isEditMode is true, name and column should be disabled', async () => {
     render(<CustomMetricForm isColumnMetric isEditMode onFinish={jest.fn()} />);
 
-    expect(await screen.findByTestId('custom-metric-name')).toBeDisabled();
+    expect(await screen.findByTestId(CUSTOM_METRIC_NAME)).toBeDisabled();
     expect(await screen.findByTestId('custom-metric-column')).toHaveClass(
       'ant-select-disabled'
     );
@@ -71,7 +73,7 @@ describe('CustomMetricForm', () => {
 
     render(<FormWrapper />);
 
-    expect(await screen.findByTestId('custom-metric-name')).toHaveValue(
+    expect(await screen.findByTestId(CUSTOM_METRIC_NAME)).toHaveValue(
       initialValues.name
     );
     expect(

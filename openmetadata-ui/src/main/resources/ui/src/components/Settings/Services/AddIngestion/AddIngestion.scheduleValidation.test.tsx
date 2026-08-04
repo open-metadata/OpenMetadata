@@ -30,6 +30,8 @@ import {
   AddIngestionProps,
 } from './IngestionWorkflow.interface';
 
+const FREQUENCY_CUSTOM = 'frequency-custom';
+
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ ingestionFQN: '' }),
 }));
@@ -74,7 +76,7 @@ describe('AddIngestion schedule validation', () => {
     const ref = createRef<AddIngestionHandle>();
     render(<AddIngestion {...mockProps} ref={ref} />);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } });
 
     expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
@@ -91,7 +93,7 @@ describe('AddIngestion schedule validation', () => {
     const ref = createRef<AddIngestionHandle>();
     render(<AddIngestion {...mockProps} ref={ref} />);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '0 0 * *' },
     });
@@ -107,7 +109,7 @@ describe('AddIngestion schedule validation', () => {
     const ref = createRef<AddIngestionHandle>();
     render(<AddIngestion {...mockProps} ref={ref} />);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '*/5 * * * *' },
     });
@@ -123,7 +125,7 @@ describe('AddIngestion schedule validation', () => {
     const ref = createRef<AddIngestionHandle>();
     render(<AddIngestion {...mockProps} ref={ref} />);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '0 3 * * *' },
     });

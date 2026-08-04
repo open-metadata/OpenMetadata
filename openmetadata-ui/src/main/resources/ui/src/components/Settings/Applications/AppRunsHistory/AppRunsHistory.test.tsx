@@ -28,6 +28,9 @@ import {
 } from '../../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
+const LABEL_LOG_PLURAL = 'label.log-plural';
+const STR_2024_02_05 = '2024-02-05';
+
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
@@ -237,7 +240,7 @@ describe('AppRunsHistory', () => {
 
     // checking the logs function call for internal app
     act(() => {
-      userEvent.click(screen.getByText('label.log-plural'));
+      userEvent.click(screen.getByText(LABEL_LOG_PLURAL));
     });
 
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
@@ -274,13 +277,13 @@ describe('AppRunsHistory', () => {
   });
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
-    jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
+    jest.useFakeTimers('modern').setSystemTime(new Date(STR_2024_02_05));
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
-      endTs: new Date('2024-02-05').valueOf(),
+      endTs: new Date(STR_2024_02_05).valueOf(),
       limit: 10,
     });
 
@@ -290,7 +293,7 @@ describe('AppRunsHistory', () => {
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
-      endTs: new Date('2024-02-05').valueOf(),
+      endTs: new Date(STR_2024_02_05).valueOf(),
       limit: 10,
     });
   });
@@ -332,7 +335,7 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    fireEvent.click(screen.getByText('label.log-plural'));
+    fireEvent.click(screen.getByText(LABEL_LOG_PLURAL));
 
     expect(screen.getByText('LogViewerModalOpen')).toBeInTheDocument();
     expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
@@ -350,7 +353,7 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    fireEvent.click(screen.getByText('label.log-plural'));
+    fireEvent.click(screen.getByText(LABEL_LOG_PLURAL));
 
     expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
     expect(screen.queryByText('LogViewerModalOpen')).not.toBeInTheDocument();
@@ -360,7 +363,7 @@ describe('AppRunsHistory', () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
-    fireEvent.click(screen.getByText('label.log-plural'));
+    fireEvent.click(screen.getByText(LABEL_LOG_PLURAL));
 
     expect(mockOpenLogs).toHaveBeenCalledWith(
       expect.objectContaining({ logEntityType: 'apps' })
@@ -390,7 +393,7 @@ describe('AppRunsHistory', () => {
 
     expect(configButton).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'label.log-plural' })
+      screen.getByRole('button', { name: LABEL_LOG_PLURAL })
     ).toBeDisabled();
 
     fireEvent.click(configButton);

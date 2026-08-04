@@ -40,6 +40,8 @@ import { AuthProvider } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './login.style.less';
 
+const LABEL_EMAIL = 'label.email' as const;
+
 const SignInPage = () => {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
@@ -209,7 +211,7 @@ const SignInPage = () => {
                 onFinish={handleSubmit}>
                 <Form.Item
                   data-testid="email"
-                  label={t('label.email')}
+                  label={t(LABEL_EMAIL)}
                   name="email"
                   rules={[
                     { required: true },
@@ -217,7 +219,7 @@ const SignInPage = () => {
                       pattern: EMAIL_REG_EX,
                       type: 'email',
                       message: t('message.field-text-is-invalid', {
-                        fieldText: t('label.email'),
+                        fieldText: t(LABEL_EMAIL),
                       }),
                     },
                   ]}>
@@ -225,7 +227,7 @@ const SignInPage = () => {
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first field of sign-in form
                     autoFocus
                     className="input-field"
-                    placeholder={t('label.email')}
+                    placeholder={t(LABEL_EMAIL)}
                   />
                 </Form.Item>
                 <Form.Item

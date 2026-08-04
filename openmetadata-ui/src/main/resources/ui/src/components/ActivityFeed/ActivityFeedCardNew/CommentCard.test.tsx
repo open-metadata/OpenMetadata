@@ -20,6 +20,11 @@ import {
 } from '../../../generated/entity/feed/thread';
 import CommentCard from './CommentCard.component';
 
+const MOCK_FEED_EDITOR = 'feed-editor';
+const MOCK_FEED_ACTIONS = 'feed-actions';
+const MOCK_EDIT_BUTTON = 'edit-button';
+const FEED_REPLY_CARD = 'feed-reply-card';
+
 const mockUpdateFeed = jest.fn();
 
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
@@ -65,7 +70,7 @@ jest.mock('../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew', () => {
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
   return jest.fn(({ onSave, onTextChange }) => (
-    <div data-testid="feed-editor">
+    <div data-testid={MOCK_FEED_EDITOR}>
       <input
         aria-label="Editor input"
         data-testid="editor-input"
@@ -82,8 +87,8 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
 
 jest.mock('../Shared/ActivityFeedActions', () => {
   return jest.fn(({ onEditPost }) => (
-    <div data-testid="feed-actions">
-      <button data-testid="edit-button" onClick={onEditPost}>
+    <div data-testid={MOCK_FEED_ACTIONS}>
+      <button data-testid={MOCK_EDIT_BUTTON} onClick={onEditPost}>
         Edit
       </button>
       <button data-testid="delete-button">Delete</button>
@@ -153,7 +158,7 @@ describe('CommentCard', () => {
     it('should render comment card with post message', () => {
       renderCommentCard();
 
-      expect(screen.getByTestId('feed-reply-card')).toBeInTheDocument();
+      expect(screen.getByTestId(FEED_REPLY_CARD)).toBeInTheDocument();
       expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
         'Test comment message'
       );
@@ -190,27 +195,27 @@ describe('CommentCard', () => {
     it('should show feed actions on hover', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
       fireEvent.mouseEnter(card);
 
       await waitFor(() => {
-        expect(screen.getByTestId('feed-actions')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_FEED_ACTIONS)).toBeInTheDocument();
       });
     });
 
     it('should hide feed actions when not hovering', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
 
       fireEvent.mouseEnter(card);
       await waitFor(() => {
-        expect(screen.getByTestId('feed-actions')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_FEED_ACTIONS)).toBeInTheDocument();
       });
 
       fireEvent.mouseLeave(card);
       await waitFor(() => {
-        expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(MOCK_FEED_ACTIONS)).not.toBeInTheDocument();
       });
     });
   });
@@ -219,17 +224,17 @@ describe('CommentCard', () => {
     it('should show editor when edit button is clicked', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
       fireEvent.mouseEnter(card);
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_EDIT_BUTTON)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('edit-button'));
+      fireEvent.click(screen.getByTestId(MOCK_EDIT_BUTTON));
 
       await waitFor(() => {
-        expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_FEED_EDITOR)).toBeInTheDocument();
       });
     });
 
@@ -237,14 +242,14 @@ describe('CommentCard', () => {
       const closeFeedEditor = jest.fn();
       renderCommentCard({ closeFeedEditor });
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
       fireEvent.mouseEnter(card);
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_EDIT_BUTTON)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('edit-button'));
+      fireEvent.click(screen.getByTestId(MOCK_EDIT_BUTTON));
 
       expect(closeFeedEditor).toHaveBeenCalled();
     });
@@ -252,17 +257,17 @@ describe('CommentCard', () => {
     it('should call updateFeed when saving edited message', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
       fireEvent.mouseEnter(card);
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_EDIT_BUTTON)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('edit-button'));
+      fireEvent.click(screen.getByTestId(MOCK_EDIT_BUTTON));
 
       await waitFor(() => {
-        expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_FEED_EDITOR)).toBeInTheDocument();
       });
 
       fireEvent.change(screen.getByTestId('editor-input'), {
@@ -279,23 +284,23 @@ describe('CommentCard', () => {
     it('should hide editor and show preview after update', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
       fireEvent.mouseEnter(card);
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_EDIT_BUTTON)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('edit-button'));
+      fireEvent.click(screen.getByTestId(MOCK_EDIT_BUTTON));
 
       await waitFor(() => {
-        expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_FEED_EDITOR)).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByTestId('save-button'));
 
       await waitFor(() => {
-        expect(screen.queryByTestId('feed-editor')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(MOCK_FEED_EDITOR)).not.toBeInTheDocument();
         expect(screen.getByTestId('rich-text-preview')).toBeInTheDocument();
       });
     });
@@ -305,7 +310,7 @@ describe('CommentCard', () => {
     it('should apply border class when not last reply', () => {
       renderCommentCard({ isLastReply: false });
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
 
       expect(card).toHaveClass('reply-card-border-bottom');
     });
@@ -313,7 +318,7 @@ describe('CommentCard', () => {
     it('should not apply border class when last reply', () => {
       renderCommentCard({ isLastReply: true });
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
 
       expect(card).not.toHaveClass('reply-card-border-bottom');
     });
@@ -323,23 +328,23 @@ describe('CommentCard', () => {
     it('should close edit mode when clicking outside', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
+      const card = screen.getByTestId(FEED_REPLY_CARD);
       fireEvent.mouseEnter(card);
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_EDIT_BUTTON)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('edit-button'));
+      fireEvent.click(screen.getByTestId(MOCK_EDIT_BUTTON));
 
       await waitFor(() => {
-        expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_FEED_EDITOR)).toBeInTheDocument();
       });
 
       fireEvent.mouseDown(document.body);
 
       await waitFor(() => {
-        expect(screen.queryByTestId('feed-editor')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(MOCK_FEED_EDITOR)).not.toBeInTheDocument();
       });
     });
   });

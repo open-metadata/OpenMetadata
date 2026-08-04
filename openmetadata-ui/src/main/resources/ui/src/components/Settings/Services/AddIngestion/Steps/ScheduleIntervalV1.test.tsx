@@ -16,6 +16,19 @@ import { useState } from 'react';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 import ScheduleIntervalV1 from './ScheduleIntervalV1';
 
+const CRON_CONTAINER = 'cron-container';
+const FREQUENCY_DAY = 'frequency-day';
+const DATA_SELECTED = 'data-selected';
+const TIME_PICKER = 'time-picker';
+const DAY_OPTIONS = 'day-options';
+const DATE_OPTIONS = 'date-options';
+const MINUTE_OPTIONS = 'minute-options';
+const FREQUENCY_WEEK = 'frequency-week';
+const STR_0_9_18 = '0 9,18 * * *';
+const CUSTOM_CRON_INPUT = 'custom-cron-input';
+const STR_5 = '*/5 * * * *';
+const CUSTOM_CRON_ERROR = 'custom-cron-error';
+
 jest.mock('../../../../../utils/i18next/i18nextUtil', () => ({
   getCurrentLocaleForConstrue: jest.fn().mockReturnValue('en-US'),
 }));
@@ -232,7 +245,7 @@ describe('ScheduleIntervalV1', () => {
     await renderComponent({ value: '' });
 
     expect(screen.getByTestId('selection-card-group')).toBeInTheDocument();
-    expect(screen.queryByTestId('cron-container')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CRON_CONTAINER)).not.toBeInTheDocument();
     expect(
       screen.getByText('message.pipeline-will-trigger-manually')
     ).toBeInTheDocument();
@@ -259,12 +272,12 @@ describe('ScheduleIntervalV1', () => {
     });
 
     expect(onChange).toHaveBeenCalledWith('0 0 * * *');
-    expect(screen.getByTestId('cron-container')).toBeInTheDocument();
-    expect(screen.getByTestId('frequency-day')).toHaveAttribute(
-      'data-selected',
+    expect(screen.getByTestId(CRON_CONTAINER)).toBeInTheDocument();
+    expect(screen.getByTestId(FREQUENCY_DAY)).toHaveAttribute(
+      DATA_SELECTED,
       'true'
     );
-    expect(screen.getByTestId('time-picker')).toBeInTheDocument();
+    expect(screen.getByTestId(TIME_PICKER)).toBeInTheDocument();
   });
 
   it('should emit undefined when switching back to on-demand', async () => {
@@ -277,33 +290,33 @@ describe('ScheduleIntervalV1', () => {
     });
 
     expect(onChange).toHaveBeenCalledWith(undefined);
-    expect(screen.queryByTestId('cron-container')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CRON_CONTAINER)).not.toBeInTheDocument();
   });
 
   it('should render only the time picker for a daily cron value', async () => {
     await renderComponent({ value: '0 0 * * *' });
 
-    expect(screen.getByTestId('frequency-day')).toHaveAttribute(
-      'data-selected',
+    expect(screen.getByTestId(FREQUENCY_DAY)).toHaveAttribute(
+      DATA_SELECTED,
       'true'
     );
-    expect(screen.getByTestId('time-picker')).toHaveValue('0:0');
-    expect(screen.queryByTestId('day-options')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('date-options')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('minute-options')).not.toBeInTheDocument();
+    expect(screen.getByTestId(TIME_PICKER)).toHaveValue('0:0');
+    expect(screen.queryByTestId(DAY_OPTIONS)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DATE_OPTIONS)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(MINUTE_OPTIONS)).not.toBeInTheDocument();
   });
 
   it('should emit a new cron when the time picker changes (daily)', async () => {
     const { onChange } = renderControlled('0 0 * * *');
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('time-picker'), {
+      fireEvent.change(screen.getByTestId(TIME_PICKER), {
         target: { value: '5:30' },
       });
     });
 
     expect(onChange).toHaveBeenCalledWith('30 5 * * *');
-    expect(screen.getByTestId('time-picker')).toHaveValue('5:30');
+    expect(screen.getByTestId(TIME_PICKER)).toHaveValue('5:30');
   });
 
   it('should switch to an hourly frequency and show only the minute select', async () => {
@@ -314,52 +327,52 @@ describe('ScheduleIntervalV1', () => {
     });
 
     expect(onChange).toHaveBeenCalledWith('0 * * * *');
-    expect(screen.getByTestId('minute-options')).toBeInTheDocument();
-    expect(screen.queryByTestId('time-picker')).not.toBeInTheDocument();
+    expect(screen.getByTestId(MINUTE_OPTIONS)).toBeInTheDocument();
+    expect(screen.queryByTestId(TIME_PICKER)).not.toBeInTheDocument();
   });
 
   it('should emit a new cron when the minute select changes (hourly)', async () => {
     const { onChange } = renderControlled('0 * * * *');
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('minute-options'), {
+      fireEvent.change(screen.getByTestId(MINUTE_OPTIONS), {
         target: { value: '15' },
       });
     });
 
     expect(onChange).toHaveBeenCalledWith('15 * * * *');
-    expect(screen.getByTestId('minute-options')).toHaveValue('15');
+    expect(screen.getByTestId(MINUTE_OPTIONS)).toHaveValue('15');
   });
 
   it('should render a day select for a weekly cron and highlight the selected frequency', async () => {
     await renderComponent({ value: '0 0 * * 1' });
 
-    expect(screen.getByTestId('frequency-week')).toHaveAttribute(
-      'data-selected',
+    expect(screen.getByTestId(FREQUENCY_WEEK)).toHaveAttribute(
+      DATA_SELECTED,
       'true'
     );
-    expect(screen.getByTestId('day-options')).toHaveValue('1');
-    expect(screen.getByTestId('time-picker')).toBeInTheDocument();
+    expect(screen.getByTestId(DAY_OPTIONS)).toHaveValue('1');
+    expect(screen.getByTestId(TIME_PICKER)).toBeInTheDocument();
   });
 
   it('should emit a new cron when the day select changes (weekly)', async () => {
     const { onChange } = renderControlled('0 0 * * 1');
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('day-options'), {
+      fireEvent.change(screen.getByTestId(DAY_OPTIONS), {
         target: { value: '3' },
       });
     });
 
     expect(onChange).toHaveBeenCalledWith('0 0 * * 3');
-    expect(screen.getByTestId('day-options')).toHaveValue('3');
+    expect(screen.getByTestId(DAY_OPTIONS)).toHaveValue('3');
   });
 
   it('should emit a new cron when the time picker changes (weekly)', async () => {
     const { onChange } = renderControlled('0 0 * * 1');
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('time-picker'), {
+      fireEvent.change(screen.getByTestId(TIME_PICKER), {
         target: { value: '5:30' },
       });
     });
@@ -371,30 +384,30 @@ describe('ScheduleIntervalV1', () => {
     const { onChange } = renderControlled('0 0 1 * *');
 
     expect(screen.getByTestId('frequency-month')).toHaveAttribute(
-      'data-selected',
+      DATA_SELECTED,
       'true'
     );
-    expect(screen.getByTestId('date-options')).toHaveValue('1');
+    expect(screen.getByTestId(DATE_OPTIONS)).toHaveValue('1');
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('date-options'), {
+      fireEvent.change(screen.getByTestId(DATE_OPTIONS), {
         target: { value: '5' },
       });
     });
 
     expect(onChange).toHaveBeenCalledWith('0 0 5 * *');
-    expect(screen.getByTestId('date-options')).toHaveValue('5');
+    expect(screen.getByTestId(DATE_OPTIONS)).toHaveValue('5');
   });
 
   it('should switch frequency from daily to weekly', async () => {
     const { onChange } = renderControlled('0 0 * * *');
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('frequency-week'));
+      fireEvent.click(screen.getByTestId(FREQUENCY_WEEK));
     });
 
     expect(onChange).toHaveBeenCalledWith('0 0 * * 1');
-    expect(screen.getByTestId('day-options')).toBeInTheDocument();
+    expect(screen.getByTestId(DAY_OPTIONS)).toBeInTheDocument();
   });
 
   it('should render the custom frequency option', async () => {
@@ -404,92 +417,92 @@ describe('ScheduleIntervalV1', () => {
   });
 
   it('should show the custom cron input when value is a custom cron', async () => {
-    await renderComponent({ value: '0 9,18 * * *' });
+    await renderComponent({ value: STR_0_9_18 });
 
-    expect(screen.getByTestId('custom-cron-input')).toBeInTheDocument();
-    expect(screen.queryByTestId('time-picker')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('minute-options')).not.toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_CRON_INPUT)).toBeInTheDocument();
+    expect(screen.queryByTestId(TIME_PICKER)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(MINUTE_OPTIONS)).not.toBeInTheDocument();
     expect(screen.getByTestId('frequency-custom')).toHaveAttribute(
-      'data-selected',
+      DATA_SELECTED,
       'true'
     );
   });
 
   it('should emit the custom cron value when typed', async () => {
-    const { onChange } = renderControlled('0 9,18 * * *');
+    const { onChange } = renderControlled(STR_0_9_18);
 
     onChange.mockClear();
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('custom-cron-input'), {
-        target: { value: '*/5 * * * *' },
+      fireEvent.change(screen.getByTestId(CUSTOM_CRON_INPUT), {
+        target: { value: STR_5 },
       });
     });
 
-    expect(onChange).toHaveBeenCalledWith('*/5 * * * *');
+    expect(onChange).toHaveBeenCalledWith(STR_5);
   });
 
   it('should show validation error for invalid cron syntax and not call onChange', async () => {
-    const { onChange } = renderControlled('*/5 * * * *');
+    const { onChange } = renderControlled(STR_5);
 
     onChange.mockClear();
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('custom-cron-input'), {
+      fireEvent.change(screen.getByTestId(CUSTOM_CRON_INPUT), {
         target: { value: 'bad cron' },
       });
     });
 
-    expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_CRON_ERROR)).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it('should clear validation error when valid cron is entered', async () => {
-    await renderComponent({ value: '*/5 * * * *' });
+    await renderComponent({ value: STR_5 });
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('custom-cron-input'), {
+      fireEvent.change(screen.getByTestId(CUSTOM_CRON_INPUT), {
         target: { value: 'bad' },
       });
     });
 
-    expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_CRON_ERROR)).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('custom-cron-input'), {
+      fireEvent.change(screen.getByTestId(CUSTOM_CRON_INPUT), {
         target: { value: '0 */2 * * *' },
       });
     });
 
-    expect(screen.queryByTestId('custom-cron-error')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CUSTOM_CRON_ERROR)).not.toBeInTheDocument();
   });
 
   it('should switch from custom back to a preset frequency', async () => {
-    const { onChange } = renderControlled('0 9,18 * * *');
+    const { onChange } = renderControlled(STR_0_9_18);
 
-    expect(screen.getByTestId('custom-cron-input')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_CRON_INPUT)).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('frequency-day'));
+      fireEvent.click(screen.getByTestId(FREQUENCY_DAY));
     });
 
-    expect(screen.queryByTestId('custom-cron-input')).not.toBeInTheDocument();
-    expect(screen.getByTestId('time-picker')).toBeInTheDocument();
+    expect(screen.queryByTestId(CUSTOM_CRON_INPUT)).not.toBeInTheDocument();
+    expect(screen.getByTestId(TIME_PICKER)).toBeInTheDocument();
     expect(onChange).toHaveBeenCalled();
   });
 
   it('should disable the custom cron input when disabled is true', async () => {
-    await renderComponent({ value: '0 9,18 * * *', disabled: true });
+    await renderComponent({ value: STR_0_9_18, disabled: true });
 
-    expect(screen.getByTestId('custom-cron-input')).toBeDisabled();
+    expect(screen.getByTestId(CUSTOM_CRON_INPUT)).toBeDisabled();
   });
 
   it('should disable all controls when disabled is true', async () => {
     await renderComponent({ value: '0 0 * * 1', disabled: true });
 
-    expect(screen.getByTestId('frequency-week')).toBeDisabled();
-    expect(screen.getByTestId('day-options')).toBeDisabled();
-    expect(screen.getByTestId('time-picker')).toBeDisabled();
+    expect(screen.getByTestId(FREQUENCY_WEEK)).toBeDisabled();
+    expect(screen.getByTestId(DAY_OPTIONS)).toBeDisabled();
+    expect(screen.getByTestId(TIME_PICKER)).toBeDisabled();
   });
 
   it('should not switch schedular when disabled', async () => {
@@ -508,18 +521,18 @@ describe('ScheduleIntervalV1', () => {
   it('should sync internal state when the external value changes', async () => {
     const { rerender } = render(<ScheduleIntervalV1 value="" />);
 
-    expect(screen.queryByTestId('cron-container')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CRON_CONTAINER)).not.toBeInTheDocument();
 
     await act(async () => {
       rerender(<ScheduleIntervalV1 value="0 0 * * 1" />);
     });
 
-    expect(screen.getByTestId('cron-container')).toBeInTheDocument();
-    expect(screen.getByTestId('frequency-week')).toHaveAttribute(
-      'data-selected',
+    expect(screen.getByTestId(CRON_CONTAINER)).toBeInTheDocument();
+    expect(screen.getByTestId(FREQUENCY_WEEK)).toHaveAttribute(
+      DATA_SELECTED,
       'true'
     );
-    expect(screen.getByTestId('day-options')).toHaveValue('1');
+    expect(screen.getByTestId(DAY_OPTIONS)).toHaveValue('1');
   });
 
   it('should render the human readable cron text when scheduled', async () => {

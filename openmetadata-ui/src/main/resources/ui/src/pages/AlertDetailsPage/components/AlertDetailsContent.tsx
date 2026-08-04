@@ -29,6 +29,8 @@ import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils'
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { AlertDetailsContentProps } from '../AlertDetailsPage.interface';
 
+const LABEL_ALERT = 'label.alert';
+
 function AlertDetailsContent({
   alertDetails,
   alertIcon,
@@ -110,7 +112,7 @@ function AlertDetailsContent({
               <Space align="center" size={8}>
                 <Tooltip
                   title={t('label.sync-alert-offset', {
-                    entity: t('label.alert'),
+                    entity: t(LABEL_ALERT),
                   })}>
                   <Button
                     className="flex flex-center"
@@ -124,7 +126,7 @@ function AlertDetailsContent({
                   alertDetails?.provider !== ProviderType.System && (
                     <Tooltip
                       title={t('label.edit-entity', {
-                        entity: t('label.alert'),
+                        entity: t(LABEL_ALERT),
                       })}>
                       <Button
                         className="flex flex-center"
@@ -144,7 +146,7 @@ function AlertDetailsContent({
                   alertDetails?.provider !== ProviderType.System && (
                     <Tooltip
                       title={t('label.delete-entity', {
-                        entity: t('label.alert'),
+                        entity: t(LABEL_ALERT),
                       })}>
                       <Button
                         className="flex flex-center"

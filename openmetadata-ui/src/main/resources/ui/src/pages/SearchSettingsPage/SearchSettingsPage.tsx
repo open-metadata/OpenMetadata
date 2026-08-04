@@ -54,6 +54,9 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './search-settings.less';
 import { UpdateConfigParams } from './searchSettings.interface';
 
+const SERVER_UPDATE_ENTITY_SUCCESS = 'server.update-entity-success';
+const LABEL_SEARCH_SETTING_PLURAL = 'label.search-setting-plural';
+const LABEL_RESET = 'label.reset';
 const SearchSettingsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -160,8 +163,8 @@ const SearchSettingsPage = () => {
       }
 
       showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.search-setting-plural'),
+        t(SERVER_UPDATE_ENTITY_SUCCESS, {
+          entity: t(LABEL_SEARCH_SETTING_PLURAL),
         })
       );
     } catch (error) {
@@ -177,8 +180,8 @@ const SearchSettingsPage = () => {
       await restoreSettingsConfig(SettingType.SearchSettings);
       await fetchSearchConfig();
       showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.search-setting-plural'),
+        t(SERVER_UPDATE_ENTITY_SUCCESS, {
+          entity: t(LABEL_SEARCH_SETTING_PLURAL),
         })
       );
     } catch (error) {
@@ -348,8 +351,8 @@ const SearchSettingsPage = () => {
       });
       setHybridWeightsChanged(false);
       showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.search-setting-plural'),
+        t(SERVER_UPDATE_ENTITY_SUCCESS, {
+          entity: t(LABEL_SEARCH_SETTING_PLURAL),
         })
       );
     } catch (error) {
@@ -392,7 +395,7 @@ const SearchSettingsPage = () => {
                 data-testid="reset-search-settings-btn"
                 disabled={isUpdating}
                 onClick={() => setShowResetModal(true)}>
-                {t('label.reset')}
+                {t(LABEL_RESET)}
               </Button>
             )}
           </Row>
@@ -621,8 +624,8 @@ const SearchSettingsPage = () => {
         <ConfirmationModal
           bodyText={t('message.reset-search-settings-confirmation')}
           cancelText={t('label.cancel')}
-          confirmText={t('label.reset')}
-          header={t('label.reset')}
+          confirmText={t(LABEL_RESET)}
+          header={t(LABEL_RESET)}
           isLoading={isUpdating}
           visible={showResetModal}
           onCancel={() => setShowResetModal(false)}

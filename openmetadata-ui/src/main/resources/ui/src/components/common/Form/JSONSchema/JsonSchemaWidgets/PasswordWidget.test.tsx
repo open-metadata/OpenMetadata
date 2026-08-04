@@ -19,6 +19,9 @@ import {
 } from '../../../../../mocks/Widgets.mock';
 import PasswordWidget from './PasswordWidget';
 
+const PASSWORD_INPUT_WIDGET_ROOT_PASSWORD =
+  'password-input-widget-root/password';
+
 jest.mock('./FileUploadWidget', () =>
   jest
     .fn()
@@ -52,7 +55,7 @@ describe('Test PasswordWidget Component', () => {
     render(<PasswordWidget {...mockProps} />);
 
     const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+      PASSWORD_INPUT_WIDGET_ROOT_PASSWORD
     );
     const FileUploadWidget = screen.queryByText('FileUploadWidget');
 
@@ -64,7 +67,7 @@ describe('Test PasswordWidget Component', () => {
     render(<PasswordWidget {...mockProps} disabled />);
 
     const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+      PASSWORD_INPUT_WIDGET_ROOT_PASSWORD
     );
 
     expect(passwordInput).toBeDisabled();
@@ -74,7 +77,7 @@ describe('Test PasswordWidget Component', () => {
     render(<PasswordWidget {...mockProps} />);
 
     const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+      PASSWORD_INPUT_WIDGET_ROOT_PASSWORD
     );
 
     fireEvent.focus(passwordInput);
@@ -86,7 +89,7 @@ describe('Test PasswordWidget Component', () => {
     render(<PasswordWidget {...mockProps} />);
 
     const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+      PASSWORD_INPUT_WIDGET_ROOT_PASSWORD
     );
 
     fireEvent.blur(passwordInput);
@@ -98,7 +101,7 @@ describe('Test PasswordWidget Component', () => {
     render(<PasswordWidget {...mockProps} />);
 
     const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+      PASSWORD_INPUT_WIDGET_ROOT_PASSWORD
     );
 
     fireEvent.change(passwordInput, { target: { value: 'password' } });
@@ -110,7 +113,7 @@ describe('Test PasswordWidget Component', () => {
     render(<PasswordWidget {...mockProps} />);
 
     const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+      PASSWORD_INPUT_WIDGET_ROOT_PASSWORD
     );
 
     fireEvent.change(passwordInput, { target: { value: '*******' } });
@@ -122,7 +125,7 @@ describe('Test PasswordWidget Component', () => {
     render(<PasswordWidget {...mockProps} />);
 
     const passwordInput = screen.getByTestId(
-      'password-input-widget-root/password'
+      PASSWORD_INPUT_WIDGET_ROOT_PASSWORD
     );
 
     expect(passwordInput).toHaveValue('');

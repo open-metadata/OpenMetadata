@@ -19,6 +19,9 @@ import {
 } from '../../../mocks/MlModelVersion.mock';
 import MlModelVersion from './MlModelVersion.component';
 
+const LABEL_FEATURE_PLURAL = 'label.feature-plural';
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural';
+
 const mockNavigate = jest.fn();
 
 jest.mock(
@@ -85,9 +88,9 @@ describe('MlModelVersion tests', () => {
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
     const description = screen.getByText('Description');
-    const featureTabLabel = screen.getByText('label.feature-plural');
+    const featureTabLabel = screen.getByText(LABEL_FEATURE_PLURAL);
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
 
@@ -110,9 +113,9 @@ describe('MlModelVersion tests', () => {
     const dataAssetsVersionHeader = screen.queryByText(
       'DataAssetsVersionHeader'
     );
-    const featureTabLabel = screen.queryByText('label.feature-plural');
+    const featureTabLabel = screen.queryByText(LABEL_FEATURE_PLURAL);
     const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
 
     expect(loader).toBeInTheDocument();
@@ -135,7 +138,7 @@ describe('MlModelVersion tests', () => {
       );
     });
 
-    const featureTabLabel = screen.getByText('label.feature-plural');
+    const featureTabLabel = screen.getByText(LABEL_FEATURE_PLURAL);
     const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
 
     expect(featureTabLabel).toBeInTheDocument();
@@ -150,7 +153,7 @@ describe('MlModelVersion tests', () => {
     });
 
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();

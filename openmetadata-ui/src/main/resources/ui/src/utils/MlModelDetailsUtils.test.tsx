@@ -20,6 +20,8 @@ import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractMlModelFeatures } from './MlModelDetailsUtils';
 
+const MLMODEL_FEATURE1 = 'mlmodel.feature1';
+
 type MlModelTestData = Partial<Mlmodel> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;
 
@@ -32,7 +34,7 @@ describe('MlModelDetailsUtils', () => {
           {
             name: 'feature1',
             dataType: FeatureType.Numerical,
-            fullyQualifiedName: 'mlmodel.feature1',
+            fullyQualifiedName: MLMODEL_FEATURE1,
             description: 'Test feature 1',
           },
           {
@@ -95,7 +97,7 @@ describe('MlModelDetailsUtils', () => {
           {
             name: 'feature1',
             dataType: FeatureType.Numerical,
-            fullyQualifiedName: 'mlmodel.feature1',
+            fullyQualifiedName: MLMODEL_FEATURE1,
             description: 'Test description',
             featureAlgorithm: 'PCA',
             featureSources: [],
@@ -116,7 +118,7 @@ describe('MlModelDetailsUtils', () => {
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe('feature1');
       expect(result[0].dataType).toBe(FeatureType.Numerical);
-      expect(result[0].fullyQualifiedName).toBe('mlmodel.feature1');
+      expect(result[0].fullyQualifiedName).toBe(MLMODEL_FEATURE1);
       expect(result[0].description).toBe('Test description');
       expect(result[0].featureAlgorithm).toBe('PCA');
       expect(result[0].featureSources).toEqual([]);
@@ -130,7 +132,7 @@ describe('MlModelDetailsUtils', () => {
           {
             name: 'feature1',
             dataType: FeatureType.Numerical,
-            fullyQualifiedName: 'mlmodel.feature1',
+            fullyQualifiedName: MLMODEL_FEATURE1,
             tags: [
               {
                 tagFQN: 'tag1',
@@ -163,7 +165,7 @@ describe('MlModelDetailsUtils', () => {
           {
             name: 'feature1',
             dataType: FeatureType.Numerical,
-            fullyQualifiedName: 'mlmodel.feature1',
+            fullyQualifiedName: MLMODEL_FEATURE1,
           },
         ],
       };
@@ -180,7 +182,7 @@ describe('MlModelDetailsUtils', () => {
           {
             name: 'feature1',
             dataType: FeatureType.Numerical,
-            fullyQualifiedName: 'mlmodel.feature1',
+            fullyQualifiedName: MLMODEL_FEATURE1,
           },
           {
             name: 'feature2',

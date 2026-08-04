@@ -13,6 +13,8 @@
 import { fetchMarkdownFile } from '../../rest/miscAPI';
 import { loadFormFieldDocs, parseFormFieldDocs } from './FormFieldDocs';
 
+const _404_NOT_FOUND = '404 not found';
+
 jest.mock('../../rest/miscAPI', () => ({
   __esModule: true,
   fetchMarkdownFile: jest.fn(),
@@ -157,7 +159,7 @@ describe('loadFormFieldDocs', () => {
   });
 
   it('falls back to an empty map when the fetch fails', async () => {
-    mockFetchMarkdownFile.mockRejectedValueOnce(new Error('404 not found'));
+    mockFetchMarkdownFile.mockRejectedValueOnce(new Error(_404_NOT_FOUND));
 
     const docs = await loadFormFieldDocs('SampleFormC');
 
@@ -165,7 +167,7 @@ describe('loadFormFieldDocs', () => {
   });
 
   it('retries after a failure instead of caching the empty map', async () => {
-    mockFetchMarkdownFile.mockRejectedValueOnce(new Error('404 not found'));
+    mockFetchMarkdownFile.mockRejectedValueOnce(new Error(_404_NOT_FOUND));
     mockFetchMarkdownFile.mockResolvedValueOnce(SAMPLE_MD);
 
     const failed = await loadFormFieldDocs('SampleFormE');
@@ -201,7 +203,7 @@ describe('loadFormFieldDocs', () => {
     );
 
     const reFetched = await loadFormFieldDocs('SampleFormF');
-    failFirst(new Error('404 not found'));
+    failFirst(new Error(_404_NOT_FOUND));
 
     await expect(failing).resolves.toEqual({});
 

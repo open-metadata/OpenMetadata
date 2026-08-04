@@ -13,6 +13,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { LogPage, usePaginatedLiveLog } from './usePaginatedLiveLog';
 
+const TAIL_FINAL = 'tail-final';
+
 jest.mock('../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
 
 const page = (content: string, after?: string, total?: string): LogPage => ({
@@ -150,7 +152,7 @@ describe('usePaginatedLiveLog', () => {
     const fetchPage = jest
       .fn()
       .mockResolvedValueOnce(page('tail-v1'))
-      .mockResolvedValueOnce(page('tail-final', '1', '2'))
+      .mockResolvedValueOnce(page(TAIL_FINAL, '1', '2'))
       .mockResolvedValue(page('newtail'));
     const { result } = renderHook(() =>
       usePaginatedLiveLog({
@@ -207,7 +209,7 @@ describe('usePaginatedLiveLog', () => {
             resolveInflight = resolve;
           })
       )
-      .mockResolvedValue(page('tail-final'));
+      .mockResolvedValue(page(TAIL_FINAL));
     const { result, rerender } = renderHook(
       ({ isLive }) =>
         usePaginatedLiveLog({
@@ -232,7 +234,7 @@ describe('usePaginatedLiveLog', () => {
       resolveInflight(page('tail-v1'));
     });
 
-    await waitFor(() => expect(result.current.logs).toBe('tail-final'));
+    await waitFor(() => expect(result.current.logs).toBe(TAIL_FINAL));
 
     expect(fetchPage).toHaveBeenCalledTimes(3);
   });

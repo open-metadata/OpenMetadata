@@ -28,6 +28,8 @@ import { SemanticsRule } from '../../../generated/settings/settings';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import './DataAssetRulesPage.less';
 
+const LABEL_DATA_ASSET_RULES = 'label.data-asset-rules';
+
 const DataAssetRulesPage: React.FC = () => {
   const { t } = useTranslation();
   const { semanticsRules, isLoading, isSaveLoading, updateSemanticsRules } =
@@ -58,7 +60,7 @@ const DataAssetRulesPage: React.FC = () => {
       },
       {
         name: t('label.entity-configuration', {
-          entity: t('label.data-asset-rules'),
+          entity: t(LABEL_DATA_ASSET_RULES),
         }),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
@@ -70,13 +72,13 @@ const DataAssetRulesPage: React.FC = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.data-asset-rules')}>
+    <PageLayoutV1 pageTitle={t(LABEL_DATA_ASSET_RULES)}>
       <div data-testid="data-asset-rules-page">
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <div className="m-t-md data-asset-rules-header">
           <PageHeader
             data={{
-              header: t('label.data-asset-rules'),
+              header: t(LABEL_DATA_ASSET_RULES),
               subHeader: t('message.data-asset-rules-message'),
             }}
           />

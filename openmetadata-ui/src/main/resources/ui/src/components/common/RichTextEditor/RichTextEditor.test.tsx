@@ -15,6 +15,9 @@ import React from 'react';
 import RichTextEditor from './RichTextEditor';
 import { EditorContentRef } from './RichTextEditor.interface';
 
+const EDITOR_TEXTAREA = 'editor-textarea';
+const NEW_CONTENT = 'New content';
+
 // Mock the BlockEditorUtils
 jest.mock('../../../utils/BlockEditorUtils', () => ({
   ...jest.requireActual('../../../utils/BlockEditorUtils'),
@@ -69,7 +72,7 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
       return (
         <textarea
           aria-label="Editor"
-          data-testid="editor-textarea"
+          data-testid={EDITOR_TEXTAREA}
           ref={textareaRef}
           value={value}
           onChange={(e) => {
@@ -106,7 +109,7 @@ describe('RichTextEditor', () => {
       />
     );
 
-    const textarea = screen.getByTestId('editor-textarea');
+    const textarea = screen.getByTestId(EDITOR_TEXTAREA);
 
     expect(textarea).toHaveValue(initialValue);
   });
@@ -114,17 +117,17 @@ describe('RichTextEditor', () => {
   it('should trigger onTextChange when content changes', () => {
     render(<RichTextEditor onTextChange={onTextChangeMock} />);
 
-    fireEvent.change(screen.getByTestId('editor-textarea'), {
-      target: { value: 'New content' },
+    fireEvent.change(screen.getByTestId(EDITOR_TEXTAREA), {
+      target: { value: NEW_CONTENT },
     });
 
-    expect(onTextChangeMock).toHaveBeenCalledWith('New content');
+    expect(onTextChangeMock).toHaveBeenCalledWith(NEW_CONTENT);
   });
 
   it('should trigger onTextChange with empty content in case of value is <p></p> tags)', () => {
     render(<RichTextEditor onTextChange={onTextChangeMock} />);
 
-    fireEvent.change(screen.getByTestId('editor-textarea'), {
+    fireEvent.change(screen.getByTestId(EDITOR_TEXTAREA), {
       target: { value: '<p></p>' },
     });
 
@@ -264,20 +267,20 @@ describe('RichTextEditor', () => {
     expect(editorRef.current?.getEditorContent()).toBe('Something');
 
     act(() => {
-      editorRef.current?.setEditorContent('New content');
+      editorRef.current?.setEditorContent(NEW_CONTENT);
     });
 
-    expect(editorRef.current?.getEditorContent()).toBe('New content');
+    expect(editorRef.current?.getEditorContent()).toBe(NEW_CONTENT);
   });
 
   it('should handle onTextChange not being provided', () => {
     render(<RichTextEditor />);
 
-    const textarea = screen.getByTestId('editor-textarea');
+    const textarea = screen.getByTestId(EDITOR_TEXTAREA);
 
     expect(() => {
       fireEvent.change(textarea, {
-        target: { value: 'New content' },
+        target: { value: NEW_CONTENT },
       });
     }).not.toThrow();
   });
@@ -291,7 +294,7 @@ describe('RichTextEditor', () => {
   it('should handle HTML content with formatValueBasedOnContent', () => {
     render(<RichTextEditor onTextChange={onTextChangeMock} />);
 
-    fireEvent.change(screen.getByTestId('editor-textarea'), {
+    fireEvent.change(screen.getByTestId(EDITOR_TEXTAREA), {
       target: { value: '<p>Test content</p>' },
     });
 
@@ -301,7 +304,7 @@ describe('RichTextEditor', () => {
   it('should handle multiple content changes', () => {
     render(<RichTextEditor onTextChange={onTextChangeMock} />);
 
-    const textarea = screen.getByTestId('editor-textarea');
+    const textarea = screen.getByTestId(EDITOR_TEXTAREA);
 
     fireEvent.change(textarea, { target: { value: 'First change' } });
     fireEvent.change(textarea, { target: { value: 'Second change' } });
@@ -325,7 +328,7 @@ describe('RichTextEditor', () => {
   it('should render without initialValue', () => {
     render(<RichTextEditor onTextChange={onTextChangeMock} />);
 
-    const textarea = screen.getByTestId('editor-textarea');
+    const textarea = screen.getByTestId(EDITOR_TEXTAREA);
 
     expect(textarea).toHaveValue('');
   });
@@ -347,7 +350,7 @@ describe('RichTextEditor', () => {
     const onFocusMock = jest.fn();
     render(<RichTextEditor onFocus={onFocusMock} />);
 
-    const textarea = screen.getByTestId('editor-textarea');
+    const textarea = screen.getByTestId(EDITOR_TEXTAREA);
     fireEvent.focus(textarea);
 
     expect(onFocusMock).toHaveBeenCalled();

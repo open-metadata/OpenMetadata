@@ -30,6 +30,13 @@ import {
   mockAggregations,
 } from './mocks/ExploreQuickFilters.mock';
 
+const ONGETINITIALOPTIONS_DATABASE_NAME = 'onGetInitialOptions-database.name';
+const ONSEARCH_DATABASE_NAME = 'onSearch-database.name';
+const DATABASE_NAME = 'database.name';
+const TIER_TAGFQN = 'tier.tagFQN';
+const TIER_TIER1 = 'Tier.Tier1';
+const TEST_LABEL = 'test-label';
+const TIER_TIER2 = 'Tier.Tier2';
 const mockUseCustomLocation = jest.fn();
 const mockQueryFilter = {};
 const mockUseAdvanceSearch = jest.fn();
@@ -147,7 +154,7 @@ const mockFields: ExploreQuickFilterField[] = [
   },
   {
     label: 'Database',
-    key: 'database.name',
+    key: DATABASE_NAME,
     value: undefined,
   },
   {
@@ -326,7 +333,7 @@ describe('ExploreQuickFilters component', () => {
       render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
 
       const initialButton = screen.getByTestId(
-        'onGetInitialOptions-database.name'
+        ONGETINITIALOPTIONS_DATABASE_NAME
       );
 
       await act(async () => {
@@ -336,7 +343,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           '',
           expect.any(String),
           false,
@@ -353,7 +360,7 @@ describe('ExploreQuickFilters component', () => {
     it('should use aggregations when available', async () => {
       render(<ExploreQuickFilters {...mockProps} />);
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
       await act(async () => {
         userEvent.click(searchButton);
       });
@@ -361,7 +368,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           'test',
           '{"query":{"bool":{"must":[{"match":{"deleted":false}}]}}}',
           false,
@@ -381,7 +388,7 @@ describe('ExploreQuickFilters component', () => {
       render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
 
       const initialButton = screen.getByTestId(
-        'onGetInitialOptions-database.name'
+        ONGETINITIALOPTIONS_DATABASE_NAME
       );
 
       await act(async () => {
@@ -391,7 +398,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           '',
           expect.any(String),
           false,
@@ -417,7 +424,7 @@ describe('ExploreQuickFilters component', () => {
       );
 
       const initialButton = screen.getByTestId(
-        'onGetInitialOptions-database.name'
+        ONGETINITIALOPTIONS_DATABASE_NAME
       );
 
       await act(async () => {
@@ -427,7 +434,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           '',
           expect.any(String),
           false,
@@ -448,7 +455,7 @@ describe('ExploreQuickFilters component', () => {
 
       render(<ExploreQuickFilters {...mockProps} />);
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
 
       await act(async () => {
         userEvent.click(searchButton);
@@ -457,7 +464,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           'test',
           expect.any(String),
           false,
@@ -474,14 +481,14 @@ describe('ExploreQuickFilters component', () => {
         data: {
           aggregations: {
             'sterms#tier.tagFQN': {
-              buckets: [{ key: 'Tier.Tier1', doc_count: 5 }],
+              buckets: [{ key: TIER_TIER1, doc_count: 5 }],
             },
           },
         },
       });
 
       const tierFields: ExploreQuickFilterField[] = [
-        { label: 'Tier', key: 'tier.tagFQN', value: undefined },
+        { label: 'Tier', key: TIER_TAGFQN, value: undefined },
       ];
 
       render(<ExploreQuickFilters {...mockProps} fields={tierFields} />);
@@ -495,7 +502,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'tier.tagFQN',
+          TIER_TAGFQN,
           'test',
           expect.any(String),
           false,
@@ -515,7 +522,7 @@ describe('ExploreQuickFilters component', () => {
       render(<ExploreQuickFilters {...mockProps} aggregations={{}} />);
 
       const initialButton = screen.getByTestId(
-        'onGetInitialOptions-database.name'
+        ONGETINITIALOPTIONS_DATABASE_NAME
       );
 
       await act(async () => {
@@ -534,7 +541,7 @@ describe('ExploreQuickFilters component', () => {
 
       render(<ExploreQuickFilters {...mockProps} independent />);
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
 
       await act(async () => {
         userEvent.click(searchButton);
@@ -543,7 +550,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           'test',
           expect.any(String),
           true,
@@ -563,7 +570,7 @@ describe('ExploreQuickFilters component', () => {
 
       render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
 
       await act(async () => {
         userEvent.click(searchButton);
@@ -572,7 +579,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           'test',
           expect.any(String),
           false,
@@ -602,8 +609,8 @@ describe('ExploreQuickFilters component', () => {
 
       expect(mockOnFieldValueSelect).toHaveBeenCalledWith({
         label: 'Database',
-        key: 'database.name',
-        value: [{ key: 'test-key', label: 'test-label' }],
+        key: DATABASE_NAME,
+        value: [{ key: 'test-key', label: TEST_LABEL }],
       });
     });
 
@@ -617,8 +624,8 @@ describe('ExploreQuickFilters component', () => {
       });
 
       const updatedFields = mockFields.map((f) =>
-        f.key === 'database.name'
-          ? { ...f, value: [{ key: 'test-key', label: 'test-label' }] }
+        f.key === DATABASE_NAME
+          ? { ...f, value: [{ key: 'test-key', label: TEST_LABEL }] }
           : f
       );
 
@@ -638,7 +645,7 @@ describe('ExploreQuickFilters component', () => {
       render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
 
       const initialButton = screen.getByTestId(
-        'onGetInitialOptions-database.name'
+        ONGETINITIALOPTIONS_DATABASE_NAME
       );
 
       await act(async () => {
@@ -656,7 +663,7 @@ describe('ExploreQuickFilters component', () => {
 
       render(<ExploreQuickFilters {...mockProps} />);
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
 
       await act(async () => {
         userEvent.click(searchButton);
@@ -671,10 +678,10 @@ describe('ExploreQuickFilters component', () => {
   describe('Facet query filter (own field excluded)', () => {
     const tierField: ExploreQuickFilterField = {
       label: 'Tier',
-      key: 'tier.tagFQN',
+      key: TIER_TAGFQN,
       value: [
-        { key: 'Tier.Tier1', label: 'Tier.Tier1' },
-        { key: 'Tier.Tier2', label: 'Tier.Tier2' },
+        { key: TIER_TIER1, label: TIER_TIER1 },
+        { key: TIER_TIER2, label: TIER_TIER2 },
       ],
     };
     const tagField: ExploreQuickFilterField = {
@@ -701,8 +708,8 @@ describe('ExploreQuickFilters component', () => {
         -1
       )[3] as string;
 
-      expect(filterArg).toContain('Tier.Tier1');
-      expect(filterArg).toContain('Tier.Tier2');
+      expect(filterArg).toContain(TIER_TIER1);
+      expect(filterArg).toContain(TIER_TIER2);
     });
 
     it('excludes the facet own selections so the full option list stays visible', async () => {
@@ -723,8 +730,8 @@ describe('ExploreQuickFilters component', () => {
         -1
       )[3] as string;
 
-      expect(filterArg).not.toContain('Tier.Tier1');
-      expect(filterArg).not.toContain('Tier.Tier2');
+      expect(filterArg).not.toContain(TIER_TIER1);
+      expect(filterArg).not.toContain(TIER_TIER2);
     });
   });
 
@@ -750,7 +757,7 @@ describe('ExploreQuickFilters component', () => {
         />
       );
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
 
       await act(async () => {
         userEvent.click(searchButton);
@@ -785,7 +792,7 @@ describe('ExploreQuickFilters component', () => {
 
       render(<ExploreQuickFilters {...multiIndexProps} />);
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
 
       await act(async () => {
         userEvent.click(searchButton);
@@ -794,7 +801,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           [SearchIndex.TABLE, SearchIndex.TOPIC],
-          'database.name',
+          DATABASE_NAME,
           'test',
           expect.any(String),
           false,
@@ -812,7 +819,7 @@ describe('ExploreQuickFilters component', () => {
       const fieldsWithValues: ExploreQuickFilterField[] = [
         {
           label: 'Database',
-          key: 'database.name',
+          key: DATABASE_NAME,
           value: [{ key: 'db1', label: 'Database 1' }],
         },
       ];
@@ -828,8 +835,8 @@ describe('ExploreQuickFilters component', () => {
       const tierFields: ExploreQuickFilterField[] = [
         {
           label: 'Tier',
-          key: 'tier.tagFQN',
-          value: [{ key: 'Tier.Tier1', label: 'Tier1' }],
+          key: TIER_TAGFQN,
+          value: [{ key: TIER_TIER1, label: 'Tier1' }],
         },
       ];
 
@@ -938,7 +945,7 @@ describe('ExploreQuickFilters component', () => {
       render(<ExploreQuickFilters {...mockProps} aggregations={undefined} />);
 
       const initialButton = screen.getByTestId(
-        'onGetInitialOptions-database.name'
+        ONGETINITIALOPTIONS_DATABASE_NAME
       );
 
       await act(async () => {
@@ -948,7 +955,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           expect.any(String),
           expect.any(String),
           false,
@@ -970,7 +977,7 @@ describe('ExploreQuickFilters component', () => {
 
       render(<ExploreQuickFilters {...mockProps} />);
 
-      const searchButton = screen.getByTestId('onSearch-database.name');
+      const searchButton = screen.getByTestId(ONSEARCH_DATABASE_NAME);
 
       await act(async () => {
         userEvent.click(searchButton);
@@ -979,7 +986,7 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(getAggregationOptions).toHaveBeenCalledWith(
           SearchIndex.TABLE,
-          'database.name',
+          DATABASE_NAME,
           'test',
           expect.any(String),
           false,
@@ -997,7 +1004,7 @@ describe('ExploreQuickFilters component', () => {
       const singleSelectFields: ExploreQuickFilterField[] = [
         {
           label: 'Database',
-          key: 'database.name',
+          key: DATABASE_NAME,
           value: undefined,
           singleSelect: true,
         },

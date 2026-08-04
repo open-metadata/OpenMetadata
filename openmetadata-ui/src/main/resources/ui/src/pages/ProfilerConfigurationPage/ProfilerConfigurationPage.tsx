@@ -54,6 +54,9 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './profiler-configuration-page.style.less';
 import profilerConfigurationClassBase from './ProfilerConfigurationClassBase';
 
+const LABEL_PROFILER_CONFIGURATION = 'label.profiler-configuration';
+const LABEL_DATA_TYPE = 'label.data-type';
+
 const ProfilerConfigurationPage = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -64,7 +67,7 @@ const ProfilerConfigurationPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        t('label.profiler-configuration')
+        t(LABEL_PROFILER_CONFIGURATION)
       ),
     []
   );
@@ -119,7 +122,7 @@ const ProfilerConfigurationPage = () => {
       });
       showSuccessToast(
         t('server.update-entity-success', {
-          entity: t('label.profiler-configuration'),
+          entity: t(LABEL_PROFILER_CONFIGURATION),
         })
       );
     } catch (error) {
@@ -164,7 +167,7 @@ const ProfilerConfigurationPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.profiler-configuration')}>
+    <PageLayoutV1 pageTitle={t(LABEL_PROFILER_CONFIGURATION)}>
       <div className="m-b-mlg">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </div>
@@ -179,13 +182,13 @@ const ProfilerConfigurationPage = () => {
           <Col span={24}>
             <PageHeader
               data={{
-                header: t('label.profiler-configuration'),
+                header: t(LABEL_PROFILER_CONFIGURATION),
                 subHeader: t(
                   'message.page-sub-header-for-profiler-configuration'
                 ),
               }}
               learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
-              title={t('label.profiler-configuration')}
+              title={t(LABEL_PROFILER_CONFIGURATION)}
             />
           </Col>
           <Col span={24}>
@@ -208,7 +211,7 @@ const ProfilerConfigurationPage = () => {
                     return (
                       <Row gutter={[16, 16]}>
                         <Col span={10}>
-                          {t('label.data-type')}
+                          {t(LABEL_DATA_TYPE)}
                           <span className="text-failure">*</span>
                         </Col>
                         <Col span={11}>{t('label.metric-type')}</Col>
@@ -224,7 +227,7 @@ const ProfilerConfigurationPage = () => {
                                     message: t(
                                       'message.field-text-is-required',
                                       {
-                                        fieldText: t('label.data-type'),
+                                        fieldText: t(LABEL_DATA_TYPE),
                                       }
                                     ),
                                   },
@@ -235,7 +238,7 @@ const ProfilerConfigurationPage = () => {
                                   data-testid="data-type-select"
                                   options={dataTypeOptions}
                                   placeholder={t('label.select-field', {
-                                    field: t('label.data-type'),
+                                    field: t(LABEL_DATA_TYPE),
                                   })}
                                 />
                               </Form.Item>

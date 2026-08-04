@@ -16,6 +16,9 @@ import React from 'react';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeader } from './WorkflowHeader';
 
+const SYSTEM_WORKFLOW_BADGE = 'system-workflow-badge';
+const EDIT_WORKFLOW_TITLE_BUTTON = 'edit-workflow-title-button';
+
 jest.mock('../../../contexts/WorkflowModeContext', () => ({
   useWorkflowModeContext: jest.fn(),
 }));
@@ -173,8 +176,8 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
-    expect(screen.getByTestId('system-workflow-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('system-workflow-badge')).toHaveTextContent(
+    expect(screen.getByTestId(SYSTEM_WORKFLOW_BADGE)).toBeInTheDocument();
+    expect(screen.getByTestId(SYSTEM_WORKFLOW_BADGE)).toHaveTextContent(
       'label.system'
     );
   });
@@ -200,9 +203,7 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
-    expect(
-      screen.queryByTestId('system-workflow-badge')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SYSTEM_WORKFLOW_BADGE)).not.toBeInTheDocument();
     expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
   });
 
@@ -214,7 +215,7 @@ describe('WorkflowHeader — System badge', () => {
     render(<WorkflowHeader {...defaultProps} />);
 
     expect(
-      screen.queryByTestId('edit-workflow-title-button')
+      screen.queryByTestId(EDIT_WORKFLOW_TITLE_BUTTON)
     ).not.toBeInTheDocument();
   });
 
@@ -229,9 +230,7 @@ describe('WorkflowHeader — System badge', () => {
 
     render(<WorkflowHeader {...defaultProps} />);
 
-    expect(
-      screen.getByTestId('edit-workflow-title-button')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_WORKFLOW_TITLE_BUTTON)).toBeInTheDocument();
   });
 
   it('hides the title-edit button in view mode even when isNoOp is false', () => {
@@ -242,7 +241,7 @@ describe('WorkflowHeader — System badge', () => {
     render(<WorkflowHeader {...defaultProps} />);
 
     expect(
-      screen.queryByTestId('edit-workflow-title-button')
+      screen.queryByTestId(EDIT_WORKFLOW_TITLE_BUTTON)
     ).not.toBeInTheDocument();
   });
 });

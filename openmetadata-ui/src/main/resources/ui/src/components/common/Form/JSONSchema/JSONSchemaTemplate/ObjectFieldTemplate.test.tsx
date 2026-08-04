@@ -21,6 +21,13 @@ import React from 'react';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
 
+const FIELD1_CONTENT = 'field1 content';
+const PROPERTY_WRAPPER = '.property-wrapper';
+const ANT_COLLAPSE = '.ant-collapse';
+const CONNECTIONARGUMENTS_CONTENT = 'connectionArguments content';
+const CONNECTIONOPTIONS_CONTENT = 'connectionOptions content';
+const ADD_ITEM_TEST_TITLE = 'add-item-Test Title';
+
 jest.mock('../../../../../utils/ServiceUtilClassBase', () => ({
   __esModule: true,
   default: {
@@ -85,14 +92,14 @@ describe('ObjectFieldTemplate', () => {
     it('should render all normal properties', () => {
       render(<ObjectFieldTemplate {...defaultProps} />);
 
-      expect(screen.getByText('field1 content')).toBeInTheDocument();
+      expect(screen.getByText(FIELD1_CONTENT)).toBeInTheDocument();
       expect(screen.getByText('field2 content')).toBeInTheDocument();
     });
 
     it('should apply correct CSS classes to property wrappers', () => {
       const { container } = render(<ObjectFieldTemplate {...defaultProps} />);
 
-      const propertyWrappers = container.querySelectorAll('.property-wrapper');
+      const propertyWrappers = container.querySelectorAll(PROPERTY_WRAPPER);
 
       expect(propertyWrappers).toHaveLength(2);
     });
@@ -121,7 +128,7 @@ describe('ObjectFieldTemplate', () => {
         <ObjectFieldTemplate {...propsWithAdvanced} />
       );
 
-      const collapse = container.querySelector('.ant-collapse');
+      const collapse = container.querySelector(ANT_COLLAPSE);
 
       expect(collapse).toBeInTheDocument();
 
@@ -138,7 +145,7 @@ describe('ObjectFieldTemplate', () => {
       );
 
       // The collapse should exist
-      const collapse = container.querySelector('.ant-collapse');
+      const collapse = container.querySelector(ANT_COLLAPSE);
 
       expect(collapse).toBeInTheDocument();
 
@@ -154,7 +161,7 @@ describe('ObjectFieldTemplate', () => {
     it('should not render collapse when no advanced properties', () => {
       const { container } = render(<ObjectFieldTemplate {...defaultProps} />);
 
-      expect(container.querySelector('.ant-collapse')).not.toBeInTheDocument();
+      expect(container.querySelector(ANT_COLLAPSE)).not.toBeInTheDocument();
     });
 
     it('should separate normal and advanced properties correctly', () => {
@@ -163,17 +170,17 @@ describe('ObjectFieldTemplate', () => {
       );
 
       // Check that collapse exists for advanced properties
-      const collapse = container.querySelector('.ant-collapse');
+      const collapse = container.querySelector(ANT_COLLAPSE);
 
       expect(collapse).toBeInTheDocument();
 
       // Check that only normal properties are visible (advanced are in collapsed panel)
-      const visibleWrappers = container.querySelectorAll('.property-wrapper');
+      const visibleWrappers = container.querySelectorAll(PROPERTY_WRAPPER);
 
       expect(visibleWrappers).toHaveLength(1); // Only normal properties visible
 
       // Verify normal property content is present
-      expect(screen.getByText('field1 content')).toBeInTheDocument();
+      expect(screen.getByText(FIELD1_CONTENT)).toBeInTheDocument();
 
       // Verify advanced config header is present (but content is collapsed)
       const collapseHeader = screen.getByRole('button', {
@@ -188,10 +195,10 @@ describe('ObjectFieldTemplate', () => {
 
       // Initially, advanced properties should not be in DOM (collapsed by default)
       expect(
-        screen.queryByText('connectionArguments content')
+        screen.queryByText(CONNECTIONARGUMENTS_CONTENT)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText('connectionOptions content')
+        screen.queryByText(CONNECTIONOPTIONS_CONTENT)
       ).not.toBeInTheDocument();
 
       // Open the collapse panel
@@ -201,24 +208,22 @@ describe('ObjectFieldTemplate', () => {
       fireEvent.click(collapseHeader);
 
       // After opening, advanced properties should be in DOM
-      expect(
-        screen.getByText('connectionArguments content')
-      ).toBeInTheDocument();
-      expect(screen.getByText('connectionOptions content')).toBeInTheDocument();
+      expect(screen.getByText(CONNECTIONARGUMENTS_CONTENT)).toBeInTheDocument();
+      expect(screen.getByText(CONNECTIONOPTIONS_CONTENT)).toBeInTheDocument();
 
       // Close the collapse panel again
       fireEvent.click(collapseHeader);
 
       // After closing, advanced properties should be removed from DOM due to destroyInactivePanel
       expect(
-        screen.queryByText('connectionArguments content')
+        screen.queryByText(CONNECTIONARGUMENTS_CONTENT)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText('connectionOptions content')
+        screen.queryByText(CONNECTIONOPTIONS_CONTENT)
       ).not.toBeInTheDocument();
 
       // Normal properties should remain visible throughout
-      expect(screen.getByText('field1 content')).toBeInTheDocument();
+      expect(screen.getByText(FIELD1_CONTENT)).toBeInTheDocument();
     });
   });
 
@@ -241,7 +246,7 @@ describe('ObjectFieldTemplate', () => {
     it('should render add button when additionalProperties is true', () => {
       render(<ObjectFieldTemplate {...propsWithAdditional} />);
 
-      const addButton = screen.getByTestId('add-item-Test Title');
+      const addButton = screen.getByTestId(ADD_ITEM_TEST_TITLE);
 
       expect(addButton).toBeInTheDocument();
     });
@@ -257,9 +262,7 @@ describe('ObjectFieldTemplate', () => {
     it('should not render add button when additionalProperties is false', () => {
       render(<ObjectFieldTemplate {...defaultProps} />);
 
-      expect(
-        screen.queryByTestId('add-item-Test Title')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ADD_ITEM_TEST_TITLE)).not.toBeInTheDocument();
     });
 
     it('should call onAddClick when add button is clicked', () => {
@@ -271,7 +274,7 @@ describe('ObjectFieldTemplate', () => {
 
       render(<ObjectFieldTemplate {...props} />);
 
-      const addButton = screen.getByTestId('add-item-Test Title');
+      const addButton = screen.getByTestId(ADD_ITEM_TEST_TITLE);
       fireEvent.click(addButton);
 
       expect(mockOnAddClickFn).toHaveBeenCalledWith(props.schema);
@@ -299,7 +302,7 @@ describe('ObjectFieldTemplate', () => {
 
       render(<ObjectFieldTemplate {...propsWithFocus} />);
 
-      const addButton = screen.getByTestId('add-item-Test Title');
+      const addButton = screen.getByTestId(ADD_ITEM_TEST_TITLE);
       fireEvent.focus(addButton);
 
       expect(mockHandleFocus).toHaveBeenCalledWith('test-id');
@@ -308,7 +311,7 @@ describe('ObjectFieldTemplate', () => {
     it('should not call handleFocus when it is undefined', () => {
       render(<ObjectFieldTemplate {...propsWithAdditional} />);
 
-      const addButton = screen.getByTestId('add-item-Test Title');
+      const addButton = screen.getByTestId(ADD_ITEM_TEST_TITLE);
       fireEvent.focus(addButton);
 
       expect(mockHandleFocus).not.toHaveBeenCalled();
@@ -358,7 +361,7 @@ describe('ObjectFieldTemplate', () => {
 
       const { container } = render(<ObjectFieldTemplate {...emptyProps} />);
 
-      expect(container.querySelectorAll('.property-wrapper')).toHaveLength(0);
+      expect(container.querySelectorAll(PROPERTY_WRAPPER)).toHaveLength(0);
     });
 
     it('should handle properties with all advanced fields', () => {
@@ -380,7 +383,7 @@ describe('ObjectFieldTemplate', () => {
         <ObjectFieldTemplate {...allAdvancedProps} />
       );
 
-      expect(container.querySelector('.ant-collapse')).toBeInTheDocument();
+      expect(container.querySelector(ANT_COLLAPSE)).toBeInTheDocument();
 
       // Advanced properties are in collapsed panel, so check for the header
       const collapseHeader = screen.getByRole('button', {

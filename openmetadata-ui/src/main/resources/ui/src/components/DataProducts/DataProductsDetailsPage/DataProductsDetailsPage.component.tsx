@@ -127,6 +127,8 @@ import { DataProductMetadataModal } from '../DataProductMetadataModal';
 import { ODPSImportModal } from '../ODPSImportModal';
 import './data-products-details-page.less';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
+
+const LABEL_DATA_PRODUCT = 'label.data-product';
 const DataProductsDetailsPage = ({
   dataProduct,
   isVersionsView = false,
@@ -442,7 +444,7 @@ const DataProductsDetailsPage = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.rename-entity', {
-                  entity: t('label.data-product'),
+                  entity: t(LABEL_DATA_PRODUCT),
                 })}
                 icon={EditIcon}
                 id="rename-button"
@@ -464,7 +466,7 @@ const DataProductsDetailsPage = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.edit-entity-style-description', {
-                  entity: t('label.data-product'),
+                  entity: t(LABEL_DATA_PRODUCT),
                 })}
                 icon={StyleIcon}
                 id="rename-button"
@@ -504,7 +506,7 @@ const DataProductsDetailsPage = ({
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
-                    entityType: t('label.data-product'),
+                    entityType: t(LABEL_DATA_PRODUCT),
                   }
                 )}
                 icon={DeleteIcon}
@@ -908,7 +910,7 @@ const DataProductsDetailsPage = ({
                       <Tooltip
                         placement="topRight"
                         title={t('label.manage-entity', {
-                          entity: t('label.data-product'),
+                          entity: t(LABEL_DATA_PRODUCT),
                         })}>
                         <Button
                           className="domain-manage-dropdown-button tw-px-1.5"

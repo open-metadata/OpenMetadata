@@ -102,6 +102,10 @@ import {
 } from '../../EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import './metric-list-page.less';
 
+const LABEL_STATUS = 'label.status';
+const LABEL_METRIC_PLURAL = 'label.metric-plural';
+const LABEL_METRIC = 'label.metric';
+
 type MetricColumnId =
   | 'description'
   | 'glossary'
@@ -133,7 +137,7 @@ const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
 const METRIC_COLUMN_LABEL_KEYS: Record<MetricColumnId, string> = {
   description: 'label.description',
   glossary: 'label.glossary-term-plural',
-  entityStatus: 'label.status',
+  entityStatus: LABEL_STATUS,
   owners: 'label.owner-plural',
   tags: 'label.tag-plural',
   domains: 'label.domain-plural',
@@ -249,9 +253,9 @@ const MetricListPage = () => {
   const listingError = permissionError ?? metricsError;
   const listingErrorMessage = permissionError
     ? t('server.fetch-entity-permissions-error', {
-        entity: t('label.metric-plural'),
+        entity: t(LABEL_METRIC_PLURAL),
       })
-    : t('server.entity-fetch-error', { entity: t('label.metric-plural') });
+    : t('server.entity-fetch-error', { entity: t(LABEL_METRIC_PLURAL) });
 
   useEffect(() => {
     handlePagingChange({ total: totalMetrics });
@@ -455,7 +459,7 @@ const MetricListPage = () => {
     );
 
     const metricColumn = {
-      title: t('label.metric'),
+      title: t(LABEL_METRIC),
       dataIndex: 'name',
       width: '320px',
       key: 'name',
@@ -519,7 +523,7 @@ const MetricListPage = () => {
           renderTagPills(glossaryTerms(tags), 'metric-list-glossary-pill'),
       },
       entityStatus: {
-        title: t('label.status'),
+        title: t(LABEL_STATUS),
         dataIndex: 'entityStatus',
         key: 'entityStatus',
         width: 160,
@@ -650,7 +654,7 @@ const MetricListPage = () => {
             iconLeading={Plus}
             size="sm"
             onPress={() => navigate(ROUTES.ADD_METRIC)}>
-            {t('label.add-entity', { entity: t('label.metric') })}
+            {t('label.add-entity', { entity: t(LABEL_METRIC) })}
           </Button>
         </LimitWrapper>
       )}
@@ -757,7 +761,7 @@ const MetricListPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.metric-plural')}
+      pageTitle={t(LABEL_METRIC_PLURAL)}
       variant={isAiMode ? 'compact' : 'default'}>
       <div
         className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
@@ -771,7 +775,7 @@ const MetricListPage = () => {
                   noMargin
                   items={[
                     getGlossaryHomeCrumb(t),
-                    { label: t('label.metric-plural') },
+                    { label: t(LABEL_METRIC_PLURAL) },
                   ]}
                   showHome={false}
                 />
@@ -779,18 +783,18 @@ const MetricListPage = () => {
               className="tw:mb-0!"
               padding="comfortable"
               subtitle={t('message.metric-description')}
-              title={t('label.metric-plural')}
+              title={t(LABEL_METRIC_PLURAL)}
               variant="gradient"
             />
           ) : (
             <div className="d-flex justify-between">
               <PageHeader
                 data={{
-                  header: t('label.metric-plural'),
+                  header: t(LABEL_METRIC_PLURAL),
                   subHeader: t('message.metric-description'),
                 }}
                 learningPageId={LEARNING_PAGE_IDS.METRICS}
-                title={t('label.metric')}
+                title={t(LABEL_METRIC)}
               />
               {metricActions}
             </div>
@@ -849,7 +853,7 @@ const MetricListPage = () => {
                       data-testid="metric-search"
                       icon={SearchLg}
                       placeholder={t('label.search-entity', {
-                        entity: t('label.metric-plural'),
+                        entity: t(LABEL_METRIC_PLURAL),
                       })}
                       value={searchText}
                       wrapperClassName="metric-list-search-wrapper"
@@ -863,7 +867,7 @@ const MetricListPage = () => {
                           iconTrailing={ChevronDown}>
                           {statusFilter
                             ? getMetricStatus(statusFilter).label
-                            : t('label.status')}
+                            : t(LABEL_STATUS)}
                         </Button>
                         <Dropdown.Popover>
                           <Dropdown.Menu
@@ -979,10 +983,10 @@ const MetricListPage = () => {
                         <ErrorPlaceHolder
                           className="p-y-md border-none"
                           doc={METRICS_DOCS}
-                          heading={t('label.metric')}
+                          heading={t(LABEL_METRIC)}
                           permission={permission.Create}
                           permissionValue={t('label.create-entity', {
-                            entity: t('label.metric'),
+                            entity: t(LABEL_METRIC),
                           })}
                           type={ERROR_PLACEHOLDER_TYPE.CREATE}
                           onClick={() => navigate(ROUTES.ADD_METRIC)}
@@ -1003,7 +1007,7 @@ const MetricListPage = () => {
         </div>
       </div>
       <DeleteModal
-        entityTitle={t('label.metric-plural')}
+        entityTitle={t(LABEL_METRIC_PLURAL)}
         isDeleting={isDeletingMetrics}
         message={t('message.delete-metrics-warning')}
         open={isDeleteDialogOpen}

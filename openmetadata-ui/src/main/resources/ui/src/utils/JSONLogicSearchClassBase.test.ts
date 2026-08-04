@@ -13,6 +13,8 @@
 import { SearchIndex } from '../enums/search.enum';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
 
+const LABEL_IS_NOT = 'label.is-not';
+
 // Define extended widget interface for testing widget properties
 interface ExtendedWidget {
   jsonLogic?: (...args: unknown[]) => unknown;
@@ -105,9 +107,9 @@ describe('JSONLogicSearchClassBase', () => {
       } = jsonLogicSearchClassBase.configOperators;
 
       expect(equal.label).toContain('label.is');
-      expect(not_equal.label).toContain('label.is-not');
+      expect(not_equal.label).toContain(LABEL_IS_NOT);
       expect(select_equals.label).toContain('label.is');
-      expect(select_not_equals.label).toContain('label.is-not');
+      expect(select_not_equals.label).toContain(LABEL_IS_NOT);
       expect(is_null.label).toContain('label.is-not-set');
       expect(is_not_null.label).toContain('label.is-set');
     });
@@ -241,7 +243,7 @@ describe('JSONLogicSearchClassBase', () => {
       );
 
       expect(config.operators.equal.label).toContain('label.is');
-      expect(config.operators.not_equal.label).toContain('label.is-not');
+      expect(config.operators.not_equal.label).toContain(LABEL_IS_NOT);
       expect(config.operators.is_null.label).toContain('label.is-not-set');
       expect(config.operators.is_not_null.label).toContain('label.is-set');
     });

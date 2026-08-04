@@ -37,6 +37,12 @@ import {
 import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { t } from '../i18next/LocalUtil';
 
+const LABEL_PIPELINE_STATE = 'label.pipeline-state' as const;
+const MESSAGE_FIELD_TEXT_IS_REQUIRED =
+  'message.field-text-is-required' as const;
+const LABEL_ENTITY_LIST = 'label.entity-list' as const;
+const LABEL_ENTITY_NAME = 'label.entity-name' as const;
+
 export const getFunctionDisplayName = (func: string): string => {
   switch (func) {
     case 'matchAnyEntityFqn':
@@ -54,9 +60,9 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchAnyFieldChange':
       return t('label.field-change');
     case 'matchPipelineState':
-      return t('label.pipeline-state');
+      return t(LABEL_PIPELINE_STATE);
     case 'matchIngestionPipelineState':
-      return t('label.pipeline-state');
+      return t(LABEL_PIPELINE_STATE);
     case 'matchAnySource':
       return t('label.source-match');
     case 'matchAnyEntityId':
@@ -410,61 +416,61 @@ export const getRandomizedAlertName = () => {
 export const getMessageFromArgumentName = (argumentName: string) => {
   switch (argumentName) {
     case 'fqnList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
           entity: t('label.fqn-uppercase'),
         }),
       });
     case 'domainList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
           entity: t('label.domain'),
         }),
       });
     case 'tableNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
+          entity: t(LABEL_ENTITY_NAME, {
             entity: t('label.table'),
           }),
         }),
       });
     case 'entityNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
+          entity: t(LABEL_ENTITY_NAME, {
             entity: t('label.entity'),
           }),
         }),
       });
     case 'ownerNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
+          entity: t(LABEL_ENTITY_NAME, {
             entity: t('label.owner-plural'),
           }),
         }),
       });
     case 'updateByUserList':
     case 'userList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
+          entity: t(LABEL_ENTITY_NAME, {
             entity: t('label.user'),
           }),
         }),
       });
     case 'eventTypeList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
+          entity: t(LABEL_ENTITY_NAME, {
             entity: t('label.event'),
           }),
         }),
       });
     case 'entityIdList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
           entity: t('label.entity-id', {
             entity: t('label.data-asset'),
           }),
@@ -472,32 +478,32 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       });
     case 'pipelineStateList':
     case 'ingestionPipelineStateList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.pipeline-state'),
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
+          entity: t(LABEL_PIPELINE_STATE),
         }),
       });
     case 'testStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
           entity: t('label.test-suite-status'),
         }),
       });
     case 'testResultList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
           entity: t('label.test-case-result'),
         }),
       });
     case 'contractStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
           entity: t('label.data-contract-status'),
         }),
       });
     case 'testSuiteList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
+      return t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+        fieldText: t(LABEL_ENTITY_LIST, {
           entity: t('label.test-suite'),
         }),
       });

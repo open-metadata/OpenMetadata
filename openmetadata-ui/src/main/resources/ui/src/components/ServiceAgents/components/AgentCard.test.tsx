@@ -16,6 +16,9 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
+const LABEL_RECENT_RUNS_SENTENCE = 'label.recent-runs-sentence';
+const RUN_AGENT_BUTTON = 'run-agent-button';
+
 const mockAgentOverflowMenu = jest.fn();
 
 jest.mock('./AgentOverflowMenu.component', () => ({
@@ -147,7 +150,7 @@ describe('AgentCard', () => {
   it('should render one dot per recent run', () => {
     renderCard(baseAgent);
 
-    expect(screen.getByText('label.recent-runs-sentence')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_RECENT_RUNS_SENTENCE)).toBeInTheDocument();
     expect(
       screen.getAllByTitle(/message.run-status-click-details/)
     ).toHaveLength(3);
@@ -156,14 +159,14 @@ describe('AgentCard', () => {
   it('should show recent runs for a queued agent with run history', () => {
     renderCard({ ...baseAgent, status: 'queued' });
 
-    expect(screen.getByText('label.recent-runs-sentence')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_RECENT_RUNS_SENTENCE)).toBeInTheDocument();
   });
 
   it('should hide the recent runs row when there is no run history', () => {
     renderCard({ ...baseAgent, status: 'queued', recentRuns: [] });
 
     expect(
-      screen.queryByText('label.recent-runs-sentence')
+      screen.queryByText(LABEL_RECENT_RUNS_SENTENCE)
     ).not.toBeInTheDocument();
   });
 
@@ -171,7 +174,7 @@ describe('AgentCard', () => {
     renderCard({ ...baseAgent, status: 'running' });
 
     expect(
-      screen.queryByText('label.recent-runs-sentence')
+      screen.queryByText(LABEL_RECENT_RUNS_SENTENCE)
     ).not.toBeInTheDocument();
   });
 
@@ -229,13 +232,13 @@ describe('AgentCard', () => {
   it('should hide the run button while permissions are unresolved', () => {
     renderCard(baseAgent);
 
-    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(RUN_AGENT_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should show the run button when the user has trigger permission', () => {
     renderCard(baseAgent, { trigger: true, edit: false, delete: false });
 
-    expect(screen.getByTestId('run-agent-button')).toBeInTheDocument();
+    expect(screen.getByTestId(RUN_AGENT_BUTTON)).toBeInTheDocument();
   });
 
   it('should hide the run button for a running agent', () => {
@@ -244,7 +247,7 @@ describe('AgentCard', () => {
       { trigger: true, edit: false, delete: false }
     );
 
-    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(RUN_AGENT_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should hide the run button for a queued agent to avoid a duplicate run', () => {
@@ -253,6 +256,6 @@ describe('AgentCard', () => {
       { trigger: true, edit: false, delete: false }
     );
 
-    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(RUN_AGENT_BUTTON)).not.toBeInTheDocument();
   });
 });

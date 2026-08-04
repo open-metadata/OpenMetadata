@@ -16,6 +16,8 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { Agent } from '../AgentsPage.interface';
 import AgentGroup from './AgentGroup.component';
 
+const AGENT_GROUP_EMPTY_PLACEHOLDER = 'agent-group-empty-placeholder' as const;
+
 jest.mock('./AgentCard.component', () =>
   jest.fn().mockImplementation(() => <p>AgentCard</p>)
 );
@@ -70,7 +72,7 @@ describe('AgentGroup', () => {
 
     expect(screen.getByText('AgentCard')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('agent-group-empty-placeholder')
+      screen.queryByTestId(AGENT_GROUP_EMPTY_PLACEHOLDER)
     ).not.toBeInTheDocument();
   });
 
@@ -78,7 +80,7 @@ describe('AgentGroup', () => {
     renderGroup([], <p>no agents</p>);
 
     expect(
-      screen.getByTestId('agent-group-empty-placeholder')
+      screen.getByTestId(AGENT_GROUP_EMPTY_PLACEHOLDER)
     ).toBeInTheDocument();
     expect(screen.getByText('no agents')).toBeInTheDocument();
     expect(screen.getByTestId('agent-group')).toBeInTheDocument();
@@ -89,7 +91,7 @@ describe('AgentGroup', () => {
     renderGroup([]);
 
     expect(
-      screen.queryByTestId('agent-group-empty-placeholder')
+      screen.queryByTestId(AGENT_GROUP_EMPTY_PLACEHOLDER)
     ).not.toBeInTheDocument();
     expect(screen.queryByText('AgentCard')).not.toBeInTheDocument();
   });

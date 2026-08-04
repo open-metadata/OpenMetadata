@@ -42,6 +42,8 @@ import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+const LABEL_APPLICATION_PLURAL = 'label.application-plural';
+
 const ApplicationPage = () => {
   const { t } = useTranslation();
   const {
@@ -116,7 +118,7 @@ const ApplicationPage = () => {
     if (showDisabled) {
       return (
         <Col className="mt-24 text-center" span={24}>
-          <ErrorPlaceHolder heading={t('label.application-plural')} />
+          <ErrorPlaceHolder heading={t(LABEL_APPLICATION_PLURAL)} />
         </Col>
       );
     }
@@ -124,7 +126,7 @@ const ApplicationPage = () => {
     return (
       <Col className="mt-24 text-center" span={24}>
         <ErrorPlaceHolder
-          heading={t('label.application-plural')}
+          heading={t(LABEL_APPLICATION_PLURAL)}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <div>{t('message.no-installed-applications-found')}</div>
         </ErrorPlaceHolder>
@@ -148,7 +150,7 @@ const ApplicationPage = () => {
   }, [pageSize, pagingCursor, showDisabled]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.application-plural')}>
+    <PageLayoutV1 pageTitle={t(LABEL_APPLICATION_PLURAL)}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />

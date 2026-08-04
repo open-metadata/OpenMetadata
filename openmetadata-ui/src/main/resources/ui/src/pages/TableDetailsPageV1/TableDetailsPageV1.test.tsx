@@ -21,6 +21,9 @@ import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
 
+const LABEL_DBT_LOWERCASE = 'label.dbt-lowercase' as const;
+const LABEL_VIEW_DEFINITION = 'label.view-definition' as const;
+
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
@@ -379,8 +382,8 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
-    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
-    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+    expect(await screen.findByText(LABEL_DBT_LOWERCASE)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_VIEW_DEFINITION)).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should dbt tab for rawSql, when sql is empty', async () => {
@@ -408,8 +411,8 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
-    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
-    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+    expect(await screen.findByText(LABEL_DBT_LOWERCASE)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_VIEW_DEFINITION)).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should dbt tab for rawSql, when there is no sql available', async () => {
@@ -437,8 +440,8 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
-    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
-    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+    expect(await screen.findByText(LABEL_DBT_LOWERCASE)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_VIEW_DEFINITION)).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should show dbt tab when path is available without sql', async () => {
@@ -466,8 +469,8 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
-    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
-    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+    expect(await screen.findByText(LABEL_DBT_LOWERCASE)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_VIEW_DEFINITION)).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should show dbt tab when dbtSourceProject is available without sql', async () => {
@@ -495,8 +498,8 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
-    expect(await screen.findByText('label.dbt-lowercase')).toBeInTheDocument();
-    expect(screen.queryByText('label.view-definition')).not.toBeInTheDocument();
+    expect(await screen.findByText(LABEL_DBT_LOWERCASE)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_VIEW_DEFINITION)).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render schema definition tab table type is not view', async () => {
@@ -530,7 +533,7 @@ describe('TestDetailsPageV1 component', () => {
     expect(
       await screen.findByText('label.schema-definition')
     ).toBeInTheDocument();
-    expect(screen.queryByText('label.dbt-lowercase')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_DBT_LOWERCASE)).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render view definition tab if table type is view', async () => {
@@ -558,9 +561,7 @@ describe('TestDetailsPageV1 component', () => {
       );
     });
 
-    expect(
-      await screen.findByText('label.view-definition')
-    ).toBeInTheDocument();
+    expect(await screen.findByText(LABEL_VIEW_DEFINITION)).toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render schemaTab by default', async () => {

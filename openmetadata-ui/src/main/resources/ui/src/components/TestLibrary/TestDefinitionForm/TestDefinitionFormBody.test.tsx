@@ -24,6 +24,10 @@ import { TestPlatform } from '../../../generated/tests/testDefinition';
 import { TestDefinitionFormValues } from './TestDefinitionForm.interface';
 import TestDefinitionFormBody from './TestDefinitionFormBody';
 
+const TEST_DEFINITION_NAME = 'test-definition-name';
+const ENABLED_TOGGLE = 'enabled-toggle';
+const ADD_PARAMETER_BUTTON = 'add-parameter-button';
+
 jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
   __esModule: true,
   default: () => <div data-testid="code-editor" />,
@@ -74,7 +78,7 @@ describe('TestDefinitionFormBody', () => {
   it('renders the core fields', async () => {
     render(<Harness />);
 
-    expect(screen.getByTestId('test-definition-name')).toBeInTheDocument();
+    expect(screen.getByTestId(TEST_DEFINITION_NAME)).toBeInTheDocument();
     expect(screen.getByTestId('entity-type')).toBeInTheDocument();
     expect(screen.getByTestId('test-platforms')).toBeInTheDocument();
     expect(await screen.findByTestId('code-editor')).toBeInTheDocument();
@@ -83,32 +87,32 @@ describe('TestDefinitionFormBody', () => {
   it('shows the enabled toggle only in edit mode', () => {
     const { rerender } = render(<Harness isEditMode={false} />);
 
-    expect(screen.queryByTestId('enabled-toggle')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ENABLED_TOGGLE)).not.toBeInTheDocument();
 
     rerender(<Harness isEditMode />);
 
-    expect(screen.getByTestId('enabled-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId(ENABLED_TOGGLE)).toBeInTheDocument();
   });
 
   it('disables the enabled toggle for a read-only definition in edit mode', () => {
     render(<Harness isEditMode isReadOnlyField />);
 
     expect(
-      screen.getByTestId('enabled-toggle').querySelector('input')
+      screen.getByTestId(ENABLED_TOGGLE).querySelector('input')
     ).toBeDisabled();
   });
 
   it('renders an Add Parameter control when not read-only', () => {
     render(<Harness />);
 
-    expect(screen.getByTestId('add-parameter-button')).toBeInTheDocument();
+    expect(screen.getByTestId(ADD_PARAMETER_BUTTON)).toBeInTheDocument();
   });
 
   it('disables the name input in edit mode', () => {
     render(<Harness isEditMode />);
 
     const nameInput = screen
-      .getByTestId('test-definition-name')
+      .getByTestId(TEST_DEFINITION_NAME)
       .querySelector('input');
 
     expect(nameInput).toBeDisabled();
@@ -125,13 +129,11 @@ describe('TestDefinitionFormBody', () => {
     );
 
     const nameInput = screen
-      .getByTestId('test-definition-name')
+      .getByTestId(TEST_DEFINITION_NAME)
       .querySelector('input');
 
     expect(nameInput).toBeDisabled();
-    expect(
-      screen.queryByTestId('add-parameter-button')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ADD_PARAMETER_BUTTON)).not.toBeInTheDocument();
     expect(screen.queryByTestId('remove-parameter-0')).not.toBeInTheDocument();
   });
 
@@ -151,7 +153,7 @@ describe('TestDefinitionFormBody', () => {
 
     expect(screen.queryByTestId('parameter-name-0')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('add-parameter-button'));
+    fireEvent.click(screen.getByTestId(ADD_PARAMETER_BUTTON));
 
     expect(screen.getByTestId('parameter-name-0')).toBeInTheDocument();
     expect(screen.getByTestId('remove-parameter-0')).toBeInTheDocument();

@@ -14,6 +14,24 @@
 import { EntityType } from '../enums/entity.enum';
 import { User } from '../generated/entity/teams/user';
 
+const STR_9E8B7464_3F3E_4071_AF05_19BE142D75DB =
+  '9e8b7464-3f3e-4071-af05-19be142d75db';
+const ORGANIZATION_UNDER_WHICH_ALL_THE_OTHER_TEA =
+  'Organization under which all the other team hierarchy is created';
+const HTTP_LOCALHOST_8585_API_V1_TEAMS_9E8B7464 =
+  'http://localhost:8585/api/v1/teams/9e8b7464-3f3e-4071-af05-19be142d75db';
+const STR_0430976D_092A_46C9_90A8_61C6091A6F38 =
+  '0430976d-092a-46c9-90a8-61c6091a6f38';
+const HTTP_LOCALHOST_8585_API_V1_PERSONAS_043097 =
+  'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38';
+const ED94FD7C_0974_4B87_9295_02B36C4C6BCD =
+  'ed94fd7c-0974-4b87-9295-02b36c4c6bcd';
+const USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN =
+  'Users with Data Consumer role use different data assets for their day to day work.';
+const DATA_CONSUMER = 'Data Consumer';
+const HTTP_LOCALHOST_8585_API_V1_ROLES_ED94FD7C =
+  'http://localhost:8585/api/v1/roles/ed94fd7c-0974-4b87-9295-02b36c4c6bcd';
+
 export const USER_DATA: User = {
   id: '7f196a28-c4fa-4579-b420-f828985e7861',
   name: 'admin',
@@ -29,34 +47,33 @@ export const USER_DATA: User = {
   isAdmin: true,
   teams: [
     {
-      id: '9e8b7464-3f3e-4071-af05-19be142d75db',
+      id: STR_9E8B7464_3F3E_4071_AF05_19BE142D75DB,
       type: 'team',
       name: 'Organization',
       fullyQualifiedName: 'Organization',
-      description:
-        'Organization under which all the other team hierarchy is created',
+      description: ORGANIZATION_UNDER_WHICH_ALL_THE_OTHER_TEA,
       displayName: 'Organization',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/teams/9e8b7464-3f3e-4071-af05-19be142d75db',
+      href: HTTP_LOCALHOST_8585_API_V1_TEAMS_9E8B7464,
     },
   ],
   personas: [
     {
-      id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+      id: STR_0430976D_092A_46C9_90A8_61C6091A6F38,
       type: 'persona',
       name: 'Person-04',
       fullyQualifiedName: 'Person-04',
       description: 'Person-04',
       displayName: 'Person-04',
-      href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
+      href: HTTP_LOCALHOST_8585_API_V1_PERSONAS_043097,
     },
   ],
   defaultPersona: {
     description: 'Person-04',
     displayName: 'Person-04',
     fullyQualifiedName: 'Person-04',
-    href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
-    id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+    href: HTTP_LOCALHOST_8585_API_V1_PERSONAS_043097,
+    id: STR_0430976D_092A_46C9_90A8_61C6091A6F38,
     name: 'Person-04',
     type: 'persona',
   },
@@ -80,15 +97,14 @@ export const USER_DATA: User = {
   ],
   roles: [
     {
-      id: 'ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
+      id: ED94FD7C_0974_4B87_9295_02B36C4C6BCD,
       type: 'role',
       name: 'DataConsumer',
       fullyQualifiedName: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
+      displayName: DATA_CONSUMER,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/roles/ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
+      href: HTTP_LOCALHOST_8585_API_V1_ROLES_ED94FD7C,
     },
     {
       id: 'a24f61cc-be15-411a-aaf6-28a8c8029728',
@@ -113,15 +129,14 @@ export const USER_DATA: User = {
   ],
   inheritedRoles: [
     {
-      id: 'ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
+      id: ED94FD7C_0974_4B87_9295_02B36C4C6BCD,
       type: 'role',
       name: 'DataConsumer',
       fullyQualifiedName: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
+      displayName: DATA_CONSUMER,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/roles/ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
+      href: HTTP_LOCALHOST_8585_API_V1_ROLES_ED94FD7C,
     },
   ],
   isEmailVerified: true,
@@ -129,15 +144,14 @@ export const USER_DATA: User = {
 
 export const USER_TEAMS = [
   {
-    id: '9e8b7464-3f3e-4071-af05-19be142d75db',
+    id: STR_9E8B7464_3F3E_4071_AF05_19BE142D75DB,
     type: 'team',
     name: 'Organization',
     fullyQualifiedName: 'Organization',
-    description:
-      'Organization under which all the other team hierarchy is created',
+    description: ORGANIZATION_UNDER_WHICH_ALL_THE_OTHER_TEA,
     displayName: 'Organization',
     deleted: false,
-    href: 'http://localhost:8585/api/v1/teams/9e8b7464-3f3e-4071-af05-19be142d75db',
+    href: HTTP_LOCALHOST_8585_API_V1_TEAMS_9E8B7464,
   },
 
   {
@@ -169,9 +183,8 @@ export const MOCK_USER_ROLE = [
     type: 'role',
     name: 'DataConsumer',
     fullyQualifiedName: 'DataConsumer',
-    description:
-      'Users with Data Consumer role use different data assets for their day to day work.',
-    displayName: 'Data Consumer',
+    description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
+    displayName: DATA_CONSUMER,
     deleted: false,
     href: 'http://localhost:8585/api/v1/roles/afc5583c-e268-4f6c-a638-a876d04ebaa1',
   },
@@ -244,8 +257,8 @@ export const UPDATED_USER_DATA = {
     description: 'Person-04',
     displayName: 'Person-04',
     fullyQualifiedName: 'Person-04',
-    href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
-    id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+    href: HTTP_LOCALHOST_8585_API_V1_PERSONAS_043097,
+    id: STR_0430976D_092A_46C9_90A8_61C6091A6F38,
     name: 'Person-04',
     type: 'persona',
   },
@@ -270,12 +283,11 @@ export const UPDATED_USER_DATA = {
   inheritedRoles: [
     {
       deleted: false,
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
+      displayName: DATA_CONSUMER,
       fullyQualifiedName: 'DataConsumer',
-      href: 'http://localhost:8585/api/v1/roles/ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
-      id: 'ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
+      href: HTTP_LOCALHOST_8585_API_V1_ROLES_ED94FD7C,
+      id: ED94FD7C_0974_4B87_9295_02B36C4C6BCD,
       name: 'DataConsumer',
       type: 'role',
     },
@@ -289,8 +301,8 @@ export const UPDATED_USER_DATA = {
       description: 'Person-04',
       displayName: 'Person-04',
       fullyQualifiedName: 'Person-04',
-      href: 'http://localhost:8585/api/v1/personas/0430976d-092a-46c9-90a8-61c6091a6f38',
-      id: '0430976d-092a-46c9-90a8-61c6091a6f38',
+      href: HTTP_LOCALHOST_8585_API_V1_PERSONAS_043097,
+      id: STR_0430976D_092A_46C9_90A8_61C6091A6F38,
       name: 'Person-04',
       type: 'persona',
     },
@@ -305,12 +317,11 @@ export const UPDATED_USER_DATA = {
   teams: [
     {
       deleted: false,
-      description:
-        'Organization under which all the other team hierarchy is created',
+      description: ORGANIZATION_UNDER_WHICH_ALL_THE_OTHER_TEA,
       displayName: 'Organization',
       fullyQualifiedName: 'Organization',
-      href: 'http://localhost:8585/api/v1/teams/9e8b7464-3f3e-4071-af05-19be142d75db',
-      id: '9e8b7464-3f3e-4071-af05-19be142d75db',
+      href: HTTP_LOCALHOST_8585_API_V1_TEAMS_9E8B7464,
+      id: STR_9E8B7464_3F3E_4071_AF05_19BE142D75DB,
       name: 'Organization',
       type: 'team',
     },

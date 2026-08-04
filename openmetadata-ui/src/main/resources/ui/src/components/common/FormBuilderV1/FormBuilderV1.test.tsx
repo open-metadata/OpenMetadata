@@ -20,6 +20,9 @@ import {
 } from '@testing-library/react';
 import FormBuilderV1 from './FormBuilderV1';
 
+const LABEL_CANCEL = 'label.cancel';
+const SUBMIT_BTN = 'submit-btn';
+
 const mockForm = jest.fn();
 const mockFormatFormDataForRender = jest.fn(
   (data: Record<string, unknown> = {}) => ({
@@ -115,8 +118,8 @@ describe('FormBuilderV1', () => {
       name: 'value',
       formatted: true,
     });
-    expect(screen.getByRole('button', { name: 'label.cancel' })).toBeVisible();
-    expect(screen.getByTestId('submit-btn')).toHaveTextContent('label.submit');
+    expect(screen.getByRole('button', { name: LABEL_CANCEL })).toBeVisible();
+    expect(screen.getByTestId(SUBMIT_BTN)).toHaveTextContent('label.submit');
   });
 
   it('resets local form data and calls onCancel', async () => {
@@ -144,7 +147,7 @@ describe('FormBuilderV1', () => {
       });
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: LABEL_CANCEL }));
 
     expect(onCancel).toHaveBeenCalled();
 
@@ -201,14 +204,14 @@ describe('FormBuilderV1', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Discard' })).toBeVisible();
-    expect(screen.getByTestId('submit-btn')).toHaveTextContent('Save');
+    expect(screen.getByTestId(SUBMIT_BTN)).toHaveTextContent('Save');
 
     rerender(
       <FormBuilderV1 isLoading formData={{}} schema={schema} status="waiting" />
     );
 
-    expect(screen.getByTestId('submit-btn')).toBeDisabled();
-    expect(screen.getByTestId('submit-btn')).toHaveTextContent(
+    expect(screen.getByTestId(SUBMIT_BTN)).toBeDisabled();
+    expect(screen.getByTestId(SUBMIT_BTN)).toHaveTextContent(
       'label.submitting'
     );
   });
@@ -222,7 +225,7 @@ describe('FormBuilderV1', () => {
       />
     );
 
-    expect(screen.getByTestId('submit-btn')).toBeDisabled();
+    expect(screen.getByTestId(SUBMIT_BTN)).toBeDisabled();
   });
 
   it('syncs localFormData when the formData prop changes', async () => {
@@ -249,7 +252,7 @@ describe('FormBuilderV1', () => {
     render(<FormBuilderV1 hideCancelButton formData={{}} schema={schema} />);
 
     expect(
-      screen.queryByRole('button', { name: 'label.cancel' })
+      screen.queryByRole('button', { name: LABEL_CANCEL })
     ).not.toBeInTheDocument();
   });
 });

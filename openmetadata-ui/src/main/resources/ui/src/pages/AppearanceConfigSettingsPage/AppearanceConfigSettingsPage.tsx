@@ -49,6 +49,11 @@ import { getThemeConfig } from '../../utils/ThemeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
+const LABEL_THEME = 'label.theme' as const;
+const MESSAGE_HEX_COLOR_VALIDATION = 'message.hex-color-validation' as const;
+const MESSAGE_ENTITY_IS_NOT_VALID_URL =
+  'message.entity-is-not-valid-url' as const;
+
 const AppearanceConfigSettingsPage = () => {
   const navigate = useNavigate();
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
@@ -78,7 +83,7 @@ const AppearanceConfigSettingsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        t('label.theme')
+        t(LABEL_THEME)
       ),
     []
   );
@@ -172,7 +177,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -188,7 +193,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -204,7 +209,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -220,7 +225,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -236,7 +241,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -252,7 +257,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -268,7 +273,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -284,7 +289,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+          message: t(MESSAGE_HEX_COLOR_VALIDATION),
         },
       ],
       props: {
@@ -308,7 +313,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           type: 'url',
-          message: t('message.entity-is-not-valid-url', {
+          message: t(MESSAGE_ENTITY_IS_NOT_VALID_URL, {
             entity: t('label.logo-url'),
           }),
         },
@@ -327,7 +332,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           type: 'url',
-          message: t('message.entity-is-not-valid-url', {
+          message: t(MESSAGE_ENTITY_IS_NOT_VALID_URL, {
             entity: t('label.monogram-url'),
           }),
         },
@@ -346,7 +351,7 @@ const AppearanceConfigSettingsPage = () => {
       rules: [
         {
           type: 'url',
-          message: t('message.entity-is-not-valid-url', {
+          message: t(MESSAGE_ENTITY_IS_NOT_VALID_URL, {
             entity: t('label.favicon-url'),
           }),
         },
@@ -423,7 +428,7 @@ const AppearanceConfigSettingsPage = () => {
   }, [applicationConfig]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.theme')}>
+    <PageLayoutV1 pageTitle={t(LABEL_THEME)}>
       <Row align="middle" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -434,7 +439,7 @@ const AppearanceConfigSettingsPage = () => {
               <Space className="w-full justify-between">
                 <PageHeader
                   data={{
-                    header: t('label.theme'),
+                    header: t(LABEL_THEME),
                     subHeader: t('message.appearance-configuration-message'),
                   }}
                 />

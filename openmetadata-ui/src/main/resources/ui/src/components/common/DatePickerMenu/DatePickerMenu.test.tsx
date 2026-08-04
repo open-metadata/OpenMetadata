@@ -13,6 +13,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import DatePickerMenu from './DatePickerMenu.component';
 
+const MOCK_LAST_3_DAYS = 'Last 3 days';
+const MOCK_LAST_7_DAYS = 'Last 7 days';
+const DATE_PICKER_MENU = 'date-picker-menu';
+const LABEL_CUSTOM_RANGE = 'label.custom-range';
+const CLEAR_DATE_PICKER = 'clear-date-picker';
+
 jest.mock('../DatePicker/DatePicker', () => {
   const { DateTime } = jest.requireActual('luxon');
 
@@ -57,17 +63,17 @@ jest.mock('../../../utils/DatePickerMenuUtils', () => ({
 jest.mock('../../../constants/profiler.constant', () => ({
   DEFAULT_SELECTED_RANGE: {
     key: 'last3days',
-    title: 'Last 3 days',
+    title: MOCK_LAST_3_DAYS,
     days: 3,
   },
   PROFILER_FILTER_RANGE: {
     last3days: {
       days: 3,
-      title: 'Last 3 days',
+      title: MOCK_LAST_3_DAYS,
     },
     last7days: {
       days: 7,
-      title: 'Last 7 days',
+      title: MOCK_LAST_7_DAYS,
     },
   },
 }));
@@ -89,7 +95,7 @@ describe('DatePickerMenu', () => {
       />
     );
 
-    expect(screen.getByText('Last 3 days')).toBeInTheDocument();
+    expect(screen.getByText(MOCK_LAST_3_DAYS)).toBeInTheDocument();
   });
 
   it('should show default date range if provided via props', () => {
@@ -107,7 +113,7 @@ describe('DatePickerMenu', () => {
   it('should update the selected range when the default range changes', () => {
     const { rerender } = render(
       <DatePickerMenu
-        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        defaultDateRange={{ key: 'last3days', title: MOCK_LAST_3_DAYS }}
         handleDateRangeChange={mockHandleDateRangeChange}
       />
     );
@@ -120,36 +126,36 @@ describe('DatePickerMenu', () => {
     );
 
     expect(screen.getByText('Updated Range')).toBeInTheDocument();
-    expect(screen.queryByText('Last 3 days')).not.toBeInTheDocument();
+    expect(screen.queryByText(MOCK_LAST_3_DAYS)).not.toBeInTheDocument();
   });
 
   it('should preserve a selection when equivalent default props are recreated', async () => {
     const { rerender } = render(
       <DatePickerMenu
-        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        defaultDateRange={{ key: 'last3days', title: MOCK_LAST_3_DAYS }}
         handleDateRangeChange={mockHandleDateRangeChange}
       />
     );
 
-    fireEvent.click(screen.getByTestId('date-picker-menu'));
-    fireEvent.click(await screen.findByText('Last 7 days'));
+    fireEvent.click(screen.getByTestId(DATE_PICKER_MENU));
+    fireEvent.click(await screen.findByText(MOCK_LAST_7_DAYS));
 
     rerender(
       <DatePickerMenu
-        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        defaultDateRange={{ key: 'last3days', title: MOCK_LAST_3_DAYS }}
         handleDateRangeChange={mockHandleDateRangeChange}
       />
     );
 
-    expect(screen.getByTestId('date-picker-menu')).toHaveTextContent(
-      'Last 7 days'
+    expect(screen.getByTestId(DATE_PICKER_MENU)).toHaveTextContent(
+      MOCK_LAST_7_DAYS
     );
   });
 
   it('should center the small trigger content within its fixed height', () => {
     render(<DatePickerMenu size="small" />);
 
-    expect(screen.getByTestId('date-picker-menu')).toHaveClass(
+    expect(screen.getByTestId(DATE_PICKER_MENU)).toHaveClass(
       'tw:inline-flex',
       'tw:h-8',
       'tw:max-w-72',
@@ -172,15 +178,15 @@ describe('DatePickerMenu', () => {
     expect(screen.getByTestId('date-picker-container')).toHaveClass(
       'tw:max-w-none'
     );
-    expect(screen.getByTestId('date-picker-menu')).toHaveClass('tw:max-w-none');
+    expect(screen.getByTestId(DATE_PICKER_MENU)).toHaveClass('tw:max-w-none');
     expect(screen.getByText(customRange)).toHaveClass('tw:whitespace-nowrap');
   });
 
   it('should format custom range dates with a four digit year', async () => {
     render(<DatePickerMenu size="small" />);
 
-    fireEvent.click(screen.getByTestId('date-picker-menu'));
-    fireEvent.click(await screen.findByText('label.custom-range'));
+    fireEvent.click(screen.getByTestId(DATE_PICKER_MENU));
+    fireEvent.click(await screen.findByText(LABEL_CUSTOM_RANGE));
 
     expect(await screen.findByTestId('custom-range-picker')).toHaveTextContent(
       '2025-02-06'
@@ -190,27 +196,27 @@ describe('DatePickerMenu', () => {
   it('should show only the dates after selecting a custom range', async () => {
     render(<DatePickerMenu showSelectedCustomRange size="small" />);
 
-    fireEvent.click(screen.getByTestId('date-picker-menu'));
-    fireEvent.click(await screen.findByText('label.custom-range'));
+    fireEvent.click(screen.getByTestId(DATE_PICKER_MENU));
+    fireEvent.click(await screen.findByText(LABEL_CUSTOM_RANGE));
     fireEvent.click(await screen.findByTestId('custom-range-picker'));
 
-    expect(screen.getByTestId('date-picker-menu')).toHaveTextContent(
+    expect(screen.getByTestId(DATE_PICKER_MENU)).toHaveTextContent(
       '2025-02-06 -> 2025-02-28'
     );
-    expect(screen.getByTestId('date-picker-menu')).not.toHaveTextContent(
-      'label.custom-range'
+    expect(screen.getByTestId(DATE_PICKER_MENU)).not.toHaveTextContent(
+      LABEL_CUSTOM_RANGE
     );
   });
 
   it('should not render the clear control by default', () => {
     render(
       <DatePickerMenu
-        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        defaultDateRange={{ key: 'last3days', title: MOCK_LAST_3_DAYS }}
         size="small"
       />
     );
 
-    expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CLEAR_DATE_PICKER)).not.toBeInTheDocument();
   });
 
   it('should clear the selected range when enabled', () => {
@@ -219,7 +225,7 @@ describe('DatePickerMenu', () => {
     render(
       <DatePickerMenu
         allowClear
-        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        defaultDateRange={{ key: 'last3days', title: MOCK_LAST_3_DAYS }}
         placeholder="Select date"
         size="small"
         onClear={onClear}
@@ -227,8 +233,8 @@ describe('DatePickerMenu', () => {
     );
 
     const datePickerContainer = screen.getByTestId('date-picker-container');
-    const datePickerTrigger = screen.getByTestId('date-picker-menu');
-    const clearButton = screen.getByTestId('clear-date-picker');
+    const datePickerTrigger = screen.getByTestId(DATE_PICKER_MENU);
+    const clearButton = screen.getByTestId(CLEAR_DATE_PICKER);
 
     expect(datePickerContainer).toHaveClass('tw:max-w-80', 'tw:relative');
     expect(datePickerContainer).toHaveClass(
@@ -249,6 +255,6 @@ describe('DatePickerMenu', () => {
 
     expect(onClear).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Select date')).toHaveClass('tw:text-disabled');
-    expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CLEAR_DATE_PICKER)).not.toBeInTheDocument();
   });
 });

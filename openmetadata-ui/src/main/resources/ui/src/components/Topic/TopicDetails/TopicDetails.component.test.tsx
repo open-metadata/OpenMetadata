@@ -23,6 +23,7 @@ const mockTopicDetails: Topic = {
   id: 'test-topic-id',
   name: 'test-topic',
   displayName: 'Test Topic',
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   fullyQualifiedName: 'test.topic',
   description: 'Test topic description',
   version: 0.1,

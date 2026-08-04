@@ -14,6 +14,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import AnnouncementDrawer from './AnnouncementDrawer';
 
+const ADD_ANNOUNCEMENT = 'add-announcement';
+
 jest.mock('../../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
@@ -48,9 +50,9 @@ describe('Test Announcement drawer component', () => {
     render(<AnnouncementDrawer {...mockProps} />);
 
     const announcementHeader = screen.getByText('label.announcement-plural');
-    const addAnnouncementButton = screen.getByTestId('add-announcement');
+    const addAnnouncementButton = screen.getByTestId(ADD_ANNOUNCEMENT);
 
-    const addButton = screen.getByTestId('add-announcement');
+    const addButton = screen.getByTestId(ADD_ANNOUNCEMENT);
 
     const announcements = screen.getByText('AnnouncementThreadBody');
 
@@ -63,7 +65,7 @@ describe('Test Announcement drawer component', () => {
   it('Should be disabled if not having permission to create', async () => {
     render(<AnnouncementDrawer {...mockProps} createPermission={false} />);
 
-    const addButton = screen.getByTestId('add-announcement');
+    const addButton = screen.getByTestId(ADD_ANNOUNCEMENT);
 
     expect(addButton).toBeDisabled();
   });
@@ -71,7 +73,7 @@ describe('Test Announcement drawer component', () => {
   it('Should open modal on click of add button', async () => {
     render(<AnnouncementDrawer {...mockProps} />);
 
-    const addButton = screen.getByTestId('add-announcement');
+    const addButton = screen.getByTestId(ADD_ANNOUNCEMENT);
 
     fireEvent.click(addButton);
 

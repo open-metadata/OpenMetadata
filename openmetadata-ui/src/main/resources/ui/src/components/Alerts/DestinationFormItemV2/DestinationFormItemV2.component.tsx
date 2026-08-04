@@ -42,6 +42,9 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { DestinationFormItemV2Props } from './DestinationFormItemV2.interface';
 import DestinationSelectItemV2 from './DestinationSelectItemV2/DestinationSelectItemV2';
 
+const LABEL_DESTINATION = 'label.destination';
+const LABEL_SECOND_PLURAL = 'label.second-plural';
+
 function DestinationFormItemV2({
   isViewMode = false,
   isRequired = false,
@@ -72,7 +75,7 @@ function DestinationFormItemV2({
       setError('destinations', {
         type: 'manual',
         message: t('message.minimum-count-error', {
-          field: t('label.destination'),
+          field: t(LABEL_DESTINATION),
           count: 1,
         }),
       });
@@ -132,13 +135,13 @@ function DestinationFormItemV2({
     <Card variant="default">
       <Card.Header
         subtitle={t('message.alerts-destination-description')}
-        title={t('label.destination')}
+        title={t(LABEL_DESTINATION)}
       />
       <Card.Content>
         <Grid colGap="4" rowGap="4">
           <Grid.Item span={7}>
             <Typography as="span" size="text-sm">
-              {`${t('label.connection-timeout')} (${t('label.second-plural')})`}
+              {`${t('label.connection-timeout')} (${t(LABEL_SECOND_PLURAL)})`}
             </Typography>
           </Grid.Item>
           <Grid.Item span={1}>
@@ -156,7 +159,7 @@ function DestinationFormItemV2({
                   defaultValue="10"
                   inputDataTestId="connection-timeout-input-field"
                   placeholder={`${t('label.connection-timeout')} (${t(
-                    'label.second-plural'
+                    LABEL_SECOND_PLURAL
                   )})`}
                   ref={field.ref}
                   type="number"
@@ -171,7 +174,7 @@ function DestinationFormItemV2({
           <Grid.Item span={7}>
             <Typography as="span" size="text-sm">
               {`${t('label.read-type', { type: t('label.timeout') })} (${t(
-                'label.second-plural'
+                LABEL_SECOND_PLURAL
               )})`}
             </Typography>
           </Grid.Item>
@@ -191,7 +194,7 @@ function DestinationFormItemV2({
                   inputDataTestId="read-timeout-input-field"
                   placeholder={`${t('label.read-type', {
                     type: t('label.timeout'),
-                  })} (${t('label.second-plural')})`}
+                  })} (${t(LABEL_SECOND_PLURAL)})`}
                   ref={field.ref}
                   type="number"
                   value={field.value === undefined ? '' : String(field.value)}
@@ -241,7 +244,7 @@ function DestinationFormItemV2({
                   data-testid="add-destination-button"
                   isDisabled={isEmpty(selectedSource) || isNil(selectedSource)}
                   onPress={() => append({})}>
-                  {t('label.add-entity', { entity: t('label.destination') })}
+                  {t('label.add-entity', { entity: t(LABEL_DESTINATION) })}
                 </Button>
                 <Tooltip
                   placement="right"

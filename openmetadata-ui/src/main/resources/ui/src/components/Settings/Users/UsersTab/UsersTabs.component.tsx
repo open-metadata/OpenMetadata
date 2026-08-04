@@ -24,6 +24,8 @@ import { commonUserDetailColumns } from '../../../../utils/Users.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
 
+const LABEL_USER = 'label.user';
+
 interface UsersTabProps {
   users: EntityReference[];
   onRemoveUser?: (id: string) => void;
@@ -97,7 +99,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
           onRemoveUser && (
             <Tooltip
               title={t('label.remove-entity', {
-                entity: t('label.user'),
+                entity: t(LABEL_USER),
               })}>
               <Button
                 data-testid="remove-user-btn"
@@ -134,9 +136,9 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
             <ErrorPlaceHolder
               permission
               className="p-y-md border-none"
-              heading={t('label.user')}
+              heading={t(LABEL_USER)}
               permissionValue={t('label.create-entity', {
-                entity: t('label.user'),
+                entity: t(LABEL_USER),
               })}
               type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
             />

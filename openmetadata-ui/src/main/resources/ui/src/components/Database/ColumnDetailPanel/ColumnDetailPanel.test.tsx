@@ -22,6 +22,15 @@ import { getColumnByFQN } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { ColumnDetailPanel } from './ColumnDetailPanel.component';
 
+const DESCRIPTION_SECTION = 'description-section' as const;
+const UPDATE_DESCRIPTION = 'update-description' as const;
+const TAGS_SECTION = 'tags-section' as const;
+const UPDATE_TAGS = 'update-tags' as const;
+const GLOSSARY_TERMS_SECTION = 'glossary-terms-section' as const;
+const TAGS_CUSTOM_METRICS_EXTENSION_PROFILE =
+  'tags,customMetrics,extension,profile' as const;
+const NETWORK_ERROR = 'Network error' as const;
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string, options?: Record<string, unknown>) => {
@@ -513,7 +522,7 @@ describe('ColumnDetailPanel', () => {
       expect(getByTestId('drawer')).toHaveAttribute('data-open', 'true');
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
     });
 
@@ -529,12 +538,12 @@ describe('ColumnDetailPanel', () => {
       const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
-      expect(getByTestId('description-section')).toBeInTheDocument();
-      expect(getByTestId('tags-section')).toBeInTheDocument();
-      expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
+      expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
+      expect(getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
     });
   });
 
@@ -560,7 +569,7 @@ describe('ColumnDetailPanel', () => {
         expect(mockGetColumnByFQN).toHaveBeenCalledWith(
           mockColumn.fullyQualifiedName,
           expect.objectContaining({
-            fields: 'tags,customMetrics,extension,profile',
+            fields: TAGS_CUSTOM_METRICS_EXTENSION_PROFILE,
           })
         );
       });
@@ -579,7 +588,7 @@ describe('ColumnDetailPanel', () => {
           mockColumn.fullyQualifiedName,
           {
             entityType: EntityType.TABLE,
-            fields: 'tags,customMetrics,extension,profile',
+            fields: TAGS_CUSTOM_METRICS_EXTENSION_PROFILE,
           }
         );
       });
@@ -651,7 +660,7 @@ describe('ColumnDetailPanel', () => {
       });
 
       await waitFor(() => {
-        expect(getByTestId('tags-section')).toHaveTextContent('Tags: 1');
+        expect(getByTestId(TAGS_SECTION)).toHaveTextContent('Tags: 1');
       });
     });
 
@@ -699,7 +708,7 @@ describe('ColumnDetailPanel', () => {
       expect(mockGetColumnByFQN).toHaveBeenLastCalledWith(
         nextColumn.fullyQualifiedName,
         expect.objectContaining({
-          fields: 'tags,customMetrics,extension,profile',
+          fields: TAGS_CUSTOM_METRICS_EXTENSION_PROFILE,
         })
       );
     });
@@ -745,7 +754,7 @@ describe('ColumnDetailPanel', () => {
         expect(getByTestId('loader')).toBeInTheDocument();
       });
 
-      expect(queryByTestId('description-section')).not.toBeInTheDocument();
+      expect(queryByTestId(DESCRIPTION_SECTION)).not.toBeInTheDocument();
 
       await act(async () => {
         resolveFetch({ ...mockColumn, tags: [] });
@@ -755,13 +764,13 @@ describe('ColumnDetailPanel', () => {
         expect(queryByTestId('loader')).not.toBeInTheDocument();
       });
 
-      expect(getByTestId('description-section')).toBeInTheDocument();
+      expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
     });
 
     it('should show error toast and clear loading when fetch fails', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
       const mockGetColumnByFQN = getColumnByFQN as jest.Mock;
-      const fetchError = new Error('Network error') as AxiosError;
+      const fetchError = new Error(NETWORK_ERROR) as AxiosError;
       mockGetColumnByFQN.mockRejectedValueOnce(fetchError);
 
       const { getByTestId, queryByTestId } = render(
@@ -776,7 +785,7 @@ describe('ColumnDetailPanel', () => {
         expect(queryByTestId('loader')).not.toBeInTheDocument();
       });
 
-      expect(getByTestId('description-section')).toBeInTheDocument();
+      expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
     });
 
     it('should ignore stale response when active column FQN changed mid-flight', async () => {
@@ -825,7 +834,7 @@ describe('ColumnDetailPanel', () => {
       });
 
       await waitFor(() => {
-        expect(getByTestId('tags-section')).toHaveTextContent('Tags: 0');
+        expect(getByTestId(TAGS_SECTION)).toHaveTextContent('Tags: 0');
       });
     });
   });
@@ -847,10 +856,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-description');
+      const updateButton = getByTestId(UPDATE_DESCRIPTION);
 
       await act(async () => {
         fireEvent.click(updateButton);
@@ -866,14 +875,14 @@ describe('ColumnDetailPanel', () => {
         { timeout: 100 }
       );
 
-      expect(queryByTestId('description-section')).not.toBeInTheDocument();
-      expect(getByTestId('tags-section')).toBeInTheDocument();
-      expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      expect(queryByTestId(DESCRIPTION_SECTION)).not.toBeInTheDocument();
+      expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
+      expect(getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
 
       await waitFor(
         () => {
           expect(queryByTestId('loader')).not.toBeInTheDocument();
-          expect(getByTestId('description-section')).toBeInTheDocument();
+          expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
         },
         { timeout: 200 }
       );
@@ -890,17 +899,17 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('tags-section')).toBeInTheDocument();
+        expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-tags');
+      const updateButton = getByTestId(UPDATE_TAGS);
       fireEvent.click(updateButton);
 
       await waitFor(() => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
       });
 
-      expect(getByTestId('description-section')).toBeInTheDocument();
+      expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
     });
 
     it('should not show loader for glossary terms section when updating glossary terms', async () => {
@@ -914,7 +923,7 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+        expect(getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
       });
 
       const updateButton = getByTestId('update-glossary-terms');
@@ -924,7 +933,7 @@ describe('ColumnDetailPanel', () => {
         expect(onColumnFieldUpdate).toHaveBeenCalled();
       });
 
-      expect(getByTestId('description-section')).toBeInTheDocument();
+      expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
     });
 
     it('should show loader for description section and hide it on error', async () => {
@@ -945,10 +954,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-description');
+      const updateButton = getByTestId(UPDATE_DESCRIPTION);
 
       await act(async () => {
         fireEvent.click(updateButton);
@@ -959,7 +968,7 @@ describe('ColumnDetailPanel', () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(getByTestId('alert-bar')).toBeInTheDocument();
           expect(getByTestId('alert-bar')).toHaveTextContent('Update failed');
-          expect(getByTestId('description-section')).toBeInTheDocument();
+          expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
         },
         { timeout: 300 }
       );
@@ -981,10 +990,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
-      const updateDescriptionButton = getByTestId('update-description');
+      const updateDescriptionButton = getByTestId(UPDATE_DESCRIPTION);
 
       await act(async () => {
         fireEvent.click(updateDescriptionButton);
@@ -997,16 +1006,16 @@ describe('ColumnDetailPanel', () => {
         { timeout: 100 }
       );
 
-      expect(getByTestId('tags-section')).toBeInTheDocument();
-      expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
+      expect(getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
 
-      const updateTagsButton = getByTestId('update-tags');
+      const updateTagsButton = getByTestId(UPDATE_TAGS);
 
       await act(async () => {
         fireEvent.click(updateTagsButton);
       });
 
-      expect(getByTestId('tags-section')).toBeInTheDocument();
+      expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
 
       await waitFor(
         () => {
@@ -1015,9 +1024,9 @@ describe('ColumnDetailPanel', () => {
         { timeout: 200 }
       );
 
-      expect(getByTestId('description-section')).toBeInTheDocument();
-      expect(getByTestId('tags-section')).toBeInTheDocument();
-      expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
+      expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
+      expect(getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
     });
 
     it('should not show loader when description section is not being updated', async () => {
@@ -1025,14 +1034,14 @@ describe('ColumnDetailPanel', () => {
 
       await waitFor(
         () => {
-          expect(getByTestId('description-section')).toBeInTheDocument();
+          expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
         },
         { timeout: 1000 }
       );
 
-      expect(getByTestId('description-section')).toBeInTheDocument();
-      expect(getByTestId('tags-section')).toBeInTheDocument();
-      expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+      expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
+      expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
+      expect(getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
     });
   });
 
@@ -1055,10 +1064,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-description');
+      const updateButton = getByTestId(UPDATE_DESCRIPTION);
 
       await act(async () => {
         fireEvent.click(updateButton);
@@ -1068,8 +1077,8 @@ describe('ColumnDetailPanel', () => {
         () => {
           expect(onColumnFieldUpdate).toHaveBeenCalled();
           expect(getByTestId('alert-bar')).toBeInTheDocument();
-          expect(getByTestId('alert-bar')).toHaveTextContent('Network error');
-          expect(getByTestId('description-section')).toBeInTheDocument();
+          expect(getByTestId('alert-bar')).toHaveTextContent(NETWORK_ERROR);
+          expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
         },
         { timeout: 300 }
       );
@@ -1088,10 +1097,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('tags-section')).toBeInTheDocument();
+        expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-tags');
+      const updateButton = getByTestId(UPDATE_TAGS);
 
       await act(async () => {
         fireEvent.click(updateButton);
@@ -1119,7 +1128,7 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
+        expect(getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
       });
 
       const updateButton = getByTestId('update-glossary-terms');
@@ -1150,10 +1159,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-description');
+      const updateButton = getByTestId(UPDATE_DESCRIPTION);
 
       await act(async () => {
         fireEvent.click(updateButton);
@@ -1179,10 +1188,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('tags-section')).toBeInTheDocument();
+        expect(getByTestId(TAGS_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-tags');
+      const updateButton = getByTestId(UPDATE_TAGS);
 
       await act(async () => {
         fireEvent.click(updateButton);
@@ -1216,10 +1225,10 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
-      const updateButton = getByTestId('update-description');
+      const updateButton = getByTestId(UPDATE_DESCRIPTION);
 
       await act(async () => {
         fireEvent.click(updateButton);
@@ -1243,7 +1252,7 @@ describe('ColumnDetailPanel', () => {
       );
 
       await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
+        expect(getByTestId(DESCRIPTION_SECTION)).toBeInTheDocument();
       });
 
       expect(queryByTestId('alert-bar')).not.toBeInTheDocument();

@@ -21,6 +21,24 @@ import {
   mergePluginSidebarItems,
 } from './CustomizeNavigation';
 
+const TEST_PLUGIN = 'test-plugin';
+const PLUGIN_ITEM = 'plugin-item';
+const PLUGIN_ITEM_2 = 'Plugin Item';
+const PLUGIN_ICON = 'plugin-icon';
+const DATA_QUALITY = 'data-quality';
+const DATA_QUALITY_2 = 'Data Quality';
+const INCIDENT_MANAGER = 'incident-manager';
+const INCIDENT_MANAGER_2 = 'Incident Manager';
+const NEW_FEATURE = 'new-feature';
+const NEW_FEATURE_2 = 'New Feature';
+const NEW_FEATURE_ICON = 'new-feature-icon';
+const SHARED_CHILD = 'shared-child';
+const ONTOLOGY_EXPLORER = 'ontology-explorer';
+const ONTOLOGY_EXPLORER_2 = 'Ontology Explorer';
+const ONTOLOGY_ICON = 'ontology-icon';
+const PLUGIN_1_ITEM = 'plugin-1-item';
+const PLUGIN_2_ITEM = 'plugin-2-item';
+
 jest.mock('../LeftSidebarClassBase', () => ({
   getSidebarItems: jest.fn().mockReturnValue([
     {
@@ -31,6 +49,7 @@ jest.mock('../LeftSidebarClassBase', () => ({
         {
           key: 'dashboard',
           title: 'Dashboard',
+          // eslint-disable-next-line sonarjs/no-duplicate-string
           icon: 'dashboard-icon',
         },
       ],
@@ -38,6 +57,7 @@ jest.mock('../LeftSidebarClassBase', () => ({
     {
       key: 'explore',
       title: 'Explore',
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       icon: 'explore-icon',
     },
   ]),
@@ -167,14 +187,14 @@ describe('CustomizeNavigation Utils', () => {
     it('should handle plugins with navigation items', () => {
       const mockPlugins = [
         {
-          name: 'test-plugin',
+          name: TEST_PLUGIN,
           isInstalled: true,
           getSidebarActions: jest.fn().mockReturnValue([
             {
-              key: 'plugin-item',
-              title: 'Plugin Item',
-              icon: 'plugin-icon',
-              dataTestId: 'plugin-item',
+              key: PLUGIN_ITEM,
+              title: PLUGIN_ITEM_2,
+              icon: PLUGIN_ICON,
+              dataTestId: PLUGIN_ITEM,
             },
           ]),
         },
@@ -186,7 +206,7 @@ describe('CustomizeNavigation Utils', () => {
       );
 
       expect(result).toHaveLength(3);
-      expect(result[2].key).toBe('plugin-item');
+      expect(result[2].key).toBe(PLUGIN_ITEM);
       expect((result[2] as { isHidden?: boolean }).isHidden).toBe(true);
     });
 
@@ -256,10 +276,10 @@ describe('CustomizeNavigation Utils', () => {
           title: 'Observability',
           icon: 'observability-icon',
           children: [
-            { key: 'data-quality', title: 'Data Quality', icon: 'dq-icon' },
+            { key: DATA_QUALITY, title: DATA_QUALITY_2, icon: 'dq-icon' },
             {
-              key: 'incident-manager',
-              title: 'Incident Manager',
+              key: INCIDENT_MANAGER,
+              title: INCIDENT_MANAGER_2,
               icon: 'im-icon',
             },
           ],
@@ -282,10 +302,10 @@ describe('CustomizeNavigation Utils', () => {
           pageId: 'observability',
           children: [
             {
-              id: 'data-quality',
-              title: 'Data Quality',
+              id: DATA_QUALITY,
+              title: DATA_QUALITY_2,
               isHidden: false,
-              pageId: 'data-quality',
+              pageId: DATA_QUALITY,
             },
           ],
         },
@@ -302,10 +322,10 @@ describe('CustomizeNavigation Utils', () => {
               pageId: 'glossary',
             },
             {
-              id: 'incident-manager',
-              title: 'Incident Manager',
+              id: INCIDENT_MANAGER,
+              title: INCIDENT_MANAGER_2,
               isHidden: false,
-              pageId: 'incident-manager',
+              pageId: INCIDENT_MANAGER,
             },
           ],
         },
@@ -315,12 +335,12 @@ describe('CustomizeNavigation Utils', () => {
 
       expect(result[0].key).toBe('observability');
       expect(result[0].children?.map((child) => child.key)).toEqual([
-        'data-quality',
+        DATA_QUALITY,
       ]);
       expect(result[1].key).toBe('governance');
       expect(result[1].children?.map((child) => child.key)).toEqual([
         'glossary',
-        'incident-manager',
+        INCIDENT_MANAGER,
       ]);
     });
 
@@ -332,9 +352,9 @@ describe('CustomizeNavigation Utils', () => {
           icon: 'home-icon',
           children: [
             {
-              key: 'new-feature',
-              title: 'New Feature',
-              icon: 'new-feature-icon',
+              key: NEW_FEATURE,
+              title: NEW_FEATURE_2,
+              icon: NEW_FEATURE_ICON,
             },
             { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
           ],
@@ -362,7 +382,7 @@ describe('CustomizeNavigation Utils', () => {
 
       expect(result[0].children?.map((child) => child.key)).toEqual([
         'dashboard',
-        'new-feature',
+        NEW_FEATURE,
       ]);
     });
 
@@ -374,7 +394,7 @@ describe('CustomizeNavigation Utils', () => {
           title: 'New Group',
           icon: 'new-group-icon',
           children: [
-            { key: 'shared-child', title: 'Shared Child', icon: 'shared-icon' },
+            { key: SHARED_CHILD, title: 'Shared Child', icon: 'shared-icon' },
             {
               key: 'brand-new-child',
               title: 'Brand New Child',
@@ -393,10 +413,10 @@ describe('CustomizeNavigation Utils', () => {
           pageId: 'home',
           children: [
             {
-              id: 'shared-child',
+              id: SHARED_CHILD,
               title: 'Shared Child',
               isHidden: false,
-              pageId: 'shared-child',
+              pageId: SHARED_CHILD,
             },
           ],
         },
@@ -407,7 +427,7 @@ describe('CustomizeNavigation Utils', () => {
       const newGroupNode = result.find((node) => node.key === 'new-group');
 
       expect(homeNode?.children?.map((child) => child.key)).toEqual([
-        'shared-child',
+        SHARED_CHILD,
       ]);
       expect(newGroupNode?.children?.map((child) => child.key)).toEqual([
         'brand-new-child',
@@ -534,14 +554,14 @@ describe('CustomizeNavigation Utils', () => {
     it('should handle plugins with hidden items', () => {
       const mockPlugins = [
         {
-          name: 'test-plugin',
+          name: TEST_PLUGIN,
           isInstalled: true,
           getSidebarActions: jest.fn().mockReturnValue([
             {
-              key: 'plugin-item',
-              title: 'Plugin Item',
-              icon: 'plugin-icon',
-              dataTestId: 'plugin-item',
+              key: PLUGIN_ITEM,
+              title: PLUGIN_ITEM_2,
+              icon: PLUGIN_ICON,
+              dataTestId: PLUGIN_ITEM,
             },
           ]),
         },
@@ -553,7 +573,7 @@ describe('CustomizeNavigation Utils', () => {
       );
 
       expect(result).toContain('dashboard');
-      expect(result).toContain('plugin-item');
+      expect(result).toContain(PLUGIN_ITEM);
     });
 
     it('new child should be in hidden keys when absent from saved nav', () => {
@@ -565,9 +585,9 @@ describe('CustomizeNavigation Utils', () => {
           children: [
             { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
             {
-              key: 'new-feature',
-              title: 'New Feature',
-              icon: 'new-feature-icon',
+              key: NEW_FEATURE,
+              title: NEW_FEATURE_2,
+              icon: NEW_FEATURE_ICON,
             },
           ],
         },
@@ -594,7 +614,7 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = getHiddenKeysFromNavigationItems(savedNav);
 
-      expect(result).toContain('new-feature');
+      expect(result).toContain(NEW_FEATURE);
     });
 
     it('new top-level item should be in hidden keys when absent from saved nav', () => {
@@ -609,9 +629,9 @@ describe('CustomizeNavigation Utils', () => {
         },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
         {
-          key: 'ontology-explorer',
-          title: 'Ontology Explorer',
-          icon: 'ontology-icon',
+          key: ONTOLOGY_EXPLORER,
+          title: ONTOLOGY_EXPLORER_2,
+          icon: ONTOLOGY_ICON,
         },
       ]);
 
@@ -635,7 +655,7 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = getHiddenKeysFromNavigationItems(savedNav);
 
-      expect(result).toContain('ontology-explorer');
+      expect(result).toContain(ONTOLOGY_EXPLORER);
     });
 
     it('child item should be in hidden keys when explicitly hidden in saved nav', () => {
@@ -647,9 +667,9 @@ describe('CustomizeNavigation Utils', () => {
           children: [
             { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
             {
-              key: 'new-feature',
-              title: 'New Feature',
-              icon: 'new-feature-icon',
+              key: NEW_FEATURE,
+              title: NEW_FEATURE_2,
+              icon: NEW_FEATURE_ICON,
             },
           ],
         },
@@ -670,10 +690,10 @@ describe('CustomizeNavigation Utils', () => {
               pageId: 'dashboard',
             },
             {
-              id: 'new-feature',
-              title: 'New Feature',
+              id: NEW_FEATURE,
+              title: NEW_FEATURE_2,
               isHidden: true,
-              pageId: 'new-feature',
+              pageId: NEW_FEATURE,
             },
           ],
         },
@@ -682,7 +702,7 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = getHiddenKeysFromNavigationItems(savedNav);
 
-      expect(result).toContain('new-feature');
+      expect(result).toContain(NEW_FEATURE);
     });
 
     it('should not mark a moved child as hidden when it is visible under its new parent', () => {
@@ -692,10 +712,10 @@ describe('CustomizeNavigation Utils', () => {
           title: 'Observability',
           icon: 'observability-icon',
           children: [
-            { key: 'data-quality', title: 'Data Quality', icon: 'dq-icon' },
+            { key: DATA_QUALITY, title: DATA_QUALITY_2, icon: 'dq-icon' },
             {
-              key: 'incident-manager',
-              title: 'Incident Manager',
+              key: INCIDENT_MANAGER,
+              title: INCIDENT_MANAGER_2,
               icon: 'im-icon',
             },
           ],
@@ -718,10 +738,10 @@ describe('CustomizeNavigation Utils', () => {
           pageId: 'observability',
           children: [
             {
-              id: 'data-quality',
-              title: 'Data Quality',
+              id: DATA_QUALITY,
+              title: DATA_QUALITY_2,
               isHidden: false,
-              pageId: 'data-quality',
+              pageId: DATA_QUALITY,
             },
           ],
         },
@@ -738,10 +758,10 @@ describe('CustomizeNavigation Utils', () => {
               pageId: 'glossary',
             },
             {
-              id: 'incident-manager',
-              title: 'Incident Manager',
+              id: INCIDENT_MANAGER,
+              title: INCIDENT_MANAGER_2,
               isHidden: false,
-              pageId: 'incident-manager',
+              pageId: INCIDENT_MANAGER,
             },
           ],
         },
@@ -749,7 +769,7 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = getHiddenKeysFromNavigationItems(savedNav);
 
-      expect(result).not.toContain('incident-manager');
+      expect(result).not.toContain(INCIDENT_MANAGER);
     });
   });
 
@@ -794,14 +814,14 @@ describe('CustomizeNavigation Utils', () => {
     it('should merge plugin items when plugins are provided', () => {
       const mockPlugins = [
         {
-          name: 'test-plugin',
+          name: TEST_PLUGIN,
           isInstalled: true,
           getSidebarActions: jest.fn().mockReturnValue([
             {
-              key: 'plugin-item',
-              title: 'Plugin Item',
-              icon: 'plugin-icon',
-              dataTestId: 'plugin-item',
+              key: PLUGIN_ITEM,
+              title: PLUGIN_ITEM_2,
+              icon: PLUGIN_ICON,
+              dataTestId: PLUGIN_ITEM,
               index: 1,
             },
           ]),
@@ -812,21 +832,21 @@ describe('CustomizeNavigation Utils', () => {
 
       expect(result).toHaveLength(3);
       expect(result[0].key).toBe('home');
-      expect(result[1].key).toBe('plugin-item');
+      expect(result[1].key).toBe(PLUGIN_ITEM);
       expect(result[2].key).toBe('explore');
     });
 
     it('should merge plugin items with filtered navigation items', () => {
       const mockPlugins = [
         {
-          name: 'test-plugin',
+          name: TEST_PLUGIN,
           isInstalled: true,
           getSidebarActions: jest.fn().mockReturnValue([
             {
-              key: 'plugin-item',
-              title: 'Plugin Item',
-              icon: 'plugin-icon',
-              dataTestId: 'plugin-item',
+              key: PLUGIN_ITEM,
+              title: PLUGIN_ITEM_2,
+              icon: PLUGIN_ICON,
+              dataTestId: PLUGIN_ITEM,
             },
           ]),
         },
@@ -840,7 +860,7 @@ describe('CustomizeNavigation Utils', () => {
       expect(result).toHaveLength(3);
       expect(result[0].key).toBe('home');
       expect(result[1].key).toBe('explore');
-      expect(result[2].key).toBe('plugin-item');
+      expect(result[2].key).toBe(PLUGIN_ITEM);
     });
 
     it('new child should be disabled when it is absent from the saved persona nav', () => {
@@ -852,9 +872,9 @@ describe('CustomizeNavigation Utils', () => {
           children: [
             { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
             {
-              key: 'new-feature',
-              title: 'New Feature',
-              icon: 'new-feature-icon',
+              key: NEW_FEATURE,
+              title: NEW_FEATURE_2,
+              icon: NEW_FEATURE_ICON,
             },
           ],
         },
@@ -883,7 +903,7 @@ describe('CustomizeNavigation Utils', () => {
       const homeItem = result.find((item) => item.key === 'home');
 
       expect(
-        homeItem?.children?.some((c) => c.key === 'new-feature')
+        homeItem?.children?.some((c) => c.key === NEW_FEATURE)
       ).toBeFalsy();
     });
 
@@ -899,9 +919,9 @@ describe('CustomizeNavigation Utils', () => {
         },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
         {
-          key: 'ontology-explorer',
-          title: 'Ontology Explorer',
-          icon: 'ontology-icon',
+          key: ONTOLOGY_EXPLORER,
+          title: ONTOLOGY_EXPLORER_2,
+          icon: ONTOLOGY_ICON,
         },
       ]);
 
@@ -925,9 +945,7 @@ describe('CustomizeNavigation Utils', () => {
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
-        false
-      );
+      expect(result.some((item) => item.key === ONTOLOGY_EXPLORER)).toBe(false);
     });
 
     it('top-level item should be disabled when explicitly hidden in the saved persona nav', () => {
@@ -935,9 +953,9 @@ describe('CustomizeNavigation Utils', () => {
         { key: 'home', title: 'Home', icon: 'home-icon', children: [] },
         { key: 'explore', title: 'Explore', icon: 'explore-icon' },
         {
-          key: 'ontology-explorer',
-          title: 'Ontology Explorer',
-          icon: 'ontology-icon',
+          key: ONTOLOGY_EXPLORER,
+          title: ONTOLOGY_EXPLORER_2,
+          icon: ONTOLOGY_ICON,
         },
       ]);
 
@@ -945,18 +963,16 @@ describe('CustomizeNavigation Utils', () => {
         { id: 'home', title: 'Home', isHidden: false, pageId: 'home' },
         { id: 'explore', title: 'Explore', isHidden: false, pageId: 'explore' },
         {
-          id: 'ontology-explorer',
-          title: 'Ontology Explorer',
+          id: ONTOLOGY_EXPLORER,
+          title: ONTOLOGY_EXPLORER_2,
           isHidden: true,
-          pageId: 'ontology-explorer',
+          pageId: ONTOLOGY_EXPLORER,
         },
       ];
 
       const result = filterHiddenNavigationItems(savedNav);
 
-      expect(result.some((item) => item.key === 'ontology-explorer')).toBe(
-        false
-      );
+      expect(result.some((item) => item.key === ONTOLOGY_EXPLORER)).toBe(false);
     });
 
     it('child item should be disabled when explicitly hidden in the saved persona nav', () => {
@@ -968,9 +984,9 @@ describe('CustomizeNavigation Utils', () => {
           children: [
             { key: 'dashboard', title: 'Dashboard', icon: 'dashboard-icon' },
             {
-              key: 'new-feature',
-              title: 'New Feature',
-              icon: 'new-feature-icon',
+              key: NEW_FEATURE,
+              title: NEW_FEATURE_2,
+              icon: NEW_FEATURE_ICON,
             },
           ],
         },
@@ -991,10 +1007,10 @@ describe('CustomizeNavigation Utils', () => {
               pageId: 'dashboard',
             },
             {
-              id: 'new-feature',
-              title: 'New Feature',
+              id: NEW_FEATURE,
+              title: NEW_FEATURE_2,
               isHidden: true,
-              pageId: 'new-feature',
+              pageId: NEW_FEATURE,
             },
           ],
         },
@@ -1005,7 +1021,7 @@ describe('CustomizeNavigation Utils', () => {
       const homeItem = result.find((item) => item.key === 'home');
 
       expect(
-        homeItem?.children?.some((c) => c.key === 'new-feature')
+        homeItem?.children?.some((c) => c.key === NEW_FEATURE)
       ).toBeFalsy();
     });
   });
@@ -1037,7 +1053,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
         },
       ];
@@ -1053,7 +1069,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1072,7 +1088,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
           index: 0,
         },
@@ -1125,7 +1141,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
           index: 999,
         },
@@ -1142,7 +1158,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1172,7 +1188,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1202,7 +1218,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1219,7 +1235,7 @@ describe('CustomizeNavigation Utils', () => {
         {
           key: 'plugin1',
           title: 'Plugin 1',
-          icon: 'plugin-icon',
+          icon: PLUGIN_ICON,
           dataTestId: 'plugin1',
           index: 1,
         },
@@ -1322,14 +1338,14 @@ describe('CustomizeNavigation Utils', () => {
     it('should merge plugin items with base sidebar items', () => {
       const mockPlugins = [
         {
-          name: 'test-plugin',
+          name: TEST_PLUGIN,
           isInstalled: true,
           getSidebarActions: jest.fn().mockReturnValue([
             {
-              key: 'plugin-item',
-              title: 'Plugin Item',
-              icon: 'plugin-icon',
-              dataTestId: 'plugin-item',
+              key: PLUGIN_ITEM,
+              title: PLUGIN_ITEM_2,
+              icon: PLUGIN_ICON,
+              dataTestId: PLUGIN_ITEM,
               index: 1,
             },
           ]),
@@ -1340,7 +1356,7 @@ describe('CustomizeNavigation Utils', () => {
 
       expect(result).toHaveLength(3);
       expect(result[0].key).toBe('home');
-      expect(result[1].key).toBe('plugin-item');
+      expect(result[1].key).toBe(PLUGIN_ITEM);
       expect(result[2].key).toBe('explore');
     });
 
@@ -1351,10 +1367,10 @@ describe('CustomizeNavigation Utils', () => {
           isInstalled: true,
           getSidebarActions: jest.fn().mockReturnValue([
             {
-              key: 'plugin-1-item',
+              key: PLUGIN_1_ITEM,
               title: 'Plugin 1 Item',
               icon: 'plugin-1-icon',
-              dataTestId: 'plugin-1-item',
+              dataTestId: PLUGIN_1_ITEM,
               index: 0,
             },
           ]),
@@ -1364,10 +1380,10 @@ describe('CustomizeNavigation Utils', () => {
           isInstalled: true,
           getSidebarActions: jest.fn().mockReturnValue([
             {
-              key: 'plugin-2-item',
+              key: PLUGIN_2_ITEM,
               title: 'Plugin 2 Item',
               icon: 'plugin-2-icon',
-              dataTestId: 'plugin-2-item',
+              dataTestId: PLUGIN_2_ITEM,
             },
           ]),
         },
@@ -1376,10 +1392,10 @@ describe('CustomizeNavigation Utils', () => {
       const result = getSidebarItemsWithPlugins(mockPlugins);
 
       expect(result).toHaveLength(4);
-      expect(result[0].key).toBe('plugin-1-item');
+      expect(result[0].key).toBe(PLUGIN_1_ITEM);
       expect(result[1].key).toBe('home');
       expect(result[2].key).toBe('explore');
-      expect(result[3].key).toBe('plugin-2-item');
+      expect(result[3].key).toBe(PLUGIN_2_ITEM);
     });
   });
 });

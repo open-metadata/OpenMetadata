@@ -33,6 +33,11 @@ import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 
+const APPROVAL_STAGE = 'Approval Stage';
+const REVIEW_STAGE = 'Review Stage';
+const INITIAL_STAGE = 'Initial Stage';
+const ENTITY_LINK = 'entity-link';
+
 // Mock dependencies
 jest.mock('../../../../Customization/GenericProvider/GenericContext');
 jest.mock('../../../../../rest/workflowAPI');
@@ -85,7 +90,7 @@ const mockWorkflowHistory: WorkflowInstanceState[] = [
     timestamp: 1647931273177,
     stage: {
       name: 'approval-stage',
-      displayName: 'Approval Stage',
+      displayName: APPROVAL_STAGE,
     },
   },
   {
@@ -94,7 +99,7 @@ const mockWorkflowHistory: WorkflowInstanceState[] = [
     timestamp: 1647931273000,
     stage: {
       name: 'review-stage',
-      displayName: 'Review Stage',
+      displayName: REVIEW_STAGE,
     },
   },
   {
@@ -103,7 +108,7 @@ const mockWorkflowHistory: WorkflowInstanceState[] = [
     timestamp: 1647931272000,
     stage: {
       name: 'initial-stage',
-      displayName: 'Initial Stage',
+      displayName: INITIAL_STAGE,
     },
   },
 ];
@@ -137,7 +142,7 @@ const mockWorkflowInstanceState = {
 (getShortRelativeTime as jest.Mock).mockImplementation(
   (timestamp: number) => `${timestamp} ago`
 );
-(createGlossaryTermEntityLink as jest.Mock).mockReturnValue('entity-link');
+(createGlossaryTermEntityLink as jest.Mock).mockReturnValue(ENTITY_LINK);
 (showErrorToast as jest.Mock).mockImplementation(() => undefined);
 
 // Mock translation
@@ -149,8 +154,10 @@ jest.mock('react-i18next', () => ({
       }
       switch (key) {
         case 'label.workflow-history':
+          // eslint-disable-next-line sonarjs/no-duplicate-string
           return 'Workflow History';
         case 'label.no-entity-available':
+          // eslint-disable-next-line sonarjs/no-duplicate-string
           return 'No Workflow History available';
         default:
           return key;
@@ -196,9 +203,9 @@ describe('WorkflowHistory Component', () => {
       await waitFor(() => {
         expect(screen.getByText('Workflow History')).toBeInTheDocument();
         expect(screen.getByText('1/3')).toBeInTheDocument(); // completedSteps/totalSteps
-        expect(screen.getByText('Approval Stage')).toBeInTheDocument();
-        expect(screen.getByText('Review Stage')).toBeInTheDocument();
-        expect(screen.getByText('Initial Stage')).toBeInTheDocument();
+        expect(screen.getByText(APPROVAL_STAGE)).toBeInTheDocument();
+        expect(screen.getByText(REVIEW_STAGE)).toBeInTheDocument();
+        expect(screen.getByText(INITIAL_STAGE)).toBeInTheDocument();
       });
     });
 
@@ -215,7 +222,7 @@ describe('WorkflowHistory Component', () => {
         expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith({
           startTs: expect.any(Number),
           endTs: expect.any(Number),
-          entityLink: 'entity-link',
+          entityLink: ENTITY_LINK,
           workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
         });
       });
@@ -317,7 +324,7 @@ describe('WorkflowHistory Component', () => {
         expect(getWorkflowInstancesForApplication).toHaveBeenCalledWith({
           startTs: expect.any(Number),
           endTs: expect.any(Number),
-          entityLink: 'entity-link',
+          entityLink: ENTITY_LINK,
           workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
         });
 
@@ -388,9 +395,9 @@ describe('WorkflowHistory Component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Approval Stage')).toBeInTheDocument();
-        expect(screen.getByText('Review Stage')).toBeInTheDocument();
-        expect(screen.getByText('Initial Stage')).toBeInTheDocument();
+        expect(screen.getByText(APPROVAL_STAGE)).toBeInTheDocument();
+        expect(screen.getByText(REVIEW_STAGE)).toBeInTheDocument();
+        expect(screen.getByText(INITIAL_STAGE)).toBeInTheDocument();
 
         // Check that relative times are displayed
         expect(screen.getByText('1647931273177 ago')).toBeInTheDocument();

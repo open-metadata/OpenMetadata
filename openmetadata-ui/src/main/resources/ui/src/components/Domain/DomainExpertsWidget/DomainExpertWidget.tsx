@@ -27,6 +27,8 @@ import {
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
+const LABEL_EXPERT_PLURAL = 'label.expert-plural';
+
 const UserSelectableList = withSuspenseFallback(
   lazy(() =>
     import('../../common/UserSelectableList/UserSelectableList.component').then(
@@ -85,12 +87,12 @@ export const DomainExpertWidget = () => {
         {isEmpty(domain.experts) ? (
           <WidgetPlusButton
             data-testid="Add"
-            title={t('label.add-entity', { entity: t('label.expert-plural') })}
+            title={t('label.add-entity', { entity: t(LABEL_EXPERT_PLURAL) })}
           />
         ) : (
           <WidgetEditButton
             data-testid="edit-expert-button"
-            title={t('label.edit-entity', { entity: t('label.expert-plural') })}
+            title={t('label.edit-entity', { entity: t(LABEL_EXPERT_PLURAL) })}
           />
         )}
       </UserSelectableList>
@@ -112,7 +114,7 @@ export const DomainExpertWidget = () => {
       dataTestId="domain-expert-name"
       headerExtra={headerExtra}
       isExpandDisabled={isEmpty(domain.experts)}
-      title={t('label.expert-plural')}>
+      title={t(LABEL_EXPERT_PLURAL)}>
       {content}
     </WidgetCard>
   );

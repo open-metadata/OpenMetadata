@@ -83,6 +83,16 @@ import {
 } from './TestCaseFormV1.interface';
 import TestCaseSchedulerSection from './TestCaseSchedulerSection';
 
+const LABEL_SELECT_ENTITY = 'label.select-entity';
+const LABEL_TABLE = 'label.table';
+const ROOT_TABLE = 'root/table';
+const LABEL_COLUMN = 'label.column';
+const LABEL_SELECT_TEST_TYPE = 'label.select-test-type';
+const ROOT_TESTTYPE = 'root/testType';
+const LABEL_NAME = 'label.name';
+const LABEL_TAG_PLURAL = 'label.tag-plural';
+const LABEL_GLOSSARY_TERM_PLURAL = 'label.glossary-term-plural';
+
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
 
@@ -755,11 +765,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const selectedTableField = {
     name: 'selectedTable',
-    label: t('label.select-entity', { entity: t('label.table') }),
+    label: t(LABEL_SELECT_ENTITY, { entity: t(LABEL_TABLE) }),
     type: FieldTypes.ASYNC_SELECT,
     required: true,
     rules: {
-      required: t('label.please-select-entity', { entity: t('label.table') }),
+      required: t('label.please-select-entity', { entity: t(LABEL_TABLE) }),
       validate: (value: unknown) => {
         const fqn = fqnFromSelectItem(value as FormSelectItem | string | null);
         if (!fqn || table) {
@@ -769,9 +779,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         return checkTablePermissions(fqn);
       },
     },
-    id: 'root/table',
+    id: ROOT_TABLE,
     doc: fieldDocs.table ?? t('message.doc-field-selected-table'),
-    placeholder: t('label.select-entity', { entity: t('label.table') }),
+    placeholder: t(LABEL_SELECT_ENTITY, { entity: t(LABEL_TABLE) }),
     props: {
       'data-testid': 'selectedTable',
       isDisabled: Boolean(table) || isEditMode,
@@ -782,9 +792,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         if (tableOptions.length === 0) {
           fetchTables();
         }
-        handleActiveField('root/table');
+        handleActiveField(ROOT_TABLE);
         ensureComboboxMenuOpen(
-          () => document.getElementById('root/table') as HTMLInputElement
+          () => document.getElementById(ROOT_TABLE) as HTMLInputElement
         );
       },
       // Legacy antd validated on change: surface the table permission error
@@ -799,22 +809,22 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // and switch the doc panel back to the generic table section.
       onItemCleared: () => {
         form.trigger('selectedTable');
-        handleActiveField('root/table');
+        handleActiveField(ROOT_TABLE);
       },
     },
   } as FieldProp;
 
   const selectedColumnField: FieldProp = {
     name: 'selectedColumn',
-    label: t('label.select-entity', { entity: t('label.column') }),
+    label: t(LABEL_SELECT_ENTITY, { entity: t(LABEL_COLUMN) }),
     type: FieldTypes.SELECT,
     required: true,
     rules: {
-      required: t('label.please-select-entity', { entity: t('label.column') }),
+      required: t('label.please-select-entity', { entity: t(LABEL_COLUMN) }),
     },
     id: 'root/column',
     doc: fieldDocs.column ?? t('message.doc-field-selected-column'),
-    placeholder: t('label.select-entity', { entity: t('label.column') }),
+    placeholder: t(LABEL_SELECT_ENTITY, { entity: t(LABEL_COLUMN) }),
     props: {
       'data-testid': 'selectedColumn',
       isDisabled: !selectedTableFqn || isEditMode,
@@ -824,11 +834,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const dimensionColumnsField: FieldProp = {
     name: 'dimensionColumns',
-    label: t('label.select-entity', { entity: t('label.dimension-plural') }),
+    label: t(LABEL_SELECT_ENTITY, { entity: t('label.dimension-plural') }),
     type: FieldTypes.MULTI_SELECT,
     id: 'root/dimensionColumns',
     doc: fieldDocs.dimensionColumns ?? t('message.doc-field-dimension-columns'),
-    placeholder: t('label.select-entity', {
+    placeholder: t(LABEL_SELECT_ENTITY, {
       entity: t('label.dimension-plural'),
     }),
     props: {
@@ -854,7 +864,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const testTypeField: FieldProp = {
     name: 'testTypeId',
-    label: t('label.select-test-type'),
+    label: t(LABEL_SELECT_TEST_TYPE),
     // AUTOCOMPLETE (searchable combobox) rather than a plain SELECT: the test
     // definitions load async, and an already-open react-aria Select never
     // refreshes its collection when `items` arrive late — leaving the dropdown
@@ -863,20 +873,20 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.AUTOCOMPLETE,
     required: true,
     rules: {
-      required: t('label.select-test-type'),
+      required: t(LABEL_SELECT_TEST_TYPE),
     },
-    id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
+    id: selectedTestType ? `root/${selectedTestType}` : ROOT_TESTTYPE,
     doc:
       selectedTestDefinition?.description ??
       fieldDocs.testType ??
       t('message.doc-field-test-type'),
-    placeholder: t('label.select-test-type'),
+    placeholder: t(LABEL_SELECT_TEST_TYPE),
     props: {
       'data-testid': 'test-type',
       isDisabled: isEditMode,
       options: testTypeOptions,
       onItemInserted: (key?: string | number | null) =>
-        handleActiveField(key ? `root/${key}` : 'root/testType'),
+        handleActiveField(key ? `root/${key}` : ROOT_TESTTYPE),
     },
   };
 
@@ -912,7 +922,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const testNameField: FieldProp = {
     name: 'testName',
-    label: t('label.name'),
+    label: t(LABEL_NAME),
     type: FieldTypes.TEXT,
     required: false,
     id: 'root/name',
@@ -926,7 +936,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       maxLength: {
         value: MAX_NAME_LENGTH,
         message: t('message.entity-maximum-size', {
-          entity: t('label.name'),
+          entity: t(LABEL_NAME),
           max: MAX_NAME_LENGTH,
         }),
       },
@@ -937,7 +947,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         // "already exists" error and silently block the update submit.
         if (!isEditMode && value && existingTestCases.includes(value)) {
           result = t('message.entity-already-exists', {
-            entity: t('label.name'),
+            entity: t(LABEL_NAME),
           });
         }
 
@@ -970,13 +980,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const tagsDoc = useFieldDoc({
     name: 'tags',
-    label: t('label.tag-plural'),
+    label: t(LABEL_TAG_PLURAL),
     doc: fieldDocs.tags ?? t('message.doc-field-tags'),
   });
 
   const glossaryTermsDoc = useFieldDoc({
     name: 'glossaryTerms',
-    label: t('label.glossary-term-plural'),
+    label: t(LABEL_GLOSSARY_TERM_PLURAL),
     doc: fieldDocs.glossaryTerms ?? t('message.doc-field-glossary-terms'),
   });
 
@@ -1091,7 +1101,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
               size="sm"
               onClick={handleCustomQueryToggle}>
               {isCustomQuery
-                ? t('label.select-test-type')
+                ? t(LABEL_SELECT_TEST_TYPE)
                 : t('label.custom-query')}
             </Button>
           </div>
@@ -1111,7 +1121,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
             className="parameter-fields-wrapper"
             onFocusCapture={() =>
               handleActiveField(
-                selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+                selectedTestType ? `root/${selectedTestType}` : ROOT_TESTTYPE
               )
             }>
             <ParameterFields
@@ -1158,9 +1168,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
             {({ field }) => (
               <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
                 <TagSuggestion
-                  label={t('label.tag-plural')}
+                  label={t(LABEL_TAG_PLURAL)}
                   placeholder={t('label.select-field', {
-                    field: t('label.tag-plural'),
+                    field: t(LABEL_TAG_PLURAL),
                   })}
                   value={field.value ?? []}
                   onChange={field.onChange}
@@ -1176,9 +1186,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
                 id="root/glossaryTerms"
                 {...glossaryTermsDoc}>
                 <TagSuggestion
-                  label={t('label.glossary-term-plural')}
+                  label={t(LABEL_GLOSSARY_TERM_PLURAL)}
                   placeholder={t('label.select-field', {
-                    field: t('label.glossary-term-plural'),
+                    field: t(LABEL_GLOSSARY_TERM_PLURAL),
                   })}
                   tagType={TagSource.Glossary}
                   value={field.value ?? []}

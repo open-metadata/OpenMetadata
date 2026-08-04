@@ -31,6 +31,8 @@ import { useTranslation } from 'react-i18next';
 import { DataAssetPickerShellProps } from './DataAssetPicker.interface';
 import DataAssetPickerRow from './DataAssetPickerRow';
 
+const LABEL_ASSET_PLURAL = 'label.asset-plural' as const;
+
 // Index -1 = "All Assets" button (only when allowAllOption=true).
 // Index 0..n-1 = asset list items.
 const ALL_IDX = -1;
@@ -230,7 +232,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                 inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={
                   placeholder ??
-                  t('label.search-entity', { entity: t('label.asset-plural') })
+                  t('label.search-entity', { entity: t(LABEL_ASSET_PLURAL) })
                 }
                 value={searchText}
                 wrapperClassName="tw:rounded-none tw:bg-transparent tw:shadow-none"
@@ -298,7 +300,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                         weight="medium">
                         {allOptionLabel ??
                           t('label.all-entity', {
-                            entity: t('label.asset-plural'),
+                            entity: t(LABEL_ASSET_PLURAL),
                           })}
                       </Typography>
 
@@ -335,7 +337,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
 
             {!isLoading && options.length > 0 && (
               <AriaListBox
-                aria-label={t('label.asset-plural')}
+                aria-label={t(LABEL_ASSET_PLURAL)}
                 className="tw:outline-hidden tw:flex tw:flex-col"
                 escapeKeyBehavior="none"
                 ref={listBoxRef}

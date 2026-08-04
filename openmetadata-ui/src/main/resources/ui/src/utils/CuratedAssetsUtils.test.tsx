@@ -24,6 +24,9 @@ import {
 } from './CuratedAssetsPureUtils';
 import { AlertMessage, getSelectedResourceCount } from './CuratedAssetsUtils';
 
+const VIEW_IN_EXPLORE_PAGE = 'View in Explore Page';
+const QUERY_BOOL_MUST = '{"query":{"bool":{"must":[]}}}';
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
 }));
@@ -69,7 +72,7 @@ describe('CuratedAssetsUtils', () => {
           return `${params?.count} entities found`;
         }
         if (key === 'label.view-in-explore-page') {
-          return 'View in Explore Page';
+          return VIEW_IN_EXPLORE_PAGE;
         }
 
         return key;
@@ -88,7 +91,7 @@ describe('CuratedAssetsUtils', () => {
       expect(screen.getByText('5 entities found')).toBeInTheDocument();
       expect(screen.getByTestId('info-icon')).toBeInTheDocument();
 
-      const link = screen.getByText('View in Explore Page').closest('a');
+      const link = screen.getByText(VIEW_IN_EXPLORE_PAGE).closest('a');
 
       expect(link).toHaveAttribute('href', '/custom-explore');
     });
@@ -96,7 +99,7 @@ describe('CuratedAssetsUtils', () => {
     it('renders alert message with default href', () => {
       render(<AlertMessage assetCount={3} />);
 
-      const link = screen.getByText('View in Explore Page');
+      const link = screen.getByText(VIEW_IN_EXPLORE_PAGE);
 
       expect(link).toHaveAttribute('href', '#');
     });
@@ -169,7 +172,7 @@ describe('CuratedAssetsUtils', () => {
 
       const result = await getSelectedResourceCount({
         selectedResource: ['table', 'dashboard'],
-        queryFilter: '{"query":{"bool":{"must":[]}}}',
+        queryFilter: QUERY_BOOL_MUST,
       });
 
       expect(searchQuery).toHaveBeenCalledWith({
@@ -336,7 +339,7 @@ describe('CuratedAssetsUtils', () => {
   describe('getExploreURLWithFilters', () => {
     it('generates explore URL with query filters', () => {
       const result = getExploreURLWithFilters({
-        queryFilter: '{"query":{"bool":{"must":[]}}}',
+        queryFilter: QUERY_BOOL_MUST,
         selectedResource: ['table'],
         config: {} as Config,
       });
@@ -368,11 +371,7 @@ describe('CuratedAssetsUtils', () => {
 
   describe('EMPTY_QUERY_FILTER_STRINGS', () => {
     it('contains expected empty query filter strings', () => {
-      expect(EMPTY_QUERY_FILTER_STRINGS).toEqual([
-        '{"query":{"bool":{"must":[]}}}',
-        '{}',
-        '',
-      ]);
+      expect(EMPTY_QUERY_FILTER_STRINGS).toEqual([QUERY_BOOL_MUST, '{}', '']);
     });
   });
 
@@ -380,9 +379,7 @@ describe('CuratedAssetsUtils', () => {
     it('returns false for empty query strings', () => {
       expect(isValidElasticsearchQuery('')).toBe(false);
       expect(isValidElasticsearchQuery('{}')).toBe(false);
-      expect(isValidElasticsearchQuery('{"query":{"bool":{"must":[]}}}')).toBe(
-        false
-      );
+      expect(isValidElasticsearchQuery(QUERY_BOOL_MUST)).toBe(false);
     });
 
     it('returns false for invalid JSON', () => {

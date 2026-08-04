@@ -13,12 +13,15 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import ApplicationCard from './ApplicationCard.component';
 
+const SEARCH_INDEX = 'Search Index';
+const HELLO_WORLD = 'Hello World';
+
 const props = {
-  title: 'Search Index',
-  description: 'Hello World',
+  title: SEARCH_INDEX,
+  description: HELLO_WORLD,
   linkTitle: 'Show More',
   onClick: jest.fn(),
-  appName: 'Search Index',
+  appName: SEARCH_INDEX,
   showDescription: true,
 };
 
@@ -43,14 +46,14 @@ describe('ApplicationCard', () => {
   it('renders the title correctly', () => {
     render(<ApplicationCard {...props} />);
 
-    expect(screen.getByText('Search Index')).toBeInTheDocument();
-    expect(screen.getByText('Hello World')).toBeInTheDocument();
+    expect(screen.getByText(SEARCH_INDEX)).toBeInTheDocument();
+    expect(screen.getByText(HELLO_WORLD)).toBeInTheDocument();
   });
 
   it('does not render the description when showDescription is false', () => {
     render(<ApplicationCard {...props} showDescription={false} />);
 
-    expect(screen.queryByText('Hello World')).toBeNull();
+    expect(screen.queryByText(HELLO_WORLD)).toBeNull();
   });
 
   it('calls onClick when the link button is clicked', () => {

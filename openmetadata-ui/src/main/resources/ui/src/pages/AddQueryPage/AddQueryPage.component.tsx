@@ -51,6 +51,9 @@ import { getPartialNameFromFQN } from '../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
+const LABEL_ADD_ENTITY = 'label.add-entity';
+const LABEL_QUERY = 'label.query';
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../components/Database/SchemaEditor/SchemaEditor'))
 );
@@ -85,8 +88,8 @@ const AddQueryPage = () => {
           ),
         },
         {
-          name: t('label.add-entity', {
-            entity: t('label.query'),
+          name: t(LABEL_ADD_ENTITY, {
+            entity: t(LABEL_QUERY),
           }),
           url: '',
           activeTitle: true,
@@ -175,7 +178,7 @@ const AddQueryPage = () => {
       await postQuery(updatedValues);
       showSuccessToast(
         t('server.create-entity-success', {
-          entity: t('label.query'),
+          entity: t(LABEL_QUERY),
         })
       );
       handleCancelClick();
@@ -185,7 +188,7 @@ const AddQueryPage = () => {
       ) {
         showErrorToast(
           t('server.entity-already-exist-message-without-name', {
-            entity: t('label.query'),
+            entity: t(LABEL_QUERY),
             entityPlural: t('label.query-lowercase-plural'),
           })
         );
@@ -236,7 +239,7 @@ const AddQueryPage = () => {
                 className="text-base"
                 data-testid="form-title">
                 {t('label.add-new-entity', {
-                  entity: t('label.query'),
+                  entity: t(LABEL_QUERY),
                 })}
               </Typography.Paragraph>
               <Form
@@ -314,13 +317,13 @@ const AddQueryPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.query') })}
+      pageTitle={t(LABEL_ADD_ENTITY, { entity: t(LABEL_QUERY) })}
       secondPanel={{
         children: (
           <>
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.add-entity', {
-                entity: t('label.query'),
+              {t(LABEL_ADD_ENTITY, {
+                entity: t(LABEL_QUERY),
               })}
             </Typography.Paragraph>
             <Typography.Text>

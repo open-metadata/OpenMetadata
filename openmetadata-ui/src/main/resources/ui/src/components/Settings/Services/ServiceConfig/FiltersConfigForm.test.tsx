@@ -30,6 +30,21 @@ import {
 import FiltersConfigForm from './FiltersConfigForm';
 import { FiltersConfigFormProps } from './FiltersConfigForm.interface';
 
+const NO_FILTER_PATTERNS_ARE_AVAILABLE_FOR_THIS_CONNECTOR =
+  'No filter patterns are available for this connector.';
+const FILTERS_CONFIG_FORM_CHIP_OPERATOR = '.filters-config-form__chip-operator';
+const FILTER_SECTION_SCHEMAFILTERPATTERN = 'filter-section-schemaFilterPattern';
+const FILTER_SECTION_TABLEFILTERPATTERN = 'filter-section-tableFilterPattern';
+const EXCLUDE_SYSTEM_SCHEMAS = 'Exclude system schemas';
+const SHOW_EQUIVALENT_REGEX = 'Show equivalent regex';
+const INFORMATION_SCHEMA = '^information_schema$';
+const PERFORMANCE_SCHEMA = '^performance_schema$';
+const NO_CONFIG_AVAILABLE = 'no-config-available';
+const LOCALHOST_3306 = 'localhost:3306';
+const MATCHES_REGEX = 'matches regex';
+const STARTS_WITH = 'starts with';
+const TMP = '^(?!tmp_).*';
+const IS_EXACTLY = 'is exactly';
 const translations: Record<string, string> = {
   'label.add': 'Add',
   'label.always-exclude': 'Always exclude',
@@ -46,8 +61,8 @@ const translations: Record<string, string> = {
   'label.exclude-system-entity': 'Exclude system {{entity}}',
   'label.hide-equivalent-regex': 'Hide equivalent regex',
   'label.include-entity': 'Include {{entity}}',
-  'label.is-exactly': 'is exactly',
-  'label.matches-regex': 'matches regex',
+  'label.is-exactly': IS_EXACTLY,
+  'label.matches-regex': MATCHES_REGEX,
   'label.only-specific-entity': 'Only specific {{entity}}',
   'label.preview': 'Preview',
   'label.remove': 'Remove',
@@ -57,8 +72,8 @@ const translations: Record<string, string> = {
   'label.scan-all-entity': 'Scan all {{entity}}',
   'label.schema': 'Schema',
   'label.schema-plural': 'Schemas',
-  'label.show-equivalent-regex': 'Show equivalent regex',
-  'label.starts-with': 'starts with',
+  'label.show-equivalent-regex': SHOW_EQUIVALENT_REGEX,
+  'label.starts-with': STARTS_WITH,
   'label.stored-procedure': 'Stored Procedure',
   'label.stored-procedure-plural': 'Stored Procedures',
   'label.table': 'Table',
@@ -88,7 +103,7 @@ const translations: Record<string, string> = {
     'Include only {{entity}} where the name...',
   'message.includes-regex-line': 'includes += {{regex}}',
   'message.no-filter-patterns-available':
-    'No filter patterns are available for this connector.',
+    NO_FILTER_PATTERNS_ARE_AVAILABLE_FOR_THIS_CONNECTOR,
   'message.what-to-ingest-description':
     'Agents deploy on create and immediately start pulling metadata.',
 };
@@ -119,6 +134,7 @@ jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
   formatFormDataForSubmit: jest.fn((data) => data),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string -- jest.mock module path must be a string literal
 jest.mock('../../../../utils/ServiceConnectionUtils', () => {
   const actual = jest.requireActual('../../../../utils/ServiceConnectionUtils');
 
@@ -189,7 +205,7 @@ const connectionSchema = {
       schemaFilterPattern: filterPatternProperty(
         'Default Schema Filter Pattern',
         {
-          excludes: ['^information_schema$', '^performance_schema$'],
+          excludes: [INFORMATION_SCHEMA, PERFORMANCE_SCHEMA],
           includes: [],
         }
       ),
@@ -214,7 +230,7 @@ const renderForm = async (props: Partial<FiltersConfigFormProps> = {}) => {
   const defaultProps: FiltersConfigFormProps = {
     cancelText: 'Back',
     data: buildServiceData({
-      hostPort: 'localhost:3306',
+      hostPort: LOCALHOST_3306,
     }),
     serviceCategory: ServiceCategory.DATABASE_SERVICES,
     serviceType: DatabaseServiceType.Mysql,
@@ -262,12 +278,12 @@ describe('FiltersConfigForm', () => {
     expect(screen.getByText('Stored Procedures')).toBeInTheDocument();
 
     const schemaSection = screen.getByTestId(
-      'filter-section-schemaFilterPattern'
+      FILTER_SECTION_SCHEMAFILTERPATTERN
     );
 
     expect(
-      within(schemaSection).getAllByText('is exactly', {
-        selector: '.filters-config-form__chip-operator',
+      within(schemaSection).getAllByText(IS_EXACTLY, {
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       })
     ).toHaveLength(2);
     expect(
@@ -277,7 +293,7 @@ describe('FiltersConfigForm', () => {
       within(schemaSection).getAllByText('performance_schema')
     ).toHaveLength(2);
     expect(
-      within(schemaSection).queryByText('^information_schema$')
+      within(schemaSection).queryByText(INFORMATION_SCHEMA)
     ).not.toBeInTheDocument();
     expect(
       within(schemaSection).getByText(
@@ -289,7 +305,7 @@ describe('FiltersConfigForm', () => {
 
     fireEvent.click(
       within(schemaSection).getByRole('button', {
-        name: 'Show equivalent regex',
+        name: SHOW_EQUIVALENT_REGEX,
       })
     );
 
@@ -304,7 +320,7 @@ describe('FiltersConfigForm', () => {
     await renderForm({ onSave });
 
     const schemaSection = screen.getByTestId(
-      'filter-section-schemaFilterPattern'
+      FILTER_SECTION_SCHEMAFILTERPATTERN
     );
 
     fireEvent.change(within(schemaSection).getByPlaceholderText('e.g. TMP_'), {
@@ -323,7 +339,7 @@ describe('FiltersConfigForm', () => {
       expect(onSave).toHaveBeenCalledWith({
         formData: expect.objectContaining({
           schemaFilterPattern: {
-            excludes: ['^information_schema$', '^performance_schema$', '^TMP_'],
+            excludes: [INFORMATION_SCHEMA, PERFORMANCE_SCHEMA, '^TMP_'],
             includes: [],
           },
         }),
@@ -338,9 +354,7 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({ onSave });
 
-    const tableSection = screen.getByTestId(
-      'filter-section-tableFilterPattern'
-    );
+    const tableSection = screen.getByTestId(FILTER_SECTION_TABLEFILTERPATTERN);
 
     fireEvent.click(
       within(tableSection).getByRole('button', {
@@ -397,9 +411,9 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({
       data: buildServiceData({
-        hostPort: 'localhost:3306',
+        hostPort: LOCALHOST_3306,
         tableFilterPattern: {
-          excludes: ['^(?!tmp_).*'],
+          excludes: [TMP],
           includes: [],
         },
       }),
@@ -407,7 +421,7 @@ describe('FiltersConfigForm', () => {
     });
 
     const tableSection = await screen.findByTestId(
-      'filter-section-tableFilterPattern'
+      FILTER_SECTION_TABLEFILTERPATTERN
     );
 
     fireEvent.click(
@@ -417,11 +431,11 @@ describe('FiltersConfigForm', () => {
     );
 
     expect(
-      within(tableSection).getAllByText('matches regex', {
-        selector: '.filters-config-form__chip-operator',
+      within(tableSection).getAllByText(MATCHES_REGEX, {
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
-    expect(within(tableSection).getAllByText('^(?!tmp_).*')).toHaveLength(2);
+    expect(within(tableSection).getAllByText(TMP)).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -429,7 +443,7 @@ describe('FiltersConfigForm', () => {
       expect(onSave).toHaveBeenCalledWith({
         formData: expect.objectContaining({
           tableFilterPattern: {
-            excludes: ['^(?!tmp_).*'],
+            excludes: [TMP],
             includes: [],
           },
         }),
@@ -446,14 +460,14 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({
       data: buildServiceData({
-        hostPort: 'localhost:3306',
+        hostPort: LOCALHOST_3306,
         tableFilterPattern: existingTablePattern,
       }),
       onSave,
     });
 
     const tableSection = await screen.findByTestId(
-      'filter-section-tableFilterPattern'
+      FILTER_SECTION_TABLEFILTERPATTERN
     );
 
     fireEvent.click(
@@ -469,23 +483,23 @@ describe('FiltersConfigForm', () => {
     ).toBeInTheDocument();
 
     expect(
-      within(tableSection).getAllByText('is exactly', {
-        selector: '.filters-config-form__chip-operator',
+      within(tableSection).getAllByText(IS_EXACTLY, {
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(
-      within(tableSection).getAllByText('starts with', {
-        selector: '.filters-config-form__chip-operator',
+      within(tableSection).getAllByText(STARTS_WITH, {
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(
       within(tableSection).getAllByText('ends with', {
-        selector: '.filters-config-form__chip-operator',
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(
       within(tableSection).getAllByText('contains', {
-        selector: '.filters-config-form__chip-operator',
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
 
@@ -498,7 +512,7 @@ describe('FiltersConfigForm', () => {
 
     fireEvent.click(
       within(tableSection).getByRole('button', {
-        name: 'Show equivalent regex',
+        name: SHOW_EQUIVALENT_REGEX,
       })
     );
 
@@ -547,7 +561,7 @@ describe('FiltersConfigForm', () => {
       '.*wrapped.*',
       'plain',
       'file\\.json',
-      '^(?!tmp_).*',
+      TMP,
     ];
 
     mockLoadConnectionSchema.mockResolvedValue({
@@ -568,33 +582,31 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({ onSave });
 
-    const tableSection = screen.getByTestId(
-      'filter-section-tableFilterPattern'
-    );
+    const tableSection = screen.getByTestId(FILTER_SECTION_TABLEFILTERPATTERN);
 
     expect(
-      within(tableSection).getAllByText('is exactly', {
-        selector: '.filters-config-form__chip-operator',
+      within(tableSection).getAllByText(IS_EXACTLY, {
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(
       within(tableSection).getAllByText('contains', {
-        selector: '.filters-config-form__chip-operator',
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(
-      within(tableSection).getAllByText('starts with', {
-        selector: '.filters-config-form__chip-operator',
+      within(tableSection).getAllByText(STARTS_WITH, {
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(
       within(tableSection).getAllByText('ends with', {
-        selector: '.filters-config-form__chip-operator',
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(
-      within(tableSection).getAllByText('matches regex', {
-        selector: '.filters-config-form__chip-operator',
+      within(tableSection).getAllByText(MATCHES_REGEX, {
+        selector: FILTERS_CONFIG_FORM_CHIP_OPERATOR,
       }).length
     ).toBeGreaterThanOrEqual(1);
     expect(within(tableSection).getAllByText('file.json')).toHaveLength(2);
@@ -619,9 +631,7 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({ onFocus, onSave });
 
-    const tableSection = screen.getByTestId(
-      'filter-section-tableFilterPattern'
-    );
+    const tableSection = screen.getByTestId(FILTER_SECTION_TABLEFILTERPATTERN);
 
     fireEvent.click(
       within(tableSection).getByRole('button', {
@@ -640,7 +650,7 @@ describe('FiltersConfigForm', () => {
       within(tableSection).getByPlaceholderText('e.g. a table name');
 
     fireEvent.click(within(includeOperatorContainer).getByRole('button'));
-    fireEvent.click(screen.getByRole('option', { name: 'is exactly' }));
+    fireEvent.click(screen.getByRole('option', { name: IS_EXACTLY }));
     fireEvent.change(includeInput, {
       target: {
         value: 'orders.v1',
@@ -662,7 +672,7 @@ describe('FiltersConfigForm', () => {
     );
 
     fireEvent.click(within(excludeOperatorContainer).getByRole('button'));
-    fireEvent.click(screen.getByRole('option', { name: 'matches regex' }));
+    fireEvent.click(screen.getByRole('option', { name: MATCHES_REGEX }));
 
     const excludeInput =
       within(tableSection).getByPlaceholderText('^prefix.*$');
@@ -681,7 +691,7 @@ describe('FiltersConfigForm', () => {
     );
     fireEvent.click(
       within(tableSection).getByRole('button', {
-        name: 'Show equivalent regex',
+        name: SHOW_EQUIVALENT_REGEX,
       })
     );
 
@@ -716,7 +726,7 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({
       data: buildServiceData({
-        hostPort: 'localhost:3306',
+        hostPort: LOCALHOST_3306,
         tableFilterPattern: {
           excludes: ['^tmp_'],
           includes: ['orders'],
@@ -725,9 +735,7 @@ describe('FiltersConfigForm', () => {
       onSave,
     });
 
-    const tableSection = screen.getByTestId(
-      'filter-section-tableFilterPattern'
-    );
+    const tableSection = screen.getByTestId(FILTER_SECTION_TABLEFILTERPATTERN);
 
     fireEvent.click(
       within(tableSection).getByRole('button', {
@@ -759,7 +767,7 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({
       data: buildServiceData({
-        hostPort: 'localhost:3306',
+        hostPort: LOCALHOST_3306,
         tableFilterPattern: {
           excludes: ['^tmp_'],
           includes: ['orders'],
@@ -768,9 +776,7 @@ describe('FiltersConfigForm', () => {
       onSave,
     });
 
-    const tableSection = screen.getByTestId(
-      'filter-section-tableFilterPattern'
-    );
+    const tableSection = screen.getByTestId(FILTER_SECTION_TABLEFILTERPATTERN);
 
     fireEvent.click(
       within(tableSection).getByRole('button', {
@@ -801,9 +807,7 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({ onSave });
 
-    const tableSection = screen.getByTestId(
-      'filter-section-tableFilterPattern'
-    );
+    const tableSection = screen.getByTestId(FILTER_SECTION_TABLEFILTERPATTERN);
 
     fireEvent.click(
       within(tableSection).getByRole('button', {
@@ -831,10 +835,10 @@ describe('FiltersConfigForm', () => {
     await renderForm();
 
     const schemaSection = screen.getByTestId(
-      'filter-section-schemaFilterPattern'
+      FILTER_SECTION_SCHEMAFILTERPATTERN
     );
     const systemExcludesToggle = within(schemaSection).getByRole('switch', {
-      name: 'Exclude system schemas',
+      name: EXCLUDE_SYSTEM_SCHEMAS,
     });
 
     expect(systemExcludesToggle).toBeChecked();
@@ -847,7 +851,7 @@ describe('FiltersConfigForm', () => {
   it('keeps the system excludes toggle off for a service that removed them', async () => {
     await renderForm({
       data: buildServiceData({
-        hostPort: 'localhost:3306',
+        hostPort: LOCALHOST_3306,
         schemaFilterPattern: {
           excludes: [],
           includes: [],
@@ -856,12 +860,12 @@ describe('FiltersConfigForm', () => {
     });
 
     const schemaSection = screen.getByTestId(
-      'filter-section-schemaFilterPattern'
+      FILTER_SECTION_SCHEMAFILTERPATTERN
     );
 
     expect(
       within(schemaSection).getByRole('switch', {
-        name: 'Exclude system schemas',
+        name: EXCLUDE_SYSTEM_SCHEMAS,
       })
     ).not.toBeChecked();
   });
@@ -871,7 +875,7 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({
       data: buildServiceData({
-        hostPort: 'localhost:3306',
+        hostPort: LOCALHOST_3306,
         schemaFilterPattern: {
           excludes: [],
           includes: [],
@@ -881,12 +885,12 @@ describe('FiltersConfigForm', () => {
     });
 
     const schemaSection = screen.getByTestId(
-      'filter-section-schemaFilterPattern'
+      FILTER_SECTION_SCHEMAFILTERPATTERN
     );
 
     fireEvent.click(
       within(schemaSection).getByRole('switch', {
-        name: 'Exclude system schemas',
+        name: EXCLUDE_SYSTEM_SCHEMAS,
       })
     );
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -895,7 +899,7 @@ describe('FiltersConfigForm', () => {
       expect(onSave).toHaveBeenCalledWith({
         formData: expect.objectContaining({
           schemaFilterPattern: {
-            excludes: ['^information_schema$', '^performance_schema$'],
+            excludes: [INFORMATION_SCHEMA, PERFORMANCE_SCHEMA],
             includes: [],
           },
         }),
@@ -909,12 +913,12 @@ describe('FiltersConfigForm', () => {
     await renderForm({ onSave });
 
     const schemaSection = screen.getByTestId(
-      'filter-section-schemaFilterPattern'
+      FILTER_SECTION_SCHEMAFILTERPATTERN
     );
 
     fireEvent.click(
       within(schemaSection).getByRole('switch', {
-        name: 'Exclude system schemas',
+        name: EXCLUDE_SYSTEM_SCHEMAS,
       })
     );
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -948,8 +952,8 @@ describe('FiltersConfigForm', () => {
 
     await renderForm({ onSave });
 
-    expect(screen.getByTestId('no-config-available')).toHaveTextContent(
-      'No filter patterns are available for this connector.'
+    expect(screen.getByTestId(NO_CONFIG_AVAILABLE)).toHaveTextContent(
+      NO_FILTER_PATTERNS_ARE_AVAILABLE_FOR_THIS_CONNECTOR
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -1099,8 +1103,8 @@ describe('FiltersConfigForm', () => {
 
     await renderForm();
 
-    expect(screen.getByTestId('no-config-available')).toHaveTextContent(
-      'No filter patterns are available for this connector.'
+    expect(screen.getByTestId(NO_CONFIG_AVAILABLE)).toHaveTextContent(
+      NO_FILTER_PATTERNS_ARE_AVAILABLE_FOR_THIS_CONNECTOR
     );
   });
 
@@ -1109,8 +1113,8 @@ describe('FiltersConfigForm', () => {
 
     await renderForm();
 
-    expect(screen.getByTestId('no-config-available')).toHaveTextContent(
-      'No filter patterns are available for this connector.'
+    expect(screen.getByTestId(NO_CONFIG_AVAILABLE)).toHaveTextContent(
+      NO_FILTER_PATTERNS_ARE_AVAILABLE_FOR_THIS_CONNECTOR
     );
   });
 

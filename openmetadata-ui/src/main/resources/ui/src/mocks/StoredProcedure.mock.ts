@@ -18,6 +18,9 @@ import {
   TagSource,
 } from '../generated/entity/data/storedProcedure';
 
+const HTTP_LOCALHOST_8585_API_V1_DATABASESCHEMAS =
+  'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1';
+
 export const mockStoredProcedureData = [
   {
     id: 'de9c83b5-c37a-4d0a-a7aa-6bab1835bc1b',
@@ -29,8 +32,7 @@ export const mockStoredProcedureData = [
       code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
       language: 'SQL',
     },
-    sourceUrl:
-      'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1',
+    sourceUrl: HTTP_LOCALHOST_8585_API_V1_DATABASESCHEMAS,
     version: 3.4,
     updatedAt: 1693892749147,
     updatedBy: 'admin',
@@ -64,7 +66,7 @@ export const mockStoredProcedureData = [
       description:
         'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1',
+      href: HTTP_LOCALHOST_8585_API_V1_DATABASESCHEMAS,
     },
     database: {
       id: 'd500add1-f101-4d1a-a9b8-01c72eb81904',
@@ -154,7 +156,7 @@ export const mockStoredProcedureData = [
       description:
         'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1',
+      href: HTTP_LOCALHOST_8585_API_V1_DATABASESCHEMAS,
     },
     database: {
       id: 'd500add1-f101-4d1a-a9b8-01c72eb81904',

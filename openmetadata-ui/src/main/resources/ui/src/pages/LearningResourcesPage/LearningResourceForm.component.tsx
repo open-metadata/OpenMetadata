@@ -36,6 +36,11 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './learning-resource-form.less';
 import { LearningResourceFormProps } from './LearningResourceForm.interface';
 
+const LABEL_NAME = 'label.name';
+const LABEL_FIELD_REQUIRED = 'label.field-required';
+const LABEL_TYPE = 'label.type';
+const LABEL_CONTEXT = 'label.context';
+
 const { TextArea } = Input;
 
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
@@ -190,12 +195,12 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         layout="vertical">
         <Form.Item
           className="form-item-required"
-          label={t('label.name')}
+          label={t(LABEL_NAME)}
           name="name"
           rules={[
             {
-              message: t('label.field-required', {
-                field: t('label.name'),
+              message: t(LABEL_FIELD_REQUIRED, {
+                field: t(LABEL_NAME),
               }),
               required: true,
             },
@@ -203,7 +208,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           <Input
             data-testid="name-input"
             disabled={Boolean(resource)}
-            placeholder={t('label.enter-entity', { entity: t('label.name') })}
+            placeholder={t('label.enter-entity', { entity: t(LABEL_NAME) })}
           />
         </Form.Item>
 
@@ -213,7 +218,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           name="description"
           rules={[
             {
-              message: t('label.field-required', {
+              message: t(LABEL_FIELD_REQUIRED, {
                 field: t('label.description'),
               }),
               required: true,
@@ -229,19 +234,19 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         <Form.Item
           className="form-item-required form-item-type"
           data-testid="resource-type-form-item"
-          label={t('label.type')}
+          label={t(LABEL_TYPE)}
           name="resourceType"
           rules={[
             {
-              message: t('label.field-required', {
-                field: t('label.type'),
+              message: t(LABEL_FIELD_REQUIRED, {
+                field: t(LABEL_TYPE),
               }),
               required: true,
             },
           ]}>
           <Select
             data-testid="resource-type-select"
-            placeholder={t('label.select-field', { field: t('label.type') })}>
+            placeholder={t('label.select-field', { field: t(LABEL_TYPE) })}>
             {RESOURCE_TYPES.map((type) => (
               <Select.Option key={type.value} value={type.value}>
                 <Space align="center">
@@ -263,7 +268,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           }
           rules={[
             {
-              message: t('label.field-required', {
+              message: t(LABEL_FIELD_REQUIRED, {
                 field: t('label.category-plural'),
               }),
               required: true,
@@ -280,15 +285,15 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
         <Form.Item
           className="form-item-required"
           data-testid="contexts-form-item"
-          label={t('label.context')}
+          label={t(LABEL_CONTEXT)}
           name="contexts"
           normalize={(val) =>
             Array.isArray(val) ? val : val != null ? [val] : []
           }
           rules={[
             {
-              message: t('label.field-required', {
-                field: t('label.context'),
+              message: t(LABEL_FIELD_REQUIRED, {
+                field: t(LABEL_CONTEXT),
               }),
               required: true,
             },
@@ -297,7 +302,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             data-testid="contexts-select"
             mode="multiple"
             options={PAGE_IDS}
-            placeholder={t('label.select-field', { field: t('label.context') })}
+            placeholder={t('label.select-field', { field: t(LABEL_CONTEXT) })}
           />
         </Form.Item>
 
@@ -307,7 +312,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           name="sourceUrl"
           rules={[
             {
-              message: t('label.field-required', {
+              message: t(LABEL_FIELD_REQUIRED, {
                 field: t('label.source-url'),
               }),
               required: true,

@@ -15,6 +15,9 @@ import { TeamType } from '../../../../../generated/entity/teams/team';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import TeamsInfo from './TeamsInfo.component';
 
+const EDIT_EMAIL = 'edit-email';
+const EDIT_TEAM_TYPE_ICON = 'edit-team-type-icon';
+
 const mockTeam = {
   changeDescription: {},
   children: [],
@@ -115,7 +118,7 @@ describe('TeamsInfo', () => {
 
   it('should handle edit team email', () => {
     const { getByTestId } = render(<TeamsInfo {...teamProps} />);
-    const editButton = getByTestId('edit-email');
+    const editButton = getByTestId(EDIT_EMAIL);
     fireEvent.click(editButton);
     const teamEmailInput = getByTestId('email-input');
 
@@ -124,7 +127,7 @@ describe('TeamsInfo', () => {
 
   it('should handle save team email', async () => {
     const { getByTestId } = render(<TeamsInfo {...teamProps} />);
-    const editButton = getByTestId('edit-email');
+    const editButton = getByTestId(EDIT_EMAIL);
     fireEvent.click(editButton);
     const saveButton = getByTestId('save-edit-email');
     await act(async () => {
@@ -136,7 +139,7 @@ describe('TeamsInfo', () => {
 
   it('should handle cancel team email edit', async () => {
     const { getByTestId } = render(<TeamsInfo {...teamProps} />);
-    const editButton = getByTestId('edit-email');
+    const editButton = getByTestId(EDIT_EMAIL);
     fireEvent.click(editButton);
     const cancelButton = getByTestId('cancel-edit-email');
     await act(async () => {
@@ -149,7 +152,7 @@ describe('TeamsInfo', () => {
   it('should not render edit button if team type is organization', () => {
     const { queryByTestId } = render(<TeamsInfo {...teamProps} />);
 
-    expect(queryByTestId('edit-team-type-icon')).not.toBeInTheDocument();
+    expect(queryByTestId(EDIT_TEAM_TYPE_ICON)).not.toBeInTheDocument();
   });
 
   it('should not render edit button if team type is group & isGroupType is true', () => {
@@ -161,7 +164,7 @@ describe('TeamsInfo', () => {
       />
     );
 
-    expect(queryByTestId('edit-team-type-icon')).not.toBeInTheDocument();
+    expect(queryByTestId(EDIT_TEAM_TYPE_ICON)).not.toBeInTheDocument();
   });
 
   it('should render edit button if team type is not group and organization', () => {
@@ -172,13 +175,13 @@ describe('TeamsInfo', () => {
       />
     );
 
-    expect(queryByTestId('edit-team-type-icon')).toBeInTheDocument();
+    expect(queryByTestId(EDIT_TEAM_TYPE_ICON)).toBeInTheDocument();
   });
 
   it('should not show edit button if user does not have permission', () => {
     mockEntityPermissions.EditAll = false;
     const { queryByTestId } = render(<TeamsInfo {...teamProps} />);
-    const ownerLabel = queryByTestId('edit-email');
+    const ownerLabel = queryByTestId(EDIT_EMAIL);
 
     expect(ownerLabel).not.toBeInTheDocument();
   });

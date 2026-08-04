@@ -23,6 +23,13 @@ import { Operation } from '../../../../generated/entity/policies/accessControl/r
 import { TableProfilerProps } from '../TableProfiler/TableProfiler.interface';
 import DataObservabilityTab from './DataObservabilityTab';
 
+const ACTIVECOLUMNFQN_TABLE_COLUMN1 = '?activeColumnFqn=table.column1';
+const TABLE_TEST_TABLE_PROFILER = '/table/test-table/profiler';
+const TABLE_PROFILER_CONTAINER = 'table-profiler-container';
+const TABLE_PROFILE_COMPONENT = 'table-profile-component';
+const TABLE_PROFILE = 'Table Profile';
+const DATA_QUALITY = 'Data Quality';
+const TAB_FILTERS = 'tab-filters';
 jest.mock('@openmetadata/ui-core-components', () => {
   type TabsItemClassName =
     | string
@@ -61,10 +68,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 const mockNavigate = jest.fn();
+// eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
 const mockUseParams = jest.fn(() => ({ subTab: 'table-profile' }));
 const mockUseCustomLocation = jest.fn(() => ({
   search: '?startTs=1711065600000&endTs=1711670399000',
-  pathname: '/table/test-table/profiler',
+  pathname: TABLE_TEST_TABLE_PROFILER,
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -92,7 +100,9 @@ jest.mock('../TableProfiler/ProfilerClassBase', () => ({
     getDefaultTabKey: jest.fn(() => 'table-profile'),
     getProfilerTabOptions: jest.fn(() => [
       { key: 'table-profile', label: 'Table Profile' },
+      // eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
       { key: 'column-profile', label: 'Column Profile' },
+      // eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
       { key: 'data-quality', label: 'Data Quality' },
     ]),
     getProfilerTabs: jest.fn(() => ({
@@ -199,7 +209,7 @@ describe('DataObservabilityTab', () => {
     mockUseParams.mockReturnValue({ subTab: 'table-profile' });
     mockUseCustomLocation.mockReturnValue({
       search: '?startTs=1711065600000&endTs=1711670399000',
-      pathname: '/table/test-table/profiler',
+      pathname: TABLE_TEST_TABLE_PROFILER,
     });
   });
 
@@ -209,7 +219,7 @@ describe('DataObservabilityTab', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('table-profiler-container')
+          screen.getByTestId(TABLE_PROFILER_CONTAINER)
         ).toBeInTheDocument();
       });
     });
@@ -228,44 +238,44 @@ describe('DataObservabilityTab', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('tab-filters')).toBeInTheDocument();
+        expect(screen.getByTestId(TAB_FILTERS)).toBeInTheDocument();
       });
     });
 
     it('should render tabs when activeColumnFqn is not present', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
     it('should render all tab options', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
     it('should render back button when activeColumnFqn is present', async () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
@@ -274,8 +284,8 @@ describe('DataObservabilityTab', () => {
         const backLink = screen.getByText('Column Profile').closest('a');
 
         expect(backLink).toBeInTheDocument();
-        expect(screen.queryByText('Table Profile')).not.toBeInTheDocument();
-        expect(screen.queryByText('Data Quality')).not.toBeInTheDocument();
+        expect(screen.queryByText(TABLE_PROFILE)).not.toBeInTheDocument();
+        expect(screen.queryByText(DATA_QUALITY)).not.toBeInTheDocument();
       });
     });
 
@@ -285,9 +295,7 @@ describe('DataObservabilityTab', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('table-profile-component')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(TABLE_PROFILE_COMPONENT)).toBeInTheDocument();
       });
     });
   });
@@ -296,15 +304,15 @@ describe('DataObservabilityTab', () => {
     it('should render all tabs', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
@@ -312,7 +320,7 @@ describe('DataObservabilityTab', () => {
       mockUseParams.mockReturnValue({ subTab: 'column-profile' });
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
@@ -327,22 +335,22 @@ describe('DataObservabilityTab', () => {
     it('should have tabs visible when no column is selected', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '?startTs=1234567890000&endTs=9876543210000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
     it('should render tabs as clickable buttons', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '?startTs=1234567890000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
@@ -363,8 +371,8 @@ describe('DataObservabilityTab', () => {
   describe('Back Button', () => {
     it('should navigate back when back button is clicked', async () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
@@ -384,7 +392,7 @@ describe('DataObservabilityTab', () => {
     it('should clear activeColumnFqn when navigating back', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '?activeColumnFqn=table.column1&startTs=1234567890000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
@@ -403,8 +411,8 @@ describe('DataObservabilityTab', () => {
 
     it('should render back button with drop-down icon', async () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
@@ -424,9 +432,7 @@ describe('DataObservabilityTab', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('table-profile-component')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(TABLE_PROFILE_COMPONENT)).toBeInTheDocument();
         expect(screen.getByText('Table Profile Content')).toBeInTheDocument();
       });
     });
@@ -461,60 +467,60 @@ describe('DataObservabilityTab', () => {
   describe('URL Parameter Handling', () => {
     it('should parse activeColumnFqn from URL', async () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.queryByText('Table Profile')).not.toBeInTheDocument();
-        expect(screen.queryByText('Data Quality')).not.toBeInTheDocument();
+        expect(screen.queryByText(TABLE_PROFILE)).not.toBeInTheDocument();
+        expect(screen.queryByText(DATA_QUALITY)).not.toBeInTheDocument();
       });
     });
 
     it('should handle URL without activeColumnFqn', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
     it('should handle URL with query params starting with ?', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '?startTs=1234567890000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
     it('should handle URL with query params not starting with ?', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: 'startTs=1234567890000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
   });
@@ -548,8 +554,8 @@ describe('DataObservabilityTab', () => {
       renderComponent();
 
       await waitFor(() => {
-        const container = screen.getByTestId('table-profiler-container');
-        const tabFilters = screen.getByTestId('tab-filters');
+        const container = screen.getByTestId(TABLE_PROFILER_CONTAINER);
+        const tabFilters = screen.getByTestId(TAB_FILTERS);
 
         expect(container).toContainElement(tabFilters);
       });
@@ -560,7 +566,7 @@ describe('DataObservabilityTab', () => {
 
       await waitFor(() => {
         const contentPanel = screen
-          .getByTestId('table-profiler-container')
+          .getByTestId(TABLE_PROFILER_CONTAINER)
           .querySelector('.data-observability-content-panel');
 
         expect(contentPanel).toBeInTheDocument();
@@ -572,9 +578,9 @@ describe('DataObservabilityTab', () => {
 
       await waitFor(() => {
         const contentPanel = screen
-          .getByTestId('table-profiler-container')
+          .getByTestId(TABLE_PROFILER_CONTAINER)
           .querySelector('.data-observability-content-panel');
-        const content = screen.getByTestId('table-profile-component');
+        const content = screen.getByTestId(TABLE_PROFILE_COMPONENT);
 
         expect(contentPanel).toContainElement(content);
       });
@@ -587,24 +593,24 @@ describe('DataObservabilityTab', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('table-profiler-container')
+          screen.getByTestId(TABLE_PROFILER_CONTAINER)
         ).toBeInTheDocument();
-        expect(screen.getByTestId('tab-filters')).toBeInTheDocument();
+        expect(screen.getByTestId(TAB_FILTERS)).toBeInTheDocument();
       });
     });
 
     it('should render all tab options from ProfilerClassBase', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
@@ -625,30 +631,30 @@ describe('DataObservabilityTab', () => {
     it('should have accessible tab list', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByText('Table Profile')).toBeInTheDocument();
+        expect(screen.getByText(TABLE_PROFILE)).toBeInTheDocument();
         expect(screen.getByText('Column Profile')).toBeInTheDocument();
-        expect(screen.getByText('Data Quality')).toBeInTheDocument();
+        expect(screen.getByText(DATA_QUALITY)).toBeInTheDocument();
       });
     });
 
     it('should have accessible tabs', async () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        const tableProfileTab = screen.getByText('Table Profile');
+        const tableProfileTab = screen.getByText(TABLE_PROFILE);
         const columnProfileTab = screen.getByText('Column Profile');
-        const dataQualityTab = screen.getByText('Data Quality');
+        const dataQualityTab = screen.getByText(DATA_QUALITY);
 
         expect(tableProfileTab).toBeVisible();
         expect(columnProfileTab).toBeVisible();
@@ -658,8 +664,8 @@ describe('DataObservabilityTab', () => {
 
     it('should have accessible back button', async () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();

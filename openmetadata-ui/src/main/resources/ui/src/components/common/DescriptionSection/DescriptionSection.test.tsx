@@ -14,6 +14,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import DescriptionSection from './DescriptionSection';
 
+const EDIT_DESCRIPTION = 'edit-description';
+const MARKDOWN_EDITOR = 'markdown-editor';
 // Mock i18n
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -164,15 +166,15 @@ describe('DescriptionSection', () => {
         />
       );
 
-      const editTrigger = screen.getByTestId('edit-description');
+      const editTrigger = screen.getByTestId(EDIT_DESCRIPTION);
       fireEvent.click(editTrigger);
 
-      expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();
+      expect(screen.getByTestId(MARKDOWN_EDITOR)).toBeInTheDocument();
 
       const cancelBtn = screen.getByTestId('cancel');
       fireEvent.click(cancelBtn);
 
-      expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(MARKDOWN_EDITOR)).not.toBeInTheDocument();
       expect(
         screen.getByText(
           'label.no-entity-added - {"entity":"label.description-lowercase"}'
@@ -192,7 +194,7 @@ describe('DescriptionSection', () => {
         />
       );
 
-      const editTrigger = screen.getByTestId('edit-description');
+      const editTrigger = screen.getByTestId(EDIT_DESCRIPTION);
       fireEvent.click(editTrigger);
 
       const saveBtn = screen.getByTestId('save');
@@ -202,7 +204,7 @@ describe('DescriptionSection', () => {
         expect(onUpdate).toHaveBeenCalledWith('New description');
       });
 
-      expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(MARKDOWN_EDITOR)).not.toBeInTheDocument();
     });
   });
 
@@ -236,15 +238,15 @@ describe('DescriptionSection', () => {
         />
       );
 
-      const editTrigger = screen.getByTestId('edit-description');
+      const editTrigger = screen.getByTestId(EDIT_DESCRIPTION);
       fireEvent.click(editTrigger);
 
-      expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();
+      expect(screen.getByTestId(MARKDOWN_EDITOR)).toBeInTheDocument();
 
       const cancelBtn = screen.getByTestId('cancel');
       fireEvent.click(cancelBtn);
 
-      expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(MARKDOWN_EDITOR)).not.toBeInTheDocument();
       expect(screen.getByText('Content')).toBeInTheDocument();
     });
   });

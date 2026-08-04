@@ -15,6 +15,7 @@ import { TermBoost } from '../../../generated/configuration/searchSettings';
 import tagClassBase from '../../../utils/TagClassBase';
 import TermBoostComponent from './TermBoost';
 
+const PII_SENSITIVE = 'PII.Sensitive';
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (str: string) => str,
@@ -41,7 +42,7 @@ jest.mock('../../common/AsyncSelect/AsyncSelect', () => ({
 
 const mockTermBoost: TermBoost = {
   field: 'tags.tagFQN',
-  value: 'PII.Sensitive',
+  value: PII_SENSITIVE,
   boost: 5,
 };
 
@@ -57,7 +58,7 @@ const mockTagResponse = {
       data: {
         name: 'Sensitive',
         displayName: 'Sensitive',
-        fullyQualifiedName: 'PII.Sensitive',
+        fullyQualifiedName: PII_SENSITIVE,
       },
     },
   ],
@@ -98,6 +99,6 @@ describe('TermBoost Component', () => {
     const deleteIcon = screen.getByTestId('delete-term-boost');
     fireEvent.click(deleteIcon);
 
-    expect(mockProps.onDeleteBoost).toHaveBeenCalledWith('PII.Sensitive');
+    expect(mockProps.onDeleteBoost).toHaveBeenCalledWith(PII_SENSITIVE);
   });
 });

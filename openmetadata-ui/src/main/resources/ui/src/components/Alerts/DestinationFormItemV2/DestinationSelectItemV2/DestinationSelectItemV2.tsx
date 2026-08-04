@@ -47,6 +47,8 @@ import {
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemV2Props } from './DestinationSelectItemV2.interface';
 
+const LABEL_DOWNSTREAM_DEPTH = 'label.downstream-depth';
+
 function buildGroupedOptions(
   internalLabel: string,
   externalLabel: string
@@ -299,7 +301,7 @@ function DestinationSelectItemV2({
                       data-testid={`destination-downstream-depth-${id}`}
                       defaultValue="1"
                       inputDataTestId={`destination-downstream-depth-input-${id}`}
-                      label={t('label.downstream-depth')}
+                      label={t(LABEL_DOWNSTREAM_DEPTH)}
                       ref={field.ref}
                       value={
                         field.value !== undefined ? String(field.value) : ''
@@ -316,14 +318,14 @@ function DestinationSelectItemV2({
                 )}
                 rules={{
                   required: t('message.field-text-is-required', {
-                    fieldText: t('label.downstream-depth'),
+                    fieldText: t(LABEL_DOWNSTREAM_DEPTH),
                   }),
                   validate: (value) => {
                     const numVal = Number(value);
 
                     return !isEmpty(String(value)) && numVal <= 0
                       ? t('message.value-must-be-greater-than', {
-                          field: t('label.downstream-depth'),
+                          field: t(LABEL_DOWNSTREAM_DEPTH),
                           minimum: 0,
                         })
                       : true;

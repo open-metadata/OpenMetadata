@@ -13,6 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import QueryViewer from './QueryViewer.component';
 
+const SCHEMA_EDITOR = 'schema-editor';
+const QUERY_LINE = 'query-line';
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
   return jest
     .fn()
@@ -32,19 +34,19 @@ describe('QueryViewer Component', () => {
     const sqlQuery = 'SELECT * FROM table';
     render(<QueryViewer sqlQuery={sqlQuery} title={<span>Test Title</span>} />);
 
-    const schemaEditor = await screen.findByTestId('schema-editor');
+    const schemaEditor = await screen.findByTestId(SCHEMA_EDITOR);
 
     expect(schemaEditor).toBeInTheDocument();
     expect(schemaEditor).toHaveTextContent(sqlQuery);
-    expect(screen.getByTestId('query-line')).toBeInTheDocument();
+    expect(screen.getByTestId(QUERY_LINE)).toBeInTheDocument();
     expect(screen.getByTestId('query-entity-copy-button')).toBeInTheDocument();
   });
 
   it('should render title without SQL editor when query is empty', () => {
     render(<QueryViewer sqlQuery="" title={<span>dbt Project Info</span>} />);
 
-    expect(screen.queryByTestId('schema-editor')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('query-line')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SCHEMA_EDITOR)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(QUERY_LINE)).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('query-entity-copy-button')
     ).not.toBeInTheDocument();
@@ -56,7 +58,7 @@ describe('QueryViewer Component', () => {
       <QueryViewer sqlQuery="" title={<span>Path: seeds/my_seed.csv</span>} />
     );
 
-    expect(screen.queryByTestId('schema-editor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SCHEMA_EDITOR)).not.toBeInTheDocument();
     expect(screen.getByText('Path: seeds/my_seed.csv')).toBeInTheDocument();
   });
 
@@ -64,6 +66,6 @@ describe('QueryViewer Component', () => {
     const multilineSql = 'SELECT *\nFROM table\nWHERE id = 1';
     render(<QueryViewer sqlQuery={multilineSql} />);
 
-    expect(screen.getByTestId('query-line')).toHaveTextContent('3');
+    expect(screen.getByTestId(QUERY_LINE)).toHaveTextContent('3');
   });
 });

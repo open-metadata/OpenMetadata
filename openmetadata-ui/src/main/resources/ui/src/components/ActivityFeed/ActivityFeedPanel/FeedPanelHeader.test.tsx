@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelHeader from './FeedPanelHeader';
 
+const HEADER_NOUN = 'header-noun';
+
 const mockFeedPanelHeaderProp = {
   onCancel: jest.fn(),
   noun: 'Conversations',
@@ -34,7 +36,7 @@ describe('Test FeedPanelHeader Component', () => {
     );
 
     const title = await findByTestId(container, 'header-title');
-    const noun = await findByTestId(container, 'header-noun');
+    const noun = await findByTestId(container, HEADER_NOUN);
     const newConversationButton = await findByTestId(
       container,
       'add-new-conversation'
@@ -76,7 +78,7 @@ describe('Test FeedPanelHeader Component', () => {
       }
     );
 
-    const noun = await findByTestId(container, 'header-noun');
+    const noun = await findByTestId(container, HEADER_NOUN);
 
     // noun is undefined so default noun should be present in text content
     expect(noun).toHaveTextContent('label.conversation label.on-lowercase');
@@ -110,7 +112,7 @@ describe('Test FeedPanelHeader Component', () => {
       }
     );
 
-    const noun = await findByTestId(container, 'header-noun');
+    const noun = await findByTestId(container, HEADER_NOUN);
 
     expect(noun).toHaveTextContent(/Announcement label.on-lowercase/i);
   });

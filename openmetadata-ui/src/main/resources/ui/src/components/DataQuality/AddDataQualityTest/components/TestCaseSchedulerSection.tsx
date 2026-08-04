@@ -30,6 +30,8 @@ import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component
 import { AddTestCaseListChangePayload } from '../../AddTestCaseList/AddTestCaseList.interface';
 import { TestCaseSchedulerSectionProps } from './TestCaseFormV1.interface';
 
+const LABEL_TEST_CASE = 'label.test-case';
+
 const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
   form,
   table,
@@ -144,7 +146,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
           </p>
           <p className="card-title-description">
             {t('message.pipeline-entity-description', {
-              entity: t('label.test-case'),
+              entity: t(LABEL_TEST_CASE),
             })}
           </p>
         </div>
@@ -159,12 +161,12 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
                 name="testCases"
                 rules={{
                   required: t('label.field-required', {
-                    field: t('label.test-case'),
+                    field: t(LABEL_TEST_CASE),
                   }),
                 }}>
                 {({ field }) => (
                   <div data-testid="test-cases-field">
-                    <FormItemLabel required label={t('label.test-case')} />
+                    <FormItemLabel required label={t(LABEL_TEST_CASE)} />
                     <AddTestCaseList
                       columnFilters={columnFilters}
                       hideTableFilter={Boolean(table)}
@@ -196,7 +198,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
           {({ field }) => (
             <ScheduleIntervalV1
               defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
-              entity={t('label.test-case')}
+              entity={t(LABEL_TEST_CASE)}
               includePeriodOptions={schedulerOptions}
               value={field.value || undefined}
               onChange={(cron) => field.onChange(cron ?? '')}

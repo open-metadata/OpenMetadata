@@ -79,6 +79,8 @@ import SearchPreview from '../SearchPreview/SearchPreview';
 import TermBoostList from '../TermBoostList/TermBoostList';
 import './entity-search-settings.less';
 
+const LABEL_NO_DATA = 'label.no-data';
+
 const EntitySearchSettings = () => {
   const { t } = useTranslation();
   const { fqn } = useRequiredParams<{
@@ -700,7 +702,7 @@ const EntitySearchSettings = () => {
       ? `${startCase(stage.matchType)}${
           stage.minimumShouldMatch ? ` (${stage.minimumShouldMatch})` : ''
         }`
-      : t('label.no-data');
+      : t(LABEL_NO_DATA);
 
     return (
       <div
@@ -710,7 +712,7 @@ const EntitySearchSettings = () => {
         <Row align="middle" className="m-b-xs" gutter={[12, 12]}>
           <Col flex="auto">
             <Typography.Text className="ranking-stage-title">
-              {stageName ? startCase(stageName) : t('label.no-data')}
+              {stageName ? startCase(stageName) : t(LABEL_NO_DATA)}
             </Typography.Text>
           </Col>
           <Col className="ranking-number-control">
@@ -778,7 +780,7 @@ const EntitySearchSettings = () => {
               <Typography.Paragraph className="m-0">
                 {ranking.algorithm
                   ? startCase(ranking.algorithm)
-                  : t('label.no-data')}
+                  : t(LABEL_NO_DATA)}
               </Typography.Paragraph>
             </Col>
             <Col className="ranking-enabled-control" span={8}>

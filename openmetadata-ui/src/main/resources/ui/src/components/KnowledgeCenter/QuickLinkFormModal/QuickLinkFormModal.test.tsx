@@ -82,6 +82,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       rules,
       children,
     }: {
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       control: import('react-hook-form').Control<TFieldValues>;
       name: import('react-hook-form').FieldPath<TFieldValues>;
       rules?: Omit<

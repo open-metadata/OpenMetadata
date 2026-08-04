@@ -110,6 +110,14 @@ import './teams.less';
 import TeamsHeadingLabel from './TeamsHeaderSection/TeamsHeadingLabel.component';
 import TeamsInfo from './TeamsHeaderSection/TeamsInfo.component';
 import { UserTab } from './UserTab/UserTab.component';
+
+const LABEL_TEAM_PLURAL = 'label.team-plural' as const;
+const LABEL_ADD_ENTITY = 'label.add-entity' as const;
+const LABEL_POLICY = 'label.policy' as const;
+const LABEL_ROLE = 'label.role' as const;
+const LABEL_TEAM = 'label.team' as const;
+const MESSAGE_THIS_ACTION_IS_NOT_ALLOWED =
+  'message.this-action-is-not-allowed-for-deleted-entities' as const;
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -195,17 +203,17 @@ const TeamDetailsV1 = ({
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.MEMBERS,
-        t('label.team-plural')
+        t(LABEL_TEAM_PLURAL)
       ),
     []
   );
 
-  const addPolicy = t('label.add-entity', {
-    entity: t('label.policy'),
+  const addPolicy = t(LABEL_ADD_ENTITY, {
+    entity: t(LABEL_POLICY),
   });
 
-  const addRole = t('label.add-entity', {
-    entity: t('label.role'),
+  const addRole = t(LABEL_ADD_ENTITY, {
+    entity: t(LABEL_ROLE),
   });
 
   const isTeamDeleted = useMemo(
@@ -441,19 +449,19 @@ const TeamDetailsV1 = ({
         afterDeleteAction(true);
         showSuccessToast(
           t('message.entity-restored-success', {
-            entity: t('label.team'),
+            entity: t(LABEL_TEAM),
           })
         );
       } else {
         throw t('message.entity-restored-error', {
-          entity: t('label.team'),
+          entity: t(LABEL_TEAM),
         });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('message.entity-restored-error', {
-          entity: t('label.team'),
+          entity: t(LABEL_TEAM),
         })
       );
     }
@@ -570,7 +578,7 @@ const TeamDetailsV1 = ({
                   icon={IconRestore}
                   id="restore-team-dropdown"
                   name={t('label.restore-entity', {
-                    entity: t('label.team'),
+                    entity: t(LABEL_TEAM),
                   })}
                 />
               ),
@@ -633,13 +641,11 @@ const TeamDetailsV1 = ({
 
   const teamsTableRender = useMemo(() => {
     let addTeamButtonTitle = entityPermissions.Create
-      ? t('label.add-entity', { entity: t('label.team') })
+      ? t(LABEL_ADD_ENTITY, { entity: t(LABEL_TEAM) })
       : t('message.no-permission-for-action');
 
     if (isTeamDeleted) {
-      addTeamButtonTitle = t(
-        'message.this-action-is-not-allowed-for-deleted-entities'
-      );
+      addTeamButtonTitle = t(MESSAGE_THIS_ACTION_IS_NOT_ALLOWED);
     }
 
     const showEmptyTeamPlaceholder =
@@ -655,7 +661,7 @@ const TeamDetailsV1 = ({
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.team'),
+            entity: t(LABEL_TEAM),
           })}
         </Typography.Paragraph>
         <Typography.Paragraph>
@@ -775,7 +781,7 @@ const TeamDetailsV1 = ({
       isEmpty(currentTeam.defaultRoles ?? []) ? (
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
-          heading: t('label.role'),
+          heading: t(LABEL_ROLE),
           doc: ROLE_DOCS,
           children: t('message.assigning-team-entity-description', {
             entity: t('label.role-lowercase'),
@@ -787,8 +793,8 @@ const TeamDetailsV1 = ({
               placement="bottomRight"
               title={
                 isTeamDeleted
-                  ? t('message.this-action-is-not-allowed-for-deleted-entities')
-                  : t('label.add-entity', { entity: t('label.role') })
+                  ? t(MESSAGE_THIS_ACTION_IS_NOT_ALLOWED)
+                  : t(LABEL_ADD_ENTITY, { entity: t(LABEL_ROLE) })
               }>
               <Button
                 ghost
@@ -848,7 +854,7 @@ const TeamDetailsV1 = ({
       isEmpty(currentTeam.policies) ? (
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
-          heading: t('label.policy'),
+          heading: t(LABEL_POLICY),
           children: t('message.assigning-team-entity-description', {
             entity: t('label.policy-lowercase-plural'),
             name: currentTeam.name,
@@ -859,8 +865,8 @@ const TeamDetailsV1 = ({
               placement="bottomRight"
               title={
                 isTeamDeleted
-                  ? t('message.this-action-is-not-allowed-for-deleted-entities')
-                  : t('label.add-entity', { entity: t('label.policy') })
+                  ? t(MESSAGE_THIS_ACTION_IS_NOT_ALLOWED)
+                  : t(LABEL_ADD_ENTITY, { entity: t(LABEL_POLICY) })
               }>
               <Button
                 ghost
@@ -981,7 +987,7 @@ const TeamDetailsV1 = ({
               <div className="d-flex flex-1 items-center justify-end w-min-0">
                 <LearningIcon
                   pageId={LEARNING_PAGE_IDS.TEAMS}
-                  title={t('label.team-plural')}
+                  title={t(LABEL_TEAM_PLURAL)}
                 />
               </div>
             </div>
@@ -1193,7 +1199,7 @@ const TeamDetailsV1 = ({
     return fetchErrorPlaceHolder({
       onClick: () => handleAddTeam(true),
       permission: entityPermissions.Create,
-      heading: t('label.team-plural'),
+      heading: t(LABEL_TEAM_PLURAL),
       doc: TEAMS_DOCS,
     });
   }

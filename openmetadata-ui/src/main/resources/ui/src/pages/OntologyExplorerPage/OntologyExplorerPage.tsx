@@ -31,6 +31,8 @@ import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useIsAiMode } from '../../hooks/useAppMode';
 
+const LABEL_ONTOLOGY_EXPLORER = 'label.ontology-explorer';
+
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -53,7 +55,7 @@ const OntologyExplorerPage: React.FC = () => {
       noMargin
       items={[
         isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
-        { label: t('label.ontology-explorer') },
+        { label: t(LABEL_ONTOLOGY_EXPLORER) },
       ]}
       showHome={false}
     />
@@ -65,7 +67,7 @@ const OntologyExplorerPage: React.FC = () => {
       data-testid="heading"
       size="text-xl"
       weight="semibold">
-      {t('label.ontology-explorer')}
+      {t(LABEL_ONTOLOGY_EXPLORER)}
     </Typography>
   );
 
@@ -117,7 +119,7 @@ const OntologyExplorerPage: React.FC = () => {
       className="ontology-explorer-page"
       fullHeight={isAiMode}
       mainContainerClassName="ontology-explorer-page-layout"
-      pageTitle={t('label.ontology-explorer')}
+      pageTitle={t(LABEL_ONTOLOGY_EXPLORER)}
       variant={isAiMode ? 'compact' : 'default'}>
       <Box
         className={

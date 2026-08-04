@@ -20,6 +20,8 @@ import {
   validateNotEquals,
 } from './ParameterFormUtils';
 
+const TABLE2_KEY_COLUMNS = 'table2.keyColumns';
+
 describe('ParameterFormUtils', () => {
   describe('validateNotEquals', () => {
     it('should return a resolved promise if fieldValue is not equal to value', async () => {
@@ -198,14 +200,14 @@ describe('ParameterFormUtils', () => {
 
     it('should return only table2.keyColumns for table2.keyColumns field', () => {
       mockGetFieldValue.mockImplementation((path) => {
-        if (path[1] === 'table2.keyColumns') {
+        if (path[1] === TABLE2_KEY_COLUMNS) {
           return [{ value: 't2col1' }, { value: 't2col2' }];
         }
 
         return [];
       });
 
-      const data = { name: 'table2.keyColumns' } as TestCaseParameterDefinition;
+      const data = { name: TABLE2_KEY_COLUMNS } as TestCaseParameterDefinition;
       const result = getSelectedColumnsSet(data, mockGetFieldValue);
 
       expect(result).toEqual(new Set(['t2col1', 't2col2']));
@@ -261,7 +263,7 @@ describe('ParameterFormUtils', () => {
     it('should handle undefined values for table2.keyColumns field', () => {
       mockGetFieldValue.mockReturnValue(undefined);
 
-      const data = { name: 'table2.keyColumns' } as TestCaseParameterDefinition;
+      const data = { name: TABLE2_KEY_COLUMNS } as TestCaseParameterDefinition;
       const result = getSelectedColumnsSet(data, mockGetFieldValue);
 
       expect(result).toEqual(new Set());
@@ -291,7 +293,7 @@ describe('ParameterFormUtils', () => {
         if (path[1] === 'keyColumns') {
           return [{ value: 'col1' }];
         }
-        if (path[1] === 'table2.keyColumns') {
+        if (path[1] === TABLE2_KEY_COLUMNS) {
           return [{ value: 't2col1' }];
         }
         if (path[1] === 'useColumns') {
@@ -302,7 +304,7 @@ describe('ParameterFormUtils', () => {
       });
 
       const dataTable2 = {
-        name: 'table2.keyColumns',
+        name: TABLE2_KEY_COLUMNS,
       } as TestCaseParameterDefinition;
       const resultTable2 = getSelectedColumnsSet(dataTable2, mockGetFieldValue);
 

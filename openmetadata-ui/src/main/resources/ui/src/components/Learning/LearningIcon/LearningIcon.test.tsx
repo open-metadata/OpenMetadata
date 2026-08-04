@@ -15,6 +15,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { LearningIcon } from './LearningIcon.component';
 
+const LEARNING_DRAWER = 'learning-drawer';
+const LEARNING_ICON = 'learning-icon';
 const mockGetLearningResourcesByContext = jest.fn();
 
 jest.mock('../../../rest/learningResourceAPI', () => ({
@@ -61,7 +63,7 @@ describe('LearningIcon', () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
   });
 
@@ -78,7 +80,7 @@ describe('LearningIcon', () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByTestId('learning-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(LEARNING_ICON)).not.toBeInTheDocument();
     });
 
     expect(container.firstChild).toBeNull();
@@ -88,10 +90,10 @@ describe('LearningIcon', () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
 
-    fireEvent.mouseEnter(screen.getByTestId('learning-icon'));
+    fireEvent.mouseEnter(screen.getByTestId(LEARNING_ICON));
 
     await waitFor(() => {
       expect(
@@ -104,46 +106,46 @@ describe('LearningIcon', () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('learning-icon'));
+    fireEvent.click(screen.getByTestId(LEARNING_ICON));
 
-    expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
+    expect(screen.getByTestId(LEARNING_DRAWER)).toBeInTheDocument();
   });
 
   it('should open drawer when resources button is clicked', async () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
 
-    fireEvent.mouseEnter(screen.getByTestId('learning-icon'));
+    fireEvent.mouseEnter(screen.getByTestId(LEARNING_ICON));
 
     const resourcesButton = await screen.findByTestId(
       'learning-resources-button'
     );
     fireEvent.click(resourcesButton);
 
-    expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
+    expect(screen.getByTestId(LEARNING_DRAWER)).toBeInTheDocument();
   });
 
   it('should close drawer when close button is clicked', async () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('learning-icon'));
+    fireEvent.click(screen.getByTestId(LEARNING_ICON));
 
-    expect(screen.getByTestId('learning-drawer')).toBeInTheDocument();
+    expect(screen.getByTestId(LEARNING_DRAWER)).toBeInTheDocument();
 
     const closeButton = screen.getByTestId('close-drawer');
     fireEvent.click(closeButton);
 
-    expect(screen.queryByTestId('learning-drawer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(LEARNING_DRAWER)).not.toBeInTheDocument();
   });
 
   it('should fetch resource count on mount', async () => {
@@ -165,7 +167,7 @@ describe('LearningIcon', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
 
     expect(mockGetLearningResourcesByContext).toHaveBeenCalledTimes(1);
@@ -189,10 +191,10 @@ describe('LearningIcon', () => {
     render(<LearningIcon className="custom-class" pageId="glossary" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
 
-    const iconElement = screen.getByTestId('learning-icon');
+    const iconElement = screen.getByTestId(LEARNING_ICON);
 
     expect(iconElement).toHaveClass('custom-class');
   });
@@ -201,14 +203,14 @@ describe('LearningIcon', () => {
     render(<LearningIcon pageId="glossary" />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('learning-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(LEARNING_ICON)).toBeInTheDocument();
     });
 
     await act(async () => {
       await Promise.resolve();
     });
 
-    const iconElement = screen.getByTestId('learning-icon');
+    const iconElement = screen.getByTestId(LEARNING_ICON);
 
     expect(iconElement).toBeInTheDocument();
     expect(mockGetLearningResourcesByContext).toHaveBeenCalledWith(

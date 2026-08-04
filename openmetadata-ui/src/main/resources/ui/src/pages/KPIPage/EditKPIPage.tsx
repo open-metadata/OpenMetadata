@@ -61,6 +61,9 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
+
+const LABEL_EDIT_ENTITY = 'label.edit-entity' as const;
+const LABEL_KPI_UPPERCASE = 'label.kpi-uppercase' as const;
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { fqn: kpiName } = useFqn();
@@ -229,8 +232,8 @@ const EditKPIPage = () => {
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
-              {t('label.edit-entity', {
-                entity: t('label.kpi-uppercase'),
+              {t(LABEL_EDIT_ENTITY, {
+                entity: t(LABEL_KPI_UPPERCASE),
               })}
             </Typography.Paragraph>
             <Form
@@ -432,15 +435,15 @@ const EditKPIPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.edit-entity', {
-        entity: t('label.kpi-uppercase'),
+      pageTitle={t(LABEL_EDIT_ENTITY, {
+        entity: t(LABEL_KPI_UPPERCASE),
       })}
       secondPanel={{
         children: (
           <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.edit-entity', {
-                entity: t('label.kpi-uppercase'),
+              {t(LABEL_EDIT_ENTITY, {
+                entity: t(LABEL_KPI_UPPERCASE),
               })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>

@@ -17,6 +17,9 @@ import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SsoRolesSelectField from './SsoRolesSelectField';
 
+const SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_AUTHRE =
+  'sso-configuration-form-array-field-template-authReassignRoles';
+
 jest.mock('../../../rest/rolesAPIV1', () => ({
   searchRoles: jest.fn(),
 }));
@@ -72,9 +75,7 @@ describe('SsoRolesSelectField', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId(
-          'sso-configuration-form-array-field-template-authReassignRoles'
-        )
+        screen.getByTestId(SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_AUTHRE)
       ).toBeInTheDocument();
     });
   });
@@ -142,9 +143,7 @@ describe('SsoRolesSelectField', () => {
     await waitFor(() => {
       expect(
         screen
-          .getByTestId(
-            'sso-configuration-form-array-field-template-authReassignRoles'
-          )
+          .getByTestId(SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_AUTHRE)
           .closest('.field-error')
           ?.querySelector('.required-field')
       ).toBeInTheDocument();
@@ -161,9 +160,7 @@ describe('SsoRolesSelectField', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId(
-          'sso-configuration-form-array-field-template-authReassignRoles'
-        )
+        screen.getByTestId(SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_AUTHRE)
       ).toBeInTheDocument();
     });
   });
@@ -178,7 +175,7 @@ describe('SsoRolesSelectField', () => {
 
     await waitFor(() => {
       const select = screen.getByTestId(
-        'sso-configuration-form-array-field-template-authReassignRoles'
+        SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_AUTHRE
       );
 
       expect(select.closest('.has-error')).toBeInTheDocument();
@@ -192,9 +189,7 @@ describe('SsoRolesSelectField', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId(
-          'sso-configuration-form-array-field-template-authReassignRoles'
-        )
+        screen.getByTestId(SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_AUTHRE)
       ).toBeInTheDocument();
     });
   });

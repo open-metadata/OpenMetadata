@@ -47,6 +47,10 @@ import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla-form-tab.less';
 
+const LABEL_ENTER_ENTITY = 'label.enter-entity';
+const LABEL_UNIT = 'label.unit';
+const LABEL_SELECT_ENTITY = 'label.select-entity';
+
 export const ContractSLAFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
@@ -198,7 +202,7 @@ export const ContractSLAFormTab: React.FC<{
                       <InputNumber
                         className="w-full"
                         data-testid="refresh-frequency-interval-input"
-                        placeholder={t('label.enter-entity', {
+                        placeholder={t(LABEL_ENTER_ENTITY, {
                           entity: t('label.interval'),
                         })}
                       />
@@ -207,14 +211,14 @@ export const ContractSLAFormTab: React.FC<{
                   <Col span={12}>
                     <Form.Item
                       required
-                      label={t('label.unit')}
+                      label={t(LABEL_UNIT)}
                       name="refresh_frequency_unit">
                       <Select
                         allowClear
                         data-testid="refresh-frequency-unit-select"
                         options={REFRESH_FREQUENCY_UNIT_OPTIONS}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.unit'),
+                        placeholder={t(LABEL_SELECT_ENTITY, {
+                          entity: t(LABEL_UNIT),
                         })}
                         popupClassName="refresh-frequency-unit-select"
                       />
@@ -248,7 +252,7 @@ export const ContractSLAFormTab: React.FC<{
                       <InputNumber
                         className="w-full"
                         data-testid="max-latency-value-input"
-                        placeholder={t('label.enter-entity', {
+                        placeholder={t(LABEL_ENTER_ENTITY, {
                           entity: t('label.value'),
                         })}
                       />
@@ -257,14 +261,14 @@ export const ContractSLAFormTab: React.FC<{
                   <Col span={12}>
                     <Form.Item
                       required
-                      label={t('label.unit')}
+                      label={t(LABEL_UNIT)}
                       name="max_latency_unit">
                       <Select
                         allowClear
                         data-testid="max-latency-unit-select"
                         options={MAX_LATENCY_OPTIONS}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.unit'),
+                        placeholder={t(LABEL_SELECT_ENTITY, {
+                          entity: t(LABEL_UNIT),
                         })}
                         popupClassName="max-latency-unit-select"
                       />
@@ -307,7 +311,7 @@ export const ContractSLAFormTab: React.FC<{
                         allowClear
                         showSearch
                         data-testid="timezone-select"
-                        placeholder={t('label.select-entity', {
+                        placeholder={t(LABEL_SELECT_ENTITY, {
                           entity: t('label.timezone'),
                         })}
                         popupClassName="timezone-select">
@@ -349,7 +353,7 @@ export const ContractSLAFormTab: React.FC<{
                       <InputNumber
                         className="w-full"
                         data-testid="retention-period-input"
-                        placeholder={t('label.enter-entity', {
+                        placeholder={t(LABEL_ENTER_ENTITY, {
                           entity: t('label.period'),
                         })}
                       />
@@ -358,14 +362,14 @@ export const ContractSLAFormTab: React.FC<{
                   <Col span={12}>
                     <Form.Item
                       required
-                      label={t('label.unit')}
+                      label={t(LABEL_UNIT)}
                       name="retention_unit">
                       <Select
                         allowClear
                         data-testid="retention-unit-select"
                         options={RETENTION_UNIT_OPTIONS}
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.unit'),
+                        placeholder={t(LABEL_SELECT_ENTITY, {
+                          entity: t(LABEL_UNIT),
                         })}
                         popupClassName="retention-unit-select"
                       />

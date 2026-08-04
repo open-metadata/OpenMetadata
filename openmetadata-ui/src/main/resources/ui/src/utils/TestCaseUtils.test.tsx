@@ -19,6 +19,9 @@ import { EntityType } from '../enums/entity.enum';
 import { exportTestCasesInCSV } from '../rest/testAPI';
 import { ExtraTestCaseDropdownOptions } from './TestCaseUtils';
 
+const BULK_EDIT_BUTTON = 'bulk-edit-button';
+const IMPORT_BUTTON = 'import-button';
+const EXPORT_BUTTON = 'export-button';
 // Mock dependencies
 jest.mock('../rest/testAPI');
 jest.mock('../hoc/LimitWrapper', () => ({
@@ -58,9 +61,9 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(3);
-      expect((result[0] as ItemType)?.key).toBe('import-button');
-      expect((result[1] as ItemType)?.key).toBe('export-button');
-      expect((result[2] as ItemType)?.key).toBe('bulk-edit-button');
+      expect((result[0] as ItemType)?.key).toBe(IMPORT_BUTTON);
+      expect((result[1] as ItemType)?.key).toBe(EXPORT_BUTTON);
+      expect((result[2] as ItemType)?.key).toBe(BULK_EDIT_BUTTON);
     });
 
     it('should return only export option when ViewAll is true but EditAll is false', () => {
@@ -74,7 +77,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect((result[0] as ItemType)?.key).toBe('export-button');
+      expect((result[0] as ItemType)?.key).toBe(EXPORT_BUTTON);
     });
 
     it('should return empty array when both permissions are false', () => {
@@ -120,7 +123,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(screen.getByText('label.import')).toBeInTheDocument();
-      expect(screen.getByTestId('import-button')).toBeInTheDocument();
+      expect(screen.getByTestId(IMPORT_BUTTON)).toBeInTheDocument();
     });
 
     it('should call navigate with correct path when import button is clicked', () => {
@@ -139,7 +142,7 @@ describe('TestCaseUtils', () => {
         </MemoryRouter>
       );
 
-      const importButton = screen.getByTestId('import-button');
+      const importButton = screen.getByTestId(IMPORT_BUTTON);
       importButton.click();
 
       expect(mockNavigate).toHaveBeenCalledWith(`/import/testCase/${fqn}`);
@@ -162,7 +165,7 @@ describe('TestCaseUtils', () => {
         </MemoryRouter>
       );
 
-      const importButton = screen.getByTestId('import-button');
+      const importButton = screen.getByTestId(IMPORT_BUTTON);
       importButton.click();
 
       expect(mockNavigate).toHaveBeenCalledWith(
@@ -187,7 +190,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(screen.getByText('label.export')).toBeInTheDocument();
-      expect(screen.getByTestId('export-button')).toBeInTheDocument();
+      expect(screen.getByTestId(EXPORT_BUTTON)).toBeInTheDocument();
     });
 
     it('should call showModal with correct data when export button is clicked', () => {
@@ -206,7 +209,7 @@ describe('TestCaseUtils', () => {
         </MemoryRouter>
       );
 
-      const exportButton = screen.getByTestId('export-button');
+      const exportButton = screen.getByTestId(EXPORT_BUTTON);
       exportButton.click();
 
       expect(mockShowModal).toHaveBeenCalledWith({
@@ -233,7 +236,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(screen.getByText('label.bulk-edit')).toBeInTheDocument();
-      expect(screen.getByTestId('bulk-edit-button')).toBeInTheDocument();
+      expect(screen.getByTestId(BULK_EDIT_BUTTON)).toBeInTheDocument();
     });
 
     it('should call navigate with correct path when bulk edit button is clicked', () => {
@@ -252,7 +255,7 @@ describe('TestCaseUtils', () => {
         </MemoryRouter>
       );
 
-      const bulkEditButton = screen.getByTestId('bulk-edit-button');
+      const bulkEditButton = screen.getByTestId(BULK_EDIT_BUTTON);
       bulkEditButton.click();
 
       expect(mockNavigate).toHaveBeenCalledWith(`/bulk-edit/testCase/${fqn}`);
@@ -275,7 +278,7 @@ describe('TestCaseUtils', () => {
         </MemoryRouter>
       );
 
-      const bulkEditButton = screen.getByTestId('bulk-edit-button');
+      const bulkEditButton = screen.getByTestId(BULK_EDIT_BUTTON);
       bulkEditButton.click();
 
       expect(mockNavigate).toHaveBeenCalledWith(
@@ -294,8 +297,8 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(2);
-      expect((result[0] as ItemType)?.key).toBe('import-button');
-      expect((result[1] as ItemType)?.key).toBe('bulk-edit-button');
+      expect((result[0] as ItemType)?.key).toBe(IMPORT_BUTTON);
+      expect((result[1] as ItemType)?.key).toBe(BULK_EDIT_BUTTON);
     });
 
     it('should handle empty FQN', () => {
@@ -328,7 +331,7 @@ describe('TestCaseUtils', () => {
         </MemoryRouter>
       );
 
-      const importButton = screen.getByTestId('import-button');
+      const importButton = screen.getByTestId(IMPORT_BUTTON);
       importButton.click();
 
       expect(mockNavigate).toHaveBeenCalledWith(

@@ -17,6 +17,8 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import TeamsHeadingLabel from './TeamsHeadingLabel.component';
 
+const EDIT_TEAM_NAME = 'edit-team-name';
+
 jest.mock('../../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
@@ -71,7 +73,7 @@ describe('TeamsHeadingLabel', () => {
 
   it('should handle edit team name', () => {
     const { getByTestId } = render(<TeamsHeadingLabel {...teamProps} />);
-    const editButton = getByTestId('edit-team-name');
+    const editButton = getByTestId(EDIT_TEAM_NAME);
     fireEvent.click(editButton);
     const teamNameInput = getByTestId('team-name-input');
 
@@ -81,7 +83,7 @@ describe('TeamsHeadingLabel', () => {
   it('should handle save team name', async () => {
     render(<TeamsHeadingLabel {...teamProps} />);
 
-    const editButton = screen.getByTestId('edit-team-name');
+    const editButton = screen.getByTestId(EDIT_TEAM_NAME);
     fireEvent.click(editButton);
 
     const saveButton = screen.getByTestId('saveAssociatedTag');
@@ -96,7 +98,7 @@ describe('TeamsHeadingLabel', () => {
     const { getByTestId, queryByTestId } = render(
       <TeamsHeadingLabel {...teamProps} />
     );
-    const editButton = getByTestId('edit-team-name');
+    const editButton = getByTestId(EDIT_TEAM_NAME);
     fireEvent.click(editButton);
 
     const cancelButton = getByTestId('cancelAssociatedTag');
@@ -110,7 +112,7 @@ describe('TeamsHeadingLabel', () => {
   it('should not allow editing team name if user does not have permission', () => {
     (useAuth as jest.Mock).mockReturnValue({ isAdminUser: false });
     const { queryByTestId } = render(<TeamsHeadingLabel {...teamProps} />);
-    const editButton = queryByTestId('edit-team-name');
+    const editButton = queryByTestId(EDIT_TEAM_NAME);
 
     expect(editButton).not.toBeInTheDocument();
   });

@@ -160,6 +160,10 @@ import {
   LineageTimeRange,
 } from './LineageProvider.interface';
 
+const SERVER_ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
+const LABEL_LINEAGE_DATA_LOWERCASE = 'label.lineage-data-lowercase';
+const LABEL_LINEAGE = 'label.lineage';
+
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
 
@@ -678,8 +682,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       } catch (err) {
         showErrorToast(
           err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
+          t(SERVER_ENTITY_FETCH_ERROR, {
+            entity: t(LABEL_LINEAGE_DATA_LOWERCASE),
           })
         );
       } finally {
@@ -737,8 +741,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       } catch (err) {
         showErrorToast(
           err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
+          t(SERVER_ENTITY_FETCH_ERROR, {
+            entity: t(LABEL_LINEAGE_DATA_LOWERCASE),
           })
         );
       } finally {
@@ -816,14 +820,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       showModal({
         ...(isPlatformLineage
           ? {
-              name: `${t('label.lineage')}_${getCurrentISODate()}`,
+              name: `${t(LABEL_LINEAGE)}_${getCurrentISODate()}`,
               exportTypes: [ExportTypes.PNG],
             }
           : {
               name: entityFqn,
               exportTypes,
             }),
-        title: t('label.lineage'),
+        title: t(LABEL_LINEAGE),
         documentSelector: LINEAGE_EXPORT_SELECTOR,
         viewport: exportViewport,
         renderEdgesOverlay:
@@ -975,8 +979,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       } catch (err) {
         showErrorToast(
           err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.lineage-data-lowercase'),
+          t(SERVER_ENTITY_FETCH_ERROR, {
+            entity: t(LABEL_LINEAGE_DATA_LOWERCASE),
           })
         );
       }
@@ -1396,8 +1400,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.lineage-data-lowercase'),
+        t(SERVER_ENTITY_FETCH_ERROR, {
+          entity: t(LABEL_LINEAGE_DATA_LOWERCASE),
         })
       );
     }
@@ -2137,7 +2141,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             activeTitle: true,
           },
           {
-            name: t('label.lineage'),
+            name: t(LABEL_LINEAGE),
             url: '',
           },
         ]
@@ -2147,7 +2151,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       ? [
           ...getEntityBreadcrumbs(entity, entityType, isFullScreen),
           {
-            name: t('label.lineage'),
+            name: t(LABEL_LINEAGE),
             url: '',
             activeTitle: true,
           },

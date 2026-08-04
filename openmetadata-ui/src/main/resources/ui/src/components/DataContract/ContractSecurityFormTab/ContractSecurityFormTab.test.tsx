@@ -20,6 +20,14 @@ import {
 import { Column } from '../../../generated/entity/data/table';
 import { ContractSecurityFormTab } from './ContractSecurityFormTab';
 
+const CUSTOM_NEXT = 'Custom Next';
+const CUSTOM_PREVIOUS = 'Custom Previous';
+const DATA_CLASSIFICATION_INPUT = 'data-classification-input';
+const ADD_POLICY_BUTTON = 'add-policy-button';
+const EXPANDABLE_CARD = 'expandable-card';
+const SAVE_POLICY_BUTTON = 'save-policy-button';
+const CANCEL_POLICY_BUTTON = 'cancel-policy-button';
+
 // const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -96,6 +104,7 @@ jest.mock('react-i18next', () => ({
         'label.security': 'Security',
         'message.data-contract-security-description':
           'Define security policies',
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         'label.data-classification': 'Data Classification',
         'label.please-enter-entity-name': `Please enter ${options?.entity}`,
         'label.policy-plural': 'Policies',
@@ -107,6 +116,7 @@ jest.mock('react-i18next', () => ({
         'label.access-policy': 'Access Policy',
         'label.identities': 'Identities',
         'label.please-enter-value': `Please enter ${options?.name}`,
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         'label.row-filter-plural': 'Row Filters',
         'label.row-filter': 'Row Filter',
         'label.column-name': 'Column Name',
@@ -133,8 +143,8 @@ const commonProps = {
   onNext: mockOnNext,
   onPrev: mockOnPrev,
   buttonProps: {
-    nextLabel: 'Custom Next',
-    prevLabel: 'Custom Previous',
+    nextLabel: CUSTOM_NEXT,
+    prevLabel: CUSTOM_PREVIOUS,
     isNextVisible: true,
   },
 };
@@ -185,9 +195,7 @@ describe('ContractSecurityFormTab', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
       expect(screen.getByText('Data Classification')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('data-classification-input')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_CLASSIFICATION_INPUT)).toBeInTheDocument();
     });
 
     it('should render with initial values', () => {
@@ -204,7 +212,7 @@ describe('ContractSecurityFormTab', () => {
     it('should render add policy button', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      expect(screen.getByTestId('add-policy-button')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_POLICY_BUTTON)).toBeInTheDocument();
     });
   });
 
@@ -212,14 +220,14 @@ describe('ContractSecurityFormTab', () => {
     it('should render previous and next buttons', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
-      expect(screen.getByText('Custom Next')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_PREVIOUS)).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_NEXT)).toBeInTheDocument();
     });
 
     it('should call onPrev when previous button is clicked', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const prevButton = screen.getByText('Custom Previous');
+      const prevButton = screen.getByText(CUSTOM_PREVIOUS);
       fireEvent.click(prevButton);
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -228,7 +236,7 @@ describe('ContractSecurityFormTab', () => {
     it('should call onNext when next button is clicked', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const nextButton = screen.getByText('Custom Next');
+      const nextButton = screen.getByText(CUSTOM_NEXT);
       fireEvent.click(nextButton);
 
       expect(mockOnNext).toHaveBeenCalled();
@@ -251,7 +259,7 @@ describe('ContractSecurityFormTab', () => {
     it('should render data classification input field', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const input = screen.getByTestId('data-classification-input');
+      const input = screen.getByTestId(DATA_CLASSIFICATION_INPUT);
 
       expect(input).toBeInTheDocument();
       expect(input).toHaveAttribute(
@@ -263,7 +271,7 @@ describe('ContractSecurityFormTab', () => {
     it('should call onChange when data classification is updated', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const input = screen.getByTestId('data-classification-input');
+      const input = screen.getByTestId(DATA_CLASSIFICATION_INPUT);
 
       await act(async () => {
         fireEvent.change(input, { target: { value: 'Public' } });
@@ -283,7 +291,7 @@ describe('ContractSecurityFormTab', () => {
     it('should render initial policy when no initial values provided', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      expect(screen.getByTestId('expandable-card')).toBeInTheDocument();
+      expect(screen.getByTestId(EXPANDABLE_CARD)).toBeInTheDocument();
     });
 
     it('should render multiple policies from initial values', () => {
@@ -294,7 +302,7 @@ describe('ContractSecurityFormTab', () => {
         />
       );
 
-      const expandableCards = screen.getAllByTestId('expandable-card');
+      const expandableCards = screen.getAllByTestId(EXPANDABLE_CARD);
 
       expect(expandableCards).toHaveLength(2);
     });
@@ -302,13 +310,13 @@ describe('ContractSecurityFormTab', () => {
     it('should add new policy when add button is clicked', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-policy-button');
+      const addButton = screen.getByTestId(ADD_POLICY_BUTTON);
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      const expandableCards = screen.getAllByTestId('expandable-card');
+      const expandableCards = screen.getAllByTestId(EXPANDABLE_CARD);
 
       expect(expandableCards.length).toBeGreaterThan(0);
     });
@@ -316,7 +324,7 @@ describe('ContractSecurityFormTab', () => {
     it('should disable add policy button when editing', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-policy-button');
+      const addButton = screen.getByTestId(ADD_POLICY_BUTTON);
 
       expect(addButton).toBeDisabled();
     });
@@ -338,36 +346,32 @@ describe('ContractSecurityFormTab', () => {
     it('should render save and cancel buttons when editing', () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      expect(screen.getByTestId('save-policy-button')).toBeInTheDocument();
-      expect(screen.getByTestId('cancel-policy-button')).toBeInTheDocument();
+      expect(screen.getByTestId(SAVE_POLICY_BUTTON)).toBeInTheDocument();
+      expect(screen.getByTestId(CANCEL_POLICY_BUTTON)).toBeInTheDocument();
     });
 
     it('should close editing mode when cancel is clicked', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const cancelButton = screen.getByTestId('cancel-policy-button');
+      const cancelButton = screen.getByTestId(CANCEL_POLICY_BUTTON);
 
       await act(async () => {
         fireEvent.click(cancelButton);
       });
 
-      expect(
-        screen.queryByTestId('save-policy-button')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SAVE_POLICY_BUTTON)).not.toBeInTheDocument();
     });
 
     it('should close editing mode when save is clicked', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const saveButton = screen.getByTestId('save-policy-button');
+      const saveButton = screen.getByTestId(SAVE_POLICY_BUTTON);
 
       await act(async () => {
         fireEvent.click(saveButton);
       });
 
-      expect(
-        screen.queryByTestId('save-policy-button')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SAVE_POLICY_BUTTON)).not.toBeInTheDocument();
     });
   });
 
@@ -381,7 +385,7 @@ describe('ContractSecurityFormTab', () => {
       );
 
       await act(async () => {
-        const cancelButton = screen.getByTestId('cancel-policy-button');
+        const cancelButton = screen.getByTestId(CANCEL_POLICY_BUTTON);
         fireEvent.click(cancelButton);
       });
 
@@ -397,7 +401,7 @@ describe('ContractSecurityFormTab', () => {
       );
 
       await act(async () => {
-        const cancelButton = screen.getByTestId('cancel-policy-button');
+        const cancelButton = screen.getByTestId(CANCEL_POLICY_BUTTON);
         fireEvent.click(cancelButton);
       });
 
@@ -474,7 +478,7 @@ describe('ContractSecurityFormTab', () => {
       );
 
       await act(async () => {
-        const cancelButton = screen.getByTestId('cancel-policy-button');
+        const cancelButton = screen.getByTestId(CANCEL_POLICY_BUTTON);
         fireEvent.click(cancelButton);
       });
 
@@ -502,7 +506,7 @@ describe('ContractSecurityFormTab', () => {
       );
 
       await act(async () => {
-        const cancelButton = screen.getByTestId('cancel-policy-button');
+        const cancelButton = screen.getByTestId(CANCEL_POLICY_BUTTON);
         fireEvent.click(cancelButton);
       });
 
@@ -599,7 +603,7 @@ describe('ContractSecurityFormTab', () => {
     it('should call onChange when form values change', async () => {
       render(<ContractSecurityFormTab {...commonProps} />);
 
-      const input = screen.getByTestId('data-classification-input');
+      const input = screen.getByTestId(DATA_CLASSIFICATION_INPUT);
 
       await act(async () => {
         fireEvent.change(input, { target: { value: 'Restricted' } });
@@ -633,7 +637,7 @@ describe('ContractSecurityFormTab', () => {
       );
 
       await act(async () => {
-        const cancelButton = screen.getByTestId('cancel-policy-button');
+        const cancelButton = screen.getByTestId(CANCEL_POLICY_BUTTON);
         fireEvent.click(cancelButton);
       });
 
@@ -643,7 +647,7 @@ describe('ContractSecurityFormTab', () => {
         fireEvent.click(editButton);
       });
 
-      expect(screen.getByTestId('save-policy-button')).toBeInTheDocument();
+      expect(screen.getByTestId(SAVE_POLICY_BUTTON)).toBeInTheDocument();
     });
   });
 });

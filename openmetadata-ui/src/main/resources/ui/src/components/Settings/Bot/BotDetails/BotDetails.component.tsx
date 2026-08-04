@@ -36,6 +36,8 @@ import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 import { BotsDetailProps } from './BotDetails.interfaces';
 
+const LABEL_DISPLAY_NAME = 'label.display-name';
+
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
   botUserData,
@@ -139,7 +141,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                         data-testid="displayName"
                         id="displayName"
                         name="displayName"
-                        placeholder={t('label.display-name')}
+                        placeholder={t(LABEL_DISPLAY_NAME)}
                         value={displayName}
                         onChange={onDisplayNameChange}
                       />
@@ -172,7 +174,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                       ) : (
                         <Typography.Text className="text-grey-muted">
                           {t('label.add-entity', {
-                            entity: t('label.display-name'),
+                            entity: t(LABEL_DISPLAY_NAME),
                           })}
                         </Typography.Text>
                       )}
@@ -183,7 +185,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                             data-testid="edit-displayName"
                             size="small"
                             title={t('label.edit-entity', {
-                              entity: t('label.display-name'),
+                              entity: t(LABEL_DISPLAY_NAME),
                             })}
                             onClick={() => setIsDisplayNameEdit(true)}
                           />

@@ -46,6 +46,8 @@ import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
+const LABEL_QUERY = 'label.query';
+
 const QueryPage = () => {
   const { queryId } = useRequiredParams<{ queryId: string }>();
   const { fqn: datasetFQN } = useFqn();
@@ -113,7 +115,7 @@ const QueryPage = () => {
           ),
         },
         {
-          name: t('label.query'),
+          name: t(LABEL_QUERY),
           url: '',
           activeTitle: true,
         },
@@ -189,7 +191,7 @@ const QueryPage = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.query'),
+          entity: t(LABEL_QUERY),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
@@ -201,7 +203,7 @@ const QueryPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.query')}>
+    <PageLayoutV1 pageTitle={t(LABEL_QUERY)}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />

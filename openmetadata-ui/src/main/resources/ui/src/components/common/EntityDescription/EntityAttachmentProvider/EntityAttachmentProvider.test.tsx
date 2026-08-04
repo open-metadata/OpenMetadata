@@ -24,6 +24,9 @@ import {
 } from './EntityAttachmentProvider';
 
 // Mock the toast utility
+const ALLOW_IMAGE_UPLOAD = 'allow-image-upload';
+const IMAGE_JPEG = 'image/jpeg';
+
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -44,7 +47,7 @@ const TestComponent = () => {
     <div>
       <div data-testid="entity-type">{context.entityType}</div>
       <div data-testid="entity-fqn">{context.entityFqn}</div>
-      <div data-testid="allow-image-upload">
+      <div data-testid={ALLOW_IMAGE_UPLOAD}>
         {context.allowImageUpload.toString()}
       </div>
       <div data-testid="allow-file-upload">
@@ -137,7 +140,7 @@ describe('EntityAttachmentProvider', () => {
       EntityType.TABLE
     );
     expect(screen.getByTestId('entity-fqn')).toHaveTextContent('');
-    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('false');
+    expect(screen.getByTestId(ALLOW_IMAGE_UPLOAD)).toHaveTextContent('false');
     expect(screen.getByTestId('allow-file-upload')).toHaveTextContent('false');
   });
 
@@ -155,7 +158,7 @@ describe('EntityAttachmentProvider', () => {
       EntityType.DATABASE
     );
     expect(screen.getByTestId('entity-fqn')).toHaveTextContent('test.fqn');
-    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('false');
+    expect(screen.getByTestId(ALLOW_IMAGE_UPLOAD)).toHaveTextContent('false');
     expect(screen.getByTestId('allow-file-upload')).toHaveTextContent('true');
   });
 
@@ -173,7 +176,7 @@ describe('EntityAttachmentProvider', () => {
       </EntityAttachmentProvider>
     );
 
-    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('true');
+    expect(screen.getByTestId(ALLOW_IMAGE_UPLOAD)).toHaveTextContent('true');
   });
 
   it('handles image file upload successfully', async () => {
@@ -184,7 +187,7 @@ describe('EntityAttachmentProvider', () => {
       }
     );
     const mockUrl = 'https://example.com/image.jpg';
-    const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
+    const mockFile = new File([''], 'test.jpg', { type: IMAGE_JPEG });
     mockOnImageUpload.mockResolvedValue(mockUrl);
 
     render(
@@ -308,7 +311,7 @@ describe('EntityAttachmentProvider', () => {
         allowImageUpload: true,
       }
     );
-    const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
+    const mockFile = new File([''], 'test.jpg', { type: IMAGE_JPEG });
     const errorMessage = 'Upload failed';
     mockOnImageUpload.mockRejectedValue({
       response: { data: { message: errorMessage } },
@@ -341,7 +344,7 @@ describe('EntityAttachmentProvider', () => {
         allowImageUpload: true,
       }
     );
-    const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
+    const mockFile = new File([''], 'test.jpg', { type: IMAGE_JPEG });
     const mockError = new AxiosError('Network error');
     mockOnImageUpload.mockRejectedValue(mockError);
 
@@ -365,7 +368,7 @@ describe('EntityAttachmentProvider', () => {
       {}
     );
 
-    const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
+    const mockFile = new File([''], 'test.jpg', { type: IMAGE_JPEG });
 
     render(
       <EntityAttachmentProvider allowFileUpload entityType={EntityType.TABLE}>
@@ -386,7 +389,7 @@ describe('EntityAttachmentProvider', () => {
         allowImageUpload: false,
       }
     );
-    const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
+    const mockFile = new File([''], 'test.jpg', { type: IMAGE_JPEG });
 
     render(
       <EntityAttachmentProvider entityType={EntityType.TABLE}>

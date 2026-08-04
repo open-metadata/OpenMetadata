@@ -107,6 +107,11 @@ import {
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
+const LABEL_DESCRIPTION = 'label.description';
+const TW_SIZE_4_TW_TRANSITION = 'tw:size-4 tw:transition-transform';
+const TW_ROTATE_90 = 'tw:rotate-90';
+const SERVER_ENTITY_UPDATING_ERROR = 'server.entity-updating-error';
+
 interface BulkAssetsSocketMessage {
   jobId?: string;
   status?: string;
@@ -418,13 +423,13 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           <Typography
             as="label"
             className="tw:text-sm tw:font-semibold tw:text-secondary">
-            {t('label.description')}
+            {t(LABEL_DESCRIPTION)}
           </Typography>
           <RichTextEditor
             initialValue={currentDescription}
             key={`description-${drawerKey}`}
             placeHolder={t('label.add-entity', {
-              entity: t('label.description'),
+              entity: t(LABEL_DESCRIPTION),
             })}
             ref={editorRef}
             onTextChange={() => {
@@ -959,7 +964,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     () => [
       { key: 'columnName', labelKey: 'label.column-name', render: 'custom' },
       { key: 'path', labelKey: 'label.asset', render: 'custom' },
-      { key: 'description', labelKey: 'label.description', render: 'custom' },
+      { key: 'description', labelKey: LABEL_DESCRIPTION, render: 'custom' },
       { key: 'dataType', labelKey: 'label.data-type', render: 'text' },
       { key: 'tags', labelKey: 'label.tag-plural', render: 'custom' },
       {
@@ -1260,8 +1265,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isGroupExpanded && 'tw:rotate-90'
+                      TW_SIZE_4_TW_TRANSITION,
+                      isGroupExpanded && TW_ROTATE_90
                     )}
                   />
                 }
@@ -1323,8 +1328,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   icon={
                     <ChevronRight
                       className={classNames(
-                        'tw:size-4 tw:transition-transform',
-                        isStructExpanded && 'tw:rotate-90'
+                        TW_SIZE_4_TW_TRANSITION,
+                        isStructExpanded && TW_ROTATE_90
                       )}
                     />
                   }
@@ -1366,8 +1371,8 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 icon={
                   <ChevronRight
                     className={classNames(
-                      'tw:size-4 tw:transition-transform',
-                      isOccurrenceExpanded && 'tw:rotate-90'
+                      TW_SIZE_4_TW_TRANSITION,
+                      isOccurrenceExpanded && TW_ROTATE_90
                     )}
                   />
                 }
@@ -1590,7 +1595,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       );
       columnGridListing.clearEditedValues();
     } catch (error) {
-      showErrorToast(t('server.entity-updating-error'));
+      showErrorToast(t(SERVER_ENTITY_UPDATING_ERROR));
       setIsUpdating(false);
       setBulkUpdateProgress(null);
     }
@@ -1708,11 +1713,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           columnGridListing.setExpandedRows(preservedExpandedRows);
           columnGridListing.setExpandedStructRows(preservedExpandedStructRows);
         } catch {
-          showErrorToast(t('server.entity-updating-error'));
+          showErrorToast(t(SERVER_ENTITY_UPDATING_ERROR));
           clearJobState();
         }
       } else if (status === 'FAILED' || status === 'FAILURE') {
-        showErrorToast(t('server.entity-updating-error'));
+        showErrorToast(t(SERVER_ENTITY_UPDATING_ERROR));
         clearJobState();
         pendingHighlightRowIdsRef.current = new Set();
       }

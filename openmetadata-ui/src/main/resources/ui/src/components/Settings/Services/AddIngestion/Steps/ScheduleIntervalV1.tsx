@@ -50,6 +50,9 @@ import './schedule-interval-v1.less';
 import { StateValue } from './ScheduleInterval.interface';
 import ScheduleSelectionCards from './ScheduleSelectionCards';
 
+const LABEL_INGESTION = 'label.ingestion';
+const LABEL_CRON = 'label.cron';
+
 export interface ScheduleIntervalV1Props {
   value?: string;
   onChange?: (value: string | undefined) => void;
@@ -126,7 +129,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       value: SchedularOptions.SCHEDULE,
       label: t('label.schedule'),
       description: t('message.schedule-entity-description', {
-        entity: entity ?? t('label.ingestion'),
+        entity: entity ?? t(LABEL_INGESTION),
       }),
       icon: <ClockIcon />,
     },
@@ -134,7 +137,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       value: SchedularOptions.ON_DEMAND,
       label: t('label.on-demand'),
       description: t('message.on-demand-entity-description', {
-        entity: entity ?? t('label.ingestion'),
+        entity: entity ?? t(LABEL_INGESTION),
       }),
       icon: <PlayIcon />,
     },
@@ -248,9 +251,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       // validation error rather than a silent fallback to on demand, which is
       // reachable only through the On Demand card.
       if (!cronValue) {
-        setCustomCronError(
-          t('label.field-required', { field: t('label.cron') })
-        );
+        setCustomCronError(t('label.field-required', { field: t(LABEL_CRON) }));
         emitChange('');
 
         return;
@@ -354,7 +355,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   const cronExpressionCard = useMemo(() => {
     const cronStringValue = cronString
       ? t('label.entity-scheduled-to-run-value', {
-          entity: entity ?? t('label.ingestion'),
+          entity: entity ?? t(LABEL_INGESTION),
           value: cronHumanText,
         })
       : t('message.pipeline-will-trigger-manually');
@@ -541,9 +542,9 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                 {showCustomInput && (
                   <Grid.Item span={24}>
                     {/* eslint-disable-next-line jsx-a11y/label-has-for -- Input below has its own aria-label */}
-                    <label>{t('label.cron')}</label>
+                    <label>{t(LABEL_CRON)}</label>
                     <Input
-                      aria-label={t('label.cron')}
+                      aria-label={t(LABEL_CRON)}
                       className="m-t-xs"
                       data-testid="custom-cron-input"
                       isDisabled={disabled}

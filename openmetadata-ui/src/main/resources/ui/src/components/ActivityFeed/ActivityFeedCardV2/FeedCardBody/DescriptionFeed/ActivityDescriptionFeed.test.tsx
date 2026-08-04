@@ -15,6 +15,11 @@ import { render, screen } from '@testing-library/react';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import ActivityDescriptionFeed from './ActivityDescriptionFeed';
 
+const RICH_TEXT_PREVIEW = 'rich-text-preview' as const;
+const UPDATED_DESCRIPTION = 'Updated description' as const;
+const NEW_DESCRIPTION = 'New description' as const;
+const OLD_DESCRIPTION = 'Old description' as const;
+
 jest.mock('../../../../../utils/FeedUtilsPure', () => ({
   getFrontEndFormat: jest.fn((text) => text),
 }));
@@ -35,7 +40,7 @@ const createMockActivity = (
   actor: { id: 'user-1', type: 'user', name: 'testuser' },
   entity: { id: 'entity-1', type: 'table', name: 'testTable' },
   about: '<#E::table::test>',
-  summary: 'Updated description',
+  summary: UPDATED_DESCRIPTION,
   oldValue,
   newValue,
 });
@@ -47,71 +52,68 @@ describe('ActivityDescriptionFeed', () => {
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent(
         'New description added'
       );
     });
 
     it('should render rich text preview when description is newly added', () => {
-      const activity = createMockActivity('', 'New description');
+      const activity = createMockActivity('', NEW_DESCRIPTION);
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toBeInTheDocument();
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toBeInTheDocument();
     });
 
     it('should render when oldValue is undefined', () => {
-      const activity = createMockActivity(undefined, 'New description');
+      const activity = createMockActivity(undefined, NEW_DESCRIPTION);
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toBeInTheDocument();
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toBeInTheDocument();
     });
   });
 
   describe('Description Updated', () => {
     it('should display new description when description is updated', () => {
-      const activity = createMockActivity(
-        'Old description',
-        'Updated description'
-      );
+      const activity = createMockActivity(OLD_DESCRIPTION, UPDATED_DESCRIPTION);
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
-        'Updated description'
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent(
+        UPDATED_DESCRIPTION
       );
     });
 
     it('should render when description is updated', () => {
-      const activity = createMockActivity('Old description', 'New description');
+      const activity = createMockActivity(OLD_DESCRIPTION, NEW_DESCRIPTION);
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
-        'New description'
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent(
+        NEW_DESCRIPTION
       );
     });
   });
 
   describe('Description Removed', () => {
     it('should display old description when description is removed', () => {
-      const activity = createMockActivity('Old description', '');
+      const activity = createMockActivity(OLD_DESCRIPTION, '');
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
-        'Old description'
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent(
+        OLD_DESCRIPTION
       );
     });
 
     it('should display old description when newValue is undefined', () => {
-      const activity = createMockActivity('Old description', undefined);
+      const activity = createMockActivity(OLD_DESCRIPTION, undefined);
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
-        'Old description'
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent(
+        OLD_DESCRIPTION
       );
     });
   });
@@ -122,7 +124,7 @@ describe('ActivityDescriptionFeed', () => {
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent('');
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent('');
     });
 
     it('should handle both values being undefined', () => {
@@ -130,7 +132,7 @@ describe('ActivityDescriptionFeed', () => {
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent('');
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent('');
     });
 
     it('should handle whitespace-only descriptions', () => {
@@ -138,7 +140,7 @@ describe('ActivityDescriptionFeed', () => {
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toBeInTheDocument();
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toBeInTheDocument();
     });
 
     it('should handle markdown content', () => {
@@ -148,12 +150,8 @@ describe('ActivityDescriptionFeed', () => {
       render(<ActivityDescriptionFeed activity={activity} />);
 
       // Text content collapses newlines, so we just verify the core content is present
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
-        'Header'
-      );
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent(
-        'Item 1'
-      );
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent('Header');
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent('Item 1');
     });
 
     it('should handle HTML content in description', () => {
@@ -162,7 +160,7 @@ describe('ActivityDescriptionFeed', () => {
 
       render(<ActivityDescriptionFeed activity={activity} />);
 
-      expect(screen.getByTestId('rich-text-preview')).toHaveTextContent('bold');
+      expect(screen.getByTestId(RICH_TEXT_PREVIEW)).toHaveTextContent('bold');
     });
   });
 });

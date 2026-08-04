@@ -19,6 +19,7 @@ import {
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import DataAssetsCoveragePieChartWidget from './DataAssetsCoveragePieChartWidget.component';
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('react-router-dom', () => {
   const actual =
     jest.requireActual<typeof import('react-router-dom')>('react-router-dom');

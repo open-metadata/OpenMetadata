@@ -57,6 +57,7 @@ import {
   computeOutermostRingRadius,
 } from '../utils/layoutCalculations';
 
+const VAR_COLOR_BLUE_600 = 'var(--color-blue-600)';
 interface CardinalityInfo {
   cardinality?: RelationCardinality;
   sourceMax?: number | null;
@@ -217,7 +218,7 @@ export function useGraphDataBuilder({
     (node: OntologyNode): string =>
       node.glossaryId && glossaryColorMap[node.glossaryId]
         ? glossaryColorMap[node.glossaryId]
-        : 'var(--color-blue-600)',
+        : VAR_COLOR_BLUE_600,
     [glossaryColorMap]
   );
 
@@ -486,8 +487,8 @@ export function useGraphDataBuilder({
           const termNode = nodesForGraph.find((n) => n.id === termId);
 
           return termNode?.glossaryId
-            ? glossaryColorMap[termNode.glossaryId] ?? 'var(--color-blue-600)'
-            : 'var(--color-blue-600)';
+            ? glossaryColorMap[termNode.glossaryId] ?? VAR_COLOR_BLUE_600
+            : VAR_COLOR_BLUE_600;
         };
         if (fromIsTerm && !toIsTerm) {
           localAssetToTermColor.set(edge.to, getTermColor(edge.from));

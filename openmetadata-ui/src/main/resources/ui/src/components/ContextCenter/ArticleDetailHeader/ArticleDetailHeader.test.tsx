@@ -25,6 +25,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   useFqn: jest.fn(() => ({ fqn: 'test-article' })),
 }));
 
@@ -144,6 +145,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }: {
       children: React.ReactNode;
       onClick?: () => void;
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       'data-testid'?: string;
     }) => (
       <button data-testid={testId} onClick={onClick}>

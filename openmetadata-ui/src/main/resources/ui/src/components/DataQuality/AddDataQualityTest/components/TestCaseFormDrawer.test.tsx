@@ -48,6 +48,20 @@ import {
 } from './TestCaseFormV1.interface';
 import { buildEditDefaults } from './transformTestCaseFormData';
 
+const E_TABLE_SERVICE_DB_SCHEMA_TABLE = '<#E::table::service.db.schema.table>';
+const TRANSFORMED_TEST_CASE = 'transformed-test-case';
+const TEST_CASE_FORM_BODY = 'test-case-form-body';
+const PARTITION_INTERVAL = 'partition.interval';
+const EXISTING_TEST_CASE = 'Existing Test Case';
+const EXISTING_TEST_CASE_2 = 'existing-test-case';
+const GENERATED_NAME = 'generated-name';
+const TEST_CASE_NAME = 'test-case-name';
+const TEST_CASE_ID = 'test-case-id';
+const DISPLAYNAME = '/displayName';
+const DEF_SELECT = 'def-select';
+const CREATE_BTN = 'create-btn';
+const CREATED_ID = 'created-id';
+const CANCEL_BTN = 'cancel-btn';
 const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 
 // The real doc markdown Task 7 authored for the test-type field. The mocked
@@ -62,6 +76,7 @@ jest.mock('../../../../rest/testAPI', () => ({
   updateTestCaseById: jest.fn(),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string -- jest.mock module path must be a string literal
 jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
   ...jest.requireActual('../../../../utils/DataQuality/DataQualityPureUtils'),
   createUpdatedTestCasePatch: jest.fn(),
@@ -121,7 +136,7 @@ const mockContext: TestCaseFormContext = {
   selectedTableData: undefined,
   selectedColumn: undefined,
   selectedTestLevel: TestLevel.TABLE,
-  generateName: () => 'generated-name',
+  generateName: () => GENERATED_NAME,
   canCreatePipeline: false,
 };
 
@@ -134,7 +149,7 @@ const mockContextWithPipeline: TestCaseFormContext = {
   } as Table,
   selectedColumn: undefined,
   selectedTestLevel: TestLevel.TABLE,
-  generateName: () => 'generated-name',
+  generateName: () => GENERATED_NAME,
   canCreatePipeline: true,
 };
 
@@ -267,17 +282,15 @@ describe('TestCaseFormDrawer', () => {
     emitContextFn = undefined;
     emitActiveFieldFn = undefined;
     mockCreateTestCase.mockResolvedValue({
-      name: 'transformed-test-case',
-      id: 'created-id',
+      name: TRANSFORMED_TEST_CASE,
+      id: CREATED_ID,
     });
   });
 
   it('should render the drawer with the form body when open is true', async () => {
     renderDrawer();
 
-    expect(
-      await screen.findByTestId('test-case-form-body')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(TEST_CASE_FORM_BODY)).toBeInTheDocument();
     expect(screen.getByText('label.add-entity')).toBeInTheDocument();
   });
 
@@ -286,7 +299,7 @@ describe('TestCaseFormDrawer', () => {
     const onClose = jest.fn();
     renderDrawer({ onFormSubmit, onClose });
 
-    const submitBtn = await screen.findByTestId('create-btn');
+    const submitBtn = await screen.findByTestId(CREATE_BTN);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -294,14 +307,14 @@ describe('TestCaseFormDrawer', () => {
 
     await waitFor(() => {
       expect(mockCreateTestCase).toHaveBeenCalledWith({
-        name: 'transformed-test-case',
+        name: TRANSFORMED_TEST_CASE,
       });
     });
 
     await waitFor(() => {
       expect(onFormSubmit).toHaveBeenCalledWith({
-        name: 'transformed-test-case',
-        id: 'created-id',
+        name: TRANSFORMED_TEST_CASE,
+        id: CREATED_ID,
       });
     });
 
@@ -314,7 +327,7 @@ describe('TestCaseFormDrawer', () => {
     const onClose = jest.fn();
     renderDrawer({ onClose });
 
-    const submitBtn = await screen.findByTestId('create-btn');
+    const submitBtn = await screen.findByTestId(CREATE_BTN);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -329,7 +342,7 @@ describe('TestCaseFormDrawer', () => {
     const onClose = jest.fn();
     renderDrawer({ onClose });
 
-    const cancelBtn = await screen.findByTestId('cancel-btn');
+    const cancelBtn = await screen.findByTestId(CANCEL_BTN);
 
     await act(async () => {
       fireEvent.click(cancelBtn);
@@ -358,7 +371,7 @@ describe('TestCaseFormDrawer', () => {
 
     render(<Consumer />);
 
-    const cancelBtn = await screen.findByTestId('cancel-btn');
+    const cancelBtn = await screen.findByTestId(CANCEL_BTN);
 
     await act(async () => {
       fireEvent.click(cancelBtn);
@@ -375,7 +388,7 @@ describe('TestCaseFormDrawer', () => {
     const onFormSubmit = jest.fn();
     renderDrawer({ onClose, onFormSubmit });
 
-    const submitBtn = await screen.findByTestId('create-btn');
+    const submitBtn = await screen.findByTestId(CREATE_BTN);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -398,9 +411,7 @@ describe('TestCaseFormDrawer', () => {
   it('should not render the service doc panel in ai variant', async () => {
     renderDrawer({ variant: 'modal' });
 
-    expect(
-      await screen.findByTestId('test-case-form-body')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(TEST_CASE_FORM_BODY)).toBeInTheDocument();
     // The AI variant replaces the ServiceDocPanel hint with the per-field
     // documentation panel (gated by the Show Hint toggle).
     expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
@@ -409,8 +420,8 @@ describe('TestCaseFormDrawer', () => {
   it('should call addIngestionPipeline and deployIngestionPipelineById when canCreatePipeline is true', async () => {
     const mockTestSuite = { id: 'suite-id', name: 'test-suite' };
     mockCreateTestCase.mockResolvedValue({
-      name: 'transformed-test-case',
-      id: 'created-id',
+      name: TRANSFORMED_TEST_CASE,
+      id: CREATED_ID,
       testSuite: mockTestSuite,
     });
 
@@ -418,7 +429,7 @@ describe('TestCaseFormDrawer', () => {
     const onClose = jest.fn();
     renderDrawer({ onFormSubmit, onClose });
 
-    await screen.findByTestId('test-case-form-body');
+    await screen.findByTestId(TEST_CASE_FORM_BODY);
 
     // Emit the pipeline-enabled context directly via the captured callback
     // before interacting with UI, to avoid triggering a re-render mid-test
@@ -426,7 +437,7 @@ describe('TestCaseFormDrawer', () => {
       emitContextFn?.(mockContextWithPipeline);
     });
 
-    const submitBtn = await screen.findByTestId('create-btn');
+    const submitBtn = await screen.findByTestId(CREATE_BTN);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -434,7 +445,7 @@ describe('TestCaseFormDrawer', () => {
 
     await waitFor(() => {
       expect(mockCreateTestCase).toHaveBeenCalledWith({
-        name: 'transformed-test-case',
+        name: TRANSFORMED_TEST_CASE,
       });
     });
 
@@ -463,7 +474,7 @@ describe('TestCaseFormDrawer', () => {
     const onActiveFieldChange = jest.fn();
     renderDrawer({ onActiveFieldChange });
 
-    await screen.findByTestId('test-case-form-body');
+    await screen.findByTestId(TEST_CASE_FORM_BODY);
 
     await act(async () => {
       emitActiveFieldFn?.('testName');
@@ -475,7 +486,7 @@ describe('TestCaseFormDrawer', () => {
   it('should not throw when onActiveFieldChange prop is not provided', async () => {
     renderDrawer();
 
-    await screen.findByTestId('test-case-form-body');
+    await screen.findByTestId(TEST_CASE_FORM_BODY);
 
     await expect(
       act(async () => {
@@ -490,12 +501,12 @@ describe('TestCaseFormDrawer', () => {
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument();
       expect(
-        await screen.findByTestId('test-case-form-body')
+        await screen.findByTestId(TEST_CASE_FORM_BODY)
       ).toBeInTheDocument();
       // The AI modal exposes the same footer test ids as the classic drawer so
       // the shared submit helpers drive either variant.
-      expect(screen.getByTestId('create-btn')).toBeInTheDocument();
-      expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
+      expect(screen.getByTestId(CREATE_BTN)).toBeInTheDocument();
+      expect(screen.getByTestId(CANCEL_BTN)).toBeInTheDocument();
       // But not the slideout drawer chrome.
       expect(screen.queryByTestId('drawer-title')).not.toBeInTheDocument();
     });
@@ -549,7 +560,7 @@ describe('TestCaseFormDrawer', () => {
 
       await waitFor(() => {
         expect(mockCreateTestCase).toHaveBeenCalledWith({
-          name: 'transformed-test-case',
+          name: TRANSFORMED_TEST_CASE,
         });
       });
 
@@ -637,7 +648,7 @@ describe('TestCaseFormDrawer', () => {
       // out mid-task.
       await act(async () => {
         fireEvent.blur(testType, {
-          relatedTarget: screen.getByTestId('test-case-name'),
+          relatedTarget: screen.getByTestId(TEST_CASE_NAME),
         });
       });
 
@@ -708,10 +719,10 @@ describe('TestCaseFormDrawer', () => {
     } as TestDefinition;
 
     const mockTestCase = {
-      id: 'test-case-id',
-      name: 'existing-test-case',
-      displayName: 'Existing Test Case',
-      entityLink: '<#E::table::service.db.schema.table>',
+      id: TEST_CASE_ID,
+      name: EXISTING_TEST_CASE_2,
+      displayName: EXISTING_TEST_CASE,
+      entityLink: E_TABLE_SERVICE_DB_SCHEMA_TABLE,
       testDefinition: {
         id: 'def-1',
         fullyQualifiedName: 'tableRowCountToEqual',
@@ -729,7 +740,7 @@ describe('TestCaseFormDrawer', () => {
       mockGetTestDefinitionById.mockResolvedValue(mockTestDefinition);
       mockUpdateTestCaseById.mockResolvedValue(mockTestCase);
       mockCreateUpdatedTestCasePatch.mockReturnValue([
-        { op: 'replace', path: '/displayName', value: 'Updated Name' },
+        { op: 'replace', path: DISPLAYNAME, value: 'Updated Name' },
       ]);
     });
 
@@ -740,11 +751,11 @@ describe('TestCaseFormDrawer', () => {
         expect(mockGetTestDefinitionById).toHaveBeenCalledWith('def-1');
       });
 
-      const nameInput = await screen.findByTestId('test-case-name');
+      const nameInput = await screen.findByTestId(TEST_CASE_NAME);
       const displayNameInput = await screen.findByTestId('display-name');
 
       await waitFor(() => {
-        expect(nameInput).toHaveValue('existing-test-case');
+        expect(nameInput).toHaveValue(EXISTING_TEST_CASE_2);
       });
 
       expect(nameInput).toBeDisabled();
@@ -761,20 +772,20 @@ describe('TestCaseFormDrawer', () => {
       renderDrawer({ testCase: mockTestCase, onUpdate, onClose });
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-case-name')).toHaveValue(
-          'existing-test-case'
+        expect(screen.getByTestId(TEST_CASE_NAME)).toHaveValue(
+          EXISTING_TEST_CASE_2
         );
       });
 
-      const submitBtn = await screen.findByTestId('create-btn');
+      const submitBtn = await screen.findByTestId(CREATE_BTN);
 
       await act(async () => {
         fireEvent.click(submitBtn);
       });
 
       await waitFor(() => {
-        expect(mockUpdateTestCaseById).toHaveBeenCalledWith('test-case-id', [
-          { op: 'replace', path: '/displayName', value: 'Updated Name' },
+        expect(mockUpdateTestCaseById).toHaveBeenCalledWith(TEST_CASE_ID, [
+          { op: 'replace', path: DISPLAYNAME, value: 'Updated Name' },
         ]);
       });
 
@@ -794,12 +805,12 @@ describe('TestCaseFormDrawer', () => {
       renderDrawer({ testCase: mockTestCase, onClose, onUpdate });
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-case-name')).toHaveValue(
-          'existing-test-case'
+        expect(screen.getByTestId(TEST_CASE_NAME)).toHaveValue(
+          EXISTING_TEST_CASE_2
         );
       });
 
-      const submitBtn = await screen.findByTestId('create-btn');
+      const submitBtn = await screen.findByTestId(CREATE_BTN);
 
       await act(async () => {
         fireEvent.click(submitBtn);
@@ -822,7 +833,7 @@ describe('TestCaseFormDrawer', () => {
 
       expect(await screen.findByTestId('test-type-card')).toBeInTheDocument();
       expect(screen.queryByTestId('select-table-card')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('test-case-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TEST_CASE_NAME)).not.toBeInTheDocument();
       expect(lastFormBodyProps?.showOnlyParameter).toBe(true);
     });
 
@@ -858,10 +869,10 @@ describe('edit submit uses the directly-fetched definition (Finding 1 regression
   } as TestDefinition;
 
   const arrayParamTestCase = {
-    id: 'test-case-id',
-    name: 'existing-test-case',
-    displayName: 'Existing Test Case',
-    entityLink: '<#E::table::service.db.schema.table>',
+    id: TEST_CASE_ID,
+    name: EXISTING_TEST_CASE_2,
+    displayName: EXISTING_TEST_CASE,
+    entityLink: E_TABLE_SERVICE_DB_SCHEMA_TABLE,
     testDefinition: {
       id: 'def-array',
       fullyQualifiedName: 'columnValuesToBeInSet',
@@ -909,12 +920,12 @@ describe('edit submit uses the directly-fetched definition (Finding 1 regression
         selectedTableData: undefined,
         selectedColumn: undefined,
         selectedTestLevel: TestLevel.TABLE,
-        generateName: () => 'generated-name',
+        generateName: () => GENERATED_NAME,
         canCreatePipeline: false,
       });
     });
 
-    const submitBtn = await screen.findByTestId('create-btn');
+    const submitBtn = await screen.findByTestId(CREATE_BTN);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -961,29 +972,29 @@ describe('edit submit normalizes FormSelectItem-shaped prefill values (patch cor
   // === 'column'), so edit prefill stores it as a FormSelectItem — see
   // `buildEditParamEntry` in transformTestCaseFormData.ts.
   const selectParamDefinition = {
-    id: 'def-select',
+    id: DEF_SELECT,
     name: 'columnValuesToBeInSet',
     fullyQualifiedName: 'columnValuesToBeInSet',
     supportsRowLevelPassedFailed: false,
     parameterDefinition: [
       { name: 'column', dataType: TestDataType.String },
-      { name: 'partition.interval', dataType: TestDataType.String },
+      { name: PARTITION_INTERVAL, dataType: TestDataType.String },
       { name: 'allowedValues', dataType: TestDataType.Array },
     ],
   } as TestDefinition;
 
   const selectParamTestCase = {
-    id: 'test-case-id',
-    name: 'existing-test-case',
-    displayName: 'Existing Test Case',
+    id: TEST_CASE_ID,
+    name: EXISTING_TEST_CASE_2,
+    displayName: EXISTING_TEST_CASE,
     entityLink: '<#E::table::service.db.schema.table::columns::col_x>',
     testDefinition: {
-      id: 'def-select',
+      id: DEF_SELECT,
       fullyQualifiedName: 'columnValuesToBeInSet',
     },
     parameterValues: [
       { name: 'column', value: 'col_x' },
-      { name: 'partition.interval', value: '15' },
+      { name: PARTITION_INTERVAL, value: '15' },
       { name: 'allowedValues', value: JSON.stringify(['a', 'b']) },
     ],
     dimensionColumns: ['col_b'],
@@ -1019,10 +1030,10 @@ describe('edit submit normalizes FormSelectItem-shaped prefill values (patch cor
     renderDrawer({ testCase: selectParamTestCase });
 
     await waitFor(() => {
-      expect(mockGetTestDefinitionById).toHaveBeenCalledWith('def-select');
+      expect(mockGetTestDefinitionById).toHaveBeenCalledWith(DEF_SELECT);
     });
 
-    const submitBtn = await screen.findByTestId('create-btn');
+    const submitBtn = await screen.findByTestId(CREATE_BTN);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -1054,7 +1065,7 @@ describe('edit submit normalizes FormSelectItem-shaped prefill values (patch cor
     expect(columnParam?.value).toBe('col_x');
 
     const dottedParam = patched.parameterValues.find(
-      (p) => p.name === 'partition.interval'
+      (p) => p.name === PARTITION_INTERVAL
     );
 
     // The sanitized `___` key must be restored to its dotted form.
@@ -1084,10 +1095,10 @@ describe('createUpdatedTestCasePatch (phantom tags op)', () => {
     jest.requireActual('../../../../utils/DataQuality/DataQualityPureUtils');
 
   const baseTestCase = {
-    id: 'test-case-id',
-    name: 'existing-test-case',
-    displayName: 'Existing Test Case',
-    entityLink: '<#E::table::service.db.schema.table>',
+    id: TEST_CASE_ID,
+    name: EXISTING_TEST_CASE_2,
+    displayName: EXISTING_TEST_CASE,
+    entityLink: E_TABLE_SERVICE_DB_SCHEMA_TABLE,
     tags: undefined,
   } as unknown as TestCase;
 
@@ -1104,7 +1115,7 @@ describe('createUpdatedTestCasePatch (phantom tags op)', () => {
     );
     expect(patch).toContainEqual({
       op: 'replace',
-      path: '/displayName',
+      path: DISPLAYNAME,
       value: 'Updated Display Name',
     });
   });
@@ -1113,7 +1124,7 @@ describe('createUpdatedTestCasePatch (phantom tags op)', () => {
     const patch = realCreateUpdatedTestCasePatch({
       testCase: baseTestCase,
       value: {
-        displayName: 'Existing Test Case',
+        displayName: EXISTING_TEST_CASE,
         tags: [
           {
             tagFQN: 'PII.Sensitive',

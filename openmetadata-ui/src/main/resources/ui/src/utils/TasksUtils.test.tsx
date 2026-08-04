@@ -41,6 +41,17 @@ import {
 } from './TaskNavigationUtils';
 import { getNormalizedTaskPayload } from './TaskPayloadUtils';
 
+const ASHLEY_KING = 'Ashley King';
+const _5E08061E_4CF2_46D0_93E3_2F0CC38844DB =
+  '5e08061e-4cf2-46d0-93e3-2f0cc38844db';
+const UPDATED_DESCRIPTION = 'Updated description';
+const PERSONALDATA_PERSONAL = 'PersonalData.Personal';
+const MESSAGESCHEMA_SCHEMAFIELDS = 'messageSchema.schemaFields';
+const DATAMODEL_COLUMNS = 'dataModel.columns';
+const REQUESTSCHEMA_SCHEMAFIELDS = 'requestSchema.schemaFields';
+const RESPONSESCHEMA_SCHEMAFIELDS = 'responseSchema.schemaFields';
+const DEFAULT_NAME_FIRST_NAME = 'default.name.first_name';
+
 jest.mock('../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest
     .fn()
@@ -211,8 +222,8 @@ describe('Tests for fetchOptions', () => {
         value: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
       },
       {
-        displayName: 'Ashley King',
-        label: 'Ashley King',
+        displayName: ASHLEY_KING,
+        label: ASHLEY_KING,
         name: 'ashley_king5',
         type: 'user',
         value: '0c83a592-7ced-4156-b235-01726259a0e7',
@@ -237,8 +248,8 @@ describe('Tests for fetchOptions', () => {
 
     expect(mockSetOptions).toHaveBeenCalledWith([
       {
-        displayName: 'Ashley King',
-        label: 'Ashley King',
+        displayName: ASHLEY_KING,
+        label: ASHLEY_KING,
         name: 'ashley_king5',
         type: 'user',
         value: '0c83a592-7ced-4156-b235-01726259a0e7',
@@ -262,7 +273,7 @@ describe('Tests for getTaskAssignee', () => {
           displayName: 'David',
           fullyQualifiedName: 'david',
           href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-          id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          id: _5E08061E_4CF2_46D0_93E3_2F0CC38844DB,
           name: 'david',
           type: 'user',
         },
@@ -274,7 +285,7 @@ describe('Tests for getTaskAssignee', () => {
         label: 'David',
         name: 'david',
         type: 'user',
-        value: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+        value: _5E08061E_4CF2_46D0_93E3_2F0CC38844DB,
       },
     ]);
   });
@@ -298,7 +309,7 @@ describe('Tests for getTaskAssignee', () => {
           displayName: 'David',
           fullyQualifiedName: 'david',
           href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-          id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          id: _5E08061E_4CF2_46D0_93E3_2F0CC38844DB,
           name: 'david',
           type: 'user',
         },
@@ -329,7 +340,7 @@ describe('Tests for getNormalizedTaskPayload', () => {
       payload: {
         fieldPath: 'description',
         currentDescription: 'Current description',
-        newDescription: 'Updated description',
+        newDescription: UPDATED_DESCRIPTION,
       },
     });
 
@@ -337,8 +348,8 @@ describe('Tests for getNormalizedTaskPayload', () => {
       expect.objectContaining({
         fieldPath: 'description',
         currentDescription: 'Current description',
-        newDescription: 'Updated description',
-        suggestedValue: 'Updated description',
+        newDescription: UPDATED_DESCRIPTION,
+        suggestedValue: UPDATED_DESCRIPTION,
         isSuggestionEmpty: false,
       })
     );
@@ -365,7 +376,7 @@ describe('Tests for getNormalizedTaskPayload', () => {
         ],
         tagsToAdd: [
           {
-            tagFQN: 'PersonalData.Personal',
+            tagFQN: PERSONALDATA_PERSONAL,
             source: 'Classification',
             labelType: 'Manual',
             state: 'Confirmed',
@@ -385,26 +396,26 @@ describe('Tests for getNormalizedTaskPayload', () => {
     expect(payload.currentTags).toHaveLength(1);
     expect(payload.suggestedTags).toEqual([
       expect.objectContaining({
-        tagFQN: 'PersonalData.Personal',
+        tagFQN: PERSONALDATA_PERSONAL,
       }),
     ]);
-    expect(payload.suggestedValue).toContain('PersonalData.Personal');
+    expect(payload.suggestedValue).toContain(PERSONALDATA_PERSONAL);
     expect(payload.isSuggestionEmpty).toBe(false);
   });
 });
 
 describe('Tests for task field path helpers', () => {
   it('should normalize nested task field containers for schema-backed assets', () => {
-    expect(getNormalizedTaskFieldContainer('messageSchema.schemaFields')).toBe(
+    expect(getNormalizedTaskFieldContainer(MESSAGESCHEMA_SCHEMAFIELDS)).toBe(
       'messageSchema'
     );
-    expect(getNormalizedTaskFieldContainer('dataModel.columns')).toBe(
+    expect(getNormalizedTaskFieldContainer(DATAMODEL_COLUMNS)).toBe(
       'dataModel'
     );
-    expect(getNormalizedTaskFieldContainer('requestSchema.schemaFields')).toBe(
+    expect(getNormalizedTaskFieldContainer(REQUESTSCHEMA_SCHEMAFIELDS)).toBe(
       'requestSchema'
     );
-    expect(getNormalizedTaskFieldContainer('responseSchema.schemaFields')).toBe(
+    expect(getNormalizedTaskFieldContainer(RESPONSESCHEMA_SCHEMAFIELDS)).toBe(
       'responseSchema'
     );
   });
@@ -422,23 +433,23 @@ describe('Tests for task field path helpers', () => {
     );
     expect(
       getDescriptionTaskFieldPath(
-        'messageSchema.schemaFields',
+        MESSAGESCHEMA_SCHEMAFIELDS,
         'default.name.last_name'
       )
     ).toBe('messageSchema::"default.name.last_name"::description');
     expect(
-      getDescriptionTaskFieldPath('dataModel.columns', 'department.id')
+      getDescriptionTaskFieldPath(DATAMODEL_COLUMNS, 'department.id')
     ).toBe('dataModel::"department.id"::description');
     expect(
       getDescriptionTaskFieldPath(
-        'requestSchema.schemaFields',
-        'default.name.first_name'
+        REQUESTSCHEMA_SCHEMAFIELDS,
+        DEFAULT_NAME_FIRST_NAME
       )
     ).toBe('requestSchema::"default.name.first_name"::description');
     expect(
       getDescriptionTaskFieldPath(
-        'responseSchema.schemaFields',
-        'default.name.first_name'
+        RESPONSESCHEMA_SCHEMAFIELDS,
+        DEFAULT_NAME_FIRST_NAME
       )
     ).toBe('responseSchema::"default.name.first_name"::description');
   });
@@ -448,25 +459,16 @@ describe('Tests for task field path helpers', () => {
       'columns."address.street_name"'
     );
     expect(
-      getTagTaskFieldPath(
-        'messageSchema.schemaFields',
-        'default.name.first_name'
-      )
+      getTagTaskFieldPath(MESSAGESCHEMA_SCHEMAFIELDS, DEFAULT_NAME_FIRST_NAME)
     ).toBe('messageSchema."default.name.first_name"');
-    expect(getTagTaskFieldPath('dataModel.columns', 'department.id')).toBe(
+    expect(getTagTaskFieldPath(DATAMODEL_COLUMNS, 'department.id')).toBe(
       'dataModel."department.id"'
     );
     expect(
-      getTagTaskFieldPath(
-        'requestSchema.schemaFields',
-        'default.name.first_name'
-      )
+      getTagTaskFieldPath(REQUESTSCHEMA_SCHEMAFIELDS, DEFAULT_NAME_FIRST_NAME)
     ).toBe('requestSchema."default.name.first_name"');
     expect(
-      getTagTaskFieldPath(
-        'responseSchema.schemaFields',
-        'default.name.first_name'
-      )
+      getTagTaskFieldPath(RESPONSESCHEMA_SCHEMAFIELDS, DEFAULT_NAME_FIRST_NAME)
     ).toBe('responseSchema."default.name.first_name"');
   });
 });

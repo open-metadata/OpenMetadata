@@ -22,6 +22,10 @@ import { getUsers } from '../../rest/userAPI';
 import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
 
+const PROFILE_TEAMS_ROLES = 'profile,teams,roles';
+const SHOW_DELETED = 'show-deleted';
+const NON_DELETED = 'non-deleted';
+const TEST_SEARCH = 'test search';
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
@@ -196,7 +200,7 @@ describe('Test UserListPage component', () => {
   it('users api should called on initial load', async () => {
     const { findByTestId } = render(<UserListPageV1 />);
 
-    const deletedSwitch = await findByTestId('show-deleted');
+    const deletedSwitch = await findByTestId(SHOW_DELETED);
 
     expect(deletedSwitch).toBeInTheDocument();
     expect(deletedSwitch).not.toBeChecked();
@@ -217,8 +221,8 @@ describe('Test UserListPage component', () => {
 
     expect(errorPlaceholder).toBeInTheDocument();
     expect(getUsers).toHaveBeenCalledWith({
-      fields: 'profile,teams,roles',
-      include: 'non-deleted',
+      fields: PROFILE_TEAMS_ROLES,
+      include: NON_DELETED,
       isAdmin: false,
       isBot: false,
       limit: 15,
@@ -229,14 +233,14 @@ describe('Test UserListPage component', () => {
     const { findByTestId } = render(<UserListPageV1 />);
 
     expect(getUsers).toHaveBeenCalledWith({
-      fields: 'profile,teams,roles',
-      include: 'non-deleted',
+      fields: PROFILE_TEAMS_ROLES,
+      include: NON_DELETED,
       isAdmin: false,
       isBot: false,
       limit: 15,
     });
 
-    const deletedSwitch = await findByTestId('show-deleted');
+    const deletedSwitch = await findByTestId(SHOW_DELETED);
 
     expect(deletedSwitch).toBeInTheDocument();
     expect(deletedSwitch).toHaveAttribute('aria-checked', 'false');
@@ -266,7 +270,7 @@ describe('Test UserListPage component', () => {
     render(<UserListPageV1 />);
 
     expect(getUsers).toHaveBeenCalledWith({
-      fields: 'profile,teams,roles',
+      fields: PROFILE_TEAMS_ROLES,
       include: 'deleted',
       isAdmin: false,
       isBot: false,
@@ -278,8 +282,8 @@ describe('Test UserListPage component', () => {
     const { findByTestId } = render(<UserListPageV1 />);
 
     expect(getUsers).toHaveBeenCalledWith({
-      fields: 'profile,teams,roles',
-      include: 'non-deleted',
+      fields: PROFILE_TEAMS_ROLES,
+      include: NON_DELETED,
       isAdmin: false,
       isBot: false,
       limit: 15,
@@ -543,11 +547,11 @@ describe('Test UserListPage component', () => {
 
     // Trigger the onSearch handler
     act(() => {
-      capturedOnSearch?.('test search');
+      capturedOnSearch?.(TEST_SEARCH);
     });
 
     await waitFor(() => {
-      expect(mockSetFilters).toHaveBeenCalledWith({ user: 'test search' });
+      expect(mockSetFilters).toHaveBeenCalledWith({ user: TEST_SEARCH });
     });
   });
 
@@ -573,7 +577,7 @@ describe('Test UserListPage component', () => {
   });
 
   it('should clear search when toggling deleted filter', async () => {
-    const mockSearchValue = 'test search';
+    const mockSearchValue = TEST_SEARCH;
     (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
       filters: {
         user: mockSearchValue,
@@ -583,7 +587,7 @@ describe('Test UserListPage component', () => {
 
     const { findByTestId } = render(<UserListPageV1 />);
 
-    const deletedSwitch = await findByTestId('show-deleted');
+    const deletedSwitch = await findByTestId(SHOW_DELETED);
 
     await act(async () => {
       deletedSwitch.click();
@@ -664,9 +668,9 @@ describe('Test UserListPage component', () => {
         .searchProps.onSearch;
 
     act(() => {
-      lastOnSearch('test search');
+      lastOnSearch(TEST_SEARCH);
     });
 
-    expect(mockSetFilters).toHaveBeenCalledWith({ user: 'test search' });
+    expect(mockSetFilters).toHaveBeenCalledWith({ user: TEST_SEARCH });
   });
 });

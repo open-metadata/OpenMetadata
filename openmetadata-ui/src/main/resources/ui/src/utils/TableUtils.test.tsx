@@ -50,6 +50,35 @@ import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TablePureUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1 =
+  'sample_data.ecommerce_db.shopify.dim_location.column1';
+const TEST_DATABASE_SCHEMA_TABLE_COLUMN1 = 'test.database.schema.table.column1';
+const TABLE_LEVEL1_LEVEL2_LEVEL3_LEVEL4 = 'table.level1.level2.level3.level4';
+const TABLE_PARENTCOLUMN_CHILDCOLUMN = 'table.parentColumn.childColumn';
+const TABLE_LEVEL1_LEVEL2_LEVEL3 = 'table.level1.level2.level3';
+const PERSONALDATA_PERSONAL = 'PersonalData.Personal';
+const TABLE_PARENT1_CHILD1 = 'table.parent1.child1';
+const TABLE_PARENT2_CHILD1 = 'table.parent2.child1';
+const TABLE_PARENT1_CHILD2 = 'table.parent1.child2';
+const CLASSIFICATION_TAG1 = 'Classification.Tag1';
+const TABLE_PARENT_CHILD2 = 'table.parent.child2';
+const TABLE_LEVEL1_LEVEL2 = 'table.level1.level2';
+const TABLE_PARENT_CHILD1 = 'table.parent.child1';
+const TABLE_PARENTCOLUMN = 'table.parentColumn';
+const CERTIFICATION_GOLD = 'Certification.Gold';
+const TABLE_NONEXISTENT = 'table.nonexistent';
+const HIGHLIGHTED_ROW = 'highlighted-row';
+const NEW_DESCRIPTION = 'new description';
+const GLOSSARY_TERM1 = 'glossary.term1';
+const GLOSSARY_TERM2 = 'glossary.term2';
+const DESCRIPTION_1 = 'description 1';
+const TABLE_COLUMN2 = 'table.column2';
+const TABLE_PARENT1 = 'table.parent1';
+const TABLE_PARENT2 = 'table.parent2';
+const TABLE_COLUMN1 = 'table.column1';
+const TABLE_LEVEL1 = 'table.level1';
+const TABLE_PARENT = 'table.parent';
+const TIER_TIER1 = 'Tier.Tier1';
 type ParentFieldObject = {
   fullyQualifiedName?: string;
   children?: ParentFieldObject[];
@@ -88,13 +117,13 @@ const navigate = jest.fn();
 describe('TableUtils', () => {
   it('getTierTags should return the correct usage percentile', () => {
     const tags = [
-      { tagFQN: 'Tier.Tier1' },
+      { tagFQN: TIER_TIER1 },
       { tagFQN: 'RandomTag' },
       { tagFQN: 'OtherTag' },
     ] as TagLabel[];
     const result = getTierTags(tags);
 
-    expect(result).toStrictEqual({ tagFQN: 'Tier.Tier1' });
+    expect(result).toStrictEqual({ tagFQN: TIER_TIER1 });
   });
 
   it('getTagsWithoutTier should return the tier tag FQN', () => {
@@ -113,15 +142,15 @@ describe('TableUtils', () => {
 
   describe('isCertificationTag', () => {
     it('should return true for a tag starting with Certification.', () => {
-      expect(isCertificationTag('Certification.Gold')).toBe(true);
+      expect(isCertificationTag(CERTIFICATION_GOLD)).toBe(true);
     });
 
     it('should return false for a Tier tag', () => {
-      expect(isCertificationTag('Tier.Tier1')).toBe(false);
+      expect(isCertificationTag(TIER_TIER1)).toBe(false);
     });
 
     it('should return false for an unrelated tag', () => {
-      expect(isCertificationTag('PersonalData.Personal')).toBe(false);
+      expect(isCertificationTag(PERSONALDATA_PERSONAL)).toBe(false);
     });
 
     it('should return false for a tag that contains Certification but does not start with it', () => {
@@ -132,20 +161,20 @@ describe('TableUtils', () => {
   describe('getCertificationTag', () => {
     it('should return the certification tag when present', () => {
       const tags = [
-        { tagFQN: 'Tier.Tier1' },
-        { tagFQN: 'Certification.Gold' },
-        { tagFQN: 'PersonalData.Personal' },
+        { tagFQN: TIER_TIER1 },
+        { tagFQN: CERTIFICATION_GOLD },
+        { tagFQN: PERSONALDATA_PERSONAL },
       ] as TagLabel[];
 
       expect(getCertificationTag(tags)).toStrictEqual({
-        tagFQN: 'Certification.Gold',
+        tagFQN: CERTIFICATION_GOLD,
       });
     });
 
     it('should return undefined when no certification tag is present', () => {
       const tags = [
-        { tagFQN: 'Tier.Tier1' },
-        { tagFQN: 'PersonalData.Personal' },
+        { tagFQN: TIER_TIER1 },
+        { tagFQN: PERSONALDATA_PERSONAL },
       ] as TagLabel[];
 
       expect(getCertificationTag(tags)).toBeUndefined();
@@ -159,29 +188,26 @@ describe('TableUtils', () => {
   describe('getTagsWithoutCertification', () => {
     it('should remove certification tags and keep the rest', () => {
       const tags = [
-        { tagFQN: 'Tier.Tier1' },
-        { tagFQN: 'Certification.Gold' },
-        { tagFQN: 'PersonalData.Personal' },
+        { tagFQN: TIER_TIER1 },
+        { tagFQN: CERTIFICATION_GOLD },
+        { tagFQN: PERSONALDATA_PERSONAL },
       ];
       const result = getTagsWithoutCertification(tags);
 
       expect(result).toStrictEqual([
-        { tagFQN: 'Tier.Tier1' },
-        { tagFQN: 'PersonalData.Personal' },
+        { tagFQN: TIER_TIER1 },
+        { tagFQN: PERSONALDATA_PERSONAL },
       ]);
     });
 
     it('should return all tags when none are certification tags', () => {
-      const tags = [
-        { tagFQN: 'Tier.Tier1' },
-        { tagFQN: 'PersonalData.Personal' },
-      ];
+      const tags = [{ tagFQN: TIER_TIER1 }, { tagFQN: PERSONALDATA_PERSONAL }];
 
       expect(getTagsWithoutCertification(tags)).toStrictEqual(tags);
     });
 
     it('should return empty array when all tags are certification tags', () => {
-      const tags = [{ tagFQN: 'Certification.Gold' }];
+      const tags = [{ tagFQN: CERTIFICATION_GOLD }];
 
       expect(getTagsWithoutCertification(tags)).toStrictEqual([]);
     });
@@ -218,7 +244,7 @@ describe('TableUtils', () => {
         {
           name: 'column1',
           fullyQualifiedName:
-            'sample_data.ecommerce_db.shopify.dim_location.column1',
+            SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1,
         } as Column,
         {
           name: 'column2',
@@ -235,7 +261,7 @@ describe('TableUtils', () => {
 
       expect(result).toEqual(columns[0]);
       expect(EntityLink.getTableColumnNameFromColumnFqn).toHaveBeenCalledWith(
-        'sample_data.ecommerce_db.shopify.dim_location.column1',
+        SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1,
         false
       );
       expect(EntityLink.getTableEntityLink).toHaveBeenCalledWith(
@@ -249,7 +275,7 @@ describe('TableUtils', () => {
         {
           name: 'column1',
           fullyQualifiedName:
-            'sample_data.ecommerce_db.shopify.dim_location.column1',
+            SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1,
         } as Column,
       ];
 
@@ -272,7 +298,7 @@ describe('TableUtils', () => {
         {
           name: 'column1',
           fullyQualifiedName:
-            'sample_data.ecommerce_db.shopify.dim_location.column1',
+            SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1,
           description: 'old description',
         } as Column,
         {
@@ -283,12 +309,12 @@ describe('TableUtils', () => {
         } as Column,
       ];
 
-      const targetFqn = 'sample_data.ecommerce_db.shopify.dim_location.column1';
-      const update = { description: 'new description' };
+      const targetFqn = SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1;
+      const update = { description: NEW_DESCRIPTION };
 
       const result = updateColumnInNestedStructure(columns, targetFqn, update);
 
-      expect(result[0].description).toBe('new description');
+      expect(result[0].description).toBe(NEW_DESCRIPTION);
       expect(result[1].description).toBe('description 2');
     });
 
@@ -297,8 +323,8 @@ describe('TableUtils', () => {
         {
           name: 'column1',
           fullyQualifiedName:
-            'sample_data.ecommerce_db.shopify.dim_location.column1',
-          description: 'description 1',
+            SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1,
+          description: DESCRIPTION_1,
         } as Column,
         {
           name: 'parentColumn',
@@ -322,7 +348,7 @@ describe('TableUtils', () => {
 
       const result = updateColumnInNestedStructure(columns, targetFqn, update);
 
-      expect(result[0].description).toBe('description 1');
+      expect(result[0].description).toBe(DESCRIPTION_1);
       expect(result[1].description).toBe('parent description');
       expect(result[1].children?.[0].description).toBe(
         'updated nested description'
@@ -334,14 +360,14 @@ describe('TableUtils', () => {
         {
           name: 'column1',
           fullyQualifiedName:
-            'sample_data.ecommerce_db.shopify.dim_location.column1',
-          description: 'description 1',
+            SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION_COLUMN1,
+          description: DESCRIPTION_1,
         } as Column,
       ];
 
       const nonExistentFqn =
         'sample_data.ecommerce_db.shopify.dim_location.nonExistentColumn';
-      const update = { description: 'new description' };
+      const update = { description: NEW_DESCRIPTION };
 
       const result = updateColumnInNestedStructure(
         columns,
@@ -357,19 +383,19 @@ describe('TableUtils', () => {
         {
           name: 'level1',
           dataType: DataType.Struct,
-          fullyQualifiedName: 'table.level1',
+          fullyQualifiedName: TABLE_LEVEL1,
           description: 'level 1 description',
           children: [
             {
               name: 'level2',
               dataType: DataType.Struct,
-              fullyQualifiedName: 'table.level1.level2',
+              fullyQualifiedName: TABLE_LEVEL1_LEVEL2,
               description: 'level 2 description',
               children: [
                 {
                   name: 'level3',
                   dataType: DataType.String,
-                  fullyQualifiedName: 'table.level1.level2.level3',
+                  fullyQualifiedName: TABLE_LEVEL1_LEVEL2_LEVEL3,
                   description: 'original deep description',
                 } as Column,
               ],
@@ -378,7 +404,7 @@ describe('TableUtils', () => {
         } as Column,
       ];
 
-      const targetFqn = 'table.level1.level2.level3';
+      const targetFqn = TABLE_LEVEL1_LEVEL2_LEVEL3;
       const update = { description: 'updated deep description' };
 
       const result = updateColumnInNestedStructure(columns, targetFqn, update);
@@ -395,20 +421,20 @@ describe('TableUtils', () => {
         {
           name: 'parentColumn',
           dataType: DataType.Struct,
-          fullyQualifiedName: 'table.parentColumn',
+          fullyQualifiedName: TABLE_PARENTCOLUMN,
           tags: [],
           children: [
             {
               name: 'childColumn',
               dataType: DataType.String,
-              fullyQualifiedName: 'table.parentColumn.childColumn',
+              fullyQualifiedName: TABLE_PARENTCOLUMN_CHILDCOLUMN,
               tags: [],
             } as Column,
           ],
         } as Column,
       ];
 
-      const targetFqn = 'table.parentColumn.childColumn';
+      const targetFqn = TABLE_PARENTCOLUMN_CHILDCOLUMN;
       const update = {
         tags: [
           {
@@ -455,12 +481,12 @@ describe('TableUtils', () => {
         {
           name: 'parentColumn',
           dataType: DataType.Struct,
-          fullyQualifiedName: 'table.parentColumn',
+          fullyQualifiedName: TABLE_PARENTCOLUMN,
           children: [
             {
               name: 'childColumn',
               dataType: DataType.String,
-              fullyQualifiedName: 'table.parentColumn.childColumn',
+              fullyQualifiedName: TABLE_PARENTCOLUMN_CHILDCOLUMN,
               description: 'old description',
               tags: [],
             } as Column,
@@ -468,9 +494,9 @@ describe('TableUtils', () => {
         } as Column,
       ];
 
-      const targetFqn = 'table.parentColumn.childColumn';
+      const targetFqn = TABLE_PARENTCOLUMN_CHILDCOLUMN;
       const update = {
-        description: 'new description',
+        description: NEW_DESCRIPTION,
         displayName: 'Child Column Display',
         tags: [
           {
@@ -484,7 +510,7 @@ describe('TableUtils', () => {
 
       const result = updateColumnInNestedStructure(columns, targetFqn, update);
 
-      expect(result[0].children?.[0].description).toBe('new description');
+      expect(result[0].children?.[0].description).toBe(NEW_DESCRIPTION);
       expect(result[0].children?.[0].displayName).toBe('Child Column Display');
       expect(result[0].children?.[0].tags).toHaveLength(1);
     });
@@ -494,7 +520,7 @@ describe('TableUtils', () => {
         {
           name: 'parentColumn',
           dataType: DataType.Struct,
-          fullyQualifiedName: 'table.parentColumn',
+          fullyQualifiedName: TABLE_PARENTCOLUMN,
           children: [
             {
               name: 'child1',
@@ -528,20 +554,20 @@ describe('TableUtils', () => {
         {
           name: 'parentColumn',
           dataType: DataType.Struct,
-          fullyQualifiedName: 'table.parentColumn',
+          fullyQualifiedName: TABLE_PARENTCOLUMN,
           description: 'old parent description',
           children: [
             {
               name: 'childColumn',
               dataType: DataType.String,
-              fullyQualifiedName: 'table.parentColumn.childColumn',
+              fullyQualifiedName: TABLE_PARENTCOLUMN_CHILDCOLUMN,
               description: 'child description',
             } as Column,
           ],
         } as Column,
       ];
 
-      const targetFqn = 'table.parentColumn';
+      const targetFqn = TABLE_PARENTCOLUMN;
       const update = { description: 'new parent description' };
 
       const result = updateColumnInNestedStructure(columns, targetFqn, update);
@@ -642,14 +668,14 @@ describe('TableUtils', () => {
     it('should remove style property from glossary terms', () => {
       const tags: TagLabel[] = [
         {
-          tagFQN: 'glossary.term1',
+          tagFQN: GLOSSARY_TERM1,
           source: TagSource.Glossary,
           labelType: LabelType.Manual,
           state: State.Confirmed,
           style: { color: '#FF0000' },
         } as TagLabel,
         {
-          tagFQN: 'glossary.term2',
+          tagFQN: GLOSSARY_TERM2,
           source: TagSource.Glossary,
           labelType: LabelType.Manual,
           state: State.Confirmed,
@@ -662,14 +688,14 @@ describe('TableUtils', () => {
       expect(result).toHaveLength(2);
       expect(result[0]).not.toHaveProperty('style');
       expect(result[1]).not.toHaveProperty('style');
-      expect(result[0].tagFQN).toBe('glossary.term1');
-      expect(result[1].tagFQN).toBe('glossary.term2');
+      expect(result[0].tagFQN).toBe(GLOSSARY_TERM1);
+      expect(result[1].tagFQN).toBe(GLOSSARY_TERM2);
     });
 
     it('should keep style property for classification tags', () => {
       const tags: TagLabel[] = [
         {
-          tagFQN: 'Classification.Tag1',
+          tagFQN: CLASSIFICATION_TAG1,
           source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
@@ -696,21 +722,21 @@ describe('TableUtils', () => {
     it('should handle mixed glossary and classification tags', () => {
       const tags: TagLabel[] = [
         {
-          tagFQN: 'glossary.term1',
+          tagFQN: GLOSSARY_TERM1,
           source: TagSource.Glossary,
           labelType: LabelType.Manual,
           state: State.Confirmed,
           style: { color: '#FF0000' },
         } as TagLabel,
         {
-          tagFQN: 'Classification.Tag1',
+          tagFQN: CLASSIFICATION_TAG1,
           source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
           style: { color: '#00FF00' },
         } as TagLabel,
         {
-          tagFQN: 'glossary.term2',
+          tagFQN: GLOSSARY_TERM2,
           source: TagSource.Glossary,
           labelType: LabelType.Manual,
           state: State.Confirmed,
@@ -732,13 +758,13 @@ describe('TableUtils', () => {
     it('should handle tags without style property', () => {
       const tags: TagLabel[] = [
         {
-          tagFQN: 'glossary.term1',
+          tagFQN: GLOSSARY_TERM1,
           source: TagSource.Glossary,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         } as TagLabel,
         {
-          tagFQN: 'Classification.Tag1',
+          tagFQN: CLASSIFICATION_TAG1,
           source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
@@ -764,7 +790,7 @@ describe('TableUtils', () => {
     it('should preserve all other tag properties', () => {
       const tags: TagLabel[] = [
         {
-          tagFQN: 'glossary.term1',
+          tagFQN: GLOSSARY_TERM1,
           name: 'term1',
           displayName: 'Term 1',
           description: 'Description',
@@ -778,7 +804,7 @@ describe('TableUtils', () => {
       const result = normalizeTags(tags);
 
       expect(result[0]).not.toHaveProperty('style');
-      expect(result[0].tagFQN).toBe('glossary.term1');
+      expect(result[0].tagFQN).toBe(GLOSSARY_TERM1);
       expect(result[0].name).toBe('term1');
       expect(result[0].displayName).toBe('Term 1');
       expect(result[0].description).toBe('Description');
@@ -1634,12 +1660,12 @@ describe('TableUtils', () => {
           {
             name: 'column1',
             dataType: DataType.String,
-            fullyQualifiedName: 'table.column1',
+            fullyQualifiedName: TABLE_COLUMN1,
           },
           {
             name: 'column2',
             dataType: DataType.Int,
-            fullyQualifiedName: 'table.column2',
+            fullyQualifiedName: TABLE_COLUMN2,
             tags: [
               {
                 tagFQN: 'tag1',
@@ -1678,7 +1704,7 @@ describe('TableUtils', () => {
           {
             name: 'column1',
             dataType: DataType.String,
-            fullyQualifiedName: 'table.column1',
+            fullyQualifiedName: TABLE_COLUMN1,
           },
         ],
       } as Partial<Table> & Pick<Omit<EntityReference, 'type'>, 'id'>;
@@ -1692,33 +1718,33 @@ describe('TableUtils', () => {
   describe('fieldExistsByFQN', () => {
     it('should return true when field exists at root level', () => {
       const items = [
-        { fullyQualifiedName: 'table.column1' },
-        { fullyQualifiedName: 'table.column2' },
+        { fullyQualifiedName: TABLE_COLUMN1 },
+        { fullyQualifiedName: TABLE_COLUMN2 },
         { fullyQualifiedName: 'table.column3' },
       ];
 
-      expect(fieldExistsByFQN(items, 'table.column2')).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_COLUMN2)).toBe(true);
     });
 
     it('should return true when field exists in nested children', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.parent',
+          fullyQualifiedName: TABLE_PARENT,
           children: [
-            { fullyQualifiedName: 'table.parent.child1' },
-            { fullyQualifiedName: 'table.parent.child2' },
+            { fullyQualifiedName: TABLE_PARENT_CHILD1 },
+            { fullyQualifiedName: TABLE_PARENT_CHILD2 },
           ],
         },
         { fullyQualifiedName: 'table.other' },
       ];
 
-      expect(fieldExistsByFQN(items, 'table.parent.child1')).toBe(true);
-      expect(fieldExistsByFQN(items, 'table.parent.child2')).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_PARENT_CHILD1)).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_PARENT_CHILD2)).toBe(true);
     });
 
     it('should return true when targetFqn starts with item FQN prefix', () => {
       const items = [
-        { fullyQualifiedName: 'table.parent' },
+        { fullyQualifiedName: TABLE_PARENT },
         { fullyQualifiedName: 'table.other' },
       ];
 
@@ -1730,31 +1756,31 @@ describe('TableUtils', () => {
 
     it('should return false when field does not exist', () => {
       const items = [
-        { fullyQualifiedName: 'table.column1' },
-        { fullyQualifiedName: 'table.column2' },
+        { fullyQualifiedName: TABLE_COLUMN1 },
+        { fullyQualifiedName: TABLE_COLUMN2 },
       ];
 
-      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+      expect(fieldExistsByFQN(items, TABLE_NONEXISTENT)).toBe(false);
       expect(fieldExistsByFQN(items, 'other.table.column1')).toBe(false);
     });
 
     it('should return false for empty array', () => {
-      expect(fieldExistsByFQN([], 'table.column1')).toBe(false);
+      expect(fieldExistsByFQN([], TABLE_COLUMN1)).toBe(false);
     });
 
     it('should handle deeply nested structures', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.level1',
+          fullyQualifiedName: TABLE_LEVEL1,
           children: [
             {
-              fullyQualifiedName: 'table.level1.level2',
+              fullyQualifiedName: TABLE_LEVEL1_LEVEL2,
               children: [
                 {
-                  fullyQualifiedName: 'table.level1.level2.level3',
+                  fullyQualifiedName: TABLE_LEVEL1_LEVEL2_LEVEL3,
                   children: [
                     {
-                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      fullyQualifiedName: TABLE_LEVEL1_LEVEL2_LEVEL3_LEVEL4,
                       children: [],
                     },
                   ],
@@ -1765,43 +1791,43 @@ describe('TableUtils', () => {
         },
       ];
 
-      expect(fieldExistsByFQN(items, 'table.level1.level2.level3.level4')).toBe(
+      expect(fieldExistsByFQN(items, TABLE_LEVEL1_LEVEL2_LEVEL3_LEVEL4)).toBe(
         true
       );
-      expect(fieldExistsByFQN(items, 'table.level1.level2.level3')).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_LEVEL1_LEVEL2_LEVEL3)).toBe(true);
     });
 
     it('should handle items with undefined fullyQualifiedName', () => {
       const items = [
         { fullyQualifiedName: undefined },
-        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: TABLE_COLUMN1 },
       ];
 
-      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_COLUMN1)).toBe(true);
       expect(fieldExistsByFQN(items, 'table.undefined')).toBe(false);
     });
 
     it('should handle items with empty children array', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.parent',
+          fullyQualifiedName: TABLE_PARENT,
           children: [],
         },
-        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: TABLE_COLUMN1 },
       ];
 
-      expect(fieldExistsByFQN(items, 'table.column1')).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_COLUMN1)).toBe(true);
       expect(fieldExistsByFQN(items, 'table.parent.child')).toBe(true); // prefix match
     });
 
     it('should handle multiple levels of nesting with mixed results', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.parent1',
+          fullyQualifiedName: TABLE_PARENT1,
           children: [
-            { fullyQualifiedName: 'table.parent1.child1', children: [] },
+            { fullyQualifiedName: TABLE_PARENT1_CHILD1, children: [] },
             {
-              fullyQualifiedName: 'table.parent1.child2',
+              fullyQualifiedName: TABLE_PARENT1_CHILD2,
               children: [
                 {
                   fullyQualifiedName: 'table.parent1.child2.grandchild',
@@ -1812,66 +1838,66 @@ describe('TableUtils', () => {
           ],
         },
         {
-          fullyQualifiedName: 'table.parent2',
+          fullyQualifiedName: TABLE_PARENT2,
           children: [
-            { fullyQualifiedName: 'table.parent2.child1', children: [] },
+            { fullyQualifiedName: TABLE_PARENT2_CHILD1, children: [] },
           ],
         },
       ];
 
-      expect(fieldExistsByFQN(items, 'table.parent1.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_PARENT1_CHILD1)).toBe(true);
       expect(fieldExistsByFQN(items, 'table.parent1.child2.grandchild')).toBe(
         true
       );
-      expect(fieldExistsByFQN(items, 'table.parent2.child1')).toBe(true);
+      expect(fieldExistsByFQN(items, TABLE_PARENT2_CHILD1)).toBe(true);
       expect(fieldExistsByFQN(items, 'table.parent1.nonexistent')).toBe(true); // prefix match
-      expect(fieldExistsByFQN(items, 'table.nonexistent')).toBe(false);
+      expect(fieldExistsByFQN(items, TABLE_NONEXISTENT)).toBe(false);
     });
   });
 
   describe('getParentKeysToExpand', () => {
     it('should return empty array when field is at root level', () => {
       const items = [
-        { fullyQualifiedName: 'table.column1' },
-        { fullyQualifiedName: 'table.column2' },
+        { fullyQualifiedName: TABLE_COLUMN1 },
+        { fullyQualifiedName: TABLE_COLUMN2 },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
-      expect(getParentKeysToExpand(items, 'table.column2')).toEqual([]);
+      expect(getParentKeysToExpand(items, TABLE_COLUMN1)).toEqual([]);
+      expect(getParentKeysToExpand(items, TABLE_COLUMN2)).toEqual([]);
     });
 
     it('should return parent keys for field in one level of nesting', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.parent',
+          fullyQualifiedName: TABLE_PARENT,
           children: [
-            { fullyQualifiedName: 'table.parent.child1', children: [] },
-            { fullyQualifiedName: 'table.parent.child2', children: [] },
+            { fullyQualifiedName: TABLE_PARENT_CHILD1, children: [] },
+            { fullyQualifiedName: TABLE_PARENT_CHILD2, children: [] },
           ],
         },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
-        'table.parent',
+      expect(getParentKeysToExpand(items, TABLE_PARENT_CHILD1)).toEqual([
+        TABLE_PARENT,
       ]);
-      expect(getParentKeysToExpand(items, 'table.parent.child2')).toEqual([
-        'table.parent',
+      expect(getParentKeysToExpand(items, TABLE_PARENT_CHILD2)).toEqual([
+        TABLE_PARENT,
       ]);
     });
 
     it('should return all parent keys for deeply nested field', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.level1',
+          fullyQualifiedName: TABLE_LEVEL1,
           children: [
             {
-              fullyQualifiedName: 'table.level1.level2',
+              fullyQualifiedName: TABLE_LEVEL1_LEVEL2,
               children: [
                 {
-                  fullyQualifiedName: 'table.level1.level2.level3',
+                  fullyQualifiedName: TABLE_LEVEL1_LEVEL2_LEVEL3,
                   children: [
                     {
-                      fullyQualifiedName: 'table.level1.level2.level3.level4',
+                      fullyQualifiedName: TABLE_LEVEL1_LEVEL2_LEVEL3_LEVEL4,
                       children: [],
                     },
                   ],
@@ -1883,31 +1909,31 @@ describe('TableUtils', () => {
       ];
 
       expect(
-        getParentKeysToExpand(items, 'table.level1.level2.level3.level4')
+        getParentKeysToExpand(items, TABLE_LEVEL1_LEVEL2_LEVEL3_LEVEL4)
       ).toEqual([
-        'table.level1',
-        'table.level1.level2',
-        'table.level1.level2.level3',
+        TABLE_LEVEL1,
+        TABLE_LEVEL1_LEVEL2,
+        TABLE_LEVEL1_LEVEL2_LEVEL3,
       ]);
     });
 
     it('should return empty array when field does not exist', () => {
       const items = [
-        { fullyQualifiedName: 'table.column1' },
+        { fullyQualifiedName: TABLE_COLUMN1 },
         {
-          fullyQualifiedName: 'table.parent',
-          children: [{ fullyQualifiedName: 'table.parent.child1' }],
+          fullyQualifiedName: TABLE_PARENT,
+          children: [{ fullyQualifiedName: TABLE_PARENT_CHILD1 }],
         },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.nonexistent')).toEqual([]);
+      expect(getParentKeysToExpand(items, TABLE_NONEXISTENT)).toEqual([]);
       expect(getParentKeysToExpand(items, 'table.parent.nonexistent')).toEqual(
         []
       );
     });
 
     it('should return empty array for empty items array', () => {
-      expect(getParentKeysToExpand([], 'table.column1')).toEqual([]);
+      expect(getParentKeysToExpand([], TABLE_COLUMN1)).toEqual([]);
     });
 
     it('should use name as fallback when fullyQualifiedName is undefined', () => {
@@ -1916,17 +1942,14 @@ describe('TableUtils', () => {
           name: 'parent',
           fullyQualifiedName: undefined,
           children: [
-            { fullyQualifiedName: 'table.parent.child1', children: [] },
-            { fullyQualifiedName: 'table.parent.child2', children: [] },
+            { fullyQualifiedName: TABLE_PARENT_CHILD1, children: [] },
+            { fullyQualifiedName: TABLE_PARENT_CHILD2, children: [] },
           ],
         },
       ];
 
       expect(
-        getParentKeysToExpand(
-          items as ParentFieldObject[],
-          'table.parent.child1'
-        )
+        getParentKeysToExpand(items as ParentFieldObject[], TABLE_PARENT_CHILD1)
       ).toEqual(['parent']);
     });
 
@@ -1947,17 +1970,17 @@ describe('TableUtils', () => {
     it('should handle multiple parents with different children', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.parent1',
+          fullyQualifiedName: TABLE_PARENT1,
           children: [
-            { fullyQualifiedName: 'table.parent1.child1', children: [] },
-            { fullyQualifiedName: 'table.parent1.child2', children: [] },
+            { fullyQualifiedName: TABLE_PARENT1_CHILD1, children: [] },
+            { fullyQualifiedName: TABLE_PARENT1_CHILD2, children: [] },
           ],
         },
         {
-          fullyQualifiedName: 'table.parent2',
+          fullyQualifiedName: TABLE_PARENT2,
           children: [
             {
-              fullyQualifiedName: 'table.parent2.child1',
+              fullyQualifiedName: TABLE_PARENT2_CHILD1,
               children: [
                 {
                   fullyQualifiedName: 'table.parent2.child1.grandchild',
@@ -1969,39 +1992,37 @@ describe('TableUtils', () => {
         },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.parent1.child1')).toEqual([
-        'table.parent1',
+      expect(getParentKeysToExpand(items, TABLE_PARENT1_CHILD1)).toEqual([
+        TABLE_PARENT1,
       ]);
       expect(
         getParentKeysToExpand(items, 'table.parent2.child1.grandchild')
-      ).toEqual(['table.parent2', 'table.parent2.child1']);
+      ).toEqual([TABLE_PARENT2, TABLE_PARENT2_CHILD1]);
     });
 
     it('should handle parent keys parameter correctly', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.parent',
-          children: [
-            { fullyQualifiedName: 'table.parent.child1', children: [] },
-          ],
+          fullyQualifiedName: TABLE_PARENT,
+          children: [{ fullyQualifiedName: TABLE_PARENT_CHILD1, children: [] }],
         },
       ];
 
       const initialParentKeys = ['table.root'];
 
       expect(
-        getParentKeysToExpand(items, 'table.parent.child1', initialParentKeys)
-      ).toEqual(['table.root', 'table.parent']);
+        getParentKeysToExpand(items, TABLE_PARENT_CHILD1, initialParentKeys)
+      ).toEqual(['table.root', TABLE_PARENT]);
     });
 
     it('should return correct path when target is direct child', () => {
       const items = [
         {
-          fullyQualifiedName: 'table.parent',
+          fullyQualifiedName: TABLE_PARENT,
           children: [
-            { fullyQualifiedName: 'table.parent.child1', children: [] },
+            { fullyQualifiedName: TABLE_PARENT_CHILD1, children: [] },
             {
-              fullyQualifiedName: 'table.parent.child2',
+              fullyQualifiedName: TABLE_PARENT_CHILD2,
               children: [
                 {
                   fullyQualifiedName: 'table.parent.child2.grandchild',
@@ -2014,41 +2035,41 @@ describe('TableUtils', () => {
       ];
 
       // Direct child should return parent
-      expect(getParentKeysToExpand(items, 'table.parent.child1')).toEqual([
-        'table.parent',
+      expect(getParentKeysToExpand(items, TABLE_PARENT_CHILD1)).toEqual([
+        TABLE_PARENT,
       ]);
 
       // Nested child should return all parents
       expect(
         getParentKeysToExpand(items, 'table.parent.child2.grandchild')
-      ).toEqual(['table.parent', 'table.parent.child2']);
+      ).toEqual([TABLE_PARENT, TABLE_PARENT_CHILD2]);
     });
 
     it('should handle items without children property', () => {
       const items = [
-        { fullyQualifiedName: 'table.column1' },
-        { fullyQualifiedName: 'table.column2' },
+        { fullyQualifiedName: TABLE_COLUMN1 },
+        { fullyQualifiedName: TABLE_COLUMN2 },
       ];
 
-      expect(getParentKeysToExpand(items, 'table.column1')).toEqual([]);
+      expect(getParentKeysToExpand(items, TABLE_COLUMN1)).toEqual([]);
     });
   });
 
   describe('getHighlightedRowClassName', () => {
-    it('should return "highlighted-row" when highlightedFqn matches record fullyQualifiedName', () => {
+    it('should return HIGHLIGHTED_ROW when highlightedFqn matches record fullyQualifiedName', () => {
       const record = {
-        fullyQualifiedName: 'test.database.schema.table.column1',
+        fullyQualifiedName: TEST_DATABASE_SCHEMA_TABLE_COLUMN1,
       };
-      const highlightedFqn = 'test.database.schema.table.column1';
+      const highlightedFqn = TEST_DATABASE_SCHEMA_TABLE_COLUMN1;
 
       const result = getHighlightedRowClassName(record, highlightedFqn);
 
-      expect(result).toBe('highlighted-row');
+      expect(result).toBe(HIGHLIGHTED_ROW);
     });
 
     it('should return empty string when highlightedFqn does not match record fullyQualifiedName', () => {
       const record = {
-        fullyQualifiedName: 'test.database.schema.table.column1',
+        fullyQualifiedName: TEST_DATABASE_SCHEMA_TABLE_COLUMN1,
       };
       const highlightedFqn = 'test.database.schema.table.column2';
 
@@ -2059,7 +2080,7 @@ describe('TableUtils', () => {
 
     it('should return empty string when highlightedFqn is undefined', () => {
       const record = {
-        fullyQualifiedName: 'test.database.schema.table.column1',
+        fullyQualifiedName: TEST_DATABASE_SCHEMA_TABLE_COLUMN1,
       };
 
       const result = getHighlightedRowClassName(record);
@@ -2069,7 +2090,7 @@ describe('TableUtils', () => {
 
     it('should return empty string when highlightedFqn is empty string', () => {
       const record = {
-        fullyQualifiedName: 'test.database.schema.table.column1',
+        fullyQualifiedName: TEST_DATABASE_SCHEMA_TABLE_COLUMN1,
       };
 
       const result = getHighlightedRowClassName(record, '');
@@ -2081,7 +2102,7 @@ describe('TableUtils', () => {
       const record = {
         fullyQualifiedName: undefined,
       };
-      const highlightedFqn = 'test.database.schema.table.column1';
+      const highlightedFqn = TEST_DATABASE_SCHEMA_TABLE_COLUMN1;
 
       const result = getHighlightedRowClassName(record, highlightedFqn);
 
@@ -2101,13 +2122,13 @@ describe('TableUtils', () => {
     it('should work with Column type', () => {
       const column = {
         name: 'column1',
-        fullyQualifiedName: 'test.database.schema.table.column1',
+        fullyQualifiedName: TEST_DATABASE_SCHEMA_TABLE_COLUMN1,
         dataType: 'STRING',
       } as Column;
 
       expect(
-        getHighlightedRowClassName(column, 'test.database.schema.table.column1')
-      ).toBe('highlighted-row');
+        getHighlightedRowClassName(column, TEST_DATABASE_SCHEMA_TABLE_COLUMN1)
+      ).toBe(HIGHLIGHTED_ROW);
       expect(
         getHighlightedRowClassName(column, 'test.database.schema.table.column2')
       ).toBe('');
@@ -2121,7 +2142,7 @@ describe('TableUtils', () => {
       };
 
       expect(getHighlightedRowClassName(field, 'test.index.field1')).toBe(
-        'highlighted-row'
+        HIGHLIGHTED_ROW
       );
       expect(getHighlightedRowClassName(field, 'test.index.field2')).toBe('');
     });
@@ -2130,7 +2151,7 @@ describe('TableUtils', () => {
       const record = {
         fullyQualifiedName: 'Test.Database.Schema.Table.Column1',
       };
-      const highlightedFqn = 'test.database.schema.table.column1';
+      const highlightedFqn = TEST_DATABASE_SCHEMA_TABLE_COLUMN1;
 
       const result = getHighlightedRowClassName(record, highlightedFqn);
 
@@ -2139,15 +2160,15 @@ describe('TableUtils', () => {
 
     it('should handle records with additional properties', () => {
       const record = {
-        fullyQualifiedName: 'test.database.schema.table.column1',
+        fullyQualifiedName: TEST_DATABASE_SCHEMA_TABLE_COLUMN1,
         name: 'column1',
         description: 'Test column',
         tags: [],
       };
 
       expect(
-        getHighlightedRowClassName(record, 'test.database.schema.table.column1')
-      ).toBe('highlighted-row');
+        getHighlightedRowClassName(record, TEST_DATABASE_SCHEMA_TABLE_COLUMN1)
+      ).toBe(HIGHLIGHTED_ROW);
     });
   });
 
@@ -2156,18 +2177,18 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'column1',
-          fullyQualifiedName: 'table.column1',
+          fullyQualifiedName: TABLE_COLUMN1,
           dataType: DataType.String,
         } as Column,
         {
           name: 'column2',
-          fullyQualifiedName: 'table.column2',
+          fullyQualifiedName: TABLE_COLUMN2,
           dataType: DataType.Int,
         } as Column,
       ];
 
       const newExtension = { customProperty: 'value1', anotherProp: 123 };
-      updateFieldExtension('table.column1', newExtension, fields);
+      updateFieldExtension(TABLE_COLUMN1, newExtension, fields);
 
       expect(fields[0].extension).toEqual(newExtension);
       expect(fields[1].extension).toBeUndefined();
@@ -2177,7 +2198,7 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'parentColumn',
-          fullyQualifiedName: 'table.parentColumn',
+          fullyQualifiedName: TABLE_PARENTCOLUMN,
           dataType: DataType.Struct,
           children: [
             {
@@ -2210,17 +2231,17 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'level1',
-          fullyQualifiedName: 'table.level1',
+          fullyQualifiedName: TABLE_LEVEL1,
           dataType: DataType.Struct,
           children: [
             {
               name: 'level2',
-              fullyQualifiedName: 'table.level1.level2',
+              fullyQualifiedName: TABLE_LEVEL1_LEVEL2,
               dataType: DataType.Struct,
               children: [
                 {
                   name: 'level3',
-                  fullyQualifiedName: 'table.level1.level2.level3',
+                  fullyQualifiedName: TABLE_LEVEL1_LEVEL2_LEVEL3,
                   dataType: DataType.String,
                 } as Column,
               ],
@@ -2230,7 +2251,7 @@ describe('TableUtils', () => {
       ];
 
       const newExtension = { deepProperty: 'deepValue' };
-      updateFieldExtension('table.level1.level2.level3', newExtension, fields);
+      updateFieldExtension(TABLE_LEVEL1_LEVEL2_LEVEL3, newExtension, fields);
 
       expect(fields[0].children?.[0].children?.[0].extension).toEqual(
         newExtension
@@ -2241,7 +2262,7 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'column1',
-          fullyQualifiedName: 'table.column1',
+          fullyQualifiedName: TABLE_COLUMN1,
           dataType: DataType.String,
           extension: { existing: 'value' },
         } as Column,
@@ -2250,7 +2271,7 @@ describe('TableUtils', () => {
       const originalExtension = { ...fields[0].extension };
       const newExtension = { newProperty: 'newValue' };
 
-      updateFieldExtension('table.nonexistent', newExtension, fields);
+      updateFieldExtension(TABLE_NONEXISTENT, newExtension, fields);
 
       expect(fields[0].extension).toEqual(originalExtension);
     });
@@ -2260,7 +2281,7 @@ describe('TableUtils', () => {
       const newExtension = { property: 'value' };
 
       expect(() => {
-        updateFieldExtension('table.column1', newExtension, fields);
+        updateFieldExtension(TABLE_COLUMN1, newExtension, fields);
       }).not.toThrow();
     });
 
@@ -2268,7 +2289,7 @@ describe('TableUtils', () => {
       const newExtension = { property: 'value' };
 
       expect(() => {
-        updateFieldExtension('table.column1', newExtension);
+        updateFieldExtension(TABLE_COLUMN1, newExtension);
       }).not.toThrow();
     });
 
@@ -2276,14 +2297,14 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'column1',
-          fullyQualifiedName: 'table.column1',
+          fullyQualifiedName: TABLE_COLUMN1,
           dataType: DataType.String,
           extension: { oldProperty: 'oldValue' },
         } as Column,
       ];
 
       const newExtension = { newProperty: 'newValue', anotherProp: 456 };
-      updateFieldExtension('table.column1', newExtension, fields);
+      updateFieldExtension(TABLE_COLUMN1, newExtension, fields);
 
       expect(fields[0].extension).toEqual(newExtension);
       expect(fields[0].extension).not.toHaveProperty('oldProperty');
@@ -2293,12 +2314,12 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'column1',
-          fullyQualifiedName: 'table.column1',
+          fullyQualifiedName: TABLE_COLUMN1,
           dataType: DataType.String,
         } as Column,
         {
           name: 'parentColumn',
-          fullyQualifiedName: 'table.parentColumn',
+          fullyQualifiedName: TABLE_PARENTCOLUMN,
           dataType: DataType.Struct,
           children: [
             {
@@ -2311,7 +2332,7 @@ describe('TableUtils', () => {
       ];
 
       const newExtension = { property: 'value' };
-      updateFieldExtension('table.column1', newExtension, fields);
+      updateFieldExtension(TABLE_COLUMN1, newExtension, fields);
 
       expect(fields[0].extension).toEqual(newExtension);
       expect(fields[1].children?.[0].extension).toBeUndefined();
@@ -2363,14 +2384,14 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'column1',
-          fullyQualifiedName: 'table.column1',
+          fullyQualifiedName: TABLE_COLUMN1,
           dataType: DataType.String,
           children: undefined,
         } as Column,
       ];
 
       const newExtension = { property: 'value' };
-      updateFieldExtension('table.column1', newExtension, fields);
+      updateFieldExtension(TABLE_COLUMN1, newExtension, fields);
 
       expect(fields[0].extension).toEqual(newExtension);
     });
@@ -2379,14 +2400,14 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'parentColumn',
-          fullyQualifiedName: 'table.parentColumn',
+          fullyQualifiedName: TABLE_PARENTCOLUMN,
           dataType: DataType.Struct,
           children: [],
         } as Column,
       ];
 
       const newExtension = { property: 'value' };
-      updateFieldExtension('table.parentColumn', newExtension, fields);
+      updateFieldExtension(TABLE_PARENTCOLUMN, newExtension, fields);
 
       expect(fields[0].extension).toEqual(newExtension);
     });
@@ -2395,7 +2416,7 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'column1',
-          fullyQualifiedName: 'table.column1',
+          fullyQualifiedName: TABLE_COLUMN1,
           dataType: DataType.String,
         } as Column,
       ];
@@ -2415,7 +2436,7 @@ describe('TableUtils', () => {
         },
       };
 
-      updateFieldExtension('table.column1', complexExtension, fields);
+      updateFieldExtension(TABLE_COLUMN1, complexExtension, fields);
 
       expect(fields[0].extension).toEqual(complexExtension);
       expect(fields[0].extension?.metadata?.source).toBe('external');
@@ -2426,29 +2447,29 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'parent1',
-          fullyQualifiedName: 'table.parent1',
+          fullyQualifiedName: TABLE_PARENT1,
           dataType: DataType.Struct,
           children: [
             {
               name: 'child1',
-              fullyQualifiedName: 'table.parent1.child1',
+              fullyQualifiedName: TABLE_PARENT1_CHILD1,
               dataType: DataType.String,
             } as Column,
             {
               name: 'child2',
-              fullyQualifiedName: 'table.parent1.child2',
+              fullyQualifiedName: TABLE_PARENT1_CHILD2,
               dataType: DataType.Int,
             } as Column,
           ],
         } as Column,
         {
           name: 'parent2',
-          fullyQualifiedName: 'table.parent2',
+          fullyQualifiedName: TABLE_PARENT2,
           dataType: DataType.Struct,
           children: [
             {
               name: 'child1',
-              fullyQualifiedName: 'table.parent2.child1',
+              fullyQualifiedName: TABLE_PARENT2_CHILD1,
               dataType: DataType.String,
             } as Column,
           ],
@@ -2456,7 +2477,7 @@ describe('TableUtils', () => {
       ];
 
       const newExtension = { targetProperty: 'targetValue' };
-      updateFieldExtension('table.parent1.child2', newExtension, fields);
+      updateFieldExtension(TABLE_PARENT1_CHILD2, newExtension, fields);
 
       expect(fields[0].children?.[1].extension).toEqual(newExtension);
       expect(fields[0].children?.[0].extension).toBeUndefined();
@@ -2469,14 +2490,14 @@ describe('TableUtils', () => {
       const fields: Column[] = [
         {
           name: 'column1',
-          fullyQualifiedName: 'table.column1',
+          fullyQualifiedName: TABLE_COLUMN1,
           dataType: DataType.String,
           extension: { existing: 'value' },
         } as Column,
       ];
 
       const emptyExtension = {};
-      updateFieldExtension('table.column1', emptyExtension, fields);
+      updateFieldExtension(TABLE_COLUMN1, emptyExtension, fields);
 
       expect(fields[0].extension).toEqual(emptyExtension);
     });
@@ -2488,7 +2509,7 @@ describe('getColumnOptionsFromTableColumn', () => {
     const columns = [
       {
         name: 'column1',
-        fullyQualifiedName: 'table.column1',
+        fullyQualifiedName: TABLE_COLUMN1,
         dataType: 'STRING',
         children: [],
       },
@@ -2510,7 +2531,7 @@ describe('getColumnOptionsFromTableColumn', () => {
     const result = getColumnOptionsFromTableColumn(columns, true);
 
     expect(result).toEqual([
-      { label: 'column1', value: 'table.column1' },
+      { label: 'column1', value: TABLE_COLUMN1 },
       { label: 'nested', value: 'table.nested' },
       { label: 'field1', value: 'table.nested.field1' },
     ]);
@@ -2520,7 +2541,7 @@ describe('getColumnOptionsFromTableColumn', () => {
     const columns = [
       {
         name: 'column1',
-        fullyQualifiedName: 'table.column1',
+        fullyQualifiedName: TABLE_COLUMN1,
         dataType: 'STRING',
         children: [],
       },
@@ -2535,7 +2556,7 @@ describe('getColumnOptionsFromTableColumn', () => {
     const columns = [
       {
         name: 'column1',
-        fullyQualifiedName: 'table.column1',
+        fullyQualifiedName: TABLE_COLUMN1,
         dataType: 'STRING',
         children: [],
       },

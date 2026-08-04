@@ -21,6 +21,14 @@ import {
 } from '../../../generated/type/tagLabel';
 import TagsSection from './TagsSection';
 
+const EDIT_ICON_TAGS = 'edit-icon-tags';
+const ASYNC_SELECT_LIST = 'async-select-list';
+const STR_2_LABEL_MORE_LOWERCASE = '+2 label.more-lowercase';
+const LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_TAG_PLURAL =
+  'label.no-entity-assigned - {"entity":"label.tag-plural"}';
+const TAG_SELECTOR_INPUT = 'tag-selector-input';
+const NEW_TAG1_NEW_TAG2 = 'new-tag1, new-tag2';
+
 // Mock @react-awesome-query-builder/antd
 jest.mock('@react-awesome-query-builder/antd', () => ({
   ...jest.requireActual('@react-awesome-query-builder/antd'),
@@ -138,9 +146,9 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
 
         return (
           <div data-testid="tag-selectable-list">
-            <div className="tag-selector" data-testid="async-select-list">
+            <div className="tag-selector" data-testid={ASYNC_SELECT_LIST}>
               <input
-                data-testid="tag-selector-input"
+                data-testid={TAG_SELECTOR_INPUT}
                 value={inputValue}
                 onChange={(e) => {
                   setInputValue(e.target.value);
@@ -224,6 +232,7 @@ jest.mock('../Loader/Loader', () => ({
 }));
 
 // Mock all patch API functions
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../rest/tableAPI', () => ({
   patchTableDetails: jest.fn(),
 }));
@@ -343,14 +352,14 @@ const defaultProps = {
 
 // Helper to click the edit control
 const clickEditControl = () => {
-  const el = screen.getByTestId('edit-icon-tags');
+  const el = screen.getByTestId(EDIT_ICON_TAGS);
   fireEvent.click(el);
 };
 
 const enterEditMode = async () => {
   clickEditControl();
   await waitFor(() => {
-    expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
+    expect(screen.getByTestId(ASYNC_SELECT_LIST)).toBeInTheDocument();
   });
 };
 
@@ -393,7 +402,7 @@ describe('TagsSection', () => {
       render(<TagsSection {...defaultProps} />);
 
       // Click show more button to expand
-      const showMoreButton = screen.getByText('+2 label.more-lowercase');
+      const showMoreButton = screen.getByText(STR_2_LABEL_MORE_LOWERCASE);
       fireEvent.click(showMoreButton);
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
@@ -416,14 +425,14 @@ describe('TagsSection', () => {
     it('should show show more button when there are more tags', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByText('+2 label.more-lowercase')).toBeInTheDocument();
+      expect(screen.getByText(STR_2_LABEL_MORE_LOWERCASE)).toBeInTheDocument();
     });
 
     it('should show show less button when expanded', () => {
       render(<TagsSection {...defaultProps} />);
 
       // Click show more button to expand
-      const showMoreButton = screen.getByText('+2 label.more-lowercase');
+      const showMoreButton = screen.getByText(STR_2_LABEL_MORE_LOWERCASE);
       fireEvent.click(showMoreButton);
 
       expect(screen.getByText('label.less')).toBeInTheDocument();
@@ -457,9 +466,7 @@ describe('TagsSection', () => {
       render(<TagsSection {...defaultProps} tags={[]} />);
 
       expect(
-        screen.getByText(
-          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
-        )
+        screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_TAG_PLURAL)
       ).toBeInTheDocument();
     });
 
@@ -468,23 +475,19 @@ describe('TagsSection', () => {
 
       // initial empty state
       expect(
-        screen.getByText(
-          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
-        )
+        screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_TAG_PLURAL)
       ).toBeInTheDocument();
 
       // open edit popover
       clickEditControl();
 
       await waitFor(() => {
-        expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
+        expect(screen.getByTestId(ASYNC_SELECT_LIST)).toBeInTheDocument();
       });
 
       // placeholder should remain visible even when popover is open
       expect(
-        screen.getByText(
-          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
-        )
+        screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_TAG_PLURAL)
       ).toBeInTheDocument();
     });
 
@@ -509,26 +512,26 @@ describe('TagsSection', () => {
 
       // Wait for the component to update after canceling edit mode
       await waitFor(() => {
-        expect(screen.getByTestId('edit-icon-tags')).toBeInTheDocument();
+        expect(screen.getByTestId(EDIT_ICON_TAGS)).toBeInTheDocument();
       });
     });
 
     it('should not show edit button when showEditButton is false', () => {
       render(<TagsSection {...defaultProps} showEditButton={false} />);
 
-      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(EDIT_ICON_TAGS)).not.toBeInTheDocument();
     });
 
     it('should not show edit button when hasPermission is false', () => {
       render(<TagsSection {...defaultProps} hasPermission={false} />);
 
-      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(EDIT_ICON_TAGS)).not.toBeInTheDocument();
     });
 
     it('should not show edit button when no tags and no permission', () => {
       render(<TagsSection {...defaultProps} hasPermission={false} tags={[]} />);
 
-      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(EDIT_ICON_TAGS)).not.toBeInTheDocument();
     });
   });
 
@@ -538,7 +541,7 @@ describe('TagsSection', () => {
 
       clickEditControl();
 
-      expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
+      expect(screen.getByTestId(ASYNC_SELECT_LIST)).toBeInTheDocument();
     });
 
     it('should show AsyncSelectList with correct props in edit mode', () => {
@@ -546,7 +549,7 @@ describe('TagsSection', () => {
 
       clickEditControl();
 
-      const asyncSelectList = screen.getByTestId('async-select-list');
+      const asyncSelectList = screen.getByTestId(ASYNC_SELECT_LIST);
 
       expect(asyncSelectList).toBeInTheDocument();
       expect(asyncSelectList).toHaveClass('tag-selector');
@@ -559,10 +562,10 @@ describe('TagsSection', () => {
 
       await enterEditMode();
 
-      const tagInput = screen.getByTestId('tag-selector-input');
-      fireEvent.change(tagInput, { target: { value: 'new-tag1, new-tag2' } });
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
+      fireEvent.change(tagInput, { target: { value: NEW_TAG1_NEW_TAG2 } });
 
-      expect(tagInput).toHaveValue('new-tag1, new-tag2');
+      expect(tagInput).toHaveValue(NEW_TAG1_NEW_TAG2);
     });
 
     it('should initialize with current tags in edit mode', async () => {
@@ -570,7 +573,7 @@ describe('TagsSection', () => {
 
       await enterEditMode();
 
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
 
       expect(tagInput).toHaveValue('tag1, tag2, tag3, tag4, tag5');
     });
@@ -585,8 +588,8 @@ describe('TagsSection', () => {
       await enterEditMode();
 
       // Modify tags
-      const tagInput = screen.getByTestId('tag-selector-input');
-      fireEvent.change(tagInput, { target: { value: 'new-tag1, new-tag2' } });
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
+      fireEvent.change(tagInput, { target: { value: NEW_TAG1_NEW_TAG2 } });
 
       // Save happens on selection change automatically via onTagsUpdate callback
 
@@ -605,7 +608,7 @@ describe('TagsSection', () => {
       await enterEditMode();
 
       // Modify tags to ensure a non-empty JSON patch
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
       fireEvent.change(tagInput, { target: { value: 'changed-tag' } });
 
       // Save happens on selection change automatically
@@ -643,7 +646,7 @@ describe('TagsSection', () => {
       await enterEditMode();
 
       // Modify tags
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
       // Save happens on selection change automatically
@@ -673,7 +676,7 @@ describe('TagsSection', () => {
 
       await enterEditMode();
 
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
       clickSave();
@@ -703,7 +706,7 @@ describe('TagsSection', () => {
 
       await enterEditMode();
 
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
       clickSave();
@@ -729,7 +732,7 @@ describe('TagsSection', () => {
 
       await enterEditMode();
 
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
       clickSave();
@@ -754,7 +757,7 @@ describe('TagsSection', () => {
 
       await enterEditMode();
 
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
       clickSave();
@@ -823,9 +826,7 @@ describe('TagsSection', () => {
       render(<TagsSection {...defaultProps} tags={[]} />);
 
       expect(
-        screen.getByText(
-          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
-        )
+        screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_TAG_PLURAL)
       ).toBeInTheDocument();
     });
 
@@ -833,9 +834,7 @@ describe('TagsSection', () => {
       render(<TagsSection {...defaultProps} tags={undefined} />);
 
       expect(
-        screen.getByText(
-          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
-        )
+        screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_TAG_PLURAL)
       ).toBeInTheDocument();
     });
 
@@ -906,7 +905,7 @@ describe('TagsSection', () => {
       await enterEditMode();
 
       // Modify tags
-      const tagInput = screen.getByTestId('tag-selector-input');
+      const tagInput = screen.getByTestId(TAG_SELECTOR_INPUT);
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
       // Save happens on selection change automatically

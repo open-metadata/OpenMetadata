@@ -25,6 +25,8 @@ import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClas
 import AddToBundleSuiteModal from './AddToBundleSuiteModal.component';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
 
+const BUNDLE_SUITE_SELECT_OPTION = 'bundle-suite-select-option';
+const ADD_BUTTON = 'add-button';
 type MockSelectProps = {
   onChange?: (value: string | undefined) => void;
   onSearch?: (value: string) => void;
@@ -227,7 +229,7 @@ describe('AddToBundleSuiteModal', () => {
   it('should disable add button when no bundle suite is selected', () => {
     render(<AddToBundleSuiteModal {...mockProps} />);
 
-    const addButton = screen.getByTestId('add-button');
+    const addButton = screen.getByTestId(ADD_BUTTON);
 
     expect(addButton).toBeDisabled();
   });
@@ -240,7 +242,7 @@ describe('AddToBundleSuiteModal', () => {
 
     render(<AddToBundleSuiteModal {...propsWithNoTestCases} />);
 
-    const addButton = screen.getByTestId('add-button');
+    const addButton = screen.getByTestId(ADD_BUTTON);
 
     expect(addButton).toBeDisabled();
   });
@@ -253,7 +255,7 @@ describe('AddToBundleSuiteModal', () => {
 
     render(<AddToBundleSuiteModal {...propsWithNoTestCases} />);
 
-    const addButton = screen.getByTestId('add-button');
+    const addButton = screen.getByTestId(ADD_BUTTON);
 
     await act(async () => {
       fireEvent.click(addButton);
@@ -267,12 +269,12 @@ describe('AddToBundleSuiteModal', () => {
     render(<AddToBundleSuiteModal {...mockProps} />);
 
     const selectOptionBtn = await screen.findByTestId(
-      'bundle-suite-select-option'
+      BUNDLE_SUITE_SELECT_OPTION
     );
 
     fireEvent.click(selectOptionBtn);
 
-    const addButton = screen.getByTestId('add-button');
+    const addButton = screen.getByTestId(ADD_BUTTON);
 
     expect(addButton).not.toBeDisabled();
   });
@@ -280,9 +282,9 @@ describe('AddToBundleSuiteModal', () => {
   it('should call API and handle success flow', async () => {
     render(<AddToBundleSuiteModal {...mockProps} />);
 
-    fireEvent.click(await screen.findByTestId('bundle-suite-select-option'));
+    fireEvent.click(await screen.findByTestId(BUNDLE_SUITE_SELECT_OPTION));
 
-    const addButton = screen.getByTestId('add-button');
+    const addButton = screen.getByTestId(ADD_BUTTON);
 
     await act(async () => {
       fireEvent.click(addButton);
@@ -326,7 +328,7 @@ describe('AddToBundleSuiteModal', () => {
   it('should not call API if no suite selected', async () => {
     render(<AddToBundleSuiteModal {...mockProps} />);
 
-    const addButton = screen.getByTestId('add-button');
+    const addButton = screen.getByTestId(ADD_BUTTON);
 
     await act(async () => {
       fireEvent.click(addButton);
@@ -338,10 +340,10 @@ describe('AddToBundleSuiteModal', () => {
   it('should cancel if no test cases selected', async () => {
     render(<AddToBundleSuiteModal {...mockProps} selectedTestCases={[]} />);
 
-    fireEvent.click(await screen.findByTestId('bundle-suite-select-option'));
+    fireEvent.click(await screen.findByTestId(BUNDLE_SUITE_SELECT_OPTION));
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('add-button'));
+      fireEvent.click(screen.getByTestId(ADD_BUTTON));
     });
 
     expect(mockOnCancel).toHaveBeenCalled();
@@ -352,10 +354,10 @@ describe('AddToBundleSuiteModal', () => {
     it('should navigate using observabilityRouterClassBase.getTestSuitePath after success', async () => {
       render(<AddToBundleSuiteModal {...mockProps} />);
 
-      fireEvent.click(await screen.findByTestId('bundle-suite-select-option'));
+      fireEvent.click(await screen.findByTestId(BUNDLE_SUITE_SELECT_OPTION));
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-button'));
+        fireEvent.click(screen.getByTestId(ADD_BUTTON));
       });
 
       const expectedFqn = mockTestSuites[0].fullyQualifiedName ?? '';

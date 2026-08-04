@@ -33,6 +33,14 @@ import {
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
 
+const PII_SENSITIVE = 'PII.Sensitive' as const;
+const SVC_DB_SCH_T = 'svc.db.sch.t' as const;
+const E_TABLE_SVC_DB_SCH_T = '<#E::table::svc.db.sch.t>' as const;
+const E_TABLE_SVC_DB_SCH_T_1 =
+  '<#E::table::svc.db.sch.t::columns::email>' as const;
+const GLOSSARY_TERM_EXAMPLE = 'GlossaryTerm.example' as const;
+const SVC_DB_SCH_T2 = 'svc.db.sch.t2' as const;
+
 const makeTag = (tagFQN: string): TagLabel => ({
   tagFQN,
   source: TagSource.Classification,
@@ -57,18 +65,18 @@ describe('transformTestCaseFormData', () => {
         testLevel: TestLevel.TABLE,
         testTypeId: 'tableRowCountToEqual',
         testName: 'my_test',
-        tags: [makeTag('PII.Sensitive')],
+        tags: [makeTag(PII_SENSITIVE)],
         glossaryTerms: [makeTag('g.term')],
         computePassedFailedRowCount: true,
       },
       {
         selectedTestLevel: TestLevel.TABLE,
-        selectedTableData: makeTable('svc.db.sch.t'),
+        selectedTableData: makeTable(SVC_DB_SCH_T),
       }
     );
 
     expect(result.name).toBe('my_test');
-    expect(result.entityLink).toBe('<#E::table::svc.db.sch.t>');
+    expect(result.entityLink).toBe(E_TABLE_SVC_DB_SCH_T);
     expect(result.testDefinition).toBe('tableRowCountToEqual');
     expect(result.tags).toHaveLength(2);
     expect(result.computePassedFailedRowCount).toBe(true);
@@ -80,11 +88,11 @@ describe('transformTestCaseFormData', () => {
       {
         selectedTestLevel: TestLevel.COLUMN,
         selectedColumn: 'email',
-        selectedTableData: makeTable('svc.db.sch.t'),
+        selectedTableData: makeTable(SVC_DB_SCH_T),
       }
     );
 
-    expect(result.entityLink).toBe('<#E::table::svc.db.sch.t::columns::email>');
+    expect(result.entityLink).toBe(E_TABLE_SVC_DB_SCH_T_1);
   });
 
   it('uses ctx.selectedTable FQN when selectedTableData is undefined', () => {
@@ -225,7 +233,7 @@ describe('buildTestSuitePipelinePayload', () => {
       {
         testSuite: makeTestSuite('s1', 'suite.fqn'),
         createdTestCaseName: 'tc1',
-        selectedTable: 'svc.db.sch.t',
+        selectedTable: SVC_DB_SCH_T,
       }
     );
 
@@ -265,7 +273,7 @@ describe('buildEditDefaults', () => {
       name: 'my_test',
       displayName: 'My Test',
       description: 'a description',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: {
         id: 'def-1',
         name: 'tableRowCountToEqual',
@@ -281,8 +289,8 @@ describe('buildEditDefaults', () => {
 
     expect(result.testLevel).toBe(TestLevel.TABLE);
     expect(result.selectedTable).toEqual({
-      id: 'svc.db.sch.t',
-      label: 'svc.db.sch.t',
+      id: SVC_DB_SCH_T,
+      label: SVC_DB_SCH_T,
     });
     expect(result.selectedColumn).toBeUndefined();
     expect(result.testTypeId).toEqual({
@@ -302,7 +310,7 @@ describe('buildEditDefaults', () => {
   it('sets selectedColumn and COLUMN testLevel for a column-level entityLink', () => {
     const testCase = {
       name: 'col_test',
-      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      entityLink: E_TABLE_SVC_DB_SCH_T_1,
       testDefinition: {
         id: 'def-2',
         name: 'columnValuesToBeNotNull',
@@ -323,8 +331,8 @@ describe('buildEditDefaults', () => {
 
     expect(result.testLevel).toBe(TestLevel.COLUMN);
     expect(result.selectedTable).toEqual({
-      id: 'svc.db.sch.t',
-      label: 'svc.db.sch.t',
+      id: SVC_DB_SCH_T,
+      label: SVC_DB_SCH_T,
     });
     expect(result.selectedColumn).toEqual({ id: 'email', label: 'email' });
   });
@@ -332,7 +340,7 @@ describe('buildEditDefaults', () => {
   it('derives COLUMN_DIMENSION testLevel when dimensionColumns are present', () => {
     const testCase = {
       name: 'dim_test',
-      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      entityLink: E_TABLE_SVC_DB_SCH_T_1,
       testDefinition: {
         id: 'def-2',
         name: 'columnValuesToBeNotNull',
@@ -363,7 +371,7 @@ describe('buildEditDefaults', () => {
   it('parses an Array param JSON value into [{ value }] entries', () => {
     const testCase = {
       name: 'array_param_test',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: {
         id: 'def-3',
         name: 'columnValuesToBeInSet',
@@ -392,7 +400,7 @@ describe('buildEditDefaults', () => {
   it('parses a Boolean param "true" string into a boolean', () => {
     const testCase = {
       name: 'bool_param_test',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: {
         id: 'def-4',
         name: 'someBooleanTest',
@@ -417,7 +425,7 @@ describe('buildEditDefaults', () => {
   it('splits tags into tags/glossaryTerms and filters out the tier tag', () => {
     const testCase = {
       name: 'tag_test',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: {
         id: 'def-1',
         name: 'tableRowCountToEqual',
@@ -426,17 +434,17 @@ describe('buildEditDefaults', () => {
       parameterValues: [],
       tags: [
         { tagFQN: 'Tier.Tier1', source: 'Classification' },
-        { tagFQN: 'PII.Sensitive', source: 'Classification' },
-        { tagFQN: 'GlossaryTerm.example', source: 'Glossary' },
+        { tagFQN: PII_SENSITIVE, source: 'Classification' },
+        { tagFQN: GLOSSARY_TERM_EXAMPLE, source: 'Glossary' },
       ],
     } as unknown as TestCase;
 
     const result = buildEditDefaults(testCase, tableLevelDefinition);
 
     expect(result.tags).toHaveLength(1);
-    expect(result.tags?.[0].tagFQN).toBe('PII.Sensitive');
+    expect(result.tags?.[0].tagFQN).toBe(PII_SENSITIVE);
     expect(result.glossaryTerms).toHaveLength(1);
-    expect(result.glossaryTerms?.[0].tagFQN).toBe('GlossaryTerm.example');
+    expect(result.glossaryTerms?.[0].tagFQN).toBe(GLOSSARY_TERM_EXAMPLE);
     expect(result.tags?.some((tag) => tag.tagFQN === 'Tier.Tier1')).toBe(false);
   });
 
@@ -448,7 +456,7 @@ describe('buildEditDefaults', () => {
     // mirrors.
     const testCase = {
       name: 'tag_shape_test',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: {
         id: 'def-1',
         name: 'tableRowCountToEqual',
@@ -457,13 +465,13 @@ describe('buildEditDefaults', () => {
       parameterValues: [],
       tags: [
         {
-          tagFQN: 'PII.Sensitive',
+          tagFQN: PII_SENSITIVE,
           source: 'Classification',
           name: 'Sensitive',
           displayName: 'Sensitive',
         },
         {
-          tagFQN: 'GlossaryTerm.example',
+          tagFQN: GLOSSARY_TERM_EXAMPLE,
           source: 'Glossary',
           name: 'example',
           displayName: 'Example Term',
@@ -475,7 +483,7 @@ describe('buildEditDefaults', () => {
 
     expect(result.tags).toEqual([
       {
-        tagFQN: 'PII.Sensitive',
+        tagFQN: PII_SENSITIVE,
         source: 'Classification',
         name: 'Sensitive',
         displayName: 'Sensitive',
@@ -483,7 +491,7 @@ describe('buildEditDefaults', () => {
     ]);
     expect(result.glossaryTerms).toEqual([
       {
-        tagFQN: 'GlossaryTerm.example',
+        tagFQN: GLOSSARY_TERM_EXAMPLE,
         source: 'Glossary',
         name: 'example',
         displayName: 'Example Term',
@@ -506,7 +514,7 @@ describe('buildEditDefaults', () => {
       name: 'primitive_shape_test',
       displayName: 'Primitive Shape Test',
       description: 'plain markdown description',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: {
         id: 'def-1',
         name: 'tableRowCountToEqual',
@@ -564,7 +572,7 @@ describe('buildEditDefaults', () => {
   it('prefills dimensionColumns as FormSelectItem[] for a dimension-level test (regression)', () => {
     const testCase = {
       name: 'dim_prefill_test',
-      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      entityLink: E_TABLE_SVC_DB_SCH_T_1,
       testDefinition: {
         id: 'def-2',
         name: 'columnValuesToBeNotNull',
@@ -601,6 +609,7 @@ describe('buildEditDefaults for tableDiff', () => {
     parameterDefinition: [
       { name: 'table2', dataType: TestDataType.String },
       { name: 'keyColumns', dataType: TestDataType.Array },
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       { name: 'table2.keyColumns', dataType: TestDataType.Array },
       { name: 'threshold', dataType: TestDataType.Number },
       { name: 'caseSensitiveColumns', dataType: TestDataType.Boolean },
@@ -609,14 +618,14 @@ describe('buildEditDefaults for tableDiff', () => {
 
   const tableDiffTestCase = {
     name: 'table_diff_test',
-    entityLink: '<#E::table::svc.db.sch.t>',
+    entityLink: E_TABLE_SVC_DB_SCH_T,
     testDefinition: {
       id: 'def-tablediff',
       name: 'tableDiff',
       fullyQualifiedName: 'tableDiff',
     },
     parameterValues: [
-      { name: 'table2', value: 'svc.db.sch.t2' },
+      { name: 'table2', value: SVC_DB_SCH_T2 },
       { name: 'keyColumns', value: '["id","name"]' },
       { name: 'table2.keyColumns', value: '["id2"]' },
       { name: 'threshold', value: '0' },
@@ -629,8 +638,8 @@ describe('buildEditDefaults for tableDiff', () => {
     const result = buildEditDefaults(tableDiffTestCase, tableDiffDefinition);
 
     expect(result.params?.table2).toEqual({
-      id: 'svc.db.sch.t2',
-      label: 'svc.db.sch.t2',
+      id: SVC_DB_SCH_T2,
+      label: SVC_DB_SCH_T2,
     });
   });
 
@@ -671,7 +680,7 @@ describe('buildEditDefaults for tableDiff', () => {
     );
 
     expect(roundTripped).toEqual({
-      table2: 'svc.db.sch.t2',
+      table2: SVC_DB_SCH_T2,
       keyColumns: [{ value: 'id' }, { value: 'name' }],
       'table2.keyColumns': [{ value: 'id2' }],
       threshold: '0',
@@ -712,7 +721,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'row_count_between',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: { fullyQualifiedName: 'tableRowCountToBeBetween' },
       parameterValues: [
         { name: 'minValue', value: '10' },
@@ -739,7 +748,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'col_count_between',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: { fullyQualifiedName: 'tableColumnCountToBeBetween' },
       parameterValues: [
         { name: 'minColValue', value: '1' },
@@ -790,7 +799,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'match_regex',
-      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      entityLink: E_TABLE_SVC_DB_SCH_T_1,
       testDefinition: { fullyQualifiedName: 'columnValuesToMatchRegex' },
       parameterValues: [{ name: 'regex', value: '^[a-z]+@[a-z]+\\.com$' }],
       tags: [],
@@ -849,7 +858,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'enum_param_test',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: { fullyQualifiedName: 'columnValuesSumToBeBetween' },
       parameterValues: [{ name: 'strategy', value: 'AVG' }],
       tags: [],
@@ -872,7 +881,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'column_param_test',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: { fullyQualifiedName: 'columnValuesToBeUnique' },
       parameterValues: [{ name: 'column', value: 'user_id' }],
       tags: [],
@@ -899,7 +908,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'partition_column_test',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: {
         fullyQualifiedName: 'tableRowInsertedCountToBeBetween',
       },
@@ -935,10 +944,10 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'table_diff_regression',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: { fullyQualifiedName: 'tableDiff' },
       parameterValues: [
-        { name: 'table2', value: 'svc.db.sch.t2' },
+        { name: 'table2', value: SVC_DB_SCH_T2 },
         { name: 'keyColumns', value: '["id"]' },
         { name: 'table2.keyColumns', value: '["id2"]' },
       ],
@@ -946,7 +955,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
     } as unknown as TestCase;
 
     expect(roundTrip(testCase, definition)).toEqual({
-      table2: 'svc.db.sch.t2',
+      table2: SVC_DB_SCH_T2,
       keyColumns: [{ value: 'id' }],
       'table2.keyColumns': [{ value: 'id2' }],
     });
@@ -963,7 +972,7 @@ describe('buildEditDefaults round-trip across representative test types', () => 
 
     const testCase = {
       name: 'bool_param_round_trip',
-      entityLink: '<#E::table::svc.db.sch.t>',
+      entityLink: E_TABLE_SVC_DB_SCH_T,
       testDefinition: { fullyQualifiedName: 'columnValuesToBeUnique' },
       parameterValues: [{ name: 'caseSensitiveColumns', value: 'false' }],
       tags: [],

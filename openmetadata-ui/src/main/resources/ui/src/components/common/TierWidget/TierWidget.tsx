@@ -32,6 +32,8 @@ import {
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './TierWidget.less';
+
+const LABEL_TIER = 'label.tier';
 const TierWidget = () => {
   const {
     data: entity,
@@ -74,13 +76,13 @@ const TierWidget = () => {
     tier ? (
       <WidgetEditButton
         data-testid="edit-tier"
-        title={t('label.edit-entity', { entity: t('label.tier') })}
+        title={t('label.edit-entity', { entity: t(LABEL_TIER) })}
         onClick={() => setIsEditing(true)}
       />
     ) : (
       <WidgetPlusButton
         data-testid="add-tier"
-        title={t('label.add-entity', { entity: t('label.tier') })}
+        title={t('label.add-entity', { entity: t(LABEL_TIER) })}
         onClick={() => setIsEditing(true)}
       />
     )
@@ -120,7 +122,7 @@ const TierWidget = () => {
       forceExpand={isEditing}
       headerExtra={headerExtra}
       isExpandDisabled={!tier && !isEditing}
-      title={t('label.tier')}>
+      title={t(LABEL_TIER)}>
       {content}
     </WidgetCard>
   );

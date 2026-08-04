@@ -13,6 +13,8 @@
 import { render } from '@testing-library/react';
 import AppBadge from './Badge.component';
 
+const BADGE_CONTAINER = 'badge-container';
+
 describe('<Badge /> component', () => {
   it('should render badge with label is label is passed', () => {
     const { getByText } = render(<AppBadge label="test" />);
@@ -40,19 +42,19 @@ describe('<Badge /> component', () => {
       <AppBadge className="test-className" icon="test-icon" label="test" />
     );
 
-    expect(queryByTestId('badge-container')).toHaveClass('test-className');
+    expect(queryByTestId(BADGE_CONTAINER)).toHaveClass('test-className');
   });
 
   it('should apply color property to container element if provided', () => {
     const { queryByTestId } = render(<AppBadge color="#000" label="test" />);
 
-    expect(queryByTestId('badge-container')).toHaveStyle({ color: '#000' });
+    expect(queryByTestId(BADGE_CONTAINER)).toHaveStyle({ color: '#000' });
   });
 
   it('should apply bgColor property to container element if provided', () => {
     const { queryByTestId } = render(<AppBadge bgColor="#000" label="test" />);
 
-    expect(queryByTestId('badge-container')).toHaveStyle({
+    expect(queryByTestId(BADGE_CONTAINER)).toHaveStyle({
       'background-color': '#000',
     });
   });

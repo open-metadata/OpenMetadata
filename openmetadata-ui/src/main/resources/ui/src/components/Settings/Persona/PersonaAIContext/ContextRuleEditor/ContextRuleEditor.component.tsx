@@ -63,6 +63,8 @@ import {
 import { useFormDrawerWithHook } from '../../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
+const LABEL_ENTITY_TYPE = 'label.entity-type';
+const LABEL_NAME = 'label.name';
 interface ContextRuleEditorProps {
   existingRuleNames: string[];
   open: boolean;
@@ -326,9 +328,9 @@ export const ContextRuleEditor = ({
           <Field
             isRequired
             error={fieldState.error?.message}
-            label={t('label.name')}>
+            label={t(LABEL_NAME)}>
             <Input
-              aria-label={t('label.name')}
+              aria-label={t(LABEL_NAME)}
               inputDataTestId="context-rule-name"
               isInvalid={Boolean(fieldState.error)}
               value={field.value ?? ''}
@@ -339,7 +341,7 @@ export const ContextRuleEditor = ({
         )}
         rules={{
           required: t('message.field-text-is-required', {
-            fieldText: t('label.name'),
+            fieldText: t(LABEL_NAME),
           }),
           validate: (value) =>
             !existingRuleNames.some(
@@ -369,12 +371,12 @@ export const ContextRuleEditor = ({
         control={form.control}
         name="entityType"
         render={({ field }) => (
-          <Field isRequired label={t('label.entity-type')}>
+          <Field isRequired label={t(LABEL_ENTITY_TYPE)}>
             <Select
-              aria-label={t('label.entity-type')}
+              aria-label={t(LABEL_ENTITY_TYPE)}
               data-testid="context-rule-entity-type"
               items={entityTypeOptions}
-              placeholder={t('label.entity-type')}
+              placeholder={t(LABEL_ENTITY_TYPE)}
               popoverClassName={ENTITY_TYPE_POPUP_CLASS}
               selectedKey={field.value}
               onSelectionChange={(value) => {

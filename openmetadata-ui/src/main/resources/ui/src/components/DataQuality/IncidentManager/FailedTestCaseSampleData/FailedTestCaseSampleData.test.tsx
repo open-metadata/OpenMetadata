@@ -21,6 +21,8 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
 
+const EXPLORE_WITH_QUERY = 'explore-with-query';
+
 jest.mock('@openmetadata/ui-core-components', () => {
   type Col = { id: string; label?: React.ReactNode };
   type Row = Record<string, unknown> & { __rowKey: number | string };
@@ -185,7 +187,7 @@ describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', ()
 
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
-    const exploreBtn = await screen.findByTestId('explore-with-query');
+    const exploreBtn = await screen.findByTestId(EXPLORE_WITH_QUERY);
     const link = exploreBtn.closest('a');
 
     expect(link).not.toBeNull();
@@ -276,7 +278,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     );
 
     // Sample loaded for the failing test case.
-    await screen.findByTestId('explore-with-query');
+    await screen.findByTestId(EXPLORE_WITH_QUERY);
 
     // The same mounted component now reflects a passing result.
     const passingTestCase = {
@@ -287,7 +289,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
 
     // The previously loaded sample must not linger for the passing result.
     await waitFor(() =>
-      expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument()
+      expect(screen.queryByTestId(EXPLORE_WITH_QUERY)).not.toBeInTheDocument()
     );
   });
 
@@ -322,9 +324,9 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     resolveFetch({ columns: ['c1'], rows: [['r1']] });
 
     await waitFor(() =>
-      expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument()
+      expect(screen.queryByTestId(EXPLORE_WITH_QUERY)).not.toBeInTheDocument()
     );
 
-    expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EXPLORE_WITH_QUERY)).not.toBeInTheDocument();
   });
 });

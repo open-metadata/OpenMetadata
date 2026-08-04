@@ -17,6 +17,8 @@ import { getFileIcon } from '../../../../../utils/BlockEditorUtils';
 import { FileType } from '../../../BlockEditor.interface';
 import AttachmentPlaceholder from './AttachmentPlaceholder';
 
+const LABEL_ADD_AN_FILE_TYPE = 'label.add-an-file-type';
+const IMAGE_PLACEHOLDER = 'image-placeholder';
 // Mock the translation hook
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
@@ -54,7 +56,7 @@ describe('AttachmentPlaceholder', () => {
   it('should render the placeholder with correct file type', () => {
     const fileType = FileType.FILE;
     mockTranslate.mockImplementation((key, options) => {
-      if (key === 'label.add-an-file-type') {
+      if (key === LABEL_ADD_AN_FILE_TYPE) {
         return `Add a ${options.fileType} file`;
       }
       if (key === `label.${fileType}`) {
@@ -67,13 +69,13 @@ describe('AttachmentPlaceholder', () => {
     render(<AttachmentPlaceholder fileType={fileType} />);
 
     // Verify the placeholder is rendered
-    expect(screen.getByTestId('image-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(IMAGE_PLACEHOLDER)).toBeInTheDocument();
 
     // Verify the icon is rendered
     expect(screen.getByTestId('mock-file-icon')).toBeInTheDocument();
 
     // Verify the translation was called with correct parameters
-    expect(mockTranslate).toHaveBeenCalledWith('label.add-an-file-type', {
+    expect(mockTranslate).toHaveBeenCalledWith(LABEL_ADD_AN_FILE_TYPE, {
       fileType: expect.any(String),
     });
   });
@@ -84,7 +86,7 @@ describe('AttachmentPlaceholder', () => {
     [FileType.VIDEO, 'video'],
   ])('should render with %s file type', (fileType, expectedText) => {
     mockTranslate.mockImplementation((key, options) => {
-      if (key === 'label.add-an-file-type') {
+      if (key === LABEL_ADD_AN_FILE_TYPE) {
         return `Add a ${options.fileType} file`;
       }
       if (key === `label.${fileType}`) {
@@ -96,7 +98,7 @@ describe('AttachmentPlaceholder', () => {
 
     render(<AttachmentPlaceholder fileType={fileType} />);
 
-    expect(screen.getByTestId('image-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(IMAGE_PLACEHOLDER)).toBeInTheDocument();
     expect(screen.getByTestId('mock-file-icon')).toBeInTheDocument();
     expect(screen.getByText(`Add a ${expectedText} file`)).toBeInTheDocument();
   });
@@ -104,7 +106,7 @@ describe('AttachmentPlaceholder', () => {
   it('should have contentEditable set to false', () => {
     const fileType = FileType.FILE;
     mockTranslate.mockImplementation((key, options) => {
-      if (key === 'label.add-an-file-type') {
+      if (key === LABEL_ADD_AN_FILE_TYPE) {
         return `Add a ${options.fileType} file`;
       }
       if (key === `label.${fileType}`) {
@@ -116,7 +118,7 @@ describe('AttachmentPlaceholder', () => {
 
     render(<AttachmentPlaceholder fileType={fileType} />);
 
-    const placeholder = screen.getByTestId('image-placeholder');
+    const placeholder = screen.getByTestId(IMAGE_PLACEHOLDER);
 
     expect(placeholder).toHaveAttribute('contentEditable', 'false');
   });

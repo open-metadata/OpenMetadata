@@ -25,6 +25,11 @@ import {
 import { SettingType } from '../../../../generated/settings/settings';
 import AuthMechanismForm from './AuthMechanismForm';
 
+const AUTH_MECHANISM = 'auth-mechanism';
+const TOKEN_EXPIRY = 'token-expiry';
+const CANCEL_EDIT = 'cancel-edit';
+const GENERATE_SCIM_TOKEN = 'generate-scim-token';
+
 const { Option } = Select;
 
 const mockUpdateSettingsConfig = jest.fn();
@@ -98,15 +103,15 @@ describe('AuthMechanismForm', () => {
     it('should render form for bot with correct initial values', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
-      expect(screen.getByTestId('auth-mechanism')).toBeInTheDocument();
-      expect(screen.getByTestId('token-expiry')).toBeInTheDocument();
+      expect(screen.getByTestId(AUTH_MECHANISM)).toBeInTheDocument();
+      expect(screen.getByTestId(TOKEN_EXPIRY)).toBeInTheDocument();
       expect(screen.getByTestId('save-edit')).toBeInTheDocument();
     });
 
     it('should render OpenMetadata JWT as auth mechanism for bot', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
-      const authMechanismSelect = screen.getByTestId('auth-mechanism');
+      const authMechanismSelect = screen.getByTestId(AUTH_MECHANISM);
 
       expect(authMechanismSelect).toHaveTextContent('label.om-jwt-token');
     });
@@ -115,7 +120,7 @@ describe('AuthMechanismForm', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
       const authMechanismSelect = screen
-        .getByTestId('auth-mechanism')
+        .getByTestId(AUTH_MECHANISM)
         .querySelector('input');
 
       expect(authMechanismSelect).toBeDisabled();
@@ -124,7 +129,7 @@ describe('AuthMechanismForm', () => {
     it('should show cancel button when authenticationMechanism is not empty', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
-      expect(screen.getByTestId('cancel-edit')).toBeInTheDocument();
+      expect(screen.getByTestId(CANCEL_EDIT)).toBeInTheDocument();
     });
 
     it('should not show cancel button when authenticationMechanism is empty', () => {
@@ -135,7 +140,7 @@ describe('AuthMechanismForm', () => {
         />
       );
 
-      expect(screen.queryByTestId('cancel-edit')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(CANCEL_EDIT)).not.toBeInTheDocument();
     });
   });
 
@@ -149,14 +154,14 @@ describe('AuthMechanismForm', () => {
     it('should render form for personal access token', () => {
       render(<AuthMechanismForm {...personalAccessTokenProps} />);
 
-      expect(screen.getByTestId('auth-mechanism')).toBeInTheDocument();
-      expect(screen.getByTestId('token-expiry')).toBeInTheDocument();
+      expect(screen.getByTestId(AUTH_MECHANISM)).toBeInTheDocument();
+      expect(screen.getByTestId(TOKEN_EXPIRY)).toBeInTheDocument();
     });
 
     it('should render Personal Access Token as auth mechanism', () => {
       render(<AuthMechanismForm {...personalAccessTokenProps} />);
 
-      const authMechanismSelect = screen.getByTestId('auth-mechanism');
+      const authMechanismSelect = screen.getByTestId(AUTH_MECHANISM);
 
       expect(authMechanismSelect).toHaveTextContent('Personal Access Token');
     });
@@ -189,15 +194,15 @@ describe('AuthMechanismForm', () => {
     it('should render SCIM token generation UI for SCIM bot', () => {
       render(<AuthMechanismForm {...scimBotProps} />);
 
-      expect(screen.getByTestId('generate-scim-token')).toBeInTheDocument();
-      expect(screen.queryByTestId('auth-mechanism')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('token-expiry')).not.toBeInTheDocument();
+      expect(screen.getByTestId(GENERATE_SCIM_TOKEN)).toBeInTheDocument();
+      expect(screen.queryByTestId(AUTH_MECHANISM)).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TOKEN_EXPIRY)).not.toBeInTheDocument();
     });
 
     it('should call updateSettingsConfig and onSave when generating SCIM token', async () => {
       render(<AuthMechanismForm {...scimBotProps} />);
 
-      const generateButton = screen.getByTestId('generate-scim-token');
+      const generateButton = screen.getByTestId(GENERATE_SCIM_TOKEN);
       generateButton.click();
 
       await waitFor(() => {
@@ -224,7 +229,7 @@ describe('AuthMechanismForm', () => {
 
       render(<AuthMechanismForm {...scimBotProps} />);
 
-      const generateButton = screen.getByTestId('generate-scim-token');
+      const generateButton = screen.getByTestId(GENERATE_SCIM_TOKEN);
       generateButton.click();
 
       await waitFor(() => {
@@ -238,7 +243,7 @@ describe('AuthMechanismForm', () => {
 
       render(<AuthMechanismForm {...scimBotProps} />);
 
-      const generateButton = screen.getByTestId('generate-scim-token');
+      const generateButton = screen.getByTestId(GENERATE_SCIM_TOKEN);
       generateButton.click();
 
       await waitFor(() => {
@@ -272,7 +277,7 @@ describe('AuthMechanismForm', () => {
     it('should call onCancel when cancel button is clicked', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
-      const cancelButton = screen.getByTestId('cancel-edit');
+      const cancelButton = screen.getByTestId(CANCEL_EDIT);
       cancelButton.click();
 
       expect(mockOnCancel).toHaveBeenCalled();
@@ -289,8 +294,8 @@ describe('AuthMechanismForm', () => {
     it('should initialize form with default values for bot', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
-      expect(screen.getByTestId('token-expiry')).toBeInTheDocument();
-      expect(screen.getByTestId('auth-mechanism')).toBeInTheDocument();
+      expect(screen.getByTestId(TOKEN_EXPIRY)).toBeInTheDocument();
+      expect(screen.getByTestId(AUTH_MECHANISM)).toBeInTheDocument();
     });
 
     it('should initialize form with default values for personal access token', () => {
@@ -302,8 +307,8 @@ describe('AuthMechanismForm', () => {
         />
       );
 
-      expect(screen.getByTestId('token-expiry')).toBeInTheDocument();
-      expect(screen.getByTestId('auth-mechanism')).toBeInTheDocument();
+      expect(screen.getByTestId(TOKEN_EXPIRY)).toBeInTheDocument();
+      expect(screen.getByTestId(AUTH_MECHANISM)).toBeInTheDocument();
     });
   });
 
@@ -314,7 +319,7 @@ describe('AuthMechanismForm', () => {
       const tokenExpiryLabel = screen.getByText('label.token-expiration');
 
       expect(tokenExpiryLabel).toBeInTheDocument();
-      expect(screen.getByTestId('token-expiry')).toBeInTheDocument();
+      expect(screen.getByTestId(TOKEN_EXPIRY)).toBeInTheDocument();
     });
 
     it('should submit form with default token expiry', async () => {

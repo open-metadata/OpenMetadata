@@ -33,6 +33,8 @@ import {
 import { getSettingPath } from '../../utils/RouterUtils';
 import './global-setting-page.style.less';
 
+const LABEL_SETTING_PLURAL = 'label.setting-plural';
+
 const GlobalSettingPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -74,14 +76,14 @@ const GlobalSettingPage = () => {
     return (
       <ErrorPlaceHolder
         className="border-none h-min-80"
-        permissionValue={t('label.setting-plural')}
+        permissionValue={t(LABEL_SETTING_PLURAL)}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.setting-plural')}>
+    <PageLayoutV1 pageTitle={t(LABEL_SETTING_PLURAL)}>
       <Row className="m-t-xs" gutter={[0, 20]}>
         <Col span={24}>
           <PageHeader
@@ -90,7 +92,7 @@ const GlobalSettingPage = () => {
               subHeader: t(PAGE_HEADERS.SETTING.subHeader),
             }}
             learningPageId={LEARNING_PAGE_IDS.SETTINGS}
-            title={t('label.setting-plural')}
+            title={t(LABEL_SETTING_PLURAL)}
           />
         </Col>
 

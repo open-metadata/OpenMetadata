@@ -20,6 +20,9 @@ import { ThreadType } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
 import { useActivityFeedProvider } from './ActivityFeedProvider';
 
+const LABEL_LOADING = 'label.loading';
+const LABEL_CHILDREN = 'label.children';
+
 export const DummyChildrenComponent = () => {
   const { t } = useTranslation();
   const { postFeed, getTaskData, deleteFeed, loading } =
@@ -43,7 +46,7 @@ export const DummyChildrenComponent = () => {
   }, []);
 
   if (loading) {
-    return <p data-testid="loading">{t('label.loading')}</p>;
+    return <p data-testid="loading">{t(LABEL_LOADING)}</p>;
   }
 
   return (
@@ -72,7 +75,7 @@ export const DummyChildrenTaskCloseComponent = () => {
     );
   }, []);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(LABEL_CHILDREN)}</p>;
 };
 
 export const DummyChildrenEntityComponent = () => {
@@ -90,7 +93,7 @@ export const DummyChildrenEntityComponent = () => {
     );
   }, []);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(LABEL_CHILDREN)}</p>;
 };
 
 export const DummyChildrenMentionsComponent = () => {
@@ -107,7 +110,7 @@ export const DummyChildrenMentionsComponent = () => {
     );
   }, []);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(LABEL_CHILDREN)}</p>;
 };
 
 export const DummyChildrenDeletePostComponent = () => {
@@ -135,7 +138,7 @@ export const DummyActivityFeedComponent = () => {
   }, []);
 
   if (isActivityLoading) {
-    return <p data-testid="activity-loading">{t('label.loading')}</p>;
+    return <p data-testid="activity-loading">{t(LABEL_LOADING)}</p>;
   }
 
   return (
@@ -158,7 +161,7 @@ export const DummyEntityActivityFeedComponent = () => {
   }, []);
 
   if (isActivityLoading) {
-    return <p data-testid="entity-activity-loading">{t('label.loading')}</p>;
+    return <p data-testid="entity-activity-loading">{t(LABEL_LOADING)}</p>;
   }
 
   return (

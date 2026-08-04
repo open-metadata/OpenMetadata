@@ -16,6 +16,13 @@ import { EntityType } from '../../../enums/entity.enum';
 import EntityRightPanelVerticalNav from './EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from './EntityRightPanelVerticalNav.interface';
 
+const MOCK_ANT_MENU_ITEM_SELECTED = 'ant-menu-item-selected';
+const LABEL_OVERVIEW = 'label.overview';
+const LABEL_SCHEMA = 'label.schema';
+const LABEL_LINEAGE = 'label.lineage';
+const LABEL_DATA_QUALITY = 'label.data-quality';
+const LABEL_CUSTOM_PROPERTY = 'label.custom-property';
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -103,7 +110,7 @@ jest.mock('antd', () => {
               <li
                 className={`ant-menu-item ${
                   selectedKeys.includes(item.key)
-                    ? 'ant-menu-item-selected'
+                    ? MOCK_ANT_MENU_ITEM_SELECTED
                     : ''
                 }`}
                 key={item.key}
@@ -178,9 +185,9 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should show overview tab as selected when activeTab is OVERVIEW', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const overviewTab = screen.getByText('label.overview').closest('li');
+      const overviewTab = screen.getByText(LABEL_OVERVIEW).closest('li');
 
-      expect(overviewTab).toHaveClass('ant-menu-item-selected');
+      expect(overviewTab).toHaveClass(MOCK_ANT_MENU_ITEM_SELECTED);
     });
 
     it('should show schema tab as selected when activeTab is SCHEMA', () => {
@@ -191,9 +198,9 @@ describe('EntityRightPanelVerticalNav', () => {
         />
       );
 
-      const schemaTab = screen.getByText('label.schema').closest('li');
+      const schemaTab = screen.getByText(LABEL_SCHEMA).closest('li');
 
-      expect(schemaTab).toHaveClass('ant-menu-item-selected');
+      expect(schemaTab).toHaveClass(MOCK_ANT_MENU_ITEM_SELECTED);
     });
   });
 
@@ -201,7 +208,7 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should call onTabChange when a tab is clicked', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const schemaTab = screen.getByText('label.schema');
+      const schemaTab = screen.getByText(LABEL_SCHEMA);
       fireEvent.click(schemaTab);
 
       expect(mockOnTabChange).toHaveBeenCalledWith(EntityRightPanelTab.SCHEMA);
@@ -210,7 +217,7 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should call onTabChange with correct tab when lineage tab is clicked', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const lineageTab = screen.getByText('label.lineage');
+      const lineageTab = screen.getByText(LABEL_LINEAGE);
       fireEvent.click(lineageTab);
 
       expect(mockOnTabChange).toHaveBeenCalledWith(EntityRightPanelTab.LINEAGE);
@@ -219,7 +226,7 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should call onTabChange with correct tab when data quality tab is clicked', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const dataQualityTab = screen.getByText('label.data-quality');
+      const dataQualityTab = screen.getByText(LABEL_DATA_QUALITY);
       fireEvent.click(dataQualityTab);
 
       expect(mockOnTabChange).toHaveBeenCalledWith(
@@ -230,7 +237,7 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should call onTabChange with correct tab when custom properties tab is clicked', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const customPropsTab = screen.getByText('label.custom-property');
+      const customPropsTab = screen.getByText(LABEL_CUSTOM_PROPERTY);
       fireEvent.click(customPropsTab);
 
       expect(mockOnTabChange).toHaveBeenCalledWith(
@@ -244,7 +251,7 @@ describe('EntityRightPanelVerticalNav', () => {
       it('should show schema tab for TABLE entity', () => {
         render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
 
       it('should show schema tab for TOPIC entity', () => {
@@ -255,7 +262,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
 
       it('should show schema tab for DASHBOARD entity', () => {
@@ -266,7 +273,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
 
       it('should show schema tab for DATABASE_SCHEMA entity', () => {
@@ -277,7 +284,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
 
       it('should show schema tab for DATABASE entity', () => {
@@ -288,7 +295,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
 
       it('should show schema tab for DASHBOARD_DATA_MODEL entity', () => {
@@ -299,7 +306,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
 
       it('should show schema tab for API_ENDPOINT entity', () => {
@@ -310,7 +317,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
 
       it('should not show schema tab for CHART entity', () => {
@@ -321,7 +328,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.queryByText('label.schema')).not.toBeInTheDocument();
+        expect(screen.queryByText(LABEL_SCHEMA)).not.toBeInTheDocument();
       });
 
       it('should show schema tab for PIPELINE entity', () => {
@@ -332,7 +339,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.schema')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_SCHEMA)).toBeInTheDocument();
       });
     });
 
@@ -340,7 +347,7 @@ describe('EntityRightPanelVerticalNav', () => {
       it('should show lineage tab for TABLE entity', () => {
         render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for TOPIC entity', () => {
@@ -351,7 +358,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for CONTAINER entity', () => {
@@ -362,7 +369,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for DASHBOARD entity', () => {
@@ -373,7 +380,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for CHART entity', () => {
@@ -384,7 +391,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for PIPELINE entity', () => {
@@ -395,7 +402,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for MLMODEL entity', () => {
@@ -406,7 +413,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for DASHBOARD_DATA_MODEL entity', () => {
@@ -417,7 +424,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should show lineage tab for API_ENDPOINT entity', () => {
@@ -428,7 +435,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.lineage')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
       });
 
       it('should not show lineage tab for DATABASE entity', () => {
@@ -439,7 +446,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.queryByText('label.lineage')).not.toBeInTheDocument();
+        expect(screen.queryByText(LABEL_LINEAGE)).not.toBeInTheDocument();
       });
 
       it('should not show lineage tab for DATABASE_SCHEMA entity', () => {
@@ -450,7 +457,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.queryByText('label.lineage')).not.toBeInTheDocument();
+        expect(screen.queryByText(LABEL_LINEAGE)).not.toBeInTheDocument();
       });
     });
 
@@ -458,7 +465,7 @@ describe('EntityRightPanelVerticalNav', () => {
       it('should show data quality tab for TABLE entity', () => {
         render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-        expect(screen.getByText('label.data-quality')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_DATA_QUALITY)).toBeInTheDocument();
       });
 
       it('should not show data quality tab for DASHBOARD entity', () => {
@@ -469,9 +476,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(
-          screen.queryByText('label.data-quality')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(LABEL_DATA_QUALITY)).not.toBeInTheDocument();
       });
 
       it('should not show data quality tab for TOPIC entity', () => {
@@ -482,9 +487,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(
-          screen.queryByText('label.data-quality')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(LABEL_DATA_QUALITY)).not.toBeInTheDocument();
       });
 
       it('should not show data quality tab for PIPELINE entity', () => {
@@ -495,9 +498,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(
-          screen.queryByText('label.data-quality')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(LABEL_DATA_QUALITY)).not.toBeInTheDocument();
       });
     });
 
@@ -505,7 +506,7 @@ describe('EntityRightPanelVerticalNav', () => {
       it('should always show custom properties tab for TABLE entity', () => {
         render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-        expect(screen.getByText('label.custom-property')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_CUSTOM_PROPERTY)).toBeInTheDocument();
       });
 
       it('should always show custom properties tab for DASHBOARD entity', () => {
@@ -516,7 +517,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.custom-property')).toBeInTheDocument();
+        expect(screen.getByText(LABEL_CUSTOM_PROPERTY)).toBeInTheDocument();
       });
 
       it('should always show custom properties tab for any entity type', () => {
@@ -536,7 +537,7 @@ describe('EntityRightPanelVerticalNav', () => {
             />
           );
 
-          expect(screen.getByText('label.custom-property')).toBeInTheDocument();
+          expect(screen.getByText(LABEL_CUSTOM_PROPERTY)).toBeInTheDocument();
 
           unmount();
         });
@@ -552,11 +553,11 @@ describe('EntityRightPanelVerticalNav', () => {
       const tabLabels = menuItems.map((item) => item.textContent);
 
       expect(tabLabels).toEqual([
-        'label.overview',
-        'label.schema',
-        'label.lineage',
-        'label.data-quality',
-        'label.custom-property',
+        LABEL_OVERVIEW,
+        LABEL_SCHEMA,
+        LABEL_LINEAGE,
+        LABEL_DATA_QUALITY,
+        LABEL_CUSTOM_PROPERTY,
       ]);
     });
 
@@ -572,10 +573,10 @@ describe('EntityRightPanelVerticalNav', () => {
       const tabLabels = menuItems.map((item) => item.textContent);
 
       expect(tabLabels).toEqual([
-        'label.overview',
-        'label.schema',
-        'label.lineage',
-        'label.custom-property',
+        LABEL_OVERVIEW,
+        LABEL_SCHEMA,
+        LABEL_LINEAGE,
+        LABEL_CUSTOM_PROPERTY,
       ]);
     });
 
@@ -591,9 +592,9 @@ describe('EntityRightPanelVerticalNav', () => {
       const tabLabels = menuItems.map((item) => item.textContent);
 
       expect(tabLabels).toEqual([
-        'label.overview',
-        'label.lineage',
-        'label.custom-property',
+        LABEL_OVERVIEW,
+        LABEL_LINEAGE,
+        LABEL_CUSTOM_PROPERTY,
       ]);
     });
   });
@@ -630,11 +631,11 @@ describe('EntityRightPanelVerticalNav', () => {
 
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      expect(mockT).toHaveBeenCalledWith('label.overview');
-      expect(mockT).toHaveBeenCalledWith('label.schema');
-      expect(mockT).toHaveBeenCalledWith('label.lineage');
-      expect(mockT).toHaveBeenCalledWith('label.data-quality');
-      expect(mockT).toHaveBeenCalledWith('label.custom-property');
+      expect(mockT).toHaveBeenCalledWith(LABEL_OVERVIEW);
+      expect(mockT).toHaveBeenCalledWith(LABEL_SCHEMA);
+      expect(mockT).toHaveBeenCalledWith(LABEL_LINEAGE);
+      expect(mockT).toHaveBeenCalledWith(LABEL_DATA_QUALITY);
+      expect(mockT).toHaveBeenCalledWith(LABEL_CUSTOM_PROPERTY);
     });
   });
 
@@ -648,20 +649,18 @@ describe('EntityRightPanelVerticalNav', () => {
       );
 
       // Should only show overview tab for unknown entity types
-      expect(screen.getByText('label.overview')).toBeInTheDocument();
-      expect(
-        screen.queryByText('label.custom-property')
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText('label.schema')).not.toBeInTheDocument();
-      expect(screen.queryByText('label.lineage')).not.toBeInTheDocument();
-      expect(screen.queryByText('label.data-quality')).not.toBeInTheDocument();
+      expect(screen.getByText(LABEL_OVERVIEW)).toBeInTheDocument();
+      expect(screen.queryByText(LABEL_CUSTOM_PROPERTY)).not.toBeInTheDocument();
+      expect(screen.queryByText(LABEL_SCHEMA)).not.toBeInTheDocument();
+      expect(screen.queryByText(LABEL_LINEAGE)).not.toBeInTheDocument();
+      expect(screen.queryByText(LABEL_DATA_QUALITY)).not.toBeInTheDocument();
     });
 
     it('should handle multiple rapid tab changes', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const schemaTab = screen.getByText('label.schema');
-      const lineageTab = screen.getByText('label.lineage');
+      const schemaTab = screen.getByText(LABEL_SCHEMA);
+      const lineageTab = screen.getByText(LABEL_LINEAGE);
 
       fireEvent.click(schemaTab);
       fireEvent.click(lineageTab);

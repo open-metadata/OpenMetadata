@@ -47,6 +47,8 @@ import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
+const LABEL_DOMAIN = 'label.domain';
+
 const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
@@ -144,7 +146,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   });
 
   const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.domain',
+    titleKey: LABEL_DOMAIN,
     count: domainListing.totalEntities,
     loading: domainListing.loading,
   });
@@ -213,7 +215,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         <ErrorPlaceHolder
           buttonId="domain-add-button"
           buttonTitle={t('label.add-entity', {
-            entity: t('label.domain'),
+            entity: t(LABEL_DOMAIN),
           })}
           className="border-none"
           heading={t('message.no-data-message', {
@@ -231,7 +233,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       return (
         <>
           <EntityListingTable
-            ariaLabel={t('label.domain')}
+            ariaLabel={t(LABEL_DOMAIN)}
             columns={domainColumns}
             entities={domainListing.entities}
             loading={domainListing.loading}

@@ -17,6 +17,8 @@ import {
 } from '../../../../mocks/Glossary.mock';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 
+const SYNONYMS_CONTAINER = 'synonyms-container';
+
 const [mockGlossaryTerm1, mockGlossaryTerm2] = MOCKED_GLOSSARY_TERMS;
 
 const mockContext = {
@@ -37,7 +39,7 @@ describe('GlossaryTermSynonyms', () => {
   it('renders synonyms and edit button', () => {
     mockContext.data = mockGlossaryTerm2;
     const { getByTestId, getByText } = render(<GlossaryTermSynonyms />);
-    const synonymsContainer = getByTestId('synonyms-container');
+    const synonymsContainer = getByTestId(SYNONYMS_CONTAINER);
     const synonymItem = getByText('accessory');
     const editBtn = getByTestId('edit-button');
 
@@ -49,7 +51,7 @@ describe('GlossaryTermSynonyms', () => {
   it('renders add button', () => {
     mockContext.data = mockGlossaryTerm1;
     const { getByTestId } = render(<GlossaryTermSynonyms />);
-    const synonymsContainer = getByTestId('synonyms-container');
+    const synonymsContainer = getByTestId(SYNONYMS_CONTAINER);
     const synonymAddBtn = getByTestId('synonym-add-button');
 
     expect(synonymsContainer).toBeInTheDocument();
@@ -62,7 +64,7 @@ describe('GlossaryTermSynonyms', () => {
     const { getByTestId, queryByTestId, findByText } = render(
       <GlossaryTermSynonyms />
     );
-    const synonymsContainer = getByTestId('synonyms-container');
+    const synonymsContainer = getByTestId(SYNONYMS_CONTAINER);
     const synonymAddBtn = queryByTestId('synonym-add-button');
 
     expect(synonymsContainer).toBeInTheDocument();
@@ -77,7 +79,7 @@ describe('GlossaryTermSynonyms', () => {
     mockContext.data = mockGlossaryTerm2;
     mockContext.permissions = { ...MOCK_PERMISSIONS, EditAll: false };
     const { getByTestId, queryByTestId } = render(<GlossaryTermSynonyms />);
-    const synonymsContainer = getByTestId('synonyms-container');
+    const synonymsContainer = getByTestId(SYNONYMS_CONTAINER);
     const editBtn = queryByTestId('edit-button');
 
     expect(synonymsContainer).toBeInTheDocument();

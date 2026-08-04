@@ -35,6 +35,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
+
+const LABEL_RETENTION_PERIOD = 'label.retention-period';
 // Helper function to detect and format ISO 8601 duration
 const formatRetentionPeriod = (retentionPeriod: string | undefined) => {
   if (!retentionPeriod) {
@@ -124,12 +126,12 @@ const RetentionPeriod = ({
           <Typography.Text className="text-sm d-flex flex-col gap-2">
             <div className="d-flex items-center gap-1">
               <span className="extra-info-label-heading">
-                {t('label.retention-period')}
+                {t(LABEL_RETENTION_PERIOD)}
               </span>
               {hasPermission && (
                 <Tooltip
                   title={t('label.edit-entity', {
-                    entity: t('label.retention-period'),
+                    entity: t(LABEL_RETENTION_PERIOD),
                   })}>
                   <Button
                     className="remove-button-default-styling  flex-center edit-retention-period-button p-0"
@@ -165,7 +167,7 @@ const RetentionPeriod = ({
         okText={t('label.save')}
         open={isEdit}
         title={t('label.edit-entity', {
-          entity: t('label.retention-period'),
+          entity: t(LABEL_RETENTION_PERIOD),
         })}
         onCancel={onCancel}>
         <Alert
@@ -180,7 +182,7 @@ const RetentionPeriod = ({
           layout="vertical"
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSubmit}>
-          <Form.Item label={t('label.retention-period')} name="retentionPeriod">
+          <Form.Item label={t(LABEL_RETENTION_PERIOD)} name="retentionPeriod">
             <Input data-testid="retention-period-input" />
           </Form.Item>
         </Form>

@@ -22,6 +22,10 @@ import {
   SpreadsheetDetailPageTabProps,
 } from './SpreadsheetDetailsUtils';
 
+const COMMON_WIDGETS = 'common-widgets' as const;
+const WORKFLOWS_TABLE = 'workflows-table' as const;
+const LABEL_LINEAGE = 'label.lineage' as const;
+
 jest.mock('../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name, count, isActive }) => (
     <div data-testid={`tab-label-${name}`}>
@@ -144,7 +148,7 @@ describe('SpreadsheetDetailsUtils', () => {
       render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
 
       expect(screen.getByTestId('tab-label-label.lineage')).toBeInTheDocument();
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
     });
 
     it('should render contract tab without count', () => {
@@ -221,7 +225,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
     });
 
     it('should handle zero children count', () => {
@@ -288,7 +292,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(await screen.findByTestId('workflows-table')).toBeInTheDocument();
+      expect(await screen.findByTestId(WORKFLOWS_TABLE)).toBeInTheDocument();
     });
 
     it('should return WorkflowsTable for widget key starting with worksheets', () => {
@@ -305,7 +309,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('workflows-table')).toBeInTheDocument();
+      expect(screen.getByTestId(WORKFLOWS_TABLE)).toBeInTheDocument();
     });
 
     it('should return CommonWidgets for description widget', () => {
@@ -322,7 +326,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - spreadsheet - KnowledgePanel.Description'
@@ -344,7 +348,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - spreadsheet - KnowledgePanel.DataProducts'
@@ -366,7 +370,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - spreadsheet - KnowledgePanel.Tags')
       ).toBeInTheDocument();
@@ -386,7 +390,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - spreadsheet - KnowledgePanel.GlossaryTerms'
@@ -408,7 +412,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - spreadsheet - KnowledgePanel.CustomProperties'
@@ -430,7 +434,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - spreadsheet - unknown-widget')
       ).toBeInTheDocument();
@@ -450,7 +454,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('workflows-table')).toBeInTheDocument();
+      expect(screen.getByTestId(WORKFLOWS_TABLE)).toBeInTheDocument();
     });
   });
 
@@ -491,7 +495,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
     });
 
     it('should handle all tab states correctly', () => {
@@ -530,7 +534,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
     });
   });
 
@@ -660,7 +664,7 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
     });
   });
 });

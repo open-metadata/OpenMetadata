@@ -15,6 +15,8 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 import { buildSchemaQueryFilter } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDropdownOptions';
 
+const MY_SERVICE = 'my-service';
+
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
   () => ({
@@ -41,15 +43,16 @@ const mockNavigate = jest.fn();
 describe('buildSchemaQueryFilter', () => {
   it('should return a filter with only the field term when no searchValue is provided', () => {
     const result = buildSchemaQueryFilter(
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       'service.fullyQualifiedName.keyword',
-      'my-service'
+      MY_SERVICE
     );
 
     expect(result).toEqual({
       query: {
         bool: {
           must: [
-            { term: { 'service.fullyQualifiedName.keyword': 'my-service' } },
+            { term: { 'service.fullyQualifiedName.keyword': MY_SERVICE } },
           ],
         },
       },
@@ -59,7 +62,7 @@ describe('buildSchemaQueryFilter', () => {
   it('should include displayName and name wildcard should-queries when searchValue is provided', () => {
     const result = buildSchemaQueryFilter(
       'service.fullyQualifiedName.keyword',
-      'my-service',
+      MY_SERVICE,
       'PowerBI'
     );
 
@@ -67,7 +70,7 @@ describe('buildSchemaQueryFilter', () => {
       query: {
         bool: {
           must: [
-            { term: { 'service.fullyQualifiedName.keyword': 'my-service' } },
+            { term: { 'service.fullyQualifiedName.keyword': MY_SERVICE } },
             {
               bool: {
                 should: [
@@ -86,7 +89,7 @@ describe('buildSchemaQueryFilter', () => {
   it('should preserve the original casing of the search value in wildcard patterns', () => {
     const result = buildSchemaQueryFilter(
       'service.fullyQualifiedName.keyword',
-      'my-service',
+      MY_SERVICE,
       'PowerBIBigquery'
     );
 
@@ -105,7 +108,7 @@ describe('buildSchemaQueryFilter', () => {
   it('should search across displayName.keyword and name.keyword fields only', () => {
     const result = buildSchemaQueryFilter(
       'service.fullyQualifiedName.keyword',
-      'my-service',
+      MY_SERVICE,
       'test'
     );
 

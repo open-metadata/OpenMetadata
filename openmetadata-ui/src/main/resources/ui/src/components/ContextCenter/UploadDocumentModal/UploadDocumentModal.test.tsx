@@ -21,6 +21,8 @@ import {
 import { uploadDriveFile } from '../../../rest/assetAPI';
 import UploadDocumentModal from './UploadDocumentModal.component';
 
+const REMOVE_ME_PDF = 'remove-me.pdf';
+
 jest.mock('rest/assetAPI', () => ({
   uploadDriveFile: jest.fn(),
 }));
@@ -243,14 +245,14 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles?.(makeFileList(new File(['content'], 'remove-me.pdf')));
+      mockOnDropFiles?.(makeFileList(new File(['content'], REMOVE_ME_PDF)));
     });
 
-    expect(screen.getByText('remove-me.pdf')).toBeInTheDocument();
+    expect(screen.getByText(REMOVE_ME_PDF)).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('delete-remove-me.pdf'));
 
-    expect(screen.queryByText('remove-me.pdf')).not.toBeInTheDocument();
+    expect(screen.queryByText(REMOVE_ME_PDF)).not.toBeInTheDocument();
   });
 
   it('calls onClose when cancel button is clicked', () => {

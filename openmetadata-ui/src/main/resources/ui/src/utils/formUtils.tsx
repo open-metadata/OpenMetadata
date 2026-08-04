@@ -72,6 +72,8 @@ import AntDTagSuggestion, {
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
 
+const SERVER_UNEXPECTED_ERROR = 'server.unexpected-error';
+
 export const getField = (field: FieldProp) => {
   const {
     label,
@@ -460,7 +462,7 @@ export const handleEntityCreationError = ({
         entityPlural: entityLowercasePlural ?? entity,
         name: name,
       }),
-      getErrorText(error, t('server.unexpected-error')),
+      getErrorText(error, t(SERVER_UNEXPECTED_ERROR)),
       setInlineAlertDetails
     );
 
@@ -472,7 +474,7 @@ export const handleEntityCreationError = ({
       t('server.entity-limit-reached', {
         entity,
       }),
-      getErrorText(error, t('server.unexpected-error')),
+      getErrorText(error, t(SERVER_UNEXPECTED_ERROR)),
       setInlineAlertDetails
     );
 
@@ -484,8 +486,8 @@ export const handleEntityCreationError = ({
       ? t(`server.entity-creation-error`, {
           entity: entityLowercase ?? entity,
         })
-      : getErrorText(error, t('server.unexpected-error')),
-    getErrorText(error, t('server.unexpected-error')),
+      : getErrorText(error, t(SERVER_UNEXPECTED_ERROR)),
+    getErrorText(error, t(SERVER_UNEXPECTED_ERROR)),
     setInlineAlertDetails
   );
 };

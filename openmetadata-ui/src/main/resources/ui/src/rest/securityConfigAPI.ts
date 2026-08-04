@@ -20,6 +20,9 @@ import { FieldError } from '../generated/system/securityValidationResponse';
 import { TestLoginResult } from '../generated/system/testLoginResult';
 import APIClient from './index';
 
+const SYSTEM_SECURITY_CONFIG = '/system/security/config' as const;
+const APPLICATION_JSON_PATCH_JSON = 'application/json-patch+json' as const;
+
 export interface SecurityConfiguration {
   authenticationConfiguration: AuthenticationConfiguration;
   authorizerConfiguration: AuthorizerConfiguration;
@@ -79,7 +82,7 @@ export const applySecurityConfiguration = async (
   return APIClient.put<
     SecurityConfiguration,
     AxiosResponse<SecurityConfiguration>
-  >('/system/security/config', data);
+  >(SYSTEM_SECURITY_CONFIG, data);
 };
 
 /**
@@ -89,7 +92,7 @@ export const applySecurityConfiguration = async (
 export const getSecurityConfiguration = async (): Promise<
   AxiosResponse<SecurityConfiguration>
 > => {
-  return APIClient.get<SecurityConfiguration>('/system/security/config');
+  return APIClient.get<SecurityConfiguration>(SYSTEM_SECURITY_CONFIG);
 };
 
 /**
@@ -105,7 +108,7 @@ export const patchAuthenticationConfiguration = async (
     AxiosResponse<AuthenticationConfiguration>
   >('/system/settings/authenticationConfiguration', patches, {
     headers: {
-      'Content-Type': 'application/json-patch+json',
+      'Content-Type': APPLICATION_JSON_PATCH_JSON,
     },
   });
 };
@@ -123,7 +126,7 @@ export const patchAuthorizerConfiguration = async (
     patches,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': APPLICATION_JSON_PATCH_JSON,
       },
     }
   );
@@ -138,11 +141,11 @@ export const patchSecurityConfiguration = async (
   patches: Operation[]
 ): Promise<AxiosResponse<SecurityConfiguration>> => {
   return APIClient.patch<Operation[], AxiosResponse<SecurityConfiguration>>(
-    '/system/security/config',
+    SYSTEM_SECURITY_CONFIG,
     patches,
     {
       headers: {
-        'Content-Type': 'application/json-patch+json',
+        'Content-Type': APPLICATION_JSON_PATCH_JSON,
       },
     }
   );

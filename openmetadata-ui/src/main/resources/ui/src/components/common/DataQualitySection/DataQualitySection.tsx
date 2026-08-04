@@ -22,6 +22,8 @@ import { DataQualitySectionProps } from './DataQualitySection.interface';
 import './DataQualitySection.less';
 import { DataQualityStatCard } from './DataQualityStatCard';
 
+const LABEL_WITH_COLON = 'label.-with-colon';
+
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   tests,
   totalTests,
@@ -133,17 +135,17 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
           <div className="data-quality-legend">
             <DataQualityLegendItem
               count={successTests}
-              label={t('label.-with-colon', { text: t('label.success') })}
+              label={t(LABEL_WITH_COLON, { text: t('label.success') })}
               type="success"
             />
             <DataQualityLegendItem
               count={abortedTests}
-              label={t('label.-with-colon', { text: t('label.aborted') })}
+              label={t(LABEL_WITH_COLON, { text: t('label.aborted') })}
               type="aborted"
             />
             <DataQualityLegendItem
               count={failedTests}
-              label={t('label.-with-colon', { text: t('label.failed') })}
+              label={t(LABEL_WITH_COLON, { text: t('label.failed') })}
               type="failed"
             />
           </div>

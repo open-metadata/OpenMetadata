@@ -16,6 +16,14 @@ import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
+const TEST_ENTITY = 'Test Entity';
+const ENTITY_LINK = 'entity-link';
+const TEST_TABLE = 'Test Table';
+const ORIGINAL_DISPLAY_NAME = 'Original Display Name';
+const EDIT_DISPLAYNAME_BUTTON = 'edit-displayName-button';
+const ENTITY_NAME_MODAL = 'entity-name-modal';
+const MODAL_SAVE_BUTTON = 'modal-save-button';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
     <button onClick={onClick} {...props}>
@@ -74,6 +82,7 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 
 const mockShowSuccessToast = jest.fn();
 const mockShowErrorToast = jest.fn();
+const mockUpdatedDisplayName = 'Updated Display Name';
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: (...args: unknown[]) => mockShowSuccessToast(...args),
@@ -91,7 +100,7 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => ({
       <div data-testid="entity-name-modal">
         <button
           data-testid="modal-save-button"
-          onClick={() => onSave({ displayName: 'Updated Display Name' })}>
+          onClick={() => onSave({ displayName: mockUpdatedDisplayName })}>
           Save
         </button>
         <button data-testid="modal-cancel-button" onClick={onCancel}>
@@ -171,19 +180,19 @@ describe('EntityTitleSection', () => {
     it('should use default testId when not provided', () => {
       render(
         <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/test-link"
         />,
         { wrapper: Wrapper }
       );
 
-      expect(screen.getByTestId('entity-link')).toBeInTheDocument();
+      expect(screen.getByTestId(ENTITY_LINK)).toBeInTheDocument();
     });
 
     it('should use custom testId when provided', () => {
       render(
         <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/test-link"
           testId="custom-test-id"
         />,
@@ -197,7 +206,7 @@ describe('EntityTitleSection', () => {
       const { container } = render(
         <EntityTitleSection
           className="custom-class-name"
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/test-link"
         />,
         { wrapper: Wrapper }
@@ -210,7 +219,7 @@ describe('EntityTitleSection', () => {
       const { container } = render(
         <EntityTitleSection
           className="drawer-title-section"
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/test-link"
         />,
         { wrapper: Wrapper }
@@ -224,27 +233,27 @@ describe('EntityTitleSection', () => {
     it('should use default tooltipPlacement when not provided', () => {
       render(
         <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/test-link"
         />,
         { wrapper: Wrapper }
       );
 
       // Component renders with default topLeft placement
-      expect(screen.getByText('Test Entity')).toBeInTheDocument();
+      expect(screen.getByText(TEST_ENTITY)).toBeInTheDocument();
     });
 
     it('should accept custom tooltipPlacement', () => {
       render(
         <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/test-link"
           tooltipPlacement="bottom"
         />,
         { wrapper: Wrapper }
       );
 
-      expect(screen.getByText('Test Entity')).toBeInTheDocument();
+      expect(screen.getByText(TEST_ENTITY)).toBeInTheDocument();
     });
   });
 
@@ -253,7 +262,7 @@ describe('EntityTitleSection', () => {
       render(
         <EntityTitleSection
           entityDetails={{
-            name: 'Test Table',
+            name: TEST_TABLE,
             entityType: EntityType.TABLE,
           }}
           entityLink="/table/test"
@@ -328,7 +337,7 @@ describe('EntityTitleSection', () => {
     it('should handle empty entityType gracefully', () => {
       render(
         <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/test"
         />,
         { wrapper: Wrapper }
@@ -342,13 +351,13 @@ describe('EntityTitleSection', () => {
     it('should render link with correct href when entityLink is a string', () => {
       render(
         <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink="/table/test-entity"
         />,
         { wrapper: Wrapper }
       );
 
-      const link = screen.getByTestId('entity-link');
+      const link = screen.getByTestId(ENTITY_LINK);
 
       expect(link).toHaveAttribute('href', '/table/test-entity');
     });
@@ -356,13 +365,13 @@ describe('EntityTitleSection', () => {
     it('should render link with pathname when entityLink is an object', () => {
       render(
         <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
+          entityDetails={{ name: TEST_ENTITY }}
           entityLink={{ pathname: '/dashboard/test-dashboard' }}
         />,
         { wrapper: Wrapper }
       );
 
-      const link = screen.getByTestId('entity-link');
+      const link = screen.getByTestId(ENTITY_LINK);
 
       expect(link).toHaveAttribute('href', '/dashboard/test-dashboard');
     });
@@ -374,7 +383,7 @@ describe('EntityTitleSection', () => {
         <EntityTitleSection
           entityDetails={{
             name: 'test_table',
-            displayName: 'Test Table',
+            displayName: TEST_TABLE,
             fullyQualifiedName: 'database.schema.test_table',
             entityType: EntityType.TABLE,
           }}
@@ -383,8 +392,8 @@ describe('EntityTitleSection', () => {
         { wrapper: Wrapper }
       );
 
-      expect(screen.getByText('Test Table')).toBeInTheDocument();
-      expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      expect(screen.getByText(TEST_TABLE)).toBeInTheDocument();
+      expect(screen.getByTestId(ENTITY_LINK)).toHaveAttribute(
         'href',
         '/table/database.schema.test_table'
       );
@@ -397,7 +406,7 @@ describe('EntityTitleSection', () => {
         <EntityTitleSection
           entityDetails={{
             name: 'test_entity',
-            displayName: 'Original Display Name',
+            displayName: ORIGINAL_DISPLAY_NAME,
           }}
           entityDisplayName="Overridden Display Name"
           entityLink="/table/test_entity"
@@ -413,14 +422,14 @@ describe('EntityTitleSection', () => {
         <EntityTitleSection
           entityDetails={{
             name: 'test_entity',
-            displayName: 'Original Display Name',
+            displayName: ORIGINAL_DISPLAY_NAME,
           }}
           entityLink="/table/test_entity"
         />,
         { wrapper: Wrapper }
       );
 
-      expect(screen.getByText('Original Display Name')).toBeInTheDocument();
+      expect(screen.getByText(ORIGINAL_DISPLAY_NAME)).toBeInTheDocument();
     });
 
     it('should update displayed name when entityDisplayName prop changes', () => {
@@ -428,7 +437,7 @@ describe('EntityTitleSection', () => {
         <EntityTitleSection
           entityDetails={{
             name: 'test_entity',
-            displayName: 'Original Display Name',
+            displayName: ORIGINAL_DISPLAY_NAME,
           }}
           entityDisplayName="First Display Name"
           entityLink="/table/test_entity"
@@ -443,15 +452,15 @@ describe('EntityTitleSection', () => {
           <EntityTitleSection
             entityDetails={{
               name: 'test_entity',
-              displayName: 'Original Display Name',
+              displayName: ORIGINAL_DISPLAY_NAME,
             }}
-            entityDisplayName="Updated Display Name"
+            entityDisplayName={mockUpdatedDisplayName}
             entityLink="/table/test_entity"
           />
         </Wrapper>
       );
 
-      expect(screen.getByText('Updated Display Name')).toBeInTheDocument();
+      expect(screen.getByText(mockUpdatedDisplayName)).toBeInTheDocument();
     });
   });
 
@@ -472,7 +481,7 @@ describe('EntityTitleSection', () => {
       );
 
       expect(
-        screen.queryByTestId('edit-displayName-button')
+        screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON)
       ).not.toBeInTheDocument();
     });
 
@@ -490,7 +499,7 @@ describe('EntityTitleSection', () => {
       );
 
       expect(
-        screen.queryByTestId('edit-displayName-button')
+        screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON)
       ).not.toBeInTheDocument();
     });
 
@@ -509,7 +518,7 @@ describe('EntityTitleSection', () => {
       );
 
       expect(
-        screen.queryByTestId('edit-displayName-button')
+        screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON)
       ).not.toBeInTheDocument();
     });
 
@@ -528,7 +537,7 @@ describe('EntityTitleSection', () => {
         { wrapper: Wrapper }
       );
 
-      expect(screen.getByTestId('edit-displayName-button')).toBeInTheDocument();
+      expect(screen.getByTestId(EDIT_DISPLAYNAME_BUTTON)).toBeInTheDocument();
     });
 
     it('should open EntityNameModal when edit button is clicked', async () => {
@@ -538,7 +547,7 @@ describe('EntityTitleSection', () => {
           entityDetails={{
             id: 'test-id',
             name: 'test_entity',
-            displayName: 'Test Entity',
+            displayName: TEST_ENTITY,
             entityType: EntityType.TABLE,
           }}
           entityLink="/table/test_entity"
@@ -547,12 +556,12 @@ describe('EntityTitleSection', () => {
         { wrapper: Wrapper }
       );
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = screen.getByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
-      expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
+      expect(screen.getByTestId(ENTITY_NAME_MODAL)).toBeInTheDocument();
     });
 
     it('should close modal when cancel is clicked', async () => {
@@ -570,17 +579,17 @@ describe('EntityTitleSection', () => {
         { wrapper: Wrapper }
       );
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = screen.getByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
-      expect(screen.getByTestId('entity-name-modal')).toBeInTheDocument();
+      expect(screen.getByTestId(ENTITY_NAME_MODAL)).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('modal-cancel-button');
       await user.click(cancelButton);
 
-      expect(screen.queryByTestId('entity-name-modal')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ENTITY_NAME_MODAL)).not.toBeInTheDocument();
     });
   });
 
@@ -593,7 +602,7 @@ describe('EntityTitleSection', () => {
 
     it('should call API and onDisplayNameUpdate callback on successful update', async () => {
       const mockOnDisplayNameUpdate = jest.fn();
-      mockPatchAPI.mockResolvedValue({ displayName: 'Updated Display Name' });
+      mockPatchAPI.mockResolvedValue({ displayName: mockUpdatedDisplayName });
 
       render(
         <EntityTitleSection
@@ -612,12 +621,12 @@ describe('EntityTitleSection', () => {
         { wrapper: Wrapper }
       );
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = screen.getByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
-      const saveButton = screen.getByTestId('modal-save-button');
+      const saveButton = screen.getByTestId(MODAL_SAVE_BUTTON);
       await user.click(saveButton);
 
       await waitFor(() => {
@@ -625,20 +634,20 @@ describe('EntityTitleSection', () => {
           {
             op: 'replace',
             path: '/displayName',
-            value: 'Updated Display Name',
+            value: mockUpdatedDisplayName,
           },
         ]);
       });
 
       expect(mockShowSuccessToast).toHaveBeenCalled();
       expect(mockOnDisplayNameUpdate).toHaveBeenCalledWith(
-        'Updated Display Name'
+        mockUpdatedDisplayName
       );
     });
 
     it('should use "add" operation when entityDisplayName is not set', async () => {
       const mockOnDisplayNameUpdate = jest.fn();
-      mockPatchAPI.mockResolvedValue({ displayName: 'Updated Display Name' });
+      mockPatchAPI.mockResolvedValue({ displayName: mockUpdatedDisplayName });
 
       render(
         <EntityTitleSection
@@ -655,12 +664,12 @@ describe('EntityTitleSection', () => {
         { wrapper: Wrapper }
       );
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = screen.getByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
-      const saveButton = screen.getByTestId('modal-save-button');
+      const saveButton = screen.getByTestId(MODAL_SAVE_BUTTON);
 
       await user.click(saveButton);
 
@@ -669,7 +678,7 @@ describe('EntityTitleSection', () => {
           {
             op: 'add',
             path: '/displayName',
-            value: 'Updated Display Name',
+            value: mockUpdatedDisplayName,
           },
         ]);
       });
@@ -693,12 +702,12 @@ describe('EntityTitleSection', () => {
         { wrapper: Wrapper }
       );
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = screen.getByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       await user.click(editButton);
 
-      const saveButton = screen.getByTestId('modal-save-button');
+      const saveButton = screen.getByTestId(MODAL_SAVE_BUTTON);
 
       await user.click(saveButton);
 
@@ -722,7 +731,7 @@ describe('EntityTitleSection', () => {
       );
 
       expect(
-        screen.queryByTestId('edit-displayName-button')
+        screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON)
       ).not.toBeInTheDocument();
     });
   });

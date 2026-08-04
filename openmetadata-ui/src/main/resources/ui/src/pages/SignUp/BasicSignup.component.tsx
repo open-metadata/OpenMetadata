@@ -25,6 +25,8 @@ import { AuthProvider } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './../LoginPage/login.style.less';
 
+const LABEL_ENTER_ENTITY = 'label.enter-entity' as const;
+
 interface SignUpFormData {
   firstName: string;
   lastName: string;
@@ -97,7 +99,7 @@ const BasicSignUp = () => {
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first signup field for usability
                     autoFocus
                     className="input-field"
-                    placeholder={t('label.enter-entity', {
+                    placeholder={t(LABEL_ENTER_ENTITY, {
                       entity: t('label.first-name-lowercase'),
                     })}
                   />
@@ -108,7 +110,7 @@ const BasicSignUp = () => {
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
                     className="input-field"
-                    placeholder={t('label.enter-entity', {
+                    placeholder={t(LABEL_ENTER_ENTITY, {
                       entity: t('label.last-name-lowercase'),
                     })}
                   />
@@ -119,7 +121,7 @@ const BasicSignUp = () => {
                   rules={[{ type: 'email', required: true }]}>
                   <Input
                     className="input-field"
-                    placeholder={t('label.enter-entity', {
+                    placeholder={t(LABEL_ENTER_ENTITY, {
                       entity: t('label.email-lowercase'),
                     })}
                   />
@@ -139,7 +141,7 @@ const BasicSignUp = () => {
                   <Input.Password
                     autoComplete="off"
                     className="input-field"
-                    placeholder={t('label.enter-entity', {
+                    placeholder={t(LABEL_ENTER_ENTITY, {
                       entity: t('label.password-lowercase'),
                     })}
                   />

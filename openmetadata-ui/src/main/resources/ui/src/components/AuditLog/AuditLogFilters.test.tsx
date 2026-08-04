@@ -24,6 +24,9 @@ import { AuditLogActiveFilter } from '../../types/auditLogs.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import AuditLogFilters from './AuditLogFilters.component';
 
+const MOCK_INGESTION_BOT = 'ingestion-bot';
+const MOCK_INGESTION_BOT_1 = 'Ingestion Bot';
+
 const mockOnFiltersChange = jest.fn();
 
 const defaultProps = {
@@ -133,8 +136,8 @@ jest.mock('../../rest/botsAPI', () => ({
     data: [
       {
         id: 'bot-1',
-        name: 'ingestion-bot',
-        displayName: 'Ingestion Bot',
+        name: MOCK_INGESTION_BOT,
+        displayName: MOCK_INGESTION_BOT_1,
       },
     ],
     paging: { total: 1 },
@@ -462,7 +465,7 @@ describe('AuditLogFilters', () => {
 
     await act(async () => {
       capturedOnChange['bot'](
-        [{ key: 'ingestion-bot', label: 'Ingestion Bot' }],
+        [{ key: MOCK_INGESTION_BOT, label: MOCK_INGESTION_BOT_1 }],
         'bot'
       );
     });
@@ -472,12 +475,12 @@ describe('AuditLogFilters', () => {
         expect.objectContaining({
           category: 'bot',
           value: expect.objectContaining({
-            value: 'ingestion-bot',
+            value: MOCK_INGESTION_BOT,
           }),
         }),
       ]),
       expect.objectContaining({
-        userName: 'ingestion-bot',
+        userName: MOCK_INGESTION_BOT,
         actorType: 'BOT',
       })
     );
@@ -505,7 +508,7 @@ describe('AuditLogFilters', () => {
 
     await act(async () => {
       capturedOnChange['bot'](
-        [{ key: 'ingestion-bot', label: 'Ingestion Bot' }],
+        [{ key: MOCK_INGESTION_BOT, label: MOCK_INGESTION_BOT_1 }],
         'bot'
       );
     });
@@ -514,7 +517,7 @@ describe('AuditLogFilters', () => {
       mockOnFiltersChange.mock.calls[mockOnFiltersChange.mock.calls.length - 1];
 
     expect(botCall[1]).toMatchObject({
-      userName: 'ingestion-bot',
+      userName: MOCK_INGESTION_BOT,
       actorType: 'BOT',
     });
   });

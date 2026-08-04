@@ -25,6 +25,9 @@ import TableDiffFields, {
 } from './TableDiffFields';
 import { FormValues } from './TestCaseFormV1.interface';
 
+const TABLE2_KEY_COLUMNS = 'table2.keyColumns';
+const PARAMETER_TABLE2_KEY_COLUMNS_0 = 'parameter-table2.keyColumns-0';
+
 jest.mock('@untitledui/icons', () => ({
   Trash01: () => <span data-testid="trash-icon" />,
 }));
@@ -88,7 +91,7 @@ const TABLE_DIFF_DEFINITION = {
       dataType: TestDataType.Array,
     },
     {
-      name: 'table2.keyColumns',
+      name: TABLE2_KEY_COLUMNS,
       displayName: 'Table 2 Key Columns',
       dataType: TestDataType.Array,
     },
@@ -201,7 +204,7 @@ describe('TableDiffFields', () => {
 
     await screen.findByTestId('table2');
 
-    expect(isColumnSelectDisabled('parameter-table2.keyColumns-0')).toBe(true);
+    expect(isColumnSelectDisabled(PARAMETER_TABLE2_KEY_COLUMNS_0)).toBe(true);
   });
 
   it('loads table2 columns and enables table2.keyColumns once table2 is selected', async () => {
@@ -213,6 +216,7 @@ describe('TableDiffFields', () => {
 
     await act(async () => {
       formRef?.setValue(
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         'params.table2' as never,
         {
           id: TABLE2_FQN,
@@ -222,7 +226,7 @@ describe('TableDiffFields', () => {
     });
 
     await waitFor(() => {
-      expect(isColumnSelectDisabled('parameter-table2.keyColumns-0')).toBe(
+      expect(isColumnSelectDisabled(PARAMETER_TABLE2_KEY_COLUMNS_0)).toBe(
         false
       );
     });
@@ -253,7 +257,7 @@ describe('TableDiffFields', () => {
     });
 
     await waitFor(() => {
-      expect(isColumnSelectDisabled('parameter-table2.keyColumns-0')).toBe(
+      expect(isColumnSelectDisabled(PARAMETER_TABLE2_KEY_COLUMNS_0)).toBe(
         false
       );
     });
@@ -263,9 +267,7 @@ describe('TableDiffFields', () => {
     });
 
     await waitFor(() => {
-      expect(isColumnSelectDisabled('parameter-table2.keyColumns-0')).toBe(
-        true
-      );
+      expect(isColumnSelectDisabled(PARAMETER_TABLE2_KEY_COLUMNS_0)).toBe(true);
     });
   });
 
@@ -324,7 +326,7 @@ describe('TableDiffFields', () => {
 
     await screen.findByTestId('table2');
 
-    const sanitizedKey = sanitizeParamName('table2.keyColumns');
+    const sanitizedKey = sanitizeParamName(TABLE2_KEY_COLUMNS);
 
     await act(async () => {
       formRef?.setValue(
@@ -346,8 +348,8 @@ describe('TableDiffFields', () => {
     const params = formRef?.getValues().params as Record<string, unknown>;
 
     expect(params[sanitizedKey]).toEqual([{ value: 'order_id' }]);
-    expect(restoreParamName(sanitizedKey)).toBe('table2.keyColumns');
+    expect(restoreParamName(sanitizedKey)).toBe(TABLE2_KEY_COLUMNS);
     expect(params.table2).toEqual({ id: TABLE2_FQN, label: TABLE2_FQN });
-    expect(params['table2.keyColumns']).toBeUndefined();
+    expect(params[TABLE2_KEY_COLUMNS]).toBeUndefined();
   });
 });

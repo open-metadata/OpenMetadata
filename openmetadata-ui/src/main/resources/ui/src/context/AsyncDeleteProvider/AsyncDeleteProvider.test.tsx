@@ -21,6 +21,8 @@ import AsyncDeleteProvider, {
 } from './AsyncDeleteProvider';
 import { AsyncDeleteWebsocketResponse } from './AsyncDeleteProvider.interface';
 
+const DELETE_OPERATION_FAILED = 'Delete operation failed';
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -122,7 +124,7 @@ describe('AsyncDeleteProvider', () => {
   it('should handle failed status from ref', async () => {
     const mockFailedResponse: AsyncDeleteWebsocketResponse = {
       status: 'FAILED',
-      error: 'Delete operation failed',
+      error: DELETE_OPERATION_FAILED,
       jobId: '123',
       entityName: 'TestEntity',
     };
@@ -139,7 +141,7 @@ describe('AsyncDeleteProvider', () => {
       await result.current.handleOnAsyncEntityDeleteConfirm(mockDeleteParams);
     });
 
-    expect(showErrorToast).toHaveBeenCalledWith('Delete operation failed');
+    expect(showErrorToast).toHaveBeenCalledWith(DELETE_OPERATION_FAILED);
   });
 
   it('should handle prepared entity type', async () => {
@@ -195,7 +197,7 @@ describe('AsyncDeleteProvider', () => {
       status: 'FAILED',
       jobId: mockResponse.jobId,
       entityName: 'TestEntity',
-      error: 'Delete operation failed',
+      error: DELETE_OPERATION_FAILED,
     };
 
     act(() => {
@@ -205,7 +207,7 @@ describe('AsyncDeleteProvider', () => {
     });
 
     expect(mockOnDeleteFailure).toHaveBeenCalled();
-    expect(showErrorToast).toHaveBeenCalledWith('Delete operation failed');
+    expect(showErrorToast).toHaveBeenCalledWith(DELETE_OPERATION_FAILED);
   });
 
   it('should not execute onDeleteFailure when websocket returns COMPLETED status', async () => {

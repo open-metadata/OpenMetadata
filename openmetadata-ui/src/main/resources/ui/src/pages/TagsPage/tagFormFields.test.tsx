@@ -24,6 +24,7 @@ import {
   getOwnerField,
 } from './tagFormFields';
 
+const SHOULD_FORWARD_DISABLED_PROP = 'should forward disabled prop';
 const noopFn = jest.fn();
 const mockT = jest.fn((key: string) => key) as unknown as TFunction;
 
@@ -63,7 +64,7 @@ describe('tagFormFields', () => {
       expect(result.props?.['data-testid']).toBe('name');
     });
 
-    it('should forward disabled prop', () => {
+    it(SHOULD_FORWARD_DISABLED_PROP, () => {
       expect(getNameField(true, mockT).props?.disabled).toBe(true);
       expect(getNameField(false, mockT).props?.disabled).toBe(false);
     });
@@ -78,7 +79,7 @@ describe('tagFormFields', () => {
       expect(result.required).toBe(false);
     });
 
-    it('should forward disabled prop', () => {
+    it(SHOULD_FORWARD_DISABLED_PROP, () => {
       expect(getDisplayNameField(true).props?.disabled).toBe(true);
     });
   });
@@ -138,7 +139,7 @@ describe('tagFormFields', () => {
       expect(result.props?.['data-testid']).toBe('disabled');
     });
 
-    it('should forward disabled prop', () => {
+    it(SHOULD_FORWARD_DISABLED_PROP, () => {
       expect(getDisabledField({ disabled: true }).props?.disabled).toBe(true);
     });
   });
@@ -163,7 +164,7 @@ describe('tagFormFields', () => {
       expect(result.helperText).toBe('Alert message');
     });
 
-    it('should forward disabled prop', () => {
+    it(SHOULD_FORWARD_DISABLED_PROP, () => {
       expect(
         getMutuallyExclusiveField({ disabled: true }).props?.disabled
       ).toBe(true);

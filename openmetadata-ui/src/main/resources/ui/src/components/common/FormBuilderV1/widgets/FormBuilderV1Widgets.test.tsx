@@ -20,6 +20,9 @@ import CoreRadioWidget from './CoreRadioWidget';
 import CoreSelectWidget from './CoreSelectWidget';
 import CoreTextAreaWidget from './CoreTextAreaWidget';
 
+const WIDGET_LABEL = 'Widget label' as const;
+const SELECT_RADIO = 'select-radio' as const;
+
 jest.mock('@untitledui/icons', () => ({
   Eye: () => <span>eye-icon</span>,
   EyeOff: () => <span>eye-off-icon</span>,
@@ -378,7 +381,7 @@ describe('FormBuilderV1 widgets', () => {
     disabled: false,
     hideLabel: false,
     id: 'widget-id',
-    label: 'Widget label',
+    label: WIDGET_LABEL,
     name: 'widget-name',
     onBlur: jest.fn(),
     onChange: jest.fn(),
@@ -420,7 +423,7 @@ describe('FormBuilderV1 widgets', () => {
     fireEvent.change(textInput, { target: { value: '' } });
     fireEvent.blur(textInput);
 
-    expect(screen.getByText('Widget label')).toBeInTheDocument();
+    expect(screen.getByText(WIDGET_LABEL)).toBeInTheDocument();
     expect(screen.getByText('Invalid')).toBeInTheDocument();
     expect(onFocus).toHaveBeenCalledWith('widget-id', 'abc');
     expect(onChange).toHaveBeenCalledWith('next');
@@ -469,7 +472,7 @@ describe('FormBuilderV1 widgets', () => {
       />
     );
 
-    expect(screen.getByText('Widget label')).toBeInTheDocument();
+    expect(screen.getByText(WIDGET_LABEL)).toBeInTheDocument();
     expect(screen.getByText('Required')).toBeInTheDocument();
     expect(screen.getByTestId('selected-key')).toHaveTextContent('1');
     expect(screen.getByText('One')).toBeInTheDocument();
@@ -519,7 +522,7 @@ describe('FormBuilderV1 widgets', () => {
     expect(screen.getByText('First option')).toBeInTheDocument();
     expect(screen.getByText('Choose one')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'select-radio' }));
+    fireEvent.click(screen.getByRole('button', { name: SELECT_RADIO }));
 
     expect(onChange).toHaveBeenCalledWith(2);
   });
@@ -617,7 +620,8 @@ describe('FormBuilderV1 widgets', () => {
       />
     );
 
-    expect(screen.getByText('select-radio')).toBeInTheDocument();
+    expect(screen.getByText(SELECT_RADIO)).toBeInTheDocument();
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     expect(screen.getByTestId('file-input')).toBeInTheDocument();
   });
 
@@ -636,7 +640,7 @@ describe('FormBuilderV1 widgets', () => {
 
     expect(screen.getByTestId('file-input')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'select-radio' }));
+    fireEvent.click(screen.getByRole('button', { name: SELECT_RADIO }));
 
     expect(screen.queryByTestId('file-input')).not.toBeInTheDocument();
     expect(screen.getByText('eye-icon')).toBeInTheDocument();

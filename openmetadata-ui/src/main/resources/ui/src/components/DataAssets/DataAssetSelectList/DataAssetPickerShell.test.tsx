@@ -14,6 +14,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { DataAssetPickerOption } from './DataAssetPicker.interface';
 import DataAssetPickerShell from './DataAssetPickerShell';
 
+const TW_BG_UTILITY_GRAY_BLUE_50 = 'tw:bg-utility-gray-blue-50';
+
 jest.mock('../../../utils/Assets/AssetsUtils', () => ({
   getEntityIconWithBg: jest.fn().mockReturnValue(<span>icon</span>),
 }));
@@ -217,7 +219,7 @@ describe('DataAssetPickerShell', () => {
 
       const firstOption = screen.getByRole('option', { name: /Orders/i });
 
-      expect(firstOption.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(firstOption.className).toContain(TW_BG_UTILITY_GRAY_BLUE_50);
     });
 
     it('ArrowDown stays on last option when already at the end', () => {
@@ -232,7 +234,7 @@ describe('DataAssetPickerShell', () => {
 
       const lastOption = screen.getByRole('option', { name: /Users/i });
 
-      expect(lastOption.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(lastOption.className).toContain(TW_BG_UTILITY_GRAY_BLUE_50);
     });
 
     it('ArrowUp from unfocused state leaves no option highlighted', () => {
@@ -243,7 +245,7 @@ describe('DataAssetPickerShell', () => {
 
       const firstOption = screen.getByRole('option', { name: /Orders/i });
 
-      expect(firstOption.className).not.toContain('tw:bg-utility-gray-blue-50');
+      expect(firstOption.className).not.toContain(TW_BG_UTILITY_GRAY_BLUE_50);
     });
 
     it('Enter selects the focused option and closes in single mode', () => {
@@ -292,7 +294,7 @@ describe('DataAssetPickerShell', () => {
 
       const ordersOption = screen.getByRole('option', { name: /Orders/i });
 
-      expect(ordersOption.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(ordersOption.className).toContain(TW_BG_UTILITY_GRAY_BLUE_50);
     });
 
     it('keeps keyboard focus when more options are appended (pagination)', () => {
@@ -307,7 +309,7 @@ describe('DataAssetPickerShell', () => {
 
       const usersOption = screen.getByRole('option', { name: /Users/i });
 
-      expect(usersOption.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(usersOption.className).toContain(TW_BG_UTILITY_GRAY_BLUE_50);
 
       const appendedOptions: DataAssetPickerOption[] = [
         ...OPTIONS,
@@ -326,7 +328,7 @@ describe('DataAssetPickerShell', () => {
       });
 
       expect(usersOptionAfterAppend.className).toContain(
-        'tw:bg-utility-gray-blue-50'
+        TW_BG_UTILITY_GRAY_BLUE_50
       );
     });
 
@@ -340,7 +342,7 @@ describe('DataAssetPickerShell', () => {
 
       const firstOption = screen.getByRole('option', { name: /Orders/i });
 
-      expect(firstOption.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(firstOption.className).toContain(TW_BG_UTILITY_GRAY_BLUE_50);
 
       rerender(
         <DataAssetPickerShell
@@ -353,7 +355,7 @@ describe('DataAssetPickerShell', () => {
       const productsOption = screen.getByRole('option', { name: /Products/i });
 
       expect(productsOption.className).not.toContain(
-        'tw:bg-utility-gray-blue-50'
+        TW_BG_UTILITY_GRAY_BLUE_50
       );
     });
   });

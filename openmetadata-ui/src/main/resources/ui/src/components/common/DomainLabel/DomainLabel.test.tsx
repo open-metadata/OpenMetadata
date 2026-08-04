@@ -18,6 +18,11 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainLabel } from './DomainLabel.component';
 
+const DOMAIN_SELECTABLE_LIST = 'domain-selectable-list';
+const DOMAIN_COUNT_BUTTON = 'domain-count-button';
+const NO_DOMAIN_TEXT = 'no-domain-text';
+const DOMAIN_LINK = 'domain-link';
+const DOMAIN_ONE = 'Domain One';
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
@@ -81,7 +86,7 @@ jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
 const mockDomain1: EntityReference = {
   id: 'domain-1',
   fullyQualifiedName: 'domain.one',
-  name: 'Domain One',
+  name: DOMAIN_ONE,
   type: 'domain',
 };
 
@@ -124,8 +129,8 @@ describe('DomainLabel Component', () => {
   it('should render single domain correctly', () => {
     renderDomainLabel({ domains: [mockDomain1] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_LINK)).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
   });
 
   it('should render multiple domains with dropdown when multiple and headerLayout are true', () => {
@@ -135,8 +140,8 @@ describe('DomainLabel Component', () => {
       headerLayout: true,
     });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_COUNT_BUTTON)).toBeInTheDocument();
     expect(screen.getByText('+1')).toBeInTheDocument();
   });
 
@@ -147,22 +152,22 @@ describe('DomainLabel Component', () => {
       headerLayout: false,
     });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
     expect(screen.getByText('Domain Two')).toBeInTheDocument();
-    expect(screen.queryByTestId('domain-count-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DOMAIN_COUNT_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should render "No Domains" text when domains array is empty', () => {
     renderDomainLabel({ domains: [] });
 
-    expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
+    expect(screen.getByTestId(NO_DOMAIN_TEXT)).toBeInTheDocument();
     expect(screen.getByText('label.no-entity')).toBeInTheDocument();
   });
 
   it('should render "No Domains" text when domains is undefined', () => {
     renderDomainLabel({ domains: undefined });
 
-    expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
+    expect(screen.getByTestId(NO_DOMAIN_TEXT)).toBeInTheDocument();
     expect(screen.getByText('label.no-entity')).toBeInTheDocument();
   });
 
@@ -180,7 +185,7 @@ describe('DomainLabel Component', () => {
 
     renderDomainLabel({ domains: [domainWithoutName] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_LINK)).toBeInTheDocument();
   });
 
   it('should render domain heading when showDomainHeading is true', () => {
@@ -209,14 +214,14 @@ describe('DomainLabel Component', () => {
   it('should render DomainSelectableList when hasPermission is true', () => {
     renderDomainLabel({ hasPermission: true });
 
-    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_SELECTABLE_LIST)).toBeInTheDocument();
   });
 
   it('should not render DomainSelectableList when hasPermission is false', () => {
     renderDomainLabel({ hasPermission: false });
 
     expect(
-      screen.queryByTestId('domain-selectable-list')
+      screen.queryByTestId(DOMAIN_SELECTABLE_LIST)
     ).not.toBeInTheDocument();
   });
 
@@ -224,14 +229,14 @@ describe('DomainLabel Component', () => {
     renderDomainLabel({ hasPermission: undefined });
 
     expect(
-      screen.queryByTestId('domain-selectable-list')
+      screen.queryByTestId(DOMAIN_SELECTABLE_LIST)
     ).not.toBeInTheDocument();
   });
 
   it('should handle domains as single object instead of array', () => {
     renderDomainLabel({ domains: mockDomain1 as unknown as EntityReference[] });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
   });
 
   it('should handle empty domain object', () => {
@@ -239,7 +244,7 @@ describe('DomainLabel Component', () => {
 
     renderDomainLabel({ domains: [emptyDomain] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_LINK)).toBeInTheDocument();
   });
 
   it('should handle domain with empty fullyQualifiedName', () => {
@@ -250,7 +255,7 @@ describe('DomainLabel Component', () => {
 
     renderDomainLabel({ domains: [domainWithEmptyFQN] });
 
-    expect(screen.getByTestId('domain-link')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_LINK)).toBeInTheDocument();
   });
 
   it('should handle mixed domain types (inherited and non-inherited)', () => {
@@ -260,8 +265,8 @@ describe('DomainLabel Component', () => {
       headerLayout: true,
     });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_COUNT_BUTTON)).toBeInTheDocument();
   });
 
   it('should have proper test ID for domain count button', () => {
@@ -271,12 +276,12 @@ describe('DomainLabel Component', () => {
       headerLayout: true,
     });
 
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_COUNT_BUTTON)).toBeInTheDocument();
   });
 
   it('should have proper test ID for no domain text', () => {
     renderDomainLabel({ domains: [] });
 
-    expect(screen.getByTestId('no-domain-text')).toBeInTheDocument();
+    expect(screen.getByTestId(NO_DOMAIN_TEXT)).toBeInTheDocument();
   });
 });

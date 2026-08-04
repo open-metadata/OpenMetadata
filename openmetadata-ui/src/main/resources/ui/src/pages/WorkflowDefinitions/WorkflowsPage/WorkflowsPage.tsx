@@ -63,6 +63,8 @@ import {
 } from '../../../utils/WorkflowValidationUtils';
 import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interface';
 
+const LABEL_WORKFLOW_PLURAL = 'label.workflow-plural';
+
 const WorkflowsPage = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -314,7 +316,7 @@ const WorkflowsPage = () => {
         paddingRight: 0,
         ...(isAiMode ? { paddingBottom: 0, height: 'calc(100vh - 16px)' } : {}),
       }}
-      pageTitle={t('label.workflow-plural')}
+      pageTitle={t(LABEL_WORKFLOW_PLURAL)}
       variant={isAiMode ? 'compact' : 'default'}>
       <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-2 tw:gap-4">
         {isAiMode ? (
@@ -326,7 +328,7 @@ const WorkflowsPage = () => {
                 noMargin
                 items={[
                   getGlossaryHomeCrumb(t),
-                  { label: t('label.workflow-plural') },
+                  { label: t(LABEL_WORKFLOW_PLURAL) },
                 ]}
                 showHome={false}
               />
@@ -334,7 +336,7 @@ const WorkflowsPage = () => {
             className="tw:mb-0!"
             padding="comfortable"
             subtitle={t('message.workflow-subtitle')}
-            title={t('label.workflow-plural')}
+            title={t(LABEL_WORKFLOW_PLURAL)}
             variant="gradient"
           />
         ) : (
@@ -342,11 +344,11 @@ const WorkflowsPage = () => {
             <div className="tw:flex tw:items-center tw:justify-between">
               <PageHeader
                 data={{
-                  header: t('label.workflow-plural'),
+                  header: t(LABEL_WORKFLOW_PLURAL),
                   subHeader: t('message.workflow-subtitle'),
                 }}
                 learningPageId={LEARNING_PAGE_IDS.WORKFLOWS}
-                title={t('label.workflow-plural')}
+                title={t(LABEL_WORKFLOW_PLURAL)}
               />
               {createWorkflowButton}
             </div>

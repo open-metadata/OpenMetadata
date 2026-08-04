@@ -33,6 +33,15 @@ import { mockTableEntityDetails } from './mocks/TableSummary.mock';
 import { mockTagEntityDetails } from './mocks/TagSummary.mock';
 import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
 
+const ENTITY_TITLE_SECTION = 'entity-title-section';
+const ENTITY_DISPLAY_NAME = 'entity-display-name';
+const EDIT_DISPLAYNAME_BUTTON = 'edit-displayName-button';
+const UPDATED_DISPLAY_NAME = 'Updated Display Name';
+const DRAWER_CLOSE_ICON = 'drawer-close-icon';
+const DATA_TESTID_LOADER = '[data-testid="loader"]';
+const ENTITY_SUMMARY_PANEL_CONTAINER = 'entity-summary-panel-container';
+const TEST_TABLE_ID = 'test-table-id';
+
 const mockHandleClosePanel = jest.fn();
 
 jest.mock('../../../utils/EntityLinkUtils', () => ({
@@ -205,8 +214,8 @@ const mockOnDisplayNameUpdate = jest.fn();
 
 jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
   EntityTitleSection: jest.fn().mockImplementation((props) => (
-    <div data-testid="entity-title-section">
-      <span data-testid="entity-display-name">
+    <div data-testid={ENTITY_TITLE_SECTION}>
+      <span data-testid={ENTITY_DISPLAY_NAME}>
         {props.entityDisplayName ??
           props.entityDetails?.displayName ??
           props.entityDetails?.name}
@@ -215,11 +224,11 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
         props.entityType &&
         props.entityDetails?.id && (
           <button
-            data-testid="edit-displayName-button"
+            data-testid={EDIT_DISPLAYNAME_BUTTON}
             onClick={() => {
               if (props.onDisplayNameUpdate) {
-                props.onDisplayNameUpdate('Updated Display Name');
-                mockOnDisplayNameUpdate('Updated Display Name');
+                props.onDisplayNameUpdate(UPDATED_DISPLAY_NAME);
+                mockOnDisplayNameUpdate(UPDATED_DISPLAY_NAME);
               }
             }}>
             Edit
@@ -479,10 +488,10 @@ describe('EntitySummaryPanel component tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('drawer-close-icon')).toBeInTheDocument();
+      expect(screen.getByTestId(DRAWER_CLOSE_ICON)).toBeInTheDocument();
     });
 
-    const closeIcon = screen.getByTestId('drawer-close-icon');
+    const closeIcon = screen.getByTestId(DRAWER_CLOSE_ICON);
 
     expect(closeIcon).toBeInTheDocument();
   });
@@ -502,10 +511,10 @@ describe('EntitySummaryPanel component tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('drawer-close-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(DRAWER_CLOSE_ICON)).not.toBeInTheDocument();
     });
 
-    const closeIcon = screen.queryByTestId('drawer-close-icon');
+    const closeIcon = screen.queryByTestId(DRAWER_CLOSE_ICON);
 
     expect(closeIcon).not.toBeInTheDocument();
   });
@@ -566,13 +575,13 @@ describe('EntitySummaryPanel component tests', () => {
       );
 
       await waitFor(() => {
-        const loaders = container.querySelectorAll('[data-testid="loader"]');
+        const loaders = container.querySelectorAll(DATA_TESTID_LOADER);
 
         expect(loaders.length).toBeGreaterThan(0);
       });
 
       // Should show loader initially while permissions load
-      const loaders = container.querySelectorAll('[data-testid="loader"]');
+      const loaders = container.querySelectorAll(DATA_TESTID_LOADER);
 
       expect(loaders.length).toBeGreaterThan(0);
     });
@@ -687,7 +696,7 @@ describe('EntitySummaryPanel component tests', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('entity-summary-panel-container')
+          screen.getByTestId(ENTITY_SUMMARY_PANEL_CONTAINER)
         ).toBeInTheDocument();
       });
 
@@ -873,14 +882,14 @@ describe('EntitySummaryPanel component tests', () => {
       );
 
       await waitFor(() => {
-        const loaders = container.querySelectorAll('[data-testid="loader"]');
+        const loaders = container.querySelectorAll(DATA_TESTID_LOADER);
 
         expect(loaders.length).toBeGreaterThan(0);
         expect(mockGetEntityPermission).toHaveBeenCalled();
       });
 
       // Should show loader while permission is loading
-      const loaders = container.querySelectorAll('[data-testid="loader"]');
+      const loaders = container.querySelectorAll(DATA_TESTID_LOADER);
 
       expect(loaders.length).toBeGreaterThan(0);
       expect(mockGetEntityPermission).toHaveBeenCalled();
@@ -914,7 +923,7 @@ describe('EntitySummaryPanel component tests', () => {
           entityDetails={{
             details: {
               ...mockTableEntityDetails,
-              id: 'test-table-id',
+              id: TEST_TABLE_ID,
               entityType: EntityType.TABLE,
             },
           }}
@@ -923,17 +932,17 @@ describe('EntitySummaryPanel component tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('entity-title-section')).toBeInTheDocument();
+        expect(screen.getByTestId(ENTITY_TITLE_SECTION)).toBeInTheDocument();
         expect(
-          screen.queryByTestId('edit-displayName-button')
+          screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON)
         ).toBeInTheDocument();
       });
 
-      const entityTitleSection = screen.getByTestId('entity-title-section');
+      const entityTitleSection = screen.getByTestId(ENTITY_TITLE_SECTION);
 
       expect(entityTitleSection).toBeInTheDocument();
 
-      const editButton = screen.queryByTestId('edit-displayName-button');
+      const editButton = screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       expect(editButton).toBeInTheDocument();
     });
@@ -952,7 +961,7 @@ describe('EntitySummaryPanel component tests', () => {
           entityDetails={{
             details: {
               ...mockTableEntityDetails,
-              id: 'test-table-id',
+              id: TEST_TABLE_ID,
               entityType: EntityType.TABLE,
             },
           }}
@@ -962,11 +971,11 @@ describe('EntitySummaryPanel component tests', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId('edit-displayName-button')
+          screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON)
         ).not.toBeInTheDocument();
       });
 
-      const editButton = screen.queryByTestId('edit-displayName-button');
+      const editButton = screen.queryByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       expect(editButton).not.toBeInTheDocument();
     });
@@ -985,7 +994,7 @@ describe('EntitySummaryPanel component tests', () => {
           entityDetails={{
             details: {
               ...mockTableEntityDetails,
-              id: 'test-table-id',
+              id: TEST_TABLE_ID,
               entityType: EntityType.TABLE,
             },
           }}
@@ -994,19 +1003,17 @@ describe('EntitySummaryPanel component tests', () => {
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('edit-displayName-button')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(EDIT_DISPLAYNAME_BUTTON)).toBeInTheDocument();
       });
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = screen.getByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       await act(async () => {
         fireEvent.click(editButton);
       });
 
       expect(mockOnDisplayNameUpdate).toHaveBeenCalledWith(
-        'Updated Display Name'
+        UPDATED_DISPLAY_NAME
       );
     });
 
@@ -1032,7 +1039,7 @@ describe('EntitySummaryPanel component tests', () => {
           entityDetails={{
             details: {
               ...mockTableEntityDetails,
-              id: 'test-table-id',
+              id: TEST_TABLE_ID,
               displayName: 'Initial Display Name',
               entityType: EntityType.TABLE,
             },
@@ -1042,25 +1049,25 @@ describe('EntitySummaryPanel component tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('entity-display-name')).toBeInTheDocument();
+        expect(screen.getByTestId(ENTITY_DISPLAY_NAME)).toBeInTheDocument();
       });
 
       await waitFor(() => {
-        const displayNameElement = screen.getByTestId('entity-display-name');
+        const displayNameElement = screen.getByTestId(ENTITY_DISPLAY_NAME);
 
         expect(displayNameElement).toBeInTheDocument();
       });
 
-      const editButton = screen.getByTestId('edit-displayName-button');
+      const editButton = screen.getByTestId(EDIT_DISPLAYNAME_BUTTON);
 
       await act(async () => {
         fireEvent.click(editButton);
       });
 
       await waitFor(() => {
-        const displayNameElement = screen.getByTestId('entity-display-name');
+        const displayNameElement = screen.getByTestId(ENTITY_DISPLAY_NAME);
 
-        expect(displayNameElement).toHaveTextContent('Updated Display Name');
+        expect(displayNameElement).toHaveTextContent(UPDATED_DISPLAY_NAME);
       });
     });
 
@@ -1071,7 +1078,7 @@ describe('EntitySummaryPanel component tests', () => {
           entityDetails={{
             details: {
               ...mockTableEntityDetails,
-              id: 'test-table-id',
+              id: TEST_TABLE_ID,
               entityType: EntityType.TABLE,
             },
           }}
@@ -1080,10 +1087,10 @@ describe('EntitySummaryPanel component tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('entity-title-section')).toBeInTheDocument();
+        expect(screen.getByTestId(ENTITY_TITLE_SECTION)).toBeInTheDocument();
       });
 
-      const entityTitleSection = screen.getByTestId('entity-title-section');
+      const entityTitleSection = screen.getByTestId(ENTITY_TITLE_SECTION);
 
       expect(entityTitleSection).toBeInTheDocument();
     });
@@ -1112,7 +1119,7 @@ describe('EntitySummaryPanel component tests', () => {
           entityDetails={{
             details: {
               ...mockTableEntityDetails,
-              id: 'test-table-id',
+              id: TEST_TABLE_ID,
               displayName: 'Original Display Name',
               entityType: EntityType.TABLE,
             },
@@ -1122,7 +1129,7 @@ describe('EntitySummaryPanel component tests', () => {
       );
 
       await waitFor(() => {
-        const displayNameElement = screen.getByTestId('entity-display-name');
+        const displayNameElement = screen.getByTestId(ENTITY_DISPLAY_NAME);
 
         expect(displayNameElement).toHaveTextContent('EntityData Display Name');
       });
@@ -1162,7 +1169,7 @@ describe('EntitySummaryPanel component tests', () => {
 
         await waitFor(() => {
           expect(
-            screen.getByTestId('entity-summary-panel-container')
+            screen.getByTestId(ENTITY_SUMMARY_PANEL_CONTAINER)
           ).toBeInTheDocument();
         });
       });
@@ -1189,7 +1196,7 @@ describe('EntitySummaryPanel component tests', () => {
 
         await waitFor(() => {
           expect(
-            screen.getByTestId('entity-summary-panel-container')
+            screen.getByTestId(ENTITY_SUMMARY_PANEL_CONTAINER)
           ).toBeInTheDocument();
         });
       });
@@ -1216,7 +1223,7 @@ describe('EntitySummaryPanel component tests', () => {
 
         await waitFor(() => {
           expect(
-            screen.getByTestId('entity-summary-panel-container')
+            screen.getByTestId(ENTITY_SUMMARY_PANEL_CONTAINER)
           ).toBeInTheDocument();
         });
       });

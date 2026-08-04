@@ -18,6 +18,14 @@ import { Column, DataType } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import TabFilters from './TabFilters';
 
+const TABLE_PROFILE = 'table-profile';
+const TABLE_TEST_TABLE_PROFILER = '/table/test-table/profiler';
+const DATE_PICKER_MENU = 'date-picker-menu';
+const PROFILER_ADD_TABLE_TEST_BTN = 'profiler-add-table-test-btn';
+const PROFILER_SETTING_BTN = 'profiler-setting-btn';
+const COLUMN_PICKER_MENU = 'column-picker-menu';
+const ACTIVECOLUMNFQN_TABLE_COLUMN1 = '?activeColumnFqn=table.column1';
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
@@ -101,7 +109,7 @@ jest.mock('../../../../common/DatePickerMenu/DatePickerMenu.component', () => {
     size: string;
   }) {
     return (
-      <div data-size={size} data-testid="date-picker-menu">
+      <div data-size={size} data-testid={DATE_PICKER_MENU}>
         <span>{`Start: ${defaultDateRange.startTs}`}</span>
         <span>{`End: ${defaultDateRange.endTs}`}</span>
         <button
@@ -123,10 +131,10 @@ jest.mock('../../../../common/DatePickerMenu/DatePickerMenu.component', () => {
 const mockNavigate = jest.fn();
 const mockOnSettingButtonClick = jest.fn();
 const mockOnTestCaseDrawerOpen = jest.fn();
-const mockUseParams = jest.fn(() => ({ subTab: 'table-profile' }));
+const mockUseParams = jest.fn(() => ({ subTab: TABLE_PROFILE }));
 const mockUseCustomLocation = jest.fn(() => ({
   search: '?startTs=1711065600000&endTs=1711670399000&key=last7days',
-  pathname: '/table/test-table/profiler',
+  pathname: TABLE_TEST_TABLE_PROFILER,
 }));
 
 const buildOperationPermission = (
@@ -208,7 +216,7 @@ jest.mock('../../../../../constants/profiler.constant', () => ({
 jest.mock('../../TableProfiler/ProfilerClassBase', () => ({
   __esModule: true,
   default: {
-    getDefaultTabKey: jest.fn(() => 'table-profile'),
+    getDefaultTabKey: jest.fn(() => TABLE_PROFILE),
   },
 }));
 
@@ -234,7 +242,7 @@ jest.mock('../../TableProfiler/ColumnPickerMenu', () => {
     handleChange: (key: string) => void;
   }) {
     return (
-      <div data-testid="column-picker-menu">
+      <div data-testid={COLUMN_PICKER_MENU}>
         <span>{`Active: ${activeColumnFqn}`}</span>
         <button onClick={() => handleChange('new-column-fqn')}>
           Change Column
@@ -275,9 +283,9 @@ describe('TabFilters', () => {
     mockGetPrioritizedEditPermission.mockReturnValue(true);
     mockUseCustomLocation.mockReturnValue({
       search: '?startTs=1711065600000&endTs=1711670399000&key=last7days',
-      pathname: '/table/test-table/profiler',
+      pathname: TABLE_TEST_TABLE_PROFILER,
     });
-    mockUseParams.mockReturnValue({ subTab: 'table-profile' });
+    mockUseParams.mockReturnValue({ subTab: TABLE_PROFILE });
     mockUseTableProfiler.mockReturnValue({
       permissions: buildOperationPermission({
         EditDataProfile: true,
@@ -296,13 +304,13 @@ describe('TabFilters', () => {
     it('should render the component', () => {
       renderComponent();
 
-      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
     });
 
     it('should render date picker with correct props', () => {
       renderComponent();
 
-      const datePicker = screen.getByTestId('date-picker-menu');
+      const datePicker = screen.getByTestId(DATE_PICKER_MENU);
 
       expect(datePicker).toHaveAttribute('data-size', 'small');
       expect(datePicker).toHaveTextContent('Start: 1711065600000');
@@ -313,14 +321,14 @@ describe('TabFilters', () => {
       renderComponent();
 
       expect(
-        screen.getByTestId('profiler-add-table-test-btn')
+        screen.getByTestId(PROFILER_ADD_TABLE_TEST_BTN)
       ).toBeInTheDocument();
     });
 
     it('should render settings button when user has edit permissions', () => {
       renderComponent();
 
-      expect(screen.getByTestId('profiler-setting-btn')).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILER_SETTING_BTN)).toBeInTheDocument();
     });
 
     it('should render LimitWrapper around add button', () => {
@@ -335,32 +343,30 @@ describe('TabFilters', () => {
       mockUseCustomLocation.mockReturnValue({
         search:
           '?activeColumnFqn=table.column1&startTs=1711065600000&endTs=1711670399000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      expect(screen.getByTestId('column-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_PICKER_MENU)).toBeInTheDocument();
       expect(screen.getByText('Active: table.column1')).toBeInTheDocument();
     });
 
     it('should not render column picker when activeColumnFqn is empty', () => {
       mockUseCustomLocation.mockReturnValue({
         search: '?startTs=1711065600000&endTs=1711670399000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      expect(
-        screen.queryByTestId('column-picker-menu')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_PICKER_MENU)).not.toBeInTheDocument();
     });
 
     it('should display column label', () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
@@ -371,71 +377,71 @@ describe('TabFilters', () => {
 
   describe('Date Picker Visibility', () => {
     it('should render date picker on table-profile tab', () => {
-      mockUseParams.mockReturnValue({ subTab: 'table-profile' });
+      mockUseParams.mockReturnValue({ subTab: TABLE_PROFILE });
 
       renderComponent();
 
-      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
     });
 
     it('should render date picker when column is selected', () => {
       mockUseParams.mockReturnValue({ subTab: 'column-profile' });
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
     });
 
     it('should not render date picker on column-profile tab without active column', () => {
       mockUseParams.mockReturnValue({ subTab: 'column-profile' });
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      expect(screen.queryByTestId('date-picker-menu')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(DATE_PICKER_MENU)).not.toBeInTheDocument();
     });
 
     it('should not render date picker on data-quality tab without active column', () => {
       mockUseParams.mockReturnValue({ subTab: 'data-quality' });
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      expect(screen.queryByTestId('date-picker-menu')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(DATE_PICKER_MENU)).not.toBeInTheDocument();
     });
 
     it('should not render date picker on overview tab without active column', () => {
       mockUseParams.mockReturnValue({ subTab: 'overview' });
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      expect(screen.queryByTestId('date-picker-menu')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(DATE_PICKER_MENU)).not.toBeInTheDocument();
     });
 
     it('should render date picker on overview tab when column is selected', () => {
       mockUseParams.mockReturnValue({ subTab: 'overview' });
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
     });
 
     it('should display date label when date picker is shown', () => {
@@ -462,7 +468,7 @@ describe('TabFilters', () => {
       renderComponent();
 
       expect(
-        screen.queryByTestId('profiler-add-table-test-btn')
+        screen.queryByTestId(PROFILER_ADD_TABLE_TEST_BTN)
       ).not.toBeInTheDocument();
 
       mockGetPrioritizedEditPermission.mockReturnValue(true);
@@ -484,7 +490,7 @@ describe('TabFilters', () => {
       renderComponent();
 
       expect(
-        screen.queryByTestId('profiler-setting-btn')
+        screen.queryByTestId(PROFILER_SETTING_BTN)
       ).not.toBeInTheDocument();
 
       mockGetPrioritizedEditPermission.mockReturnValue(true);
@@ -505,10 +511,10 @@ describe('TabFilters', () => {
       renderComponent();
 
       expect(
-        screen.queryByTestId('profiler-add-table-test-btn')
+        screen.queryByTestId(PROFILER_ADD_TABLE_TEST_BTN)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('profiler-setting-btn')
+        screen.queryByTestId(PROFILER_SETTING_BTN)
       ).not.toBeInTheDocument();
     });
   });
@@ -517,12 +523,12 @@ describe('TabFilters', () => {
     it('should parse startTs from URL', () => {
       mockUseCustomLocation.mockReturnValue({
         search: '?startTs=1234567890000&endTs=1711670399000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      const datePicker = screen.getByTestId('date-picker-menu');
+      const datePicker = screen.getByTestId(DATE_PICKER_MENU);
 
       expect(datePicker).toHaveTextContent('Start: 1234567890000');
     });
@@ -530,12 +536,12 @@ describe('TabFilters', () => {
     it('should parse endTs from URL', () => {
       mockUseCustomLocation.mockReturnValue({
         search: '?startTs=1711065600000&endTs=9876543210000',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      const datePicker = screen.getByTestId('date-picker-menu');
+      const datePicker = screen.getByTestId(DATE_PICKER_MENU);
 
       expect(datePicker).toHaveTextContent('End: 9876543210000');
     });
@@ -543,12 +549,12 @@ describe('TabFilters', () => {
     it('should use default values when URL parameters are missing', () => {
       mockUseCustomLocation.mockReturnValue({
         search: '',
-        pathname: '/table/test-table/profiler',
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      const datePicker = screen.getByTestId('date-picker-menu');
+      const datePicker = screen.getByTestId(DATE_PICKER_MENU);
 
       expect(datePicker).toHaveTextContent('Start: 1711065600000');
       expect(datePicker).toHaveTextContent('End: 1711670399000');
@@ -558,13 +564,13 @@ describe('TabFilters', () => {
   describe('Layout', () => {
     it('should render components in correct order', () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();
 
-      const container = screen.getByTestId('column-picker-menu').parentElement;
+      const container = screen.getByTestId(COLUMN_PICKER_MENU).parentElement;
 
       expect(container).toBeInTheDocument();
     });
@@ -574,8 +580,8 @@ describe('TabFilters', () => {
     it('should have accessible button elements', () => {
       renderComponent();
 
-      const addButton = screen.getByTestId('profiler-add-table-test-btn');
-      const settingsButton = screen.getByTestId('profiler-setting-btn');
+      const addButton = screen.getByTestId(PROFILER_ADD_TABLE_TEST_BTN);
+      const settingsButton = screen.getByTestId(PROFILER_SETTING_BTN);
 
       expect(addButton).toBeEnabled();
       expect(settingsButton).toBeEnabled();
@@ -584,7 +590,7 @@ describe('TabFilters', () => {
     it('should render settings button with proper structure', () => {
       renderComponent();
 
-      const settingsButton = screen.getByTestId('profiler-setting-btn');
+      const settingsButton = screen.getByTestId(PROFILER_SETTING_BTN);
 
       expect(settingsButton).toBeInTheDocument();
     });
@@ -594,7 +600,7 @@ describe('TabFilters', () => {
     it('should render add button with color="primary"', () => {
       renderComponent();
 
-      expect(screen.getByTestId('profiler-add-table-test-btn')).toHaveAttribute(
+      expect(screen.getByTestId(PROFILER_ADD_TABLE_TEST_BTN)).toHaveAttribute(
         'color',
         'primary'
       );
@@ -603,7 +609,7 @@ describe('TabFilters', () => {
     it('should render add button with size="sm"', () => {
       renderComponent();
 
-      expect(screen.getByTestId('profiler-add-table-test-btn')).toHaveAttribute(
+      expect(screen.getByTestId(PROFILER_ADD_TABLE_TEST_BTN)).toHaveAttribute(
         'data-size',
         'sm'
       );
@@ -612,7 +618,7 @@ describe('TabFilters', () => {
     it('should render settings button with color="secondary"', () => {
       renderComponent();
 
-      expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
+      expect(screen.getByTestId(PROFILER_SETTING_BTN)).toHaveAttribute(
         'color',
         'secondary'
       );
@@ -621,7 +627,7 @@ describe('TabFilters', () => {
     it('should render settings button with size="lg"', () => {
       renderComponent();
 
-      expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
+      expect(screen.getByTestId(PROFILER_SETTING_BTN)).toHaveAttribute(
         'data-size',
         'lg'
       );
@@ -630,7 +636,7 @@ describe('TabFilters', () => {
     it('should call onSettingButtonClick when settings button is clicked', () => {
       renderComponent();
 
-      fireEvent.click(screen.getByTestId('profiler-setting-btn'));
+      fireEvent.click(screen.getByTestId(PROFILER_SETTING_BTN));
 
       expect(mockOnSettingButtonClick).toHaveBeenCalledTimes(1);
     });
@@ -639,8 +645,8 @@ describe('TabFilters', () => {
   describe('Translations', () => {
     it('should use translation for column label', () => {
       mockUseCustomLocation.mockReturnValue({
-        search: '?activeColumnFqn=table.column1',
-        pathname: '/table/test-table/profiler',
+        search: ACTIVECOLUMNFQN_TABLE_COLUMN1,
+        pathname: TABLE_TEST_TABLE_PROFILER,
       });
 
       renderComponent();

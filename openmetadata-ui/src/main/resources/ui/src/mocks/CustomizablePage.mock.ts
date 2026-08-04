@@ -16,6 +16,10 @@ import { Document } from '../generated/entity/docStore/document';
 import { Persona } from '../generated/entity/teams/persona';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
+const KNOWLEDGEPANEL_ACTIVITYFEED = 'KnowledgePanel.ActivityFeed';
+const KNOWLEDGEPANEL_RECENTLYVIEWED = 'KnowledgePanel.RecentlyViewed';
+const EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder';
+
 export const mockPersonaName = 'testPersona';
 export const mockPersonaDetails: Persona = {
   id: 'persona-123',
@@ -157,7 +161,7 @@ export const mockShowSuccessToast = jest.fn();
 export const mockCurrentAddWidget = [
   {
     h: 3,
-    i: 'KnowledgePanel.ActivityFeed',
+    i: KNOWLEDGEPANEL_ACTIVITYFEED,
     w: 2,
     x: 0,
     y: 0,
@@ -165,7 +169,7 @@ export const mockCurrentAddWidget = [
   },
   {
     h: 3,
-    i: 'KnowledgePanel.RecentlyViewed',
+    i: KNOWLEDGEPANEL_RECENTLYVIEWED,
     w: 1,
     x: 3,
     y: 3,
@@ -173,7 +177,7 @@ export const mockCurrentAddWidget = [
   },
   {
     h: 3,
-    i: 'ExtraWidget.EmptyWidgetPlaceholder',
+    i: EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
     w: 2,
     x: 0,
     y: 6,
@@ -185,7 +189,7 @@ export const mockCurrentAddWidget = [
 export const mockAddWidgetReturnValues = [
   {
     h: 3,
-    i: 'KnowledgePanel.ActivityFeed',
+    i: KNOWLEDGEPANEL_ACTIVITYFEED,
     static: false,
     w: 2,
     x: 0,
@@ -193,7 +197,7 @@ export const mockAddWidgetReturnValues = [
   },
   {
     h: 3,
-    i: 'KnowledgePanel.RecentlyViewed',
+    i: KNOWLEDGEPANEL_RECENTLYVIEWED,
     static: false,
     w: 1,
     x: 3,
@@ -201,7 +205,7 @@ export const mockAddWidgetReturnValues = [
   },
   {
     h: 3,
-    i: 'ExtraWidget.EmptyWidgetPlaceholder',
+    i: EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
     isDraggable: false,
     static: false,
     w: 2,
@@ -214,7 +218,7 @@ export const mockAddWidgetReturnValues = [
 export const mockAddWidgetReturnValues2 = [
   {
     h: 3,
-    i: 'KnowledgePanel.ActivityFeed',
+    i: KNOWLEDGEPANEL_ACTIVITYFEED,
     static: false,
     w: 2,
     x: 0,
@@ -222,7 +226,7 @@ export const mockAddWidgetReturnValues2 = [
   },
   {
     h: 3,
-    i: 'KnowledgePanel.RecentlyViewed',
+    i: KNOWLEDGEPANEL_RECENTLYVIEWED,
     static: false,
     w: 1,
     x: 3,
@@ -230,7 +234,7 @@ export const mockAddWidgetReturnValues2 = [
   },
   {
     h: 3,
-    i: 'ExtraWidget.EmptyWidgetPlaceholder',
+    i: EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
     isDraggable: false,
     static: false,
     w: 2,

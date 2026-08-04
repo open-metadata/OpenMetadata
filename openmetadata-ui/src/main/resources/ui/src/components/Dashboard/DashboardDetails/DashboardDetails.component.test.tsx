@@ -19,11 +19,13 @@ import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DashboardDetails from './DashboardDetails.component';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
 
+const TEST_DASHBOARD = 'test.dashboard';
+
 const mockDashboardDetails: Dashboard = {
   id: 'test-dashboard-id',
   name: 'test-dashboard',
   displayName: 'Test Dashboard',
-  fullyQualifiedName: 'test.dashboard',
+  fullyQualifiedName: TEST_DASHBOARD,
   description: 'Test dashboard description',
   version: 0.1,
   updatedAt: 1234567890,
@@ -78,8 +80,8 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
-    fqn: 'test.dashboard',
-    entityFqn: 'test.dashboard',
+    fqn: TEST_DASHBOARD,
+    entityFqn: TEST_DASHBOARD,
   }),
 }));
 

@@ -15,6 +15,8 @@ import { downloadAsset } from '../rest/assetAPI';
 import { getAttachmentId } from '../utils/UploadAttachmentUtils';
 import { useAuthenticatedImage } from './useAuthenticatedImage';
 
+const STATIC_IMAGE_PNG = '/static/image.png';
+const ATTACHMENT_ID_A = 'attachment-id-a';
 jest.mock('../rest/assetAPI', () => ({
   downloadAsset: jest.fn(),
 }));
@@ -52,10 +54,10 @@ describe('useAuthenticatedImage', () => {
 
   it('returns the original src immediately when it is not an attachment URL', async () => {
     const { result } = renderHook(() =>
-      useAuthenticatedImage('/static/image.png')
+      useAuthenticatedImage(STATIC_IMAGE_PNG)
     );
 
-    expect(result.current.imageSrc).toBe('/static/image.png');
+    expect(result.current.imageSrc).toBe(STATIC_IMAGE_PNG);
     expect(result.current.isLoading).toBe(false);
     expect(mockDownloadAsset).not.toHaveBeenCalled();
   });
@@ -190,7 +192,7 @@ describe('useAuthenticatedImage', () => {
 
   it('does not revoke anything on unmount when the src was never resolved to a blob URL', async () => {
     const { unmount } = renderHook(() =>
-      useAuthenticatedImage('/static/image.png')
+      useAuthenticatedImage(STATIC_IMAGE_PNG)
     );
 
     unmount();
@@ -212,7 +214,7 @@ describe('useAuthenticatedImage', () => {
   });
 
   it('ignores a stale request that resolves after src has changed to a newer attachment', async () => {
-    const srcA = attachmentSrc('attachment-id-a');
+    const srcA = attachmentSrc(ATTACHMENT_ID_A);
     const srcB = attachmentSrc('attachment-id-b');
     const blobA = 'blob:http://localhost/blob-a';
     const blobB = 'blob:http://localhost/blob-b';
@@ -223,10 +225,10 @@ describe('useAuthenticatedImage', () => {
     });
 
     mockDownloadAsset.mockImplementation((id: string) =>
-      id === 'attachment-id-a' ? deferredA : Promise.resolve(new Blob(['b']))
+      id === ATTACHMENT_ID_A ? deferredA : Promise.resolve(new Blob(['b']))
     );
     mockGetAttachmentId.mockImplementation((src: string) =>
-      src === srcA ? 'attachment-id-a' : 'attachment-id-b'
+      src === srcA ? ATTACHMENT_ID_A : 'attachment-id-b'
     );
     createObjectURLMock.mockImplementation((blob: Blob) =>
       blob === undefined ? BLOB_URL : blobB

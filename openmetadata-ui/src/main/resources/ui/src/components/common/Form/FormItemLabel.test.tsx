@@ -16,6 +16,9 @@ import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 import FormItemLabel from './FormItemLabel';
 
+const FORM_ITEM_LABEL = 'form-item-label' as const;
+const HELPER_ICON = 'helper-icon' as const;
+
 const mockProps: FormItemLabelProps = {
   label: 'name',
 };
@@ -24,7 +27,7 @@ describe('Test FormItemLabel Component', () => {
   it('Should render FormItemLabel component', async () => {
     render(<FormItemLabel {...mockProps} />);
 
-    const label = screen.getByTestId('form-item-label');
+    const label = screen.getByTestId(FORM_ITEM_LABEL);
 
     expect(label).toContainHTML(mockProps.label as string);
   });
@@ -32,9 +35,9 @@ describe('Test FormItemLabel Component', () => {
   it('Should not render helper icon if no helper text passed', async () => {
     render(<FormItemLabel {...mockProps} />);
 
-    const label = screen.getByTestId('form-item-label');
+    const label = screen.getByTestId(FORM_ITEM_LABEL);
 
-    const helpIcon = screen.queryByTestId('helper-icon');
+    const helpIcon = screen.queryByTestId(HELPER_ICON);
 
     expect(label).toContainHTML(mockProps.label as string);
     expect(helpIcon).not.toBeInTheDocument();
@@ -45,9 +48,9 @@ describe('Test FormItemLabel Component', () => {
       <FormItemLabel {...mockProps} helperTextType={HelperTextType.ALERT} />
     );
 
-    const label = screen.getByTestId('form-item-label');
+    const label = screen.getByTestId(FORM_ITEM_LABEL);
 
-    const helpIcon = screen.queryByTestId('helper-icon');
+    const helpIcon = screen.queryByTestId(HELPER_ICON);
 
     expect(label).toContainHTML(mockProps.label as string);
     expect(helpIcon).not.toBeInTheDocument();
@@ -56,9 +59,9 @@ describe('Test FormItemLabel Component', () => {
   it('Should not render helper icon if showHelperText is false', async () => {
     render(<FormItemLabel {...mockProps} />);
 
-    const label = screen.getByTestId('form-item-label');
+    const label = screen.getByTestId(FORM_ITEM_LABEL);
 
-    const helpIcon = screen.queryByTestId('helper-icon');
+    const helpIcon = screen.queryByTestId(HELPER_ICON);
 
     expect(label).toContainHTML(mockProps.label as string);
     expect(helpIcon).not.toBeInTheDocument();
@@ -67,9 +70,9 @@ describe('Test FormItemLabel Component', () => {
   it('Should render helper icon if helper text is passed and type is tooltip', async () => {
     render(<FormItemLabel {...mockProps} showHelperText helperText="help" />);
 
-    const label = screen.getByTestId('form-item-label');
+    const label = screen.getByTestId(FORM_ITEM_LABEL);
 
-    const helpIcon = screen.getByTestId('helper-icon');
+    const helpIcon = screen.getByTestId(HELPER_ICON);
 
     expect(label).toContainHTML(mockProps.label as string);
     expect(helpIcon).toBeInTheDocument();
@@ -78,7 +81,7 @@ describe('Test FormItemLabel Component', () => {
   it('Should render beta badge if isBeta is true', async () => {
     render(<FormItemLabel {...mockProps} isBeta />);
 
-    const label = screen.getByTestId('form-item-label');
+    const label = screen.getByTestId(FORM_ITEM_LABEL);
 
     const betaBadge = screen.getByText('label.beta');
 
@@ -89,7 +92,7 @@ describe('Test FormItemLabel Component', () => {
   it('Should not render beta badge if isBeta is false', async () => {
     render(<FormItemLabel {...mockProps} />);
 
-    const label = screen.getByTestId('form-item-label');
+    const label = screen.getByTestId(FORM_ITEM_LABEL);
 
     const betaBadge = screen.queryByText('label.beta');
 

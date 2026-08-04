@@ -14,6 +14,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { TestCaseListTableHeader } from './TestCaseListTableHeader.component';
 
+const SEARCH_INPUT = 'search-input';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({
     children,
@@ -92,7 +94,7 @@ describe('TestCaseListTableHeader component', () => {
   it('should initialize the input with searchValue prop', () => {
     render(<TestCaseListTableHeader {...defaultProps} searchValue="orders" />);
 
-    expect(screen.getByTestId('search-input')).toHaveValue('orders');
+    expect(screen.getByTestId(SEARCH_INPUT)).toHaveValue('orders');
   });
 
   it('should sync the input when searchValue prop changes', () => {
@@ -100,19 +102,19 @@ describe('TestCaseListTableHeader component', () => {
       <TestCaseListTableHeader {...defaultProps} searchValue="orders" />
     );
 
-    expect(screen.getByTestId('search-input')).toHaveValue('orders');
+    expect(screen.getByTestId(SEARCH_INPUT)).toHaveValue('orders');
 
     rerender(
       <TestCaseListTableHeader {...defaultProps} searchValue="customers" />
     );
 
-    expect(screen.getByTestId('search-input')).toHaveValue('customers');
+    expect(screen.getByTestId(SEARCH_INPUT)).toHaveValue('customers');
   });
 
   it('should update local value immediately and debounce the onSearch callback', () => {
     render(<TestCaseListTableHeader {...defaultProps} />);
 
-    const input = screen.getByTestId('search-input');
+    const input = screen.getByTestId(SEARCH_INPUT);
 
     act(() => {
       fireEvent.change(input, { target: { value: 'foo' } });

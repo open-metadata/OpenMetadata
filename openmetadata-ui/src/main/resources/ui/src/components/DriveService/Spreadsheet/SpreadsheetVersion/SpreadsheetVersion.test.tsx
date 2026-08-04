@@ -27,6 +27,11 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import SpreadsheetVersion from './SpreadsheetVersion';
 import { SpreadsheetVersionProps } from './SpreadsheetVersion.interface';
 
+const MOCK_DATA_ASSETS_VERSION_HEADER = 'data-assets-version-header';
+const MOCK_ENTITY_VERSION_TIMELINE = 'entity-version-timeline';
+const TEST_SPREADSHEET = 'Test Spreadsheet';
+const TEST_SERVICE_TEST_SPREADSHEET = 'test-service.test-spreadsheet';
+
 jest.mock('../../../../hooks/useFqn');
 jest.mock('../../../../utils/useRequiredParams');
 jest.mock('../../../../rest/driveAPI');
@@ -87,7 +92,7 @@ jest.mock(
   '../../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () =>
     jest.fn(() => (
-      <div data-testid="data-assets-version-header">
+      <div data-testid={MOCK_DATA_ASSETS_VERSION_HEADER}>
         Data Assets Version Header
       </div>
     ))
@@ -101,7 +106,9 @@ jest.mock(
 );
 jest.mock('../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
   jest.fn(() => (
-    <div data-testid="entity-version-timeline">Entity Version Timeline</div>
+    <div data-testid={MOCK_ENTITY_VERSION_TIMELINE}>
+      Entity Version Timeline
+    </div>
   ))
 );
 jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () =>
@@ -122,8 +129,8 @@ const mockGetVersionPath = getVersionPath as jest.Mock;
 const mockSpreadsheetData: Spreadsheet = {
   id: 'spreadsheet-id-1',
   name: 'test-spreadsheet',
-  displayName: 'Test Spreadsheet',
-  fullyQualifiedName: 'test-service.test-spreadsheet',
+  displayName: TEST_SPREADSHEET,
+  fullyQualifiedName: TEST_SERVICE_TEST_SPREADSHEET,
   description: 'Test spreadsheet description',
   version: 1.1,
   updatedAt: 1640995200000,
@@ -132,7 +139,7 @@ const mockSpreadsheetData: Spreadsheet = {
     fieldsAdded: [
       {
         name: 'displayName',
-        newValue: 'Test Spreadsheet',
+        newValue: TEST_SPREADSHEET,
       },
     ],
     fieldsUpdated: [],
@@ -213,7 +220,7 @@ const defaultProps: SpreadsheetVersionProps = {
       url: '/drive-service/test-drive-service',
     },
     {
-      name: 'Test Spreadsheet',
+      name: TEST_SPREADSHEET,
       url: '/spreadsheet/test-service.test-spreadsheet',
     },
   ],
@@ -242,7 +249,7 @@ const renderSpreadsheetVersion = (
 describe('SpreadsheetVersion', () => {
   beforeEach(() => {
     mockUseFqn.mockReturnValue({
-      fqn: 'test-service.test-spreadsheet',
+      fqn: TEST_SERVICE_TEST_SPREADSHEET,
     });
 
     mockUseRequiredParams.mockReturnValue({
@@ -267,7 +274,7 @@ describe('SpreadsheetVersion', () => {
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('data-assets-version-header')
+      screen.queryByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).not.toBeInTheDocument();
   });
 
@@ -292,10 +299,12 @@ describe('SpreadsheetVersion', () => {
     });
 
     expect(
-      screen.getByTestId('data-assets-version-header')
+      screen.getByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).toBeInTheDocument();
     expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(MOCK_ENTITY_VERSION_TIMELINE)
+    ).toBeInTheDocument();
   });
 
   it('should render tabs with correct structure', async () => {
@@ -390,7 +399,7 @@ describe('SpreadsheetVersion', () => {
 
     await waitFor(() => {
       expect(mockGetDriveAssetByFqn).toHaveBeenCalledWith(
-        'test-service.test-spreadsheet',
+        TEST_SERVICE_TEST_SPREADSHEET,
         EntityType.SPREADSHEET,
         'worksheets'
       );
@@ -408,7 +417,7 @@ describe('SpreadsheetVersion', () => {
     });
 
     expect(
-      screen.getByTestId('data-assets-version-header')
+      screen.getByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).toBeInTheDocument();
   });
 
@@ -422,9 +431,11 @@ describe('SpreadsheetVersion', () => {
     });
 
     expect(
-      screen.getByTestId('data-assets-version-header')
+      screen.getByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(MOCK_ENTITY_VERSION_TIMELINE)
+    ).toBeInTheDocument();
   });
 
   it('should handle version handler calls', async () => {
@@ -437,7 +448,9 @@ describe('SpreadsheetVersion', () => {
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(MOCK_ENTITY_VERSION_TIMELINE)
+    ).toBeInTheDocument();
   });
 
   it('should handle back handler calls', async () => {
@@ -450,7 +463,9 @@ describe('SpreadsheetVersion', () => {
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(MOCK_ENTITY_VERSION_TIMELINE)
+    ).toBeInTheDocument();
   });
 
   it('should render with different version numbers', async () => {
@@ -463,9 +478,11 @@ describe('SpreadsheetVersion', () => {
     });
 
     expect(
-      screen.getByTestId('data-assets-version-header')
+      screen.getByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(MOCK_ENTITY_VERSION_TIMELINE)
+    ).toBeInTheDocument();
   });
 
   it('should handle empty worksheets array', async () => {
@@ -508,7 +525,7 @@ describe('SpreadsheetVersion', () => {
     });
 
     expect(
-      screen.getByTestId('data-assets-version-header')
+      screen.getByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).toBeInTheDocument();
   });
 
@@ -582,7 +599,7 @@ describe('SpreadsheetVersion', () => {
     );
 
     expect(
-      screen.getByTestId('data-assets-version-header')
+      screen.getByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).toBeInTheDocument();
   });
 
@@ -601,7 +618,7 @@ describe('SpreadsheetVersion', () => {
     });
 
     expect(
-      screen.getByTestId('data-assets-version-header')
+      screen.getByTestId(MOCK_DATA_ASSETS_VERSION_HEADER)
     ).toBeInTheDocument();
   });
 

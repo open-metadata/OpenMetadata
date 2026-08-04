@@ -21,6 +21,9 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetSelectList from './DataAssetSelectList';
 
+const DB_SCHEMA_ORDERS = 'db.schema.orders';
+const ROLE_OPTION = '[role="option"]';
+
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/Assets/AssetsUtils', () => ({
   getEntityIconWithBg: jest.fn().mockReturnValue(<span>icon</span>),
@@ -57,7 +60,7 @@ const mockSearchResponse = {
         _source: {
           id: '1',
           name: 'orders',
-          fullyQualifiedName: 'db.schema.orders',
+          fullyQualifiedName: DB_SCHEMA_ORDERS,
           entityType: 'table',
           displayName: 'Orders',
         },
@@ -145,13 +148,13 @@ describe('DataAssetSelectList', () => {
     });
 
     fireEvent.click(
-      screen.getByText('Orders').closest('[role="option"]') as HTMLElement
+      screen.getByText('Orders').closest(ROLE_OPTION) as HTMLElement
     );
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({ value: 'db.schema.orders' }),
+        expect.objectContaining({ value: DB_SCHEMA_ORDERS }),
       ])
     );
   });
@@ -163,11 +166,11 @@ describe('DataAssetSelectList', () => {
         label: 'Orders',
         displayName: 'Orders',
         name: 'orders',
-        value: 'db.schema.orders',
+        value: DB_SCHEMA_ORDERS,
         reference: {
           id: '1',
           type: 'table',
-          fullyQualifiedName: 'db.schema.orders',
+          fullyQualifiedName: DB_SCHEMA_ORDERS,
         },
       },
     ];
@@ -194,7 +197,7 @@ describe('DataAssetSelectList', () => {
 
     // Click to deselect
     fireEvent.click(
-      screen.getByText('Orders').closest('[role="option"]') as HTMLElement
+      screen.getByText('Orders').closest(ROLE_OPTION) as HTMLElement
     );
 
     expect(onChange).toHaveBeenCalledWith([]);
@@ -203,7 +206,7 @@ describe('DataAssetSelectList', () => {
   it('filters out assets whose fqn is in filterFqns', async () => {
     render(
       <DataAssetSelectList
-        filterFqns={['db.schema.orders']}
+        filterFqns={[DB_SCHEMA_ORDERS]}
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
             Open
@@ -297,7 +300,7 @@ describe('DataAssetSelectList', () => {
     });
 
     fireEvent.click(
-      screen.getByText('Orders').closest('[role="option"]') as HTMLElement
+      screen.getByText('Orders').closest(ROLE_OPTION) as HTMLElement
     );
 
     // Popover should still be open after selection in multi mode

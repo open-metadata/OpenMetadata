@@ -19,6 +19,9 @@ import { AlertTableColumn } from '../ObservabilityAlertsPage.constants';
 import { ObservabilityAlertsTableProps } from '../ObservabilityAlertsPage.interface';
 import ObservabilityAlertsTable from './ObservabilityAlertsTable';
 
+const EMPTY_PLACEHOLDER = 'empty-placeholder';
+const LABEL_NEW_ENTITY = 'label.new-entity';
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const MockTable = ({
     children,
@@ -106,7 +109,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     features?: MockFeature[];
     actions?: MockAction[];
   }) => (
-    <div data-testid="empty-placeholder">
+    <div data-testid={EMPTY_PLACEHOLDER}>
       <span>{title}</span>
       <span>{description}</span>
       {features?.map((feature) => (
@@ -210,13 +213,13 @@ describe('ObservabilityAlertsTable component', () => {
     renderTable({ loading: true, alerts: [] });
 
     expect(screen.queryByTestId('alert-name')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EMPTY_PLACEHOLDER)).not.toBeInTheDocument();
   });
 
   it('should render the features EmptyPlaceholder when there are no alerts', () => {
     renderTable({ alerts: [], loading: false });
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
     expect(
       screen.getByText('message.observability-alert-empty-heading')
     ).toBeInTheDocument();
@@ -230,7 +233,7 @@ describe('ObservabilityAlertsTable component', () => {
   it('should hold the empty placeholder while the resource permission is still loading', () => {
     renderTable({ alerts: [], loading: false, loadingCount: 1 });
 
-    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EMPTY_PLACEHOLDER)).not.toBeInTheDocument();
   });
 
   it('should render the new-alert action when the user has create permission and invoke onAddAlert on click', () => {
@@ -240,7 +243,7 @@ describe('ObservabilityAlertsTable component', () => {
       alertResourcePermission: { Create: true } as OperationPermission,
     });
 
-    const addButton = screen.getByText('label.new-entity');
+    const addButton = screen.getByText(LABEL_NEW_ENTITY);
     fireEvent.click(addButton);
 
     expect(mockOnAddAlert).toHaveBeenCalledTimes(1);
@@ -256,8 +259,8 @@ describe('ObservabilityAlertsTable component', () => {
       } as OperationPermission,
     });
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_NEW_ENTITY)).not.toBeInTheDocument();
   });
 
   it('should not render the new-alert action when the resource permission is unknown (fails closed)', () => {
@@ -268,8 +271,8 @@ describe('ObservabilityAlertsTable component', () => {
       alertResourcePermission: undefined,
     });
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_NEW_ENTITY)).not.toBeInTheDocument();
   });
 
   it('should render an error + retry state when the resource-permission fetch failed', () => {
@@ -282,12 +285,12 @@ describe('ObservabilityAlertsTable component', () => {
       onRetryPermission,
     });
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
     expect(
       screen.getByText('message.something-went-wrong')
     ).toBeInTheDocument();
     // The create onboarding is replaced, not shown.
-    expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_NEW_ENTITY)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText('label.try-again'));
 

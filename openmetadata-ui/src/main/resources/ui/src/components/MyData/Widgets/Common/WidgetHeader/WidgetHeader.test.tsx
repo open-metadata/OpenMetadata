@@ -16,8 +16,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetHeader from './WidgetHeader';
 
+const TEST_WIDGET = 'Test Widget';
+const WIDGET_SORT_BY_DROPDOWN = 'widget-sort-by-dropdown';
+
 const mockProps = {
-  title: 'Test Widget',
+  title: TEST_WIDGET,
   icon: <TaskIcon data-testid="widget-icon" />,
   isEditView: false,
   sortOptions: [
@@ -50,14 +53,14 @@ describe('WidgetHeader', () => {
   it('renders with title and icon', () => {
     renderWidgetHeader();
 
-    expect(screen.getByText('Test Widget')).toBeInTheDocument();
+    expect(screen.getByText(TEST_WIDGET)).toBeInTheDocument();
     expect(screen.getByTestId('widget-icon')).toBeInTheDocument();
   });
 
   it('renders sort dropdown when not in edit view', () => {
     renderWidgetHeader();
 
-    expect(screen.getByTestId('widget-sort-by-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_SORT_BY_DROPDOWN)).toBeInTheDocument();
     expect(screen.getByText('Name')).toBeInTheDocument();
   });
 
@@ -66,7 +69,7 @@ describe('WidgetHeader', () => {
 
     expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('widget-sort-by-dropdown')
+      screen.queryByTestId(WIDGET_SORT_BY_DROPDOWN)
     ).not.toBeInTheDocument();
   });
 
@@ -89,7 +92,7 @@ describe('WidgetHeader', () => {
     renderWidgetHeader({ isEditView: true });
 
     expect(
-      screen.queryByTestId('widget-sort-by-dropdown')
+      screen.queryByTestId(WIDGET_SORT_BY_DROPDOWN)
     ).not.toBeInTheDocument();
   });
 
@@ -110,9 +113,9 @@ describe('WidgetHeader', () => {
       onEditClick: undefined,
     });
 
-    expect(screen.getByText('Test Widget')).toBeInTheDocument();
+    expect(screen.getByText(TEST_WIDGET)).toBeInTheDocument();
     expect(
-      screen.queryByTestId('widget-sort-by-dropdown')
+      screen.queryByTestId(WIDGET_SORT_BY_DROPDOWN)
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId('drag-widget-button')).not.toBeInTheDocument();
   });

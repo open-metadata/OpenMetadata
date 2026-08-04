@@ -38,13 +38,16 @@ import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import FileDetailsPage from './FileDetailsPage';
 
+const TEST_SERVICE_TEST_FILE_TXT = 'test-service.test-file.txt';
+const FILE_DETAILS = 'file-details';
+const TEST_FILE_ID = 'test-file-id';
 // Mock data
 const mockFileDetails: File = {
-  id: 'test-file-id',
+  id: TEST_FILE_ID,
   name: 'test-file.txt',
   displayName: 'Test File',
   description: 'Test file description',
-  fullyQualifiedName: 'test-service.test-file.txt',
+  fullyQualifiedName: TEST_SERVICE_TEST_FILE_TXT,
   deleted: false,
   version: 1,
   followers: [],
@@ -74,6 +77,7 @@ jest.mock('../../rest/driveAPI', () => ({
   addDriveAssetFollower: jest.fn().mockImplementation(() =>
     Promise.resolve({
       changeDescription: {
+        // eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
         fieldsAdded: [{ newValue: [{ id: 'test-user-id' }] }],
       },
     })
@@ -289,7 +293,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('file-name')).toHaveTextContent(
@@ -314,7 +318,7 @@ describe('FileDetailsPage', () => {
 
       expect(getEntityMissingError).toHaveBeenCalledWith(
         'file',
-        'test-service.test-file.txt'
+        TEST_SERVICE_TEST_FILE_TXT
       );
     });
 
@@ -369,7 +373,7 @@ describe('FileDetailsPage', () => {
 
       await waitFor(() => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
-          'test-service.test-file.txt',
+          TEST_SERVICE_TEST_FILE_TXT,
           EntityType.FILE,
           fileDefaultFields
         );
@@ -383,10 +387,10 @@ describe('FileDetailsPage', () => {
         expect(addToRecentViewed).toHaveBeenCalledWith({
           displayName: 'Test File',
           entityType: EntityType.FILE,
-          fqn: 'test-service.test-file.txt',
+          fqn: TEST_SERVICE_TEST_FILE_TXT,
           serviceType: DriveServiceType.GoogleDrive,
           timestamp: 0,
-          id: 'test-file-id',
+          id: TEST_FILE_ID,
         });
       });
     });
@@ -395,7 +399,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -403,7 +407,7 @@ describe('FileDetailsPage', () => {
 
       await waitFor(() => {
         expect(patchDriveAssetDetails).toHaveBeenCalledWith(
-          'test-file-id',
+          TEST_FILE_ID,
           expect.any(Array),
           EntityType.FILE
         );
@@ -418,7 +422,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -443,7 +447,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -451,7 +455,7 @@ describe('FileDetailsPage', () => {
 
       await waitFor(() => {
         expect(addDriveAssetFollower).toHaveBeenCalledWith(
-          'test-file-id',
+          TEST_FILE_ID,
           'test-user-id',
           EntityType.FILE
         );
@@ -462,7 +466,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -470,7 +474,7 @@ describe('FileDetailsPage', () => {
 
       await waitFor(() => {
         expect(removeDriveAssetFollower).toHaveBeenCalledWith(
-          'test-file-id',
+          TEST_FILE_ID,
           'test-user-id',
           EntityType.FILE
         );
@@ -485,7 +489,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -504,7 +508,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -529,7 +533,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -537,7 +541,7 @@ describe('FileDetailsPage', () => {
 
       await waitFor(() => {
         expect(updateDriveAssetVotes).toHaveBeenCalledWith(
-          'test-file-id',
+          TEST_FILE_ID,
           mockQueryVote,
           EntityType.FILE
         );
@@ -545,7 +549,7 @@ describe('FileDetailsPage', () => {
 
       await waitFor(() => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
-          'test-service.test-file.txt',
+          TEST_SERVICE_TEST_FILE_TXT,
           EntityType.FILE,
           [
             TabSpecificField.OWNERS,
@@ -565,7 +569,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -590,7 +594,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const deleteButton = screen.getByTestId('delete-button');
@@ -615,7 +619,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');
@@ -624,7 +628,7 @@ describe('FileDetailsPage', () => {
       await waitFor(() => {
         expect(getVersionPath).toHaveBeenCalledWith(
           EntityType.FILE,
-          'test-service.test-file.txt',
+          TEST_SERVICE_TEST_FILE_TXT,
           '1'
         );
         expect(mockNavigate).toHaveBeenCalledWith('/file/version/1');
@@ -655,7 +659,7 @@ describe('FileDetailsPage', () => {
       await waitFor(() => {
         expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
           'file',
-          'test-service.test-file.txt'
+          TEST_SERVICE_TEST_FILE_TXT
         );
       });
     });
@@ -718,7 +722,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
     });
 
@@ -731,7 +735,7 @@ describe('FileDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('file-details')).toBeInTheDocument();
+        expect(screen.getByTestId(FILE_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');

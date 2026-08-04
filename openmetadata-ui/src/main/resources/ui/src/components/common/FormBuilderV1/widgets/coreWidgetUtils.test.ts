@@ -13,16 +13,19 @@
 
 import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
+const HELPFUL_TEXT = 'Helpful text';
+const SCHEMA_DESCRIPTION = 'Schema description';
+
 describe('coreWidgetUtils', () => {
   it('prefers raw errors over help text and schema description', () => {
     expect(
       getWidgetHint({
         options: {
-          help: 'Helpful text',
+          help: HELPFUL_TEXT,
         },
         rawErrors: ['Validation error'],
         schema: {
-          description: 'Schema description',
+          description: SCHEMA_DESCRIPTION,
         },
       } as never)
     ).toBe('Validation error');
@@ -30,24 +33,24 @@ describe('coreWidgetUtils', () => {
     expect(
       getWidgetHint({
         options: {
-          help: 'Helpful text',
+          help: HELPFUL_TEXT,
         },
         rawErrors: [],
         schema: {
-          description: 'Schema description',
+          description: SCHEMA_DESCRIPTION,
         },
       } as never)
-    ).toBe('Helpful text');
+    ).toBe(HELPFUL_TEXT);
 
     expect(
       getWidgetHint({
         options: {},
         rawErrors: [],
         schema: {
-          description: 'Schema description',
+          description: SCHEMA_DESCRIPTION,
         },
       } as never)
-    ).toBe('Schema description');
+    ).toBe(SCHEMA_DESCRIPTION);
   });
 
   it('hides labels only when hideLabel is true', () => {

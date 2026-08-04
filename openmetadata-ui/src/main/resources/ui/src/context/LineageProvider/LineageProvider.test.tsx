@@ -23,6 +23,8 @@ import {
 } from '../../rest/lineageAPI';
 import LineageProvider, { useLineageProvider } from './LineageProvider';
 
+const MODE_LINEAGE = '?mode=lineage';
+
 const mockLocation = {
   search: '',
   pathname: '/lineage',
@@ -564,7 +566,7 @@ describe('LineageProvider', () => {
 
     expect(getLineageDataByFQN).not.toHaveBeenCalled();
 
-    mockLocation.search = '?mode=lineage';
+    mockLocation.search = MODE_LINEAGE;
     rerender(
       <LineageProvider>
         <EntityDataComponent />
@@ -582,7 +584,7 @@ describe('LineageProvider', () => {
   });
 
   it('should reuse loaded lineage when switching from lineage to impact analysis and back', async () => {
-    mockLocation.search = '?mode=lineage';
+    mockLocation.search = MODE_LINEAGE;
     (getLineageDataByFQN as jest.Mock).mockResolvedValue({
       nodes: {},
       downstreamEdges: {},
@@ -622,7 +624,7 @@ describe('LineageProvider', () => {
       </LineageProvider>
     );
 
-    mockLocation.search = '?mode=lineage';
+    mockLocation.search = MODE_LINEAGE;
     rerender(
       <LineageProvider>
         <EntityDataComponent />

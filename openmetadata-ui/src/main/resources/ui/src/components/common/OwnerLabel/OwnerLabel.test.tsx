@@ -14,6 +14,8 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OwnerLabel } from './OwnerLabel.component';
 
+const PROFILEPICTURE_COMPONENT = 'ProfilePicture.component';
+
 const mockOwner = [
   {
     id: 'id',
@@ -64,7 +66,7 @@ describe('OwnerLabel component', () => {
     render(<OwnerLabel owners={mockOwner} />, { wrapper: MemoryRouter });
 
     expect(
-      await screen.findByText('ProfilePicture.component')
+      await screen.findByText(PROFILEPICTURE_COMPONENT)
     ).toBeInTheDocument();
     expect(await screen.findByText(mockOwner[0].name)).toBeInTheDocument();
   });
@@ -78,7 +80,7 @@ describe('OwnerLabel component', () => {
     );
 
     expect(
-      await screen.findByText('ProfilePicture.component')
+      await screen.findByText(PROFILEPICTURE_COMPONENT)
     ).toBeInTheDocument();
     expect(await screen.findByText('displayName')).toBeInTheDocument();
   });
@@ -93,7 +95,7 @@ describe('OwnerLabel component', () => {
     );
 
     expect(
-      await screen.findByText('ProfilePicture.component')
+      await screen.findByText(PROFILEPICTURE_COMPONENT)
     ).toBeInTheDocument();
     expect(await screen.findByText('ownerDisplayName')).toBeInTheDocument();
     expect(screen.queryByText(mockOwner[0].name)).not.toBeInTheDocument();

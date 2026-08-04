@@ -66,6 +66,8 @@ import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import { stringToHTML } from './StringUtils';
 
+const LABEL_SCHEMA = 'label.schema' as const;
+
 const APIEndpointSummary = withSuspenseFallback(
   lazy(
     () =>
@@ -298,7 +300,7 @@ export const getEntityChildDetails = (
 
   switch (entityType) {
     case EntityType.TABLE:
-      heading = t('label.schema');
+      heading = t(LABEL_SCHEMA);
       childComponent = (
         <ColumnSummaryList
           entityInfo={entityInfo as Table}
@@ -309,7 +311,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.TOPIC:
-      heading = t('label.schema');
+      heading = t(LABEL_SCHEMA);
       childComponent = isEmpty(
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
@@ -409,7 +411,7 @@ export const getEntityChildDetails = (
       break;
 
     case EntityType.CONTAINER:
-      heading = t('label.schema');
+      heading = t(LABEL_SCHEMA);
       childComponent = (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -502,7 +504,7 @@ export const getEntityChildDetails = (
 
       break;
     case EntityType.DATABASE:
-      heading = t('label.schema');
+      heading = t(LABEL_SCHEMA);
       childComponent = (
         <SummaryList
           entityType={SummaryEntityType.SCHEMAFIELD}

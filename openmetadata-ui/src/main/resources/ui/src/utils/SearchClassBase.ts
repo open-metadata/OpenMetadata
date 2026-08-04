@@ -71,6 +71,11 @@ import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
+const LABEL_CONTEXT_CENTER = 'label.context-center';
+const SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY =
+  'service-icon w-4 h-4 tw:text-quaternary';
+const TW_TEXT_QUATERNARY = 'tw:text-quaternary';
+
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
     return {
@@ -221,7 +226,7 @@ class SearchClassBase {
         label: t('label.worksheet'),
       },
       {
-        label: t('label.context-center'),
+        label: t(LABEL_CONTEXT_CENTER),
         value: SearchIndex.KNOWLEDGE_PAGE_INDEX,
       },
     ];
@@ -244,7 +249,7 @@ class SearchClassBase {
         },
         icon: getEntityIcon(
           EntityType.DATABASE,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -260,7 +265,7 @@ class SearchClassBase {
         },
         icon: getEntityIcon(
           EntityType.DASHBOARD,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -269,7 +274,7 @@ class SearchClassBase {
         data: { isRoot: true, childEntities: [EntityType.PIPELINE] },
         icon: getEntityIcon(
           EntityType.PIPELINE,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -278,7 +283,7 @@ class SearchClassBase {
         data: { isRoot: true, childEntities: [EntityType.TOPIC] },
         icon: getEntityIcon(
           EntityType.TOPIC,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -287,7 +292,7 @@ class SearchClassBase {
         data: { isRoot: true, childEntities: [EntityType.MLMODEL] },
         icon: getEntityIcon(
           EntityType.MLMODEL,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -296,7 +301,7 @@ class SearchClassBase {
         data: { isRoot: true, childEntities: [EntityType.CONTAINER] },
         icon: getEntityIcon(
           EntityType.CONTAINER,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -305,7 +310,7 @@ class SearchClassBase {
         data: { isRoot: true, childEntities: [EntityType.SEARCH_INDEX] },
         icon: getEntityIcon(
           EntityType.SEARCH_INDEX,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -317,7 +322,7 @@ class SearchClassBase {
         },
         icon: getEntityIcon(
           EntityType.API_COLLECTION,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -334,7 +339,7 @@ class SearchClassBase {
         },
         icon: getEntityIcon(
           EntityType.DRIVE_SERVICE,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
       },
       {
@@ -350,7 +355,7 @@ class SearchClassBase {
         },
         icon: getEntityIcon(
           'Governance',
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
         children: [
           {
@@ -359,7 +364,7 @@ class SearchClassBase {
             isLeaf: true,
             icon: getEntityIcon(
               EntityType.GLOSSARY,
-              'service-icon w-4 h-4 tw:text-quaternary'
+              SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
             ),
             data: {
               entityType: EntityType.GLOSSARY_TERM,
@@ -373,7 +378,7 @@ class SearchClassBase {
             isLeaf: true,
             icon: getEntityIcon(
               EntityType.TAG,
-              'service-icon w-4 h-4 tw:text-quaternary'
+              SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
             ),
             data: {
               entityType: EntityType.TAG,
@@ -387,7 +392,7 @@ class SearchClassBase {
             isLeaf: true,
             icon: getEntityIcon(
               EntityType.METRIC,
-              'service-icon w-4 h-4 tw:text-quaternary'
+              SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
             ),
             data: {
               entityType: EntityType.METRIC,
@@ -403,7 +408,7 @@ class SearchClassBase {
         data: { isRoot: true, childEntities: [EntityType.DATA_PRODUCT] },
         icon: getEntityIcon(
           EntityType.DOMAIN,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
         children: [
           {
@@ -412,7 +417,7 @@ class SearchClassBase {
             isLeaf: true,
             icon: getEntityIcon(
               EntityType.DATA_PRODUCT,
-              'service-icon w-4 h-4 tw:text-quaternary'
+              SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
             ),
             data: {
               entityType: EntityType.DATA_PRODUCT,
@@ -422,7 +427,7 @@ class SearchClassBase {
         ],
       },
       {
-        title: t('label.context-center'),
+        title: t(LABEL_CONTEXT_CENTER),
         key: 'KnowledgeCenter',
         data: {
           isRoot: true,
@@ -430,7 +435,7 @@ class SearchClassBase {
         },
         icon: getEntityIcon(
           EntityType.KNOWLEDGE_CENTER,
-          'service-icon w-4 h-4 tw:text-quaternary'
+          SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
         ),
         children: [
           {
@@ -439,7 +444,7 @@ class SearchClassBase {
             isLeaf: true,
             icon: getEntityIcon(
               EntityType.KNOWLEDGE_PAGE,
-              'service-icon w-4 h-4 tw:text-quaternary'
+              SERVICE_ICON_W_4_H_4_TW_TEXT_QUATERNARY
             ),
             data: {
               entityType: EntityType.KNOWLEDGE_PAGE,
@@ -480,7 +485,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TABLES,
         icon: ENTITY_ICON_MAPPER[EntityType.TABLE].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.COLUMN]: {
         label: t('label.column-plural'),
@@ -488,7 +493,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.COLUMNS,
         icon: ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.STORED_PROCEDURE]: {
         label: t('label.stored-procedure-plural'),
@@ -496,7 +501,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.STORED_PROCEDURE,
         icon: ENTITY_ICON_MAPPER[EntityType.STORED_PROCEDURE].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.DATABASE]: {
         label: t('label.database-plural'),
@@ -504,7 +509,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE,
         icon: ENTITY_ICON_MAPPER[EntityType.DATABASE].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.DATABASE_SCHEMA]: {
         label: t('label.database-schema-plural'),
@@ -512,7 +517,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE_SCHEMA,
         icon: ENTITY_ICON_MAPPER[EntityType.DATABASE_SCHEMA].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.DASHBOARD]: {
         label: t('label.dashboard-plural'),
@@ -520,7 +525,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DASHBOARDS,
         icon: ENTITY_ICON_MAPPER[EntityType.DASHBOARD].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.DASHBOARD_DATA_MODEL]: {
         label: t('label.dashboard-data-model-plural'),
@@ -528,7 +533,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DASHBOARD_DATA_MODEL,
         icon: ENTITY_ICON_MAPPER[EntityType.DASHBOARD_DATA_MODEL].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.CHART]: {
         label: t('label.chart-plural'),
@@ -536,7 +541,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.CHARTS,
         icon: ENTITY_ICON_MAPPER[EntityType.CHART].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.PIPELINE]: {
         label: t('label.pipeline-plural'),
@@ -544,7 +549,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.PIPELINES,
         icon: ENTITY_ICON_MAPPER[EntityType.PIPELINE].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.TOPIC]: {
         label: t('label.topic-plural'),
@@ -552,7 +557,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TOPICS,
         icon: ENTITY_ICON_MAPPER[EntityType.TOPIC].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.MLMODEL]: {
         label: t('label.ml-model-plural'),
@@ -560,7 +565,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.MLMODELS,
         icon: ENTITY_ICON_MAPPER[EntityType.MLMODEL].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.CONTAINER]: {
         label: t('label.container-plural'),
@@ -568,7 +573,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.CONTAINERS,
         icon: ENTITY_ICON_MAPPER[EntityType.CONTAINER].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.SEARCH_INDEX]: {
         label: t('label.search-index-plural'),
@@ -576,7 +581,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.SEARCH_INDEX,
         icon: ENTITY_ICON_MAPPER[EntityType.SEARCH_INDEX].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.GLOSSARY_TERM]: {
         label: t('label.glossary-term-plural'),
@@ -584,7 +589,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.GLOSSARY,
         icon: ENTITY_ICON_MAPPER[EntityType.GLOSSARY_TERM].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.TAG]: {
         label: t('label.tag-plural'),
@@ -592,7 +597,7 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TAG,
         icon: ENTITY_ICON_MAPPER[EntityType.TAG].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.DATA_PRODUCT]: {
         label: t('label.data-product-plural'),
@@ -600,7 +605,7 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATA_PRODUCT,
         icon: ENTITY_ICON_MAPPER[EntityType.DATA_PRODUCT].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.API_COLLECTION]: {
         label: t('label.api-collection-plural'),
@@ -608,7 +613,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_COLLECTION,
         icon: ENTITY_ICON_MAPPER[EntityType.API_COLLECTION].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.API_ENDPOINT]: {
         label: t('label.api-endpoint-plural'),
@@ -616,7 +621,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_ENDPOINT,
         icon: ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.METRIC]: {
         label: t('label.metric-plural'),
@@ -624,7 +629,7 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.METRIC,
         icon: ENTITY_ICON_MAPPER[EntityType.METRIC].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.DIRECTORY]: {
         label: t('label.directory-plural'),
@@ -632,7 +637,7 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DIRECTORIES,
         icon: ENTITY_ICON_MAPPER[EntityType.DIRECTORY].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.FILE]: {
         label: t('label.file-plural'),
@@ -640,7 +645,7 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.FILES,
         icon: ENTITY_ICON_MAPPER[EntityType.FILE].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.SPREADSHEET]: {
         label: t('label.spreadsheet-plural'),
@@ -648,7 +653,7 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.SPREADSHEETS,
         icon: ENTITY_ICON_MAPPER[EntityType.SPREADSHEET].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.WORKSHEET]: {
         label: t('label.worksheet-plural'),
@@ -656,15 +661,15 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.WORKSHEETS,
         icon: ENTITY_ICON_MAPPER[EntityType.WORKSHEET].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
       [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
-        label: t('label.context-center'),
+        label: t(LABEL_CONTEXT_CENTER),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'knowledgePages',
         icon: ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon,
-        iconClassName: 'tw:text-quaternary',
+        iconClassName: TW_TEXT_QUATERNARY,
       },
     };
   }

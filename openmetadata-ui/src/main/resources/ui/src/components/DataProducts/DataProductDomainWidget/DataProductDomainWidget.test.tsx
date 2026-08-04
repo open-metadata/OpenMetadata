@@ -16,6 +16,8 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { DataProductDomainWidget } from './DataProductDomainWidget';
 
+const DOM_TARGET = 'dom-target';
+
 const mockOnUpdate = jest.fn().mockResolvedValue(undefined);
 const mockPatchDataProduct = jest.fn();
 
@@ -79,7 +81,7 @@ describe('DataProductDomainWidget', () => {
     await waitFor(() => expect(capturedOnUpdate).toBeDefined());
 
     const newDomain: EntityReference = {
-      id: 'dom-target',
+      id: DOM_TARGET,
       type: 'domain',
       name: 'target',
       fullyQualifiedName: 'target',
@@ -103,7 +105,7 @@ describe('DataProductDomainWidget', () => {
     expect(payload.id).toBe(mockDataProduct.id);
     expect(payload.domains).toEqual([
       {
-        id: 'dom-target',
+        id: DOM_TARGET,
         type: 'domain',
         name: 'target',
         fullyQualifiedName: 'target',
@@ -137,7 +139,7 @@ describe('DataProductDomainWidget', () => {
     await waitFor(() => expect(capturedOnUpdate).toBeDefined());
 
     const newDomain: EntityReference = {
-      id: 'dom-target',
+      id: DOM_TARGET,
       type: 'domain',
       name: 'target',
       fullyQualifiedName: 'target',

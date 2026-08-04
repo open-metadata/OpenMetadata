@@ -65,6 +65,16 @@ import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
 
+const LABEL_OWNER_PLURAL = 'label.owner-plural' as const;
+const LABEL_SERVICE = 'label.service' as const;
+const LABEL_DATABASE = 'label.database' as const;
+const LABEL_SCHEMA = 'label.schema' as const;
+const LABEL_TIER = 'label.tier' as const;
+const LABEL_USAGE = 'label.usage' as const;
+const LABEL_COLUMN_PLURAL = 'label.column-plural' as const;
+const LABEL_URL_UPPERCASE = 'label.url-uppercase' as const;
+const LABEL_SERVICE_TYPE = 'label.service-type' as const;
+
 const OwnerLabel = withSuspenseFallback(
   lazy(() =>
     import('../components/common/OwnerLabel/OwnerLabel.component').then(
@@ -95,7 +105,7 @@ const getCommonOverview = (
     ...(showOwner
       ? [
           {
-            name: i18n.t('label.owner-plural'),
+            name: i18n.t(LABEL_OWNER_PLURAL),
             value: (
               <OwnerLabel
                 hasPermission={false}
@@ -154,14 +164,14 @@ const getTableOverview = (
       ],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service || NO_DATA,
       url: getServiceDetailsPath(service, ServiceCategory.DATABASE_SERVICES),
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.database'),
+      name: i18n.t(LABEL_DATABASE),
       value: database || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE,
@@ -175,7 +185,7 @@ const getTableOverview = (
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.schema'),
+      name: i18n.t(LABEL_SCHEMA),
       value: schema || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE_SCHEMA,
@@ -189,13 +199,13 @@ const getTableOverview = (
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.usage'),
+      name: i18n.t(LABEL_USAGE),
       value: usage || NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -210,7 +220,7 @@ const getTableOverview = (
       ],
     },
     {
-      name: i18n.t('label.column-plural'),
+      name: i18n.t(LABEL_COLUMN_PLURAL),
       value: columns ? columns.length : NO_DATA,
       isLink: false,
       visible: [
@@ -330,7 +340,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
-      name: `${i18n.t('label.pipeline')} ${i18n.t('label.url-uppercase')}`,
+      name: `${i18n.t('label.pipeline')} ${i18n.t(LABEL_URL_UPPERCASE)}`,
       dataTestId: 'pipeline-url-label',
       value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
@@ -342,7 +352,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
       ],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
@@ -353,7 +363,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -372,7 +382,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
-      name: `${i18n.t('label.dashboard')} ${i18n.t('label.url-uppercase')}`,
+      name: `${i18n.t('label.dashboard')} ${i18n.t(LABEL_URL_UPPERCASE)}`,
       value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
@@ -383,7 +393,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       ],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
@@ -394,7 +404,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       isExternal: false,
@@ -421,14 +431,14 @@ export const getSearchIndexOverview = (searchIndexDetails: SearchIndex) => {
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       isExternal: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
@@ -517,13 +527,13 @@ const getContainerOverview = (containerDetails: Container) => {
       visible,
     },
     {
-      name: i18n.t('label.service-type'),
+      name: i18n.t(LABEL_SERVICE_TYPE),
       value: serviceType,
       isLink: false,
       visible,
     },
     {
-      name: i18n.t('label.column-plural'),
+      name: i18n.t(LABEL_COLUMN_PLURAL),
       value:
         !isUndefined(dataModel) && dataModel.columns
           ? dataModel.columns.length
@@ -551,7 +561,7 @@ const getChartOverview = (chartDetails: Chart) => {
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
-      name: `${i18n.t('label.chart')} ${i18n.t('label.url-uppercase')}`,
+      name: `${i18n.t('label.chart')} ${i18n.t(LABEL_URL_UPPERCASE)}`,
       value: stringToHTML(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
@@ -562,7 +572,7 @@ const getChartOverview = (chartDetails: Chart) => {
       ],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: serviceDisplayName || NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
@@ -585,7 +595,7 @@ const getChartOverview = (chartDetails: Chart) => {
       ],
     },
     {
-      name: i18n.t('label.service-type'),
+      name: i18n.t(LABEL_SERVICE_TYPE),
       value: serviceType ?? NO_DATA,
       isLink: false,
       visible: [
@@ -613,7 +623,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
-      name: `${i18n.t('label.data-model')} ${i18n.t('label.url-uppercase')}`,
+      name: `${i18n.t('label.data-model')} ${i18n.t(LABEL_URL_UPPERCASE)}`,
       value: stringToHTML(displayName ?? '') || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DASHBOARD_DATA_MODEL,
@@ -626,7 +636,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
       ],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
@@ -641,7 +651,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     },
 
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       isExternal: false,
@@ -681,14 +691,14 @@ const getStoredProcedureOverview = (
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service || NO_DATA,
       url: getServiceDetailsPath(service, ServiceCategory.DATABASE_SERVICES),
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.database'),
+      name: i18n.t(LABEL_DATABASE),
       value: database || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE,
@@ -702,7 +712,7 @@ const getStoredProcedureOverview = (
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
-      name: i18n.t('label.schema'),
+      name: i18n.t(LABEL_SCHEMA),
       value: schema || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE_SCHEMA,
@@ -719,7 +729,7 @@ const getStoredProcedureOverview = (
       ],
     },
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       visible: [
@@ -754,19 +764,19 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 
   const overview: BasicEntityOverviewInfo[] = [
     {
-      name: i18n.t('label.owner-plural'),
+      name: i18n.t(LABEL_OWNER_PLURAL),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service?.fullyQualifiedName || NO_DATA,
       url: getServiceDetailsPath(
         service?.fullyQualifiedName ?? '',
@@ -777,7 +787,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
     },
 
     {
-      name: i18n.t('label.usage'),
+      name: i18n.t(LABEL_USAGE),
       value: getUsageData(usageSummary),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -795,19 +805,19 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 
   const overview: BasicEntityOverviewInfo[] = [
     {
-      name: i18n.t('label.owner-plural'),
+      name: i18n.t(LABEL_OWNER_PLURAL),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
         service?.fullyQualifiedName ?? '',
@@ -817,7 +827,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     {
-      name: i18n.t('label.database'),
+      name: i18n.t(LABEL_DATABASE),
       value: database?.fullyQualifiedName ?? NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE,
@@ -827,7 +837,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     {
-      name: i18n.t('label.usage'),
+      name: i18n.t(LABEL_USAGE),
       value: getUsageData(usageSummary),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -844,19 +854,19 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
 
   const overview: BasicEntityOverviewInfo[] = [
     {
-      name: i18n.t('label.owner-plural'),
+      name: i18n.t(LABEL_OWNER_PLURAL),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
     {
-      name: i18n.t('label.tier'),
+      name: i18n.t(LABEL_TIER),
       value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     {
-      name: i18n.t('label.service-type'),
+      name: i18n.t(LABEL_SERVICE_TYPE),
       value: serviceType,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
@@ -884,7 +894,7 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
         service?.fullyQualifiedName ?? '',
@@ -930,7 +940,7 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
       ],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service?.fullyQualifiedName ?? '',
       url: getServiceDetailsPath(
         service?.fullyQualifiedName ?? '',
@@ -1023,7 +1033,7 @@ const getDirectoryOverview = (directoryDetails: Directory) => {
       visible,
     },
     {
-      name: i18n.t('label.service-type'),
+      name: i18n.t(LABEL_SERVICE_TYPE),
       value: serviceType,
       isLink: false,
       visible,
@@ -1063,7 +1073,7 @@ const getFileOverview = (fileDetails: File) => {
       visible,
     },
     {
-      name: i18n.t('label.service-type'),
+      name: i18n.t(LABEL_SERVICE_TYPE),
       value: serviceType,
       isLink: false,
       visible,
@@ -1090,7 +1100,7 @@ const getSpreadsheetOverview = (spreadsheetDetails: Spreadsheet) => {
       visible,
     },
     {
-      name: i18n.t('label.service-type'),
+      name: i18n.t(LABEL_SERVICE_TYPE),
       value: serviceType,
       isLink: false,
       visible,
@@ -1112,7 +1122,7 @@ const getWorksheetOverview = (worksheetDetails: Worksheet) => {
   const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domains }),
     {
-      name: i18n.t('label.column-plural'),
+      name: i18n.t(LABEL_COLUMN_PLURAL),
       value: columnCount ?? NO_DATA,
       isLink: false,
       visible,
@@ -1124,7 +1134,7 @@ const getWorksheetOverview = (worksheetDetails: Worksheet) => {
       visible,
     },
     {
-      name: i18n.t('label.service-type'),
+      name: i18n.t(LABEL_SERVICE_TYPE),
       value: serviceType,
       isLink: false,
       visible,
@@ -1173,7 +1183,7 @@ const getColumnOverview = (
       ],
     },
     {
-      name: i18n.t('label.service'),
+      name: i18n.t(LABEL_SERVICE),
       value: service?.displayName || service?.name || '--',
       url: service?.fullyQualifiedName
         ? getServiceDetailsPath(service.fullyQualifiedName, service.type || '')
@@ -1185,7 +1195,7 @@ const getColumnOverview = (
       ],
     },
     {
-      name: i18n.t('label.database'),
+      name: i18n.t(LABEL_DATABASE),
       value: database?.displayName || database?.name || '--',
       url: database?.fullyQualifiedName
         ? getEntityDetailsPath(EntityType.DATABASE, database.fullyQualifiedName)
@@ -1197,7 +1207,7 @@ const getColumnOverview = (
       ],
     },
     {
-      name: i18n.t('label.schema'),
+      name: i18n.t(LABEL_SCHEMA),
       value: databaseSchema?.displayName || databaseSchema?.name || '--',
       url: databaseSchema?.fullyQualifiedName
         ? getEntityDetailsPath(

@@ -19,6 +19,7 @@ import {
 } from '../../../mocks/PipelineVersion.mock';
 import PipelineVersion from './PipelineVersion.component';
 
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural';
 const mockNavigate = jest.fn();
 
 jest.mock(
@@ -102,7 +103,7 @@ describe('PipelineVersion tests', () => {
     const description = screen.getByText('Description');
     const schemaTabLabel = screen.getByText('label.task-plural');
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
     const schemaTable = screen.getByTestId('schema-table');
@@ -132,7 +133,7 @@ describe('PipelineVersion tests', () => {
     );
     const schemaTabLabel = screen.queryByText('label.schema');
     const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const schemaTable = screen.queryByTestId('schema-table');
 
@@ -152,7 +153,7 @@ describe('PipelineVersion tests', () => {
     });
 
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();

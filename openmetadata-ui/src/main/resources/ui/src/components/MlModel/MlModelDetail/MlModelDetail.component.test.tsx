@@ -23,6 +23,8 @@ import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Paging } from '../../../generated/type/paging';
 import MlModelDetailComponent from './MlModelDetail.component';
 
+const MLMODEL_DETAILS = 'mlmodel-details';
+
 const mockData = {
   id: '1b561c2d-f449-4640-b893-94077cf1c35b',
   name: 'eta_predictions',
@@ -243,7 +245,7 @@ describe.skip('Test MlModel entity detail component', () => {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const detailContainer = await findByTestId(container, MLMODEL_DETAILS);
 
     const entityTabs = await findByTestId(container, 'tabs');
     const entityFeatureList = await findByText(
@@ -276,7 +278,7 @@ describe.skip('Test MlModel entity detail component', () => {
       }
     );
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const detailContainer = await findByTestId(container, MLMODEL_DETAILS);
     const emptyTablePlaceholder = await findAllByText(
       container,
       'ErrorPlaceHolder'
@@ -292,7 +294,7 @@ describe.skip('Test MlModel entity detail component', () => {
       wrapper: MemoryRouter,
     });
 
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const detailContainer = await findByTestId(container, MLMODEL_DETAILS);
     const hyperMetereTable = await findByTestId(
       container,
       'hyperparameters-table'
@@ -340,7 +342,7 @@ describe.skip('Test MlModel entity detail component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const detailContainer = await findByTestId(container, 'mlmodel-details');
+    const detailContainer = await findByTestId(container, MLMODEL_DETAILS);
     const entityInfo = await findByText(container, /EntityPageInfo/i);
     const entityTabs = await findByTestId(container, 'tabs');
     const entityFeatureList = await findByText(

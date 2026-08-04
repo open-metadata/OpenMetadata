@@ -27,6 +27,10 @@ import {
 } from '../generated/entity/services/databaseService';
 import { getComputeRowCountDiffDisplay } from './EntityVersionUtils';
 import { getStringEntityDiff } from './EntityVersionUtilsPure';
+
+const OTHER_DISPLAY_NAME = 'Other Display Name';
+const DIFF_REMOVED = 'diff-removed';
+const DIFF_ADDED = 'diff-added';
 // Mock data for testing
 const createMockTableColumn = (
   name: string,
@@ -100,7 +104,7 @@ describe('EntityVersionUtils', () => {
 
         const columns = [
           createMockTableColumn(entityName, oldDisplayName),
-          createMockTableColumn('otherColumn', 'Other Display Name'),
+          createMockTableColumn('otherColumn', OTHER_DISPLAY_NAME),
         ];
 
         const result = getStringEntityDiff(
@@ -111,9 +115,9 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(2);
-        expect(result[0].displayName).toContain('diff-removed');
-        expect(result[0].displayName).toContain('diff-added');
-        expect(result[1].displayName).toBe('Other Display Name');
+        expect(result[0].displayName).toContain(DIFF_REMOVED);
+        expect(result[0].displayName).toContain(DIFF_ADDED);
+        expect(result[1].displayName).toBe(OTHER_DISPLAY_NAME);
       });
 
       it('should update description field when DESCRIPTION field is passed', () => {
@@ -129,7 +133,7 @@ describe('EntityVersionUtils', () => {
 
         const columns = [
           { ...createMockTableColumn(entityName), description: oldDescription },
-          createMockTableColumn('otherColumn', 'Other Display Name'),
+          createMockTableColumn('otherColumn', OTHER_DISPLAY_NAME),
         ];
 
         const result = getStringEntityDiff(
@@ -140,8 +144,8 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(2);
-        expect(result[0].description).toContain('diff-removed');
-        expect(result[0].description).toContain('diff-added');
+        expect(result[0].description).toContain(DIFF_REMOVED);
+        expect(result[0].description).toContain(DIFF_ADDED);
         expect(result[1].description).toBeUndefined();
       });
 
@@ -175,8 +179,8 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0].children?.[0].displayName).toContain('diff-removed');
-        expect(result[0].children?.[0].displayName).toContain('diff-added');
+        expect(result[0].children?.[0].displayName).toContain(DIFF_REMOVED);
+        expect(result[0].children?.[0].displayName).toContain(DIFF_ADDED);
         expect(result[0].displayName).toBe('Parent Display Name');
       });
 
@@ -225,8 +229,8 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0].displayName).toContain('diff-removed');
-        expect(result[0].displayName).toContain('diff-added');
+        expect(result[0].displayName).toContain(DIFF_REMOVED);
+        expect(result[0].displayName).toContain(DIFF_ADDED);
       });
     });
 
@@ -252,8 +256,8 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0].displayName).toContain('diff-removed');
-        expect(result[0].displayName).toContain('diff-added');
+        expect(result[0].displayName).toContain(DIFF_REMOVED);
+        expect(result[0].displayName).toContain(DIFF_ADDED);
       });
     });
 
@@ -340,7 +344,7 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0].displayName).toContain('diff-added');
+        expect(result[0].displayName).toContain(DIFF_ADDED);
       });
 
       it('should handle deleted field change', () => {
@@ -363,7 +367,7 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0].displayName).toContain('diff-removed');
+        expect(result[0].displayName).toContain(DIFF_REMOVED);
       });
     });
 
@@ -398,8 +402,8 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0].dataTypeDisplay).toContain('diff-removed');
-        expect(result[0].dataTypeDisplay).toContain('diff-added');
+        expect(result[0].dataTypeDisplay).toContain(DIFF_REMOVED);
+        expect(result[0].dataTypeDisplay).toContain(DIFF_ADDED);
       });
 
       it('should handle NAME field', () => {
@@ -425,8 +429,8 @@ describe('EntityVersionUtils', () => {
         );
 
         expect(result).toHaveLength(1);
-        expect(result[0].name).toContain('diff-removed');
-        expect(result[0].name).toContain('diff-added');
+        expect(result[0].name).toContain(DIFF_REMOVED);
+        expect(result[0].name).toContain(DIFF_ADDED);
       });
     });
   });

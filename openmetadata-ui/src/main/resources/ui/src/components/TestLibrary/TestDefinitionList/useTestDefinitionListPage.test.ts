@@ -26,6 +26,8 @@ import {
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import { useTestDefinitionListPage } from './useTestDefinitionListPage';
 
+const AFTER_CURSOR = 'after-cursor' as const;
+
 const MOCK_TEST_DEFINITIONS = [
   {
     id: 'id-1',
@@ -41,7 +43,7 @@ const MOCK_TEST_DEFINITIONS = [
   },
 ] as unknown as TestDefinition[];
 
-const MOCK_PAGING = { after: 'after-cursor', before: undefined, total: 2 };
+const MOCK_PAGING = { after: AFTER_CURSOR, before: undefined, total: 2 };
 
 const MOCK_PERMISSION = {
   ViewAll: true,
@@ -59,7 +61,7 @@ const mockGetEntityPermissionByFqn = jest.fn();
 // fetch loop. `mockPageSize` and `mockPagingCursor` are mutable so individual
 // tests can rerender with a changed page size or an active cursor and observe
 // the refetch the effect performs; both are reset in `beforeEach`.
-const mockPaging = { after: 'after-cursor', before: '', total: 2 };
+const mockPaging = { after: AFTER_CURSOR, before: '', total: 2 };
 let mockPageSize = 15;
 let mockPagingCursor: {
   cursorType?: CursorType;
@@ -535,7 +537,7 @@ describe('useTestDefinitionListPage', () => {
 
       expect(mockHandlePageChange).toHaveBeenCalledWith(
         2,
-        { cursorType: CursorType.AFTER, cursorValue: 'after-cursor' },
+        { cursorType: CursorType.AFTER, cursorValue: AFTER_CURSOR },
         15
       );
     });

@@ -13,6 +13,8 @@
 
 import { TaskEntityType } from '../rest/tasksAPI';
 
+const MESSAGE_REQUEST_APPROVAL_MESSAGE = 'message.request-approval-message';
+
 export const TASK_TYPES = {
   RequestTag: 'message.request-tags-message',
   RequestDescription: 'message.request-description-message',
@@ -20,14 +22,14 @@ export const TASK_TYPES = {
   UpdateDescription: 'message.update-description-message',
   RequestTestCaseFailureResolution:
     'message.request-test-case-failure-resolution-message',
-  RequestApproval: 'message.request-approval-message',
+  RequestApproval: MESSAGE_REQUEST_APPROVAL_MESSAGE,
   RecognizerFeedbackApproval: 'message.recognizer-feedback-approval-message',
   Generic: 'message.request-tags-message',
 };
 
 export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
-  [TaskEntityType.GlossaryApproval]: 'message.request-approval-message',
-  [TaskEntityType.RequestApproval]: 'message.request-approval-message',
+  [TaskEntityType.GlossaryApproval]: MESSAGE_REQUEST_APPROVAL_MESSAGE,
+  [TaskEntityType.RequestApproval]: MESSAGE_REQUEST_APPROVAL_MESSAGE,
   [TaskEntityType.DataAccessRequest]: 'message.data-access-request-message',
   [TaskEntityType.DescriptionUpdate]: 'message.update-description-message',
   [TaskEntityType.TagUpdate]: 'message.update-tag-message',

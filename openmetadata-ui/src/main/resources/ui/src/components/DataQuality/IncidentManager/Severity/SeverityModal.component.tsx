@@ -19,6 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { SeverityModalProps } from './Severity.interface';
 
+const LABEL_SEVERITY = 'label.severity';
+
 const SeverityModal = ({
   initialSeverity,
   onCancel,
@@ -46,7 +48,7 @@ const SeverityModal = ({
       maskClosable={false}
       okText={t('label.save')}
       title={`${t('label.edit-entity', {
-        entity: t('label.severity'),
+        entity: t(LABEL_SEVERITY),
       })}`}
       width={600}
       onCancel={onCancel}
@@ -58,12 +60,12 @@ const SeverityModal = ({
         layout="vertical"
         name="severity"
         onFinish={handleFormSubmit}>
-        <Form.Item label={t('label.severity')} name="severity">
+        <Form.Item label={t(LABEL_SEVERITY)} name="severity">
           <Select
             allowClear
             data-testid="severity-select"
             placeholder={t('label.please-select-entity', {
-              entity: t('label.severity'),
+              entity: t(LABEL_SEVERITY),
             })}>
             {keys(Severities).map((severity) => (
               <Select.Option key={severity}>

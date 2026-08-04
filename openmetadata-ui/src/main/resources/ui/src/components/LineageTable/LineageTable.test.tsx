@@ -37,6 +37,9 @@ import { ColumnLevelLineageNode } from '../Lineage/Lineage.interface';
 import LineageTable from './LineageTable';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
+
+const TEST_TABLE = 'test.table';
+const TEST_SEARCH = 'test search';
 // Mock dependencies
 jest.mock('../../context/LineageProvider/LineageProvider');
 jest.mock('../../hooks/paging/usePaging');
@@ -116,6 +119,7 @@ const mockPrepareDownstreamColumnLevelNodesFromDownstreamEdges =
 const mockLineageNodes = [
   {
     id: 'node1',
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     fullyQualifiedName: 'test.table1',
     name: 'table1',
     entityType: EntityType.TABLE,
@@ -127,6 +131,7 @@ const mockLineageNodes = [
   },
   {
     id: 'node2',
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     fullyQualifiedName: 'test.table2',
     name: 'table2',
     entityType: EntityType.TABLE,
@@ -183,7 +188,7 @@ const defaultMockState = {
 
 const mockEntity = {
   id: 'entity1',
-  fullyQualifiedName: 'test.table',
+  fullyQualifiedName: TEST_TABLE,
   name: 'table',
   entityType: EntityType.TABLE,
   description: 'Test table entity',
@@ -225,7 +230,7 @@ describe('LineageTable', () => {
     } as unknown as ReturnType<typeof usePaging>);
 
     mockUseFqn.mockReturnValue({
-      fqn: 'test.table',
+      fqn: TEST_TABLE,
       ingestionFQN: '',
       ruleName: '',
       entityFqn: '',
@@ -380,7 +385,7 @@ describe('LineageTable', () => {
 
     await waitFor(() => {
       expect(mockGetLineageByEntityCount).toHaveBeenCalledWith({
-        fqn: 'test.table',
+        fqn: TEST_TABLE,
         entityType: EntityType.TABLE,
         direction: LineageDirection.Downstream,
         nodeDepth: 2,
@@ -421,7 +426,7 @@ describe('LineageTable', () => {
 
     await waitFor(() => {
       expect(mockGetLineageByEntityCount).toHaveBeenCalledWith({
-        fqn: 'test.table',
+        fqn: TEST_TABLE,
         entityType: EntityType.TABLE,
         direction: LineageDirection.Downstream,
         nodeDepth: 2,
@@ -448,7 +453,7 @@ describe('LineageTable', () => {
 
     await waitFor(() => {
       expect(mockGetLineageByEntityCount).toHaveBeenCalledWith({
-        fqn: 'test.table',
+        fqn: TEST_TABLE,
         entityType: EntityType.TABLE,
         direction: LineageDirection.Downstream,
         nodeDepth: 2,
@@ -545,7 +550,7 @@ describe('LineageTable', () => {
     it('should integrate with useLineageTableState correctly', () => {
       const mockState = {
         ...defaultMockState,
-        searchValue: 'test search',
+        searchValue: TEST_SEARCH,
         loading: true,
       };
       mockUseLineageTableState.mockReturnValue(mockState);
@@ -554,7 +559,7 @@ describe('LineageTable', () => {
 
       expect(CustomControlsComponent).toHaveBeenCalledWith(
         expect.objectContaining({
-          searchValue: 'test search',
+          searchValue: TEST_SEARCH,
         }),
         {}
       );
@@ -600,7 +605,7 @@ describe('LineageTable', () => {
           type: 'table',
         },
         toEntity: {
-          fullyQualifiedName: 'test.table',
+          fullyQualifiedName: TEST_TABLE,
           id: 'entity2',
           type: 'table',
         },
@@ -610,7 +615,7 @@ describe('LineageTable', () => {
     const mockDownstreamEdges = {
       'test.table-->test.table2': {
         fromEntity: {
-          fullyQualifiedName: 'test.table',
+          fullyQualifiedName: TEST_TABLE,
           id: 'entity2',
           type: 'table',
         },
@@ -662,7 +667,7 @@ describe('LineageTable', () => {
 
       await waitFor(() => {
         expect(mockGetLineageDataByFQN).toHaveBeenCalledWith({
-          fqn: 'test.table',
+          fqn: TEST_TABLE,
           entityType: EntityType.TABLE,
           config: {
             downstreamDepth: 2,
@@ -831,7 +836,7 @@ describe('LineageTable', () => {
     it('should pass onSearchValueChange for column-level lineage', () => {
       const mockState = {
         ...defaultMockState,
-        searchValue: 'test search',
+        searchValue: TEST_SEARCH,
         loading: true,
         impactLevel: EImpactLevel.ColumnLevel,
       };
@@ -861,7 +866,7 @@ describe('LineageTable', () => {
 
       await waitFor(() => {
         expect(mockGetLineageByEntityCount).toHaveBeenCalledWith({
-          fqn: 'test.table',
+          fqn: TEST_TABLE,
           entityType: EntityType.TABLE,
           direction: LineageDirection.Downstream,
           nodeDepth: 2,
@@ -1074,7 +1079,7 @@ describe('LineageTable', () => {
     it('should not pass onSearchValueChange for table-level lineage', () => {
       const mockState = {
         ...defaultMockState,
-        searchValue: 'test search',
+        searchValue: TEST_SEARCH,
         loading: true,
         impactLevel: EImpactLevel.TableLevel,
       };

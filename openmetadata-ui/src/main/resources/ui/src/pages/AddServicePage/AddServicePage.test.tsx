@@ -23,6 +23,16 @@ import { getEntityTypeFromServiceCategory } from '../../utils/ServicePureUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import AddServicePage from './AddServicePage.component';
 
+const EXISTING_SERVICE = 'existing-service' as const;
+const SERVICE_NAME_ERROR = 'service-name-error' as const;
+const MODAL_LEAVE = 'modal-leave' as const;
+const TRIGGER_ADDITIONAL_VALIDATION = 'trigger-additional-validation' as const;
+const LABEL_ADD_NEW_ENTITY = 'label.add-new-entity' as const;
+const SELECT_MY_SQL = 'Select MySQL' as const;
+const SET_SERVICE_NAME = 'Set Service Name' as const;
+const SAVE_CONNECTION = 'Save Connection' as const;
+const SAVE_FILTERS = 'Save Filters' as const;
+
 const mockParam = {
   serviceCategory: 'databaseServices',
 };
@@ -82,6 +92,7 @@ jest.mock(
       .mockImplementation(
         ({ nameError, onDescriptionChange, onFocus, onNameChange }) => (
           <div>
+            {/* eslint-disable-next-line sonarjs/no-duplicate-string */}
             <button onClick={() => onNameChange('test-service')}>
               Set Service Name
             </button>
@@ -219,6 +230,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getAddServicePath: jest.fn(),
   getServiceDetailsPath: jest
     .fn()
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     .mockImplementation(() => '/service/details/path'),
 }));
 
@@ -281,7 +293,7 @@ describe('AddServicePage', () => {
 
     expect(screen.getByTestId('add-new-service-container')).toBeInTheDocument();
     expect(screen.getByTestId('header')).toHaveTextContent(
-      'label.add-new-entity'
+      LABEL_ADD_NEW_ENTITY
     );
   });
 
@@ -290,7 +302,7 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    const selectMySQLButton = screen.getByText('Select MySQL');
+    const selectMySQLButton = screen.getByText(SELECT_MY_SQL);
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
@@ -322,28 +334,28 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     expect(screen.getByTestId('header')).toHaveTextContent(
       'mysql label.service'
     );
-    expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
+    expect(screen.queryByText(SELECT_MY_SQL)).not.toBeInTheDocument();
 
     // Clicking the breadcrumb shows a confirmation modal (activeServiceStep > 1)
     await act(async () => {
-      fireEvent.click(screen.getByText('label.add-new-entity'));
+      fireEvent.click(screen.getByText(LABEL_ADD_NEW_ENTITY));
     });
 
     // Confirm leaving to reset the selected connector
     await act(async () => {
-      fireEvent.click(screen.getByTestId('modal-leave'));
+      fireEvent.click(screen.getByTestId(MODAL_LEAVE));
     });
 
     expect(screen.getByTestId('header')).toHaveTextContent(
-      'label.add-new-entity'
+      LABEL_ADD_NEW_ENTITY
     );
-    expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+    expect(screen.getByText(SELECT_MY_SQL)).toBeInTheDocument();
   });
 
   it('should handle connection configuration', async () => {
@@ -351,22 +363,22 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    const selectMySQLButton = screen.getByText('Select MySQL');
+    const selectMySQLButton = screen.getByText(SELECT_MY_SQL);
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    const setNameButton = screen.getByText('Set Service Name');
+    const setNameButton = screen.getByText(SET_SERVICE_NAME);
     await act(async () => {
       fireEvent.click(setNameButton);
     });
 
-    const saveConnectionButton = screen.getByText('Save Connection');
+    const saveConnectionButton = screen.getByText(SAVE_CONNECTION);
     await act(async () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    expect(await screen.findByText('Save Filters')).toBeInTheDocument();
+    expect(await screen.findByText(SAVE_FILTERS)).toBeInTheDocument();
   });
 
   it('updates description and focused docs field from the connection step', async () => {
@@ -377,7 +389,7 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
@@ -405,22 +417,22 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Save Connection'));
+      fireEvent.click(screen.getByText(SAVE_CONNECTION));
     });
 
-    expect(await screen.findByTestId('service-name-error')).toHaveTextContent(
+    expect(await screen.findByTestId(SERVICE_NAME_ERROR)).toHaveTextContent(
       'message.field-text-is-required'
     );
-    expect(screen.queryByText('Save Filters')).not.toBeInTheDocument();
+    expect(screen.queryByText(SAVE_FILTERS)).not.toBeInTheDocument();
   });
 
   it('should flag duplicate service names before moving to filters', async () => {
     (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
-      name: 'existing-service',
+      name: EXISTING_SERVICE,
     });
 
     await act(async () => {
@@ -428,7 +440,7 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
@@ -436,13 +448,13 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Save Connection'));
+      fireEvent.click(screen.getByText(SAVE_CONNECTION));
     });
 
-    expect(await screen.findByTestId('service-name-error')).toHaveTextContent(
+    expect(await screen.findByTestId(SERVICE_NAME_ERROR)).toHaveTextContent(
       'message.service-name-already-exists-with-suggestion'
     );
-    expect(screen.queryByText('Save Filters')).not.toBeInTheDocument();
+    expect(screen.queryByText(SAVE_FILTERS)).not.toBeInTheDocument();
     expect(
       serviceUtilClassBaseModule.default.getServiceConfigData
     ).not.toHaveBeenCalled();
@@ -451,7 +463,7 @@ describe('AddServicePage', () => {
   it('should flag duplicate service names while editing the connection form', async () => {
     jest.useFakeTimers();
     (getServiceByFQN as jest.Mock).mockResolvedValue({
-      name: 'existing-service',
+      name: EXISTING_SERVICE,
     });
 
     await act(async () => {
@@ -459,7 +471,7 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
@@ -471,12 +483,12 @@ describe('AddServicePage', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByTestId('service-name-error')).toHaveTextContent(
+    expect(screen.getByTestId(SERVICE_NAME_ERROR)).toHaveTextContent(
       'message.service-name-already-exists-with-suggestion'
     );
     expect(getServiceByFQN).toHaveBeenCalledWith(
       'databaseServices',
-      'existing-service'
+      EXISTING_SERVICE
     );
   });
 
@@ -485,22 +497,22 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    const selectMySQLButton = screen.getByText('Select MySQL');
+    const selectMySQLButton = screen.getByText(SELECT_MY_SQL);
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    const setNameButton = screen.getByText('Set Service Name');
+    const setNameButton = screen.getByText(SET_SERVICE_NAME);
     await act(async () => {
       fireEvent.click(setNameButton);
     });
 
-    const saveConnectionButton = screen.getByText('Save Connection');
+    const saveConnectionButton = screen.getByText(SAVE_CONNECTION);
     await act(async () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    const saveFiltersButton = await screen.findByText('Save Filters');
+    const saveFiltersButton = await screen.findByText(SAVE_FILTERS);
     await act(async () => {
       fireEvent.click(saveFiltersButton);
     });
@@ -518,19 +530,19 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Set Service Name'));
+      fireEvent.click(screen.getByText(SET_SERVICE_NAME));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Save Connection'));
+      fireEvent.click(screen.getByText(SAVE_CONNECTION));
     });
 
     await act(async () => {
-      fireEvent.click(await screen.findByText('Save Filters'));
+      fireEvent.click(await screen.findByText(SAVE_FILTERS));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
@@ -546,19 +558,19 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Set Service Name'));
+      fireEvent.click(screen.getByText(SET_SERVICE_NAME));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Save Connection'));
+      fireEvent.click(screen.getByText(SAVE_CONNECTION));
     });
 
     await act(async () => {
-      fireEvent.click(await screen.findByText('Save Filters'));
+      fireEvent.click(await screen.findByText(SAVE_FILTERS));
     });
 
     expect(triggerOnDemandApp).toHaveBeenCalled();
@@ -571,15 +583,15 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Set Service Name'));
+      fireEvent.click(screen.getByText(SET_SERVICE_NAME));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Save Connection'));
+      fireEvent.click(screen.getByText(SAVE_CONNECTION));
     });
 
     // Footer Back button shows a confirmation modal before going back
@@ -588,10 +600,10 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('modal-leave'));
+      fireEvent.click(screen.getByTestId(MODAL_LEAVE));
     });
 
-    expect(screen.getByText('Save Connection')).toBeInTheDocument();
+    expect(screen.getByText(SAVE_CONNECTION)).toBeInTheDocument();
   });
 
   it('should handle back navigation in connection configuration', async () => {
@@ -599,7 +611,7 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    const selectMySQLButton = screen.getByText('Select MySQL');
+    const selectMySQLButton = screen.getByText(SELECT_MY_SQL);
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
@@ -610,10 +622,10 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('modal-leave'));
+      fireEvent.click(screen.getByTestId(MODAL_LEAVE));
     });
 
-    expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+    expect(screen.getByText(SELECT_MY_SQL)).toBeInTheDocument();
   });
 
   it('should not trigger auto pilot application for security service', async () => {
@@ -624,22 +636,22 @@ describe('AddServicePage', () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
 
-    const selectMySQLButton = screen.getByText('Select MySQL');
+    const selectMySQLButton = screen.getByText(SELECT_MY_SQL);
     await act(async () => {
       fireEvent.click(selectMySQLButton);
     });
 
-    const setNameButton = screen.getByText('Set Service Name');
+    const setNameButton = screen.getByText(SET_SERVICE_NAME);
     await act(async () => {
       fireEvent.click(setNameButton);
     });
 
-    const saveConnectionButton = screen.getByText('Save Connection');
+    const saveConnectionButton = screen.getByText(SAVE_CONNECTION);
     await act(async () => {
       fireEvent.click(saveConnectionButton);
     });
 
-    const saveFiltersButton = await screen.findByText('Save Filters');
+    const saveFiltersButton = await screen.findByText(SAVE_FILTERS);
     await act(async () => {
       fireEvent.click(saveFiltersButton);
     });
@@ -666,14 +678,14 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+      fireEvent.click(screen.getByTestId(TRIGGER_ADDITIONAL_VALIDATION));
     });
 
-    expect(await screen.findByTestId('service-name-error')).toHaveTextContent(
+    expect(await screen.findByTestId(SERVICE_NAME_ERROR)).toHaveTextContent(
       'message.field-text-is-required'
     );
   });
@@ -684,18 +696,18 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Set Service Name'));
+      fireEvent.click(screen.getByText(SET_SERVICE_NAME));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+      fireEvent.click(screen.getByTestId(TRIGGER_ADDITIONAL_VALIDATION));
     });
 
-    expect(screen.queryByTestId('service-name-error')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SERVICE_NAME_ERROR)).not.toBeInTheDocument();
   });
 
   it('should pass onValidateAdditionalRequiredFields to ConnectionConfigForm', async () => {
@@ -704,7 +716,7 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     const lastProps = mockConnectionConfigFormProps.mock.calls.at(-1)?.[0];
@@ -720,11 +732,11 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Set Service Name'));
+      fireEvent.click(screen.getByText(SET_SERVICE_NAME));
     });
 
     const lastProps = mockConnectionConfigFormProps.mock.calls.at(-1)?.[0];
@@ -743,11 +755,11 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+      fireEvent.click(screen.getByTestId(TRIGGER_ADDITIONAL_VALIDATION));
     });
 
     expect(document.getElementById).toHaveBeenCalledWith('service-name');
@@ -765,11 +777,11 @@ describe('AddServicePage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Select MySQL'));
+      fireEvent.click(screen.getByText(SELECT_MY_SQL));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Save Connection'));
+      fireEvent.click(screen.getByText(SAVE_CONNECTION));
     });
 
     expect(document.getElementById).toHaveBeenCalledWith('service-name');

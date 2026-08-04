@@ -27,6 +27,9 @@ import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductA
 import { searchData } from '../../../../rest/miscAPI';
 import DataProductsWidget from './DataProductsWidget.component';
 
+const LABEL_DATA_PRODUCT_PLURAL = 'label.data-product-plural';
+const LABEL_VIEW_MORE = 'label.view-more';
+const CUSTOMER_360 = 'Customer 360';
 const mockProps = {
   isEditView: false,
   handleRemoveWidget: jest.fn(),
@@ -48,7 +51,7 @@ const mockDataProducts: DataProduct[] = [
   {
     id: '1',
     name: 'customer-360',
-    displayName: 'Customer 360',
+    displayName: CUSTOMER_360,
     fullyQualifiedName: 'customer-360',
     assets: [{ id: 'a1', type: 'table' }],
     style: { color: '#4F8CFF', iconURL: 'icon1.svg' },
@@ -159,7 +162,7 @@ describe('DataProductsWidget', () => {
     renderDataProductsWidget();
 
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
-    expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_DATA_PRODUCT_PLURAL)).toBeInTheDocument();
   });
 
   it('renders widget wrapper', async () => {
@@ -186,7 +189,7 @@ describe('DataProductsWidget', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Customer 360')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOMER_360)).toBeInTheDocument();
       expect(screen.getByText('Sales Analytics')).toBeInTheDocument();
 
       // Verify asset counts are displayed
@@ -223,7 +226,7 @@ describe('DataProductsWidget', () => {
     renderDataProductsWidget();
 
     await waitFor(() => {
-      const customerProduct = screen.getByText('Customer 360');
+      const customerProduct = screen.getByText(CUSTOMER_360);
 
       expect(customerProduct).toBeInTheDocument();
     });
@@ -305,7 +308,7 @@ describe('DataProductsWidget', () => {
     renderDataProductsWidget();
 
     await waitFor(() => {
-      expect(screen.getByText('label.view-more')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_VIEW_MORE)).toBeInTheDocument();
     });
   });
 
@@ -315,10 +318,10 @@ describe('DataProductsWidget', () => {
     renderDataProductsWidget();
 
     await waitFor(() => {
-      expect(screen.getByText('label.data-product-plural')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_DATA_PRODUCT_PLURAL)).toBeInTheDocument();
     });
 
-    const titleElement = screen.getByText('label.data-product-plural');
+    const titleElement = screen.getByText(LABEL_DATA_PRODUCT_PLURAL);
     fireEvent.click(titleElement);
 
     expect(mockNavigate).toHaveBeenCalledWith('/dataProduct');
@@ -359,10 +362,10 @@ describe('DataProductsWidget', () => {
     renderDataProductsWidget();
 
     await waitFor(() => {
-      expect(screen.getByText('label.view-more')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_VIEW_MORE)).toBeInTheDocument();
     });
 
-    expect(screen.getByText('label.view-more').closest('a')).toHaveAttribute(
+    expect(screen.getByText(LABEL_VIEW_MORE).closest('a')).toHaveAttribute(
       'href',
       '/dataProduct'
     );

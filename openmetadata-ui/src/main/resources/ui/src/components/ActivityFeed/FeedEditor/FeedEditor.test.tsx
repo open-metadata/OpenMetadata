@@ -16,6 +16,8 @@ import { KeyboardEventHandler } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedEditor } from './FeedEditor';
 
+const REACT_QUILL = 'react-quill';
+
 const onSave = jest.fn();
 const onChangeHandler = jest.fn();
 
@@ -82,7 +84,7 @@ jest.mock('react-quill-new', () => ({
 
     return (
       <div
-        data-testid="react-quill"
+        data-testid={REACT_QUILL}
         role="textbox"
         tabIndex={0}
         onKeyDown={props.onKeyDown}>
@@ -116,7 +118,7 @@ describe('Test FeedEditor Component', () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
       wrapper: MemoryRouter,
     });
-    const reactQuill = await findByTestId(container, 'react-quill');
+    const reactQuill = await findByTestId(container, REACT_QUILL);
 
     expect(reactQuill).toBeInTheDocument();
 
@@ -132,7 +134,7 @@ describe('Test FeedEditor Component', () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
       wrapper: MemoryRouter,
     });
-    const reactQuill = await findByTestId(container, 'react-quill');
+    const reactQuill = await findByTestId(container, REACT_QUILL);
 
     expect(reactQuill).toBeInTheDocument();
 
@@ -148,7 +150,7 @@ describe('Test FeedEditor Component', () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
       wrapper: MemoryRouter,
     });
-    const reactQuill = await findByTestId(container, 'react-quill');
+    const reactQuill = await findByTestId(container, REACT_QUILL);
 
     expect(reactQuill).toBeInTheDocument();
 
@@ -164,7 +166,7 @@ describe('Test FeedEditor Component', () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
       wrapper: MemoryRouter,
     });
-    const reactQuill = await findByTestId(container, 'react-quill');
+    const reactQuill = await findByTestId(container, REACT_QUILL);
 
     expect(reactQuill).toBeInTheDocument();
 
@@ -180,7 +182,7 @@ describe('Test FeedEditor Component', () => {
     const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
       wrapper: MemoryRouter,
     });
-    const reactQuill = await findByTestId(container, 'react-quill');
+    const reactQuill = await findByTestId(container, REACT_QUILL);
 
     // The mention suggestion list is open (user is picking a mention).
     act(() => {
@@ -199,7 +201,7 @@ describe('Test FeedEditor Component', () => {
       const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
         wrapper: MemoryRouter,
       });
-      const reactQuill = await findByTestId(container, 'react-quill');
+      const reactQuill = await findByTestId(container, REACT_QUILL);
 
       // Open the list, pick a mention (insert only), then the list closes.
       act(() => mentionModule().onOpen());

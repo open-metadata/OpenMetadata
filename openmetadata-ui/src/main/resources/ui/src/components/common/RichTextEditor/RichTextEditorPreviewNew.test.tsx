@@ -20,11 +20,17 @@ import {
 import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewNew from './RichTextEditorPreviewNew';
 
+const BLOCK_EDITOR = 'block-editor';
+const VIEWER_CONTAINER = 'viewer-container';
+const MARKDOWN_PARSER = 'markdown-parser';
+const LABEL_NO_DESCRIPTION = 'label.no-description';
+const READ_MORE_BUTTON = 'read-more-button';
+
 jest.mock('../../BlockEditor/BlockEditor', () => {
   return jest
     .fn()
     .mockImplementation(({ content }) => (
-      <div data-testid="block-editor">{content}</div>
+      <div data-testid={BLOCK_EDITOR}>{content}</div>
     ));
 });
 
@@ -71,23 +77,23 @@ describe('RichTextEditorPreviewNew', () => {
   it('should render the component with markdown content', async () => {
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
-    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
-    expect(screen.getByTestId('markdown-parser')).toBeInTheDocument();
-    expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
+    expect(screen.getByTestId(VIEWER_CONTAINER)).toBeInTheDocument();
+    expect(screen.getByTestId(MARKDOWN_PARSER)).toBeInTheDocument();
+    expect(await screen.findByTestId(BLOCK_EDITOR)).toBeInTheDocument();
   });
 
   it('should render no-description placeholder when markdown is empty', () => {
     render(<RichTextEditorPreviewNew {...mockProp} markdown="" />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
-    expect(screen.queryByTestId('viewer-container')).not.toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
+    expect(screen.queryByTestId(VIEWER_CONTAINER)).not.toBeInTheDocument();
   });
 
   it('should apply custom className', () => {
     const customClass = 'custom-class';
     render(<RichTextEditorPreviewNew {...mockProp} className={customClass} />);
 
-    const container = screen.getByTestId('viewer-container');
+    const container = screen.getByTestId(VIEWER_CONTAINER);
 
     expect(container).toHaveClass('rich-text-editor-container', customClass);
   });
@@ -95,9 +101,9 @@ describe('RichTextEditorPreviewNew', () => {
   it('should apply text variant className', () => {
     render(<RichTextEditorPreviewNew {...mockProp} textVariant="white" />);
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
 
-    expect(parser).toHaveClass('markdown-parser', 'white');
+    expect(parser).toHaveClass(MARKDOWN_PARSER, 'white');
   });
 
   it('should apply RTL direction when i18n dir is rtl', () => {
@@ -108,7 +114,7 @@ describe('RichTextEditorPreviewNew', () => {
 
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
-    const container = screen.getByTestId('viewer-container');
+    const container = screen.getByTestId(VIEWER_CONTAINER);
 
     expect(container).toHaveClass('text-right');
     expect(container).toHaveAttribute('dir', 'rtl');
@@ -117,7 +123,7 @@ describe('RichTextEditorPreviewNew', () => {
   it('should apply line clamp styles when not expanded', () => {
     render(<RichTextEditorPreviewNew {...mockProp} maxLineLength="3" />);
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
     const style = parser.style;
 
     expect(style.maxHeight).toBe('6em');
@@ -134,7 +140,7 @@ describe('RichTextEditorPreviewNew', () => {
       />
     );
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
     const style = parser.style;
 
     expect(style.display).toBe('');
@@ -145,7 +151,7 @@ describe('RichTextEditorPreviewNew', () => {
   it('should detect overflow and show view-more button', async () => {
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -161,14 +167,14 @@ describe('RichTextEditorPreviewNew', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+      expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
     });
   });
 
   it('should not show view-more button when content does not overflow', async () => {
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -184,7 +190,7 @@ describe('RichTextEditorPreviewNew', () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
     });
   });
 
@@ -193,7 +199,7 @@ describe('RichTextEditorPreviewNew', () => {
       <RichTextEditorPreviewNew {...mockProp} enableSeeMoreVariant={false} />
     );
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -209,14 +215,14 @@ describe('RichTextEditorPreviewNew', () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
     });
   });
 
   it('should toggle read more state when button is clicked', async () => {
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -232,10 +238,10 @@ describe('RichTextEditorPreviewNew', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+      expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
     });
 
-    const readMoreButton = screen.getByTestId('read-more-button');
+    const readMoreButton = screen.getByTestId(READ_MORE_BUTTON);
 
     act(() => {
       fireEvent.click(readMoreButton);
@@ -249,7 +255,7 @@ describe('RichTextEditorPreviewNew', () => {
       fireEvent.click(readLessButton);
     });
 
-    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
   });
 
   it('should update content when markdown prop changes', () => {
@@ -257,7 +263,7 @@ describe('RichTextEditorPreviewNew', () => {
       <RichTextEditorPreviewNew {...mockProp} markdown="Initial content" />
     );
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
+    expect(screen.getByTestId(BLOCK_EDITOR)).toHaveTextContent(
       'Initial content'
     );
 
@@ -265,7 +271,7 @@ describe('RichTextEditorPreviewNew', () => {
       <RichTextEditorPreviewNew {...mockProp} markdown="Updated content" />
     );
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
+    expect(screen.getByTestId(BLOCK_EDITOR)).toHaveTextContent(
       'Updated content'
     );
   });
@@ -275,7 +281,7 @@ describe('RichTextEditorPreviewNew', () => {
       <RichTextEditorPreviewNew {...mockProp} isDescriptionExpanded={false} />
     );
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -291,13 +297,13 @@ describe('RichTextEditorPreviewNew', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+      expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
     });
 
     rerender(<RichTextEditorPreviewNew {...mockProp} isDescriptionExpanded />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
     });
   });
 
@@ -306,13 +312,13 @@ describe('RichTextEditorPreviewNew', () => {
       <RichTextEditorPreviewNew {...mockProp} maxLineLength="2" />
     );
 
-    let parser = screen.getByTestId('markdown-parser');
+    let parser = screen.getByTestId(MARKDOWN_PARSER);
 
     expect(parser.style.maxHeight).toBe('4em');
 
     rerender(<RichTextEditorPreviewNew {...mockProp} maxLineLength="5" />);
 
-    parser = screen.getByTestId('markdown-parser');
+    parser = screen.getByTestId(MARKDOWN_PARSER);
 
     expect(parser.style.maxHeight).toBe('10em');
   });
@@ -342,7 +348,7 @@ describe('RichTextEditorPreviewNew', () => {
   it('should render with default props', () => {
     render(<RichTextEditorPreviewNew />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should render view-more button with correct translation key', async () => {
@@ -354,7 +360,7 @@ describe('RichTextEditorPreviewNew', () => {
 
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -383,7 +389,7 @@ describe('RichTextEditorPreviewNew', () => {
 
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -399,7 +405,7 @@ describe('RichTextEditorPreviewNew', () => {
     });
 
     await waitFor(() => {
-      const button = screen.getByTestId('read-more-button');
+      const button = screen.getByTestId(READ_MORE_BUTTON);
       fireEvent.click(button);
     });
 
@@ -411,13 +417,13 @@ describe('RichTextEditorPreviewNew', () => {
   it('should handle empty content after formatting', () => {
     render(<RichTextEditorPreviewNew {...mockProp} markdown="" />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should calculate maxHeight based on maxLineLength', () => {
     render(<RichTextEditorPreviewNew {...mockProp} maxLineLength="4" />);
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
 
     expect(parser.style.maxHeight).toBe('8em');
   });

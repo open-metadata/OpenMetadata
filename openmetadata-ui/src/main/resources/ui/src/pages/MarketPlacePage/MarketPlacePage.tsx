@@ -41,6 +41,8 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './market-place.less';
 
+const LABEL_MARKET_PLACE = 'label.market-place';
+
 const MarketPlacePage = () => {
   const { t } = useTranslation();
   const {
@@ -117,7 +119,7 @@ const MarketPlacePage = () => {
   return (
     <PageLayoutV1
       className="marketplace-page"
-      pageTitle={t('label.market-place')}>
+      pageTitle={t(LABEL_MARKET_PLACE)}>
       <Row className="marketplace-header">
         <Col span={24}>
           <TitleBreadcrumb
@@ -128,7 +130,7 @@ const MarketPlacePage = () => {
                 url: getSettingPath(GlobalSettingOptions.APPLICATIONS),
               },
               {
-                name: t('label.market-place'),
+                name: t(LABEL_MARKET_PLACE),
                 url: '',
               },
             ]}
@@ -147,7 +149,7 @@ const MarketPlacePage = () => {
                     subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
                   }}
                   learningPageId={LEARNING_PAGE_IDS.AUTOMATIONS}
-                  title={t('label.market-place')}
+                  title={t(LABEL_MARKET_PLACE)}
                 />
                 <HeadingIcon />
               </div>

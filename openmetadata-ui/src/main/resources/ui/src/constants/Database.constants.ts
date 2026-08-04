@@ -18,13 +18,26 @@ import {
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Table, TableType } from '../generated/entity/data/table';
 
+const SAMPLE_DATA_ECOMMERCE_DB = 'sample_data.ecommerce_db' as const;
+const THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED =
+  'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.' as const;
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY =
+  'sample_data.ecommerce_db.shopify' as const;
+const THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED =
+  'This **mock** database contains schema related to shopify sales and orders with related dimension tables.' as const;
+const _31A0A37B_F547_4264_835F_45424E417DBD =
+  '31a0a37b-f547-4264-835f-45424e417dbd' as const;
+const _35A624D9_1355_4226_8664_3E503313301E =
+  '35a624d9-1355-4226-8664-3e503313301e' as const;
+const CDA79445_9E98_4E2E_8E73_38A4F0D794C8 =
+  'cda79445-9e98-4e2e-8e73-38a4f0d794c8' as const;
+
 export const DATABASE_DUMMY_DATA: Database = {
   id: '77147d45-888b-42dd-a369-8b7ba882dffb',
   name: 'ecommerce_db',
-  fullyQualifiedName: 'sample_data.ecommerce_db',
+  fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
   displayName: '',
-  description:
-    'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+  description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
   dataProducts: [],
   tags: [],
   version: 1.2,
@@ -73,9 +86,8 @@ export const DATABASE_SCHEMAS_DUMMY_DATA: DatabaseSchema[] = [
   {
     id: 'a17d3132-b844-4157-9645-ad543f64217d',
     name: 'shopify',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-    description:
-      'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+    description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
     version: 0.1,
     updatedAt: 1742103676753,
     updatedBy: 'admin',
@@ -93,9 +105,8 @@ export const DATABASE_SCHEMAS_DUMMY_DATA: DatabaseSchema[] = [
       id: '46a43167-fe50-435b-86de-1fd02cfdb879',
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
@@ -122,9 +133,8 @@ export const DATABASE_SCHEMAS_DUMMY_DATA: DatabaseSchema[] = [
 export const DATABASE_SCHEMA_DUMMY_DATA: DatabaseSchema = {
   id: '9f127bdc-d060-4fac-ae7b-c635933fc2e0',
   name: 'shopify',
-  fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-  description:
-    'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+  fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+  description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
   dataProducts: [],
   version: 1.1,
   updatedAt: 1736405774154,
@@ -152,9 +162,8 @@ export const DATABASE_SCHEMA_DUMMY_DATA: DatabaseSchema = {
     id: '77147d45-888b-42dd-a369-8b7ba882dffb',
     type: 'database',
     name: 'ecommerce_db',
-    fullyQualifiedName: 'sample_data.ecommerce_db',
-    description:
-      'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+    description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
     displayName: 'ecommerce_db',
     deleted: false,
   },
@@ -216,27 +225,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -261,27 +268,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -315,27 +320,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.View,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -379,27 +382,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -438,27 +439,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -502,27 +501,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -562,27 +559,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -607,27 +602,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -667,27 +660,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -756,27 +747,25 @@ export const DUMMY_DATABASE_SCHEMA_TABLES_DETAILS: Table[] = [
     tableType: TableType.Regular,
     columns: [],
     databaseSchema: {
-      id: '31a0a37b-f547-4264-835f-45424e417dbd',
+      id: _31A0A37B_F547_4264_835F_45424E417DBD,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       displayName: 'shopify',
       deleted: false,
     },
     database: {
-      id: '35a624d9-1355-4226-8664-3e503313301e',
+      id: _35A624D9_1355_4226_8664_3E503313301E,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATED,
       displayName: 'ecommerce_db',
       deleted: false,
     },
     service: {
-      id: 'cda79445-9e98-4e2e-8e73-38a4f0d794c8',
+      id: CDA79445_9E98_4E2E_8E73_38A4F0D794C8,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',

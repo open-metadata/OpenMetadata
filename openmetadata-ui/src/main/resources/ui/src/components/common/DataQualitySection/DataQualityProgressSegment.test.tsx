@@ -13,13 +13,15 @@
 import { render } from '@testing-library/react';
 import { DataQualityProgressSegment } from './DataQualityProgressSegment';
 
+const PROGRESS_SEGMENT = '.progress-segment';
+
 describe('DataQualityProgressSegment', () => {
   it('should render segment with correct width percentage', () => {
     const { container } = render(
       <DataQualityProgressSegment percent={50} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toBeInTheDocument();
     expect(segment).toHaveStyle({ width: '50%' });
@@ -30,7 +32,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={50} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toHaveClass('success');
   });
@@ -40,7 +42,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={25} type="aborted" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toHaveClass('aborted');
   });
@@ -50,7 +52,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={25} type="failed" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toHaveClass('failed');
   });
@@ -60,7 +62,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={0} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).not.toBeInTheDocument();
   });
@@ -70,7 +72,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={-10} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).not.toBeInTheDocument();
   });
@@ -80,7 +82,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={100} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toHaveStyle({ width: '100%' });
   });
@@ -90,7 +92,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={33.33} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toHaveStyle({ width: '33.33%' });
   });
@@ -100,7 +102,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={0.1} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toBeInTheDocument();
     expect(segment).toHaveStyle({ width: '0.1%' });
@@ -111,7 +113,7 @@ describe('DataQualityProgressSegment', () => {
       <DataQualityProgressSegment percent={50} type="success" />
     );
 
-    const segment = container.querySelector('.progress-segment');
+    const segment = container.querySelector(PROGRESS_SEGMENT);
 
     expect(segment).toHaveClass('progress-segment');
     expect(segment).toHaveClass('success');

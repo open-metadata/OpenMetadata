@@ -10,6 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+const STR_1FF8F95A_0FD7_4429_BA56_EA95EE582459 =
+  '1ff8f95a-0fd7-4429-ba56-ea95ee582459';
+const POLICY_FOR_DATA_CONSUMER_TO_PERFORM_OPERATIONS_ON =
+  'Policy for Data Consumer to perform operations on metadata entities';
+const DATA_CONSUMER_POLICY = 'Data Consumer Policy';
+const HTTP_LOCALHOST_8585_API_V1_POLICIES_1FF8F95A_0FD7 =
+  'http://localhost:8585/api/v1/policies/1ff8f95a-0fd7-4429-ba56-ea95ee582459';
+const B0327D82_521F_4381_9F17_98C11408446F =
+  'b0327d82-521f-4381-9f17-98c11408446f';
+const POLICY_FOR_DATA_STEWARD_ROLE_TO_PERFORM_OPERATIONS =
+  'Policy for Data Steward Role to perform operations on metadata entities';
+const DATA_STEWARD_POLICY = 'Data Steward Policy';
+const HTTP_LOCALHOST_8585_API_V1_POLICIES_B0327D82_521F =
+  'http://localhost:8585/api/v1/policies/b0327d82-521f-4381-9f17-98c11408446f';
 /* eslint-disable max-len */
 
 export const ROLES_LIST = [
@@ -27,15 +42,14 @@ export const ROLES_LIST = [
     deleted: false,
     policies: [
       {
-        id: '1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+        id: STR_1FF8F95A_0FD7_4429_BA56_EA95EE582459,
         type: 'policy',
         name: 'DataConsumerPolicy',
         fullyQualifiedName: 'DataConsumerPolicy',
-        description:
-          'Policy for Data Consumer to perform operations on metadata entities',
-        displayName: 'Data Consumer Policy',
+        description: POLICY_FOR_DATA_CONSUMER_TO_PERFORM_OPERATIONS_ON,
+        displayName: DATA_CONSUMER_POLICY,
         deleted: false,
-        href: 'http://localhost:8585/api/v1/policies/1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+        href: HTTP_LOCALHOST_8585_API_V1_POLICIES_1FF8F95A_0FD7,
       },
     ],
     users: [],
@@ -67,15 +81,14 @@ export const ROLES_LIST = [
     deleted: false,
     policies: [
       {
-        id: 'b0327d82-521f-4381-9f17-98c11408446f',
+        id: B0327D82_521F_4381_9F17_98C11408446F,
         type: 'policy',
         name: 'DataStewardPolicy',
         fullyQualifiedName: 'DataStewardPolicy',
-        description:
-          'Policy for Data Steward Role to perform operations on metadata entities',
-        displayName: 'Data Steward Policy',
+        description: POLICY_FOR_DATA_STEWARD_ROLE_TO_PERFORM_OPERATIONS,
+        displayName: DATA_STEWARD_POLICY,
         deleted: false,
-        href: 'http://localhost:8585/api/v1/policies/b0327d82-521f-4381-9f17-98c11408446f',
+        href: HTTP_LOCALHOST_8585_API_V1_POLICIES_B0327D82_521F,
       },
     ],
     users: [],
@@ -93,26 +106,24 @@ export const ROLES_LIST = [
     deleted: false,
     policies: [
       {
-        id: '1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+        id: STR_1FF8F95A_0FD7_4429_BA56_EA95EE582459,
         type: 'policy',
         name: 'DataConsumerPolicy',
         fullyQualifiedName: 'DataConsumerPolicy',
-        description:
-          'Policy for Data Consumer to perform operations on metadata entities',
-        displayName: 'Data Consumer Policy',
+        description: POLICY_FOR_DATA_CONSUMER_TO_PERFORM_OPERATIONS_ON,
+        displayName: DATA_CONSUMER_POLICY,
         deleted: false,
-        href: 'http://localhost:8585/api/v1/policies/1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+        href: HTTP_LOCALHOST_8585_API_V1_POLICIES_1FF8F95A_0FD7,
       },
       {
-        id: 'b0327d82-521f-4381-9f17-98c11408446f',
+        id: B0327D82_521F_4381_9F17_98C11408446F,
         type: 'policy',
         name: 'DataStewardPolicy',
         fullyQualifiedName: 'DataStewardPolicy',
-        description:
-          'Policy for Data Steward Role to perform operations on metadata entities',
-        displayName: 'Data Steward Policy',
+        description: POLICY_FOR_DATA_STEWARD_ROLE_TO_PERFORM_OPERATIONS,
+        displayName: DATA_STEWARD_POLICY,
         deleted: false,
-        href: 'http://localhost:8585/api/v1/policies/b0327d82-521f-4381-9f17-98c11408446f',
+        href: HTTP_LOCALHOST_8585_API_V1_POLICIES_B0327D82_521F,
       },
       {
         id: '2a34e7ab-0edd-428f-8d91-e70033c3c204',
@@ -162,15 +173,14 @@ export const ROLE_DATA = {
   deleted: false,
   policies: [
     {
-      id: '1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+      id: STR_1FF8F95A_0FD7_4429_BA56_EA95EE582459,
       type: 'policy',
       name: 'DataConsumerPolicy',
       fullyQualifiedName: 'DataConsumerPolicy',
-      description:
-        'Policy for Data Consumer to perform operations on metadata entities',
-      displayName: 'Data Consumer Policy',
+      description: POLICY_FOR_DATA_CONSUMER_TO_PERFORM_OPERATIONS_ON,
+      displayName: DATA_CONSUMER_POLICY,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/policies/1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+      href: HTTP_LOCALHOST_8585_API_V1_POLICIES_1FF8F95A_0FD7,
     },
   ],
   users: [],
@@ -192,13 +202,12 @@ export const ROLE_DATA = {
 export const POLICY_LIST_WITH_PAGING = {
   data: [
     {
-      id: '1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+      id: STR_1FF8F95A_0FD7_4429_BA56_EA95EE582459,
       name: 'DataConsumerPolicy',
       fullyQualifiedName: 'DataConsumerPolicy',
-      displayName: 'Data Consumer Policy',
-      description:
-        'Policy for Data Consumer to perform operations on metadata entities',
-      href: 'http://localhost:8585/api/v1/policies/1ff8f95a-0fd7-4429-ba56-ea95ee582459',
+      displayName: DATA_CONSUMER_POLICY,
+      description: POLICY_FOR_DATA_CONSUMER_TO_PERFORM_OPERATIONS_ON,
+      href: HTTP_LOCALHOST_8585_API_V1_POLICIES_1FF8F95A_0FD7,
       enabled: true,
       version: 0.1,
       updatedAt: 1661318304992,
@@ -216,13 +225,12 @@ export const POLICY_LIST_WITH_PAGING = {
       deleted: false,
     },
     {
-      id: 'b0327d82-521f-4381-9f17-98c11408446f',
+      id: B0327D82_521F_4381_9F17_98C11408446F,
       name: 'DataStewardPolicy',
       fullyQualifiedName: 'DataStewardPolicy',
-      displayName: 'Data Steward Policy',
-      description:
-        'Policy for Data Steward Role to perform operations on metadata entities',
-      href: 'http://localhost:8585/api/v1/policies/b0327d82-521f-4381-9f17-98c11408446f',
+      displayName: DATA_STEWARD_POLICY,
+      description: POLICY_FOR_DATA_STEWARD_ROLE_TO_PERFORM_OPERATIONS,
+      href: HTTP_LOCALHOST_8585_API_V1_POLICIES_B0327D82_521F,
       enabled: true,
       version: 0.1,
       updatedAt: 1661318304972,

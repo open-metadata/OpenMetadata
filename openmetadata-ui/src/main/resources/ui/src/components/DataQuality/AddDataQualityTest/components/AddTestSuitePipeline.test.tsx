@@ -18,6 +18,9 @@ import { TestSuite } from '../../../../generated/tests/testSuite';
 import { AddTestSuitePipelineProps } from '../AddDataQualityTest.interface';
 import AddTestSuitePipeline from './AddTestSuitePipeline';
 
+const SELECT_ALL_TEST_CASES = 'select-all-test-cases';
+const ADDTESTCASELIST_COMPONENT = 'AddTestCaseList.component';
+
 const mockNavigate = jest.fn();
 const mockUseCustomLocation = jest.fn();
 const mockUseFqn = jest.fn();
@@ -94,7 +97,7 @@ describe('AddTestSuitePipeline', () => {
     );
 
     expect(screen.getByTestId('pipeline-name')).toBeInTheDocument();
-    expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+    expect(screen.getByTestId(SELECT_ALL_TEST_CASES)).toBeInTheDocument();
     expect(screen.getByText('submit')).toBeInTheDocument();
     expect(screen.getByText('cancel')).toBeInTheDocument();
   });
@@ -110,7 +113,7 @@ describe('AddTestSuitePipeline', () => {
       target: { value: 'Test Suite pipeline' },
     });
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
     await act(async () => {
       fireEvent.click(screen.getByText('submit'));
@@ -173,13 +176,13 @@ describe('AddTestSuitePipeline', () => {
       </Form>
     );
 
-    expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+    expect(screen.getByText(ADDTESTCASELIST_COMPONENT)).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
-    expect(screen.queryByText('AddTestCaseList.component')).toBeNull();
+    expect(screen.queryByText(ADDTESTCASELIST_COMPONENT)).toBeNull();
   });
 
   describe('raiseOnError functionality', () => {
@@ -417,7 +420,7 @@ describe('AddTestSuitePipeline', () => {
         </Form>
       );
 
-      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+      expect(screen.getByText(ADDTESTCASELIST_COMPONENT)).toBeInTheDocument();
     });
 
     it('extracts testSuiteId from URL search params when testSuite prop is not provided', () => {
@@ -431,7 +434,7 @@ describe('AddTestSuitePipeline', () => {
         </Form>
       );
 
-      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+      expect(screen.getByText(ADDTESTCASELIST_COMPONENT)).toBeInTheDocument();
     });
 
     it('handles URL search params without question mark', () => {
@@ -445,7 +448,7 @@ describe('AddTestSuitePipeline', () => {
         </Form>
       );
 
-      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+      expect(screen.getByText(ADDTESTCASELIST_COMPONENT)).toBeInTheDocument();
     });
 
     it('prioritizes testSuite prop over URL params', () => {
@@ -461,7 +464,7 @@ describe('AddTestSuitePipeline', () => {
         </Form>
       );
 
-      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+      expect(screen.getByText(ADDTESTCASELIST_COMPONENT)).toBeInTheDocument();
     });
   });
 
@@ -490,7 +493,7 @@ describe('AddTestSuitePipeline', () => {
         </Form>
       );
 
-      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+      expect(screen.getByText(ADDTESTCASELIST_COMPONENT)).toBeInTheDocument();
 
       const lastCall =
         mockAddTestCaseList.mock.calls[
@@ -620,7 +623,7 @@ describe('AddTestSuitePipeline', () => {
         </Form>
       );
 
-      expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+      expect(screen.getByText(ADDTESTCASELIST_COMPONENT)).toBeInTheDocument();
 
       const propsWithInitialData = {
         ...mockProps,

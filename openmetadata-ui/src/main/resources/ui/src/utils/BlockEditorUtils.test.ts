@@ -25,6 +25,16 @@ import {
   transformImgTagsToFileAttachment,
 } from './BlockEditorUtils';
 
+const HELLO_WORLD = 'Hello World' as const;
+const P_HELLO_WORLD_P = '<p>Hello World</p>' as const;
+const P_HELLO_WORLD_P_1 = '<p>Hello world</p>' as const;
+const DATA_TYPE_FILE_ATTACHMENT = 'data-type="file-attachment"' as const;
+const FILE_ATTACHMENT = 'file-attachment' as const;
+const P_IMG_SRC_HTTPS_PLACEBEAR_COM =
+  '<p><img src="https://placebear.com/g/200/200"></p>' as const;
+const P_P = '<p>   </p>' as const;
+const P_BR_P = '<p><br></p>' as const;
+
 describe('getTextFromHtmlString', () => {
   it('should return empty string when input is undefined', () => {
     expect(getTextFromHtmlString(undefined)).toBe('');
@@ -35,17 +45,17 @@ describe('getTextFromHtmlString', () => {
   });
 
   it('should return same text when no HTML tags present', () => {
-    expect(getTextFromHtmlString('Hello World')).toBe('Hello World');
+    expect(getTextFromHtmlString(HELLO_WORLD)).toBe(HELLO_WORLD);
   });
 
   it('should remove simple HTML tags', () => {
-    expect(getTextFromHtmlString('<p>Hello World</p>')).toBe('Hello World');
+    expect(getTextFromHtmlString(P_HELLO_WORLD_P)).toBe(HELLO_WORLD);
   });
 
   it('should remove nested HTML tags', () => {
     expect(
       getTextFromHtmlString('<div><p>Hello <span>World</span></p></div>')
-    ).toBe('Hello World');
+    ).toBe(HELLO_WORLD);
   });
 
   it('should remove HTML tags with attributes', () => {
@@ -53,7 +63,7 @@ describe('getTextFromHtmlString', () => {
       getTextFromHtmlString(
         '<p class="test" id="123">Hello <a href="#test">World</a></p>'
       )
-    ).toBe('Hello World');
+    ).toBe(HELLO_WORLD);
   });
 
   it('should handle multiple spaces and trim result', () => {
@@ -88,7 +98,7 @@ describe('getTextFromHtmlString', () => {
 
 describe('getHtmlStringFromMarkdownString', () => {
   it('should return the same string if input is already HTML', () => {
-    const input = '<p>Hello World</p>';
+    const input = P_HELLO_WORLD_P;
 
     expect(getHtmlStringFromMarkdownString(input)).toBe(input);
   });
@@ -130,7 +140,7 @@ describe('getHtmlStringFromMarkdownString', () => {
 
 describe('formatValueBasedOnContent', () => {
   it('should return the same string if input is not empty p tag', () => {
-    const input = '<p>Hello World</p>';
+    const input = P_HELLO_WORLD_P;
 
     expect(formatValueBasedOnContent(input)).toBe(input);
   });
@@ -257,7 +267,7 @@ describe('Image transformation in setEditorContent', () => {
 
   describe('transformImgTagsToFileAttachment', () => {
     it('should return original string when no img tags present', () => {
-      const htmlString = '<p>Hello world</p>';
+      const htmlString = P_HELLO_WORLD_P_1;
 
       setEditorContent(mockEditor as unknown as Editor, htmlString);
 
@@ -276,7 +286,7 @@ describe('Image transformation in setEditorContent', () => {
       const transformedHtml = mockEditor.commands.setContent.mock.calls[0][0];
 
       // Check that the img tag was transformed to file-attachment div
-      expect(transformedHtml).toContain('data-type="file-attachment"');
+      expect(transformedHtml).toContain(DATA_TYPE_FILE_ATTACHMENT);
       expect(transformedHtml).toContain(
         'data-url="https://example.com/image.jpg"'
       );
@@ -348,7 +358,7 @@ describe('Image transformation in setEditorContent', () => {
 
       // Should remain unchanged since img has no src
       expect(transformedHtml).toContain('<img alt="No source">');
-      expect(transformedHtml).not.toContain('data-type="file-attachment"');
+      expect(transformedHtml).not.toContain(DATA_TYPE_FILE_ATTACHMENT);
     });
 
     it('should handle complex HTML with nested img tags', () => {
@@ -377,7 +387,7 @@ describe('Image transformation in setEditorContent', () => {
 
       expect(transformedHtml).toContain('<h1>Title</h1>');
       expect(transformedHtml).toContain('<p>More content</p>');
-      expect(transformedHtml).toContain('data-type="file-attachment"');
+      expect(transformedHtml).toContain(DATA_TYPE_FILE_ATTACHMENT);
       expect(transformedHtml).toContain(
         'data-url="https://example.com/test.jpg"'
       );
@@ -387,12 +397,12 @@ describe('Image transformation in setEditorContent', () => {
 
   describe('setEditorContent integration', () => {
     it('should call editor.commands.setContent with transformed HTML', () => {
-      const content = '<p>Hello world</p>';
+      const content = P_HELLO_WORLD_P_1;
 
       setEditorContent(mockEditor as unknown as Editor, content);
 
       expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
-        '<p>Hello world</p>'
+        P_HELLO_WORLD_P_1
       );
       expect(mockEditor.view.updateState).toHaveBeenCalled();
     });
@@ -417,7 +427,7 @@ describe('transformImgTagsToFileAttachment', () => {
   describe('Basic Functionality', () => {
     it('should return original string when no img tags present', () => {
       const testCases = [
-        '<p>Hello world</p>',
+        P_HELLO_WORLD_P_1,
         '<div><h1>Title</h1><p>Content</p></div>',
         '<ul><li>List item</li></ul>',
         '',
@@ -502,7 +512,7 @@ describe('transformImgTagsToFileAttachment', () => {
 
       // Test attribute values
       const sampleValues = {
-        'data-type': 'file-attachment',
+        'data-type': FILE_ATTACHMENT,
         'data-mimetype': 'image',
         'data-uploading': 'false',
         'data-upload-progress': '0',
@@ -561,8 +571,8 @@ describe('transformImgTagsToFileAttachment', () => {
   describe('OpenMetadata Migration Scenarios', () => {
     it('should recognize legacy OpenMetadata format patterns', () => {
       // Based on actual migration scenario
-      const oldFormat = '<p><img src="https://placebear.com/g/200/200"></p>';
-      const newFormatPattern = 'data-type="file-attachment"';
+      const oldFormat = P_IMG_SRC_HTTPS_PLACEBEAR_COM;
+      const newFormatPattern = DATA_TYPE_FILE_ATTACHMENT;
 
       expect(oldFormat).toContain('<p>');
       expect(oldFormat).toContain('<img');
@@ -571,13 +581,12 @@ describe('transformImgTagsToFileAttachment', () => {
 
       // New format validation
       expect(newFormatPattern).toContain('data-type');
-      expect(newFormatPattern).toContain('file-attachment');
+      expect(newFormatPattern).toContain(FILE_ATTACHMENT);
     });
 
     it('should handle real OpenMetadata migration scenario', () => {
       // Actual data from the user's example
-      const oldOpenMetadataImage =
-        '<p><img src="https://placebear.com/g/200/200"></p>';
+      const oldOpenMetadataImage = P_IMG_SRC_HTTPS_PLACEBEAR_COM;
 
       expect(oldOpenMetadataImage).toContain('placebear.com');
       expect(oldOpenMetadataImage).toContain('<p><img');
@@ -711,13 +720,7 @@ describe('transformImgTagsToFileAttachment', () => {
 
   describe('Data Type Validation', () => {
     it('should ensure consistent data types', () => {
-      const stringAttributes = [
-        'file-attachment',
-        'image',
-        'false',
-        '0',
-        'true',
-      ];
+      const stringAttributes = [FILE_ATTACHMENT, 'image', 'false', '0', 'true'];
 
       stringAttributes.forEach((attr) => {
         expect(typeof attr).toBe('string');
@@ -763,7 +766,7 @@ describe('transformImgTagsToFileAttachment', () => {
       variations.forEach((html) => {
         const result = transformImgTagsToFileAttachment(html);
 
-        expect(result).toContain('data-type="file-attachment"');
+        expect(result).toContain(DATA_TYPE_FILE_ATTACHMENT);
         expect(result).toContain('data-url="test.jpg"');
       });
     });
@@ -811,7 +814,7 @@ describe('transformImgTagsToFileAttachment', () => {
       const scenarios = [
         {
           name: 'placebear.com images',
-          html: '<p><img src="https://placebear.com/g/200/200"></p>',
+          html: P_IMG_SRC_HTTPS_PLACEBEAR_COM,
           expected: 'data-url="https://placebear.com/g/200/200"',
         },
         {
@@ -830,7 +833,7 @@ describe('transformImgTagsToFileAttachment', () => {
       scenarios.forEach((scenario) => {
         const result = transformImgTagsToFileAttachment(scenario.html);
 
-        expect(result).toContain('data-type="file-attachment"');
+        expect(result).toContain(DATA_TYPE_FILE_ATTACHMENT);
         expect(result).not.toContain('<img');
 
         expect(result).toContain(scenario.expected);
@@ -888,7 +891,7 @@ describe('isDescriptionContentEmpty', () => {
       // Note: \u00A0 is the actual unicode character, not the HTML entity &nbsp;
       const unicodeNbspCases = [
         '<p>\u00A0</p>',
-        '<p> \u00A0 </p>',
+        P_P,
         '<p>\u00A0\u00A0</p>',
         '<p> \u00A0 \u00A0 </p>',
         '<p>\t\u00A0\t</p>',
@@ -979,7 +982,7 @@ describe('isDescriptionContentEmpty', () => {
         '<p><span>Text</span></p>',
         '<p><a href="#">Link</a></p>',
         '<p><code>code</code></p>',
-        '<p><br></p>',
+        P_BR_P,
         '<p><br/></p>',
       ];
 
@@ -1063,7 +1066,7 @@ describe('isDescriptionContentEmpty', () => {
 
     it('should return true for combinations of whitespace and unicode nbsp only', () => {
       const mixedWhitespaceCases = [
-        '<p> \u00A0 </p>',
+        P_P,
         '<p>\t\u00A0\n</p>',
         '<p>  \u00A0  \u00A0  </p>',
       ];
@@ -1117,7 +1120,7 @@ describe('isDescriptionContentEmpty', () => {
     });
 
     it('should return false for content with line breaks', () => {
-      expect(isDescriptionContentEmpty('<p><br></p>')).toBe(false);
+      expect(isDescriptionContentEmpty(P_BR_P)).toBe(false);
       expect(isDescriptionContentEmpty('<p><br/></p>')).toBe(false);
       expect(isDescriptionContentEmpty('<p><br /></p>')).toBe(false);
     });
@@ -1216,7 +1219,7 @@ describe('isDescriptionContentEmpty', () => {
       // \u00A0 is the unicode character for &nbsp;
       expect(isDescriptionContentEmpty('<p>\u00A0</p>')).toBe(true);
       expect(isDescriptionContentEmpty('<p>\u00A0\u00A0</p>')).toBe(true);
-      expect(isDescriptionContentEmpty('<p> \u00A0 </p>')).toBe(true);
+      expect(isDescriptionContentEmpty(P_P)).toBe(true);
     });
 
     it('should handle other unicode whitespace characters', () => {
@@ -1249,7 +1252,7 @@ describe('isDescriptionContentEmpty', () => {
         '<p>Description text</p>',
         '<p>A</p>',
         '<p>.</p>',
-        '<p><br></p>',
+        P_BR_P,
         '<p><span></span></p>',
         '<div></div>',
         '<p>First</p><p>Second</p>',

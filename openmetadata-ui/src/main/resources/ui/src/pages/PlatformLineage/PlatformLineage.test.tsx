@@ -27,6 +27,7 @@ import {
 } from './mocks/PlatformLineage.mock';
 import PlatformLineage from './PlatformLineage';
 
+const FULLSCREEN_TRUE = '?fullscreen=true';
 const mockNavigate = jest.fn();
 const mockGetEntityAPIfromSource = jest.fn();
 const mockGetEntityPermissionByFqn = jest.fn();
@@ -560,7 +561,7 @@ describe('PlatformLineage Component Logic', () => {
 
   describe('Fullscreen Mode Logic', () => {
     it('should parse fullscreen from query params', async () => {
-      mockLocationSearch = '?fullscreen=true';
+      mockLocationSearch = FULLSCREEN_TRUE;
 
       render(<PlatformLineage />);
 
@@ -762,7 +763,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should not render breadcrumb in fullscreen mode', async () => {
-      mockLocationSearch = '?fullscreen=true';
+      mockLocationSearch = FULLSCREEN_TRUE;
 
       const { container } = render(<PlatformLineage />);
 
@@ -780,7 +781,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should not render page header in fullscreen mode', async () => {
-      mockLocationSearch = '?fullscreen=true';
+      mockLocationSearch = FULLSCREEN_TRUE;
 
       const { container } = render(<PlatformLineage />);
 

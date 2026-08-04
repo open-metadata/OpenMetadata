@@ -28,6 +28,8 @@ import {
 } from '../../../utils/Alerts/AlertsUtil';
 import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
 
+const LABEL_FILTER = 'label.filter';
+
 function ObservabilityFormFiltersItem({
   supportedFilters,
   containerEntities,
@@ -86,7 +88,7 @@ function ObservabilityFormFiltersItem({
                                 {
                                   required: true,
                                   message: t('message.field-text-is-required', {
-                                    fieldText: t('label.filter'),
+                                    fieldText: t(LABEL_FILTER),
                                   }),
                                 },
                               ]}>
@@ -94,7 +96,7 @@ function ObservabilityFormFiltersItem({
                                 data-testid={`filter-select-${name}`}
                                 options={filterOptions}
                                 placeholder={t('label.select-field', {
-                                  field: t('label.filter'),
+                                  field: t(LABEL_FILTER),
                                 })}
                                 onChange={() => {
                                   form.setFieldValue(
@@ -154,7 +156,7 @@ function ObservabilityFormFiltersItem({
                       })
                     }>
                     {t('label.add-entity', {
-                      entity: t('label.filter'),
+                      entity: t(LABEL_FILTER),
                     })}
                   </Button>
                 </Col>

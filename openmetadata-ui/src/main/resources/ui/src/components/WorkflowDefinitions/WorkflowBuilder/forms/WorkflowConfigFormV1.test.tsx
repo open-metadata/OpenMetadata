@@ -73,6 +73,10 @@ jest.mock('./EventTriggerFilterSection', () => ({
 
 import { WorkflowConfigFormV1 } from './WorkflowConfigFormV1';
 
+const DATA_LOCK_FIELDS = 'data-lock-fields';
+const TRIGGER_CONFIG_SECTION = 'trigger-config-section';
+const DATA_LOCK_PERIODIC_BATCH = 'data-lock-periodic-batch';
+
 const noop = () => {
   return;
 };
@@ -130,22 +134,22 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     expect(screen.getByTestId('workflow-config-form-v1')).toBeInTheDocument();
     expect(screen.getByTestId('metadata-form-section-mock')).toHaveAttribute(
-      'data-lock-fields',
+      DATA_LOCK_FIELDS,
       'true'
     );
     expect(screen.getByTestId('data-asset-form-section-mock')).toHaveAttribute(
-      'data-lock-fields',
+      DATA_LOCK_FIELDS,
       'true'
     );
     expect(
       screen.getByTestId('data-asset-filters-section-mock')
-    ).toHaveAttribute('data-lock-fields', 'false');
-    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
+    ).toHaveAttribute(DATA_LOCK_FIELDS, 'false');
+    expect(screen.getByTestId(TRIGGER_CONFIG_SECTION)).toHaveAttribute(
       'data-lock-non-include-exclude',
       'true'
     );
-    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
-      'data-lock-periodic-batch',
+    expect(screen.getByTestId(TRIGGER_CONFIG_SECTION)).toHaveAttribute(
+      DATA_LOCK_PERIODIC_BATCH,
       'false'
     );
   });
@@ -178,9 +182,9 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     expect(
       screen.getByTestId('data-asset-filters-section-mock')
-    ).toHaveAttribute('data-lock-fields', 'true');
-    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
-      'data-lock-periodic-batch',
+    ).toHaveAttribute(DATA_LOCK_FIELDS, 'true');
+    expect(screen.getByTestId(TRIGGER_CONFIG_SECTION)).toHaveAttribute(
+      DATA_LOCK_PERIODIC_BATCH,
       'true'
     );
   });
@@ -212,19 +216,19 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
     );
 
     expect(screen.getByTestId('metadata-form-section-mock')).toHaveAttribute(
-      'data-lock-fields',
+      DATA_LOCK_FIELDS,
       'false'
     );
-    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
+    expect(screen.getByTestId(TRIGGER_CONFIG_SECTION)).toHaveAttribute(
       'data-lock-non-include-exclude',
       'false'
     );
-    expect(screen.getByTestId('trigger-config-section')).toHaveAttribute(
-      'data-lock-periodic-batch',
+    expect(screen.getByTestId(TRIGGER_CONFIG_SECTION)).toHaveAttribute(
+      DATA_LOCK_PERIODIC_BATCH,
       'false'
     );
     expect(
       screen.getByTestId('event-trigger-filter-section-mock')
-    ).toHaveAttribute('data-lock-fields', 'false');
+    ).toHaveAttribute(DATA_LOCK_FIELDS, 'false');
   });
 });

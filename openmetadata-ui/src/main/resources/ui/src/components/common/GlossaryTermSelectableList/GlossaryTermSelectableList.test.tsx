@@ -21,6 +21,11 @@ import {
 import { SelectableListProps } from '../SelectableList/SelectableList.interface';
 import { GlossaryTermSelectableList } from './GlossaryTermSelectableList.component';
 
+const GLOSSARY_TERM_1 = 'Glossary Term 1';
+const SELECTABLE_LIST = 'selectable-list';
+const TRIGGER_BUTTON = 'trigger-button';
+const GLOSSARY_TERM1 = 'Glossary.Term1';
+const UPDATE_BUTTON = 'update-button';
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
@@ -35,17 +40,17 @@ const mockSelectableList = jest
   .fn()
   .mockImplementation(
     ({ onUpdate, onCancel, selectedItems }: SelectableListProps) => (
-      <div data-testid="selectable-list">
+      <div data-testid={SELECTABLE_LIST}>
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button
-          data-testid="update-button"
+          data-testid={UPDATE_BUTTON}
           onClick={() =>
             onUpdate?.([
               {
                 id: 'term1',
                 name: 'Term1',
-                displayName: 'Glossary Term 1',
-                fullyQualifiedName: 'Glossary.Term1',
+                displayName: GLOSSARY_TERM_1,
+                fullyQualifiedName: GLOSSARY_TERM1,
                 type: 'glossaryTerm',
               },
             ])
@@ -78,9 +83,9 @@ jest.mock('../FocusTrap/FocusTrapWithContainer', () => ({
 
 const mockGlossaryTerms: TagLabel[] = [
   {
-    tagFQN: 'Glossary.Term1',
+    tagFQN: GLOSSARY_TERM1,
     name: 'Term1',
-    displayName: 'Glossary Term 1',
+    displayName: GLOSSARY_TERM_1,
     source: TagSource.Glossary,
     labelType: LabelType.Manual,
     state: State.Confirmed,
@@ -92,7 +97,7 @@ const mockOnUpdate = jest.fn();
 const defaultProps = {
   selectedTerms: mockGlossaryTerms,
   onUpdate: mockOnUpdate,
-  children: <button data-testid="trigger-button">Open</button>,
+  children: <button data-testid={TRIGGER_BUTTON}>Open</button>,
   popoverProps: {},
   onCancel: jest.fn(),
 };
@@ -119,25 +124,25 @@ describe('GlossaryTermSelectableListV1', () => {
   it('should render the trigger children', () => {
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    expect(screen.getByTestId('trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TRIGGER_BUTTON)).toBeInTheDocument();
     expect(screen.getByText('Open')).toBeInTheDocument();
   });
 
   it('should open popover when trigger is clicked', async () => {
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    const trigger = screen.getByTestId('trigger-button');
+    const trigger = screen.getByTestId(TRIGGER_BUTTON);
     fireEvent.click(trigger);
 
     await waitFor(() => {
-      expect(screen.getByTestId('selectable-list')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECTABLE_LIST)).toBeInTheDocument();
     });
   });
 
   it('should pass selected terms count to SelectableList', async () => {
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(screen.getByTestId('selected-count')).toHaveTextContent('1');
@@ -147,20 +152,20 @@ describe('GlossaryTermSelectableListV1', () => {
   it('should call onUpdate with converted glossary terms when update is clicked', async () => {
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
-      expect(screen.getByTestId('update-button')).toBeInTheDocument();
+      expect(screen.getByTestId(UPDATE_BUTTON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('update-button'));
+    fireEvent.click(screen.getByTestId(UPDATE_BUTTON));
 
     await waitFor(() => {
       expect(mockOnUpdate).toHaveBeenCalledWith([
         expect.objectContaining({
-          tagFQN: 'Glossary.Term1',
+          tagFQN: GLOSSARY_TERM1,
           name: 'Term1',
-          displayName: 'Glossary Term 1',
+          displayName: GLOSSARY_TERM_1,
           source: TagSource.Glossary,
           labelType: LabelType.Manual,
           state: State.Confirmed,
@@ -172,23 +177,23 @@ describe('GlossaryTermSelectableListV1', () => {
   it('should close popover after successful update', async () => {
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
-      expect(screen.getByTestId('update-button')).toBeInTheDocument();
+      expect(screen.getByTestId(UPDATE_BUTTON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('update-button'));
+    fireEvent.click(screen.getByTestId(UPDATE_BUTTON));
 
     await waitFor(() => {
-      expect(screen.queryByTestId('selectable-list')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SELECTABLE_LIST)).not.toBeInTheDocument();
     });
   });
 
   it('should call onCancel when cancel is clicked', async () => {
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
@@ -212,7 +217,7 @@ describe('GlossaryTermSelectableListV1', () => {
 
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(mockSelectableList).toHaveBeenCalled();
@@ -229,7 +234,7 @@ describe('GlossaryTermSelectableListV1', () => {
   it('should handle empty glossary terms list', () => {
     render(<GlossaryTermSelectableList {...defaultProps} selectedTerms={[]} />);
 
-    expect(screen.getByTestId('trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TRIGGER_BUTTON)).toBeInTheDocument();
   });
 
   it('should handle fetch errors gracefully', async () => {
@@ -237,7 +242,7 @@ describe('GlossaryTermSelectableListV1', () => {
 
     render(<GlossaryTermSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(mockSelectableList).toHaveBeenCalled();
@@ -264,6 +269,6 @@ describe('GlossaryTermSelectableListV1', () => {
       />
     );
 
-    expect(screen.getByTestId('selectable-list')).toBeInTheDocument();
+    expect(screen.getByTestId(SELECTABLE_LIST)).toBeInTheDocument();
   });
 });

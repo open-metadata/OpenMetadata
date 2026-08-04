@@ -24,6 +24,8 @@ import UserPopOverCard, {
   UserTeams,
 } from './UserPopOverCard';
 
+const USERS_TEST_USER = '/users/testUser' as const;
+
 const mockUserData = {
   name: 'testUser',
   displayName: 'Test User',
@@ -210,7 +212,7 @@ describe('Test UserPopOverCard components', () => {
       const displayNameButton = screen.getByText('Test User');
       displayNameButton.click();
 
-      expect(mockPush).toHaveBeenCalledWith('/users/testUser');
+      expect(mockPush).toHaveBeenCalledWith(USERS_TEST_USER);
     });
 
     it('should handle click on user name', () => {
@@ -228,7 +230,7 @@ describe('Test UserPopOverCard components', () => {
       const userNameButton = screen.getByText('Test User');
       userNameButton.click();
 
-      expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
+      expect(mockNavigate).toHaveBeenCalledWith(USERS_TEST_USER);
     });
 
     it('should show only userName when displayName is not available', () => {
@@ -297,7 +299,7 @@ describe('Test UserPopOverCard components', () => {
       const userNameButton = screen.getByText('Test User');
       userNameButton.click();
 
-      expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
+      expect(mockNavigate).toHaveBeenCalledWith(USERS_TEST_USER);
     });
   });
 

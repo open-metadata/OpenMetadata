@@ -17,6 +17,21 @@ import { Node } from 'reactflow';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { SinkTaskForm } from './SinkTaskForm';
 
+const SAVE_BUTTON = 'save-button' as const;
+const CANCEL_BUTTON = 'cancel-button' as const;
+const DELETE_BUTTON = 'delete-button' as const;
+const HTTPS_GITHUB_COM_TEST_ORG_TEST =
+  'https://github.com/test-org/test-repo.git' as const;
+const CUSTOM_PATH = 'custom/path' as const;
+const CUSTOM_ENTITY_TYPE_ENTITY_NAME =
+  'Custom: {entityType} - {entityName}' as const;
+const REPOSITORY_URL_INPUT = 'repository-url-input' as const;
+const BRANCH_INPUT = 'branch-input' as const;
+const BASE_PATH_INPUT = 'base-path-input' as const;
+const TOKEN_INPUT = 'token-input' as const;
+const CONFLICT_RESOLUTION_SELECT = 'conflict-resolution-select' as const;
+const COMMIT_MESSAGE_INPUT = 'commit-message-input' as const;
+
 const getInputByTestId = (testId: string): HTMLInputElement => {
   const wrapper = screen.getByTestId(testId);
 
@@ -187,16 +202,16 @@ const createMockNodeWithConfig = (): Node => ({
     description: 'Syncs metadata to GitHub',
     config: {
       sinkConfig: {
-        repositoryUrl: 'https://github.com/test-org/test-repo.git',
+        repositoryUrl: HTTPS_GITHUB_COM_TEST_ORG_TEST,
         branch: 'develop',
-        basePath: 'custom/path',
+        basePath: CUSTOM_PATH,
         credentials: {
           type: 'token',
           token: 'ghp_test123',
         },
         conflictResolution: 'preserveExternal',
         commitConfig: {
-          messageTemplate: 'Custom: {entityType} - {entityName}',
+          messageTemplate: CUSTOM_ENTITY_TYPE_ENTITY_NAME,
           authorName: 'Custom Bot',
           authorEmail: 'custom@example.com',
         },
@@ -237,14 +252,14 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       expect(screen.getByTestId('metadata-form-section')).toBeInTheDocument();
-      expect(screen.getByTestId('repository-url-input')).toBeInTheDocument();
-      expect(screen.getByTestId('branch-input')).toBeInTheDocument();
-      expect(screen.getByTestId('base-path-input')).toBeInTheDocument();
-      expect(screen.getByTestId('token-input')).toBeInTheDocument();
+      expect(screen.getByTestId(REPOSITORY_URL_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(BRANCH_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(BASE_PATH_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(TOKEN_INPUT)).toBeInTheDocument();
       expect(
-        screen.getByTestId('conflict-resolution-select')
+        screen.getByTestId(CONFLICT_RESOLUTION_SELECT)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('commit-message-input')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMIT_MESSAGE_INPUT)).toBeInTheDocument();
     });
 
     it('should render labels with translation keys', () => {
@@ -274,9 +289,9 @@ describe('SinkTaskForm', () => {
       renderWithProvider();
 
       expect(screen.getByTestId('form-action-buttons')).toBeInTheDocument();
-      expect(screen.getByTestId('save-button')).toBeInTheDocument();
-      expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
-      expect(screen.getByTestId('delete-button')).toBeInTheDocument();
+      expect(screen.getByTestId(SAVE_BUTTON)).toBeInTheDocument();
+      expect(screen.getByTestId(CANCEL_BUTTON)).toBeInTheDocument();
+      expect(screen.getByTestId(DELETE_BUTTON)).toBeInTheDocument();
     });
   });
 
@@ -284,7 +299,7 @@ describe('SinkTaskForm', () => {
     it('should have default branch value of "main"', () => {
       renderWithProvider();
 
-      const branchInput = getInputByTestId('branch-input');
+      const branchInput = getInputByTestId(BRANCH_INPUT);
 
       expect(branchInput).toHaveValue('main');
     });
@@ -292,7 +307,7 @@ describe('SinkTaskForm', () => {
     it('should have default base path value of "metadata"', () => {
       renderWithProvider();
 
-      const basePathInput = getInputByTestId('base-path-input');
+      const basePathInput = getInputByTestId(BASE_PATH_INPUT);
 
       expect(basePathInput).toHaveValue('metadata');
     });
@@ -300,7 +315,7 @@ describe('SinkTaskForm', () => {
     it('should have default conflict resolution of "overwriteExternal"', () => {
       renderWithProvider();
 
-      const conflictSelect = screen.getByTestId('conflict-resolution-select');
+      const conflictSelect = screen.getByTestId(CONFLICT_RESOLUTION_SELECT);
 
       expect(conflictSelect).toHaveValue('overwriteExternal');
     });
@@ -308,7 +323,7 @@ describe('SinkTaskForm', () => {
     it('should have default commit message template', () => {
       renderWithProvider();
 
-      const commitInput = getInputByTestId('commit-message-input');
+      const commitInput = getInputByTestId(COMMIT_MESSAGE_INPUT);
 
       expect(commitInput).toHaveValue('Sync {entityType}: {entityName}');
     });
@@ -321,21 +336,19 @@ describe('SinkTaskForm', () => {
         node: createMockNodeWithConfig(),
       });
 
-      expect(getInputByTestId('repository-url-input')).toHaveValue(
-        'https://github.com/test-org/test-repo.git'
+      expect(getInputByTestId(REPOSITORY_URL_INPUT)).toHaveValue(
+        HTTPS_GITHUB_COM_TEST_ORG_TEST
       );
-      expect(getInputByTestId('branch-input')).toHaveValue('develop');
-      expect(getInputByTestId('base-path-input')).toHaveValue('custom/path');
+      expect(getInputByTestId(BRANCH_INPUT)).toHaveValue('develop');
+      expect(getInputByTestId(BASE_PATH_INPUT)).toHaveValue(CUSTOM_PATH);
       expect(
-        within(screen.getByTestId('token-input')).getByDisplayValue(
-          'ghp_test123'
-        )
+        within(screen.getByTestId(TOKEN_INPUT)).getByDisplayValue('ghp_test123')
       ).toBeInTheDocument();
-      expect(screen.getByTestId('conflict-resolution-select')).toHaveValue(
+      expect(screen.getByTestId(CONFLICT_RESOLUTION_SELECT)).toHaveValue(
         'preserveExternal'
       );
-      expect(getInputByTestId('commit-message-input')).toHaveValue(
-        'Custom: {entityType} - {entityName}'
+      expect(getInputByTestId(COMMIT_MESSAGE_INPUT)).toHaveValue(
+        CUSTOM_ENTITY_TYPE_ENTITY_NAME
       );
     });
   });
@@ -344,13 +357,13 @@ describe('SinkTaskForm', () => {
     it('should disable save button when repository URL is empty', () => {
       renderWithProvider();
 
-      const tokenWrapper = screen.getByTestId('token-input');
+      const tokenWrapper = screen.getByTestId(TOKEN_INPUT);
       const tokenInput = tokenWrapper.querySelector('input');
       fireEvent.change(tokenInput as HTMLInputElement, {
         target: { value: 'ghp_test' },
       });
 
-      const saveButton = screen.getByTestId('save-button');
+      const saveButton = screen.getByTestId(SAVE_BUTTON);
 
       expect(saveButton).toBeDisabled();
     });
@@ -358,12 +371,12 @@ describe('SinkTaskForm', () => {
     it('should disable save button when token is empty', () => {
       renderWithProvider();
 
-      const repoInput = getInputByTestId('repository-url-input');
+      const repoInput = getInputByTestId(REPOSITORY_URL_INPUT);
       fireEvent.change(repoInput, {
         target: { value: 'https://github.com/org/repo.git' },
       });
 
-      const saveButton = screen.getByTestId('save-button');
+      const saveButton = screen.getByTestId(SAVE_BUTTON);
 
       expect(saveButton).toBeDisabled();
     });
@@ -374,7 +387,7 @@ describe('SinkTaskForm', () => {
         node: createMockNodeWithConfig(),
       });
 
-      const saveButton = screen.getByTestId('save-button');
+      const saveButton = screen.getByTestId(SAVE_BUTTON);
 
       expect(saveButton).not.toBeDisabled();
     });
@@ -384,7 +397,7 @@ describe('SinkTaskForm', () => {
     it('should update repository URL on input change', () => {
       renderWithProvider();
 
-      const repoInput = getInputByTestId('repository-url-input');
+      const repoInput = getInputByTestId(REPOSITORY_URL_INPUT);
       fireEvent.change(repoInput, {
         target: { value: 'https://github.com/my-org/my-repo.git' },
       });
@@ -395,7 +408,7 @@ describe('SinkTaskForm', () => {
     it('should update branch on input change', () => {
       renderWithProvider();
 
-      const branchInput = getInputByTestId('branch-input');
+      const branchInput = getInputByTestId(BRANCH_INPUT);
       fireEvent.change(branchInput, { target: { value: 'feature-branch' } });
 
       expect(branchInput).toHaveValue('feature-branch');
@@ -404,7 +417,7 @@ describe('SinkTaskForm', () => {
     it('should update base path on input change', () => {
       renderWithProvider();
 
-      const basePathInput = getInputByTestId('base-path-input');
+      const basePathInput = getInputByTestId(BASE_PATH_INPUT);
       fireEvent.change(basePathInput, {
         target: { value: 'custom/metadata/path' },
       });
@@ -415,7 +428,7 @@ describe('SinkTaskForm', () => {
     it('should update token on input change', () => {
       renderWithProvider();
 
-      const tokenWrapper = screen.getByTestId('token-input');
+      const tokenWrapper = screen.getByTestId(TOKEN_INPUT);
       const tokenInput = tokenWrapper.querySelector('input');
       fireEvent.change(tokenInput as HTMLInputElement, {
         target: { value: 'ghp_secrettoken123' },
@@ -427,7 +440,7 @@ describe('SinkTaskForm', () => {
     it('should update conflict resolution on select change', () => {
       renderWithProvider();
 
-      const conflictSelect = screen.getByTestId('conflict-resolution-select');
+      const conflictSelect = screen.getByTestId(CONFLICT_RESOLUTION_SELECT);
       fireEvent.change(conflictSelect, { target: { value: 'fail' } });
 
       expect(conflictSelect).toHaveValue('fail');
@@ -436,7 +449,7 @@ describe('SinkTaskForm', () => {
     it('should update commit message template on input change', () => {
       renderWithProvider();
 
-      const commitInput = getInputByTestId('commit-message-input');
+      const commitInput = getInputByTestId(COMMIT_MESSAGE_INPUT);
       fireEvent.change(commitInput, { target: { value: 'Export: {fqn}' } });
 
       expect(commitInput).toHaveValue('Export: {fqn}');
@@ -450,7 +463,7 @@ describe('SinkTaskForm', () => {
         node: createMockNodeWithConfig(),
       });
 
-      const saveButton = screen.getByTestId('save-button');
+      const saveButton = screen.getByTestId(SAVE_BUTTON);
       fireEvent.click(saveButton);
 
       expect(mockOnSave).toHaveBeenCalledTimes(1);
@@ -465,16 +478,16 @@ describe('SinkTaskForm', () => {
             sinkType: 'git',
             outputFormat: 'yaml',
             sinkConfig: expect.objectContaining({
-              repositoryUrl: 'https://github.com/test-org/test-repo.git',
+              repositoryUrl: HTTPS_GITHUB_COM_TEST_ORG_TEST,
               branch: 'develop',
-              basePath: 'custom/path',
+              basePath: CUSTOM_PATH,
               credentials: {
                 type: 'token',
                 token: 'ghp_test123',
               },
               conflictResolution: 'preserveExternal',
               commitConfig: expect.objectContaining({
-                messageTemplate: 'Custom: {entityType} - {entityName}',
+                messageTemplate: CUSTOM_ENTITY_TYPE_ENTITY_NAME,
               }),
             }),
           }),
@@ -488,7 +501,7 @@ describe('SinkTaskForm', () => {
         node: createMockNodeWithConfig(),
       });
 
-      const saveButton = screen.getByTestId('save-button');
+      const saveButton = screen.getByTestId(SAVE_BUTTON);
       fireEvent.click(saveButton);
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -499,7 +512,7 @@ describe('SinkTaskForm', () => {
     it('should call onClose when cancel is clicked', () => {
       renderWithProvider();
 
-      const cancelButton = screen.getByTestId('cancel-button');
+      const cancelButton = screen.getByTestId(CANCEL_BUTTON);
       fireEvent.click(cancelButton);
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -508,7 +521,7 @@ describe('SinkTaskForm', () => {
     it('should not call onSave when cancel is clicked', () => {
       renderWithProvider();
 
-      const cancelButton = screen.getByTestId('cancel-button');
+      const cancelButton = screen.getByTestId(CANCEL_BUTTON);
       fireEvent.click(cancelButton);
 
       expect(mockOnSave).not.toHaveBeenCalled();
@@ -519,7 +532,7 @@ describe('SinkTaskForm', () => {
     it('should call onDelete with node id when delete is clicked', () => {
       renderWithProvider();
 
-      const deleteButton = screen.getByTestId('delete-button');
+      const deleteButton = screen.getByTestId(DELETE_BUTTON);
       fireEvent.click(deleteButton);
 
       expect(mockOnDelete).toHaveBeenCalledTimes(1);
@@ -529,7 +542,7 @@ describe('SinkTaskForm', () => {
     it('should call onClose after delete', () => {
       renderWithProvider();
 
-      const deleteButton = screen.getByTestId('delete-button');
+      const deleteButton = screen.getByTestId(DELETE_BUTTON);
       fireEvent.click(deleteButton);
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -540,7 +553,7 @@ describe('SinkTaskForm', () => {
     it('should have type="password" for token input', () => {
       renderWithProvider();
 
-      const tokenWrapper = screen.getByTestId('token-input');
+      const tokenWrapper = screen.getByTestId(TOKEN_INPUT);
       const tokenInput = tokenWrapper.querySelector('input');
 
       expect(tokenInput).toHaveAttribute('type', 'password');
@@ -560,8 +573,8 @@ describe('SinkTaskForm', () => {
         node: nodeWithoutConfig,
       });
 
-      expect(getInputByTestId('branch-input')).toHaveValue('main');
-      expect(getInputByTestId('base-path-input')).toHaveValue('metadata');
+      expect(getInputByTestId(BRANCH_INPUT)).toHaveValue('main');
+      expect(getInputByTestId(BASE_PATH_INPUT)).toHaveValue('metadata');
     });
 
     it('should handle node with partial config', () => {
@@ -582,12 +595,12 @@ describe('SinkTaskForm', () => {
         node: nodeWithPartialConfig,
       });
 
-      expect(getInputByTestId('repository-url-input')).toHaveValue(
+      expect(getInputByTestId(REPOSITORY_URL_INPUT)).toHaveValue(
         'https://github.com/partial/repo.git'
       );
-      expect(getInputByTestId('branch-input')).toHaveValue('main');
+      expect(getInputByTestId(BRANCH_INPUT)).toHaveValue('main');
 
-      const tokenWrapper = screen.getByTestId('token-input');
+      const tokenWrapper = screen.getByTestId(TOKEN_INPUT);
       const tokenInput = tokenWrapper.querySelector('input');
 
       expect(tokenInput).toHaveValue('');
@@ -601,7 +614,7 @@ describe('SinkTaskForm', () => {
         onDelete: undefined,
       });
 
-      const deleteButton = screen.getByTestId('delete-button');
+      const deleteButton = screen.getByTestId(DELETE_BUTTON);
       fireEvent.click(deleteButton);
 
       expect(mockOnClose).toHaveBeenCalled();

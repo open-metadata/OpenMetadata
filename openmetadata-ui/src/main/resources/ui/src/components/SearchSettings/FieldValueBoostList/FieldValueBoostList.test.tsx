@@ -17,6 +17,9 @@ import {
 } from '../../../generated/configuration/searchSettings';
 import FieldValueBoostList from './FieldValueBoostList';
 
+const EDIT_FIELD_VALUE_BOOST_BTN = 'edit-field-value-boost-btn';
+const DELETE_FIELD_VALUE_BOOST_BTN = 'delete-field-value-boost-btn';
+
 const mockFieldValueBoosts: FieldValueBoost[] = [
   {
     field: 'description',
@@ -99,16 +102,14 @@ describe('FieldValueBoostList Component', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();
 
-    expect(screen.getAllByTestId('edit-field-value-boost-btn')).toHaveLength(2);
-    expect(screen.getAllByTestId('delete-field-value-boost-btn')).toHaveLength(
-      2
-    );
+    expect(screen.getAllByTestId(EDIT_FIELD_VALUE_BOOST_BTN)).toHaveLength(2);
+    expect(screen.getAllByTestId(DELETE_FIELD_VALUE_BOOST_BTN)).toHaveLength(2);
   });
 
   it('should call handleEditFieldValueBoost when edit button is clicked', () => {
     render(<FieldValueBoostList {...mockProps} />);
 
-    const editButtons = screen.getAllByTestId('edit-field-value-boost-btn');
+    const editButtons = screen.getAllByTestId(EDIT_FIELD_VALUE_BOOST_BTN);
     fireEvent.click(editButtons[0]);
 
     expect(mockProps.handleEditFieldValueBoost).toHaveBeenCalled();
@@ -117,7 +118,7 @@ describe('FieldValueBoostList Component', () => {
   it('should call handleDeleteFieldValueBoost when delete button is clicked', () => {
     render(<FieldValueBoostList {...mockProps} />);
 
-    const deleteButtons = screen.getAllByTestId('delete-field-value-boost-btn');
+    const deleteButtons = screen.getAllByTestId(DELETE_FIELD_VALUE_BOOST_BTN);
     fireEvent.click(deleteButtons[0]);
 
     expect(mockProps.handleDeleteFieldValueBoost).toHaveBeenCalled();
@@ -137,9 +138,7 @@ describe('FieldValueBoostList Component', () => {
     expect(screen.getByText('description')).toBeInTheDocument();
     expect(screen.getByText('displayName')).toBeInTheDocument();
 
-    expect(screen.getAllByTestId('edit-field-value-boost-btn')).toHaveLength(2);
-    expect(screen.getAllByTestId('delete-field-value-boost-btn')).toHaveLength(
-      2
-    );
+    expect(screen.getAllByTestId(EDIT_FIELD_VALUE_BOOST_BTN)).toHaveLength(2);
+    expect(screen.getAllByTestId(DELETE_FIELD_VALUE_BOOST_BTN)).toHaveLength(2);
   });
 });

@@ -23,6 +23,11 @@ import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
+const VERSION_DATA = 'version-data' as const;
+const ENTITY_VERSION_TIME_LINE_COMPONENT =
+  'EntityVersionTimeLine.component' as const;
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural' as const;
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../common/EntityDescription/Description', () => {
@@ -96,11 +101,11 @@ describe('DashboardVersion tests', () => {
       });
     });
 
-    const versionData = await screen.findByTestId('version-data');
+    const versionData = await screen.findByTestId(VERSION_DATA);
     const schemaTable = await screen.findByTestId('schema-table');
 
     const entityVersionTimeLine = await screen.findByText(
-      'EntityVersionTimeLine.component'
+      ENTITY_VERSION_TIME_LINE_COMPONENT
     );
     const tabs = await screen.findByTestId('tabs');
 
@@ -126,11 +131,11 @@ describe('DashboardVersion tests', () => {
       );
     });
 
-    const versionData = await screen.findByTestId('version-data');
+    const versionData = await screen.findByTestId(VERSION_DATA);
     const schemaTable = await screen.findByTestId('schema-table');
 
     const entityVersionTimeLine = await screen.findByText(
-      'EntityVersionTimeLine.component'
+      ENTITY_VERSION_TIME_LINE_COMPONENT
     );
     const tabs = await screen.findByTestId('tabs');
 
@@ -155,9 +160,9 @@ describe('DashboardVersion tests', () => {
       );
     });
 
-    const versionData = await screen.findByTestId('version-data');
+    const versionData = await screen.findByTestId(VERSION_DATA);
     const entityVersionTimeLine = await screen.findByText(
-      'EntityVersionTimeLine.component'
+      ENTITY_VERSION_TIME_LINE_COMPONENT
     );
     const tabs = await screen.findByTestId('tabs');
 
@@ -175,7 +180,7 @@ describe('DashboardVersion tests', () => {
     });
 
     const entityVersionTimeLine = await screen.findByText(
-      'EntityVersionTimeLine.component'
+      ENTITY_VERSION_TIME_LINE_COMPONENT
     );
     const loader = await screen.findByText('Loader.component');
 
@@ -197,7 +202,7 @@ describe('DashboardVersion tests', () => {
     });
 
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();
@@ -235,7 +240,7 @@ describe('DashboardVersion tests', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       fireEvent.click(customPropertyTabLabel);
@@ -265,7 +270,7 @@ describe('DashboardVersion tests', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       fireEvent.click(customPropertyTabLabel);
@@ -295,7 +300,7 @@ describe('DashboardVersion tests', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();

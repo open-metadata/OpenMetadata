@@ -45,6 +45,11 @@ import {
 } from './AppLogsViewer.interface';
 import ReindexFailures from './ReindexFailures.component';
 
+const LABEL_ENTITY_INDEX = 'label.entity-index';
+const LABEL_SUCCESS = 'label.success';
+const LABEL_FAILED = 'label.failed';
+const LABEL_ENTITY_RECORD_PLURAL = 'label.entity-record-plural';
+
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
   const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
@@ -160,8 +165,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         className="request-badge success"
                         count={stepStats.successRecords}
                         overflowCount={99999999}
-                        title={`${t('label.entity-index', {
-                          entity: t('label.success'),
+                        title={`${t(LABEL_ENTITY_INDEX, {
+                          entity: t(LABEL_SUCCESS),
                         })}: ${stepStats.successRecords}`}
                       />
 
@@ -170,8 +175,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         className="request-badge failed"
                         count={stepStats.failedRecords}
                         overflowCount={99999999}
-                        title={`${t('label.entity-index', {
-                          entity: t('label.failed'),
+                        title={`${t(LABEL_ENTITY_INDEX, {
+                          entity: t(LABEL_FAILED),
                         })}: ${stepStats.failedRecords}`}
                       />
 
@@ -182,7 +187,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                             className="request-badge warning"
                             count={stepStats.warningRecords}
                             overflowCount={99999999}
-                            title={`${t('label.entity-index', {
+                            title={`${t(LABEL_ENTITY_INDEX, {
                               entity: t('label.warning-plural'),
                             })}: ${stepStats.warningRecords}`}
                           />
@@ -265,7 +270,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             title: (
               <div className="d-flex items-center">
                 <Typography.Text>
-                  {t('label.entity-record-plural', {
+                  {t(LABEL_ENTITY_RECORD_PLURAL, {
                     entity: t('label.total'),
                   })}{' '}
                 </Typography.Text>
@@ -285,8 +290,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             title: (
               <div className="d-flex items-center">
                 <Typography.Text>
-                  {t('label.entity-record-plural', {
-                    entity: t('label.success'),
+                  {t(LABEL_ENTITY_RECORD_PLURAL, {
+                    entity: t(LABEL_SUCCESS),
                   })}{' '}
                 </Typography.Text>
                 <AppBadge
@@ -305,8 +310,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             title: (
               <div className="d-flex items-center">
                 <Typography.Text>
-                  {t('label.entity-record-plural', {
-                    entity: t('label.failed'),
+                  {t(LABEL_ENTITY_RECORD_PLURAL, {
+                    entity: t(LABEL_FAILED),
                   })}{' '}
                 </Typography.Text>
                 <AppBadge
@@ -451,7 +456,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         title: (
           <div className="d-flex items-center">
             <Typography.Text>
-              {t('label.entity-record-plural', {
+              {t(LABEL_ENTITY_RECORD_PLURAL, {
                 entity: t('label.processed'),
               })}{' '}
             </Typography.Text>
@@ -471,8 +476,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         title: (
           <div className="d-flex items-center">
             <Typography.Text>
-              {t('label.entity-record-plural', {
-                entity: t('label.success'),
+              {t(LABEL_ENTITY_RECORD_PLURAL, {
+                entity: t(LABEL_SUCCESS),
               })}{' '}
             </Typography.Text>
             <AppBadge
@@ -491,8 +496,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         title: (
           <div className="d-flex items-center">
             <Typography.Text>
-              {t('label.entity-record-plural', {
-                entity: t('label.failed'),
+              {t(LABEL_ENTITY_RECORD_PLURAL, {
+                entity: t(LABEL_FAILED),
               })}{' '}
             </Typography.Text>
             <AppBadge

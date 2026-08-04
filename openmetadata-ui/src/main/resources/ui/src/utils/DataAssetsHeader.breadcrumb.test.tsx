@@ -23,6 +23,8 @@ import {
   getBreadcrumbForDatabaseSchema,
 } from './EntityServiceBreadcrumbUtils';
 
+const SVC_DB_SCHEMA = 'svc.db.schema';
+
 const buildService = (type: string) => ({
   id: 'svc-id',
   name: 'svc',
@@ -34,7 +36,7 @@ const databaseRef = { id: 'db-id', name: 'db', fullyQualifiedName: 'svc.db' };
 const schemaRef = {
   id: 'schema-id',
   name: 'schema',
-  fullyQualifiedName: 'svc.db.schema',
+  fullyQualifiedName: SVC_DB_SCHEMA,
 };
 const apiCollectionRef = {
   id: 'coll-id',
@@ -78,7 +80,7 @@ const HEADER_ENTITY_CASES: Array<{
     entityType: EntityType.DATABASE_SCHEMA,
     entity: {
       name: 'schema',
-      fullyQualifiedName: 'svc.db.schema',
+      fullyQualifiedName: SVC_DB_SCHEMA,
       service: buildService('databaseService'),
       database: databaseRef,
     },
@@ -262,7 +264,7 @@ describe('breadcrumb builders gate the current entity behind includeCurrent', ()
   const databaseSchema = {
     id: 'schema-id',
     name: 'schema',
-    fullyQualifiedName: 'svc.db.schema',
+    fullyQualifiedName: SVC_DB_SCHEMA,
     service,
     database: { id: 'db-id', name: 'db', fullyQualifiedName: 'svc.db' },
   } as unknown as DatabaseSchema;

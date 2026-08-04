@@ -106,6 +106,8 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+const LABEL_DATABASE_SCHEMA = 'label.database-schema';
+
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -213,7 +215,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       showErrorToast(
         databaseSchemaError as AxiosError,
         t('server.entity-details-fetch-error', {
-          entityType: t('label.database-schema'),
+          entityType: t(LABEL_DATABASE_SCHEMA),
           entityName: decodedDatabaseSchemaFQN,
         })
       );
@@ -374,7 +376,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.database-schema'),
+            entity: t(LABEL_DATABASE_SCHEMA),
           })
         );
       }
@@ -450,7 +452,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       );
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.database-schema'),
+          entity: t(LABEL_DATABASE_SCHEMA),
         })
       );
       handleToggleDelete(newVersion);
@@ -458,7 +460,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.database-schema'),
+          entity: t(LABEL_DATABASE_SCHEMA),
         })
       );
     }
@@ -590,7 +592,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-updating-error', {
-          entity: t('label.database-schema'),
+          entity: t(LABEL_DATABASE_SCHEMA),
         })
       );
     }
@@ -792,7 +794,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.database-schema'),
+          entity: t(LABEL_DATABASE_SCHEMA),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

@@ -15,6 +15,8 @@ import { fireEvent, render } from '@testing-library/react';
 import { ReactionType } from '../../../generated/type/reaction';
 import Reaction from './Reaction';
 
+const REACTION_BUTTON = 'reaction-button' as const;
+
 const onReactionSelect = jest.fn();
 const onHide = jest.fn();
 
@@ -33,7 +35,7 @@ describe('Test Reaction Component', () => {
   it('Should render the component', async () => {
     const { findByTestId } = render(<Reaction {...mockProps} />);
 
-    const reactionButton = await findByTestId('reaction-button');
+    const reactionButton = await findByTestId(REACTION_BUTTON);
 
     expect(reactionButton).toBeInTheDocument();
 
@@ -45,7 +47,7 @@ describe('Test Reaction Component', () => {
   it('Should call onReaction select on click of emoji button', async () => {
     const { findByTestId } = render(<Reaction {...mockProps} />);
 
-    const reactionButton = await findByTestId('reaction-button');
+    const reactionButton = await findByTestId(REACTION_BUTTON);
 
     expect(reactionButton).toBeInTheDocument();
 
@@ -60,7 +62,7 @@ describe('Test Reaction Component', () => {
   it('Should call onHide method on click of emoji button', async () => {
     const { findByTestId } = render(<Reaction {...mockProps} />);
 
-    const reactionButton = await findByTestId('reaction-button');
+    const reactionButton = await findByTestId(REACTION_BUTTON);
 
     expect(reactionButton).toBeInTheDocument();
 

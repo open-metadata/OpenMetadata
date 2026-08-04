@@ -26,6 +26,9 @@ import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ContractQualityFormTab } from './ContractQualityFormTab';
 
+const CUSTOM_PREVIOUS = 'Custom Previous';
+const ADD_LABEL_TEST = 'Add label.test';
+
 jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
 }));
@@ -46,6 +49,7 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   })),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => ({
     data: {
@@ -152,7 +156,7 @@ const commonProps = {
   onPrev: mockOnPrev,
   buttonProps: {
     nextLabel: 'Custom Next',
-    prevLabel: 'Custom Previous',
+    prevLabel: CUSTOM_PREVIOUS,
     isNextVisible: true,
   },
 };
@@ -213,7 +217,7 @@ describe('ContractQualityFormTab', () => {
     it('should render with custom previous label', () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_PREVIOUS)).toBeInTheDocument();
     });
   });
 
@@ -322,7 +326,7 @@ describe('ContractQualityFormTab', () => {
     it('should open test case drawer when add button is clicked', async () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      const addButton = screen.getByText('Add label.test');
+      const addButton = screen.getByText(ADD_LABEL_TEST);
 
       await act(async () => {
         fireEvent.click(addButton);
@@ -334,7 +338,7 @@ describe('ContractQualityFormTab', () => {
     it('should close test case drawer when cancelled', async () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      const addButton = screen.getByText('Add label.test');
+      const addButton = screen.getByText(ADD_LABEL_TEST);
 
       await act(async () => {
         fireEvent.click(addButton);
@@ -352,7 +356,7 @@ describe('ContractQualityFormTab', () => {
     it('should refetch test cases after new test case is submitted', async () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      const addButton = screen.getByText('Add label.test');
+      const addButton = screen.getByText(ADD_LABEL_TEST);
 
       await act(async () => {
         fireEvent.click(addButton);
@@ -396,13 +400,13 @@ describe('ContractQualityFormTab', () => {
     it('should display navigation buttons', () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_PREVIOUS)).toBeInTheDocument();
     });
 
     it('should call onPrev when previous button is clicked', () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      const prevButton = screen.getByText('Custom Previous');
+      const prevButton = screen.getByText(CUSTOM_PREVIOUS);
       fireEvent.click(prevButton);
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -454,11 +458,11 @@ describe('ContractQualityFormTab', () => {
     it('should have proper button roles and attributes', () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 
-      const addButton = screen.getByText('Add label.test');
+      const addButton = screen.getByText(ADD_LABEL_TEST);
 
       expect(addButton).toBeInTheDocument();
 
-      const prevButton = screen.getByText('Custom Previous');
+      const prevButton = screen.getByText(CUSTOM_PREVIOUS);
 
       expect(prevButton).toBeInTheDocument();
     });

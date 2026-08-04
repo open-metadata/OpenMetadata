@@ -30,6 +30,11 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 
+const LABEL_SHOW_MORE = 'label.show-more';
+const A_VERY_LONG_TEXT_THAT_SHOULD_BE_CLAMPED =
+  'a very long text that should be clamped';
+const LABEL_SHOW_LESS = 'label.show-less';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Button: ({
@@ -377,7 +382,7 @@ describe('TaskPayloadSchemaFields', () => {
         jest.runAllTimers();
       });
 
-      expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+      expect(screen.queryByText(LABEL_SHOW_MORE)).not.toBeInTheDocument();
 
       jest.useRealTimers();
     });
@@ -387,7 +392,7 @@ describe('TaskPayloadSchemaFields', () => {
       const { container } = render(
         <TaskPayloadSchemaFields
           mode="read"
-          payload={{ reason: 'a very long text that should be clamped' }}
+          payload={{ reason: A_VERY_LONG_TEXT_THAT_SHOULD_BE_CLAMPED }}
           schema={STRING_SCHEMA}
           uiSchema={{}}
           onChange={jest.fn()}
@@ -411,7 +416,7 @@ describe('TaskPayloadSchemaFields', () => {
         jest.runAllTimers();
       });
 
-      expect(screen.getByText('label.show-more')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_SHOW_MORE)).toBeInTheDocument();
 
       jest.useRealTimers();
     });
@@ -421,7 +426,7 @@ describe('TaskPayloadSchemaFields', () => {
       const { container } = render(
         <TaskPayloadSchemaFields
           mode="read"
-          payload={{ reason: 'a very long text that should be clamped' }}
+          payload={{ reason: A_VERY_LONG_TEXT_THAT_SHOULD_BE_CLAMPED }}
           schema={STRING_SCHEMA}
           uiSchema={{}}
           onChange={jest.fn()}
@@ -445,10 +450,10 @@ describe('TaskPayloadSchemaFields', () => {
         jest.runAllTimers();
       });
 
-      fireEvent.click(screen.getByRole('button', { name: 'label.show-more' }));
+      fireEvent.click(screen.getByRole('button', { name: LABEL_SHOW_MORE }));
 
-      expect(screen.getByText('label.show-less')).toBeInTheDocument();
-      expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+      expect(screen.getByText(LABEL_SHOW_LESS)).toBeInTheDocument();
+      expect(screen.queryByText(LABEL_SHOW_MORE)).not.toBeInTheDocument();
 
       jest.useRealTimers();
     });
@@ -458,7 +463,7 @@ describe('TaskPayloadSchemaFields', () => {
       const { container } = render(
         <TaskPayloadSchemaFields
           mode="read"
-          payload={{ reason: 'a very long text that should be clamped' }}
+          payload={{ reason: A_VERY_LONG_TEXT_THAT_SHOULD_BE_CLAMPED }}
           schema={STRING_SCHEMA}
           uiSchema={{}}
           onChange={jest.fn()}
@@ -482,10 +487,10 @@ describe('TaskPayloadSchemaFields', () => {
         jest.runAllTimers();
       });
 
-      fireEvent.click(screen.getByRole('button', { name: 'label.show-more' }));
-      fireEvent.click(screen.getByRole('button', { name: 'label.show-less' }));
+      fireEvent.click(screen.getByRole('button', { name: LABEL_SHOW_MORE }));
+      fireEvent.click(screen.getByRole('button', { name: LABEL_SHOW_LESS }));
 
-      expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+      expect(screen.queryByText(LABEL_SHOW_LESS)).not.toBeInTheDocument();
 
       jest.useRealTimers();
     });

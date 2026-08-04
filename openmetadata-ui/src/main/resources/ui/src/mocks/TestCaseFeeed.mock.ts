@@ -13,6 +13,11 @@
 import { TestCaseFeedProps } from '../components/ActivityFeed/ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed.interface';
 import { TestCaseStatus } from '../generated/tests/testCase';
 
+const FOUND_MIN_90006_MAX_92808_VS_THE_EXPECTED_MIN_9000 =
+  'Found min=90006, max=92808 vs. the expected min=90001, max=96162.';
+const FOUND_MIN_90002_MAX_95640_VS_THE_EXPECTED_MIN_9000 =
+  'Found min=90002, max=95640 vs. the expected min=90001, max=96162.';
+
 export const MOCK_TEST_CASE_FEED_DATA: Readonly<TestCaseFeedProps> = {
   entitySpecificInfo: {
     testCaseResult: [
@@ -50,8 +55,7 @@ export const MOCK_TEST_CASE_FEED_DATA: Readonly<TestCaseFeedProps> = {
         ],
       },
       {
-        result:
-          'Found min=90006, max=92808 vs. the expected min=90001, max=96162.',
+        result: FOUND_MIN_90006_MAX_92808_VS_THE_EXPECTED_MIN_9000,
         timestamp: 1721869541929,
         testCaseStatus: TestCaseStatus.Success,
         testResultValue: [
@@ -119,8 +123,7 @@ export const MOCK_TEST_CASE_FEED_DATA_2: Readonly<TestCaseFeedProps> = {
   entitySpecificInfo: {
     testCaseResult: [
       {
-        result:
-          'Found min=90006, max=92808 vs. the expected min=90001, max=96162.',
+        result: FOUND_MIN_90006_MAX_92808_VS_THE_EXPECTED_MIN_9000,
         timestamp: 1721869541929,
         testCaseStatus: TestCaseStatus.Success,
         testResultValue: [
@@ -135,8 +138,7 @@ export const MOCK_TEST_CASE_FEED_DATA_2: Readonly<TestCaseFeedProps> = {
         ],
       },
       {
-        result:
-          'Found min=90006, max=92808 vs. the expected min=90001, max=96162.',
+        result: FOUND_MIN_90006_MAX_92808_VS_THE_EXPECTED_MIN_9000,
         timestamp: 1721783208215,
         testCaseStatus: TestCaseStatus.Success,
         testResultValue: [
@@ -151,8 +153,7 @@ export const MOCK_TEST_CASE_FEED_DATA_2: Readonly<TestCaseFeedProps> = {
         ],
       },
       {
-        result:
-          'Found min=90002, max=95640 vs. the expected min=90001, max=96162.',
+        result: FOUND_MIN_90002_MAX_95640_VS_THE_EXPECTED_MIN_9000,
         timestamp: 1721783141954,
         testCaseStatus: TestCaseStatus.Success,
         testResultValue: [
@@ -167,8 +168,7 @@ export const MOCK_TEST_CASE_FEED_DATA_2: Readonly<TestCaseFeedProps> = {
         ],
       },
       {
-        result:
-          'Found min=90006, max=92808 vs. the expected min=90001, max=96162.',
+        result: FOUND_MIN_90006_MAX_92808_VS_THE_EXPECTED_MIN_9000,
         timestamp: 1721735793017,
         testCaseStatus: TestCaseStatus.Success,
         testResultValue: [
@@ -183,8 +183,7 @@ export const MOCK_TEST_CASE_FEED_DATA_2: Readonly<TestCaseFeedProps> = {
         ],
       },
       {
-        result:
-          'Found min=90002, max=95640 vs. the expected min=90001, max=96162.',
+        result: FOUND_MIN_90002_MAX_95640_VS_THE_EXPECTED_MIN_9000,
         timestamp: 1721696808240,
         testCaseStatus: TestCaseStatus.Success,
         testResultValue: [
@@ -199,8 +198,7 @@ export const MOCK_TEST_CASE_FEED_DATA_2: Readonly<TestCaseFeedProps> = {
         ],
       },
       {
-        result:
-          'Found min=90002, max=95640 vs. the expected min=90001, max=96162.',
+        result: FOUND_MIN_90002_MAX_95640_VS_THE_EXPECTED_MIN_9000,
         timestamp: 1721649393044,
         testCaseStatus: TestCaseStatus.Success,
         testResultValue: [

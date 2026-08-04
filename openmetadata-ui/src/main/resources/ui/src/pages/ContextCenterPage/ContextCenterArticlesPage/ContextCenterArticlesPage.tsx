@@ -77,6 +77,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
+const LABEL_ARTICLE_PLURAL = 'label.article-plural';
 const ContextCenterArticlesPage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -285,14 +286,14 @@ const ContextCenterArticlesPage = () => {
             </Dropdown.Root>
           </LimitWrapper>
         }
-        breadcrumbs={[{ label: t('label.article-plural') }]}
+        breadcrumbs={[{ label: t(LABEL_ARTICLE_PLURAL) }]}
         hasPermission={permissions?.Create}
         searchPlaceholder={t('label.search-entity', {
-          entity: t('label.article-plural'),
+          entity: t(LABEL_ARTICLE_PLURAL),
         })}
         searchQuery={articleSearchQuery}
         subtitle={t('message.internal-knowledge-base-agent-training')}
-        title={t('label.article-plural')}
+        title={t(LABEL_ARTICLE_PLURAL)}
         onSearch={setArticleSearchQuery}
       />
     );
@@ -386,7 +387,7 @@ const ContextCenterArticlesPage = () => {
         dir={i18n.dir()}
         direction="col"
         id="knowledge-center-layout-container">
-        <DocumentTitle title={page.title || t('label.article-plural')} />
+        <DocumentTitle title={page.title || t(LABEL_ARTICLE_PLURAL)} />
         {showArticlesEmptyState && (
           <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
             <EmptyPlaceholder

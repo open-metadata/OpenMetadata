@@ -20,6 +20,8 @@ import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractSearchIndexFields } from './SearchIndexUtils';
 
+const SEARCHINDEX_FIELD1 = 'searchindex.field1' as const;
+
 type SearchIndexTestData = Partial<SearchIndex> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;
 
@@ -32,7 +34,7 @@ describe('SearchIndexUtils', () => {
           {
             name: 'field1',
             dataType: DataType.Text,
-            fullyQualifiedName: 'searchindex.field1',
+            fullyQualifiedName: SEARCHINDEX_FIELD1,
           },
           {
             name: 'field2',
@@ -76,7 +78,7 @@ describe('SearchIndexUtils', () => {
           {
             name: 'field1',
             dataType: DataType.Text,
-            fullyQualifiedName: 'searchindex.field1',
+            fullyQualifiedName: SEARCHINDEX_FIELD1,
           },
         ],
       };
@@ -93,7 +95,7 @@ describe('SearchIndexUtils', () => {
           {
             name: 'field1',
             dataType: DataType.Text,
-            fullyQualifiedName: 'searchindex.field1',
+            fullyQualifiedName: SEARCHINDEX_FIELD1,
             tags: [
               {
                 tagFQN: 'tag1',
@@ -177,7 +179,7 @@ describe('SearchIndexUtils', () => {
           {
             name: 'field1',
             dataType: DataType.Text,
-            fullyQualifiedName: 'searchindex.field1',
+            fullyQualifiedName: SEARCHINDEX_FIELD1,
             tags: null as unknown as undefined,
           },
         ],
@@ -196,7 +198,7 @@ describe('SearchIndexUtils', () => {
           {
             name: 'field1',
             dataType: DataType.Text,
-            fullyQualifiedName: 'searchindex.field1',
+            fullyQualifiedName: SEARCHINDEX_FIELD1,
           },
           {
             name: 'field2',
@@ -235,7 +237,7 @@ describe('SearchIndexUtils', () => {
           {
             name: 'field1',
             dataType: DataType.Text,
-            fullyQualifiedName: 'searchindex.field1',
+            fullyQualifiedName: SEARCHINDEX_FIELD1,
             description: 'Test description',
             displayName: 'Field 1',
           },
@@ -246,7 +248,7 @@ describe('SearchIndexUtils', () => {
 
       expect(result[0].name).toBe('field1');
       expect(result[0].dataType).toBe(DataType.Text);
-      expect(result[0].fullyQualifiedName).toBe('searchindex.field1');
+      expect(result[0].fullyQualifiedName).toBe(SEARCHINDEX_FIELD1);
       expect(result[0].description).toBe('Test description');
       expect(result[0].displayName).toBe('Field 1');
       expect(result[0].tags).toEqual([]);

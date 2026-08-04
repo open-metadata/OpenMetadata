@@ -23,6 +23,8 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/serviceProgressEvent';
 import { useMetadataAgents } from './useMetadataAgents';
 
+const TEST_SNOWFLAKE_AUTOPILOT_AGENT = 'testSnowflake.autopilot_agent';
+
 let capturedOnEvent: (event: ServiceProgressEvent) => void;
 
 jest.mock('./useServiceProgressStream', () => ({
@@ -116,7 +118,7 @@ describe('useMetadataAgents', () => {
     const { result } = renderAgentsHook([buildPipeline('metadata_agent')]);
 
     act(() => {
-      capturedOnEvent(buildEvent('testSnowflake.autopilot_agent'));
+      capturedOnEvent(buildEvent(TEST_SNOWFLAKE_AUTOPILOT_AGENT));
     });
 
     expect(result.current.agents).toHaveLength(1);
@@ -128,7 +130,7 @@ describe('useMetadataAgents', () => {
     act(() => {
       capturedOnEvent(
         buildEvent(
-          'testSnowflake.autopilot_agent',
+          TEST_SNOWFLAKE_AUTOPILOT_AGENT,
           { ingestionPipeline: buildPipeline('autopilot_agent') },
           { updateType: ProgressUpdateType.Discovery }
         )
@@ -138,7 +140,7 @@ describe('useMetadataAgents', () => {
     expect(result.current.agents).toHaveLength(2);
 
     const discovered = result.current.agents.find(
-      (agent) => agent.fqn === 'testSnowflake.autopilot_agent'
+      (agent) => agent.fqn === TEST_SNOWFLAKE_AUTOPILOT_AGENT
     );
 
     expect(discovered?.status).toBe('running');
@@ -172,14 +174,14 @@ describe('useMetadataAgents', () => {
     act(() => {
       capturedOnEvent(
         buildEvent(
-          'testSnowflake.autopilot_agent',
+          TEST_SNOWFLAKE_AUTOPILOT_AGENT,
           { ingestionPipeline: buildPipeline('autopilot_agent') },
           { updateType: ProgressUpdateType.Discovery }
         )
       );
       capturedOnEvent(
         buildEvent(
-          'testSnowflake.autopilot_agent',
+          TEST_SNOWFLAKE_AUTOPILOT_AGENT,
           {},
           {
             timestamp: 1751500001000,
@@ -190,7 +192,7 @@ describe('useMetadataAgents', () => {
     });
 
     const discovered = result.current.agents.find(
-      (agent) => agent.fqn === 'testSnowflake.autopilot_agent'
+      (agent) => agent.fqn === TEST_SNOWFLAKE_AUTOPILOT_AGENT
     );
 
     expect(discovered?.assets).toBe(7);
@@ -203,7 +205,7 @@ describe('useMetadataAgents', () => {
     act(() => {
       capturedOnEvent(
         buildEvent(
-          'testSnowflake.autopilot_agent',
+          TEST_SNOWFLAKE_AUTOPILOT_AGENT,
           { ingestionPipeline: buildPipeline('autopilot_agent') },
           { updateType: ProgressUpdateType.Discovery }
         )
@@ -214,7 +216,7 @@ describe('useMetadataAgents', () => {
 
     expect(
       result.current.agents.some(
-        (agent) => agent.fqn === 'testSnowflake.autopilot_agent'
+        (agent) => agent.fqn === TEST_SNOWFLAKE_AUTOPILOT_AGENT
       )
     ).toBe(true);
   });
@@ -228,7 +230,7 @@ describe('useMetadataAgents', () => {
     act(() => {
       capturedOnEvent(
         buildEvent(
-          'testSnowflake.autopilot_agent',
+          TEST_SNOWFLAKE_AUTOPILOT_AGENT,
           { ingestionPipeline: buildPipeline('autopilot_agent') },
           { updateType: ProgressUpdateType.Discovery }
         )
@@ -253,7 +255,7 @@ describe('useMetadataAgents', () => {
     act(() => {
       capturedOnEvent(
         buildEvent(
-          'testSnowflake.autopilot_agent',
+          TEST_SNOWFLAKE_AUTOPILOT_AGENT,
           { ingestionPipeline: buildPipeline('autopilot_agent') },
           { updateType: ProgressUpdateType.Discovery }
         )
@@ -264,7 +266,7 @@ describe('useMetadataAgents', () => {
 
     expect(
       result.current.agents.filter(
-        (agent) => agent.fqn === 'testSnowflake.autopilot_agent'
+        (agent) => agent.fqn === TEST_SNOWFLAKE_AUTOPILOT_AGENT
       )
     ).toHaveLength(1);
   });

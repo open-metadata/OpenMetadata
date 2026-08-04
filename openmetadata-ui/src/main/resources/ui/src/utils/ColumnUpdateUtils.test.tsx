@@ -37,6 +37,12 @@ import {
 } from './ColumnUpdateUtils';
 import type { EntityDataMapValue } from './ColumnUpdateUtils.interface';
 
+const TEST_TOPIC = 'test-topic';
+const TEST_SERVICE_TOPIC = 'test.service.topic';
+const NEW_DESCRIPTION = 'New description';
+const TEST_MODEL = 'test-model';
+const TEST_SERVICE_MODEL = 'test.service.model';
+
 // Mock dependencies
 jest.mock('./TablePureUtils', () => {
   const actual = jest.requireActual('./TablePureUtils');
@@ -78,8 +84,8 @@ describe('ColumnUpdateUtils', () => {
   describe('updateTopicField', () => {
     it('should update topic field description', () => {
       const topic: Partial<Topic> = {
-        name: 'test-topic',
-        fullyQualifiedName: 'test.service.topic',
+        name: TEST_TOPIC,
+        fullyQualifiedName: TEST_SERVICE_TOPIC,
         messageSchema: {
           schemaFields: [
             {
@@ -92,19 +98,19 @@ describe('ColumnUpdateUtils', () => {
       };
 
       const result = updateTopicField(topic as Topic, mockColumnFQN, {
-        description: 'New description',
+        description: NEW_DESCRIPTION,
       });
 
       expect(
         result.updatedTopic.messageSchema?.schemaFields?.[0].description
-      ).toBe('New description');
+      ).toBe(NEW_DESCRIPTION);
       expect(result.updatedColumn).toBeDefined();
     });
 
     it('should update topic field tags', () => {
       const topic: Partial<Topic> = {
-        name: 'test-topic',
-        fullyQualifiedName: 'test.service.topic',
+        name: TEST_TOPIC,
+        fullyQualifiedName: TEST_SERVICE_TOPIC,
         messageSchema: {
           schemaFields: [
             {
@@ -143,7 +149,7 @@ describe('ColumnUpdateUtils', () => {
         searchIndex as SearchIndex,
         mockColumnFQN,
         {
-          description: 'New description',
+          description: NEW_DESCRIPTION,
         }
       );
 
@@ -172,7 +178,7 @@ describe('ColumnUpdateUtils', () => {
         container as Container,
         mockColumnFQN,
         {
-          description: 'New description',
+          description: NEW_DESCRIPTION,
         }
       );
 
@@ -190,7 +196,7 @@ describe('ColumnUpdateUtils', () => {
         container as Container,
         mockColumnFQN,
         {
-          description: 'New description',
+          description: NEW_DESCRIPTION,
         }
       );
 
@@ -202,8 +208,8 @@ describe('ColumnUpdateUtils', () => {
   describe('updateMlModelFeature', () => {
     it('should update ML model feature description', () => {
       const mlModel: Partial<Mlmodel> = {
-        name: 'test-model',
-        fullyQualifiedName: 'test.service.model',
+        name: TEST_MODEL,
+        fullyQualifiedName: TEST_SERVICE_MODEL,
         mlFeatures: [
           {
             name: 'feature1',
@@ -213,19 +219,19 @@ describe('ColumnUpdateUtils', () => {
       };
 
       const result = updateMlModelFeature(mlModel as Mlmodel, mockColumnFQN, {
-        description: 'New description',
+        description: NEW_DESCRIPTION,
       });
 
       expect(result.updatedMlModel.mlFeatures?.[0].description).toBe(
-        'New description'
+        NEW_DESCRIPTION
       );
       expect(result.updatedColumn).toBeDefined();
     });
 
     it('should update ML model feature tags', () => {
       const mlModel: Partial<Mlmodel> = {
-        name: 'test-model',
-        fullyQualifiedName: 'test.service.model',
+        name: TEST_MODEL,
+        fullyQualifiedName: TEST_SERVICE_MODEL,
         mlFeatures: [
           {
             name: 'feature1',
@@ -257,11 +263,11 @@ describe('ColumnUpdateUtils', () => {
       };
 
       const result = updatePipelineTask(pipeline as Pipeline, mockColumnFQN, {
-        description: 'New description',
+        description: NEW_DESCRIPTION,
       });
 
       expect(result.updatedPipeline.tasks?.[0].description).toBe(
-        'New description'
+        NEW_DESCRIPTION
       );
       expect(result.updatedColumn).toBeDefined();
     });
@@ -287,7 +293,7 @@ describe('ColumnUpdateUtils', () => {
         apiEndpoint as APIEndpoint,
         mockColumnFQN,
         {
-          description: 'New description',
+          description: NEW_DESCRIPTION,
         }
       );
 
@@ -305,7 +311,7 @@ describe('ColumnUpdateUtils', () => {
         apiEndpoint as APIEndpoint,
         mockColumnFQN,
         {
-          description: 'New description',
+          description: NEW_DESCRIPTION,
         }
       );
 
@@ -330,12 +336,12 @@ describe('ColumnUpdateUtils', () => {
 
     it('should update table column description', () => {
       const result = updateTableColumn(mockTable as Table, mockColumnFQN, {
-        description: 'New description',
+        description: NEW_DESCRIPTION,
       });
 
       expect(result.updatedTable).toBeDefined();
       expect(result.updatedColumn).toBeDefined();
-      expect(result.updatedColumn?.description).toBe('New description');
+      expect(result.updatedColumn?.description).toBe(NEW_DESCRIPTION);
     });
 
     it('should update table column tags', () => {
@@ -360,8 +366,8 @@ describe('ColumnUpdateUtils', () => {
 
   describe('updateDataModelColumn', () => {
     const mockDataModel: Partial<DashboardDataModel> = {
-      name: 'test-model',
-      fullyQualifiedName: 'test.service.model',
+      name: TEST_MODEL,
+      fullyQualifiedName: TEST_SERVICE_MODEL,
       columns: [
         {
           name: 'column1',
@@ -376,13 +382,13 @@ describe('ColumnUpdateUtils', () => {
         mockDataModel as DashboardDataModel,
         mockColumnFQN,
         {
-          description: 'New description',
+          description: NEW_DESCRIPTION,
         }
       );
 
       expect(result.updatedDataModel).toBeDefined();
       expect(result.updatedColumn).toBeDefined();
-      expect(result.updatedColumn?.description).toBe('New description');
+      expect(result.updatedColumn?.description).toBe(NEW_DESCRIPTION);
     });
 
     it('should update data model column tags', () => {
@@ -412,8 +418,8 @@ describe('ColumnUpdateUtils', () => {
   describe('handleColumnFieldUpdate', () => {
     it('should handle Topic entity type', async () => {
       const topic: Partial<Topic> = {
-        name: 'test-topic',
-        fullyQualifiedName: 'test.service.topic',
+        name: TEST_TOPIC,
+        fullyQualifiedName: TEST_SERVICE_TOPIC,
         messageSchema: {
           schemaFields: [
             {
@@ -429,7 +435,7 @@ describe('ColumnUpdateUtils', () => {
         entityType: EntityType.TOPIC,
         entityData: topic as Topic,
         fqn: mockColumnFQN,
-        update: { description: 'New description' },
+        update: { description: NEW_DESCRIPTION },
       });
 
       expect(result.updatedEntity).toBeDefined();
@@ -454,7 +460,7 @@ describe('ColumnUpdateUtils', () => {
         entityType: EntityType.TABLE,
         entityData: table as Table,
         fqn: mockColumnFQN,
-        update: { description: 'New description' },
+        update: { description: NEW_DESCRIPTION },
       });
 
       expect(result.updatedEntity).toBeDefined();
@@ -466,7 +472,7 @@ describe('ColumnUpdateUtils', () => {
         entityType: EntityType.DATABASE as EntityType,
         entityData: {} as EntityDataMapValue,
         fqn: mockColumnFQN,
-        update: { description: 'New description' },
+        update: { description: NEW_DESCRIPTION },
       });
 
       expect(result.updatedEntity).toEqual({});

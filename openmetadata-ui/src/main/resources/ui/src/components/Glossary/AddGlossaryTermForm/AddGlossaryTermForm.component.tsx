@@ -52,6 +52,8 @@ import GlossaryTermIntakeFields, {
   GlossaryTermIntakeFieldsHandle,
 } from './GlossaryTermIntakeFields.component';
 
+const LABEL_NAME = 'label.name';
+
 const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
 
 const AddGlossaryTermForm = ({
@@ -332,9 +334,9 @@ const AddGlossaryTermForm = ({
     {
       name: 'name',
       id: 'root/name',
-      label: t('label.name'),
+      label: t(LABEL_NAME),
       required: true,
-      placeholder: t('label.name'),
+      placeholder: t(LABEL_NAME),
       type: FieldTypes.TEXT,
       props: {
         'data-testid': 'name',
@@ -573,14 +575,11 @@ const AddGlossaryTermForm = ({
                         {
                           required: true,
                           message: `${t('message.field-text-is-required', {
-                            fieldText: t('label.name'),
+                            fieldText: t(LABEL_NAME),
                           })}`,
                         },
                       ]}>
-                      <Input
-                        id={`name-${index}`}
-                        placeholder={t('label.name')}
-                      />
+                      <Input id={`name-${index}`} placeholder={t(LABEL_NAME)} />
                     </Form.Item>
                   </Col>
                   <Col span={11}>

@@ -61,6 +61,8 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { ChartDetailsProps } from './ChartDetails.interface';
+
+const LABEL_CHART = 'label.chart';
 const ChartDetails = ({
   updateChartDetailsState,
   chartDetails,
@@ -111,7 +113,7 @@ const ChartDetails = ({
     } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
-          entity: t('label.chart'),
+          entity: t(LABEL_CHART),
         })
       );
     }
@@ -195,7 +197,7 @@ const ChartDetails = ({
       const { version: newVersion } = await restoreChart(chartDetails.id);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.chart'),
+          entity: t(LABEL_CHART),
         })
       );
       handleToggleDelete(newVersion);
@@ -203,7 +205,7 @@ const ChartDetails = ({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.chart'),
+          entity: t(LABEL_CHART),
         })
       );
     }

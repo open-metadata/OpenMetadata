@@ -18,6 +18,8 @@ import { USER_DATA, USER_TEAMS } from '../../../../../mocks/User.mock';
 import UserProfileTeams from './UserProfileTeams.component';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
+const USER_PROFILE_TEAMS = 'user-profile-teams';
+const EDIT_TEAMS_BUTTON = 'edit-teams-button';
 const mockPropsData: UserProfileTeamsProps = {
   teams: [],
   isDeletedUser: false,
@@ -83,15 +85,15 @@ describe('Test User Profile Teams Component', () => {
   it('should render user profile teams component', async () => {
     render(<UserProfileTeams {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_TEAMS)).toBeInTheDocument();
   });
 
   it('should render teams if data available', async () => {
     render(<UserProfileTeams {...mockPropsData} teams={USER_DATA.teams} />);
 
-    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_TEAMS)).toBeInTheDocument();
 
-    expect(screen.getByTestId('edit-teams-button')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_TEAMS_BUTTON)).toBeInTheDocument();
 
     expect(await screen.findAllByText('Chip')).toHaveLength(1);
   });
@@ -99,13 +101,13 @@ describe('Test User Profile Teams Component', () => {
   it('should maintain initial state if edit is close without save', async () => {
     render(<UserProfileTeams {...mockPropsData} teams={USER_DATA.teams} />);
 
-    fireEvent.click(screen.getByTestId('edit-teams-button'));
+    fireEvent.click(screen.getByTestId(EDIT_TEAMS_BUTTON));
 
     const selectInput = screen.getByTestId('team-select');
     fireEvent.click(selectInput);
     fireEvent.click(screen.getByTestId('teams-edit-close-btn'));
 
-    fireEvent.click(screen.getByTestId('edit-teams-button'));
+    fireEvent.click(screen.getByTestId(EDIT_TEAMS_BUTTON));
 
     expect(screen.getByText('Organization')).toBeInTheDocument();
   });
@@ -113,7 +115,7 @@ describe('Test User Profile Teams Component', () => {
   it('should call updateUserDetails on click save', async () => {
     render(<UserProfileTeams {...mockPropsData} teams={USER_DATA.teams} />);
 
-    const editButton = screen.getByTestId('edit-teams-button');
+    const editButton = screen.getByTestId(EDIT_TEAMS_BUTTON);
 
     fireEvent.click(editButton);
 
@@ -143,9 +145,9 @@ describe('Test User Profile Teams Component', () => {
       <UserProfileTeams {...mockPropsData} isDeletedUser teams={USER_TEAMS} />
     );
 
-    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_TEAMS)).toBeInTheDocument();
 
-    expect(screen.queryByTestId('edit-teams-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_TEAMS_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should not render edit button to non admin user', async () => {
@@ -155,8 +157,8 @@ describe('Test User Profile Teams Component', () => {
 
     render(<UserProfileTeams {...mockPropsData} teams={USER_TEAMS} />);
 
-    expect(screen.getByTestId('user-profile-teams')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_TEAMS)).toBeInTheDocument();
 
-    expect(screen.queryByTestId('edit-teams-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_TEAMS_BUTTON)).not.toBeInTheDocument();
   });
 });

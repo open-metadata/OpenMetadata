@@ -15,6 +15,8 @@ import { FieldProps } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoreBooleanField from './CoreBooleanField';
 
+const ENABLE_DEBUG_LOG = 'Enable Debug Log';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Toggle: jest.fn(
     ({
@@ -45,7 +47,7 @@ const baseProps = {
   readonly: false,
   formData: false,
   name: 'enableDebugLog',
-  schema: { title: 'Enable Debug Log', type: 'boolean' as const },
+  schema: { title: ENABLE_DEBUG_LOG, type: 'boolean' as const },
   idSchema: { $id: 'root/enableDebugLog' },
   formContext: {},
   onChange: jest.fn(),
@@ -60,7 +62,7 @@ describe('CoreBooleanField', () => {
   it('renders with schema title as label', () => {
     render(<CoreBooleanField {...baseProps} />);
 
-    expect(screen.getByText('Enable Debug Log')).toBeInTheDocument();
+    expect(screen.getByText(ENABLE_DEBUG_LOG)).toBeInTheDocument();
   });
 
   it('uses startCase of name when schema has no title', () => {
@@ -68,7 +70,7 @@ describe('CoreBooleanField', () => {
       <CoreBooleanField {...baseProps} schema={{ type: 'boolean' as const }} />
     );
 
-    expect(screen.getByText('Enable Debug Log')).toBeInTheDocument();
+    expect(screen.getByText(ENABLE_DEBUG_LOG)).toBeInTheDocument();
   });
 
   it('calls onChange and formContext.handleFocus when toggled', () => {

@@ -26,6 +26,24 @@ import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import DataQualityDashboard from './DataQualityDashboard.component';
 
+const DATE_PICKER_MENU = 'date-picker-menu' as const;
+const USER_TEAM_SELECTABLE_LIST = 'user-team-selectable-list' as const;
+const DQ_DASHBOARD_CONTAINER = 'dq-dashboard-container' as const;
+const SEARCH_DROPDOWN_LABEL_TIER = 'search-dropdown-label.tier' as const;
+const SEARCH_DROPDOWN_LABEL_TAG = 'search-dropdown-label.tag' as const;
+const SEARCH_DROPDOWN_LABEL_DATA_PRODUCT =
+  'search-dropdown-label.data-product' as const;
+const SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM =
+  'search-dropdown-label.glossary-term' as const;
+const M_B_MD_DATA_TESTID_DQ =
+  '.m-b-md[data-testid="dq-dashboard-container"]' as const;
+const PII_SENSITIVE = 'PII.Sensitive' as const;
+const FINANCE_REVENUE = 'Finance.Revenue' as const;
+const DISABLED_FALSE_AND_CLASSIFICATION_NAME_TIER =
+  'disabled:false AND classification.name:Tier' as const;
+const DISABLED_FALSE_AND_CLASSIFICATION_NAME_CERTIFICATION =
+  'disabled:false AND classification.name:Certification' as const;
+
 const mockSearchQuery = jest.fn().mockResolvedValue({
   hits: {
     hits: [
@@ -311,26 +329,27 @@ describe('DataQualityDashboard', () => {
   it('should render the DataQualityDashboard component', async () => {
     render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-    expect(screen.getByTestId('dq-dashboard-container')).toBeInTheDocument();
-    expect(screen.getByTestId('user-team-selectable-list')).toBeInTheDocument();
+    expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
+    expect(screen.getByTestId(USER_TEAM_SELECTABLE_LIST)).toBeInTheDocument();
+    expect(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TIER)).toBeInTheDocument();
+    expect(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TAG)).toBeInTheDocument();
     expect(
-      screen.getByTestId('search-dropdown-label.tier')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('search-dropdown-label.tag')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('search-dropdown-label.data-product')
+      screen.getByTestId(SEARCH_DROPDOWN_LABEL_DATA_PRODUCT)
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('search-dropdown-label.glossary-term')
+      screen.getByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM)
     ).toBeInTheDocument();
-    expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+    expect(screen.getByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
     expect(
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       screen.getByTestId('test-case-status-pie-chart-widget')
     ).toBeInTheDocument();
     expect(
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       screen.getByTestId('entity-health-status-pie-chart-widget')
     ).toBeInTheDocument();
     expect(
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       screen.getByTestId('data-assets-coverage-pie-chart-widget')
     ).toBeInTheDocument();
     expect(
@@ -362,7 +381,7 @@ describe('DataQualityDashboard', () => {
   it('should handle owner filter change', async () => {
     render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-    fireEvent.click(screen.getByTestId('user-team-selectable-list'));
+    fireEvent.click(screen.getByTestId(USER_TEAM_SELECTABLE_LIST));
 
     await waitFor(() => {
       expect(screen.getByText('owner1')).toBeInTheDocument();
@@ -372,7 +391,7 @@ describe('DataQualityDashboard', () => {
   it('should handle tier filter change', async () => {
     render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-    fireEvent.click(screen.getByTestId('search-dropdown-label.tier'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TIER));
 
     await waitFor(() => {
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
@@ -382,7 +401,7 @@ describe('DataQualityDashboard', () => {
   it('should handle date range change', async () => {
     render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-    fireEvent.click(screen.getByTestId('date-picker-menu'));
+    fireEvent.click(screen.getByTestId(DATE_PICKER_MENU));
 
     await waitFor(() => {
       expect(screen.getByText('DatePickerMenu')).toBeInTheDocument();
@@ -577,7 +596,7 @@ describe('DataQualityDashboard', () => {
     it('should handle tag filter changes and update chart filters', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(screen.getByTestId('search-dropdown-label.tag'));
+      fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TAG));
 
       await waitFor(() => {
         // Verify that all chart widgets receive the updated filters
@@ -594,9 +613,7 @@ describe('DataQualityDashboard', () => {
     it('should handle glossary term filter changes', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-label.glossary-term')
-      );
+      fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM));
 
       await waitFor(() => {
         // Verify glossary terms are included in tag filters for widgets
@@ -614,10 +631,8 @@ describe('DataQualityDashboard', () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       // Apply both tag and glossary term filters
-      fireEvent.click(screen.getByTestId('search-dropdown-label.tag'));
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-label.glossary-term')
-      );
+      fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TAG));
+      fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM));
 
       await waitFor(() => {
         // Should merge both filter types into tags array
@@ -634,7 +649,7 @@ describe('DataQualityDashboard', () => {
     it('should handle owner filter changes', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(screen.getByTestId('user-team-selectable-list'));
+      fireEvent.click(screen.getByTestId(USER_TEAM_SELECTABLE_LIST));
 
       await waitFor(() => {
         expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
@@ -658,9 +673,7 @@ describe('DataQualityDashboard', () => {
 
       // Component should render successfully despite any API loading states
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
     });
 
@@ -671,9 +684,7 @@ describe('DataQualityDashboard', () => {
 
       // Component should still render despite API error
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
     });
 
@@ -684,9 +695,7 @@ describe('DataQualityDashboard', () => {
 
       // Component should still render despite search API error
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
     });
   });
@@ -717,9 +726,7 @@ describe('DataQualityDashboard', () => {
         wrapper: MemoryRouter,
       });
 
-      const mainContainer = container.querySelector(
-        '.m-b-md[data-testid="dq-dashboard-container"]'
-      );
+      const mainContainer = container.querySelector(M_B_MD_DATA_TESTID_DQ);
 
       expect(mainContainer).toBeInTheDocument();
 
@@ -750,7 +757,7 @@ describe('DataQualityDashboard', () => {
     it('should update chart filters when date range changes', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(screen.getByTestId('date-picker-menu'));
+      fireEvent.click(screen.getByTestId(DATE_PICKER_MENU));
 
       await waitFor(() => {
         // Should trigger re-render with new date range
@@ -765,14 +772,14 @@ describe('DataQualityDashboard', () => {
 
       // Should show date picker component
       await waitFor(() => {
-        expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+        expect(screen.getByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
       });
     });
 
     it('should show selected filter values in dropdown buttons', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(screen.getByTestId('user-team-selectable-list'));
+      fireEvent.click(screen.getByTestId(USER_TEAM_SELECTABLE_LIST));
 
       await waitFor(() => {
         expect(screen.getByText('owner1')).toBeInTheDocument();
@@ -789,26 +796,26 @@ describe('DataQualityDashboard', () => {
       render(<DataQualityDashboard hideFilterBar />, { wrapper: MemoryRouter });
 
       expect(
-        screen.queryByTestId('user-team-selectable-list')
+        screen.queryByTestId(USER_TEAM_SELECTABLE_LIST)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.tier')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_TIER)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.tag')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_TAG)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.data-product')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_DATA_PRODUCT)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.glossary-term')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM)
       ).not.toBeInTheDocument();
     });
 
     it('still renders the date picker when hideFilterBar is true', async () => {
       render(<DataQualityDashboard hideFilterBar />, { wrapper: MemoryRouter });
 
-      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
     });
 
     it('still renders all chart widgets when hideFilterBar is true', async () => {
@@ -829,9 +836,7 @@ describe('DataQualityDashboard', () => {
       render(<DataQualityDashboard hideFilterBar />, { wrapper: MemoryRouter });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
 
       expect(mockSearchQuery).not.toHaveBeenCalled();
@@ -843,9 +848,7 @@ describe('DataQualityDashboard', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
 
       expect(mockSearchQuery).not.toHaveBeenCalled();
@@ -869,7 +872,7 @@ describe('DataQualityDashboard', () => {
       render(
         <DataQualityDashboard
           hideFilterBar
-          initialFilters={{ tags: ['PII.Sensitive'] }}
+          initialFilters={{ tags: [PII_SENSITIVE] }}
         />,
         { wrapper: MemoryRouter }
       );
@@ -878,7 +881,7 @@ describe('DataQualityDashboard', () => {
         expect(mockTestCaseStatusPieChartWidget).toHaveBeenCalledWith(
           expect.objectContaining({
             chartFilter: expect.objectContaining({
-              tags: ['PII.Sensitive'],
+              tags: [PII_SENSITIVE],
             }),
           })
         );
@@ -909,7 +912,7 @@ describe('DataQualityDashboard', () => {
       render(
         <DataQualityDashboard
           hideFilterBar
-          initialFilters={{ glossaryTerms: ['Finance.Revenue'] }}
+          initialFilters={{ glossaryTerms: [FINANCE_REVENUE] }}
         />,
         { wrapper: MemoryRouter }
       );
@@ -918,7 +921,7 @@ describe('DataQualityDashboard', () => {
         expect(mockTestCaseStatusPieChartWidget).toHaveBeenCalledWith(
           expect.objectContaining({
             chartFilter: expect.objectContaining({
-              tags: ['Finance.Revenue'],
+              tags: [FINANCE_REVENUE],
             }),
           })
         );
@@ -930,8 +933,8 @@ describe('DataQualityDashboard', () => {
         <DataQualityDashboard
           hideFilterBar
           initialFilters={{
-            tags: ['PII.Sensitive'],
-            glossaryTerms: ['Finance.Revenue'],
+            tags: [PII_SENSITIVE],
+            glossaryTerms: [FINANCE_REVENUE],
           }}
         />,
         { wrapper: MemoryRouter }
@@ -941,10 +944,7 @@ describe('DataQualityDashboard', () => {
         expect(mockTestCaseStatusPieChartWidget).toHaveBeenCalledWith(
           expect.objectContaining({
             chartFilter: expect.objectContaining({
-              tags: expect.arrayContaining([
-                'PII.Sensitive',
-                'Finance.Revenue',
-              ]),
+              tags: expect.arrayContaining([PII_SENSITIVE, FINANCE_REVENUE]),
             }),
           })
         );
@@ -992,7 +992,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelector('.m-b-md[data-testid="dq-dashboard-container"]')
+        container.querySelector(M_B_MD_DATA_TESTID_DQ)
       ).toBeInTheDocument();
     });
   });
@@ -1008,16 +1008,14 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        screen.queryByTestId('search-dropdown-label.tag')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_TAG)
       ).not.toBeInTheDocument();
+      expect(screen.getByTestId(USER_TEAM_SELECTABLE_LIST)).toBeInTheDocument();
       expect(
-        screen.getByTestId('user-team-selectable-list')
+        screen.getByTestId(SEARCH_DROPDOWN_LABEL_TIER)
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('search-dropdown-label.tier')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('search-dropdown-label.glossary-term')
+        screen.getByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM)
       ).toBeInTheDocument();
     });
 
@@ -1027,17 +1025,13 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        screen.queryByTestId('search-dropdown-label.glossary-term')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM)
       ).not.toBeInTheDocument();
+      expect(screen.getByTestId(USER_TEAM_SELECTABLE_LIST)).toBeInTheDocument();
       expect(
-        screen.getByTestId('user-team-selectable-list')
+        screen.getByTestId(SEARCH_DROPDOWN_LABEL_TIER)
       ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('search-dropdown-label.tier')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('search-dropdown-label.tag')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TAG)).toBeInTheDocument();
     });
 
     it('hides only the tier dropdown when hiddenFilters includes tier', () => {
@@ -1046,16 +1040,12 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        screen.queryByTestId('search-dropdown-label.tier')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_TIER)
       ).not.toBeInTheDocument();
+      expect(screen.getByTestId(USER_TEAM_SELECTABLE_LIST)).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TAG)).toBeInTheDocument();
       expect(
-        screen.getByTestId('user-team-selectable-list')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('search-dropdown-label.tag')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('search-dropdown-label.glossary-term')
+        screen.getByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM)
       ).toBeInTheDocument();
     });
 
@@ -1065,16 +1055,14 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        screen.queryByTestId('user-team-selectable-list')
+        screen.queryByTestId(USER_TEAM_SELECTABLE_LIST)
       ).not.toBeInTheDocument();
       expect(
-        screen.getByTestId('search-dropdown-label.tier')
+        screen.getByTestId(SEARCH_DROPDOWN_LABEL_TIER)
       ).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_DROPDOWN_LABEL_TAG)).toBeInTheDocument();
       expect(
-        screen.getByTestId('search-dropdown-label.tag')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('search-dropdown-label.glossary-term')
+        screen.getByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM)
       ).toBeInTheDocument();
     });
 
@@ -1085,19 +1073,17 @@ describe('DataQualityDashboard', () => {
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
 
       expect(mockSearchQuery).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          filters: 'disabled:false AND classification.name:Tier',
+          filters: DISABLED_FALSE_AND_CLASSIFICATION_NAME_TIER,
         })
       );
       expect(mockSearchQuery).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          filters: 'disabled:false AND classification.name:Certification',
+          filters: DISABLED_FALSE_AND_CLASSIFICATION_NAME_CERTIFICATION,
         })
       );
     });
@@ -1110,14 +1096,14 @@ describe('DataQualityDashboard', () => {
       await waitFor(() => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
-            filters: 'disabled:false AND classification.name:Certification',
+            filters: DISABLED_FALSE_AND_CLASSIFICATION_NAME_CERTIFICATION,
           })
         );
       });
 
       expect(mockSearchQuery).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          filters: 'disabled:false AND classification.name:Tier',
+          filters: DISABLED_FALSE_AND_CLASSIFICATION_NAME_TIER,
         })
       );
     });
@@ -1130,14 +1116,14 @@ describe('DataQualityDashboard', () => {
       await waitFor(() => {
         expect(mockSearchQuery).toHaveBeenCalledWith(
           expect.objectContaining({
-            filters: 'disabled:false AND classification.name:Tier',
+            filters: DISABLED_FALSE_AND_CLASSIFICATION_NAME_TIER,
           })
         );
       });
 
       expect(mockSearchQuery).not.toHaveBeenCalledWith(
         expect.objectContaining({
-          filters: 'disabled:false AND classification.name:Certification',
+          filters: DISABLED_FALSE_AND_CLASSIFICATION_NAME_CERTIFICATION,
         })
       );
     });
@@ -1151,9 +1137,7 @@ describe('DataQualityDashboard', () => {
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
 
       // tier + certification + glossaryTerms fetches run — searchQuery called 3x
@@ -1171,9 +1155,7 @@ describe('DataQualityDashboard', () => {
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('dq-dashboard-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
       });
 
       // tier + certification + tags fetches run — searchQuery called 3x
@@ -1187,19 +1169,19 @@ describe('DataQualityDashboard', () => {
 
       // hideFilterBar=true is a hard override: entire filter bar is hidden regardless of hiddenFilters
       expect(
-        screen.queryByTestId('user-team-selectable-list')
+        screen.queryByTestId(USER_TEAM_SELECTABLE_LIST)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.tier')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_TIER)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.glossary-term')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.tag')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_TAG)
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.data-product')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_DATA_PRODUCT)
       ).not.toBeInTheDocument();
     });
   });
@@ -1231,7 +1213,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelector('.m-b-md[data-testid="dq-dashboard-container"]')
+        container.querySelector(M_B_MD_DATA_TESTID_DQ)
       ).not.toBeInTheDocument();
     });
 
@@ -1240,7 +1222,7 @@ describe('DataQualityDashboard', () => {
         wrapper: MemoryRouter,
       });
 
-      expect(screen.getByTestId('dq-dashboard-container')).toBeInTheDocument();
+      expect(screen.getByTestId(DQ_DASHBOARD_CONTAINER)).toBeInTheDocument();
     });
 
     it('applies borderless styling to all 4 card sections in governance view', () => {
@@ -1305,10 +1287,10 @@ describe('DataQualityDashboard', () => {
         container.querySelector('.data-quality-governance-layout')
       ).toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.tag')
+        screen.queryByTestId(SEARCH_DROPDOWN_LABEL_TAG)
       ).not.toBeInTheDocument();
       expect(
-        screen.getByTestId('search-dropdown-label.tier')
+        screen.getByTestId(SEARCH_DROPDOWN_LABEL_TIER)
       ).toBeInTheDocument();
     });
 
@@ -1316,7 +1298,7 @@ describe('DataQualityDashboard', () => {
       render(
         <DataQualityDashboard
           isGovernanceView
-          initialFilters={{ tags: ['PII.Sensitive'] }}
+          initialFilters={{ tags: [PII_SENSITIVE] }}
         />,
         { wrapper: MemoryRouter }
       );
@@ -1325,7 +1307,7 @@ describe('DataQualityDashboard', () => {
         expect(mockTestCaseStatusPieChartWidget).toHaveBeenCalledWith(
           expect.objectContaining({
             chartFilter: expect.objectContaining({
-              tags: ['PII.Sensitive'],
+              tags: [PII_SENSITIVE],
             }),
           })
         );
@@ -1341,9 +1323,7 @@ describe('DataQualityDashboard', () => {
     it('glossaryTerms filter change merges into tags for area chart widgets', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-label.glossary-term')
-      );
+      fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_LABEL_GLOSSARY_TERM));
 
       await waitFor(() => {
         expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(

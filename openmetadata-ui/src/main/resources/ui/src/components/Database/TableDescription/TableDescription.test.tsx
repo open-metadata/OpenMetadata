@@ -15,6 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import TableDescription from './TableDescription.component';
 
+const EDIT_BUTTON = 'edit-button';
+
 jest.mock('../../../pages/TasksPage/EntityTasks/EntityTasks.component', () => {
   return jest.fn().mockReturnValue(<p>EntityTasks</p>);
 });
@@ -64,7 +66,7 @@ describe('TableDescription Component', () => {
 
   it('should render edit button when hasEditPermission is true', () => {
     const { getByTestId } = render(<TableDescription {...mockProps} />);
-    const editButton = getByTestId('edit-button');
+    const editButton = getByTestId(EDIT_BUTTON);
 
     expect(editButton).toBeInTheDocument();
 
@@ -77,7 +79,7 @@ describe('TableDescription Component', () => {
     const { queryByTestId } = render(
       <TableDescription {...mockProps} hasEditPermission={false} />
     );
-    const editButton = queryByTestId('edit-button');
+    const editButton = queryByTestId(EDIT_BUTTON);
 
     expect(editButton).toBeNull();
   });
@@ -86,7 +88,7 @@ describe('TableDescription Component', () => {
     const onClick = jest.fn();
     render(<TableDescription {...mockProps} onClick={onClick} />);
 
-    fireEvent.click(screen.getByTestId('edit-button'));
+    fireEvent.click(screen.getByTestId(EDIT_BUTTON));
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });

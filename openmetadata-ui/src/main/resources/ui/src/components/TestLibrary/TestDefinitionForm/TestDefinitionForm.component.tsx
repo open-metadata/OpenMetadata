@@ -50,6 +50,8 @@ import {
   buildFormDefaults,
 } from './transformTestDefinitionFormData';
 
+const LABEL_TEST_DEFINITION = 'label.test-definition';
+
 const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   open,
   variant = 'drawer',
@@ -79,8 +81,8 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   const resolvedTitle =
     title ??
     (isEditMode
-      ? t('label.edit-entity', { entity: t('label.test-definition') })
-      : t('label.add-entity', { entity: t('label.test-definition') }));
+      ? t('label.edit-entity', { entity: t(LABEL_TEST_DEFINITION) })
+      : t('label.add-entity', { entity: t(LABEL_TEST_DEFINITION) }));
 
   const handleErrorDismiss = useCallback(() => setErrorMessage(''), []);
 
@@ -102,7 +104,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       const result = await patchTestDefinition(initialValues.id ?? '', patch);
       showSuccessToast(
         t('server.entity-updated-success', {
-          entity: t('label.test-definition'),
+          entity: t(LABEL_TEST_DEFINITION),
         })
       );
       onSuccess(result);
@@ -115,7 +117,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       await createTestDefinition(buildCreateTestDefinitionPayload(values));
       showSuccessToast(
         t('server.entity-created-success', {
-          entity: t('label.test-definition'),
+          entity: t(LABEL_TEST_DEFINITION),
         })
       );
       onSuccess();
@@ -139,7 +141,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
               isEditMode
                 ? 'server.update-entity-error'
                 : 'server.create-entity-error',
-              { entity: t('label.test-definition') }
+              { entity: t(LABEL_TEST_DEFINITION) }
             )
         );
 

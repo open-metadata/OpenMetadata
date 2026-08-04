@@ -20,6 +20,8 @@ import {
   NodeType,
 } from './types';
 
+const SAVINGS_ACCOUNT = 'Savings Account';
+
 const node = (
   id: string,
   name: string,
@@ -42,7 +44,7 @@ describe('ontologyView', () => {
     const graph: Graph3DData = {
       nodes: [
         node('accounts', 'Accounts', 'concept'),
-        node('t-sav', 'Savings Account', 'concept'),
+        node('t-sav', SAVINGS_ACCOUNT, 'concept'),
         node('t-chk', 'Checking Account', 'concept'),
         node('savings_account', 'savings_account', 'table'),
         node('checking_account', 'checking_account', 'table'),
@@ -69,7 +71,7 @@ describe('ontologyView', () => {
     expect(edge.relation).toEqual({ kind: 'siblings', term: 'Accounts' });
     expect(edge.path).toEqual([
       'savings_account',
-      'Savings Account',
+      SAVINGS_ACCOUNT,
       'Accounts',
       'Checking Account',
       'checking_account',
@@ -132,7 +134,7 @@ describe('ontologyView', () => {
     const graph: Graph3DData = {
       nodes: [
         node('accounts', 'Accounts', 'concept'),
-        node('t-sav', 'Savings Account', 'concept'),
+        node('t-sav', SAVINGS_ACCOUNT, 'concept'),
         node('savings_account', 'savings_account', 'table'),
         node('all_accounts', 'all_accounts', 'table'),
       ],
@@ -148,12 +150,12 @@ describe('ontologyView', () => {
     expect(view.links).toHaveLength(1);
     expect(view.links[0].relation).toEqual({
       kind: 'subtype',
-      from: 'Savings Account',
+      from: SAVINGS_ACCOUNT,
       to: 'Accounts',
     });
     expect(view.links[0].path).toEqual([
       'savings_account',
-      'Savings Account',
+      SAVINGS_ACCOUNT,
       'Accounts',
       'all_accounts',
     ]);

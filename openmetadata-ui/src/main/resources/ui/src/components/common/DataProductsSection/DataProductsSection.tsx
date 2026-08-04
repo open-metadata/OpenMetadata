@@ -29,6 +29,8 @@ import Loader from '../Loader/Loader';
 import { DataProductsSectionProps } from './DataProductsSection.interface';
 import './DataProductsSection.less';
 
+const LABEL_DATA_PRODUCT_PLURAL = 'label.data-product-plural';
+
 const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   dataProducts = [],
   activeDomains = [],
@@ -125,7 +127,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         fieldName: 'dataProducts',
         currentValue: displayDataProducts,
         newValue: updatedDataProducts,
-        entityLabel: t('label.data-product-plural'),
+        entityLabel: t(LABEL_DATA_PRODUCT_PLURAL),
         onSuccess: (dataProds) => {
           setDisplayDataProducts(dataProds);
           if (onDataProductsUpdate) {
@@ -215,7 +217,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     return (
       <span className="no-data-placeholder">
         {t('label.no-entity-assigned', {
-          entity: t('label.data-product-plural'),
+          entity: t(LABEL_DATA_PRODUCT_PLURAL),
         })}
       </span>
     );
@@ -283,7 +285,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       <div className="data-products-section">
         <div className="data-products-header">
           <Typography.Text className="data-products-title">
-            {t('label.data-product-plural')}
+            {t(LABEL_DATA_PRODUCT_PLURAL)}
           </Typography.Text>
           {canShowEditButton && (
             <EditIconButton
@@ -293,7 +295,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
-                entity: t('label.data-product-plural'),
+                entity: t(LABEL_DATA_PRODUCT_PLURAL),
               })}
               onClick={handleEditClick}
             />
@@ -308,7 +310,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     <div className="data-products-section">
       <div className="data-products-header">
         <Typography.Text className="data-products-title">
-          {t('label.data-product-plural')}
+          {t(LABEL_DATA_PRODUCT_PLURAL)}
         </Typography.Text>
         {canShowEditButton && (
           <EditIconButton
@@ -318,7 +320,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
             size="small"
             title={t('label.edit-entity', {
-              entity: t('label.data-product-plural'),
+              entity: t(LABEL_DATA_PRODUCT_PLURAL),
             })}
             onClick={handleEditClick}
           />

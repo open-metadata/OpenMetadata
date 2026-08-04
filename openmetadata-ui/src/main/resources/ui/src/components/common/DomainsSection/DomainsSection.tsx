@@ -31,6 +31,8 @@ import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.c
 import Loader from '../Loader/Loader';
 import './DomainsSection.less';
 
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural' as const;
+
 interface DomainsSectionProps {
   domains?: EntityReference[];
   showEditButton?: boolean;
@@ -153,7 +155,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         // Show success message
         showSuccessToast(
           t('server.update-entity-success', {
-            entity: t('label.domain-plural'),
+            entity: t(LABEL_DOMAIN_PLURAL),
           })
         );
 
@@ -264,7 +266,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       <div className="domains-section">
         <div className="domains-header">
           <Typography.Text className="domains-title">
-            {t('label.domain-plural')}
+            {t(LABEL_DOMAIN_PLURAL)}
           </Typography.Text>
         </div>
         <div className="domains-content">{loadingState}</div>
@@ -277,14 +279,14 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       <div className="domains-section">
         <div className="domains-header">
           <Typography.Text className="domains-title">
-            {t('label.domain-plural')}
+            {t(LABEL_DOMAIN_PLURAL)}
           </Typography.Text>
           {selectableList}
         </div>
         <div className="domains-content">
           <span className="no-data-placeholder">
             {t('label.no-entity-assigned', {
-              entity: t('label.domain-plural'),
+              entity: t(LABEL_DOMAIN_PLURAL),
             })}
           </span>
         </div>
@@ -296,7 +298,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     <div className="domains-section">
       <div className="domains-header">
         <Typography.Text className="domains-title">
-          {t('label.domain-plural')}
+          {t(LABEL_DOMAIN_PLURAL)}
         </Typography.Text>
         {selectableList}
       </div>

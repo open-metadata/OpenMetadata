@@ -17,6 +17,8 @@ import { mockUserData } from '../../mocks/User.mocks';
 import UserProfileImage from './UserProfileImage.component';
 import { UserProfileImageProps } from './UserProfileImage.interface';
 
+const PROFILE_IMAGE_CONTAINER = 'profile-image-container';
+
 const mockPropsData: UserProfileImageProps = {
   userData: mockUserData,
 };
@@ -36,7 +38,7 @@ describe('Test User User Profile Image Component', () => {
   it('should render user profile image component', async () => {
     render(<UserProfileImage {...mockPropsData} />);
 
-    expect(screen.getByTestId('profile-image-container')).toBeInTheDocument();
+    expect(screen.getByTestId(PROFILE_IMAGE_CONTAINER)).toBeInTheDocument();
   });
 
   it('should render user profile picture component if no image found', async () => {
@@ -44,7 +46,7 @@ describe('Test User User Profile Image Component', () => {
       render(<UserProfileImage {...mockPropsData} />);
     });
 
-    expect(screen.getByTestId('profile-image-container')).toBeInTheDocument();
+    expect(screen.getByTestId(PROFILE_IMAGE_CONTAINER)).toBeInTheDocument();
 
     expect(screen.queryByText(mockUserData.name)).toBeNull();
     expect(screen.getByText(mockUserData.displayName)).toBeInTheDocument();
@@ -57,7 +59,7 @@ describe('Test User User Profile Image Component', () => {
       );
     });
 
-    expect(screen.getByTestId('profile-image-container')).toBeInTheDocument();
+    expect(screen.getByTestId(PROFILE_IMAGE_CONTAINER)).toBeInTheDocument();
 
     expect(screen.getByText(mockUserData.name)).toBeInTheDocument();
   });
@@ -69,7 +71,7 @@ describe('Test User User Profile Image Component', () => {
 
     render(<UserProfileImage {...mockPropsData} />);
 
-    expect(screen.getByTestId('profile-image-container')).toBeInTheDocument();
+    expect(screen.getByTestId(PROFILE_IMAGE_CONTAINER)).toBeInTheDocument();
 
     expect(screen.getByTestId('user-profile-image')).toBeInTheDocument();
   });

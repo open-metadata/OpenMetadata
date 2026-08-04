@@ -16,6 +16,10 @@ import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import RequestDescription from './RequestDescriptionPage';
 
+const MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT =
+  'sample_data.ecommerce_db.shopify.dim_location';
+const LABEL_REQUEST_DESCRIPTION = 'label.request-description';
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -49,7 +53,7 @@ jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
       setEntityData({
         id: 'id1',
         name: 'dim_location',
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
+        fullyQualifiedName: MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT,
         tableType: 'Regular',
         owners: [
           {
@@ -71,7 +75,7 @@ jest.mock('../../../utils/TaskFieldUtils', () => ({
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
   getTaskEntityFQN: jest
     .fn()
-    .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
+    .mockReturnValue(MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)
@@ -100,13 +104,13 @@ jest.mock('../../../rest/tasksAPI', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
     .fn()
-    .mockReturnValue({ fqn: 'sample_data.ecommerce_db.shopify.dim_location' }),
+    .mockReturnValue({ fqn: MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT }),
 }));
 
 describe('RequestDescriptionPage', () => {
   it('should render component', async () => {
     render(
-      <RequestDescription pageTitle={i18n.t('label.request-description')} />
+      <RequestDescription pageTitle={i18n.t(LABEL_REQUEST_DESCRIPTION)} />
     );
 
     expect(
@@ -125,7 +129,7 @@ describe('RequestDescriptionPage', () => {
 
   it("should go back to previous page when 'Cancel' button is clicked", async () => {
     render(
-      <RequestDescription pageTitle={i18n.t('label.request-description')} />
+      <RequestDescription pageTitle={i18n.t(LABEL_REQUEST_DESCRIPTION)} />
     );
     const cancelBtn = await screen.findByTestId('cancel-btn');
 
@@ -139,7 +143,7 @@ describe('RequestDescriptionPage', () => {
   it('should submit form when submit button is clicked', async () => {
     const mockCreateTask = createTask as jest.Mock;
     render(
-      <RequestDescription pageTitle={i18n.t('label.request-description')} />
+      <RequestDescription pageTitle={i18n.t(LABEL_REQUEST_DESCRIPTION)} />
     );
     const submitBtn = await screen.findByTestId('submit-btn');
 

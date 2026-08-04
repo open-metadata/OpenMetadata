@@ -22,6 +22,13 @@ import { LineageLayer } from '../../../../generated/configuration/lineageSetting
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import NodeChildren from './NodeChildren.component';
 
+const SEARCH_COLUMN_INPUT = 'search-column-input';
+const COLUMN_CONTAINER = 'column-container';
+const TEST_FQN_COLUMN3 = 'test.fqn.column3';
+const TEST_FQN_COLUMN2 = 'test.fqn.column2';
+const TEST_FQN_COLUMN1 = 'test.fqn.column1';
+const COLUMN_COLUMN1 = 'column-column1';
+const COLUMN_COLUMN2 = 'column-column2';
 const mockUpdateColumnsInCurrentPages = jest.fn();
 const mockGetTestCaseExecutionSummary =
   getTestCaseExecutionSummary as jest.Mock;
@@ -35,12 +42,12 @@ const mockNode: any = {
   columns: [
     {
       name: 'column1',
-      fullyQualifiedName: 'test.fqn.column1',
+      fullyQualifiedName: TEST_FQN_COLUMN1,
       dataType: 'STRING',
     },
     {
       name: 'column2',
-      fullyQualifiedName: 'test.fqn.column2',
+      fullyQualifiedName: TEST_FQN_COLUMN2,
       dataType: 'STRING',
     },
   ],
@@ -57,7 +64,7 @@ const mockNodeWithTestSuite: any = {
 };
 
 const mockColumnsMap = new Map();
-mockColumnsMap.set(mockNode.id, new Set(['test.fqn.column1']));
+mockColumnsMap.set(mockNode.id, new Set([TEST_FQN_COLUMN1]));
 
 const defaultLineageStoreState = {
   columnsHavingLineage: mockColumnsMap,
@@ -134,7 +141,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
 
     it('should not render when isChildrenListExpanded is false', () => {
@@ -146,7 +153,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_CONTAINER)).not.toBeInTheDocument();
     });
 
     it('should not render when node has no columns', () => {
@@ -159,7 +166,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_CONTAINER)).not.toBeInTheDocument();
     });
 
     it('should not render when entity type does not support columns', () => {
@@ -177,7 +184,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_CONTAINER)).not.toBeInTheDocument();
     });
 
     it('should render when column layer is enabled', () => {
@@ -191,7 +198,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
 
     it('should render when data observability layer is enabled', () => {
@@ -205,7 +212,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
   });
 
@@ -219,7 +226,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       expect(searchInput).toBeInTheDocument();
       expect(searchInput).toHaveAttribute('placeholder', 'label.search-entity');
@@ -234,8 +241,8 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN2)).toBeInTheDocument();
     });
 
     it('should filter columns based on search input', () => {
@@ -247,12 +254,12 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'column1' } });
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.queryByTestId('column-column2')).not.toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_COLUMN2)).not.toBeInTheDocument();
     });
 
     it('should filter columns case-insensitively', () => {
@@ -264,12 +271,12 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'COLUMN1' } });
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.queryByTestId('column-column2')).not.toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_COLUMN2)).not.toBeInTheDocument();
     });
 
     it('should reset to all columns when search is cleared', () => {
@@ -281,16 +288,16 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'column1' } });
 
-      expect(screen.queryByTestId('column-column2')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_COLUMN2)).not.toBeInTheDocument();
 
       fireEvent.change(searchInput, { target: { value: '' } });
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN2)).toBeInTheDocument();
     });
 
     it('should stop event propagation on search input click', () => {
@@ -302,7 +309,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
       const stopPropagationSpy = jest.fn();
 
       searchInput.addEventListener('click', (e) => {
@@ -324,12 +331,12 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'col' } });
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN2)).toBeInTheDocument();
     });
   });
 
@@ -341,17 +348,17 @@ describe('NodeChildren Component', () => {
         columns: [
           {
             name: 'column1',
-            fullyQualifiedName: 'test.fqn.column1',
+            fullyQualifiedName: TEST_FQN_COLUMN1,
             dataType: 'STRING',
           },
           {
             name: 'column2',
-            fullyQualifiedName: 'test.fqn.column2',
+            fullyQualifiedName: TEST_FQN_COLUMN2,
             dataType: 'STRING',
           },
           {
             name: 'column3',
-            fullyQualifiedName: 'test.fqn.column3',
+            fullyQualifiedName: TEST_FQN_COLUMN3,
             dataType: 'STRING',
           },
         ],
@@ -360,7 +367,7 @@ describe('NodeChildren Component', () => {
       const columnsMap = new Map();
       columnsMap.set(
         nodeWithMultipleColumns.id,
-        new Set(['test.fqn.column1', 'test.fqn.column3'])
+        new Set([TEST_FQN_COLUMN1, TEST_FQN_COLUMN3])
       );
       mockLineageStoreState.columnsHavingLineage = columnsMap;
 
@@ -373,8 +380,8 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.queryByTestId('column-column2')).not.toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_COLUMN2)).not.toBeInTheDocument();
       expect(screen.getByTestId('column-column3')).toBeInTheDocument();
     });
 
@@ -388,8 +395,8 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN2)).toBeInTheDocument();
     });
 
     it('should update filtered columns when lineage filter is toggled', () => {
@@ -402,8 +409,8 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN2)).toBeInTheDocument();
 
       rerender(
         <NodeChildren
@@ -414,8 +421,8 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.queryByTestId('column-column2')).not.toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_COLUMN2)).not.toBeInTheDocument();
     });
 
     it('should apply search on filtered columns when lineage filter is active', () => {
@@ -425,17 +432,17 @@ describe('NodeChildren Component', () => {
         columns: [
           {
             name: 'column1',
-            fullyQualifiedName: 'test.fqn.column1',
+            fullyQualifiedName: TEST_FQN_COLUMN1,
             dataType: 'STRING',
           },
           {
             name: 'column2',
-            fullyQualifiedName: 'test.fqn.column2',
+            fullyQualifiedName: TEST_FQN_COLUMN2,
             dataType: 'STRING',
           },
           {
             name: 'column3',
-            fullyQualifiedName: 'test.fqn.column3',
+            fullyQualifiedName: TEST_FQN_COLUMN3,
             dataType: 'STRING',
           },
         ],
@@ -444,7 +451,7 @@ describe('NodeChildren Component', () => {
       const columnsMap = new Map();
       columnsMap.set(
         nodeWithMultipleColumns.id,
-        new Set(['test.fqn.column1', 'test.fqn.column3'])
+        new Set([TEST_FQN_COLUMN1, TEST_FQN_COLUMN3])
       );
       mockLineageStoreState.columnsHavingLineage = columnsMap;
 
@@ -457,11 +464,11 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'column1' } });
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
       expect(screen.queryByTestId('column-column3')).not.toBeInTheDocument();
     });
   });
@@ -533,7 +540,7 @@ describe('NodeChildren Component', () => {
         expect(mockGetTestCaseExecutionSummary).toHaveBeenCalled();
       });
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
 
     it('should only fetch test suite summary once', async () => {
@@ -569,7 +576,7 @@ describe('NodeChildren Component', () => {
   describe('CSS Classes and Styling', () => {
     it('should apply "any-column-selected" class when a column is selected', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockLineageStoreState.selectedColumn = 'test.fqn.column1' as any;
+      mockLineageStoreState.selectedColumn = TEST_FQN_COLUMN1 as any;
 
       render(
         <NodeChildren
@@ -579,7 +586,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const container = screen.getByTestId('column-container');
+      const container = screen.getByTestId(COLUMN_CONTAINER);
 
       expect(container).toHaveClass('any-column-selected');
     });
@@ -595,14 +602,14 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const container = screen.getByTestId('column-container');
+      const container = screen.getByTestId(COLUMN_CONTAINER);
 
       expect(container).toHaveClass('creating-edge');
     });
 
     it('should apply both classes when column is selected and creating edge', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockLineageStoreState.selectedColumn = 'test.fqn.column1' as any;
+      mockLineageStoreState.selectedColumn = TEST_FQN_COLUMN1 as any;
       mockLineageStoreState.isCreatingEdge = true;
 
       render(
@@ -613,7 +620,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const container = screen.getByTestId('column-container');
+      const container = screen.getByTestId(COLUMN_CONTAINER);
 
       expect(container).toHaveClass('any-column-selected');
       expect(container).toHaveClass('creating-edge');
@@ -636,7 +643,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
 
     it('should render fields for TOPIC entity', () => {
@@ -665,7 +672,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
 
     it('should render features for MLMODEL entity', () => {
@@ -692,7 +699,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
   });
 
@@ -704,7 +711,7 @@ describe('NodeChildren Component', () => {
         columns: [
           {
             name: '',
-            fullyQualifiedName: 'test.fqn.column1',
+            fullyQualifiedName: TEST_FQN_COLUMN1,
             dataType: 'STRING',
           },
         ],
@@ -718,7 +725,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
 
     it('should handle search with special characters', () => {
@@ -747,7 +754,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'column-1' } });
 
@@ -770,7 +777,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      expect(screen.getByTestId('column-container')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
     });
 
     it('should handle rapid search input changes', () => {
@@ -782,7 +789,7 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       act(() => {
         fireEvent.change(searchInput, { target: { value: 'c' } });
@@ -791,8 +798,8 @@ describe('NodeChildren Component', () => {
         fireEvent.change(searchInput, { target: { value: 'column1' } });
       });
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.queryByTestId('column-column2')).not.toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_COLUMN2)).not.toBeInTheDocument();
     });
 
     it('should handle whitespace in search input', () => {
@@ -804,12 +811,12 @@ describe('NodeChildren Component', () => {
         />
       );
 
-      const searchInput = screen.getByTestId('search-column-input');
+      const searchInput = screen.getByTestId(SEARCH_COLUMN_INPUT);
 
       fireEvent.change(searchInput, { target: { value: '   ' } });
 
-      expect(screen.getByTestId('column-column1')).toBeInTheDocument();
-      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN1)).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_COLUMN2)).toBeInTheDocument();
     });
   });
 });

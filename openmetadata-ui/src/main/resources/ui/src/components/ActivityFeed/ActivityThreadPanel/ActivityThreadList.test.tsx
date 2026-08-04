@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { mockThreadData } from './ActivityThread.mock';
 import ActivityThreadList from './ActivityThreadList';
 
+const MAIN_MESSAGE = 'main-message';
+
 jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedListWithRelativeDays: jest.fn().mockReturnValue({
     updatedFeedList: mockThreadData,
@@ -74,7 +76,7 @@ describe('Test ActivityThreadList Component', () => {
     );
 
     const thread1 = await findByTestId(container, 'thread0');
-    const mainMessage = await findByTestId(thread1, 'main-message');
+    const mainMessage = await findByTestId(thread1, MAIN_MESSAGE);
 
     const quickReplyButton = queryByTestId(thread1, 'quick-reply-button');
     const repliesContainer = queryByTestId(thread1, 'replies-container');
@@ -96,7 +98,7 @@ describe('Test ActivityThreadList Component', () => {
     );
 
     const thread2 = await findByTestId(container, 'thread1');
-    const mainMessage = await findByTestId(thread2, 'main-message');
+    const mainMessage = await findByTestId(thread2, MAIN_MESSAGE);
     const mainMessageReplyButton = queryByTestId(
       thread2,
       'main-message-reply-button'
@@ -124,13 +126,13 @@ describe('Test ActivityThreadList Component', () => {
       }
     );
     const thread1 = await findByTestId(container, 'thread0');
-    const thread1MainMessage = await findByTestId(thread1, 'main-message');
+    const thread1MainMessage = await findByTestId(thread1, MAIN_MESSAGE);
     const thread1QuickReplyEditor = queryByTestId(
       thread1,
       'quick-reply-editor'
     );
     const thread2 = await findByTestId(container, 'thread1');
-    const thread2MainMessage = await findByTestId(thread2, 'main-message');
+    const thread2MainMessage = await findByTestId(thread2, MAIN_MESSAGE);
     const thread2QuickReplyEditor = await findByTestId(
       thread2,
       'quick-reply-editor'

@@ -16,6 +16,10 @@ import React from 'react';
 import { HeatmapCellData } from './DimensionalityHeatmap.interface';
 import { HeatmapCellTooltip } from './HeatmapCellTooltip.component';
 
+const STR_2025_01_15 = '2025-01-15';
+const LABEL_PASSED_ROWS = 'label.passed-rows';
+const LABEL_FAILED_ROWS = 'label.failed-rows';
+
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <>{children}</>
 );
@@ -26,7 +30,7 @@ jest.mock('./DimensionalityHeatmap.utils', () => ({
 
 describe('HeatmapCellTooltip', () => {
   const mockCell: HeatmapCellData = {
-    date: '2025-01-15',
+    date: STR_2025_01_15,
     status: 'success',
     dimensionValue: 'Region: US',
     result: {
@@ -44,7 +48,7 @@ describe('HeatmapCellTooltip', () => {
   it('should render cell date as header', () => {
     render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
-    expect(screen.getByText('2025-01-15')).toBeInTheDocument();
+    expect(screen.getByText(STR_2025_01_15)).toBeInTheDocument();
   });
 
   it('should render dimension value', () => {
@@ -64,14 +68,14 @@ describe('HeatmapCellTooltip', () => {
   it('should render passed rows when available', () => {
     render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
-    expect(screen.getByText('label.passed-rows')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_PASSED_ROWS)).toBeInTheDocument();
     expect(screen.getByText('100')).toBeInTheDocument();
   });
 
   it('should render failed rows when available', () => {
     render(<HeatmapCellTooltip cell={mockCell} />, { wrapper: Wrapper });
 
-    expect(screen.getByText('label.failed-rows')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_FAILED_ROWS)).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
@@ -99,7 +103,7 @@ describe('HeatmapCellTooltip', () => {
       wrapper: Wrapper,
     });
 
-    expect(screen.queryByText('label.passed-rows')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_PASSED_ROWS)).not.toBeInTheDocument();
   });
 
   it('should not render failed rows when undefined', () => {
@@ -117,7 +121,7 @@ describe('HeatmapCellTooltip', () => {
       wrapper: Wrapper,
     });
 
-    expect(screen.queryByText('label.failed-rows')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_FAILED_ROWS)).not.toBeInTheDocument();
   });
 
   it('should not render test result values when empty', () => {
@@ -140,7 +144,7 @@ describe('HeatmapCellTooltip', () => {
 
   it('should handle cell without result data', () => {
     const cellWithoutResult: HeatmapCellData = {
-      date: '2025-01-15',
+      date: STR_2025_01_15,
       status: 'no-data',
       dimensionValue: 'Region: EU',
     };
@@ -149,10 +153,10 @@ describe('HeatmapCellTooltip', () => {
       wrapper: Wrapper,
     });
 
-    expect(screen.getByText('2025-01-15')).toBeInTheDocument();
+    expect(screen.getByText(STR_2025_01_15)).toBeInTheDocument();
     expect(screen.getByText('Region: EU')).toBeInTheDocument();
-    expect(screen.queryByText('label.passed-rows')).not.toBeInTheDocument();
-    expect(screen.queryByText('label.failed-rows')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_PASSED_ROWS)).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_FAILED_ROWS)).not.toBeInTheDocument();
   });
 
   it('should use fallback label for test result value without name', () => {

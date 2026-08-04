@@ -16,6 +16,8 @@ import { TWO_MINUTE_IN_MILLISECOND } from '../../../constants/constants';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import GithubStarCard from './GithubStarCard.component';
 
+const GITHUB_STAR_POPUP_CARD = 'github-star-popup-card';
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: '/my-data' }));
 });
@@ -48,7 +50,7 @@ describe('GithubStarCard', () => {
     jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
     expect(
-      await screen.findByTestId('github-star-popup-card')
+      await screen.findByTestId(GITHUB_STAR_POPUP_CARD)
     ).toBeInTheDocument();
     expect(
       screen.getByText('message.star-on-github-description')
@@ -66,7 +68,7 @@ describe('GithubStarCard', () => {
     render(<GithubStarCard />);
     jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
-    await screen.findByTestId('github-star-popup-card');
+    await screen.findByTestId(GITHUB_STAR_POPUP_CARD);
 
     // Check that both links point to the correct GitHub repository
     const links = screen.getAllByRole('link');
@@ -91,7 +93,7 @@ describe('GithubStarCard', () => {
     fireEvent.click(await screen.findByTestId('close-github-star-popup-card'));
 
     expect(
-      screen.queryByTestId('github-star-popup-card')
+      screen.queryByTestId(GITHUB_STAR_POPUP_CARD)
     ).not.toBeInTheDocument();
   });
 
@@ -104,7 +106,7 @@ describe('GithubStarCard', () => {
     jest.advanceTimersByTime(TWO_MINUTE_IN_MILLISECOND);
 
     expect(
-      screen.queryByTestId('github-star-popup-card')
+      screen.queryByTestId(GITHUB_STAR_POPUP_CARD)
     ).not.toBeInTheDocument();
   });
 });

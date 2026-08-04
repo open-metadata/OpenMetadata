@@ -14,6 +14,8 @@ import { render, screen } from '@testing-library/react';
 import TabsLabel from './TabsLabel.component';
 import { TabsLabelProps } from './TabsLabel.interface';
 
+const LOADING_SKELETON = 'loading-skeleton';
+
 const mockProps: TabsLabelProps = {
   name: 'Test tab',
   id: 'test-id',
@@ -51,7 +53,7 @@ describe('TabsLabel component', () => {
 
   it('Loading skeleton should be visible when isLoading is true', async () => {
     render(<TabsLabel {...mockProps} isLoading />);
-    const skeleton = await screen.findByTestId('loading-skeleton');
+    const skeleton = await screen.findByTestId(LOADING_SKELETON);
 
     expect(skeleton).toBeVisible();
     expect(screen.queryByTestId('count')).not.toBeInTheDocument();
@@ -59,7 +61,7 @@ describe('TabsLabel component', () => {
 
   it('Loading skeleton should be shown instead of count when isLoading is true', async () => {
     render(<TabsLabel {...mockProps} isLoading count={5} />);
-    const skeleton = await screen.findByTestId('loading-skeleton');
+    const skeleton = await screen.findByTestId(LOADING_SKELETON);
 
     expect(skeleton).toBeVisible();
     expect(screen.queryByTestId('count')).not.toBeInTheDocument();
@@ -71,6 +73,6 @@ describe('TabsLabel component', () => {
 
     expect(count).toBeVisible();
     expect(count.textContent).toStrictEqual('5');
-    expect(screen.queryByTestId('loading-skeleton')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(LOADING_SKELETON)).not.toBeInTheDocument();
   });
 });

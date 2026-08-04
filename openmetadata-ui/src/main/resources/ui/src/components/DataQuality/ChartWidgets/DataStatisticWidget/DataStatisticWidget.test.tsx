@@ -17,6 +17,11 @@ import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { DataStatisticWidgetProps } from '../../DataQuality.interface';
 import DataStatisticWidget from './DataStatisticWidget.component';
 
+const TEST_TITLE = 'Test Title';
+const VIEW_DETAILS = 'View Details';
+const TOTAL_VALUE = 'total-value';
+const DATA_STATISTIC_WIDGET_ICON = 'data-statistic-widget-icon';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Skeleton: ({
     width,
@@ -62,12 +67,12 @@ const mockIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const mockProps: DataStatisticWidgetProps = {
   name: 'test-widget',
-  title: 'Test Title',
+  title: TEST_TITLE,
   icon: mockIcon,
   dataLabel: 'items',
   countValue: 10,
   redirectPath: '/test-path',
-  linkLabel: 'View Details',
+  linkLabel: VIEW_DETAILS,
   isLoading: false,
 };
 
@@ -82,10 +87,10 @@ describe('DataStatisticWidget component', () => {
     expect(
       screen.getByTestId('test-widget-data-statistic-widget')
     ).toBeInTheDocument();
-    expect(screen.getByText('Test Title')).toBeInTheDocument();
+    expect(screen.getByText(TEST_TITLE)).toBeInTheDocument();
     expect(screen.getByTestId('test-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('total-value')).toHaveTextContent('10 items');
-    expect(screen.getByText('View Details')).toBeInTheDocument();
+    expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('10 items');
+    expect(screen.getByText(VIEW_DETAILS)).toBeInTheDocument();
   });
 
   it('should show loading state when isLoading is true', () => {
@@ -123,7 +128,7 @@ describe('DataStatisticWidget component', () => {
 
     const iconContainer = screen.getByTestId('test-icon').parentElement;
 
-    expect(iconContainer).toHaveClass('data-statistic-widget-icon', 'success');
+    expect(iconContainer).toHaveClass(DATA_STATISTIC_WIDGET_ICON, 'success');
   });
 
   it('should render correct link with redirectPath', () => {
@@ -147,7 +152,7 @@ describe('DataStatisticWidget component', () => {
 
     const link = screen.getByRole('link');
 
-    expect(link).toHaveTextContent('View Details');
+    expect(link).toHaveTextContent(VIEW_DETAILS);
   });
 
   it('should handle large count values correctly', () => {
@@ -157,7 +162,7 @@ describe('DataStatisticWidget component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('total-value')).toHaveTextContent('999999 items');
+    expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('999999 items');
   });
 
   it('should handle zero count value', () => {
@@ -167,7 +172,7 @@ describe('DataStatisticWidget component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('total-value')).toHaveTextContent('0 items');
+    expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('0 items');
   });
 
   it('should handle empty dataLabel', () => {
@@ -178,7 +183,7 @@ describe('DataStatisticWidget component', () => {
     );
 
     // When dataLabel is empty, there's no trailing space
-    expect(screen.getByTestId('total-value')).toHaveTextContent('10');
+    expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('10');
   });
 
   it('should render link with proper navigation', () => {
@@ -191,7 +196,7 @@ describe('DataStatisticWidget component', () => {
     const link = container.querySelector('a[href="/test-path"]');
 
     expect(link).toBeInTheDocument();
-    expect(link).toHaveTextContent('View Details');
+    expect(link).toHaveTextContent(VIEW_DETAILS);
   });
 
   it('should render without styleType prop', () => {
@@ -203,7 +208,7 @@ describe('DataStatisticWidget component', () => {
 
     const iconContainer = screen.getByTestId('test-icon').parentElement;
 
-    expect(iconContainer).toHaveClass('data-statistic-widget-icon');
+    expect(iconContainer).toHaveClass(DATA_STATISTIC_WIDGET_ICON);
     expect(iconContainer).not.toHaveClass('success');
     expect(iconContainer).not.toHaveClass('failed');
   });
@@ -224,10 +229,7 @@ describe('DataStatisticWidget component', () => {
 
       const iconContainer = screen.getByTestId('test-icon').parentElement;
 
-      expect(iconContainer).toHaveClass(
-        'data-statistic-widget-icon',
-        styleType
-      );
+      expect(iconContainer).toHaveClass(DATA_STATISTIC_WIDGET_ICON, styleType);
 
       unmount();
     });
@@ -261,12 +263,12 @@ describe('DataStatisticWidget component', () => {
     );
 
     // Check title element exists
-    const titleElement = screen.getByText('Test Title');
+    const titleElement = screen.getByText(TEST_TITLE);
 
     expect(titleElement).toBeInTheDocument();
 
     // Check value element
-    const valueParagraph = screen.getByTestId('total-value');
+    const valueParagraph = screen.getByTestId(TOTAL_VALUE);
 
     expect(valueParagraph).toBeInTheDocument();
     expect(valueParagraph).toHaveTextContent('10 items');

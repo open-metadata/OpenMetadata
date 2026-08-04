@@ -26,6 +26,11 @@ import {
 } from './IngestionConfigUtils';
 import { getErrorPlaceHolder } from './IngestionUtils';
 
+const EMPTY_PLACEHOLDER = 'empty-placeholder' as const;
+const TW_BG_PRIMARY = 'tw:bg-primary' as const;
+const TW_BORDER_SECONDARY = 'tw:border-secondary' as const;
+const TW_ROUNDED_XL = 'tw:rounded-xl' as const;
+
 const mockTheme = {
   primaryColor: '#000000',
 } as UIThemePreference['customTheme'];
@@ -223,7 +228,7 @@ describe('getErrorPlaceHolder', () => {
       <>{getErrorPlaceHolder(0, false, mockTheme)}</>
     );
 
-    expect(getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
   });
 
   it('should forward the caller provided className to the placeholder', () => {
@@ -238,15 +243,15 @@ describe('getErrorPlaceHolder', () => {
         )}
       </>
     );
-    const placeholder = getByTestId('empty-placeholder');
+    const placeholder = getByTestId(EMPTY_PLACEHOLDER);
 
     expect(placeholder).toHaveClass('tw:relative', 'tw:py-8');
     // Guards the visual regression: the agents card styling must never
     // leak onto a caller that did not ask for it (e.g. the ingestion table).
     expect(placeholder).not.toHaveClass(
-      'tw:bg-primary',
-      'tw:border-secondary',
-      'tw:rounded-xl'
+      TW_BG_PRIMARY,
+      TW_BORDER_SECONDARY,
+      TW_ROUNDED_XL
     );
   });
 
@@ -263,10 +268,10 @@ describe('getErrorPlaceHolder', () => {
       </>
     );
 
-    expect(getByTestId('empty-placeholder')).toHaveClass(
-      'tw:bg-primary',
-      'tw:border-secondary',
-      'tw:rounded-xl'
+    expect(getByTestId(EMPTY_PLACEHOLDER)).toHaveClass(
+      TW_BG_PRIMARY,
+      TW_BORDER_SECONDARY,
+      TW_ROUNDED_XL
     );
   });
 
@@ -275,10 +280,10 @@ describe('getErrorPlaceHolder', () => {
       <>{getErrorPlaceHolder(0, false, mockTheme)}</>
     );
 
-    expect(getByTestId('empty-placeholder')).not.toHaveClass(
-      'tw:bg-primary',
-      'tw:border-secondary',
-      'tw:rounded-xl'
+    expect(getByTestId(EMPTY_PLACEHOLDER)).not.toHaveClass(
+      TW_BG_PRIMARY,
+      TW_BORDER_SECONDARY,
+      TW_ROUNDED_XL
     );
   });
 });

@@ -13,13 +13,15 @@
 
 import { StateValue } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 
+const _37_1_2_1_4_1_4_1_4 = '37 1/2 1/4 1/4 1/4';
+
 export const mockOldState1: StateValue = {
   selectedPeriod: 'custom',
   min: '37',
   hour: '1/2',
   dow: '1/4',
   dom: '1/4',
-  cron: '37 1/2 1/4 1/4 1/4',
+  cron: _37_1_2_1_4_1_4_1_4,
 };
 
 export const mockNewFormValue1: StateValue = {
@@ -28,7 +30,7 @@ export const mockNewFormValue1: StateValue = {
   hour: '1/2',
   dow: '1/4',
   dom: '1/4',
-  cron: '37 1/2 1/4 1/4 1/4',
+  cron: _37_1_2_1_4_1_4_1_4,
 };
 
 export const mockNewFormValue2: StateValue = {
@@ -46,7 +48,7 @@ export const mockNewFormValue3: StateValue = {
   hour: '1/2',
   dow: '1/4',
   dom: '1/4',
-  cron: '37 1/2 1/4 1/4 1/4',
+  cron: _37_1_2_1_4_1_4_1_4,
 };
 
 export const mockNewFormValue4: StateValue = {
@@ -55,7 +57,7 @@ export const mockNewFormValue4: StateValue = {
   hour: '1/2',
   dow: '1/4',
   dom: '1/4',
-  cron: '37 1/2 1/4 1/4 1/4',
+  cron: _37_1_2_1_4_1_4_1_4,
 };
 
 export const mockNewFormValue5: StateValue = {

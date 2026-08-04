@@ -13,6 +13,10 @@
 
 import { TokenType } from '../../../../generated/auth/personalAccessToken';
 
+const USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN =
+  'Users with Data Consumer role use different data assets for their day to day work.';
+const DATA_CONSUMER = 'Data Consumer';
+
 export const mockUserData = {
   id: 'd6764107-e8b4-4748-b256-c86fecc66064',
   name: 'xyz',
@@ -66,9 +70,8 @@ export const mockUserData = {
       id: 'ce4df2a5-aaf5-4580-8556-254f42574aa7',
       type: 'role',
       name: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
+      displayName: DATA_CONSUMER,
       deleted: false,
       href: 'http://localhost:8585/api/v1/roles/ce4df2a5-aaf5-4580-8556-254f42574aa7',
     },
@@ -79,9 +82,8 @@ export const mockUserData = {
       type: 'role',
       name: 'DataConsumer',
       fullyQualifiedName: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
+      displayName: DATA_CONSUMER,
       deleted: false,
       href: 'http://localhost:8585/api/v1/roles/3fa30148-72f6-4205-8cab-56696cc23440',
     },
@@ -145,9 +147,8 @@ export const mockUsersTabData = {
       type: 'role',
       name: 'DataConsumer',
       fullyQualifiedName: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
+      displayName: DATA_CONSUMER,
       deleted: false,
       href: 'http://localhost:8585/api/v1/roles/5f1445a7-c299-4dde-8c5b-704c6cd68ee6',
     },
@@ -160,9 +161,8 @@ export const mockUserRole = {
       id: '3ed7b995-ce8b-4720-9beb-6f4a9c626920',
       name: 'DataConsumer',
       fullyQualifiedName: 'DataConsumer',
-      displayName: 'Data Consumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
+      displayName: DATA_CONSUMER,
+      description: USERS_WITH_DATA_CONSUMER_ROLE_USE_DIFFEREN,
       version: 0.1,
       updatedAt: 1663825430544,
       updatedBy: 'admin',

@@ -67,6 +67,18 @@ import {
   normalizeDestinationConfig,
 } from './AlertsUtilPure';
 
+const SERVICE_DATABASE_SCHEMA_TABLE_DATACONTRACT =
+  'service.database.schema.table.dataContract_test';
+const SHOULD_RETURN_UNDEFINED_FOR_UNDEFINED_INPU =
+  'should return undefined for undefined input';
+const SHOULD_HANDLE_EMPTY_ARRAY = 'should handle empty array';
+const BEARER_TOKEN123 = 'Bearer token123';
+const TEST_TABLE = 'Test Table';
+const TEST_DATABASE_TABLE = 'test.database.table';
+const TEST_ENTITY = 'Test Entity';
+const CUSTOM_ENTITY = 'Custom Entity';
+const HTTPS_EXAMPLE_COM_WEBHOOK = 'https://example.com/webhook';
+
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Skeleton: {
@@ -74,6 +86,7 @@ jest.mock('antd', () => ({
   },
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string -- module specifier cannot be a constant
 jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
@@ -374,7 +387,7 @@ describe('getFieldByArgumentType tests', () => {
     (searchQuery as jest.Mock).mockClear();
     (searchContracts as jest.Mock).mockResolvedValue([
       {
-        fullyQualifiedName: 'service.database.schema.table.dataContract_test',
+        fullyQualifiedName: SERVICE_DATABASE_SCHEMA_TABLE_DATACONTRACT,
       },
     ]);
 
@@ -386,8 +399,8 @@ describe('getFieldByArgumentType tests', () => {
 
     await expect(api('test')).resolves.toEqual([
       {
-        label: 'service.database.schema.table.dataContract_test',
-        value: 'service.database.schema.table.dataContract_test',
+        label: SERVICE_DATABASE_SCHEMA_TABLE_DATACONTRACT,
+        value: SERVICE_DATABASE_SCHEMA_TABLE_DATACONTRACT,
       },
     ]);
     expect(searchContracts).toHaveBeenCalledWith('test', 50);
@@ -1006,13 +1019,13 @@ describe('Query Parameters Utility Functions', () => {
       });
     });
 
-    it('should return undefined for undefined input', () => {
+    it(SHOULD_RETURN_UNDEFINED_FOR_UNDEFINED_INPU, () => {
       const result = getConfigQueryParamsObjectFromArray(undefined);
 
       expect(result).toBeUndefined();
     });
 
-    it('should handle empty array', () => {
+    it(SHOULD_HANDLE_EMPTY_ARRAY, () => {
       const result = getConfigQueryParamsObjectFromArray([]);
 
       expect(result).toEqual({});
@@ -1047,7 +1060,7 @@ describe('Query Parameters Utility Functions', () => {
       ]);
     });
 
-    it('should return undefined for undefined input', () => {
+    it(SHOULD_RETURN_UNDEFINED_FOR_UNDEFINED_INPU, () => {
       const result = getConfigQueryParamsArrayFromObject(undefined);
 
       expect(result).toBeUndefined();
@@ -1081,25 +1094,26 @@ describe('Headers Utility Functions', () => {
   describe('getConfigHeaderObjectFromArray', () => {
     it('should convert headers array to object', () => {
       const headersArray = [
+        // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
         { key: 'Content-Type', value: 'application/json' },
-        { key: 'Authorization', value: 'Bearer token123' },
+        { key: 'Authorization', value: BEARER_TOKEN123 },
       ];
 
       const result = getConfigHeaderObjectFromArray(headersArray);
 
       expect(result).toEqual({
         'Content-Type': 'application/json',
-        Authorization: 'Bearer token123',
+        Authorization: BEARER_TOKEN123,
       });
     });
 
-    it('should return undefined for undefined input', () => {
+    it(SHOULD_RETURN_UNDEFINED_FOR_UNDEFINED_INPU, () => {
       const result = getConfigHeaderObjectFromArray(undefined);
 
       expect(result).toBeUndefined();
     });
 
-    it('should handle empty array', () => {
+    it(SHOULD_HANDLE_EMPTY_ARRAY, () => {
       const result = getConfigHeaderObjectFromArray([]);
 
       expect(result).toEqual({});
@@ -1110,18 +1124,18 @@ describe('Headers Utility Functions', () => {
     it('should convert headers object to array', () => {
       const headersObject = {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer token123',
+        Authorization: BEARER_TOKEN123,
       };
 
       const result = getConfigHeaderArrayFromObject(headersObject);
 
       expect(result).toEqual([
         { key: 'Content-Type', value: 'application/json' },
-        { key: 'Authorization', value: 'Bearer token123' },
+        { key: 'Authorization', value: BEARER_TOKEN123 },
       ]);
     });
 
-    it('should return undefined for undefined input', () => {
+    it(SHOULD_RETURN_UNDEFINED_FOR_UNDEFINED_INPU, () => {
       const result = getConfigHeaderArrayFromObject(undefined);
 
       expect(result).toBeUndefined();
@@ -1225,8 +1239,8 @@ describe('handleAlertSave - downstream notification fields', () => {
         hits: [
           {
             _source: {
-              displayName: 'Test Table',
-              fullyQualifiedName: 'test.database.table',
+              displayName: TEST_TABLE,
+              fullyQualifiedName: TEST_DATABASE_TABLE,
               entityType: 'table',
               name: 'table',
             },
@@ -1267,8 +1281,8 @@ describe('handleAlertSave - downstream notification fields', () => {
 
       expect(result).toEqual([
         {
-          label: 'Test Table',
-          value: 'test.database.table',
+          label: TEST_TABLE,
+          value: TEST_DATABASE_TABLE,
         },
         {
           label: 'Test User',
@@ -1288,8 +1302,8 @@ describe('handleAlertSave - downstream notification fields', () => {
 
       expect(result).toEqual([
         {
-          label: 'test.database.table',
-          value: 'test.database.table',
+          label: TEST_DATABASE_TABLE,
+          value: TEST_DATABASE_TABLE,
         },
         {
           label: 'test.user',
@@ -1309,10 +1323,10 @@ describe('handleAlertSave - downstream notification fields', () => {
 
       expect(result).toEqual([
         {
-          label: 'Test Table',
+          label: TEST_TABLE,
           value: JSON.stringify({
-            displayName: 'Test Table',
-            fullyQualifiedName: 'test.database.table',
+            displayName: TEST_TABLE,
+            fullyQualifiedName: TEST_DATABASE_TABLE,
             entityType: 'table',
             name: 'table',
             type: 'table',
@@ -1351,8 +1365,8 @@ describe('handleAlertSave - downstream notification fields', () => {
 
       expect(result).toEqual([
         {
-          label: 'Test Table',
-          value: 'test.database.table',
+          label: TEST_TABLE,
+          value: TEST_DATABASE_TABLE,
         },
         {
           label: 'Test User',
@@ -1367,7 +1381,7 @@ describe('handleAlertSave - downstream notification fields', () => {
           hits: [
             {
               _source: {
-                displayName: 'Test Entity',
+                displayName: TEST_ENTITY,
                 entityType: 'test',
               },
               _index: 'test',
@@ -1385,7 +1399,7 @@ describe('handleAlertSave - downstream notification fields', () => {
 
       expect(result).toEqual([
         {
-          label: 'Test Entity',
+          label: TEST_ENTITY,
           value: '',
         },
       ]);
@@ -1397,7 +1411,7 @@ describe('handleAlertSave - downstream notification fields', () => {
           hits: [
             {
               _source: {
-                displayName: 'Test Table',
+                displayName: TEST_TABLE,
                 fullyQualifiedName: 'test.database.table1',
                 entityType: 'table',
               },
@@ -1405,7 +1419,7 @@ describe('handleAlertSave - downstream notification fields', () => {
             },
             {
               _source: {
-                displayName: 'Test Table', // Same display name
+                displayName: TEST_TABLE, // Same display name
                 fullyQualifiedName: 'test.database.table2',
                 entityType: 'table',
               },
@@ -1425,7 +1439,7 @@ describe('handleAlertSave - downstream notification fields', () => {
       // Should only return one item due to duplicate label removal
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
-        label: 'Test Table',
+        label: TEST_TABLE,
         value: 'test.database.table1',
       });
     });
@@ -1448,7 +1462,7 @@ describe('handleAlertSave - downstream notification fields', () => {
           hits: [
             {
               _source: {
-                displayName: 'Test Entity',
+                displayName: TEST_ENTITY,
                 fullyQualifiedName: 'test.entity',
                 // entityType is missing
               },
@@ -1470,9 +1484,9 @@ describe('handleAlertSave - downstream notification fields', () => {
 
       expect(result).toEqual([
         {
-          label: 'Test Entity',
+          label: TEST_ENTITY,
           value: JSON.stringify({
-            displayName: 'Test Entity',
+            displayName: TEST_ENTITY,
             fullyQualifiedName: 'test.entity',
             type: undefined, // entityType is undefined, so type should be undefined
           }),
@@ -1486,7 +1500,7 @@ describe('handleAlertSave - downstream notification fields', () => {
           hits: [
             {
               _source: {
-                displayName: 'Custom Entity',
+                displayName: CUSTOM_ENTITY,
                 fullyQualifiedName: 'custom.entity',
                 entityType: 'customType', // This should be used as the type field
                 name: 'customEntity',
@@ -1507,9 +1521,9 @@ describe('handleAlertSave - downstream notification fields', () => {
 
       expect(result).toEqual([
         {
-          label: 'Custom Entity',
+          label: CUSTOM_ENTITY,
           value: JSON.stringify({
-            displayName: 'Custom Entity',
+            displayName: CUSTOM_ENTITY,
             fullyQualifiedName: 'custom.entity',
             entityType: 'customType',
             name: 'customEntity',
@@ -1524,10 +1538,10 @@ describe('handleAlertSave - downstream notification fields', () => {
 describe('normalizeDestinationConfig', () => {
   it('should normalize config with headers and queryParams as objects to arrays', () => {
     const config = {
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer token123',
+        Authorization: BEARER_TOKEN123,
       },
       queryParams: {
         param1: 'value1',
@@ -1539,10 +1553,10 @@ describe('normalizeDestinationConfig', () => {
     const result = normalizeDestinationConfig(config);
 
     expect(result).toEqual({
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: [
         { key: 'Content-Type', value: 'application/json' },
-        { key: 'Authorization', value: 'Bearer token123' },
+        { key: 'Authorization', value: BEARER_TOKEN123 },
       ],
       queryParams: [
         { key: 'param1', value: 'value1' },
@@ -1554,21 +1568,21 @@ describe('normalizeDestinationConfig', () => {
 
   it('should handle config with undefined headers and queryParams', () => {
     const config = {
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       timeout: 30,
     };
 
     const result = normalizeDestinationConfig(config);
 
     expect(result).toEqual({
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       timeout: 30,
     });
   });
 
   it('should handle config with empty headers and queryParams objects', () => {
     const config = {
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: {},
       queryParams: {},
       timeout: 30,
@@ -1577,7 +1591,7 @@ describe('normalizeDestinationConfig', () => {
     const result = normalizeDestinationConfig(config);
 
     expect(result).toEqual({
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: [],
       queryParams: [],
       timeout: 30,
@@ -1586,7 +1600,7 @@ describe('normalizeDestinationConfig', () => {
 
   it('should omit undefined values from config', () => {
     const config = {
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -1598,7 +1612,7 @@ describe('normalizeDestinationConfig', () => {
     const result = normalizeDestinationConfig(config);
 
     expect(result).toEqual({
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: [{ key: 'Content-Type', value: 'application/json' }],
       secretKey: 'secret123',
     });
@@ -1614,7 +1628,7 @@ describe('normalizeDestinationConfig', () => {
 
   it('should handle config with only headers', () => {
     const config = {
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: {
         Authorization: 'Bearer token',
       },
@@ -1623,14 +1637,14 @@ describe('normalizeDestinationConfig', () => {
     const result = normalizeDestinationConfig(config);
 
     expect(result).toEqual({
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       headers: [{ key: 'Authorization', value: 'Bearer token' }],
     });
   });
 
   it('should handle config with only queryParams', () => {
     const config = {
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       queryParams: {
         apiKey: 'key123',
       },
@@ -1639,14 +1653,14 @@ describe('normalizeDestinationConfig', () => {
     const result = normalizeDestinationConfig(config);
 
     expect(result).toEqual({
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       queryParams: [{ key: 'apiKey', value: 'key123' }],
     });
   });
 
   it('should preserve other config properties unchanged', () => {
     const config = {
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       secretKey: 'secret',
       sendToFollowers: true,
       sendToOwners: false,
@@ -1659,7 +1673,7 @@ describe('normalizeDestinationConfig', () => {
     const result = normalizeDestinationConfig(config);
 
     expect(result).toEqual({
-      endpoint: 'https://example.com/webhook',
+      endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
       secretKey: 'secret',
       sendToFollowers: true,
       sendToOwners: false,
@@ -1676,10 +1690,10 @@ describe('getFormattedDestinations', () => {
         destinationType: 'Webhook',
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           headers: [
             { key: 'Content-Type', value: 'application/json' },
-            { key: 'Authorization', value: 'Bearer token123' },
+            { key: 'Authorization', value: BEARER_TOKEN123 },
           ],
           queryParams: [
             { key: 'param1', value: 'value1' },
@@ -1697,10 +1711,10 @@ describe('getFormattedDestinations', () => {
       {
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           headers: {
             'Content-Type': 'application/json',
-            Authorization: 'Bearer token123',
+            Authorization: BEARER_TOKEN123,
           },
           queryParams: {
             param1: 'value1',
@@ -1717,7 +1731,7 @@ describe('getFormattedDestinations', () => {
         destinationType: 'Webhook',
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           headers: [],
           queryParams: [],
         },
@@ -1732,7 +1746,7 @@ describe('getFormattedDestinations', () => {
       {
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
         },
       },
     ]);
@@ -1744,7 +1758,7 @@ describe('getFormattedDestinations', () => {
         destinationType: 'Webhook',
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
         },
       },
     ];
@@ -1757,7 +1771,7 @@ describe('getFormattedDestinations', () => {
       {
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
         },
       },
     ]);
@@ -1770,7 +1784,7 @@ describe('getFormattedDestinations', () => {
         category: 'External',
         type: 'Webhook',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
         },
       },
     ];
@@ -1784,7 +1798,7 @@ describe('getFormattedDestinations', () => {
         category: 'External',
         type: 'Webhook',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
         },
       },
     ]);
@@ -1797,7 +1811,7 @@ describe('getFormattedDestinations', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should handle empty array', () => {
+  it(SHOULD_HANDLE_EMPTY_ARRAY, () => {
     const result = getFormattedDestinations([]);
 
     expect(result).toEqual([]);
@@ -1809,7 +1823,7 @@ describe('getFormattedDestinations', () => {
         destinationType: 'Webhook',
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           secretKey: 'secret123',
           timeout: 30,
           readTimeout: 60,
@@ -1826,7 +1840,7 @@ describe('getFormattedDestinations', () => {
       {
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           secretKey: 'secret123',
           timeout: 30,
           readTimeout: 60,
@@ -1890,7 +1904,7 @@ describe('getFormattedDestinations', () => {
         destinationType: 'Webhook',
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           timeout: undefined,
           secretKey: 'secret',
           readTimeout: undefined,
@@ -1906,7 +1920,7 @@ describe('getFormattedDestinations', () => {
       {
         category: 'External',
         config: {
-          endpoint: 'https://example.com/webhook',
+          endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           secretKey: 'secret',
         },
       },

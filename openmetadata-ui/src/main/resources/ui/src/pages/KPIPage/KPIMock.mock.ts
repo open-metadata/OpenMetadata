@@ -13,12 +13,14 @@
 
 import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 
+const DESCRIPTION_KPI = 'description-kpi';
+
 export const KPI_LIST = [
   {
     id: 'dabd01bb-095d-448e-af21-0427859b99b5',
-    name: 'description-kpi',
+    name: DESCRIPTION_KPI,
     displayName: 'Description KPI',
-    fullyQualifiedName: 'description-kpi',
+    fullyQualifiedName: DESCRIPTION_KPI,
     description: '',
     metricType: KpiTargetType.Percentage,
     dataInsightChart: {
@@ -68,9 +70,9 @@ export const KPI_LIST = [
 
 export const KPI_DATA = {
   id: 'dabd01bb-095d-448e-af21-0427859b99b5',
-  name: 'description-kpi',
+  name: DESCRIPTION_KPI,
   displayName: 'Description KPI',
-  fullyQualifiedName: 'description-kpi',
+  fullyQualifiedName: DESCRIPTION_KPI,
   description: '',
   metricType: 'PERCENTAGE',
   dataInsightChart: {

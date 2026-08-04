@@ -19,6 +19,9 @@ import * as domainAPI from '../../../rest/domainAPI';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import DomainSelectableTree from './DomainSelectableTree';
 
+const DOMAIN_SELECTABLE_TREE = 'domain-selectable-tree';
+const ALL_DOMAINS_SELECTOR = 'all-domains-selector';
+
 const mockDomains: Domain[] = [
   {
     id: '1',
@@ -163,7 +166,7 @@ describe('DomainSelectableTree', () => {
   it('should render the component', async () => {
     renderComponent();
 
-    expect(screen.getByTestId('domain-selectable-tree')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_SELECTABLE_TREE)).toBeInTheDocument();
     expect(screen.getByTestId('searchbar')).toBeInTheDocument();
 
     await waitFor(() => {
@@ -183,22 +186,20 @@ describe('DomainSelectableTree', () => {
   it('should show all domains selector when showAllDomains is true', () => {
     renderComponent({ showAllDomains: true });
 
-    expect(screen.getByTestId('all-domains-selector')).toBeInTheDocument();
+    expect(screen.getByTestId(ALL_DOMAINS_SELECTOR)).toBeInTheDocument();
     expect(screen.getByText('label.all-domain-plural')).toBeInTheDocument();
   });
 
   it('should not show all domains selector when showAllDomains is false', () => {
     renderComponent({ showAllDomains: false });
 
-    expect(
-      screen.queryByTestId('all-domains-selector')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ALL_DOMAINS_SELECTOR)).not.toBeInTheDocument();
   });
 
   it('should render all domains selector with correct attributes', () => {
     renderComponent({ showAllDomains: true });
 
-    const allDomainsButton = screen.getByTestId('all-domains-selector');
+    const allDomainsButton = screen.getByTestId(ALL_DOMAINS_SELECTOR);
 
     expect(allDomainsButton).toHaveAttribute('tabIndex', '0');
   });
@@ -266,7 +267,7 @@ describe('DomainSelectableTree', () => {
 
     renderComponent({ initialDomains });
 
-    expect(screen.getByTestId('domain-selectable-tree')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_SELECTABLE_TREE)).toBeInTheDocument();
   });
 
   it('should display empty state when no domains are available', async () => {
@@ -338,7 +339,7 @@ describe('DomainSelectableTree', () => {
       expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     });
 
-    const domainSelectableTree = screen.getByTestId('domain-selectable-tree');
+    const domainSelectableTree = screen.getByTestId(DOMAIN_SELECTABLE_TREE);
 
     expect(domainSelectableTree).toBeInTheDocument();
   });
@@ -376,7 +377,7 @@ describe('DomainSelectableTree', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('domain-selectable-tree')).toBeInTheDocument();
+      expect(screen.getByTestId(DOMAIN_SELECTABLE_TREE)).toBeInTheDocument();
     });
   });
 

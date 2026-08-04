@@ -15,6 +15,10 @@ import { NodeViewProps } from '@tiptap/react';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import ImageAttachment from './ImageAttachment';
 
+const IMAGE_CONTAINER = 'image-container';
+const LOADING_STATE = 'loading-state';
+const UPLOADED_IMAGE_NODE = 'uploaded-image-node';
+
 describe('ImageAttachment', () => {
   const mockNode = {
     attrs: {
@@ -45,10 +49,10 @@ describe('ImageAttachment', () => {
       />
     );
 
-    const imageContainer = screen.getByTestId('image-container');
+    const imageContainer = screen.getByTestId(IMAGE_CONTAINER);
 
-    expect(imageContainer).toHaveClass('loading-state');
-    expect(screen.queryByTestId('uploaded-image-node')).not.toBeInTheDocument();
+    expect(imageContainer).toHaveClass(LOADING_STATE);
+    expect(screen.queryByTestId(UPLOADED_IMAGE_NODE)).not.toBeInTheDocument();
   });
 
   it('should render loading state when media is loading and needs authentication', () => {
@@ -64,10 +68,10 @@ describe('ImageAttachment', () => {
       <ImageAttachment isMediaLoading mediaSrc="" node={authenticatedNode} />
     );
 
-    const imageContainer = screen.getByTestId('image-container');
+    const imageContainer = screen.getByTestId(IMAGE_CONTAINER);
 
-    expect(imageContainer).toHaveClass('loading-state');
-    expect(screen.queryByTestId('uploaded-image-node')).not.toBeInTheDocument();
+    expect(imageContainer).toHaveClass(LOADING_STATE);
+    expect(screen.queryByTestId(UPLOADED_IMAGE_NODE)).not.toBeInTheDocument();
   });
 
   it('should render image when mediaSrc is provided', async () => {
@@ -80,7 +84,7 @@ describe('ImageAttachment', () => {
       />
     );
 
-    const image = screen.getByTestId('uploaded-image-node');
+    const image = screen.getByTestId(UPLOADED_IMAGE_NODE);
 
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', mediaSrc);
@@ -93,9 +97,7 @@ describe('ImageAttachment', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.queryByTestId('uploaded-image-node')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(UPLOADED_IMAGE_NODE)).not.toBeInTheDocument();
     });
   });
 
@@ -112,10 +114,10 @@ describe('ImageAttachment', () => {
       <ImageAttachment isMediaLoading mediaSrc="" node={authenticatedNode} />
     );
 
-    const imageContainer = screen.getByTestId('image-container');
+    const imageContainer = screen.getByTestId(IMAGE_CONTAINER);
 
-    expect(imageContainer).toHaveClass('loading-state');
-    expect(screen.queryByTestId('uploaded-image-node')).not.toBeInTheDocument();
+    expect(imageContainer).toHaveClass(LOADING_STATE);
+    expect(screen.queryByTestId(UPLOADED_IMAGE_NODE)).not.toBeInTheDocument();
   });
 
   it('should display authenticated image when mediaSrc is provided', async () => {
@@ -136,7 +138,7 @@ describe('ImageAttachment', () => {
       />
     );
 
-    const image = screen.getByTestId('uploaded-image-node');
+    const image = screen.getByTestId(UPLOADED_IMAGE_NODE);
 
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', mediaSrc);
@@ -152,7 +154,7 @@ describe('ImageAttachment', () => {
     );
 
     // Simulate image load
-    const image = screen.getByTestId('uploaded-image-node');
+    const image = screen.getByTestId(UPLOADED_IMAGE_NODE);
     fireEvent.load(image);
 
     // Rerender with new url
@@ -173,7 +175,7 @@ describe('ImageAttachment', () => {
     );
 
     // Image should be hidden again until it loads
-    expect(screen.getByTestId('uploaded-image-node')).toHaveAttribute(
+    expect(screen.getByTestId(UPLOADED_IMAGE_NODE)).toHaveAttribute(
       'src',
       'https://example.com/image1.jpg'
     );
@@ -189,7 +191,7 @@ describe('ImageAttachment', () => {
     );
 
     // Simulate image load
-    const image = screen.getByTestId('uploaded-image-node');
+    const image = screen.getByTestId(UPLOADED_IMAGE_NODE);
     fireEvent.load(image);
 
     // Rerender with new mediaSrc
@@ -202,7 +204,7 @@ describe('ImageAttachment', () => {
     );
 
     // Image should be hidden again until it loads
-    expect(screen.getByTestId('uploaded-image-node')).toHaveAttribute(
+    expect(screen.getByTestId(UPLOADED_IMAGE_NODE)).toHaveAttribute(
       'src',
       'https://example.com/image2.jpg'
     );
@@ -225,7 +227,7 @@ describe('ImageAttachment', () => {
       />
     );
 
-    const image = screen.getByTestId('uploaded-image-node');
+    const image = screen.getByTestId(UPLOADED_IMAGE_NODE);
 
     expect(image).toHaveAttribute('alt', '');
   });

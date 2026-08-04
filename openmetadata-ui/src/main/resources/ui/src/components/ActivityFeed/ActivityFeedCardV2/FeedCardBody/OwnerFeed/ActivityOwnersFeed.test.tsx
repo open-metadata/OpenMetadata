@@ -17,6 +17,10 @@ import { ActivityEvent } from '../../../../../generated/entity/activity/activity
 import { EntityReference } from '../../../../../generated/entity/type';
 import ActivityOwnersFeed from './ActivityOwnersFeed';
 
+const LABEL_OWNER_PLURAL_WITH_COLON = 'label.owner-plural-with-colon';
+const PROFILE_PICTURE_NEWOWNER = 'profile-picture-newowner';
+const PROFILE_PICTURE_OLDOWNER = 'profile-picture-oldowner';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -101,7 +105,7 @@ describe('ActivityOwnersFeed', () => {
       render(<ActivityOwnersFeed activity={activity} />);
 
       expect(
-        screen.getByText('label.owner-plural-with-colon')
+        screen.getByText(LABEL_OWNER_PLURAL_WITH_COLON)
       ).toBeInTheDocument();
     });
 
@@ -115,9 +119,7 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      expect(
-        screen.getByTestId('profile-picture-newowner')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_PICTURE_NEWOWNER)).toBeInTheDocument();
       expect(
         screen.queryByTestId('profile-picture-existing')
       ).not.toBeInTheDocument();
@@ -167,12 +169,8 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      expect(
-        screen.getByTestId('profile-picture-oldowner')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('profile-picture-newowner')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_PICTURE_OLDOWNER)).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_PICTURE_NEWOWNER)).toBeInTheDocument();
     });
 
     it('should show two owner labels when both add and remove', () => {
@@ -185,7 +183,7 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      const ownerLabels = screen.getAllByText('label.owner-plural-with-colon');
+      const ownerLabels = screen.getAllByText(LABEL_OWNER_PLURAL_WITH_COLON);
 
       expect(ownerLabels).toHaveLength(2);
     });
@@ -243,7 +241,7 @@ describe('ActivityOwnersFeed', () => {
       render(<ActivityOwnersFeed activity={activity} />);
 
       expect(
-        screen.queryByText('label.owner-plural-with-colon')
+        screen.queryByText(LABEL_OWNER_PLURAL_WITH_COLON)
       ).not.toBeInTheDocument();
     });
   });
@@ -258,9 +256,7 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      expect(
-        screen.getByTestId('profile-picture-newowner')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_PICTURE_NEWOWNER)).toBeInTheDocument();
     });
 
     it('should handle undefined newValue', () => {
@@ -272,9 +268,7 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      expect(
-        screen.getByTestId('profile-picture-oldowner')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_PICTURE_OLDOWNER)).toBeInTheDocument();
     });
 
     it('should handle invalid JSON in oldValue', () => {
@@ -286,9 +280,7 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      expect(
-        screen.getByTestId('profile-picture-newowner')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_PICTURE_NEWOWNER)).toBeInTheDocument();
     });
 
     it('should handle invalid JSON in newValue', () => {
@@ -300,9 +292,7 @@ describe('ActivityOwnersFeed', () => {
 
       render(<ActivityOwnersFeed activity={activity} />);
 
-      expect(
-        screen.getByTestId('profile-picture-oldowner')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_PICTURE_OLDOWNER)).toBeInTheDocument();
     });
 
     it('should handle single owner object instead of array', () => {

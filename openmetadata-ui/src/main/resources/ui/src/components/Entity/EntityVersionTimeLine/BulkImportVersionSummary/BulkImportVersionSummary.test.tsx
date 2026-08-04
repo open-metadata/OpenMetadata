@@ -17,6 +17,9 @@ import {
 } from '../../../../generated/type/csvImportResult';
 import { BulkImportVersionSummary } from './BulkImportVersionSummary.component';
 
+const CLOSE_MODAL_BUTTON = 'close-modal-button' as const;
+const VIEW_MORE_BUTTON = 'view-more-button' as const;
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
     .fn()
@@ -128,14 +131,14 @@ describe('BulkImportVersionSummary', () => {
   it('should render View More button', () => {
     render(<BulkImportVersionSummary csvImportResult={mockCsvImportResult} />);
 
-    expect(screen.getByTestId('view-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(VIEW_MORE_BUTTON)).toBeInTheDocument();
     expect(screen.getByText('label.view-more')).toBeInTheDocument();
   });
 
   it('should open modal when View More button is clicked', async () => {
     render(<BulkImportVersionSummary csvImportResult={mockCsvImportResult} />);
 
-    const viewMoreButton = screen.getByTestId('view-more-button');
+    const viewMoreButton = screen.getByTestId(VIEW_MORE_BUTTON);
 
     fireEvent.click(viewMoreButton);
 
@@ -152,7 +155,7 @@ describe('BulkImportVersionSummary', () => {
   it('should parse CSV and render DataGrid when modal opens', async () => {
     render(<BulkImportVersionSummary csvImportResult={mockCsvImportResult} />);
 
-    const viewMoreButton = screen.getByTestId('view-more-button');
+    const viewMoreButton = screen.getByTestId(VIEW_MORE_BUTTON);
 
     fireEvent.click(viewMoreButton);
 
@@ -172,7 +175,7 @@ describe('BulkImportVersionSummary', () => {
   it('should close modal when close button is clicked', async () => {
     render(<BulkImportVersionSummary csvImportResult={mockCsvImportResult} />);
 
-    const viewMoreButton = screen.getByTestId('view-more-button');
+    const viewMoreButton = screen.getByTestId(VIEW_MORE_BUTTON);
 
     fireEvent.click(viewMoreButton);
 
@@ -182,30 +185,28 @@ describe('BulkImportVersionSummary', () => {
       ).toBeInTheDocument()
     );
     await waitFor(() =>
-      expect(screen.getByTestId('close-modal-button')).toBeInTheDocument()
+      expect(screen.getByTestId(CLOSE_MODAL_BUTTON)).toBeInTheDocument()
     );
 
-    const closeButton = screen.getByTestId('close-modal-button');
+    const closeButton = screen.getByTestId(CLOSE_MODAL_BUTTON);
 
     fireEvent.click(closeButton);
 
     await waitFor(() => {
-      expect(
-        screen.queryByTestId('close-modal-button')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(CLOSE_MODAL_BUTTON)).not.toBeInTheDocument();
     });
   });
 
   it('should not parse CSV again if already parsed', async () => {
     render(<BulkImportVersionSummary csvImportResult={mockCsvImportResult} />);
 
-    const viewMoreButton = screen.getByTestId('view-more-button');
+    const viewMoreButton = screen.getByTestId(VIEW_MORE_BUTTON);
 
     fireEvent.click(viewMoreButton);
 
     await waitFor(() => expect(mockReadString).toHaveBeenCalledTimes(1));
 
-    const closeButton = screen.getByTestId('close-modal-button');
+    const closeButton = screen.getByTestId(CLOSE_MODAL_BUTTON);
 
     fireEvent.click(closeButton);
 
@@ -222,7 +223,7 @@ describe('BulkImportVersionSummary', () => {
 
     render(<BulkImportVersionSummary csvImportResult={resultWithoutCsv} />);
 
-    const viewMoreButton = screen.getByTestId('view-more-button');
+    const viewMoreButton = screen.getByTestId(VIEW_MORE_BUTTON);
 
     fireEvent.click(viewMoreButton);
 

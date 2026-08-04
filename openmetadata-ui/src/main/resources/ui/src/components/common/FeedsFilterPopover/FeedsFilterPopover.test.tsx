@@ -15,6 +15,9 @@ import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import FeedsFilterPopover from './FeedsFilterPopover.component';
 
+const FILTER_BUTTON = 'filter-button';
+const CANCEL_BUTTON = 'cancel-button';
+
 const onUpdateMock = jest.fn();
 const mockProps = {
   feedTab: ActivityFeedTabs.ALL,
@@ -36,7 +39,7 @@ describe('FeedsFilterPopover', () => {
       render(<FeedsFilterPopover {...mockProps} />);
     });
 
-    const filterButton = screen.getByTestId('filter-button');
+    const filterButton = screen.getByTestId(FILTER_BUTTON);
     fireEvent.click(
       filterButton,
       new MouseEvent('hover', {
@@ -45,7 +48,7 @@ describe('FeedsFilterPopover', () => {
       })
     );
 
-    expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
+    expect(screen.getByTestId(CANCEL_BUTTON)).toBeInTheDocument();
     expect(
       screen.getByTestId('selectable-list-update-btn')
     ).toBeInTheDocument();
@@ -56,7 +59,7 @@ describe('FeedsFilterPopover', () => {
       render(<FeedsFilterPopover {...mockProps} />);
     });
 
-    const filterButton = screen.getByTestId('filter-button');
+    const filterButton = screen.getByTestId(FILTER_BUTTON);
     fireEvent.click(
       filterButton,
       new MouseEvent('hover', {
@@ -76,7 +79,7 @@ describe('FeedsFilterPopover', () => {
       render(<FeedsFilterPopover {...mockProps} />);
     });
 
-    const filterButton = screen.getByTestId('filter-button');
+    const filterButton = screen.getByTestId(FILTER_BUTTON);
     fireEvent.click(
       filterButton,
       new MouseEvent('hover', {
@@ -84,9 +87,9 @@ describe('FeedsFilterPopover', () => {
         cancelable: true,
       })
     );
-    const cancelButton = screen.getByTestId('cancel-button');
+    const cancelButton = screen.getByTestId(CANCEL_BUTTON);
     fireEvent.click(cancelButton);
 
-    expect(screen.queryByTestId('cancel-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CANCEL_BUTTON)).not.toBeInTheDocument();
   });
 });

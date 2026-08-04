@@ -37,6 +37,8 @@ import './destination-form-item.less';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
+const LABEL_DESTINATION = 'label.destination' as const;
+
 function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
@@ -104,7 +106,7 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
 
   return (
     <FormCardSection
-      heading={t('label.destination')}
+      heading={t(LABEL_DESTINATION)}
       subHeading={t('message.alerts-destination-description')}>
       {getConnectionTimeoutField()}
       {getReadTimeoutField()}
@@ -112,7 +114,7 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
         name={['destinations']}
         rules={[
           {
-            validator: listLengthValidator(t('label.destination')),
+            validator: listLengthValidator(t(LABEL_DESTINATION)),
           },
         ]}>
         {(fields, { add, remove }, { errors }) => {
@@ -152,7 +154,7 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
                         type="primary"
                         onClick={() => add({})}>
                         {t('label.add-entity', {
-                          entity: t('label.destination'),
+                          entity: t(LABEL_DESTINATION),
                         })}
                       </Button>
                     </Col>

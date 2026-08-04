@@ -18,6 +18,8 @@ import entityUtilClassBase from './EntityUtilClassBase';
 import * as EntityValidationUtils from './EntityValidationUtils';
 import * as ToastUtils from './ToastUtils';
 
+const UPDATED_NAME = 'Updated Name';
+
 const mockedEntityValidationUtils = EntityValidationUtils as jest.Mocked<
   typeof EntityValidationUtils
 >;
@@ -422,7 +424,7 @@ describe('EntityUpdateUtils', () => {
       };
       const updatedEntity: TestEntity = {
         id: '1',
-        name: 'Updated Name',
+        name: UPDATED_NAME,
         tags: ['tag3'],
       };
 
@@ -448,7 +450,7 @@ describe('EntityUpdateUtils', () => {
       };
       const updatedEntity: TestEntity = {
         id: '1',
-        name: 'Updated Name',
+        name: UPDATED_NAME,
         tags: ['tag1'],
       };
 
@@ -459,7 +461,7 @@ describe('EntityUpdateUtils', () => {
         'name'
       );
 
-      expect(result.name).toBe('Updated Name');
+      expect(result.name).toBe(UPDATED_NAME);
     });
   });
 });

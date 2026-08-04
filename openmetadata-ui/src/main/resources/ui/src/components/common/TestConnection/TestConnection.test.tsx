@@ -37,6 +37,16 @@ import {
   WORKFLOW_DETAILS,
 } from './TestConnection.mock';
 
+const TEST_CONNECTION_MODAL = 'test-connection-modal' as const;
+const CONNECTION_DISPLAY_NAME = 'connection-display-name' as const;
+const TEST_CONNECTION_BTN = 'test-connection-btn' as const;
+const MESSAGE_TEST_CONNECTION_VERIFIED =
+  'message.test-connection-verified' as const;
+const MESSAGE_CONNECTION_TEST_WARNING =
+  'message.connection-test-warning' as const;
+const MESSAGE_CONNECTION_TEST_FAILED =
+  'message.connection-test-failed' as const;
+
 const mockonValidateFormRequiredFields = jest.fn();
 
 const mockProps = {
@@ -157,7 +167,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     expect(
       screen.getByText('message.ready-to-test-connection')
@@ -185,7 +195,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} isFormValidationPending />);
     });
 
-    expect(screen.getByTestId('test-connection-btn')).toBeDisabled();
+    expect(screen.getByTestId(TEST_CONNECTION_BTN)).toBeDisabled();
   });
 
   it('Should render the button only is showDetails is false', async () => {
@@ -201,7 +211,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     fireEvent.click(testConnectionButton);
 
@@ -213,7 +223,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     fireEvent.click(testConnectionButton);
 
@@ -227,13 +237,13 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
     });
 
-    expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
+    expect(screen.getByTestId(TEST_CONNECTION_MODAL)).toBeInTheDocument();
   });
 
   it('Should show Snowflake account domain in the connection modal', async () => {
@@ -252,10 +262,10 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
-    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+    expect(screen.getByTestId(CONNECTION_DISPLAY_NAME)).toHaveTextContent(
       'fsad.us-east-1.gcp.snowflakecomputing.com'
     );
   });
@@ -276,10 +286,10 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
-    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+    expect(screen.getByTestId(CONNECTION_DISPLAY_NAME)).toHaveTextContent(
       'fsad.snowflakecomputing.com'
     );
   });
@@ -301,10 +311,10 @@ describe('Test Connection Component', () => {
     account = 'fresh-account';
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
-    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+    expect(screen.getByTestId(CONNECTION_DISPLAY_NAME)).toHaveTextContent(
       'fresh-account.snowflakecomputing.com'
     );
   });
@@ -325,10 +335,10 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
-    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+    expect(screen.getByTestId(CONNECTION_DISPLAY_NAME)).toHaveTextContent(
       'https://example.com/snowflakecomputing.com.snowflakecomputing.com'
     );
   });
@@ -345,10 +355,10 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
-    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+    expect(screen.getByTestId(CONNECTION_DISPLAY_NAME)).toHaveTextContent(
       'warehouse-prod'
     );
   });
@@ -358,7 +368,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     fireEvent.click(testConnectionButton);
 
@@ -377,7 +387,7 @@ describe('Test Connection Component', () => {
     });
     const controller = new AbortController();
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -408,7 +418,7 @@ describe('Test Connection Component', () => {
     });
     const controller = new AbortController();
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -449,7 +459,7 @@ describe('Test Connection Component', () => {
     });
     const controller = new AbortController();
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -468,7 +478,7 @@ describe('Test Connection Component', () => {
     });
     const controller = new AbortController();
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -486,7 +496,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -497,7 +507,7 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.test-connection-verified')
+      screen.getByText(MESSAGE_TEST_CONNECTION_VERIFIED)
     ).toBeInTheDocument();
     expect(
       screen.getByText('message.test-connection-ready-count')
@@ -523,7 +533,7 @@ describe('Test Connection Component', () => {
       );
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -534,7 +544,7 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.connection-test-warning')
+      screen.getByText(MESSAGE_CONNECTION_TEST_WARNING)
     ).toBeInTheDocument();
 
     expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
@@ -589,7 +599,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     jest.advanceTimersByTime(2000);
@@ -597,7 +607,7 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.connection-test-warning')
+      screen.getByText(MESSAGE_CONNECTION_TEST_WARNING)
     ).toBeInTheDocument();
     expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
@@ -610,7 +620,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -619,7 +629,7 @@ describe('Test Connection Component', () => {
     jest.advanceTimersByTime(2000);
 
     expect(
-      await screen.findByText('message.connection-test-failed')
+      await screen.findByText(MESSAGE_CONNECTION_TEST_FAILED)
     ).toBeInTheDocument();
   });
 
@@ -634,7 +644,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     jest.advanceTimersByTime(2000);
@@ -654,7 +664,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -663,7 +673,7 @@ describe('Test Connection Component', () => {
     jest.advanceTimersByTime(2000);
 
     expect(
-      screen.getByText('message.connection-test-failed')
+      screen.getByText(MESSAGE_CONNECTION_TEST_FAILED)
     ).toBeInTheDocument();
   });
 
@@ -676,7 +686,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     fireEvent.click(testConnectionButton);
 
@@ -684,9 +694,7 @@ describe('Test Connection Component', () => {
       'Mysql.testConnectionDefinition'
     );
 
-    expect(
-      screen.queryByTestId('test-connection-modal')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TEST_CONNECTION_MODAL)).not.toBeInTheDocument();
 
     // add workflow API should not get called
     expect(addWorkflow).not.toHaveBeenCalled();
@@ -701,7 +709,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     expect(testConnectionButton).toBeDisabled();
     expect(
@@ -775,7 +783,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -786,7 +794,7 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.connection-test-failed')
+      screen.getByText(MESSAGE_CONNECTION_TEST_FAILED)
     ).toBeInTheDocument();
   });
 
@@ -795,7 +803,7 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} shouldValidateForm />);
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     fireEvent.click(testConnectionButton);
 
@@ -816,7 +824,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     expect(onValidateFormRequiredFields).toHaveBeenCalled();
@@ -829,18 +837,16 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
-    expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
+    expect(screen.getByTestId(TEST_CONNECTION_MODAL)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByText('Cancel Modal'));
     });
 
-    expect(
-      screen.queryByTestId('test-connection-modal')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TEST_CONNECTION_MODAL)).not.toBeInTheDocument();
   });
 
   it('Validate the form and do not initiate the testing of the connection if the required fields are not filled in.', async () => {
@@ -856,7 +862,7 @@ describe('Test Connection Component', () => {
       );
     });
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     fireEvent.click(testConnectionButton);
 
@@ -874,7 +880,7 @@ describe('Test Connection Component', () => {
 
     const controller = new AbortController();
 
-    const testConnectionButton = screen.getByTestId('test-connection-btn');
+    const testConnectionButton = screen.getByTestId(TEST_CONNECTION_BTN);
 
     await act(async () => {
       fireEvent.click(testConnectionButton);
@@ -914,7 +920,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     expect((deleteWorkflowById as jest.Mock).mock.calls).toHaveLength(
@@ -939,7 +945,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     await act(async () => {
@@ -959,7 +965,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     await act(async () => {
@@ -967,7 +973,7 @@ describe('Test Connection Component', () => {
     });
 
     expect(
-      screen.getByText('message.connection-test-failed')
+      screen.getByText(MESSAGE_CONNECTION_TEST_FAILED)
     ).toBeInTheDocument();
     expect(deleteWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id, true);
   });
@@ -1003,7 +1009,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     await act(async () => {
@@ -1011,7 +1017,7 @@ describe('Test Connection Component', () => {
     });
 
     expect(
-      await screen.findByText('message.test-connection-verified')
+      await screen.findByText(MESSAGE_TEST_CONNECTION_VERIFIED)
     ).toBeInTheDocument();
   });
 
@@ -1065,7 +1071,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     await act(async () => {
@@ -1073,7 +1079,7 @@ describe('Test Connection Component', () => {
     });
 
     expect(
-      await screen.findByText('message.connection-test-warning')
+      await screen.findByText(MESSAGE_CONNECTION_TEST_WARNING)
     ).toBeInTheDocument();
     expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
@@ -1102,7 +1108,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     await act(async () => {
@@ -1121,7 +1127,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     await act(async () => {
@@ -1129,22 +1135,20 @@ describe('Test Connection Component', () => {
     });
 
     expect(
-      await screen.findByText('message.test-connection-verified')
+      await screen.findByText(MESSAGE_TEST_CONNECTION_VERIFIED)
     ).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByText('Confirm Modal'));
     });
 
-    expect(
-      screen.queryByTestId('test-connection-modal')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TEST_CONNECTION_MODAL)).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('test-connection-details-btn'));
     });
 
-    expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
+    expect(screen.getByTestId(TEST_CONNECTION_MODAL)).toBeInTheDocument();
 
     const addWorkflowCallCount = (addWorkflow as jest.Mock).mock.calls.length;
 
@@ -1169,7 +1173,7 @@ describe('Test Connection Component', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-connection-btn'));
+      fireEvent.click(screen.getByTestId(TEST_CONNECTION_BTN));
     });
 
     jest.advanceTimersByTime(2000);

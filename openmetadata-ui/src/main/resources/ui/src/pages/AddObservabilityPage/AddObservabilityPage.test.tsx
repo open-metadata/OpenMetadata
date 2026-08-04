@@ -14,11 +14,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AddObservabilityPage from './AddObservabilityPage';
 
+const ALERT_TEST = 'alert-test';
+const LABEL_OBSERVABILITY = 'label.observability';
+
 const MOCK_DATA = [
   {
     id: '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
-    name: 'alert-test',
-    fullyQualifiedName: 'alert-test',
+    name: ALERT_TEST,
+    fullyQualifiedName: ALERT_TEST,
     href: 'http://localhost:8585/api/v1/events/subscriptions/971a21b3-eeaf-4765-bda7-4e2cdb9788de',
     version: 0.1,
     updatedAt: 1682366749021,
@@ -63,7 +66,7 @@ jest.mock('../../utils/AlertsClassBase', () => ({
 jest.mock('../../rest/observabilityAPI', () => ({
   getObservabilityAlertByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      fqn: 'alert-test',
+      fqn: ALERT_TEST,
     })
   ),
   createObservabilityAlert: jest.fn().mockImplementation(() =>
@@ -140,7 +143,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       });
     });
 
-    expect(await screen.findByText('label.observability')).toBeInTheDocument();
+    expect(await screen.findByText(LABEL_OBSERVABILITY)).toBeInTheDocument();
   });
 
   it('should display SubTitle', async () => {
@@ -173,7 +176,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
     });
     const breadcrumbLinks = screen.getAllByTestId('breadcrumb-link');
 
-    expect(breadcrumbLinks[0]).toHaveTextContent('label.observability');
+    expect(breadcrumbLinks[0]).toHaveTextContent(LABEL_OBSERVABILITY);
     expect(breadcrumbLinks[1]).toHaveTextContent('label.alert-plural');
     expect(breadcrumbLinks[2]).toHaveTextContent('label.create-entity');
   });
@@ -201,7 +204,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       });
     });
 
-    await screen.findByText('label.observability');
+    await screen.findByText(LABEL_OBSERVABILITY);
 
     expect(screen.getByPlaceholderText('label.name')).toBeInTheDocument();
   });
@@ -213,7 +216,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       });
     });
 
-    await screen.findByText('label.observability');
+    await screen.findByText(LABEL_OBSERVABILITY);
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -228,7 +231,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       });
     });
 
-    await screen.findByText('label.observability');
+    await screen.findByText(LABEL_OBSERVABILITY);
 
     expect(screen.getByTestId('source-select')).toBeInTheDocument();
   });
@@ -240,7 +243,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       });
     });
 
-    await screen.findByText('label.observability');
+    await screen.findByText(LABEL_OBSERVABILITY);
 
     expect(
       screen.getByTestId('destination-category-select')
@@ -258,7 +261,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       });
     });
 
-    await screen.findByText('label.observability');
+    await screen.findByText(LABEL_OBSERVABILITY);
 
     expect(alertsClassBase.getAddAlertFormExtraWidgets).toHaveBeenCalled();
   });
@@ -274,7 +277,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       });
     });
 
-    await screen.findByText('label.observability');
+    await screen.findByText(LABEL_OBSERVABILITY);
 
     expect(alertsClassBase.getAddAlertFormExtraButtons).toHaveBeenCalled();
   });

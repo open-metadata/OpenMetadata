@@ -25,12 +25,17 @@ import {
 } from './CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from './CustomizableLandingPageUtils';
 
+const WIDGET_WRAPPER = 'widget-wrapper';
+const EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder';
+const SHOULD_HANDLE_EMPTY_LAYOUT = 'should handle empty layout';
+const KNOWLEDGEPANEL_WIDGET1 = 'KnowledgePanel.widget1';
+
 jest.mock(
   '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper',
   () => ({
     __esModule: true,
     default: jest.fn().mockImplementation(({ children, loading }) => (
-      <div data-loading={String(Boolean(loading))} data-testid="widget-wrapper">
+      <div data-loading={String(Boolean(loading))} data-testid={WIDGET_WRAPPER}>
         {children}
       </div>
     )),
@@ -65,7 +70,7 @@ describe('CustomizableLandingPageUtils', () => {
         })
       );
 
-      expect(screen.queryByTestId('widget-wrapper')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(WIDGET_WRAPPER)).not.toBeInTheDocument();
       expect(container).toBeEmptyDOMElement();
     });
 
@@ -84,7 +89,7 @@ describe('CustomizableLandingPageUtils', () => {
         })
       );
 
-      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
+      expect(screen.getByTestId(WIDGET_WRAPPER)).toHaveAttribute(
         'data-loading',
         'true'
       );
@@ -97,7 +102,7 @@ describe('CustomizableLandingPageUtils', () => {
           handlePlaceholderWidgetKey: jest.fn(),
           widgetConfig: {
             h: 3,
-            i: 'ExtraWidget.EmptyWidgetPlaceholder',
+            i: EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
             static: false,
             w: 1,
             x: 0,
@@ -106,7 +111,7 @@ describe('CustomizableLandingPageUtils', () => {
         })
       );
 
-      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
+      expect(screen.getByTestId(WIDGET_WRAPPER)).toHaveAttribute(
         'data-loading',
         'true'
       );
@@ -141,7 +146,7 @@ describe('CustomizableLandingPageUtils', () => {
       expect(result).toEqual({ x: 0, y: 1 });
     });
 
-    it('should handle empty layout', () => {
+    it(SHOULD_HANDLE_EMPTY_LAYOUT, () => {
       const result = getNewWidgetPlacement([], 1);
 
       expect(result).toEqual({ x: 0, y: 0 });
@@ -149,35 +154,35 @@ describe('CustomizableLandingPageUtils', () => {
   });
 
   describe('getAddWidgetHandler', () => {
-    it('should handle empty layout', () => {
+    it(SHOULD_HANDLE_EMPTY_LAYOUT, () => {
       const result = getAddWidgetHandler(
         mockWidget,
-        'ExtraWidget.EmptyWidgetPlaceholder',
+        EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
         1,
         3
       )([]);
 
       expect(result).toHaveLength(2);
       expect(result[0].i).toContain('KnowledgePanel.Following');
-      expect(result[1].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[1].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
     });
 
     it('should handle null widget data', () => {
       const result = getAddWidgetHandler(
         null as unknown as Document,
-        'ExtraWidget.EmptyWidgetPlaceholder',
+        EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
         1,
         3
       )(mockCurrentAddWidget);
 
       expect(result).toHaveLength(1);
-      expect(result[0].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[0].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
     });
 
     it('should replace placeholder with new widget', () => {
       const result = getAddWidgetHandler(
         mockWidget,
-        'ExtraWidget.EmptyWidgetPlaceholder',
+        EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
         1,
         3
       )(mockCurrentAddWidget);
@@ -191,7 +196,7 @@ describe('CustomizableLandingPageUtils', () => {
       const result = getLayoutUpdateHandler([])(mockCurrentAddWidget);
 
       expect(result).toHaveLength(1);
-      expect(result[0].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[0].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
     });
 
     it('should preserve widget properties during update', () => {
@@ -218,7 +223,7 @@ describe('CustomizableLandingPageUtils', () => {
           h: 3,
           x: 0,
           y: 3,
-          i: 'ExtraWidget.EmptyWidgetPlaceholder',
+          i: EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
           static: false,
         },
       ];
@@ -230,7 +235,7 @@ describe('CustomizableLandingPageUtils', () => {
           h: 3,
           x: 0,
           y: 3,
-          i: 'ExtraWidget.EmptyWidgetPlaceholder',
+          i: EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER,
           static: false,
         },
       ];
@@ -239,7 +244,7 @@ describe('CustomizableLandingPageUtils', () => {
 
       expect(result).toHaveLength(2);
       expect(result[0].i).toBe('widget1');
-      expect(result[1].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[1].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
     });
   });
 
@@ -256,11 +261,11 @@ describe('CustomizableLandingPageUtils', () => {
       expect(result[0].i).toBe('widget2');
     });
 
-    it('should handle empty layout', () => {
+    it(SHOULD_HANDLE_EMPTY_LAYOUT, () => {
       const result = getRemoveWidgetHandler('widget1')([]);
 
       expect(result).toHaveLength(1);
-      expect(result[0].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[0].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
     });
   });
 
@@ -287,7 +292,7 @@ describe('CustomizableLandingPageUtils', () => {
   describe('getUniqueFilteredLayout', () => {
     it('should filter out non-knowledge panel widgets', () => {
       const layout = [
-        { w: 1, h: 3, x: 0, y: 0, i: 'KnowledgePanel.widget1', static: false },
+        { w: 1, h: 3, x: 0, y: 0, i: KNOWLEDGEPANEL_WIDGET1, static: false },
         { w: 1, h: 3, x: 1, y: 0, i: 'OtherWidget.widget2', static: false },
         { w: 1, h: 3, x: 2, y: 0, i: 'KnowledgePanel.widget3', static: false },
       ];
@@ -295,20 +300,20 @@ describe('CustomizableLandingPageUtils', () => {
       const result = getUniqueFilteredLayout(layout);
 
       expect(result).toHaveLength(2);
-      expect(result[0].i).toBe('KnowledgePanel.widget1');
+      expect(result[0].i).toBe(KNOWLEDGEPANEL_WIDGET1);
       expect(result[1].i).toBe('KnowledgePanel.widget3');
     });
 
     it('should remove duplicate widgets', () => {
       const layout = [
-        { w: 1, h: 3, x: 0, y: 0, i: 'KnowledgePanel.widget1', static: false },
-        { w: 1, h: 3, x: 1, y: 0, i: 'KnowledgePanel.widget1', static: false },
+        { w: 1, h: 3, x: 0, y: 0, i: KNOWLEDGEPANEL_WIDGET1, static: false },
+        { w: 1, h: 3, x: 1, y: 0, i: KNOWLEDGEPANEL_WIDGET1, static: false },
       ];
 
       const result = getUniqueFilteredLayout(layout);
 
       expect(result).toHaveLength(1);
-      expect(result[0].i).toBe('KnowledgePanel.widget1');
+      expect(result[0].i).toBe(KNOWLEDGEPANEL_WIDGET1);
     });
   });
 
@@ -317,7 +322,7 @@ describe('CustomizableLandingPageUtils', () => {
       const result = getLayoutWithEmptyWidgetPlaceholder([]);
 
       expect(result).toHaveLength(1);
-      expect(result[0].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[0].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
       expect(result[0].h).toBe(2);
     });
 
@@ -327,7 +332,7 @@ describe('CustomizableLandingPageUtils', () => {
       const result = getLayoutWithEmptyWidgetPlaceholder(layout);
 
       expect(result).toHaveLength(2);
-      expect(result[1].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[1].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
     });
   });
 
@@ -336,7 +341,7 @@ describe('CustomizableLandingPageUtils', () => {
       const result = getLandingPageLayoutWithEmptyWidgetPlaceholder([]);
 
       expect(result).toHaveLength(1);
-      expect(result[0].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[0].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
       expect(result[0].h).toBe(3);
     });
 
@@ -346,7 +351,7 @@ describe('CustomizableLandingPageUtils', () => {
       const result = getLandingPageLayoutWithEmptyWidgetPlaceholder(layout);
 
       expect(result).toHaveLength(2);
-      expect(result[1].i).toBe('ExtraWidget.EmptyWidgetPlaceholder');
+      expect(result[1].i).toBe(EXTRAWIDGET_EMPTYWIDGETPLACEHOLDER);
     });
   });
 });

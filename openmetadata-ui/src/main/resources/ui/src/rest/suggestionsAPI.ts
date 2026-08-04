@@ -30,6 +30,7 @@ import {
   TaskResolutionType,
 } from './tasksAPI';
 
+const ABOUT_PAYLOAD_CREATEDBY = 'about,payload,createdBy';
 const TASKS_BASE_URL = '/tasks';
 
 export type ListSuggestionsParams = ListParams & {
@@ -147,7 +148,7 @@ export const getSuggestionsList = async (
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: ABOUT_PAYLOAD_CREATEDBY,
     },
   });
 
@@ -170,7 +171,7 @@ export const getSuggestionsByUserId = async (
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: ABOUT_PAYLOAD_CREATEDBY,
     },
   });
 
@@ -217,7 +218,7 @@ export const approveRejectAllSuggestions = async (
       status: TaskEntityStatus.Open,
       createdById: userId,
       limit: 100,
-      fields: 'about,payload,createdBy',
+      fields: ABOUT_PAYLOAD_CREATEDBY,
     },
   });
 

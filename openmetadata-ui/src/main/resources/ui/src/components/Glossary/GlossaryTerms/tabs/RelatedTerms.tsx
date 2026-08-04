@@ -67,6 +67,8 @@ import {
   TermsRowEditorProps,
 } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
+
+const LABEL_RELATED_TERM_PLURAL = 'label.related-term-plural';
 const MAX_VISIBLE_BADGES = 5;
 
 const BadgeList: React.FC<{ items: ReactNode[] }> = ({ items }) => {
@@ -439,7 +441,7 @@ const RelatedTerms = () => {
     <div className="d-flex items-center justify-between w-full">
       <div className="d-flex items-center gap-2">
         <Typography as="span" className="text-sm font-medium">
-          {t('label.related-term-plural')}
+          {t(LABEL_RELATED_TERM_PLURAL)}
         </Typography>
         {getPrioritizedEditPermission(
           permissions,
@@ -454,7 +456,7 @@ const RelatedTerms = () => {
                 data-testid="edit-button"
                 size="small"
                 title={t('label.edit-entity', {
-                  entity: t('label.related-term-plural'),
+                  entity: t(LABEL_RELATED_TERM_PLURAL),
                 })}
                 onClick={handleStartEditing}
               />
@@ -462,7 +464,7 @@ const RelatedTerms = () => {
                 data-testid="related-term-add-button"
                 size="small"
                 title={t('label.add-entity', {
-                  entity: t('label.related-term-plural'),
+                  entity: t(LABEL_RELATED_TERM_PLURAL),
                 })}
                 onClick={handleStartAdding}
               />

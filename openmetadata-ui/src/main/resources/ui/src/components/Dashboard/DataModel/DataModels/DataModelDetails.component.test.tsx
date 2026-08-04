@@ -26,6 +26,7 @@ const mockDataModelData: DashboardDataModel = {
   id: 'test-datamodel-id',
   name: 'test-datamodel',
   displayName: 'Test Data Model',
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   fullyQualifiedName: 'test.datamodel',
   description: 'Test data model description',
   version: 0.1,

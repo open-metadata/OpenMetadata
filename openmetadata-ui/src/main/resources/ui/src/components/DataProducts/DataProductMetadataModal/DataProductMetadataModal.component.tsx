@@ -31,6 +31,8 @@ import {
 } from '../../../generated/entity/domains/dataProduct';
 import { DataProductMetadataModalProps } from './DataProductMetadataModal.interface';
 
+const LABEL_NONE = 'label.none' as const;
+
 // react-aria Select treats an empty string key as "no selection" (matches the
 // undefined-means-unset semantics of our DataProduct fields).
 const NONE = '';
@@ -74,7 +76,7 @@ const DataProductMetadataModal = ({
   };
 
   const dataProductTypeItems = [
-    { id: NONE, label: t('label.none') },
+    { id: NONE, label: t(LABEL_NONE) },
     ...Object.values(DataProductType).map((v) => ({
       id: v,
       label: t(DATA_PRODUCT_TYPE_LABEL_KEYS[v]),
@@ -82,7 +84,7 @@ const DataProductMetadataModal = ({
   ];
 
   const visibilityItems = [
-    { id: NONE, label: t('label.none') },
+    { id: NONE, label: t(LABEL_NONE) },
     ...Object.values(Visibility).map((v) => ({
       id: v,
       label: t(VISIBILITY_LABEL_KEYS[v]),
@@ -90,7 +92,7 @@ const DataProductMetadataModal = ({
   ];
 
   const portfolioPriorityItems = [
-    { id: NONE, label: t('label.none') },
+    { id: NONE, label: t(LABEL_NONE) },
     ...Object.values(PortfolioPriority).map((v) => ({
       id: v,
       label: t(PORTFOLIO_PRIORITY_LABEL_KEYS[v]),

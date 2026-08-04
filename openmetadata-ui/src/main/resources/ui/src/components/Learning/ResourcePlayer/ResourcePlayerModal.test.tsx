@@ -15,6 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { ResourcePlayerModal } from './ResourcePlayerModal.component';
 
+const TEST_RESOURCE = 'Test Resource';
+
 jest.mock('./VideoPlayer.component', () => ({
   VideoPlayer: jest
     .fn()
@@ -35,7 +37,7 @@ const createMockResource = (
 ): LearningResource => ({
   id: 'test-id',
   name: 'test-resource',
-  displayName: 'Test Resource',
+  displayName: TEST_RESOURCE,
   description: 'This is a test resource description',
   resourceType,
   source: { url: 'https://example.com/resource' },
@@ -57,7 +59,7 @@ describe('ResourcePlayerModal', () => {
       <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
     );
 
-    expect(screen.getByText('Test Resource')).toBeInTheDocument();
+    expect(screen.getByText(TEST_RESOURCE)).toBeInTheDocument();
   });
 
   it('should not render modal content when open is false', () => {
@@ -70,7 +72,7 @@ describe('ResourcePlayerModal', () => {
       />
     );
 
-    expect(screen.queryByText('Test Resource')).not.toBeInTheDocument();
+    expect(screen.queryByText(TEST_RESOURCE)).not.toBeInTheDocument();
   });
 
   it('should render VideoPlayer for Video resource type', () => {

@@ -53,6 +53,11 @@ import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchPureUtils';
+
+const LABEL_DATABASE = 'label.database';
+const LABEL_DIRECTORY = 'label.directory';
+const CLASSIFICATION_NAME_KEYWORD = 'classification.name.keyword';
+
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
@@ -277,7 +282,7 @@ class AdvancedSearchClassBase {
    */
   databaseSchemaQueryBuilderFields: Fields = {
     [EntityFields.DATABASE]: {
-      label: t('label.database'),
+      label: t(LABEL_DATABASE),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -295,7 +300,7 @@ class AdvancedSearchClassBase {
    */
   tableQueryBuilderFields: Fields = {
     [EntityFields.DATABASE]: {
-      label: t('label.database'),
+      label: t(LABEL_DATABASE),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -355,7 +360,7 @@ class AdvancedSearchClassBase {
    */
   storedProcedureQueryBuilderFields: Fields = {
     [EntityFields.DATABASE]: {
-      label: t('label.database'),
+      label: t(LABEL_DATABASE),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -608,7 +613,7 @@ class AdvancedSearchClassBase {
    */
   directorySearchQueryBuilderFields: Fields = {
     [EntityFields.PARENT]: {
-      label: t('label.entity-parent', { entity: t('label.directory') }),
+      label: t('label.entity-parent', { entity: t(LABEL_DIRECTORY) }),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -626,7 +631,7 @@ class AdvancedSearchClassBase {
    */
   fileSearchQueryBuilderFields: Fields = {
     [EntityFields.DIRECTORY]: {
-      label: t('label.directory'),
+      label: t(LABEL_DIRECTORY),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -661,7 +666,7 @@ class AdvancedSearchClassBase {
    */
   spreadsheetSearchQueryBuilderFields: Fields = {
     [EntityFields.DIRECTORY]: {
-      label: t('label.directory'),
+      label: t(LABEL_DIRECTORY),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
@@ -943,12 +948,12 @@ class AdvancedSearchClassBase {
             q: buildTermQuery(
               [
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'tier',
                   negate: true,
                 },
                 {
-                  field: 'classification.name.keyword',
+                  field: CLASSIFICATION_NAME_KEYWORD,
                   value: 'certification',
                   negate: true,
                 },
@@ -983,7 +988,7 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'certification',
               },
               true
@@ -1003,7 +1008,7 @@ class AdvancedSearchClassBase {
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             q: buildTermQuery(
               {
-                field: 'classification.name.keyword',
+                field: CLASSIFICATION_NAME_KEYWORD,
                 value: 'tier',
               },
               true

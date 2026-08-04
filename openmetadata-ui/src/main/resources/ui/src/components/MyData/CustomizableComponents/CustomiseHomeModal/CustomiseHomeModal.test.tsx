@@ -16,6 +16,12 @@ import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants'
 import CustomiseHomeModal from './CustomiseHomeModal';
 
 // Mock dependencies
+const SELECTED_COLOR = 'selected-color';
+const COLOR_CHANGE_BUTTON = 'color-change-button';
+const CANCEL_BTN = 'cancel-btn';
+const SIDEBAR_OPTION_HEADER_THEME = 'sidebar-option-header-theme';
+const SIDEBAR_OPTION_ALL_WIDGETS = 'sidebar-option-all-widgets';
+
 jest.mock('../../HeaderTheme/HeaderTheme', () => {
   return function MockHeaderTheme({
     selectedColor,
@@ -26,9 +32,9 @@ jest.mock('../../HeaderTheme/HeaderTheme', () => {
   }) {
     return (
       <div data-testid="header-theme-component">
-        <div data-testid="selected-color">{selectedColor}</div>
+        <div data-testid={SELECTED_COLOR}>{selectedColor}</div>
         <button
-          data-testid="color-change-button"
+          data-testid={COLOR_CHANGE_BUTTON}
           onClick={() => setSelectedColor('#ff0000')}>
           Change Color
         </button>
@@ -85,7 +91,7 @@ describe('CustomiseHomeModal Component', () => {
     it('should render modal footer with action buttons', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
+      expect(screen.getByTestId(CANCEL_BTN)).toBeInTheDocument();
       expect(screen.getByTestId('apply-btn')).toBeInTheDocument();
     });
   });
@@ -95,10 +101,10 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       expect(
-        screen.getByTestId('sidebar-option-header-theme')
+        screen.getByTestId(SIDEBAR_OPTION_HEADER_THEME)
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('sidebar-option-all-widgets')
+        screen.getByTestId(SIDEBAR_OPTION_ALL_WIDGETS)
       ).toBeInTheDocument();
       expect(screen.getByText('Label Header Theme')).toBeInTheDocument();
       expect(screen.getByText('Label All Widgets')).toBeInTheDocument();
@@ -107,9 +113,7 @@ describe('CustomiseHomeModal Component', () => {
     it('should have header-theme selected by default', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      const headerThemeOption = screen.getByTestId(
-        'sidebar-option-header-theme'
-      );
+      const headerThemeOption = screen.getByTestId(SIDEBAR_OPTION_HEADER_THEME);
 
       expect(headerThemeOption).toHaveClass('active');
     });
@@ -117,10 +121,8 @@ describe('CustomiseHomeModal Component', () => {
     it('should switch active option when clicked', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
-      const headerThemeOption = screen.getByTestId(
-        'sidebar-option-header-theme'
-      );
+      const allWidgetsOption = screen.getByTestId(SIDEBAR_OPTION_ALL_WIDGETS);
+      const headerThemeOption = screen.getByTestId(SIDEBAR_OPTION_HEADER_THEME);
 
       fireEvent.click(allWidgetsOption);
 
@@ -133,7 +135,7 @@ describe('CustomiseHomeModal Component', () => {
     it('should initialize with default color when no currentBackgroundColor is provided', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      expect(screen.getByTestId('selected-color')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_COLOR)).toHaveTextContent(
         DEFAULT_HEADER_BG_COLOR
       );
     });
@@ -147,9 +149,7 @@ describe('CustomiseHomeModal Component', () => {
         />
       );
 
-      expect(screen.getByTestId('selected-color')).toHaveTextContent(
-        customColor
-      );
+      expect(screen.getByTestId(SELECTED_COLOR)).toHaveTextContent(customColor);
     });
 
     it('should fallback to default color when currentBackgroundColor is undefined', () => {
@@ -160,7 +160,7 @@ describe('CustomiseHomeModal Component', () => {
         />
       );
 
-      expect(screen.getByTestId('selected-color')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_COLOR)).toHaveTextContent(
         DEFAULT_HEADER_BG_COLOR
       );
     });
@@ -170,30 +170,28 @@ describe('CustomiseHomeModal Component', () => {
     it('should update selected color when HeaderTheme component changes it', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      const colorChangeButton = screen.getByTestId('color-change-button');
+      const colorChangeButton = screen.getByTestId(COLOR_CHANGE_BUTTON);
       fireEvent.click(colorChangeButton);
 
-      expect(screen.getByTestId('selected-color')).toHaveTextContent('#ff0000');
+      expect(screen.getByTestId(SELECTED_COLOR)).toHaveTextContent('#ff0000');
     });
 
     it('should maintain color selection across sidebar navigation', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color
-      const colorChangeButton = screen.getByTestId('color-change-button');
+      const colorChangeButton = screen.getByTestId(COLOR_CHANGE_BUTTON);
       fireEvent.click(colorChangeButton);
 
       // Switch to another sidebar option and back
-      const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
-      const headerThemeOption = screen.getByTestId(
-        'sidebar-option-header-theme'
-      );
+      const allWidgetsOption = screen.getByTestId(SIDEBAR_OPTION_ALL_WIDGETS);
+      const headerThemeOption = screen.getByTestId(SIDEBAR_OPTION_HEADER_THEME);
 
       fireEvent.click(allWidgetsOption);
       fireEvent.click(headerThemeOption);
 
       // Color should still be maintained
-      expect(screen.getByTestId('selected-color')).toHaveTextContent('#ff0000');
+      expect(screen.getByTestId(SELECTED_COLOR)).toHaveTextContent('#ff0000');
     });
   });
 
@@ -201,7 +199,7 @@ describe('CustomiseHomeModal Component', () => {
     it('should call onClose when cancel button is clicked', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      const cancelButton = screen.getByTestId('cancel-btn');
+      const cancelButton = screen.getByTestId(CANCEL_BTN);
       fireEvent.click(cancelButton);
 
       expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -211,7 +209,7 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color first
-      const colorChangeButton = screen.getByTestId('color-change-button');
+      const colorChangeButton = screen.getByTestId(COLOR_CHANGE_BUTTON);
       fireEvent.click(colorChangeButton);
 
       const applyButton = screen.getByTestId('apply-btn');
@@ -227,7 +225,7 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color
-      const colorChangeButton = screen.getByTestId('color-change-button');
+      const colorChangeButton = screen.getByTestId(COLOR_CHANGE_BUTTON);
       fireEvent.click(colorChangeButton);
 
       const applyButton = screen.getByTestId('apply-btn');
@@ -259,11 +257,11 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color
-      const colorChangeButton = screen.getByTestId('color-change-button');
+      const colorChangeButton = screen.getByTestId(COLOR_CHANGE_BUTTON);
       fireEvent.click(colorChangeButton);
 
       // Cancel changes
-      const cancelButton = screen.getByTestId('cancel-btn');
+      const cancelButton = screen.getByTestId(CANCEL_BTN);
       fireEvent.click(cancelButton);
 
       expect(mockOnBackgroundColorUpdate).not.toHaveBeenCalled();
@@ -279,7 +277,7 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...propsWithoutCallback} />);
 
       // Change color first to trigger the condition
-      const colorChangeButton = screen.getByTestId('color-change-button');
+      const colorChangeButton = screen.getByTestId(COLOR_CHANGE_BUTTON);
       fireEvent.click(colorChangeButton);
 
       const applyButton = screen.getByTestId('apply-btn');
@@ -293,7 +291,7 @@ describe('CustomiseHomeModal Component', () => {
       render(<CustomiseHomeModal {...defaultProps} />);
 
       // Change color
-      const colorChangeButton = screen.getByTestId('color-change-button');
+      const colorChangeButton = screen.getByTestId(COLOR_CHANGE_BUTTON);
       fireEvent.click(colorChangeButton);
 
       const applyButton = screen.getByTestId('apply-btn');
@@ -326,7 +324,7 @@ describe('CustomiseHomeModal Component', () => {
 
       render(<CustomiseHomeModal {...defaultProps} />);
 
-      const allWidgetsOption = screen.getByTestId('sidebar-option-all-widgets');
+      const allWidgetsOption = screen.getByTestId(SIDEBAR_OPTION_ALL_WIDGETS);
       await act(async () => {
         fireEvent.click(allWidgetsOption);
       });

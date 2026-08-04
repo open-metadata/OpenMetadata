@@ -12,6 +12,9 @@
  */
 
 // Mock DateTimeUtils before any imports that might use it
+const LABEL_PASSED = 'label.passed';
+const LABEL_FAILED = 'label.failed';
+
 jest.mock('../date-time/DateTimeUtils', () => ({
   formatMonth: jest.fn((timestamp) => {
     const monthNames = [
@@ -278,19 +281,17 @@ describe('DataContractUtils', () => {
 
   describe('getContractStatusLabelBasedOnFailedResult', () => {
     it('should return passed when failed count is 0', () => {
-      expect(getContractStatusLabelBasedOnFailedResult(0)).toBe('label.passed');
+      expect(getContractStatusLabelBasedOnFailedResult(0)).toBe(LABEL_PASSED);
     });
 
     it('should return failed when failed count is greater than 0', () => {
-      expect(getContractStatusLabelBasedOnFailedResult(1)).toBe('label.failed');
-      expect(getContractStatusLabelBasedOnFailedResult(10)).toBe(
-        'label.failed'
-      );
+      expect(getContractStatusLabelBasedOnFailedResult(1)).toBe(LABEL_FAILED);
+      expect(getContractStatusLabelBasedOnFailedResult(10)).toBe(LABEL_FAILED);
     });
 
     it('should handle undefined gracefully', () => {
       expect(getContractStatusLabelBasedOnFailedResult(undefined)).toBe(
-        'label.failed'
+        LABEL_FAILED
       );
     });
   });
@@ -308,9 +309,9 @@ describe('DataContractUtils', () => {
       );
 
       expect(result).toEqual({
-        schema: 'label.passed',
-        semantic: 'label.failed',
-        quality: 'label.failed',
+        schema: LABEL_PASSED,
+        semantic: LABEL_FAILED,
+        quality: LABEL_FAILED,
       });
     });
 
@@ -324,7 +325,7 @@ describe('DataContractUtils', () => {
       );
 
       expect(result).toEqual({
-        schema: 'label.passed',
+        schema: LABEL_PASSED,
       });
     });
 

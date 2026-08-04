@@ -44,6 +44,13 @@ import {
 import TestCaseFormDrawer from './TestCaseFormDrawer';
 import { TestCaseFormDrawerProps } from './TestCaseFormV1.interface';
 
+const SERVICE_DB_SCHEMA_ORDERS = 'service.db.schema.orders';
+const DEF_TABLE_SCALAR = 'def-table-scalar';
+const DEF_COL_SET = 'def-col-set';
+const DEF_DIMENSION = 'def-dimension';
+const DEF_TABLE_DIFF = 'def-table-diff';
+const DEF_COLUMN_PARAM = 'def-column-param';
+
 jest.mock('../../../../rest/testAPI', () => ({
   getTestDefinitionById: jest.fn(),
   getListTestDefinitions: jest.fn(),
@@ -189,10 +196,10 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
   });
 
   describe('1. Table-level scalar (tableRowCountToBeBetween)', () => {
-    const TABLE_FQN = 'service.db.schema.orders';
+    const TABLE_FQN = SERVICE_DB_SCHEMA_ORDERS;
 
     const definition = {
-      id: 'def-table-scalar',
+      id: DEF_TABLE_SCALAR,
       name: 'tableRowCountToBeBetween',
       fullyQualifiedName: 'tableRowCountToBeBetween',
       parameterDefinition: [
@@ -207,7 +214,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       displayName: 'Orders Row Count Between',
       entityLink: `<#E::table::${TABLE_FQN}>`,
       testDefinition: {
-        id: 'def-table-scalar',
+        id: DEF_TABLE_SCALAR,
         fullyQualifiedName: 'tableRowCountToBeBetween',
       },
       parameterValues: [
@@ -241,7 +248,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
 
       await waitFor(() => {
         expect(mockGetTestDefinitionById).toHaveBeenCalledWith(
-          'def-table-scalar'
+          DEF_TABLE_SCALAR
         );
       });
 
@@ -279,7 +286,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
     const TABLE_FQN = 'service.db.schema.customers';
 
     const definition = {
-      id: 'def-col-set',
+      id: DEF_COL_SET,
       name: 'columnValuesToBeInSet',
       fullyQualifiedName: 'columnValuesToBeInSet',
       parameterDefinition: [
@@ -296,7 +303,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       name: 'email_domain_in_set',
       entityLink: `<#E::table::${TABLE_FQN}::columns::email_domain>`,
       testDefinition: {
-        id: 'def-col-set',
+        id: DEF_COL_SET,
         fullyQualifiedName: 'columnValuesToBeInSet',
       },
       parameterValues: [
@@ -333,7 +340,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       renderDrawer({ testCase, table });
 
       await waitFor(() => {
-        expect(mockGetTestDefinitionById).toHaveBeenCalledWith('def-col-set');
+        expect(mockGetTestDefinitionById).toHaveBeenCalledWith(DEF_COL_SET);
       });
 
       const tableSelect = await screen.findByTestId('selectedTable');
@@ -375,7 +382,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
     const TABLE_FQN = 'service.db.schema.events';
 
     const definition = {
-      id: 'def-dimension',
+      id: DEF_DIMENSION,
       name: 'columnValuesToBeNotNull',
       fullyQualifiedName: 'columnValuesToBeNotNull',
       parameterDefinition: [],
@@ -386,7 +393,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       name: 'events_country_dimension',
       entityLink: `<#E::table::${TABLE_FQN}::columns::user_id>`,
       testDefinition: {
-        id: 'def-dimension',
+        id: DEF_DIMENSION,
         fullyQualifiedName: 'columnValuesToBeNotNull',
       },
       parameterValues: [],
@@ -417,7 +424,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       renderDrawer({ testCase });
 
       await waitFor(() => {
-        expect(mockGetTestDefinitionById).toHaveBeenCalledWith('def-dimension');
+        expect(mockGetTestDefinitionById).toHaveBeenCalledWith(DEF_DIMENSION);
       });
 
       // dimensionColumns is a FieldTypes.MULTI_SELECT (Autocomplete);
@@ -442,11 +449,11 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
   });
 
   describe('4. tableDiff', () => {
-    const TABLE_FQN = 'service.db.schema.orders';
+    const TABLE_FQN = SERVICE_DB_SCHEMA_ORDERS;
     const TABLE2_FQN = 'service.db.schema.orders_backup';
 
     const definition = {
-      id: 'def-table-diff',
+      id: DEF_TABLE_DIFF,
       name: 'tableDiff',
       fullyQualifiedName: 'tableDiff',
       parameterDefinition: [
@@ -467,7 +474,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       id: 'tc-4',
       name: 'orders_vs_backup_diff',
       entityLink: `<#E::table::${TABLE_FQN}>`,
-      testDefinition: { id: 'def-table-diff', fullyQualifiedName: 'tableDiff' },
+      testDefinition: { id: DEF_TABLE_DIFF, fullyQualifiedName: 'tableDiff' },
       parameterValues: [
         { name: 'table2', value: TABLE2_FQN },
         { name: 'keyColumns', value: JSON.stringify(['order_id']) },
@@ -516,9 +523,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       renderDrawer({ testCase, table });
 
       await waitFor(() => {
-        expect(mockGetTestDefinitionById).toHaveBeenCalledWith(
-          'def-table-diff'
-        );
+        expect(mockGetTestDefinitionById).toHaveBeenCalledWith(DEF_TABLE_DIFF);
       });
 
       const table2Field = await screen.findByTestId(
@@ -690,7 +695,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
   });
 
   describe('7. Custom-SQL sqlExpression param (optional, cheap)', () => {
-    const TABLE_FQN = 'service.db.schema.orders';
+    const TABLE_FQN = SERVICE_DB_SCHEMA_ORDERS;
 
     const definition = {
       id: 'def-sql',
@@ -763,10 +768,10 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
   });
 
   describe('8. Plain column param (optional, cheap)', () => {
-    const TABLE_FQN = 'service.db.schema.orders';
+    const TABLE_FQN = SERVICE_DB_SCHEMA_ORDERS;
 
     const definition = {
-      id: 'def-column-param',
+      id: DEF_COLUMN_PARAM,
       name: 'tableRowInsertedCountToBeBetween',
       fullyQualifiedName: 'tableRowInsertedCountToBeBetween',
       parameterDefinition: [
@@ -783,7 +788,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
       name: 'orders_inserted_count',
       entityLink: `<#E::table::${TABLE_FQN}>`,
       testDefinition: {
-        id: 'def-column-param',
+        id: DEF_COLUMN_PARAM,
         fullyQualifiedName: 'tableRowInsertedCountToBeBetween',
       },
       parameterValues: [{ name: 'columnName', value: 'created_at' }],
@@ -813,7 +818,7 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
 
       await waitFor(() => {
         expect(mockGetTestDefinitionById).toHaveBeenCalledWith(
-          'def-column-param'
+          DEF_COLUMN_PARAM
         );
       });
 

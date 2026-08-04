@@ -26,6 +26,15 @@ import { createContract, updateContract } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AddDataContract from './AddDataContract';
 
+const CONTRACT_1 = 'contract-1';
+const ADD_CONTRACT_CARD = 'add-contract-card';
+const LABEL_CANCEL = 'label.cancel';
+const SAVE_CONTRACT_BTN = 'save-contract-btn';
+const LABEL_SECURITY = 'label.security';
+const SECURITY_CHANGE_BTN = 'security-change-btn';
+const MESSAGE_DATA_CONTRACT_SAVED_SUCCESSFULLY =
+  'message.data-contract-saved-successfully';
+
 jest.mock('../../../rest/contractAPI', () => ({
   createContract: jest.fn().mockResolvedValue({}),
   updateContract: jest.fn().mockResolvedValue({}),
@@ -74,7 +83,7 @@ const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
 const mockContract: DataContract = {
-  id: 'contract-1',
+  id: CONTRACT_1,
   name: 'Test Contract',
   description: 'Test Description',
   entity: {
@@ -93,6 +102,7 @@ jest.mock('../ContractDetailFormTab/ContractDetailFormTab', () => ({
     .mockImplementation(({ onChange, onNext }) => (
       <div>
         <h2>Contract Details</h2>
+        {/* eslint-disable-next-line sonarjs/no-duplicate-string */}
         <button onClick={() => onChange({ name: 'Test Contract Change' })}>
           Change
         </button>
@@ -192,12 +202,12 @@ describe('AddDataContract', () => {
     it('should render the component with default props', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
-      expect(screen.getByTestId('add-contract-card')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_CONTRACT_CARD)).toBeInTheDocument();
       expect(
         screen.getByText('label.add-contract-detail-plural')
       ).toBeInTheDocument();
-      expect(screen.getByText('label.cancel')).toBeInTheDocument();
-      expect(screen.getByTestId('save-contract-btn')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_CANCEL)).toBeInTheDocument();
+      expect(screen.getByTestId(SAVE_CONTRACT_BTN)).toBeInTheDocument();
     });
 
     it('should render with contract prop for editing mode', () => {
@@ -209,7 +219,7 @@ describe('AddDataContract', () => {
         />
       );
 
-      expect(screen.getByTestId('add-contract-card')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_CONTRACT_CARD)).toBeInTheDocument();
       expect(
         screen.getByRole('tab', { name: 'label.contract-detail-plural' })
       ).toBeInTheDocument();
@@ -232,7 +242,7 @@ describe('AddDataContract', () => {
       ).toBeInTheDocument();
 
       expect(
-        screen.getByRole('tab', { name: 'label.security' })
+        screen.getByRole('tab', { name: LABEL_SECURITY })
       ).toBeInTheDocument();
       expect(
         screen.getByRole('tab', { name: 'label.sla' })
@@ -289,19 +299,19 @@ describe('AddDataContract', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
       // Navigate to security tab
-      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      const securityTab = screen.getByRole('tab', { name: LABEL_SECURITY });
       await act(async () => {
         fireEvent.click(securityTab);
       });
 
       // Trigger security form change
-      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      const changeSecurityButton = screen.getByTestId(SECURITY_CHANGE_BTN);
       await act(async () => {
         fireEvent.click(changeSecurityButton);
       });
 
       // Save the contract
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
       await act(async () => {
         fireEvent.click(saveButton);
       });
@@ -334,17 +344,17 @@ describe('AddDataContract', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
       // Navigate to security tab and trigger change
-      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      const securityTab = screen.getByRole('tab', { name: LABEL_SECURITY });
       await act(async () => {
         fireEvent.click(securityTab);
       });
 
-      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      const changeSecurityButton = screen.getByTestId(SECURITY_CHANGE_BTN);
       await act(async () => {
         fireEvent.click(changeSecurityButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
       await act(async () => {
         fireEvent.click(saveButton);
       });
@@ -363,17 +373,17 @@ describe('AddDataContract', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
       // Navigate to security tab and trigger change
-      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      const securityTab = screen.getByRole('tab', { name: LABEL_SECURITY });
       await act(async () => {
         fireEvent.click(securityTab);
       });
 
-      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      const changeSecurityButton = screen.getByTestId(SECURITY_CHANGE_BTN);
       await act(async () => {
         fireEvent.click(changeSecurityButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
       await act(async () => {
         fireEvent.click(saveButton);
       });
@@ -400,7 +410,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
       await act(async () => {
         fireEvent.click(saveButton);
       });
@@ -428,7 +438,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -446,7 +456,7 @@ describe('AddDataContract', () => {
         })
       );
       expect(showSuccessToast).toHaveBeenCalledWith(
-        'message.data-contract-saved-successfully'
+        MESSAGE_DATA_CONTRACT_SAVED_SUCCESSFULLY
       );
       expect(mockOnSave).toHaveBeenCalled();
     });
@@ -460,7 +470,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -478,7 +488,7 @@ describe('AddDataContract', () => {
         })
       );
       expect(showSuccessToast).toHaveBeenCalledWith(
-        'message.data-contract-saved-successfully'
+        MESSAGE_DATA_CONTRACT_SAVED_SUCCESSFULLY
       );
       expect(mockOnSave).toHaveBeenCalled();
     });
@@ -498,18 +508,18 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
       });
 
       expect(updateContract).toHaveBeenCalledWith(
-        'contract-1',
+        CONTRACT_1,
         expect.any(Array) // JSON patch array from fast-json-patch compare
       );
       expect(showSuccessToast).toHaveBeenCalledWith(
-        'message.data-contract-saved-successfully'
+        MESSAGE_DATA_CONTRACT_SAVED_SUCCESSFULLY
       );
       expect(mockOnSave).toHaveBeenCalled();
     });
@@ -526,7 +536,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -554,7 +564,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -584,7 +594,7 @@ describe('AddDataContract', () => {
         />
       );
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -592,7 +602,7 @@ describe('AddDataContract', () => {
 
       // Should call updateContract with only valid semantics
       expect(updateContract).toHaveBeenCalledWith(
-        'contract-1',
+        CONTRACT_1,
         expect.any(Array) // JSON patch comparing with filtered semantics
       );
     });
@@ -606,7 +616,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -634,7 +644,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -642,7 +652,7 @@ describe('AddDataContract', () => {
 
       // For update, displayName should be set to formValues.name in the patch comparison
       expect(updateContract).toHaveBeenCalledWith(
-        'contract-1',
+        CONTRACT_1,
         expect.any(Array)
       );
     });
@@ -656,7 +666,7 @@ describe('AddDataContract', () => {
         />
       );
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       // Button should be disabled when no changes are made (isSaveDisabled logic)
       // This happens when the JSON patch comparison results in an empty array
@@ -677,7 +687,7 @@ describe('AddDataContract', () => {
         fireEvent.click(changeButton);
       });
 
-      const saveButton = screen.getByTestId('save-contract-btn');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
 
       act(() => {
         fireEvent.click(saveButton);
@@ -692,7 +702,7 @@ describe('AddDataContract', () => {
     it('should call onCancel when cancel button is clicked', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
-      const cancelButton = screen.getByText('label.cancel');
+      const cancelButton = screen.getByText(LABEL_CANCEL);
       fireEvent.click(cancelButton);
 
       expect(mockOnCancel).toHaveBeenCalled();
@@ -703,7 +713,7 @@ describe('AddDataContract', () => {
     it('should render UI mode by default', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
-      expect(screen.getByTestId('add-contract-card')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_CONTRACT_CARD)).toBeInTheDocument();
       expect(document.querySelector('.contract-tabs')).toBeInTheDocument();
     });
   });
@@ -718,7 +728,7 @@ describe('AddDataContract', () => {
         />
       );
 
-      expect(screen.getByTestId('add-contract-card')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_CONTRACT_CARD)).toBeInTheDocument();
     });
   });
 
@@ -726,8 +736,8 @@ describe('AddDataContract', () => {
     it('should have proper ARIA labels and roles', () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
-      const saveButton = screen.getByTestId('save-contract-btn');
-      const cancelButton = screen.getByText('label.cancel');
+      const saveButton = screen.getByTestId(SAVE_CONTRACT_BTN);
+      const cancelButton = screen.getByText(LABEL_CANCEL);
 
       expect(saveButton).toBeInTheDocument();
       expect(cancelButton).toBeInTheDocument();

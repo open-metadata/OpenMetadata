@@ -24,6 +24,8 @@ import {
 } from '../../constants/regex.constants';
 import { TagFormSelectItem } from './TagsPage.interface';
 
+const LABEL_NAME = 'label.name';
+
 export const getIconField = (
   t: TFunction,
   selectedColor?: string,
@@ -64,19 +66,19 @@ export const COLOR_FIELD: FieldProp = {
 export const getNameField = (disabled: boolean, t: TFunction): FieldProp => ({
   name: 'name',
   id: 'root/name',
-  label: 'label.name',
+  label: LABEL_NAME,
   required: true,
-  placeholder: 'label.name',
+  placeholder: LABEL_NAME,
   type: FieldTypes.TEXT,
   rules: {
     required: t('label.field-required', {
-      field: t('label.name'),
+      field: t(LABEL_NAME),
     }) as string,
     validate: {
       length: (value: string) =>
         NAME_LENGTH_REGEX.test(value) ||
         (t('message.entity-size-in-between', {
-          entity: t('label.name'),
+          entity: t(LABEL_NAME),
           max: 64,
           min: 2,
         }) as string),

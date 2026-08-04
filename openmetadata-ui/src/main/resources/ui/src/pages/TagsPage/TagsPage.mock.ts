@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+const STR_5E77A82E_4BC8_46EB_AF52_A383A505EEA6 =
+  '5e77a82e-4bc8-46eb-af52-a383a505eea6';
+const HTTP_LOCALHOST_8585_API_V1_CLASSIFICATIONS =
+  'http://localhost:8585/api/v1/classifications/5e77a82e-4bc8-46eb-af52-a383a505eea6';
+
 export const MOCK_ALL_CLASSIFICATIONS = {
   data: [
     {
-      id: '5e77a82e-4bc8-46eb-af52-a383a505eea6',
+      id: STR_5E77A82E_4BC8_46EB_AF52_A383A505EEA6,
       name: 'PersonalData',
       fullyQualifiedName: 'PersonalData',
       description:
@@ -21,7 +26,7 @@ export const MOCK_ALL_CLASSIFICATIONS = {
       version: 0.2,
       updatedAt: 1672147362401,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/classifications/5e77a82e-4bc8-46eb-af52-a383a505eea6',
+      href: HTTP_LOCALHOST_8585_API_V1_CLASSIFICATIONS,
       termCount: 2,
       changeDescription: {
         fieldsAdded: [],
@@ -89,14 +94,14 @@ export const MOCK_TAGS = {
       description:
         'Data that can be used to directly or indirectly identify a person.',
       classification: {
-        id: '5e77a82e-4bc8-46eb-af52-a383a505eea6',
+        id: STR_5E77A82E_4BC8_46EB_AF52_A383A505EEA6,
         type: 'classification',
         name: 'PersonalData',
         fullyQualifiedName: 'PersonalData',
         description:
           'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>_Note to Legal',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/classifications/5e77a82e-4bc8-46eb-af52-a383a505eea6',
+        href: HTTP_LOCALHOST_8585_API_V1_CLASSIFICATIONS,
       },
       version: 0.1,
       updatedAt: 1672135714301,
@@ -115,14 +120,14 @@ export const MOCK_TAGS = {
       description:
         'GDPR special category data is personal information of data subjects that is especially sensitive.',
       classification: {
-        id: '5e77a82e-4bc8-46eb-af52-a383a505eea6',
+        id: STR_5E77A82E_4BC8_46EB_AF52_A383A505EEA6,
         type: 'classification',
         name: 'PersonalData',
         fullyQualifiedName: 'PersonalData',
         description:
           'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>_Note to Legal',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/classifications/5e77a82e-4bc8-46eb-af52-a383a505eea6',
+        href: HTTP_LOCALHOST_8585_API_V1_CLASSIFICATIONS,
       },
       version: 0.1,
       updatedAt: 1672135714312,
@@ -209,12 +214,12 @@ export const MOCK_DELETE_CLASSIFICATION = {
 };
 
 export const MOCK_DELETE_TAG = {
-  id: '5e77a82e-4bc8-46eb-af52-a383a505eea6',
+  id: STR_5E77A82E_4BC8_46EB_AF52_A383A505EEA6,
   type: 'classification',
   name: 'PersonalData',
   fullyQualifiedName: 'PersonalData',
   description:
     'Tags related classifying **Personal data** as defined by **GDPR.**<br/><br/>_',
   deleted: false,
-  href: 'http://localhost:8585/api/v1/classifications/5e77a82e-4bc8-46eb-af52-a383a505eea6',
+  href: HTTP_LOCALHOST_8585_API_V1_CLASSIFICATIONS,
 };

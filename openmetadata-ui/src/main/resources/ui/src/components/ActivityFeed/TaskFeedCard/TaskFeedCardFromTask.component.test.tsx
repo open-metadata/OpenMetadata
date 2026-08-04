@@ -35,6 +35,8 @@ import {
 import EntityLink from '../../../utils/EntityLink';
 import TaskFeedCardFromTask from './TaskFeedCardFromTask.component';
 
+const ADMIN_USER = 'Admin User';
+
 const MOCK_TASK: Task = {
   id: 'task-id-1',
   taskId: 'TASK-00002',
@@ -53,7 +55,7 @@ const MOCK_TASK: Task = {
     id: 'user-id-1',
     type: 'user',
     name: 'admin',
-    displayName: 'Admin User',
+    displayName: ADMIN_USER,
   },
   assignees: [
     {
@@ -110,7 +112,7 @@ jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
     {
       id: 'user-id-1',
       name: 'admin',
-      displayName: 'Admin User',
+      displayName: ADMIN_USER,
     },
   ]),
 }));

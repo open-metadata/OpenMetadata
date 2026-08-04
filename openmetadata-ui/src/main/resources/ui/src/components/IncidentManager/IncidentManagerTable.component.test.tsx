@@ -20,6 +20,9 @@ import IncidentManagerTable, {
   IncidentManagerTableProps,
 } from './IncidentManagerTable.component';
 
+const TEST_CASE_TEST_CASE_1 = 'test-case-test_case_1';
+const TABLE_LINK = 'table-link';
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const TableMock = Object.assign(
     ({
@@ -217,7 +220,7 @@ describe('IncidentManagerTable', () => {
   it('should render a row for each resolution status record', () => {
     renderTable();
 
-    expect(screen.getByTestId('test-case-test_case_1')).toBeInTheDocument();
+    expect(screen.getByTestId(TEST_CASE_TEST_CASE_1)).toBeInTheDocument();
     expect(screen.getByTestId('test-case-test_case_2')).toBeInTheDocument();
     expect(screen.getAllByText('TestCaseIncidentManagerStatus')).toHaveLength(
       mockRecords.length
@@ -233,9 +236,7 @@ describe('IncidentManagerTable', () => {
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(screen.getByText('message.no-active-incidents')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('test-case-test_case_1')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TEST_CASE_TEST_CASE_1)).not.toBeInTheDocument();
   });
 
   it('should show loading skeletons when data is loading', () => {
@@ -266,16 +267,14 @@ describe('IncidentManagerTable', () => {
     renderTable({ isIncidentPage: true });
 
     expect(screen.getByText('label.table')).toBeInTheDocument();
-    expect(screen.getAllByTestId('table-link')).toHaveLength(
-      mockRecords.length
-    );
+    expect(screen.getAllByTestId(TABLE_LINK)).toHaveLength(mockRecords.length);
   });
 
   it('should not render the table column when isIncidentPage is false', () => {
     renderTable({ isIncidentPage: false });
 
     expect(screen.queryByText('label.table')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('table-link')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TABLE_LINK)).not.toBeInTheDocument();
   });
 
   it('should attach the origin crumbs to the test case link navigation state', () => {
@@ -286,7 +285,7 @@ describe('IncidentManagerTable', () => {
     renderTable({ breadcrumbData });
 
     const nameLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
-      ([props]) => props['data-testid'] === 'test-case-test_case_1'
+      ([props]) => props['data-testid'] === TEST_CASE_TEST_CASE_1
     );
 
     expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData });
@@ -295,7 +294,7 @@ describe('IncidentManagerTable', () => {
   it('should truncate the table link and expose the full name via title', () => {
     renderTable();
 
-    const tableLink = screen.getAllByTestId('table-link')[0];
+    const tableLink = screen.getAllByTestId(TABLE_LINK)[0];
 
     expect(tableLink).toHaveAttribute('title', 'NameFromFQN');
     expect(tableLink).toHaveClass('tw:truncate');

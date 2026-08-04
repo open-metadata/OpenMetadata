@@ -12,10 +12,12 @@
  */
 import { getSchemaEditorValue } from './SchemaEditor.utils';
 
+const A_1_B_2 = '{"a":1,"b":[2]}';
+
 describe('getSchemaEditorValue', () => {
   describe('with autoFormat enabled (default)', () => {
     it('should pretty-print compact valid JSON with a 2-space indent', () => {
-      expect(getSchemaEditorValue('{"a":1,"b":[2]}')).toBe(
+      expect(getSchemaEditorValue(A_1_B_2)).toBe(
         '{\n  "a": 1,\n  "b": [\n    2\n  ]\n}'
       );
     });
@@ -38,9 +40,7 @@ describe('getSchemaEditorValue', () => {
 
   describe('with autoFormat disabled', () => {
     it('should return compact valid JSON untouched (no live re-indent)', () => {
-      expect(getSchemaEditorValue('{"a":1,"b":[2]}', false)).toBe(
-        '{"a":1,"b":[2]}'
-      );
+      expect(getSchemaEditorValue(A_1_B_2, false)).toBe(A_1_B_2);
     });
 
     it('should preserve a partially typed JSON string verbatim', () => {

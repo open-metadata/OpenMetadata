@@ -22,6 +22,8 @@ import { userPermissions } from '../../../utils/PermissionsUtils';
 import GlossaryVersion from '../../Glossary/GlossaryVersion/GlossaryVersion.component';
 import AdminProtectedRoute from '../AdminProtectedRoute';
 
+const LABEL_GLOSSARY = 'label.glossary';
+
 const GlossaryRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
@@ -37,7 +39,7 @@ const GlossaryRouter = () => {
         element={
           <AddGlossaryPageComponent
             pageTitle={t('label.add-entity', {
-              entity: t('label.glossary'),
+              entity: t(LABEL_GLOSSARY),
             })}
           />
         }
@@ -50,7 +52,7 @@ const GlossaryRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={glossaryPermission}>
-            <GlossaryPage pageTitle={t('label.glossary')} />
+            <GlossaryPage pageTitle={t(LABEL_GLOSSARY)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.GLOSSARY.replace(ROUTES.GLOSSARY, '')}
@@ -58,7 +60,7 @@ const GlossaryRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={glossaryPermission}>
-            <GlossaryPage pageTitle={t('label.glossary')} />
+            <GlossaryPage pageTitle={t(LABEL_GLOSSARY)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.GLOSSARY_DETAILS.replace(ROUTES.GLOSSARY, '')}
@@ -66,7 +68,7 @@ const GlossaryRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={glossaryPermission}>
-            <GlossaryPage pageTitle={t('label.glossary')} />
+            <GlossaryPage pageTitle={t(LABEL_GLOSSARY)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION.replace(ROUTES.GLOSSARY, '')}
@@ -74,7 +76,7 @@ const GlossaryRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={glossaryPermission}>
-            <GlossaryPage pageTitle={t('label.glossary')} />
+            <GlossaryPage pageTitle={t(LABEL_GLOSSARY)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.GLOSSARY_DETAILS_WITH_TAB.replace(ROUTES.GLOSSARY, '')}
@@ -82,7 +84,7 @@ const GlossaryRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={glossaryPermission}>
-            <GlossaryPage pageTitle={t('label.glossary')} />
+            <GlossaryPage pageTitle={t(LABEL_GLOSSARY)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB.replace(ROUTES.GLOSSARY, '')}

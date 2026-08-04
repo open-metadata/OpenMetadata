@@ -27,6 +27,12 @@ import { CoreFieldTemplate } from './CoreFieldTemplate';
 import { CoreObjectFieldTemplate } from './CoreObjectFieldTemplate';
 import { CoreWrapIfAdditionalTemplate } from './CoreWrapIfAdditionalTemplate';
 
+const ADVANCED_PROPERTY = 'advanced property';
+const ARIA_EXPANDED = 'aria-expanded';
+const DATA_FIELD_NAME = 'data-field-name';
+const CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W =
+  'core-object-field-template-property-full-width';
+
 const wrapIfAdditionalRegistry = {
   templates: {
     WrapIfAdditionalTemplate: ({ children }: { children: React.ReactNode }) => (
@@ -320,7 +326,7 @@ describe('FormBuilderV1 templates', () => {
     );
 
     expect(screen.getByText('basic property')).toBeInTheDocument();
-    expect(screen.queryByText('advanced property')).not.toBeInTheDocument();
+    expect(screen.queryByText(ADVANCED_PROPERTY)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('add-item-Connection'));
 
@@ -330,17 +336,17 @@ describe('FormBuilderV1 templates', () => {
       name: 'Connection label.advanced-config',
     });
 
-    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(advancedConfigToggle).toHaveAttribute(ARIA_EXPANDED, 'false');
 
     fireEvent.click(advancedConfigToggle);
 
-    expect(screen.getByText('advanced property')).toBeInTheDocument();
-    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(ADVANCED_PROPERTY)).toBeInTheDocument();
+    expect(advancedConfigToggle).toHaveAttribute(ARIA_EXPANDED, 'true');
 
     fireEvent.click(advancedConfigToggle);
 
-    expect(screen.queryByText('advanced property')).not.toBeInTheDocument();
-    expect(advancedConfigToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText(ADVANCED_PROPERTY)).not.toBeInTheDocument();
+    expect(advancedConfigToggle).toHaveAttribute(ARIA_EXPANDED, 'false');
   });
 
   it('adds stable layout classes for sample data storage nested configs', () => {
@@ -404,7 +410,7 @@ describe('FormBuilderV1 templates', () => {
         container.querySelectorAll(
           '.core-object-field-template-sample-data-config > .core-object-field-template-body > .core-object-field-template-property'
         )
-      ).map((element) => element.getAttribute('data-field-name'))
+      ).map((element) => element.getAttribute(DATA_FIELD_NAME))
     ).toEqual([
       'bucketName',
       'prefix',
@@ -498,14 +504,14 @@ describe('FormBuilderV1 templates', () => {
         container.querySelectorAll(
           '.core-object-field-template-storage-config > .core-object-field-template-body-gated > .core-object-field-template-property'
         )
-      ).map((element) => element.getAttribute('data-field-name'))
+      ).map((element) => element.getAttribute(DATA_FIELD_NAME))
     ).toEqual(['enabled']);
     expect(
       Array.from(
         container.querySelectorAll(
           '.core-object-field-template-storage-config .core-object-field-template-credential-field-grid > .core-object-field-template-property'
         )
-      ).map((element) => element.getAttribute('data-field-name'))
+      ).map((element) => element.getAttribute(DATA_FIELD_NAME))
     ).toEqual(['awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
     expect(screen.getByTestId('field-awsAccessKeyId')).toBeDisabled();
     expect(screen.getByTestId('field-awsSecretAccessKey')).toBeDisabled();
@@ -533,7 +539,7 @@ describe('FormBuilderV1 templates', () => {
       container.querySelector(
         '.core-object-field-template-property-assumeRoleArn'
       )
-    ).not.toHaveClass('core-object-field-template-property-full-width');
+    ).not.toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
   });
 
   it('uses a generic two-column layout for nested credential configs', () => {
@@ -603,20 +609,20 @@ describe('FormBuilderV1 templates', () => {
       container.querySelector(
         '.core-object-field-template-property-connectTimeout'
       )
-    ).not.toHaveClass('core-object-field-template-property-full-width');
+    ).not.toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       container.querySelector(
         '.core-object-field-template-property-requestTimeout'
       )
-    ).not.toHaveClass('core-object-field-template-property-full-width');
+    ).not.toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       container.querySelector('.core-object-field-template-property-token')
-    ).toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       container.querySelector(
         '.core-object-field-template-property-secureConnectBundle'
       )
-    ).toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
   });
 
   it('disables static AWS credentials for AWS S3 configs with IAM auth', () => {

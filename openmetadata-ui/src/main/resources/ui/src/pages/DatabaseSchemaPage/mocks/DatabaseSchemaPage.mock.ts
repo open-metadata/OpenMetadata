@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+const _06F0C9EF_708A_47E1_A36E_0A2B864C9E5D =
+  '06f0c9ef-708a-47e1-a36e-0a2b864c9e5d' as const;
+
 export const mockGetDatabaseSchemaDetailsByFQNData = {
-  id: '06f0c9ef-708a-47e1-a36e-0a2b864c9e5d',
+  id: _06F0C9EF_708A_47E1_A36E_0A2B864C9E5D,
   name: 'shopify',
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
   description:
@@ -46,7 +49,7 @@ export const mockPostThreadData = {
   href: 'http://localhost:8585/api/v1/feed/f5d62891-3381-4adc-91dc-0a886b9cd751',
   threadTs: 1670412439695,
   about: '<#E::databaseSchema::sample_data.ecommerce_db.shopify::description>',
-  entityId: '06f0c9ef-708a-47e1-a36e-0a2b864c9e5d',
+  entityId: _06F0C9EF_708A_47E1_A36E_0A2B864C9E5D,
   createdBy: 'admin',
   updatedAt: 1670412439696,
   updatedBy: 'admin',
@@ -58,7 +61,7 @@ export const mockPostThreadData = {
 };
 
 export const mockPatchDatabaseSchemaDetailsData = {
-  id: '06f0c9ef-708a-47e1-a36e-0a2b864c9e5d',
+  id: _06F0C9EF_708A_47E1_A36E_0A2B864C9E5D,
   name: 'shopify',
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
   description:

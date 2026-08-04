@@ -51,6 +51,14 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { TestDefinitionFormBodyProps } from './TestDefinitionForm.interface';
 import { TEST_DEFINITION_FIELD_DOCS } from './testDefinitionFormDocs';
 
+const LABEL_SUPPORTED_DATA_TYPE_PLURAL = 'label.supported-data-type-plural';
+const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
+const LABEL_TEST_PLATFORM_PLURAL = 'label.test-platform-plural';
+const LABEL_DISPLAY_NAME = 'label.display-name';
+const LABEL_SELECT_FIELD = 'label.select-field';
+const LABEL_ENTITY_TYPE = 'label.entity-type';
+const LABEL_SQL_QUERY = 'label.sql-query';
+const LABEL_NAME = 'label.name';
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/CodeEditor'))
 );
@@ -107,7 +115,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   // so register their docs manually and spread the returned props on the wrapper.
   const sqlExpressionDoc = useFieldDoc({
     name: 'sqlExpression',
-    label: t('label.sql-query'),
+    label: t(LABEL_SQL_QUERY),
     doc: resolveDoc('sqlExpression'),
   });
   const parameterDefinitionDoc = useFieldDoc({
@@ -161,7 +169,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   const primaryFields: FieldProp[] = [
     {
       name: 'name',
-      label: t('label.name'),
+      label: t(LABEL_NAME),
       type: FieldTypes.TEXT,
       required: true,
       id: 'root/name',
@@ -170,8 +178,8 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         entity: t('label.test-definition'),
       }),
       rules: {
-        required: t('message.field-text-is-required', {
-          fieldText: t('label.name'),
+        required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+          fieldText: t(LABEL_NAME),
         }),
       },
       props: {
@@ -181,13 +189,13 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     },
     {
       name: 'displayName',
-      label: t('label.display-name'),
+      label: t(LABEL_DISPLAY_NAME),
       type: FieldTypes.TEXT,
       required: false,
       id: 'root/displayName',
       doc: resolveDoc('displayName'),
       placeholder: t('label.enter-entity-name', {
-        entity: t('label.display-name'),
+        entity: t(LABEL_DISPLAY_NAME),
       }),
       props: {
         'data-testid': 'display-name',
@@ -212,15 +220,15 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   const classificationFields: FieldProp[] = [
     {
       name: 'entityType',
-      label: t('label.entity-type'),
+      label: t(LABEL_ENTITY_TYPE),
       type: FieldTypes.SELECT,
       required: true,
       id: 'root/entityType',
       doc: resolveDoc('entityType'),
-      placeholder: t('label.select-field', { field: t('label.entity-type') }),
+      placeholder: t(LABEL_SELECT_FIELD, { field: t(LABEL_ENTITY_TYPE) }),
       rules: {
-        required: t('message.field-text-is-required', {
-          fieldText: t('label.entity-type'),
+        required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+          fieldText: t(LABEL_ENTITY_TYPE),
         }),
       },
       props: {
@@ -231,17 +239,17 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     },
     {
       name: 'testPlatforms',
-      label: t('label.test-platform-plural'),
+      label: t(LABEL_TEST_PLATFORM_PLURAL),
       type: FieldTypes.MULTI_SELECT,
       required: true,
       id: 'root/testPlatforms',
       doc: resolveDoc('testPlatforms'),
-      placeholder: t('label.select-field', {
-        field: t('label.test-platform-plural'),
+      placeholder: t(LABEL_SELECT_FIELD, {
+        field: t(LABEL_TEST_PLATFORM_PLURAL),
       }),
       rules: {
-        required: t('message.field-text-is-required', {
-          fieldText: t('label.test-platform-plural'),
+        required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+          fieldText: t(LABEL_TEST_PLATFORM_PLURAL),
         }),
       },
       props: {
@@ -257,7 +265,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       required: false,
       id: 'root/dataQualityDimension',
       doc: resolveDoc('dataQualityDimension'),
-      placeholder: t('label.select-field', {
+      placeholder: t(LABEL_SELECT_FIELD, {
         field: t('label.data-quality-dimension'),
       }),
       props: {
@@ -283,13 +291,13 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     },
     {
       name: 'supportedDataTypes',
-      label: t('label.supported-data-type-plural'),
+      label: t(LABEL_SUPPORTED_DATA_TYPE_PLURAL),
       type: FieldTypes.MULTI_SELECT,
       required: false,
       id: 'root/supportedDataTypes',
       doc: resolveDoc('supportedDataTypes'),
-      placeholder: t('label.select-field', {
-        field: t('label.supported-data-type-plural'),
+      placeholder: t(LABEL_SELECT_FIELD, {
+        field: t(LABEL_SUPPORTED_DATA_TYPE_PLURAL),
       }),
       rules: {
         validate: (value?: FormSelectItem[]) => {
@@ -302,8 +310,8 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
           );
           let result: string | boolean = true;
           if (hasOpenMetadata && (value ?? []).length === 0) {
-            result = t('message.field-text-is-required', {
-              fieldText: t('label.supported-data-type-plural'),
+            result = t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+              fieldText: t(LABEL_SUPPORTED_DATA_TYPE_PLURAL),
             });
           }
 
@@ -358,15 +366,15 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         onClick={() => handleActiveField('root/sqlExpression')}
         {...sqlExpressionDoc}>
         <FormItemLabel
-          label={t('label.sql-query')}
+          label={t(LABEL_SQL_QUERY)}
           tooltip={t('message.test-definition-sql-query-help')}
         />
         {isReadOnlyField ? (
           <textarea
             disabled
-            aria-label={t('label.sql-query')}
+            aria-label={t(LABEL_SQL_QUERY)}
             className="tw:min-h-30 tw:w-full tw:resize-y tw:rounded-lg tw:border tw:border-solid tw:border-secondary tw:bg-secondary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary"
-            placeholder={t('label.sql-query')}
+            placeholder={t(LABEL_SQL_QUERY)}
             rows={8}
             value={sqlExpression ?? ''}
           />
@@ -415,14 +423,14 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
             </div>
             {getField({
               name: `parameterDefinition.${index}.name`,
-              label: t('label.name'),
+              label: t(LABEL_NAME),
               type: FieldTypes.TEXT,
               required: true,
               id: `root/parameterDefinition/${index}/name`,
               placeholder: t('label.parameter-name'),
               rules: {
-                required: t('message.field-text-is-required', {
-                  fieldText: t('label.name'),
+                required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                  fieldText: t(LABEL_NAME),
                 }),
               },
               props: {
@@ -432,7 +440,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
             } as FieldProp)}
             {getField({
               name: `parameterDefinition.${index}.displayName`,
-              label: t('label.display-name'),
+              label: t(LABEL_DISPLAY_NAME),
               type: FieldTypes.TEXT,
               required: false,
               id: `root/parameterDefinition/${index}/displayName`,
@@ -460,7 +468,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
               type: FieldTypes.AUTOCOMPLETE,
               required: false,
               id: `root/parameterDefinition/${index}/dataType`,
-              placeholder: t('label.select-field', {
+              placeholder: t(LABEL_SELECT_FIELD, {
                 field: t('label.data-type'),
               }),
               props: {

@@ -15,14 +15,15 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMenuItem from './DraggableMenuItem.component';
 
+const TEST_COLUMN = 'Test Column';
 const mockOnSelect = jest.fn();
 const mockOnMoveItem = jest.fn();
 
 const mockProps = {
-  currentItem: { label: 'Test Column', value: 'test' },
+  currentItem: { label: TEST_COLUMN, value: 'test' },
   index: 0,
   itemList: [
-    { label: 'Test Column', value: 'test' },
+    { label: TEST_COLUMN, value: 'test' },
     { label: 'Another Column', value: 'another' },
   ],
   selectedOptions: ['test'],
@@ -42,7 +43,7 @@ describe('DraggableMenuItem', () => {
   it('should render the component', () => {
     renderComponent();
 
-    expect(screen.getByText('Test Column')).toBeInTheDocument();
+    expect(screen.getByText(TEST_COLUMN)).toBeInTheDocument();
   });
 
   it('should show eye icon when item is selected', () => {
@@ -85,7 +86,7 @@ describe('DraggableMenuItem', () => {
     renderComponent();
 
     const menuItem = screen
-      .getByText('Test Column')
+      .getByText(TEST_COLUMN)
       .closest('.draggable-menu-item');
 
     expect(menuItem).toHaveClass('draggable-menu-item');
@@ -111,7 +112,7 @@ describe('DraggableMenuItem', () => {
   it('should render label with correct class', () => {
     renderComponent();
 
-    const label = screen.getByText('Test Column');
+    const label = screen.getByText(TEST_COLUMN);
 
     expect(label).toHaveClass('draggable-menu-item-button-label');
   });

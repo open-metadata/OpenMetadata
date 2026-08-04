@@ -14,6 +14,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PersonaDetailsCard } from './PersonaDetailsCard';
 
+const JANE_SMITH = 'Jane Smith';
 const mockNavigate = jest.fn();
 const personaWithDescription = {
   id: '123',
@@ -25,9 +26,9 @@ const personaWithDescription = {
 
 const personaWithoutDescription = {
   id: '456',
-  name: 'Jane Smith',
+  name: JANE_SMITH,
   fullyQualifiedName: 'personas/jane-smith',
-  displayName: 'Jane Smith',
+  displayName: JANE_SMITH,
 };
 
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -72,7 +73,7 @@ describe('PersonaDetailsCard Component', () => {
     });
 
     expect(await screen.findByText('label.no-description')).toBeInTheDocument();
-    expect(await screen.findByText('Jane Smith')).toBeInTheDocument();
+    expect(await screen.findByText(JANE_SMITH)).toBeInTheDocument();
   });
 
   it('should navigate to persona details page on card click', async () => {

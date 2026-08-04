@@ -58,6 +58,8 @@ import {
   ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
 
+const LABEL_SAMPLE_DATA = 'label.sample-data';
+
 const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
   tableId,
@@ -186,7 +188,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       showErrorToast(
         error as AxiosError,
         t('server.delete-entity-error', {
-          entity: t('label.sample-data'),
+          entity: t(LABEL_SAMPLE_DATA),
         })
       );
     } finally {
@@ -199,7 +201,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       label: (
         <ManageButtonItemLabel
           description={t('message.download-entity-data', {
-            entity: t('label.sample-data'),
+            entity: t(LABEL_SAMPLE_DATA),
           })}
           icon={IconDownload}
           id="export-button"
@@ -221,7 +223,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
-                    entityType: t('label.sample-data'),
+                    entityType: t(LABEL_SAMPLE_DATA),
                   }
                 )}
                 icon={IconDelete}
@@ -329,7 +331,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
           <Tooltip
             placement="topLeft"
             title={t('label.manage-entity', {
-              entity: t('label.sample-data'),
+              entity: t(LABEL_SAMPLE_DATA),
             })}>
             <Button
               className="flex-center px-1.5"
@@ -353,9 +355,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
       {isDeleteModalOpen && (
         <DeleteModal
-          entityTitle={t('label.sample-data')}
+          entityTitle={t(LABEL_SAMPLE_DATA)}
           isDeleting={isDeleting}
-          message={getEntityDeleteMessage(t('label.sample-data'), '')}
+          message={getEntityDeleteMessage(t(LABEL_SAMPLE_DATA), '')}
           open={isDeleteModalOpen}
           onCancel={handleDeleteModal}
           onDelete={handleDeleteSampleData}

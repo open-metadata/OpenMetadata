@@ -26,6 +26,10 @@ import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineA
 import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
 
+const STR_7E369DA9_4D0E_4887_B99B_1A35CFAB551E =
+  '7e369da9-4d0e-4887-b99b-1a35cfab551e';
+const PIPELINE_STATUS = 'pipeline-status';
+
 const mockHandlePipelineIdToFetchStatus = jest.fn();
 
 jest.mock(
@@ -40,7 +44,7 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
     Promise.resolve({
       data: [
         {
-          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          runId: STR_7E369DA9_4D0E_4887_B99B_1A35CFAB551E,
           pipelineState: 'success',
           startDate: 1667307722,
           timestamp: 1667307722,
@@ -75,7 +79,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const successRun = await screen.findByText(/Success/);
 
     expect(successRun).toBeInTheDocument();
@@ -86,7 +90,7 @@ describe('Test IngestionRecentRun component', () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
       data: [
         {
-          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          runId: STR_7E369DA9_4D0E_4887_B99B_1A35CFAB551E,
           pipelineState: 'queued',
           startDate: 1667307722,
           timestamp: 1667307722,
@@ -101,7 +105,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const successRun = await screen.findByText(/Queued/);
 
     expect(successRun).toBeInTheDocument();
@@ -112,7 +116,7 @@ describe('Test IngestionRecentRun component', () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
       data: [
         {
-          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          runId: STR_7E369DA9_4D0E_4887_B99B_1A35CFAB551E,
           pipelineState: 'running',
           startDate: 1667307722,
           timestamp: 1667307722,
@@ -127,7 +131,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const successRun = await screen.findByText(/Running/);
 
     expect(successRun).toBeInTheDocument();
@@ -138,7 +142,7 @@ describe('Test IngestionRecentRun component', () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
       data: [
         {
-          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          runId: STR_7E369DA9_4D0E_4887_B99B_1A35CFAB551E,
           pipelineState: 'failed',
           startDate: 1667307722,
           timestamp: 1667307722,
@@ -153,7 +157,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const successRun = await screen.findByText(/Failed/);
 
     expect(successRun).toBeInTheDocument();
@@ -164,7 +168,7 @@ describe('Test IngestionRecentRun component', () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
       data: [
         {
-          runId: '7e369da9-4d0e-4887-b99b-1a35cfab551e',
+          runId: STR_7E369DA9_4D0E_4887_B99B_1A35CFAB551E,
           pipelineState: 'partialSuccess',
           startDate: 1667307722,
           timestamp: 1667307722,
@@ -179,7 +183,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const successRun = await screen.findByText(/PartialSuccess/);
 
     expect(successRun).toBeInTheDocument();
@@ -196,7 +200,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const partialSuccess = await screen.findByText(/PartialSuccess/);
 
     expect(partialSuccess).toBeInTheDocument();
@@ -224,7 +228,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const partialSuccess = await screen.findByText(/PartialSuccess/);
 
     expect(partialSuccess).toBeInTheDocument();
@@ -253,7 +257,7 @@ describe('Test IngestionRecentRun component', () => {
       render(<IngestionRecentRuns ingestion={mockIngestion} />);
     });
 
-    const runs = await screen.findAllByTestId('pipeline-status');
+    const runs = await screen.findAllByTestId(PIPELINE_STATUS);
     const partialSuccess = await screen.findByText(/PartialSuccess/);
 
     expect(partialSuccess).toBeInTheDocument();
@@ -384,7 +388,7 @@ describe('Test IngestionRecentRun component', () => {
         render(<IngestionRecentRuns ingestion={mockIngestion} />);
       });
 
-      const runs = await screen.findAllByTestId('pipeline-status');
+      const runs = await screen.findAllByTestId(PIPELINE_STATUS);
 
       expect(runs).toHaveLength(5);
 
@@ -426,7 +430,7 @@ describe('Test IngestionRecentRun component', () => {
         render(<IngestionRecentRuns ingestion={mockIngestion} />);
       });
 
-      const runs = await screen.findAllByTestId('pipeline-status');
+      const runs = await screen.findAllByTestId(PIPELINE_STATUS);
 
       expect(runs).toHaveLength(3);
 
@@ -469,7 +473,7 @@ describe('Test IngestionRecentRun component', () => {
         );
       });
 
-      const runs = await screen.findAllByTestId('pipeline-status');
+      const runs = await screen.findAllByTestId(PIPELINE_STATUS);
 
       expect(runs).toHaveLength(3);
 
@@ -496,7 +500,7 @@ describe('Test IngestionRecentRun component', () => {
         render(<IngestionRecentRuns ingestion={mockIngestion} />);
       });
 
-      const runs = await screen.findAllByTestId('pipeline-status');
+      const runs = await screen.findAllByTestId(PIPELINE_STATUS);
 
       expect(runs).toHaveLength(5);
     });

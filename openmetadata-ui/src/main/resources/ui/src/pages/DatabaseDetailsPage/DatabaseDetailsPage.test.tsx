@@ -22,10 +22,11 @@ import {
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import DatabaseDetailsPage from './DatabaseDetailsPage';
 
+const BIGQUERY_GCP_ECOMMERCE_DB = 'bigquery_gcp.ecommerce_db';
 const mockDatabase = {
   id: 'b705cc69-55fd-4338-aa45-86f34b655ae6',
   type: 'database',
-  name: 'bigquery_gcp.ecommerce_db',
+  name: BIGQUERY_GCP_ECOMMERCE_DB,
   description:
     'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
   deleted: false,
@@ -65,7 +66,7 @@ const mockSchemaData = {
       database: {
         id: 'b705cc69-55fd-4338-aa45-86f34b655ae6',
         type: 'database',
-        name: 'bigquery_gcp.ecommerce_db',
+        name: BIGQUERY_GCP_ECOMMERCE_DB,
         description:
           'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
         deleted: false,
@@ -390,7 +391,7 @@ describe('Test DatabaseDetails page', () => {
 
     expect(PageLayoutV1).toHaveBeenCalledWith(
       expect.objectContaining({
-        pageTitle: 'bigquery_gcp.ecommerce_db',
+        pageTitle: BIGQUERY_GCP_ECOMMERCE_DB,
       }),
       expect.anything()
     );

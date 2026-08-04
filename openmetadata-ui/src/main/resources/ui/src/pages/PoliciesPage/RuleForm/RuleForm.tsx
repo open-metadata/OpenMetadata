@@ -38,6 +38,10 @@ import { ALL_TYPE_RESOURCE_LIST } from '../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+const LABEL_RESOURCE_PLURAL = 'label.resource-plural';
+const LABEL_SELECT_FIELD = 'label.select-field';
+const LABEL_OPERATION_PLURAL = 'label.operation-plural';
+
 const { Option } = Select;
 
 export interface RuleFormProps {
@@ -248,13 +252,13 @@ const RuleForm: FC<RuleFormProps> = ({
         {getField(descriptionField)}
       </EntityAttachmentProvider>
       <Form.Item
-        label={`${t('label.resource-plural')}:`}
+        label={`${t(LABEL_RESOURCE_PLURAL)}:`}
         name="resources"
         rules={[
           {
             required: true,
             message: t('label.field-required-plural', {
-              field: t('label.resource-plural'),
+              field: t(LABEL_RESOURCE_PLURAL),
             }),
           },
         ]}>
@@ -263,8 +267,8 @@ const RuleForm: FC<RuleFormProps> = ({
           autoClearSearchValue={false}
           className="w-full"
           data-testid="resources"
-          placeholder={t('label.select-field', {
-            field: t('label.resource-plural'),
+          placeholder={t(LABEL_SELECT_FIELD, {
+            field: t(LABEL_RESOURCE_PLURAL),
           })}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={resourcesOptions}
@@ -277,13 +281,13 @@ const RuleForm: FC<RuleFormProps> = ({
         />
       </Form.Item>
       <Form.Item
-        label={`${t('label.operation-plural')}:`}
+        label={`${t(LABEL_OPERATION_PLURAL)}:`}
         name="operations"
         rules={[
           {
             required: true,
             message: t('label.field-required-plural', {
-              field: t('label.operation-plural'),
+              field: t(LABEL_OPERATION_PLURAL),
             }),
           },
         ]}>
@@ -292,8 +296,8 @@ const RuleForm: FC<RuleFormProps> = ({
           autoClearSearchValue={false}
           className="w-full"
           data-testid="operations"
-          placeholder={t('label.select-field', {
-            field: t('label.operation-plural'),
+          placeholder={t(LABEL_SELECT_FIELD, {
+            field: t(LABEL_OPERATION_PLURAL),
           })}
           showCheckedStrategy={TreeSelect.SHOW_PARENT}
           treeData={operationOptions}
@@ -316,7 +320,7 @@ const RuleForm: FC<RuleFormProps> = ({
         ]}>
         <Select
           data-testid="effect"
-          placeholder={t('label.select-field', {
+          placeholder={t(LABEL_SELECT_FIELD, {
             field: t('label.rule-effect'),
           })}
           value={ruleData.effect}

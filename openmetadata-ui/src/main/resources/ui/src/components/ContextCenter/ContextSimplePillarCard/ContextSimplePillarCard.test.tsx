@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import { FC } from 'react';
 import ContextSimplePillarCard from './ContextSimplePillarCard.component';
 
+const LIST_CONTENT = 'List content';
 const MockIcon: FC = () => {
   return <div data-testid="mock-icon">Mock Icon</div>;
 };
@@ -28,7 +29,7 @@ describe('ContextSimplePillarCard', () => {
     );
 
     expect(screen.getByText('Recently Viewed')).toBeInTheDocument();
-    expect(screen.getByText('List content')).toBeInTheDocument();
+    expect(screen.getByText(LIST_CONTENT)).toBeInTheDocument();
   });
 
   it('renders skeleton loaders when isLoading is true', () => {
@@ -41,7 +42,7 @@ describe('ContextSimplePillarCard', () => {
       </ContextSimplePillarCard>
     );
 
-    expect(screen.queryByText('List content')).not.toBeInTheDocument();
+    expect(screen.queryByText(LIST_CONTENT)).not.toBeInTheDocument();
   });
 
   it('renders the empty message when isEmpty is true', () => {
@@ -56,6 +57,6 @@ describe('ContextSimplePillarCard', () => {
     );
 
     expect(screen.getByText('No data available')).toBeInTheDocument();
-    expect(screen.queryByText('List content')).not.toBeInTheDocument();
+    expect(screen.queryByText(LIST_CONTENT)).not.toBeInTheDocument();
   });
 });

@@ -24,6 +24,10 @@ import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import UserProfileRoles from './UserProfileRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
+const USER_PROFILE_ROLES = 'user-profile-roles' as const;
+const EDIT_ROLES_BUTTON = 'edit-roles-button' as const;
+const USER_PROFILE_EDIT_POPOVER = 'user-profile-edit-popover' as const;
+
 const mockPropsData: UserProfileRolesProps = {
   userRoles: [],
   isDeletedUser: false,
@@ -69,13 +73,13 @@ describe('Test User Profile Roles Component', () => {
   it('should render user profile roles component', async () => {
     render(<UserProfileRoles {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
   });
 
   it('should render chip component', async () => {
     render(<UserProfileRoles {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
 
     expect(await screen.findAllByText('Chip')).toHaveLength(2);
   });
@@ -83,17 +87,17 @@ describe('Test User Profile Roles Component', () => {
   it('should not render roles edit button if non admin user', async () => {
     render(<UserProfileRoles {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
 
-    expect(screen.queryByTestId('edit-roles-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_ROLES_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should not render roles edit button if user is deleted', async () => {
     render(<UserProfileRoles {...mockPropsData} isDeletedUser />);
 
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
 
-    expect(screen.queryByTestId('edit-roles-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_ROLES_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should render edit button if admin user', async () => {
@@ -103,9 +107,9 @@ describe('Test User Profile Roles Component', () => {
 
     render(<UserProfileRoles {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
 
-    expect(screen.getByTestId('edit-roles-button')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_ROLES_BUTTON)).toBeInTheDocument();
   });
 
   it('should render edit popover on edit button action', async () => {
@@ -115,15 +119,15 @@ describe('Test User Profile Roles Component', () => {
 
     render(<UserProfileRoles {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
 
-    const editButton = screen.getByTestId('edit-roles-button');
+    const editButton = screen.getByTestId(EDIT_ROLES_BUTTON);
 
     expect(editButton).toBeInTheDocument();
 
     fireEvent.click(editButton);
 
-    expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_EDIT_POPOVER)).toBeInTheDocument();
   });
 
   it('should call updateUserDetails on click save', async () => {
@@ -132,9 +136,9 @@ describe('Test User Profile Roles Component', () => {
     }));
     render(<UserProfileRoles {...mockPropsData} />);
 
-    fireEvent.click(screen.getByTestId('edit-roles-button'));
+    fireEvent.click(screen.getByTestId(EDIT_ROLES_BUTTON));
 
-    expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_EDIT_POPOVER)).toBeInTheDocument();
 
     act(() => {
       fireEvent.click(
@@ -155,9 +159,9 @@ describe('Test User Profile Roles Component', () => {
 
     render(<UserProfileRoles {...mockPropsData} />);
 
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
 
-    const editButton = screen.getByTestId('edit-roles-button');
+    const editButton = screen.getByTestId(EDIT_ROLES_BUTTON);
 
     expect(editButton).toBeInTheDocument();
 
@@ -165,7 +169,7 @@ describe('Test User Profile Roles Component', () => {
 
     expect(searchRoles).toHaveBeenCalledWith('');
 
-    expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_EDIT_POPOVER)).toBeInTheDocument();
   });
 
   it('should maintain initial state if edit is close without save', async () => {
@@ -180,9 +184,9 @@ describe('Test User Profile Roles Component', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('edit-roles-button'));
+    fireEvent.click(screen.getByTestId(EDIT_ROLES_BUTTON));
 
-    expect(screen.getByTestId('user-profile-edit-popover')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_EDIT_POPOVER)).toBeInTheDocument();
 
     act(() => {
       fireEvent.click(
@@ -193,11 +197,11 @@ describe('Test User Profile Roles Component', () => {
     // Wait for the popover to close - this verifies that canceling maintains the initial state
     await waitFor(() => {
       expect(
-        screen.queryByTestId('user-profile-edit-popover')
+        screen.queryByTestId(USER_PROFILE_EDIT_POPOVER)
       ).not.toBeInTheDocument();
     });
 
     // Verify the component is still rendered with initial state
-    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+    expect(screen.getByTestId(USER_PROFILE_ROLES)).toBeInTheDocument();
   });
 });

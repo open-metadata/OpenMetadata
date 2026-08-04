@@ -22,6 +22,10 @@ import {
   WorksheetDetailPageTabProps,
 } from './WorksheetDetailsUtils';
 
+const WORKSHEET_COLUMNS_TABLE = 'worksheet-columns-table';
+const COMMON_WIDGETS = 'common-widgets';
+const CUSTOM_LINEAGE = 'Custom Lineage';
+
 jest.mock('../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name, count, isActive }) => (
     <div data-testid={`tab-label-${name}`}>
@@ -285,7 +289,7 @@ describe('WorksheetDetailsUtils', () => {
       render(<MemoryRouter>{result}</MemoryRouter>);
 
       expect(
-        await screen.findByTestId('worksheet-columns-table')
+        await screen.findByTestId(WORKSHEET_COLUMNS_TABLE)
       ).toBeInTheDocument();
     });
 
@@ -303,7 +307,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('worksheet-columns-table')).toBeInTheDocument();
+      expect(screen.getByTestId(WORKSHEET_COLUMNS_TABLE)).toBeInTheDocument();
     });
 
     it('should return CommonWidgets for description widget', () => {
@@ -320,7 +324,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - worksheet - KnowledgePanel.Description'
@@ -342,7 +346,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - worksheet - KnowledgePanel.DataProducts'
@@ -364,7 +368,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - worksheet - KnowledgePanel.Tags')
       ).toBeInTheDocument();
@@ -384,7 +388,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - worksheet - KnowledgePanel.GlossaryTerms'
@@ -406,7 +410,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - worksheet - KnowledgePanel.CustomProperties'
@@ -428,7 +432,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - worksheet - unknown-widget')
       ).toBeInTheDocument();
@@ -448,7 +452,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('worksheet-columns-table')).toBeInTheDocument();
+      expect(screen.getByTestId(WORKSHEET_COLUMNS_TABLE)).toBeInTheDocument();
     });
 
     it('should handle widget key with different casing', () => {
@@ -465,7 +469,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - worksheet - different-widget-key')
       ).toBeInTheDocument();
@@ -479,7 +483,7 @@ describe('WorksheetDetailsUtils', () => {
         labelMap: {
           [EntityTabs.SCHEMA]: 'Custom Schema Label',
           [EntityTabs.ACTIVITY_FEED]: 'Custom Activity Feed',
-          [EntityTabs.LINEAGE]: 'Custom Lineage',
+          [EntityTabs.LINEAGE]: CUSTOM_LINEAGE,
           [EntityTabs.CONTRACT]: 'Custom Contract',
           [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties Label',
         } as Record<EntityTabs, string>,
@@ -578,7 +582,7 @@ describe('WorksheetDetailsUtils', () => {
         ...mockProps,
         labelMap: {
           [EntityTabs.SCHEMA]: 'Custom Schema',
-          [EntityTabs.LINEAGE]: 'Custom Lineage',
+          [EntityTabs.LINEAGE]: CUSTOM_LINEAGE,
         } as Record<EntityTabs, string>,
       };
 
@@ -590,7 +594,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{tabs[2].label}</MemoryRouter>);
 
-      expect(screen.getByText('Custom Lineage')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_LINEAGE)).toBeInTheDocument();
     });
 
     it('should use labelMap with active tab state', () => {
@@ -682,7 +686,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
     });
 
     it('should handle all tab states correctly', () => {
@@ -736,7 +740,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
     });
 
     it('should handle negative feed count edge case', () => {
@@ -769,7 +773,7 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
     });
   });
 });

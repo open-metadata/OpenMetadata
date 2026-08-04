@@ -21,6 +21,11 @@ import {
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
 
+const PROFILE_SAMPLE_INPUT = 'profile-sample-input';
+const ADD_THRESHOLD_BTN = 'add-threshold-btn';
+const ROW_COUNT_THRESHOLD_0 = 'row-count-threshold-0';
+const REMOVE_THRESHOLD_0 = 'remove-threshold-0';
+
 jest.mock('@untitledui/icons', () => ({
   Plus: () => null,
   Trash01: () => null,
@@ -71,6 +76,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   );
   const SelectMock = Object.assign(
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
     ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
       <div data-testid={testId} />
     ),
@@ -200,7 +206,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(screen.getByTestId('profile-sample-input')).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_SAMPLE_INPUT)).toBeInTheDocument();
       expect(
         screen.getByTestId('profile-sample-type-select')
       ).toBeInTheDocument();
@@ -214,7 +220,7 @@ describe('ProfileSampleConfigField', () => {
 
       expect(screen.getByTestId('smart-sampling-toggle')).toBeInTheDocument();
       expect(
-        screen.queryByTestId('profile-sample-input')
+        screen.queryByTestId(PROFILE_SAMPLE_INPUT)
       ).not.toBeInTheDocument();
     });
 
@@ -226,7 +232,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(screen.queryByTestId('add-threshold-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ADD_THRESHOLD_BTN)).not.toBeInTheDocument();
       expect(
         screen.queryByText('label.threshold-plural')
       ).not.toBeInTheDocument();
@@ -240,7 +246,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(screen.getByTestId('profile-sample-input')).toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_SAMPLE_INPUT)).toBeInTheDocument();
     });
   });
 
@@ -254,7 +260,7 @@ describe('ProfileSampleConfigField', () => {
       );
 
       expect(screen.getByText('label.threshold-plural')).toBeInTheDocument();
-      expect(screen.getByTestId('add-threshold-btn')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_THRESHOLD_BTN)).toBeInTheDocument();
     });
 
     it('does not show static config fields in DYNAMIC mode', () => {
@@ -266,7 +272,7 @@ describe('ProfileSampleConfigField', () => {
       );
 
       expect(
-        screen.queryByTestId('profile-sample-input')
+        screen.queryByTestId(PROFILE_SAMPLE_INPUT)
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('profile-sample-type-select')
@@ -285,7 +291,7 @@ describe('ProfileSampleConfigField', () => {
       );
 
       expect(screen.getByText('label.threshold 1')).toBeInTheDocument();
-      expect(screen.getByTestId('row-count-threshold-0')).toBeInTheDocument();
+      expect(screen.getByTestId(ROW_COUNT_THRESHOLD_0)).toBeInTheDocument();
       expect(screen.getByTestId('profile-sample-0')).toBeInTheDocument();
       expect(screen.getByTestId('profile-sample-type-0')).toBeInTheDocument();
       expect(screen.getByTestId('sampling-method-type-0')).toBeInTheDocument();
@@ -312,7 +318,7 @@ describe('ProfileSampleConfigField', () => {
 
       expect(screen.getByText('label.threshold 1')).toBeInTheDocument();
       expect(screen.getByText('label.threshold 2')).toBeInTheDocument();
-      expect(screen.getByTestId('row-count-threshold-0')).toBeInTheDocument();
+      expect(screen.getByTestId(ROW_COUNT_THRESHOLD_0)).toBeInTheDocument();
       expect(screen.getByTestId('row-count-threshold-1')).toBeInTheDocument();
     });
 
@@ -324,7 +330,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(screen.getByTestId('remove-threshold-0')).toBeInTheDocument();
+      expect(screen.getByTestId(REMOVE_THRESHOLD_0)).toBeInTheDocument();
     });
 
     it('shows empty threshold list with only the add button when thresholds array is empty', () => {
@@ -338,9 +344,9 @@ describe('ProfileSampleConfigField', () => {
       );
 
       expect(
-        screen.queryByTestId('row-count-threshold-0')
+        screen.queryByTestId(ROW_COUNT_THRESHOLD_0)
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId('add-threshold-btn')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_THRESHOLD_BTN)).toBeInTheDocument();
     });
   });
 
@@ -355,7 +361,7 @@ describe('ProfileSampleConfigField', () => {
         <ProfileSampleConfigField {...baseFieldProps} formData={emptyDynamic} />
       );
 
-      fireEvent.click(screen.getByTestId('add-threshold-btn'));
+      fireEvent.click(screen.getByTestId(ADD_THRESHOLD_BTN));
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
@@ -374,7 +380,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('add-threshold-btn'));
+      fireEvent.click(screen.getByTestId(ADD_THRESHOLD_BTN));
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
@@ -403,7 +409,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('remove-threshold-0'));
+      fireEvent.click(screen.getByTestId(REMOVE_THRESHOLD_0));
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
@@ -430,7 +436,7 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('remove-threshold-0'));
+      fireEvent.click(screen.getByTestId(REMOVE_THRESHOLD_0));
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,
@@ -451,8 +457,8 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(screen.getByTestId('profile-sample-input')).toBeInTheDocument();
-      expect(screen.queryByTestId('add-threshold-btn')).not.toBeInTheDocument();
+      expect(screen.getByTestId(PROFILE_SAMPLE_INPUT)).toBeInTheDocument();
+      expect(screen.queryByTestId(ADD_THRESHOLD_BTN)).not.toBeInTheDocument();
     });
 
     it('shows dynamic fields when formData has DYNAMIC type', () => {
@@ -463,9 +469,9 @@ describe('ProfileSampleConfigField', () => {
         />
       );
 
-      expect(screen.getByTestId('add-threshold-btn')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_THRESHOLD_BTN)).toBeInTheDocument();
       expect(
-        screen.queryByTestId('profile-sample-input')
+        screen.queryByTestId(PROFILE_SAMPLE_INPUT)
       ).not.toBeInTheDocument();
     });
   });
@@ -485,7 +491,7 @@ describe('ProfileSampleConfigField', () => {
         <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
       );
 
-      fireEvent.change(screen.getByTestId('profile-sample-input'), {
+      fireEvent.change(screen.getByTestId(PROFILE_SAMPLE_INPUT), {
         target: { value: '25' },
       });
 
@@ -510,7 +516,7 @@ describe('ProfileSampleConfigField', () => {
         <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
       );
 
-      fireEvent.click(screen.getByTestId('add-threshold-btn'));
+      fireEvent.click(screen.getByTestId(ADD_THRESHOLD_BTN));
 
       expect(mockOnChange).toHaveBeenCalledWith({
         sampleConfigType: SampleConfigType.Dynamic,

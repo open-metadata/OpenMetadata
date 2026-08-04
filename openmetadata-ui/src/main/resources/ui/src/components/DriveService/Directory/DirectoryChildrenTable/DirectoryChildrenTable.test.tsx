@@ -22,6 +22,9 @@ import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import DirectoryChildrenTable from './DirectoryChildrenTable';
 
+const TABLE_DATA = 'table-data';
+const EMPTY_STATE = 'empty-state';
+
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../Customization/GenericProvider/GenericContext');
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -36,11 +39,11 @@ jest.mock('../../../common/Table/Table', () =>
   jest.fn(({ columns, dataSource, locale }) => (
     <div data-testid="table">
       <div data-testid="table-columns">{JSON.stringify(columns.length)}</div>
-      <div data-testid="table-data">
+      <div data-testid={TABLE_DATA}>
         {JSON.stringify(dataSource?.length || 0)}
       </div>
       {!dataSource?.length && (
-        <div data-testid="empty-state">{locale?.emptyText}</div>
+        <div data-testid={EMPTY_STATE}>{locale?.emptyText}</div>
       )}
       {dataSource?.map((item: EntityReference, index: number) => (
         <div data-testid={`table-row-${index}`} key={item.id || index}>
@@ -125,7 +128,7 @@ describe('DirectoryChildrenTable', () => {
     expect(screen.getByTestId('table')).toBeInTheDocument();
     expect(screen.getByTestId('table-columns')).toHaveTextContent('2');
     expect(descriptionTableObject).toHaveBeenCalledWith();
-    expect(screen.getByTestId('table-data')).toHaveTextContent('2');
+    expect(screen.getByTestId(TABLE_DATA)).toHaveTextContent('2');
     expect(screen.getByTestId('table-row-0')).toHaveTextContent(
       'subdirectory - directory'
     );
@@ -142,8 +145,8 @@ describe('DirectoryChildrenTable', () => {
     renderDirectoryChildrenTable();
 
     expect(screen.getByTestId('table')).toBeInTheDocument();
-    expect(screen.getByTestId('table-data')).toHaveTextContent('0');
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId(TABLE_DATA)).toHaveTextContent('0');
+    expect(screen.getByTestId(EMPTY_STATE)).toBeInTheDocument();
     expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
   });
 
@@ -176,7 +179,7 @@ describe('DirectoryChildrenTable', () => {
     renderDirectoryChildrenTable();
 
     expect(screen.getByTestId('table')).toBeInTheDocument();
-    expect(screen.getByTestId('table-data')).toHaveTextContent('1');
+    expect(screen.getByTestId(TABLE_DATA)).toHaveTextContent('1');
   });
 
   it('should handle children without descriptions', () => {
@@ -197,7 +200,7 @@ describe('DirectoryChildrenTable', () => {
     renderDirectoryChildrenTable();
 
     expect(screen.getByTestId('table')).toBeInTheDocument();
-    expect(screen.getByTestId('table-data')).toHaveTextContent('1');
+    expect(screen.getByTestId(TABLE_DATA)).toHaveTextContent('1');
   });
 
   it('should handle undefined children array', () => {
@@ -213,7 +216,7 @@ describe('DirectoryChildrenTable', () => {
     renderDirectoryChildrenTable();
 
     expect(screen.getByTestId('table')).toBeInTheDocument();
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_STATE)).toBeInTheDocument();
   });
 
   it('should render different entity types correctly', () => {
@@ -261,6 +264,6 @@ describe('DirectoryChildrenTable', () => {
     renderDirectoryChildrenTable();
 
     expect(screen.getByTestId('table')).toBeInTheDocument();
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_STATE)).toBeInTheDocument();
   });
 });

@@ -37,6 +37,9 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
+const LABEL_ADD_NEW_ENTITY = 'label.add-new-entity' as const;
+const LABEL_RULE = 'label.rule' as const;
+
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const AddRulePage = () => {
@@ -70,8 +73,8 @@ const AddRulePage = () => {
       },
 
       {
-        name: t('label.add-new-entity', {
-          entity: t('label.rule'),
+        name: t(LABEL_ADD_NEW_ENTITY, {
+          entity: t(LABEL_RULE),
         }),
         url: '',
       },
@@ -115,7 +118,7 @@ const AddRulePage = () => {
       ) {
         showErrorToast(
           t('server.entity-already-exist', {
-            entity: t('label.rule'),
+            entity: t(LABEL_RULE),
             entityPlural: t('label.rule-lowercase-plural'),
             name: ruleData.name,
           })
@@ -141,8 +144,8 @@ const AddRulePage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.add-new-entity', {
-        entity: t('label.rule'),
+      pageTitle={t(LABEL_ADD_NEW_ENTITY, {
+        entity: t(LABEL_RULE),
       })}>
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
@@ -150,7 +153,7 @@ const AddRulePage = () => {
         <Typography.Paragraph
           className="text-base"
           data-testid="add-rule-title">
-          {t('label.add-new-entity', { entity: t('label.rule') })}
+          {t(LABEL_ADD_NEW_ENTITY, { entity: t(LABEL_RULE) })}
         </Typography.Paragraph>
         <Form
           data-testid="rule-form"

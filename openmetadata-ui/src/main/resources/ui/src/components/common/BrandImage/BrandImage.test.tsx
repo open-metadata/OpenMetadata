@@ -25,6 +25,11 @@ jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import BrandImage from './BrandImage';
 
+const HTTPS_CUSTOM_MONOGRAM_PNG = 'https://custom-monogram.png';
+const HTTPS_CUSTOM_LOGO_PNG = 'https://custom-logo.png';
+const DEFAULT_MONOGRAM_SVG = '/default-monogram.svg';
+const DEFAULT_LOGO_SVG = '/default-logo.svg';
+const BRAND_MONOGRAM = 'brand-monogram';
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
 >;
@@ -35,8 +40,8 @@ describe('Test Brand Logo', () => {
     mockUseApplicationStore.mockReturnValue({
       applicationConfig: {
         customLogoConfig: {
-          customLogoUrlPath: 'https://custom-logo.png',
-          customMonogramUrlPath: 'https://custom-monogram.png',
+          customLogoUrlPath: HTTPS_CUSTOM_LOGO_PNG,
+          customMonogramUrlPath: HTTPS_CUSTOM_MONOGRAM_PNG,
         },
       },
     });
@@ -57,18 +62,18 @@ describe('Test Brand Logo', () => {
   it('Should render the brand logo with passed props value', () => {
     render(
       <BrandImage
-        alt="brand-monogram"
+        alt={BRAND_MONOGRAM}
         className="m-auto"
-        dataTestId="brand-monogram"
+        dataTestId={BRAND_MONOGRAM}
         height={30}
         width={30}
       />
     );
 
-    const image = screen.getByTestId('brand-monogram');
+    const image = screen.getByTestId(BRAND_MONOGRAM);
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('alt', 'brand-monogram');
+    expect(image).toHaveAttribute('alt', BRAND_MONOGRAM);
     expect(image).toHaveAttribute('height', '30');
     expect(image).toHaveAttribute('width', '30');
     expect(image).toHaveClass('m-auto');
@@ -91,7 +96,7 @@ describe('Test Brand Logo', () => {
     expect(image).toHaveAttribute('alt', 'brand-logo');
     expect(image).toHaveAttribute('height', 'auto');
     expect(image).toHaveAttribute('width', '152');
-    expect(image).toHaveAttribute('src', 'https://custom-logo.png');
+    expect(image).toHaveAttribute('src', HTTPS_CUSTOM_LOGO_PNG);
     expect(image).toHaveClass('m-auto');
   });
 
@@ -99,20 +104,20 @@ describe('Test Brand Logo', () => {
     render(
       <BrandImage
         isMonoGram
-        alt="brand-monogram"
-        dataTestId="brand-monogram"
+        alt={BRAND_MONOGRAM}
+        dataTestId={BRAND_MONOGRAM}
         height={30}
         width={30}
       />
     );
 
-    const image = screen.getByTestId('brand-monogram');
+    const image = screen.getByTestId(BRAND_MONOGRAM);
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('alt', 'brand-monogram');
+    expect(image).toHaveAttribute('alt', BRAND_MONOGRAM);
     expect(image).toHaveAttribute('height', '30');
     expect(image).toHaveAttribute('width', '30');
-    expect(image).toHaveAttribute('src', 'https://custom-monogram.png');
+    expect(image).toHaveAttribute('src', HTTPS_CUSTOM_MONOGRAM_PNG);
   });
 
   it('Should use default logo when no custom logo config is provided', () => {
@@ -137,7 +142,7 @@ describe('Test Brand Logo', () => {
     const image = screen.getByTestId('default-logo');
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('src', '/default-logo.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_LOGO_SVG);
   });
 
   it('Should use default monogram when no custom monogram config is provided', () => {
@@ -163,7 +168,7 @@ describe('Test Brand Logo', () => {
     const image = screen.getByTestId('default-monogram');
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('src', '/default-monogram.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_MONOGRAM_SVG);
   });
 
   it('Should handle missing customLogoConfig gracefully', () => {
@@ -183,7 +188,7 @@ describe('Test Brand Logo', () => {
     const image = screen.getByTestId('fallback-logo');
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('src', '/default-logo.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_LOGO_SVG);
   });
 
   it('Should handle missing applicationConfig gracefully', () => {
@@ -201,7 +206,7 @@ describe('Test Brand Logo', () => {
     const image = screen.getByTestId('no-config-logo');
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('src', '/default-logo.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_LOGO_SVG);
   });
 
   it('Should use provided src prop when given', () => {
@@ -236,12 +241,12 @@ describe('Test Brand Logo', () => {
     const image = screen.getByTestId('error-logo');
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('src', 'https://custom-logo.png');
+    expect(image).toHaveAttribute('src', HTTPS_CUSTOM_LOGO_PNG);
 
     // Simulate image load error
     fireEvent.error(image);
 
-    expect(image).toHaveAttribute('src', '/default-logo.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_LOGO_SVG);
   });
 
   it('Should handle onError and fallback to default monogram when monogram fails to load', () => {
@@ -258,12 +263,12 @@ describe('Test Brand Logo', () => {
     const image = screen.getByTestId('error-monogram');
 
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute('src', 'https://custom-monogram.png');
+    expect(image).toHaveAttribute('src', HTTPS_CUSTOM_MONOGRAM_PNG);
 
     // Simulate image load error
     fireEvent.error(image);
 
-    expect(image).toHaveAttribute('src', '/default-monogram.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_MONOGRAM_SVG);
   });
 
   it('Should handle onError with custom src and fallback to default logo', () => {
@@ -287,7 +292,7 @@ describe('Test Brand Logo', () => {
     // Simulate image load error
     fireEvent.error(image);
 
-    expect(image).toHaveAttribute('src', '/default-logo.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_LOGO_SVG);
   });
 
   it('Should handle onError with custom src and monogram fallback', () => {
@@ -312,7 +317,7 @@ describe('Test Brand Logo', () => {
     // Simulate image load error
     fireEvent.error(image);
 
-    expect(image).toHaveAttribute('src', '/default-monogram.svg');
+    expect(image).toHaveAttribute('src', DEFAULT_MONOGRAM_SVG);
   });
 
   it('Should render with all props including optional ones', () => {
@@ -355,6 +360,6 @@ describe('Test Brand Logo', () => {
 
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', prioritySrc);
-    expect(image).not.toHaveAttribute('src', 'https://custom-logo.png');
+    expect(image).not.toHaveAttribute('src', HTTPS_CUSTOM_LOGO_PNG);
   });
 });

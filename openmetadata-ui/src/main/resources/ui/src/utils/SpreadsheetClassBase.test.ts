@@ -32,6 +32,9 @@ import spreadsheetClassBase, {
 } from './SpreadsheetClassBase';
 import { SpreadsheetDetailPageTabProps } from './SpreadsheetDetailsUtils';
 
+const MOCK_ACTIVITY_FEED = 'Activity Feed';
+const MOCK_CUSTOM_PROPERTIES = 'Custom Properties';
+
 jest.mock('../constants/Spreadsheet.constant', () => ({
   SPREADSHEET_DUMMY_DATA: {
     id: 'test-spreadsheet-id',
@@ -43,6 +46,7 @@ jest.mock('../constants/Spreadsheet.constant', () => ({
   } as Spreadsheet,
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('./SpreadsheetDetailsUtils', () => ({
   getSpreadsheetDetailsPageTabs: jest.fn((): TabProps[] => [
     {
@@ -55,7 +59,7 @@ jest.mock('./SpreadsheetDetailsUtils', () => ({
       ) as JSX.Element,
     },
     {
-      label: React.createElement('div', {}, 'Activity Feed') as JSX.Element,
+      label: React.createElement('div', {}, MOCK_ACTIVITY_FEED) as JSX.Element,
       key: EntityTabs.ACTIVITY_FEED,
       children: React.createElement(
         'div',
@@ -73,7 +77,11 @@ jest.mock('./SpreadsheetDetailsUtils', () => ({
       ) as JSX.Element,
     },
     {
-      label: React.createElement('div', {}, 'Custom Properties') as JSX.Element,
+      label: React.createElement(
+        'div',
+        {},
+        MOCK_CUSTOM_PROPERTIES
+      ) as JSX.Element,
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: React.createElement(
         'div',
@@ -127,22 +135,22 @@ describe('SpreadsheetClassBase', () => {
         activityFeedTab: React.createElement(
           'div',
           {},
-          'Activity Feed'
+          MOCK_ACTIVITY_FEED
         ) as JSX.Element,
         lineageTab: React.createElement('div', {}, 'Lineage') as JSX.Element,
         customPropertiesTab: React.createElement(
           'div',
           {},
-          'Custom Properties'
+          MOCK_CUSTOM_PROPERTIES
         ) as JSX.Element,
         activeTab: EntityTabs.WORKSHEETS,
         feedCount: { totalCount: 8 },
         labelMap: {
           [EntityTabs.WORKSHEETS]: 'Spreadsheet Worksheets',
-          [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
+          [EntityTabs.ACTIVITY_FEED]: MOCK_ACTIVITY_FEED,
           [EntityTabs.LINEAGE]: 'Lineage',
           [EntityTabs.CONTRACT]: 'Contract',
-          [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
+          [EntityTabs.CUSTOM_PROPERTIES]: MOCK_CUSTOM_PROPERTIES,
         } as Record<string, string>,
       };
 

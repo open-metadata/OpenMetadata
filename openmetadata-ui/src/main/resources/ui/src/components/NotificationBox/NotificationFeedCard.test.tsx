@@ -29,6 +29,9 @@ import { TaskEntityType } from '../../rest/tasksAPI';
 import NotificationFeedCard from './NotificationFeedCard.component';
 import { MentionNotification } from './NotificationFeedCard.interface';
 
+const MOCK_TASK_LINK = '/mock-task-link' as const;
+const ENTITY_ACTIVITY_FEED_ALL = '/entity/activity_feed/all' as const;
+
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
@@ -154,7 +157,7 @@ const taskProps = {
 
 describe('NotificationFeedCard', () => {
   it('renders task notifications from task entities', async () => {
-    mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');
+    mockGetTaskDetailPathFromTask.mockReturnValue(MOCK_TASK_LINK);
 
     await act(async () => {
       render(<NotificationFeedCard {...taskProps} />);
@@ -168,12 +171,12 @@ describe('NotificationFeedCard', () => {
     expect(mockGetTaskDetailPathFromTask).toHaveBeenCalledWith(mockTaskEntity);
     expect(screen.getAllByTestId('link')[0]).toHaveAttribute(
       'data-to',
-      '/mock-task-link'
+      MOCK_TASK_LINK
     );
   });
 
   it('renders mention notifications from threads', async () => {
-    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+    mockPrepareFeedLink.mockReturnValue(ENTITY_ACTIVITY_FEED_ALL);
 
     await act(async () => {
       render(
@@ -200,7 +203,7 @@ describe('NotificationFeedCard', () => {
   });
 
   it('links a chat-collaborator notification to the conversation, not the invitee profile', async () => {
-    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+    mockPrepareFeedLink.mockReturnValue(ENTITY_ACTIVITY_FEED_ALL);
 
     await act(async () => {
       render(
@@ -255,7 +258,7 @@ describe('NotificationFeedCard', () => {
   );
 
   it('calls navigate with tasksRefreshKey state when the task notification card is clicked', async () => {
-    mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');
+    mockGetTaskDetailPathFromTask.mockReturnValue(MOCK_TASK_LINK);
 
     await act(async () => {
       render(<NotificationFeedCard {...taskProps} />);
@@ -264,13 +267,13 @@ describe('NotificationFeedCard', () => {
     const outerLink = screen.getAllByTestId('link')[0];
     fireEvent.click(outerLink);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+    expect(mockNavigate).toHaveBeenCalledWith(MOCK_TASK_LINK, {
       state: { tasksRefreshKey: expect.any(Number) },
     });
   });
 
   it('calls navigate with tasksRefreshKey state when the inner task ID link is clicked', async () => {
-    mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');
+    mockGetTaskDetailPathFromTask.mockReturnValue(MOCK_TASK_LINK);
 
     await act(async () => {
       render(<NotificationFeedCard {...taskProps} />);
@@ -280,13 +283,13 @@ describe('NotificationFeedCard', () => {
     const innerTaskLink = links[links.length - 1];
     fireEvent.click(innerTaskLink);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/mock-task-link', {
+    expect(mockNavigate).toHaveBeenCalledWith(MOCK_TASK_LINK, {
       state: { tasksRefreshKey: expect.any(Number) },
     });
   });
 
   it('does not call navigate when a mention notification is clicked', async () => {
-    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+    mockPrepareFeedLink.mockReturnValue(ENTITY_ACTIVITY_FEED_ALL);
 
     await act(async () => {
       render(
@@ -307,7 +310,7 @@ describe('NotificationFeedCard', () => {
   });
 
   it('falls back to entity display name when mention thread has no entityRef', async () => {
-    mockPrepareFeedLink.mockReturnValue('/entity/activity_feed/all');
+    mockPrepareFeedLink.mockReturnValue(ENTITY_ACTIVITY_FEED_ALL);
 
     await act(async () => {
       render(

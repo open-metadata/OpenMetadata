@@ -16,6 +16,9 @@ import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseLandingPageHeader from './CustomiseLandingPageHeader';
 
+const CUSTOMISE_HEADER_BTN = 'customise-header-btn';
+const TEST_TABLE = 'Test Table';
+
 jest.mock('../../../../hooks/useApplicationStore');
 jest.mock('../../../../utils/ServiceUtilClassBase');
 jest.mock('../../../../utils/RecentActivityUtils', () => ({
@@ -75,7 +78,7 @@ describe('CustomiseLandingPageHeader', () => {
     render(<CustomiseLandingPageHeader />);
 
     expect(screen.getByText('label.welcome')).toBeInTheDocument();
-    expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOMISE_HEADER_BTN)).toBeInTheDocument();
     expect(await screen.findByTestId('domain-selector')).toBeInTheDocument();
   });
 
@@ -92,7 +95,7 @@ describe('CustomiseLandingPageHeader', () => {
   it('should render the customise header button', () => {
     render(<CustomiseLandingPageHeader />);
 
-    expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOMISE_HEADER_BTN)).toBeInTheDocument();
   });
 
   it('should render the domain selector', async () => {
@@ -107,7 +110,7 @@ describe('CustomiseLandingPageHeader', () => {
     const mockRecentlyViewedData = [
       {
         id: '1',
-        displayName: 'Test Table',
+        displayName: TEST_TABLE,
         entityType: 'table',
         fqn: 'test.table',
         timestamp: Date.now(),
@@ -119,7 +122,7 @@ describe('CustomiseLandingPageHeader', () => {
 
     render(<CustomiseLandingPageHeader />);
 
-    expect(screen.getByText('Test Table')).toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE)).toBeInTheDocument();
   });
 
   it('should not render recently viewed data when empty', () => {
@@ -127,21 +130,19 @@ describe('CustomiseLandingPageHeader', () => {
 
     render(<CustomiseLandingPageHeader />);
 
-    expect(screen.queryByText('Test Table')).not.toBeInTheDocument();
+    expect(screen.queryByText(TEST_TABLE)).not.toBeInTheDocument();
   });
 
   it('should hide customise button when hideCustomiseButton is true', () => {
     render(<CustomiseLandingPageHeader hideCustomiseButton />);
 
-    expect(
-      screen.queryByTestId('customise-header-btn')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CUSTOMISE_HEADER_BTN)).not.toBeInTheDocument();
   });
 
   it('should show customise button when hideCustomiseButton is false', () => {
     render(<CustomiseLandingPageHeader hideCustomiseButton={false} />);
 
-    expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOMISE_HEADER_BTN)).toBeInTheDocument();
   });
 
   describe('background color precedence', () => {

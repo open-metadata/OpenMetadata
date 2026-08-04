@@ -14,6 +14,17 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Status } from '../../../../generated/entity/automations/workflow';
 import TestConnectionModal from './TestConnectionModal';
 
+const MESSAGE_SHOW_RAW_CONNECTION_LOG_LINES =
+  'message.show-raw-connection-log-lines';
+const TEST_CONNECTION_STEP_GETSCHEMAS = 'test-connection-step-GetSchemas';
+const CONNECTION_REMEDIATION_CARD = 'connection-remediation-card';
+const CONNECTION_SUCCESSFUL = 'Connection successful';
+const CONNECTION_GATE_PHASE = 'connection-gate-phase';
+const SCHEMA_ACCESS_DENIED = 'Schema access denied';
+const RAW_CONNECTION_LOG = 'raw-connection-log';
+const SCHEMAS_SUCCESS = 'Schemas success';
+const GATE_STEP_PILL = 'gate-step-pill';
+const ERROR_MESSAGE = 'Error message';
 jest.mock('../../InlineAlert/InlineAlert', () => {
   return jest.fn().mockReturnValue(<p>InlineAlert</p>);
 });
@@ -34,7 +45,7 @@ const testConnectionStepResult = [
   {
     name: 'GetSchemas',
     passed: false,
-    message: 'Error message',
+    message: ERROR_MESSAGE,
     mandatory: true,
   },
 ];
@@ -236,7 +247,7 @@ describe('TestConnectionModal', () => {
   it('should split steps into a connection gate and capability checks', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    expect(screen.getByTestId('connection-gate-phase')).toBeInTheDocument();
+    expect(screen.getByTestId(CONNECTION_GATE_PHASE)).toBeInTheDocument();
     expect(screen.getByTestId('capability-checks-phase')).toBeInTheDocument();
     expect(screen.getByText('label.establish-connection')).toBeInTheDocument();
     expect(
@@ -256,9 +267,7 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('connection-gate-phase')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONNECTION_GATE_PHASE)).not.toBeInTheDocument();
     expect(
       screen.getByTestId('test-connection-step-Step 1')
     ).toBeInTheDocument();
@@ -293,7 +302,7 @@ describe('TestConnectionModal', () => {
     render(<TestConnectionModal {...commonProps} />);
 
     expect(
-      screen.getByText('message.show-raw-connection-log-lines')
+      screen.getByText(MESSAGE_SHOW_RAW_CONNECTION_LOG_LINES)
     ).toBeInTheDocument();
     expect(screen.getByTestId('copy-log-button')).toBeInTheDocument();
     expect(screen.queryByTestId('copy-raw-log-button')).not.toBeInTheDocument();
@@ -302,22 +311,22 @@ describe('TestConnectionModal', () => {
   it('should let the user expand and collapse a capability step log', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    const step = screen.getByTestId('test-connection-step-GetSchemas');
+    const step = screen.getByTestId(TEST_CONNECTION_STEP_GETSCHEMAS);
     const stepToggle = step.querySelector('button') as HTMLButtonElement;
 
-    expect(screen.queryByText('Error message')).not.toBeInTheDocument();
+    expect(screen.queryByText(ERROR_MESSAGE)).not.toBeInTheDocument();
 
     fireEvent.click(stepToggle);
 
-    expect(screen.getByText('Error message')).toBeInTheDocument();
+    expect(screen.getByText(ERROR_MESSAGE)).toBeInTheDocument();
 
     fireEvent.click(stepToggle);
 
-    expect(screen.queryByText('Error message')).not.toBeInTheDocument();
+    expect(screen.queryByText(ERROR_MESSAGE)).not.toBeInTheDocument();
 
     fireEvent.click(stepToggle);
 
-    expect(screen.getByText('Error message')).toBeInTheDocument();
+    expect(screen.getByText(ERROR_MESSAGE)).toBeInTheDocument();
   });
 
   it('should expand the connection gate details', () => {
@@ -325,7 +334,7 @@ describe('TestConnectionModal', () => {
 
     fireEvent.click(
       screen
-        .getByTestId('connection-gate-phase')
+        .getByTestId(CONNECTION_GATE_PHASE)
         .querySelector('button') as HTMLButtonElement
     );
 
@@ -344,7 +353,7 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    expect(screen.getAllByTestId('gate-step-pill')).toHaveLength(4);
+    expect(screen.getAllByTestId(GATE_STEP_PILL)).toHaveLength(4);
   });
 
   it('should show all gate step pills as running when testing and no result', () => {
@@ -356,7 +365,7 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    const pills = screen.getAllByTestId('gate-step-pill');
+    const pills = screen.getAllByTestId(GATE_STEP_PILL);
 
     expect(pills).toHaveLength(4);
 
@@ -386,11 +395,11 @@ describe('TestConnectionModal', () => {
 
     fireEvent.click(
       screen
-        .getByTestId('connection-gate-phase')
+        .getByTestId(CONNECTION_GATE_PHASE)
         .querySelector('button') as HTMLButtonElement
     );
 
-    const pills = screen.getAllByTestId('gate-step-pill');
+    const pills = screen.getAllByTestId(GATE_STEP_PILL);
 
     expect(pills).toHaveLength(4);
 
@@ -414,25 +423,23 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('connection-gate-phase')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONNECTION_GATE_PHASE)).not.toBeInTheDocument();
   });
 
   it('should show and hide raw connection logs', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+    fireEvent.click(screen.getByText(MESSAGE_SHOW_RAW_CONNECTION_LOG_LINES));
 
-    const rawLog = screen.getByTestId('raw-connection-log');
+    const rawLog = screen.getByTestId(RAW_CONNECTION_LOG);
 
-    expect(rawLog).toHaveTextContent('Error message');
+    expect(rawLog).toHaveTextContent(ERROR_MESSAGE);
 
     expect(rawLog).not.toHaveTextContent('> GetSchemas');
 
     fireEvent.click(screen.getByText('message.hide-raw-connection-log-lines'));
 
-    expect(screen.queryByTestId('raw-connection-log')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(RAW_CONNECTION_LOG)).not.toBeInTheDocument();
   });
 
   it('should show executedCommand with > prefix in raw log', () => {
@@ -451,9 +458,9 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+    fireEvent.click(screen.getByText(MESSAGE_SHOW_RAW_CONNECTION_LOG_LINES));
 
-    const rawLog = screen.getByTestId('raw-connection-log');
+    const rawLog = screen.getByTestId(RAW_CONNECTION_LOG);
 
     expect(rawLog).toHaveTextContent('> SELECT 1');
     expect(rawLog).toHaveTextContent('Connected (12 ms)');
@@ -485,9 +492,9 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+    fireEvent.click(screen.getByText(MESSAGE_SHOW_RAW_CONNECTION_LOG_LINES));
 
-    const rawLog = screen.getByTestId('raw-connection-log');
+    const rawLog = screen.getByTestId(RAW_CONNECTION_LOG);
     const errorSpans = rawLog.querySelectorAll('.tw\\:text-utility-error-300');
 
     expect(errorSpans.length).toBe(6);
@@ -513,19 +520,19 @@ describe('TestConnectionModal', () => {
             name: 'GetSchemas',
             passed: true,
             mandatory: true,
-            message: 'Connection successful',
+            message: CONNECTION_SUCCESSFUL,
           },
         ]}
       />
     );
 
-    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+    fireEvent.click(screen.getByText(MESSAGE_SHOW_RAW_CONNECTION_LOG_LINES));
 
-    const rawLog = screen.getByTestId('raw-connection-log');
+    const rawLog = screen.getByTestId(RAW_CONNECTION_LOG);
 
     const successSpan = Array.from(
       rawLog.querySelectorAll('.tw\\:text-utility-success-300')
-    ).find((el) => el.textContent?.includes('Connection successful'));
+    ).find((el) => el.textContent?.includes(CONNECTION_SUCCESSFUL));
 
     expect(successSpan).toBeInTheDocument();
 
@@ -534,7 +541,7 @@ describe('TestConnectionModal', () => {
     );
 
     expect(
-      errorSpans.find((el) => el.textContent?.includes('Connection successful'))
+      errorSpans.find((el) => el.textContent?.includes(CONNECTION_SUCCESSFUL))
     ).toBeUndefined();
   });
 
@@ -574,9 +581,7 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('connection-gate-phase')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONNECTION_GATE_PHASE)).not.toBeInTheDocument();
   });
 
   it('should show Edit Connection and Retry Test buttons when test fails', () => {
@@ -658,9 +663,7 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    expect(
-      screen.getByTestId('connection-remediation-card')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(CONNECTION_REMEDIATION_CARD)).toBeInTheDocument();
   });
 
   it('should render the remediation card when a required capability step fails', () => {
@@ -677,16 +680,14 @@ describe('TestConnectionModal', () => {
           {
             name: 'GetSchemas',
             passed: false,
-            errorLog: 'Schema access denied',
+            errorLog: SCHEMA_ACCESS_DENIED,
             mandatory: true,
           },
         ]}
       />
     );
 
-    expect(
-      screen.getByTestId('connection-remediation-card')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(CONNECTION_REMEDIATION_CARD)).toBeInTheDocument();
   });
 
   it('should render the raw error inside the remediation card when no diagnosis is available', () => {
@@ -703,7 +704,7 @@ describe('TestConnectionModal', () => {
           {
             name: 'GetSchemas',
             passed: false,
-            errorLog: 'Schema access denied',
+            errorLog: SCHEMA_ACCESS_DENIED,
             mandatory: true,
           },
         ]}
@@ -711,8 +712,8 @@ describe('TestConnectionModal', () => {
     );
 
     expect(
-      within(screen.getByTestId('connection-remediation-card')).getByText(
-        'Schema access denied'
+      within(screen.getByTestId(CONNECTION_REMEDIATION_CARD)).getByText(
+        SCHEMA_ACCESS_DENIED
       )
     ).toBeInTheDocument();
   });
@@ -734,7 +735,7 @@ describe('TestConnectionModal', () => {
     );
 
     expect(
-      screen.queryByTestId('connection-remediation-card')
+      screen.queryByTestId(CONNECTION_REMEDIATION_CARD)
     ).not.toBeInTheDocument();
   });
 
@@ -752,20 +753,16 @@ describe('TestConnectionModal', () => {
           {
             name: 'GetSchemas',
             passed: false,
-            errorLog: 'Schema access denied',
+            errorLog: SCHEMA_ACCESS_DENIED,
             mandatory: true,
           },
         ]}
       />
     );
 
-    expect(
-      screen.queryByTestId('connection-gate-phase')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONNECTION_GATE_PHASE)).not.toBeInTheDocument();
 
-    expect(
-      screen.getByTestId('connection-remediation-card')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(CONNECTION_REMEDIATION_CARD)).toBeInTheDocument();
   });
 
   it('should show pass icon in gate step pills when gate step passes', () => {
@@ -786,11 +783,11 @@ describe('TestConnectionModal', () => {
 
     fireEvent.click(
       screen
-        .getByTestId('connection-gate-phase')
+        .getByTestId(CONNECTION_GATE_PHASE)
         .querySelector('button') as HTMLButtonElement
     );
 
-    const pills = screen.getAllByTestId('gate-step-pill');
+    const pills = screen.getAllByTestId(GATE_STEP_PILL);
 
     expect(pills).toHaveLength(4);
 
@@ -819,7 +816,7 @@ describe('TestConnectionModal', () => {
             name: 'GetSchemas',
             passed: true,
             mandatory: true,
-            message: 'Schemas success',
+            message: SCHEMAS_SUCCESS,
           },
           {
             name: 'GetTables',
@@ -831,16 +828,16 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    const step1 = screen.getByTestId('test-connection-step-GetSchemas');
+    const step1 = screen.getByTestId(TEST_CONNECTION_STEP_GETSCHEMAS);
     const step2 = screen.getByTestId('test-connection-step-GetTables');
 
     fireEvent.click(step1.querySelector('button') as HTMLButtonElement);
 
-    expect(screen.getByText('Schemas success')).toBeInTheDocument();
+    expect(screen.getByText(SCHEMAS_SUCCESS)).toBeInTheDocument();
 
     fireEvent.click(step2.querySelector('button') as HTMLButtonElement);
 
-    expect(screen.getByText('Schemas success')).toBeInTheDocument();
+    expect(screen.getByText(SCHEMAS_SUCCESS)).toBeInTheDocument();
     expect(screen.getByText('Tables error log')).toBeInTheDocument();
   });
 
@@ -867,7 +864,7 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    const step = screen.getByTestId('test-connection-step-GetSchemas');
+    const step = screen.getByTestId(TEST_CONNECTION_STEP_GETSCHEMAS);
 
     fireEvent.click(step.querySelector('button') as HTMLButtonElement);
 

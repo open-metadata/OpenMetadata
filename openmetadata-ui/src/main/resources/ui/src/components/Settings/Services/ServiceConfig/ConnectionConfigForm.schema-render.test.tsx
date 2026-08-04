@@ -35,6 +35,12 @@ import CorePasswordWidget from '../../../common/FormBuilderV1/widgets/CorePasswo
 import CoreSelectWidget from '../../../common/FormBuilderV1/widgets/CoreSelectWidget';
 import CoreTextAreaWidget from '../../../common/FormBuilderV1/widgets/CoreTextAreaWidget';
 
+const DATA_FIELD_NAME = 'data-field-name';
+const CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W =
+  'core-object-field-template-property-full-width';
+const AUTH_METHOD_1 = 'auth-method-1';
+const CONNECTION_SECTION_WIDE_PROPERTY = 'connection-section-wide-property';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: { count?: number }) => {
@@ -154,14 +160,14 @@ const expectAwsCredentialLayout = (
       awsConfigBlock.querySelectorAll(
         ':scope > .core-object-field-template-body-gated > .core-object-field-template-property'
       )
-    ).map((element) => element.getAttribute('data-field-name'))
+    ).map((element) => element.getAttribute(DATA_FIELD_NAME))
   ).toEqual(['enabled']);
   expect(
     Array.from(
       awsConfigBlock.querySelectorAll(
         '.core-object-field-template-credential-field-grid > .core-object-field-template-property'
       )
-    ).map((element) => element.getAttribute('data-field-name'))
+    ).map((element) => element.getAttribute(DATA_FIELD_NAME))
   ).toEqual(['awsAccessKeyId', 'awsSecretAccessKey', 'awsRegion']);
 
   const advancedConfigButton = within(awsConfigBlock).getByRole('button', {
@@ -179,7 +185,7 @@ const expectAwsCredentialLayout = (
           awsConfigBlock,
           `.core-object-field-template-property-${fieldName}`
         )
-      ).not.toHaveClass('core-object-field-template-property-full-width');
+      ).not.toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     }
   );
 };
@@ -207,7 +213,7 @@ describe('ConnectionConfigForm schema rendering', () => {
     expect(screen.getByTestId('auth-method-0')).toHaveTextContent(
       'label.password'
     );
-    expect(screen.getByTestId('auth-method-1')).toHaveTextContent(
+    expect(screen.getByTestId(AUTH_METHOD_1)).toHaveTextContent(
       'label.key-pair'
     );
     expect(screen.queryByTestId('auth-tabs')).not.toBeInTheDocument();
@@ -221,7 +227,7 @@ describe('ConnectionConfigForm schema rendering', () => {
       container.querySelector('[data-field-name="privateKey"]')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('auth-method-1'));
+    fireEvent.click(screen.getByTestId(AUTH_METHOD_1));
 
     expect(
       container.querySelector('[data-field-name="password"]')
@@ -234,7 +240,7 @@ describe('ConnectionConfigForm schema rendering', () => {
   it('renders Cassandra cloud config as a compact nested credential block', async () => {
     const { container } = await renderConnectionSchema('Cassandra');
 
-    fireEvent.click(screen.getByTestId('auth-method-1'));
+    fireEvent.click(screen.getByTestId(AUTH_METHOD_1));
 
     expect(
       screen.getByText('DataStax Astra DB Configuration')
@@ -254,17 +260,17 @@ describe('ConnectionConfigForm schema rendering', () => {
       cloudConfigBlock?.querySelector(
         '.core-object-field-template-property-connectTimeout'
       )
-    ).not.toHaveClass('core-object-field-template-property-full-width');
+    ).not.toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       cloudConfigBlock?.querySelector(
         '.core-object-field-template-property-requestTimeout'
       )
-    ).not.toHaveClass('core-object-field-template-property-full-width');
+    ).not.toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       cloudConfigBlock?.querySelector(
         '.core-object-field-template-property-secureConnectBundle'
       )
-    ).toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
   });
 
   it.each([
@@ -305,7 +311,7 @@ describe('ConnectionConfigForm schema rendering', () => {
     async (connectorType) => {
       const { container } = await renderConnectionSchema(connectorType);
 
-      fireEvent.click(screen.getByTestId('auth-method-1'));
+      fireEvent.click(screen.getByTestId(AUTH_METHOD_1));
 
       expectAwsCredentialLayout(container, '[data-field-id$="/awsConfig"]');
     }
@@ -318,7 +324,7 @@ describe('ConnectionConfigForm schema rendering', () => {
       '[data-field-name="configSource"]'
     );
 
-    expect(field).toHaveClass('connection-section-wide-property');
+    expect(field).toHaveClass(CONNECTION_SECTION_WIDE_PROPERTY);
     expect(
       field.querySelector(
         ':scope > .core-one-of-field .core-one-of-field-select'
@@ -379,7 +385,7 @@ describe('ConnectionConfigForm schema rendering', () => {
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(gcpConfigProperty).toHaveClass(
-      'core-object-field-template-property-full-width'
+      CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W
     );
     expect(
       gcpConfigField.querySelector('.core-object-field-template-title')
@@ -389,7 +395,7 @@ describe('ConnectionConfigForm schema rendering', () => {
         selectedCredentialBranch.querySelectorAll(
           ':scope > .core-object-field-template-property'
         )
-      ).map((element) => element.getAttribute('data-field-name'))
+      ).map((element) => element.getAttribute(DATA_FIELD_NAME))
     ).toEqual([
       'projectId',
       'privateKeyId',
@@ -402,7 +408,7 @@ describe('ConnectionConfigForm schema rendering', () => {
         selectedCredentialBranch,
         '.core-object-field-template-property-projectId'
       )
-    ).toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       getRequiredElement(
         selectedCredentialBranch,
@@ -422,7 +428,7 @@ describe('ConnectionConfigForm schema rendering', () => {
         selectedCredentialBranch,
         '.core-object-field-template-property-privateKey'
       )
-    ).toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       selectedCredentialBranch.querySelector(
         ':scope > .core-object-field-template-property-type'
@@ -459,13 +465,13 @@ describe('ConnectionConfigForm schema rendering', () => {
         gcpConfigField,
         '.core-object-field-template-property-authUri'
       )
-    ).toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       getRequiredElement(
         gcpConfigField,
         '.core-object-field-template-property-tokenUri'
       )
-    ).toHaveClass('core-object-field-template-property-full-width');
+    ).toHaveClass(CORE_OBJECT_FIELD_TEMPLATE_PROPERTY_FULL_W);
     expect(
       within(gcpConfigField).getByRole('button', {
         name: 'Hide advanced credential settings (5)',
@@ -513,7 +519,7 @@ describe('ConnectionConfigForm schema rendering', () => {
 
     expect(
       getRequiredElement(container, '[data-field-name="metastoreConnection"]')
-    ).toHaveClass('connection-section-wide-property');
+    ).toHaveClass(CONNECTION_SECTION_WIDE_PROPERTY);
   });
 
   it.each([
@@ -544,7 +550,7 @@ describe('ConnectionConfigForm schema rendering', () => {
         ':scope > .core-one-of-field > .core-one-of-field-tabs'
       );
 
-      expect(field).toHaveClass('connection-section-wide-property');
+      expect(field).toHaveClass(CONNECTION_SECTION_WIDE_PROPERTY);
       expect(within(tabs).getByTestId('oneof-option-0')).toBeInTheDocument();
       expect(within(tabs).getByTestId('oneof-option-1')).toBeInTheDocument();
       expect(
@@ -563,7 +569,7 @@ describe('ConnectionConfigForm schema rendering', () => {
       '[data-field-name="connection"]'
     );
 
-    expect(field).toHaveClass('connection-section-wide-property');
+    expect(field).toHaveClass(CONNECTION_SECTION_WIDE_PROPERTY);
     expect(
       field.querySelector('.core-one-of-field-select')
     ).toBeInTheDocument();

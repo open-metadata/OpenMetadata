@@ -28,6 +28,11 @@ import {
   ThreadType,
 } from '../generated/entity/feed/thread';
 
+const ASHISH_GUPTA = 'Ashish Gupta' as const;
+const ASHLEY_KING = 'Ashley King' as const;
+const D6764107_E8B4_4748_B256_C86FECC66064 =
+  'd6764107-e8b4-4748-b256-c86fecc66064' as const;
+
 /* eslint-disable max-len */
 export const TASK_FEED: Thread = {
   id: '8b5076bb-8284-46b0-b00d-5e43a184ba9b',
@@ -157,7 +162,7 @@ export const MOCK_ASSIGNEE_DATA = {
     hits: {
       hits: [
         {
-          text: 'Ashish Gupta',
+          text: ASHISH_GUPTA,
           _index: 'user',
           _type: '_doc',
           _id: '18ca6cd1-d696-4a22-813f-c7a42fc09dc4',
@@ -169,7 +174,7 @@ export const MOCK_ASSIGNEE_DATA = {
             fullyQualifiedName: 'ashish',
             description:
               'this is test description. this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!this is test description!',
-            displayName: 'Ashish Gupta',
+            displayName: ASHISH_GUPTA,
             version: 0.8,
             updatedAt: 1699428544440,
             updatedBy: 'ashish',
@@ -234,14 +239,14 @@ export const MOCK_ASSIGNEE_DATA = {
               displayName: 'Product Name',
               inherited: true,
             },
-            fqnParts: ['ashish', 'Ashish Gupta'],
+            fqnParts: ['ashish', ASHISH_GUPTA],
             suggest: [
               {
                 input: 'ashish',
                 weight: 5,
               },
               {
-                input: 'Ashish Gupta',
+                input: ASHISH_GUPTA,
                 weight: 10,
               },
             ],
@@ -252,7 +257,7 @@ export const MOCK_ASSIGNEE_DATA = {
           },
         },
         {
-          text: 'Ashley King',
+          text: ASHLEY_KING,
           _index: 'user',
           _type: '_doc',
           _id: '0c83a592-7ced-4156-b235-01726259a0e7',
@@ -261,7 +266,7 @@ export const MOCK_ASSIGNEE_DATA = {
             id: '0c83a592-7ced-4156-b235-01726259a0e7',
             name: 'ashley_king5',
             fullyQualifiedName: 'ashley_king5',
-            displayName: 'Ashley King',
+            displayName: ASHLEY_KING,
             version: 0.2,
             updatedAt: 1702647808915,
             updatedBy: 'ingestion-bot',
@@ -300,14 +305,14 @@ export const MOCK_ASSIGNEE_DATA = {
               displayName: 'Product Design ',
               inherited: true,
             },
-            fqnParts: ['ashley_king5', 'Ashley King'],
+            fqnParts: ['ashley_king5', ASHLEY_KING],
             suggest: [
               {
                 input: 'ashley_king5',
                 weight: 5,
               },
               {
-                input: 'Ashley King',
+                input: ASHLEY_KING,
                 weight: 10,
               },
             ],
@@ -337,7 +342,7 @@ export const MOCK_TASK = {
   type: TaskType.RequestTag,
   assignees: [
     {
-      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      id: D6764107_E8B4_4748_B256_C86FECC66064,
       type: 'User',
       name: 'xyz',
       fullyQualifiedName: 'xyz',
@@ -355,7 +360,7 @@ export const MOCK_TASK_2 = {
   type: TaskType.RequestTag,
   assignees: [
     {
-      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      id: D6764107_E8B4_4748_B256_C86FECC66064,
       type: 'User',
       name: 'xyz',
       fullyQualifiedName: 'xyz',
@@ -371,7 +376,7 @@ export const MOCK_TASK_3 = {
   type: TaskType.RequestApproval,
   assignees: [
     {
-      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      id: D6764107_E8B4_4748_B256_C86FECC66064,
       type: 'User',
       name: 'xyz',
       fullyQualifiedName: 'xyz',
@@ -389,7 +394,7 @@ export const MOCK_RECOGNIZER_FEEDBACK: RecognizerFeedback = {
   tagFQN: 'PII.Sensitive',
   userComments: 'This is not a sensitive field',
   createdBy: {
-    id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+    id: D6764107_E8B4_4748_B256_C86FECC66064,
     type: 'user',
     name: 'admin',
     displayName: 'Admin User',

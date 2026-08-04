@@ -30,6 +30,16 @@ import {
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 
+const TEST_SUITE_ID = 'test-suite-id';
+const TEST_SUITE = 'test-suite';
+const TEST_CASE_1 = 'test-case-1';
+const TEST_CASE_2 = 'test-case-2';
+const ADD_TEST_CASE_LIST = 'add-test-case-list';
+const SUBMIT_BULK_PARTIAL_SINGLE_ID = 'submit-bulk-partial-single-id';
+const HEADERBREADCRUMB_COMPONENT = 'HeaderBreadcrumb.component';
+const MANAGEBUTTON_COMPONENT = 'ManageButton.component';
+const ADD_TEST_CASE_BTN = 'add-test-case-btn';
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
 
@@ -220,8 +230,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 // Mock data
 const mockTestSuite = {
-  id: 'test-suite-id',
-  name: 'test-suite',
+  id: TEST_SUITE_ID,
+  name: TEST_SUITE,
   displayName: 'Test Suite',
   fullyQualifiedName: 'testSuiteFQN',
   description: 'Test suite description',
@@ -233,18 +243,18 @@ const mockTestSuite = {
 
 const mockTestCases = [
   {
-    id: 'test-case-1',
+    id: TEST_CASE_1,
     name: 'test_case_1',
     displayName: 'Test Case 1',
     testDefinition: { id: 'def-1', name: 'definition-1' },
-    testSuite: { id: 'test-suite-id', name: 'test-suite' },
+    testSuite: { id: TEST_SUITE_ID, name: TEST_SUITE },
   },
   {
-    id: 'test-case-2',
+    id: TEST_CASE_2,
     name: 'test_case_2',
     displayName: 'Test Case 2',
     testDefinition: { id: 'def-2', name: 'definition-2' },
-    testSuite: { id: 'test-suite-id', name: 'test-suite' },
+    testSuite: { id: TEST_SUITE_ID, name: TEST_SUITE },
   },
 ];
 
@@ -419,7 +429,7 @@ jest.mock(
           const [filtersApplied, setFiltersApplied] = React.useState(false);
 
           return (
-            <div data-testid="add-test-case-list">
+            <div data-testid={ADD_TEST_CASE_LIST}>
               AddTestCaseList.component
               <button
                 data-testid="mock-apply-test-case-filters"
@@ -431,12 +441,12 @@ jest.mock(
                 <span data-testid="mock-filters-applied">Filters applied</span>
               ) : null}
               <button
-                data-testid="submit-bulk-partial-single-id"
+                data-testid={SUBMIT_BULK_PARTIAL_SINGLE_ID}
                 type="button"
                 onClick={() =>
                   onSubmit({
                     selectAll: false,
-                    includeIds: ['test-case-1'],
+                    includeIds: [TEST_CASE_1],
                     excludeIds: [],
                   })
                 }>
@@ -461,7 +471,7 @@ jest.mock(
                   onSubmit({
                     selectAll: true,
                     includeIds: [],
-                    excludeIds: ['test-case-1', 'test-case-2'],
+                    excludeIds: [TEST_CASE_1, TEST_CASE_2],
                   })
                 }>
                 Submit All mode with excludes
@@ -555,7 +565,7 @@ describe('TestSuiteDetailsPage component', () => {
       render(<TestSuiteDetailsPage />);
 
       expect(
-        await screen.findByText('HeaderBreadcrumb.component')
+        await screen.findByText(HEADERBREADCRUMB_COMPONENT)
       ).toBeInTheDocument();
     });
 
@@ -563,7 +573,7 @@ describe('TestSuiteDetailsPage component', () => {
       render(<TestSuiteDetailsPage />);
 
       expect(
-        await screen.findByText('HeaderBreadcrumb.component')
+        await screen.findByText(HEADERBREADCRUMB_COMPONENT)
       ).toBeInTheDocument();
       expect(
         await screen.findByTestId('entity-header-name')
@@ -572,7 +582,7 @@ describe('TestSuiteDetailsPage component', () => {
         await screen.findByText('DomainLabel.component')
       ).toBeInTheDocument();
       expect(
-        await screen.findByText('ManageButton.component')
+        await screen.findByText(MANAGEBUTTON_COMPONENT)
       ).toBeInTheDocument();
       expect(
         await screen.findByText('Description.component')
@@ -580,9 +590,7 @@ describe('TestSuiteDetailsPage component', () => {
       expect(
         await screen.findByText('DataQualityTab.component')
       ).toBeInTheDocument();
-      expect(
-        await screen.findByTestId('add-test-case-btn')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ADD_TEST_CASE_BTN)).toBeInTheDocument();
     });
 
     it('should show loader while loading', async () => {
@@ -678,9 +686,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('add-test-case-btn')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId(ADD_TEST_CASE_BTN)).not.toBeInTheDocument();
       });
     });
 
@@ -689,9 +695,7 @@ describe('TestSuiteDetailsPage component', () => {
         render(<TestSuiteDetailsPage />);
       });
 
-      expect(
-        await screen.findByTestId('add-test-case-btn')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ADD_TEST_CASE_BTN)).toBeInTheDocument();
     });
 
     it('should show add test case button if user has EditTests permission', async () => {
@@ -708,9 +712,7 @@ describe('TestSuiteDetailsPage component', () => {
         render(<TestSuiteDetailsPage />);
       });
 
-      expect(
-        await screen.findByTestId('add-test-case-btn')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ADD_TEST_CASE_BTN)).toBeInTheDocument();
     });
   });
 
@@ -720,14 +722,14 @@ describe('TestSuiteDetailsPage component', () => {
         render(<TestSuiteDetailsPage />);
       });
 
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByTestId('add-test-case-list')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_TEST_CASE_LIST)).toBeInTheDocument();
     });
 
     it('should close modal when cancel is clicked', async () => {
@@ -735,7 +737,7 @@ describe('TestSuiteDetailsPage component', () => {
         render(<TestSuiteDetailsPage />);
       });
 
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
       await act(async () => {
         fireEvent.click(addButton);
       });
@@ -758,12 +760,12 @@ describe('TestSuiteDetailsPage component', () => {
       // Clear previous calls
       mockGetListTestCaseBySearch.mockClear();
 
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      const submitButton = screen.getByTestId('submit-bulk-partial-single-id');
+      const submitButton = screen.getByTestId(SUBMIT_BULK_PARTIAL_SINGLE_ID);
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -779,11 +781,11 @@ describe('TestSuiteDetailsPage component', () => {
       await act(async () => {
         render(<TestSuiteDetailsPage />);
       });
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
       await act(async () => {
         fireEvent.click(addButton);
       });
-      await screen.findByTestId('add-test-case-list');
+      await screen.findByTestId(ADD_TEST_CASE_LIST);
     };
 
     it('after filters, selecting one row calls bulk with IDS mode payload (selectAll false, includeIds)', async () => {
@@ -796,15 +798,15 @@ describe('TestSuiteDetailsPage component', () => {
       expect(screen.getByTestId('mock-filters-applied')).toBeInTheDocument();
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('submit-bulk-partial-single-id'));
+        fireEvent.click(screen.getByTestId(SUBMIT_BULK_PARTIAL_SINGLE_ID));
       });
 
       await waitFor(() => {
         expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
-          'test-suite-id',
+          TEST_SUITE_ID,
           {
             selectAll: false,
-            includeIds: ['test-case-1'],
+            includeIds: [TEST_CASE_1],
             excludeIds: [],
           }
         );
@@ -823,7 +825,7 @@ describe('TestSuiteDetailsPage component', () => {
 
       await waitFor(() => {
         expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
-          'test-suite-id',
+          TEST_SUITE_ID,
           {
             selectAll: true,
             includeIds: [],
@@ -847,11 +849,11 @@ describe('TestSuiteDetailsPage component', () => {
 
       await waitFor(() => {
         expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
-          'test-suite-id',
+          TEST_SUITE_ID,
           {
             selectAll: true,
             includeIds: [],
-            excludeIds: ['test-case-1', 'test-case-2'],
+            excludeIds: [TEST_CASE_1, TEST_CASE_2],
           }
         );
       });
@@ -948,7 +950,7 @@ describe('TestSuiteDetailsPage component', () => {
             'incidentId',
             'incidentStatus',
           ],
-          testSuiteId: 'test-suite-id',
+          testSuiteId: TEST_SUITE_ID,
         })
       );
     });
@@ -1041,12 +1043,12 @@ describe('TestSuiteDetailsPage component', () => {
         render(<TestSuiteDetailsPage />);
       });
 
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      const submitButton = screen.getByTestId('submit-bulk-partial-single-id');
+      const submitButton = screen.getByTestId(SUBMIT_BULK_PARTIAL_SINGLE_ID);
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -1082,9 +1084,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       // Component should still render without crashing
-      expect(
-        screen.getByText('HeaderBreadcrumb.component')
-      ).toBeInTheDocument();
+      expect(screen.getByText(HEADERBREADCRUMB_COMPONENT)).toBeInTheDocument();
     });
 
     it('should handle empty test cases list', async () => {
@@ -1130,7 +1130,7 @@ describe('TestSuiteDetailsPage component', () => {
       // The afterDeleteAction is passed to ManageButton
       // We can't directly test it without triggering the delete,
       // but we can verify the component renders
-      expect(screen.getByText('ManageButton.component')).toBeInTheDocument();
+      expect(screen.getByText(MANAGEBUTTON_COMPONENT)).toBeInTheDocument();
     });
   });
 
@@ -1189,7 +1189,7 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       expect(
-        await screen.findByText('ManageButton.component')
+        await screen.findByText(MANAGEBUTTON_COMPONENT)
       ).toBeInTheDocument();
     });
 
@@ -1198,12 +1198,12 @@ describe('TestSuiteDetailsPage component', () => {
         render(<TestSuiteDetailsPage />);
       });
 
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      await screen.findByTestId('add-test-case-list');
+      await screen.findByTestId(ADD_TEST_CASE_LIST);
 
       const AddTestCaseList =
         require('../../components/DataQuality/AddTestCaseList/AddTestCaseList.component')
@@ -1224,7 +1224,7 @@ describe('TestSuiteDetailsPage component', () => {
 
       await waitFor(() => {
         expect(mockAddTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
-          'test-suite-id',
+          TEST_SUITE_ID,
           {
             selectAll: false,
             includeIds: [],

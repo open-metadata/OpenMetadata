@@ -16,6 +16,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuditLogEntry } from '../../types/auditLogs.interface';
 import AuditLogList from './AuditLogList.component';
 
+const PROFILE_PICTURE = 'profile-picture' as const;
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_ORDERS =
+  'sample_data.ecommerce_db.shopify.orders' as const;
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_PRODUCTS =
+  'sample_data.ecommerce_db.shopify.products' as const;
+const PII_SENSITIVE = 'PII.Sensitive' as const;
+const SALES_DATA_PRODUCT = 'Sales Data Product' as const;
+
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest
     .fn()
@@ -45,17 +53,17 @@ describe('AuditLogList', () => {
       eventType: 'entityCreated',
       userName: 'admin',
       entityType: 'table',
-      entityFQN: 'sample_data.ecommerce_db.shopify.orders',
+      entityFQN: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_ORDERS,
       changeEvent: {
         id: 'ce-1',
         eventType: 'entityCreated',
         entityType: 'table',
-        entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
+        entityFullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_ORDERS,
         entity: {
           id: 'table-1',
           name: 'orders',
           displayName: 'Orders',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_ORDERS,
         },
         changeDescription: {
           fieldsAdded: [],
@@ -72,24 +80,24 @@ describe('AuditLogList', () => {
       eventType: 'entityUpdated',
       userName: 'test_user',
       entityType: 'table',
-      entityFQN: 'sample_data.ecommerce_db.shopify.products',
+      entityFQN: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_PRODUCTS,
       changeEvent: {
         id: 'ce-2',
         eventType: 'entityUpdated',
         entityType: 'table',
-        entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.products',
+        entityFullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_PRODUCTS,
         entity: {
           id: 'table-2',
           name: 'products',
           displayName: 'Products',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.products',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_PRODUCTS,
         },
         changeDescription: {
           fieldsAdded: [
             {
               name: 'tags',
               newValue: JSON.stringify([
-                { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
+                { tagFQN: PII_SENSITIVE, name: 'Sensitive' },
               ]),
             },
           ],
@@ -132,7 +140,7 @@ describe('AuditLogList', () => {
   it('should display profile pictures for each log entry', () => {
     renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
 
-    const profilePictures = screen.getAllByTestId('profile-picture');
+    const profilePictures = screen.getAllByTestId(PROFILE_PICTURE);
 
     expect(profilePictures).toHaveLength(2);
   });
@@ -194,7 +202,7 @@ describe('AuditLogList', () => {
               {
                 name: 'tags',
                 newValue: JSON.stringify([
-                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
+                  { tagFQN: PII_SENSITIVE, name: 'Sensitive' },
                 ]),
               },
             ],
@@ -233,8 +241,8 @@ describe('AuditLogList', () => {
                 newValue: JSON.stringify([
                   {
                     fullyQualifiedName: 'sales-dp',
-                    name: 'Sales Data Product',
-                    displayName: 'Sales Data Product',
+                    name: SALES_DATA_PRODUCT,
+                    displayName: SALES_DATA_PRODUCT,
                   },
                 ]),
               },
@@ -251,7 +259,7 @@ describe('AuditLogList', () => {
       <AuditLogList isLoading={false} logs={logsWithDataProduct} />
     );
 
-    const dpLink = screen.getByRole('link', { name: 'Sales Data Product' });
+    const dpLink = screen.getByRole('link', { name: SALES_DATA_PRODUCT });
 
     expect(dpLink).toHaveAttribute('href', '/dataProduct/sales-dp');
   });
@@ -368,7 +376,7 @@ describe('AuditLogList', () => {
 
     renderWithRouter(<AuditLogList isLoading={false} logs={logsWithOwner} />);
 
-    const profilePictures = screen.getAllByTestId('profile-picture');
+    const profilePictures = screen.getAllByTestId(PROFILE_PICTURE);
 
     expect(profilePictures.length).toBeGreaterThanOrEqual(2);
   });
@@ -450,7 +458,7 @@ describe('AuditLogList', () => {
 
     renderWithRouter(<AuditLogList isLoading={false} logs={systemLogs} />);
 
-    const profilePictures = screen.getAllByTestId('profile-picture');
+    const profilePictures = screen.getAllByTestId(PROFILE_PICTURE);
 
     expect(profilePictures[0]).toHaveTextContent('label.system');
   });
@@ -473,7 +481,7 @@ describe('AuditLogList', () => {
               {
                 name: 'tags',
                 newValue: JSON.stringify([
-                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
+                  { tagFQN: PII_SENSITIVE, name: 'Sensitive' },
                 ]),
               },
             ],
@@ -521,7 +529,7 @@ describe('AuditLogList', () => {
               {
                 name: 'tags',
                 oldValue: JSON.stringify([
-                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
+                  { tagFQN: PII_SENSITIVE, name: 'Sensitive' },
                 ]),
               },
             ],
@@ -660,7 +668,7 @@ describe('AuditLogList', () => {
       <AuditLogList isLoading={false} logs={logsWithReviewers} />
     );
 
-    const profilePictures = screen.getAllByTestId('profile-picture');
+    const profilePictures = screen.getAllByTestId(PROFILE_PICTURE);
 
     expect(profilePictures.length).toBeGreaterThanOrEqual(2);
   });
@@ -717,17 +725,17 @@ describe('AuditLogList', () => {
         eventType: 'entityCreated',
         userName: 'admin',
         entityType: 'table',
-        entityFQN: 'sample_data.ecommerce_db.shopify.orders',
+        entityFQN: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_ORDERS,
         changeEvent: {
           id: 'ce-1',
           eventType: 'entityCreated',
           entityType: 'table',
-          entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
+          entityFullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_ORDERS,
           entity: {
             id: 'table-1',
             name: 'orders',
             displayName: 'Orders Table',
-            fullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_ORDERS,
           },
           changeDescription: {
             fieldsAdded: [],

@@ -21,6 +21,9 @@ import { useAppModeStore, writeAppMode } from '../../hooks/useAppMode';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import AppRouter from './AppRouter';
 
+const MOCK_DEFAULT_AUTHENTICATED_ROUTES = 'default-authenticated-routes';
+const CUSTOM_MODE_ROUTES = 'custom-mode-routes';
+
 jest.mock('./AuthenticatedApp', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => (
@@ -30,7 +33,9 @@ jest.mock('./AuthenticatedApp', () => ({
 
 jest.mock('./AuthenticatedRoutes', () => ({
   __esModule: true,
-  AuthenticatedRoutes: () => <div data-testid="default-authenticated-routes" />,
+  AuthenticatedRoutes: () => (
+    <div data-testid={MOCK_DEFAULT_AUTHENTICATED_ROUTES} />
+  ),
 }));
 
 jest.mock('../../pages/PageNotFound/PageNotFound', () => ({
@@ -87,7 +92,7 @@ const setAuthState = (overrides: {
 };
 
 const ModeRoutesMock: ComponentType = () => (
-  <div data-testid="custom-mode-routes" />
+  <div data-testid={CUSTOM_MODE_ROUTES} />
 );
 
 const makeQueryClient = () =>
@@ -122,9 +127,9 @@ describe('AppRouter — App Mode routing integration', () => {
     renderRouter();
 
     expect(
-      await screen.findByTestId('default-authenticated-routes')
+      await screen.findByTestId(MOCK_DEFAULT_AUTHENTICATED_ROUTES)
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('custom-mode-routes')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CUSTOM_MODE_ROUTES)).not.toBeInTheDocument();
   });
 
   it('wraps the rendered routes in AuthenticatedApp for an authenticated user', async () => {
@@ -144,9 +149,9 @@ describe('AppRouter — App Mode routing integration', () => {
 
     renderRouter();
 
-    expect(await screen.findByTestId('custom-mode-routes')).toBeInTheDocument();
+    expect(await screen.findByTestId(CUSTOM_MODE_ROUTES)).toBeInTheDocument();
     expect(
-      screen.queryByTestId('default-authenticated-routes')
+      screen.queryByTestId(MOCK_DEFAULT_AUTHENTICATED_ROUTES)
     ).not.toBeInTheDocument();
   });
 
@@ -157,9 +162,9 @@ describe('AppRouter — App Mode routing integration', () => {
     renderRouter();
 
     expect(
-      await screen.findByTestId('default-authenticated-routes')
+      await screen.findByTestId(MOCK_DEFAULT_AUTHENTICATED_ROUTES)
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('custom-mode-routes')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CUSTOM_MODE_ROUTES)).not.toBeInTheDocument();
   });
 
   it('swaps to the registered mode component when the AppMode changes mid-session', async () => {
@@ -171,7 +176,7 @@ describe('AppRouter — App Mode routing integration', () => {
     renderRouter();
 
     expect(
-      await screen.findByTestId('default-authenticated-routes')
+      await screen.findByTestId(MOCK_DEFAULT_AUTHENTICATED_ROUTES)
     ).toBeInTheDocument();
 
     act(() => {
@@ -179,11 +184,11 @@ describe('AppRouter — App Mode routing integration', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('custom-mode-routes')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_MODE_ROUTES)).toBeInTheDocument();
     });
 
     expect(
-      screen.queryByTestId('default-authenticated-routes')
+      screen.queryByTestId(MOCK_DEFAULT_AUTHENTICATED_ROUTES)
     ).not.toBeInTheDocument();
   });
 });

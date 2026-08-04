@@ -46,6 +46,8 @@ import {
   ExportData,
 } from './EntityExportModalProvider.interface';
 
+const SERVER_UNEXPECTED_ERROR = 'server.unexpected-error';
+
 const EntityExportModalContext = createContext<EntityExportModalContextProps>(
   {} as EntityExportModalContextProps
 );
@@ -243,9 +245,7 @@ export const EntityExportModalProvider = ({
       const updatedCSVExportJob: Partial<CSVExportJob> = {
         ...activeJob,
         ...response,
-        error: isTerminalFailure
-          ? t('server.unexpected-error')
-          : response.error,
+        error: isTerminalFailure ? t(SERVER_UNEXPECTED_ERROR) : response.error,
         jobId: activeJob.jobId,
         fileName: activeJob.fileName,
         statusUnavailable: false,
@@ -287,7 +287,7 @@ export const EntityExportModalProvider = ({
             csvExportJobRef.current = undefined;
             pendingCSVExportResponsesRef.current.clear();
             if (isBulkEdit) {
-              setCSVExportError(t('server.unexpected-error'));
+              setCSVExportError(t(SERVER_UNEXPECTED_ERROR));
             }
           })
           .finally(() => {
@@ -312,7 +312,7 @@ export const EntityExportModalProvider = ({
         csvExportJobRef.current = undefined;
         pendingCSVExportResponsesRef.current.clear();
         if (isBulkEdit) {
-          setCSVExportError(t('server.unexpected-error'));
+          setCSVExportError(t(SERVER_UNEXPECTED_ERROR));
         }
       }
     },
@@ -637,7 +637,7 @@ export const EntityExportModalProvider = ({
       showErrorToast(error as AxiosError);
       setDownloading(false);
       if (isBulkEdit) {
-        setCSVExportError(t('server.unexpected-error'));
+        setCSVExportError(t(SERVER_UNEXPECTED_ERROR));
       }
       activeExportData.onError?.();
       exportOnErrorRef.current = undefined;

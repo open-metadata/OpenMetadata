@@ -75,6 +75,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+const LABEL_VIEW_ALL_ENTITY = 'label.view-all-entity';
+const LABEL_MEMORY_PLURAL = 'label.memory-plural';
+
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -459,7 +462,7 @@ const ContextCenterDashboardPage: FC = () => {
           <>
             <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:shrink-0">
               <ContextKnowledgePillarCard
-                cta={t('label.view-all-entity', {
+                cta={t(LABEL_VIEW_ALL_ENTITY, {
                   entity: t('label.article-plural'),
                 })}
                 dataTestId="article-detail-card"
@@ -475,7 +478,7 @@ const ContextCenterDashboardPage: FC = () => {
                 }
               />
               <ContextKnowledgePillarCard
-                cta={t('label.view-all-entity', {
+                cta={t(LABEL_VIEW_ALL_ENTITY, {
                   entity: t('label.document-plural'),
                 })}
                 dataTestId="document-detail-card"
@@ -492,17 +495,17 @@ const ContextCenterDashboardPage: FC = () => {
                 }
               />
               <ContextKnowledgePillarCard
-                cta={t('label.view-all-entity', {
-                  entity: t('label.memory-plural'),
+                cta={t(LABEL_VIEW_ALL_ENTITY, {
+                  entity: t(LABEL_MEMORY_PLURAL),
                 })}
                 dataTestId="memory-detail-card"
                 icon={MemoryIcon}
                 isLoading={isMemoriesLoading}
                 recent={memories}
                 stat={String(memoriesCount)}
-                statSub={t('label.memory-plural')}
+                statSub={t(LABEL_MEMORY_PLURAL)}
                 subtitle={t('message.atomic-facts-ai-should-remember')}
-                title={t('label.memory-plural')}
+                title={t(LABEL_MEMORY_PLURAL)}
                 onClick={() =>
                   navigate(contextCenterClassBase.getMemoriesListPath())
                 }

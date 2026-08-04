@@ -35,6 +35,8 @@ import { QueryVoteType } from '../TableQueries.interface';
 import './query-card-extra-option.style.less';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
+const LABEL_QUERY = 'label.query' as const;
+
 const QueryCardExtraOption = ({
   permission,
   query,
@@ -209,7 +211,7 @@ const QueryCardExtraOption = ({
         trigger={['click']}>
         <Tooltip
           title={t('label.manage-entity', {
-            entity: t('label.query'),
+            entity: t(LABEL_QUERY),
           })}>
           <Button
             className="flex-center button-size"
@@ -222,11 +224,11 @@ const QueryCardExtraOption = ({
       </Dropdown>
       <ConfirmationModal
         bodyText={t('message.delete-entity-permanently', {
-          entityType: t('label.query'),
+          entityType: t(LABEL_QUERY),
         })}
         cancelText={t('label.cancel')}
         confirmText={t('label.delete')}
-        header={t('label.delete-entity', { entity: t('label.query') })}
+        header={t('label.delete-entity', { entity: t(LABEL_QUERY) })}
         isLoading={isDeleting}
         visible={showDeleteModal}
         onCancel={() => setShowDeleteModal(false)}

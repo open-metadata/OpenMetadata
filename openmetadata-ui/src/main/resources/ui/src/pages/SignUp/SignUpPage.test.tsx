@@ -18,6 +18,12 @@ import { getImages } from '../../utils/UserDataUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
 
+const CREATE_USER_FORM = 'create-user-form';
+const FULL_NAME_INPUT = 'full-name-input';
+const USERNAME_INPUT = 'username-input';
+const EMAIL_INPUT = 'email-input';
+const CREATE_BUTTON = 'create-button';
+
 let letExpectedUserName = {
   name: 'sample123',
   email: 'sample123@sample.com',
@@ -75,17 +81,17 @@ describe('SignUp page', () => {
     render(<SignUp />);
     const logo = screen.getByTestId('om-logo');
     const heading = screen.getByTestId('om-heading');
-    const form = screen.getByTestId('create-user-form');
+    const form = screen.getByTestId(CREATE_USER_FORM);
     const fullNameLabel = screen.getByTestId('full-name-label');
-    const fullNameInput = screen.getByTestId('full-name-input');
+    const fullNameInput = screen.getByTestId(FULL_NAME_INPUT);
     const usernameLabel = screen.getByTestId('username-label');
-    const usernameInput = screen.getByTestId('username-input');
+    const usernameInput = screen.getByTestId(USERNAME_INPUT);
     const emailLabel = screen.getByTestId('email-label');
-    const emailInput = screen.getByTestId('email-input');
+    const emailInput = screen.getByTestId(EMAIL_INPUT);
     const selectTeamLabel = screen.getByTestId('select-team-label');
-    const createButton = screen.getByTestId('create-button');
+    const createButton = screen.getByTestId(CREATE_BUTTON);
     const loadingContent = screen.queryByTestId('loading-content');
-    const submitButton = screen.getByTestId('create-button');
+    const submitButton = screen.getByTestId(CREATE_BUTTON);
 
     expect(logo).toBeInTheDocument();
     expect(heading).toBeInTheDocument();
@@ -108,11 +114,11 @@ describe('SignUp page', () => {
     );
 
     render(<SignUp />);
-    const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId('full-name-input');
-    const userNameInput = screen.getByTestId('username-input');
-    const emailInput = screen.getByTestId('email-input');
-    const submitButton = screen.getByTestId('create-button');
+    const form = screen.getByTestId(CREATE_USER_FORM);
+    const fullNameInput = screen.getByTestId(FULL_NAME_INPUT);
+    const userNameInput = screen.getByTestId(USERNAME_INPUT);
+    const emailInput = screen.getByTestId(EMAIL_INPUT);
+    const submitButton = screen.getByTestId(CREATE_BUTTON);
 
     expect(form).toBeInTheDocument();
 
@@ -141,11 +147,11 @@ describe('SignUp page', () => {
 
   it('Error should be thrown if createUser API fails', async () => {
     render(<SignUp />);
-    const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId('full-name-input');
-    const userNameInput = screen.getByTestId('username-input');
-    const emailInput = screen.getByTestId('email-input');
-    const submitButton = screen.getByTestId('create-button');
+    const form = screen.getByTestId(CREATE_USER_FORM);
+    const fullNameInput = screen.getByTestId(FULL_NAME_INPUT);
+    const userNameInput = screen.getByTestId(USERNAME_INPUT);
+    const emailInput = screen.getByTestId(EMAIL_INPUT);
+    const submitButton = screen.getByTestId(CREATE_BUTTON);
 
     expect(form).toBeInTheDocument();
 
@@ -182,17 +188,17 @@ describe('SignUp page', () => {
     letExpectedUserName = { name: '', email: '' };
 
     render(<SignUp />);
-    const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId('full-name-input');
-    const usernameInput = screen.getByTestId('username-input');
-    const emailInput = screen.getByTestId('email-input');
+    const form = screen.getByTestId(CREATE_USER_FORM);
+    const fullNameInput = screen.getByTestId(FULL_NAME_INPUT);
+    const usernameInput = screen.getByTestId(USERNAME_INPUT);
+    const emailInput = screen.getByTestId(EMAIL_INPUT);
 
     expect(form).toBeInTheDocument();
     expect(fullNameInput).toHaveValue('');
     expect(usernameInput).toHaveValue('');
     expect(emailInput).toHaveValue('');
 
-    const submitButton = screen.getByTestId('create-button');
+    const submitButton = screen.getByTestId(CREATE_BUTTON);
     fireEvent.click(submitButton);
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(0);

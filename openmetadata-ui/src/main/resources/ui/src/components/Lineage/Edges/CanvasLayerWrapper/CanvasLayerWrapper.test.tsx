@@ -14,6 +14,11 @@ import { fireEvent, render } from '@testing-library/react';
 import { Edge } from 'reactflow';
 import { CanvasLayerWrapper } from './CanvasLayerWrapper';
 
+const CANVAS_EDGE_RENDERER = 'canvas-edge-renderer';
+const EDGE_INTERACTION_OVERLAY = 'edge-interaction-overlay';
+const DATA_DQ_EDGES = 'data-dq-edges';
+const DATA_HOVER_EDGE = 'data-hover-edge';
+
 jest.mock('../../../Entity/EntityLineage/CanvasEdgeRenderer.component', () => ({
   CanvasEdgeRenderer: ({
     dqHighlightedEdges,
@@ -94,13 +99,13 @@ describe('CanvasLayerWrapper', () => {
   it('renders CanvasEdgeRenderer component', () => {
     const { getByTestId } = render(<CanvasLayerWrapper {...defaultProps} />);
 
-    expect(getByTestId('canvas-edge-renderer')).toBeInTheDocument();
+    expect(getByTestId(CANVAS_EDGE_RENDERER)).toBeInTheDocument();
   });
 
   it('renders EdgeInteractionOverlay component', () => {
     const { getByTestId } = render(<CanvasLayerWrapper {...defaultProps} />);
 
-    expect(getByTestId('edge-interaction-overlay')).toBeInTheDocument();
+    expect(getByTestId(EDGE_INTERACTION_OVERLAY)).toBeInTheDocument();
   });
 
   it('passes dqHighlightedEdges to CanvasEdgeRenderer', () => {
@@ -113,9 +118,9 @@ describe('CanvasLayerWrapper', () => {
       />
     );
 
-    const renderer = getByTestId('canvas-edge-renderer');
+    const renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-dq-edges', '2');
+    expect(renderer).toHaveAttribute(DATA_DQ_EDGES, '2');
   });
 
   it('passes hoverEdge to CanvasEdgeRenderer', () => {
@@ -123,9 +128,9 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} hoverEdge={mockEdge} />
     );
 
-    const renderer = getByTestId('canvas-edge-renderer');
+    const renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-hover-edge', 'edge-1');
+    expect(renderer).toHaveAttribute(DATA_HOVER_EDGE, 'edge-1');
   });
 
   it('passes hoverEdge to canvas-edge-renderer', () => {
@@ -133,9 +138,9 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} hoverEdge={mockEdge} />
     );
 
-    const overlay = getByTestId('canvas-edge-renderer');
+    const overlay = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(overlay).toHaveAttribute('data-hover-edge', 'edge-1');
+    expect(overlay).toHaveAttribute(DATA_HOVER_EDGE, 'edge-1');
   });
 
   it('passes onEdgeClick callback to CanvasEdgeRenderer', () => {
@@ -149,7 +154,7 @@ describe('CanvasLayerWrapper', () => {
       />
     );
 
-    const renderer = getByTestId('canvas-edge-renderer');
+    const renderer = getByTestId(CANVAS_EDGE_RENDERER);
     renderer.click();
 
     expect(onEdgeClick).toHaveBeenCalled();
@@ -166,7 +171,7 @@ describe('CanvasLayerWrapper', () => {
       />
     );
 
-    const renderer = getByTestId('canvas-edge-renderer');
+    const renderer = getByTestId(CANVAS_EDGE_RENDERER);
     fireEvent.mouseEnter(renderer);
 
     expect(onEdgeHover).toHaveBeenCalled();
@@ -179,7 +184,7 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} onPipelineClick={onPipelineClick} />
     );
 
-    const overlay = getByTestId('edge-interaction-overlay');
+    const overlay = getByTestId(EDGE_INTERACTION_OVERLAY);
     overlay.click();
 
     expect(onPipelineClick).toHaveBeenCalled();
@@ -192,7 +197,7 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} onEdgeRemove={onEdgeRemove} />
     );
 
-    const overlay = getByTestId('edge-interaction-overlay');
+    const overlay = getByTestId(EDGE_INTERACTION_OVERLAY);
     overlay.click();
 
     expect(onEdgeRemove).toHaveBeenCalled();
@@ -203,9 +208,9 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} hoverEdge={null} />
     );
 
-    const renderer = getByTestId('canvas-edge-renderer');
+    const renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-hover-edge', 'none');
+    expect(renderer).toHaveAttribute(DATA_HOVER_EDGE, 'none');
   });
 
   it('handles empty dqHighlightedEdges set', () => {
@@ -213,9 +218,9 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} dqHighlightedEdges={new Set()} />
     );
 
-    const renderer = getByTestId('canvas-edge-renderer');
+    const renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-dq-edges', '0');
+    expect(renderer).toHaveAttribute(DATA_DQ_EDGES, '0');
   });
 
   it('updates when hoverEdge changes', () => {
@@ -223,15 +228,15 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} hoverEdge={null} />
     );
 
-    let renderer = getByTestId('canvas-edge-renderer');
+    let renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-hover-edge', 'none');
+    expect(renderer).toHaveAttribute(DATA_HOVER_EDGE, 'none');
 
     rerender(<CanvasLayerWrapper {...defaultProps} hoverEdge={mockEdge} />);
 
-    renderer = getByTestId('canvas-edge-renderer');
+    renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-hover-edge', 'edge-1');
+    expect(renderer).toHaveAttribute(DATA_HOVER_EDGE, 'edge-1');
   });
 
   it('updates when dqHighlightedEdges changes', () => {
@@ -239,9 +244,9 @@ describe('CanvasLayerWrapper', () => {
       <CanvasLayerWrapper {...defaultProps} dqHighlightedEdges={new Set()} />
     );
 
-    let renderer = getByTestId('canvas-edge-renderer');
+    let renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-dq-edges', '0');
+    expect(renderer).toHaveAttribute(DATA_DQ_EDGES, '0');
 
     rerender(
       <CanvasLayerWrapper
@@ -250,9 +255,9 @@ describe('CanvasLayerWrapper', () => {
       />
     );
 
-    renderer = getByTestId('canvas-edge-renderer');
+    renderer = getByTestId(CANVAS_EDGE_RENDERER);
 
-    expect(renderer).toHaveAttribute('data-dq-edges', '2');
+    expect(renderer).toHaveAttribute(DATA_DQ_EDGES, '2');
   });
 
   it('handles all callbacks being undefined', () => {
@@ -266,7 +271,7 @@ describe('CanvasLayerWrapper', () => {
   it('renders both components simultaneously', () => {
     const { getByTestId } = render(<CanvasLayerWrapper {...defaultProps} />);
 
-    expect(getByTestId('canvas-edge-renderer')).toBeInTheDocument();
-    expect(getByTestId('edge-interaction-overlay')).toBeInTheDocument();
+    expect(getByTestId(CANVAS_EDGE_RENDERER)).toBeInTheDocument();
+    expect(getByTestId(EDGE_INTERACTION_OVERLAY)).toBeInTheDocument();
   });
 });

@@ -34,6 +34,8 @@ import {
   parseTransitionForms,
 } from './TaskFormDesignerUtils';
 
+const REVIEWER_COMMENT = 'Reviewer Comment';
+
 describe('TaskFormDesignerUtils', () => {
   it('builds schemas from designer fields while preserving ui metadata', () => {
     const { formSchema, uiSchema } = buildDesignerSchema(
@@ -90,7 +92,7 @@ describe('TaskFormDesignerUtils', () => {
           properties: {
             reviewerComment: {
               type: 'string',
-              title: 'Reviewer Comment',
+              title: REVIEWER_COMMENT,
             },
           },
           required: ['reviewerComment'],
@@ -106,7 +108,7 @@ describe('TaskFormDesignerUtils', () => {
     expect(transitions[0].transitionId).toBe('approve');
     expect(transitions[0].fields[0]).toMatchObject({
       name: 'reviewerComment',
-      label: 'Reviewer Comment',
+      label: REVIEWER_COMMENT,
       required: true,
       type: 'longText',
     });
@@ -119,7 +121,7 @@ describe('TaskFormDesignerUtils', () => {
           properties: {
             reviewerComment: {
               type: 'string',
-              title: 'Reviewer Comment',
+              title: REVIEWER_COMMENT,
             },
           },
           required: ['reviewerComment'],

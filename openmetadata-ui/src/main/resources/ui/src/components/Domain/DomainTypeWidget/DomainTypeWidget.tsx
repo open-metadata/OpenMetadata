@@ -24,6 +24,8 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
 
+const LABEL_DOMAIN_TYPE = 'label.domain-type';
+
 export const DomainTypeWidget = () => {
   const {
     data: domain,
@@ -54,13 +56,13 @@ export const DomainTypeWidget = () => {
   const domainTypeActionButton = domain.domainType ? (
     <WidgetEditButton
       data-testid="edit-domainType-button"
-      title={t('label.edit-entity', { entity: t('label.domain-type') })}
+      title={t('label.edit-entity', { entity: t(LABEL_DOMAIN_TYPE) })}
       onClick={() => setEditDomainType(true)}
     />
   ) : (
     <WidgetPlusButton
       data-testid="add-domainType-button"
-      title={t('label.add-entity', { entity: t('label.domain-type') })}
+      title={t('label.add-entity', { entity: t(LABEL_DOMAIN_TYPE) })}
       onClick={() => setEditDomainType(true)}
     />
   );
@@ -93,7 +95,7 @@ export const DomainTypeWidget = () => {
       headerExtra={headerExtra}
       helperText={domainTypeTooltipDataRender()}
       isExpandDisabled={!domain.domainType && !editDomainType}
-      title={t('label.domain-type')}>
+      title={t(LABEL_DOMAIN_TYPE)}>
       {content}
     </WidgetCard>
   );

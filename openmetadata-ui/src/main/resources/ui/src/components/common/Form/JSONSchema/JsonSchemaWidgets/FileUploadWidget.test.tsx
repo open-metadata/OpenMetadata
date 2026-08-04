@@ -24,6 +24,8 @@ import {
 } from '../../../../../mocks/Widgets.mock';
 import FileUploadWidget from './FileUploadWidget';
 
+const UPLOAD_FILE_WIDGET = 'upload-file-widget' as const;
+
 const mockOnFocus = jest.fn();
 const mockOnBlur = jest.fn();
 const mockOnChange = jest.fn();
@@ -40,7 +42,7 @@ describe('Test FileUploadWidget Component', () => {
   it('Should render file selector component', async () => {
     render(<FileUploadWidget {...mockProps} />);
 
-    const fileInput = screen.getByTestId('upload-file-widget');
+    const fileInput = screen.getByTestId(UPLOAD_FILE_WIDGET);
     const fileInputContent = screen.getByTestId('upload-file-widget-content');
 
     expect(fileInput).toBeInTheDocument();
@@ -50,7 +52,7 @@ describe('Test FileUploadWidget Component', () => {
   it('Should be disabled', async () => {
     render(<FileUploadWidget {...mockProps} disabled />);
 
-    const fileInput = screen.getByTestId('upload-file-widget');
+    const fileInput = screen.getByTestId(UPLOAD_FILE_WIDGET);
 
     expect(fileInput).not.toBeVisible();
   });
@@ -89,7 +91,7 @@ describe('Test FileUploadWidget Component', () => {
       );
     });
 
-    const uploadDragger = screen.getByTestId('upload-file-widget');
+    const uploadDragger = screen.getByTestId(UPLOAD_FILE_WIDGET);
 
     expect(uploadDragger).toBeInTheDocument();
 

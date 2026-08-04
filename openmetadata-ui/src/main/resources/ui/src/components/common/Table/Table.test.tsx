@@ -17,6 +17,9 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { getCustomizeColumnDetails } from '../../../utils/CustomizeColumnUtils';
 import Table from './Table';
 
+const COLUMN_DROPDOWN = 'column-dropdown';
+const COLUMN_DROPDOWN_ACTION_BUTTON = 'column-dropdown-action-button';
+
 jest.mock('../../../utils/CustomizeColumnUtils', () => ({
   getCustomizeColumnDetails: jest.fn().mockReturnValue([
     { label: 'Column 1', value: 'col1' },
@@ -141,7 +144,7 @@ describe('Table component', () => {
       defaultVisibleColumns: ['col2'],
     });
 
-    expect(screen.getByTestId('column-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId(COLUMN_DROPDOWN)).toBeInTheDocument();
   });
 
   it('should not render column dropdown when no customizable columns props are provided', () => {
@@ -149,7 +152,7 @@ describe('Table component', () => {
 
     renderComponent();
 
-    expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_DROPDOWN)).not.toBeInTheDocument();
   });
 
   it('should render table filters when provided', () => {
@@ -204,7 +207,7 @@ describe('Table component', () => {
         defaultVisibleColumns: ['col2'],
       });
 
-      expect(screen.getByTestId('column-dropdown')).toBeInTheDocument();
+      expect(screen.getByTestId(COLUMN_DROPDOWN)).toBeInTheDocument();
     });
 
     it('should not render column dropdown when only staticVisibleColumns is provided', () => {
@@ -213,7 +216,7 @@ describe('Table component', () => {
         defaultVisibleColumns: undefined,
       });
 
-      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_DROPDOWN)).not.toBeInTheDocument();
     });
 
     it('should not render column dropdown when only defaultVisibleColumns is provided', () => {
@@ -222,7 +225,7 @@ describe('Table component', () => {
         defaultVisibleColumns: ['col2'],
       });
 
-      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_DROPDOWN)).not.toBeInTheDocument();
     });
 
     it('should not render column dropdown when both static and default columns are empty', () => {
@@ -231,13 +234,13 @@ describe('Table component', () => {
         defaultVisibleColumns: undefined,
       });
 
-      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_DROPDOWN)).not.toBeInTheDocument();
     });
 
     it('should not enable customization when no static or default columns are provided', () => {
       renderComponent();
 
-      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_DROPDOWN)).not.toBeInTheDocument();
     });
 
     it('should open column dropdown and show column options', async () => {
@@ -250,7 +253,7 @@ describe('Table component', () => {
         defaultVisibleColumns: ['col2'],
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
@@ -270,7 +273,7 @@ describe('Table component', () => {
         entityType: 'table',
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
@@ -299,7 +302,7 @@ describe('Table component', () => {
         entityType: 'table',
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
@@ -326,12 +329,12 @@ describe('Table component', () => {
         defaultVisibleColumns: ['col2'],
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('column-dropdown-action-button')
+          screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON)
         ).toBeInTheDocument();
         expect(screen.getByText('label.view-all')).toBeInTheDocument();
       });
@@ -347,12 +350,12 @@ describe('Table component', () => {
         defaultVisibleColumns: ['col2'],
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('column-dropdown-action-button')
+          screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON)
         ).toBeInTheDocument();
         expect(screen.getByText('label.hide-all')).toBeInTheDocument();
       });
@@ -369,16 +372,16 @@ describe('Table component', () => {
         entityType: 'table',
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('column-dropdown-action-button')
+          screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON)
         ).toBeInTheDocument();
       });
 
-      const viewAllButton = screen.getByTestId('column-dropdown-action-button');
+      const viewAllButton = screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON);
       fireEvent.click(viewAllButton);
 
       expect(mockSetPreference).toHaveBeenCalledWith({
@@ -399,16 +402,16 @@ describe('Table component', () => {
         entityType: 'table',
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('column-dropdown-action-button')
+          screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON)
         ).toBeInTheDocument();
       });
 
-      const hideAllButton = screen.getByTestId('column-dropdown-action-button');
+      const hideAllButton = screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON);
       fireEvent.click(hideAllButton);
 
       expect(mockSetPreference).toHaveBeenCalledWith({
@@ -430,16 +433,16 @@ describe('Table component', () => {
         entityType: 'table',
       });
 
-      const columnDropdown = screen.getByTestId('column-dropdown');
+      const columnDropdown = screen.getByTestId(COLUMN_DROPDOWN);
       fireEvent.click(columnDropdown);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('column-dropdown-action-button')
+          screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON)
         ).toBeInTheDocument();
       });
 
-      const viewAllButton = screen.getByTestId('column-dropdown-action-button');
+      const viewAllButton = screen.getByTestId(COLUMN_DROPDOWN_ACTION_BUTTON);
       fireEvent.click(viewAllButton);
 
       expect(mockSetPreference).toHaveBeenCalledWith({
@@ -470,7 +473,7 @@ describe('Table component', () => {
         defaultVisibleColumns: undefined,
       });
 
-      expect(screen.queryByTestId('column-dropdown')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(COLUMN_DROPDOWN)).not.toBeInTheDocument();
     });
   });
 });

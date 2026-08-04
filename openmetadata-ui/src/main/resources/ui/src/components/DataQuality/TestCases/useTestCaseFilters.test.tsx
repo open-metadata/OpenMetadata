@@ -23,6 +23,9 @@ import {
   UseTestCaseFiltersProps,
 } from './useTestCaseFilters';
 
+const SVC_DB_TBL = 'svc.db.tbl';
+const TABLEFQN_SVC_DB_TBL = 'tableFqn=svc.db.tbl';
+
 const mockNavigate = jest.fn();
 
 const mockLocation = { search: '' };
@@ -100,7 +103,7 @@ describe('useTestCaseFilters', () => {
 
     const { result } = renderFilters();
 
-    expect(result.current.params.tableFqn).toBe('svc.db.tbl');
+    expect(result.current.params.tableFqn).toBe(SVC_DB_TBL);
     expect(result.current.params.searchValue).toBe('orders');
     expect(result.current.searchValue).toBe('orders');
   });
@@ -115,11 +118,11 @@ describe('useTestCaseFilters', () => {
     const { result } = renderFilters();
 
     act(() => {
-      result.current.handleSearchParam('tableFqn', 'svc.db.tbl');
+      result.current.handleSearchParam('tableFqn', SVC_DB_TBL);
     });
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      search: expect.stringContaining('tableFqn=svc.db.tbl'),
+      search: expect.stringContaining(TABLEFQN_SVC_DB_TBL),
     });
   });
 
@@ -210,9 +213,9 @@ describe('useTestCaseFilters', () => {
     const asyncOptionsByKey = buildAsyncOptions();
     asyncOptionsByKey[TEST_CASE_FILTERS.table] = [
       {
-        value: 'svc.db.tbl',
+        value: SVC_DB_TBL,
         name: 'tbl',
-        subLabel: 'svc.db.tbl',
+        subLabel: SVC_DB_TBL,
         label: 'tbl',
       },
     ];
@@ -249,7 +252,7 @@ describe('useTestCaseFilters', () => {
     expect(typeDescriptor?.options.length).toBeGreaterThan(0);
     expect(tagsDescriptor?.options).toEqual([]);
     expect(tableDescriptor?.options).toEqual([
-      { value: 'svc.db.tbl', label: 'tbl', subLabel: 'svc.db.tbl' },
+      { value: SVC_DB_TBL, label: 'tbl', subLabel: SVC_DB_TBL },
     ]);
   });
 
@@ -275,7 +278,7 @@ describe('useTestCaseFilters', () => {
   });
 
   it('should reflect the URL filter value on the matching descriptor', () => {
-    mockLocation.search = 'tableFqn=svc.db.tbl';
+    mockLocation.search = TABLEFQN_SVC_DB_TBL;
 
     const { result } = renderFilters();
 
@@ -283,7 +286,7 @@ describe('useTestCaseFilters', () => {
       (descriptor) => descriptor.key === TEST_CASE_FILTERS.table
     );
 
-    expect(tableDescriptor?.value).toBe('svc.db.tbl');
+    expect(tableDescriptor?.value).toBe(SVC_DB_TBL);
   });
 
   it('should route a descriptor onChange through handleSearchParam to the URL', () => {
@@ -294,11 +297,11 @@ describe('useTestCaseFilters', () => {
     );
 
     act(() => {
-      tableDescriptor?.onChange('svc.db.tbl');
+      tableDescriptor?.onChange(SVC_DB_TBL);
     });
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      search: expect.stringContaining('tableFqn=svc.db.tbl'),
+      search: expect.stringContaining(TABLEFQN_SVC_DB_TBL),
     });
   });
 
@@ -328,7 +331,7 @@ describe('useTestCaseFilters', () => {
   });
 
   it('should report active filters when a filter param is present in the URL', () => {
-    mockLocation.search = 'tableFqn=svc.db.tbl';
+    mockLocation.search = TABLEFQN_SVC_DB_TBL;
 
     const { result } = renderFilters();
 

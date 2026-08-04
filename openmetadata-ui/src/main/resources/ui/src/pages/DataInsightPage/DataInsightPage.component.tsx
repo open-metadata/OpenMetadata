@@ -34,6 +34,8 @@ import './data-insight.less';
 import { default as dataInsightClassBase } from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
 import DataInsightProvider from './DataInsightProvider';
+const LABEL_DATA_INSIGHT = 'label.data-insight';
+
 const DataInsightPage = () => {
   const { tab } = useRequiredParams<{ tab: DataInsightTabs }>();
   const { t } = useTranslation();
@@ -122,7 +124,7 @@ const DataInsightPage = () => {
       <ErrorPlaceHolder
         className="border-none h-min-80"
         permissionValue={t('label.view-entity', {
-          entity: t('label.data-insight'),
+          entity: t(LABEL_DATA_INSIGHT),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
@@ -136,7 +138,7 @@ const DataInsightPage = () => {
           <ErrorPlaceHolder
             className="border-none"
             permissionValue={t('label.view-entity', {
-              entity: t('label.data-insight'),
+              entity: t(LABEL_DATA_INSIGHT),
             })}
             type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
@@ -154,11 +156,11 @@ const DataInsightPage = () => {
         minWidth: 280,
         flex: 0.13,
         children: <LeftPanel />,
-        title: t('label.data-insight'),
+        title: t(LABEL_DATA_INSIGHT),
       }}
       learningPageId={LEARNING_PAGE_IDS.DATA_INSIGHTS}
       learningTitle={t('label.data-insight-plural')}
-      pageTitle={t('label.data-insight')}
+      pageTitle={t(LABEL_DATA_INSIGHT)}
       secondPanel={{
         children: (
           <DataInsightProvider>

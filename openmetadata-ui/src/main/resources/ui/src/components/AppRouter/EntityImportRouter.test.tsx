@@ -17,6 +17,11 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import EntityImportRouter from './EntityImportRouter';
 
+const TESTCASE_TEST_CASE_FQN_IMPORT = '/testCase/test.case.fqn/import';
+const TABLE_TEST_ENTITY_FQN_IMPORT = '/table/test.entity.fqn/import';
+const BULK_ENTITY_IMPORT_PAGE = 'bulk-entity-import-page';
+const TABLE_TEST_FQN_IMPORT = '/table/test.fqn/import';
+const TEST_CASE_FQN = 'test.case.fqn';
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -92,7 +97,7 @@ describe('EntityImportRouter', () => {
       );
 
       const { container } = render(
-        <MemoryRouter initialEntries={['/table/test.entity.fqn/import']}>
+        <MemoryRouter initialEntries={[TABLE_TEST_ENTITY_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
@@ -106,15 +111,13 @@ describe('EntityImportRouter', () => {
 
     it('should render BulkEntityImportPage when user has EditAll permission', async () => {
       render(
-        <MemoryRouter initialEntries={['/table/test.entity.fqn/import']}>
+        <MemoryRouter initialEntries={[TABLE_TEST_ENTITY_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
     });
 
@@ -125,7 +128,7 @@ describe('EntityImportRouter', () => {
       });
 
       render(
-        <MemoryRouter initialEntries={['/table/test.entity.fqn/import']}>
+        <MemoryRouter initialEntries={[TABLE_TEST_ENTITY_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
@@ -160,7 +163,7 @@ describe('EntityImportRouter', () => {
 
         await waitFor(() => {
           expect(
-            screen.getByTestId('bulk-entity-import-page')
+            screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)
           ).toBeInTheDocument();
         });
       }
@@ -182,9 +185,7 @@ describe('EntityImportRouter', () => {
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
     });
 
@@ -254,7 +255,7 @@ describe('EntityImportRouter', () => {
   describe('Permission Handling for TEST_CASE entity type', () => {
     it('should use testCase permission from global permissions for TEST_CASE entity type', async () => {
       mockEntityType = ResourceEntity.TEST_CASE;
-      mockFqn = 'test.case.fqn';
+      mockFqn = TEST_CASE_FQN;
       usePermissionProvider.mockReturnValue({
         getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
         permissions: {
@@ -263,15 +264,13 @@ describe('EntityImportRouter', () => {
       });
 
       render(
-        <MemoryRouter initialEntries={['/testCase/test.case.fqn/import']}>
+        <MemoryRouter initialEntries={[TESTCASE_TEST_CASE_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
 
       expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
@@ -279,7 +278,7 @@ describe('EntityImportRouter', () => {
 
     it('should redirect to NOT_FOUND when TEST_CASE permission does not have EditAll', async () => {
       mockEntityType = ResourceEntity.TEST_CASE;
-      mockFqn = 'test.case.fqn';
+      mockFqn = TEST_CASE_FQN;
       usePermissionProvider.mockReturnValue({
         getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
         permissions: {
@@ -288,7 +287,7 @@ describe('EntityImportRouter', () => {
       });
 
       render(
-        <MemoryRouter initialEntries={['/testCase/test.case.fqn/import']}>
+        <MemoryRouter initialEntries={[TESTCASE_TEST_CASE_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
@@ -303,7 +302,7 @@ describe('EntityImportRouter', () => {
 
     it('should use DEFAULT_ENTITY_PERMISSION when testCase permission is undefined', async () => {
       mockEntityType = ResourceEntity.TEST_CASE;
-      mockFqn = 'test.case.fqn';
+      mockFqn = TEST_CASE_FQN;
       usePermissionProvider.mockReturnValue({
         getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
         permissions: {
@@ -312,7 +311,7 @@ describe('EntityImportRouter', () => {
       });
 
       render(
-        <MemoryRouter initialEntries={['/testCase/test.case.fqn/import']}>
+        <MemoryRouter initialEntries={[TESTCASE_TEST_CASE_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
@@ -340,7 +339,7 @@ describe('EntityImportRouter', () => {
       mockFqn = 'test.fqn';
 
       const { container } = render(
-        <MemoryRouter initialEntries={['/table/test.fqn/import']}>
+        <MemoryRouter initialEntries={[TABLE_TEST_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
@@ -352,9 +351,7 @@ describe('EntityImportRouter', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
     });
 
@@ -382,7 +379,7 @@ describe('EntityImportRouter', () => {
 
     it('should not call getEntityPermissionByFqn for TEST_CASE type', async () => {
       mockEntityType = ResourceEntity.TEST_CASE;
-      mockFqn = 'test.case.fqn';
+      mockFqn = TEST_CASE_FQN;
       usePermissionProvider.mockReturnValue({
         getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
         permissions: {
@@ -391,15 +388,13 @@ describe('EntityImportRouter', () => {
       });
 
       render(
-        <MemoryRouter initialEntries={['/testCase/test.case.fqn/import']}>
+        <MemoryRouter initialEntries={[TESTCASE_TEST_CASE_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
 
       expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
@@ -422,9 +417,7 @@ describe('EntityImportRouter', () => {
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
     });
 
@@ -463,15 +456,13 @@ describe('EntityImportRouter', () => {
       });
 
       render(
-        <MemoryRouter initialEntries={['/table/test.fqn/import']}>
+        <MemoryRouter initialEntries={[TABLE_TEST_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
@@ -489,7 +480,7 @@ describe('EntityImportRouter', () => {
       });
 
       render(
-        <MemoryRouter initialEntries={['/table/test.fqn/import']}>
+        <MemoryRouter initialEntries={[TABLE_TEST_FQN_IMPORT]}>
           <EntityImportRouter />
         </MemoryRouter>
       );
@@ -528,9 +519,7 @@ describe('EntityImportRouter', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('bulk-entity-import-page')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(BULK_ENTITY_IMPORT_PAGE)).toBeInTheDocument();
       });
     });
 

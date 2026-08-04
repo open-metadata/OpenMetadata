@@ -90,6 +90,8 @@ import {
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
 import { AddAlertPageLoadingState } from './AddNotificationPage.interface';
 
+const SERVER_ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
+const LABEL_ALERT = 'label.alert';
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const navigate = useNavigate();
@@ -139,8 +141,8 @@ const AddNotificationPage = () => {
       },
       {
         name: fqn
-          ? t('label.edit-entity', { entity: t('label.alert') })
-          : t('label.create-entity', { entity: t('label.alert') }),
+          ? t('label.edit-entity', { entity: t(LABEL_ALERT) })
+          : t('label.create-entity', { entity: t(LABEL_ALERT) }),
         url: '',
       },
     ],
@@ -159,7 +161,7 @@ const AddNotificationPage = () => {
       setAlert(modifiedAlertData);
     } catch {
       showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.alert') }),
+        t(SERVER_ENTITY_FETCH_ERROR, { entity: t(LABEL_ALERT) }),
         fqn
       );
     } finally {
@@ -176,7 +178,7 @@ const AddNotificationPage = () => {
       setEntityFunctions(entityFunctions.data);
     } catch {
       showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
+        t(SERVER_ENTITY_FETCH_ERROR, { entity: t('label.config') })
       );
     } finally {
       setLoadingState((state) => ({ ...state, functions: false }));
@@ -272,7 +274,7 @@ const AddNotificationPage = () => {
       }
     } catch {
       showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.template-plural') })
+        t(SERVER_ENTITY_FETCH_ERROR, { entity: t('label.template-plural') })
       );
     } finally {
       setLoadingState((state) => ({ ...state, templates: false }));
@@ -323,7 +325,7 @@ const AddNotificationPage = () => {
               <Col span={24}>
                 <Typography.Title level={5}>
                   {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
-                    entity: t('label.alert'),
+                    entity: t(LABEL_ALERT),
                   })}
                 </Typography.Title>
                 <Typography.Text>

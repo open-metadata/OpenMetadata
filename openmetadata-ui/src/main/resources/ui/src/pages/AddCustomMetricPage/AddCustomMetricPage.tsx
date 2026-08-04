@@ -45,6 +45,10 @@ import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
+const LABEL_ADD_ENTITY_METRIC = 'label.add-entity-metric';
+const LABEL_COLUMN = 'label.column';
+const LABEL_TABLE = 'label.table';
+
 const AddCustomMetricPage = () => {
   const { dashboardType } = useRequiredParams<{
     dashboardType: ProfilerDashboardType;
@@ -75,8 +79,8 @@ const AddCustomMetricPage = () => {
             ),
           },
           {
-            name: t('label.add-entity-metric', {
-              entity: isColumnMetric ? t('label.column') : t('label.table'),
+            name: t(LABEL_ADD_ENTITY_METRIC, {
+              entity: isColumnMetric ? t(LABEL_COLUMN) : t(LABEL_TABLE),
             }),
             url: '',
             activeTitle: true,
@@ -177,8 +181,8 @@ const AddCustomMetricPage = () => {
     <>
       <RightPanel
         data={{
-          title: t('label.add-entity-metric', {
-            entity: isColumnMetric ? t('label.column') : t('label.table'),
+          title: t(LABEL_ADD_ENTITY_METRIC, {
+            entity: isColumnMetric ? t(LABEL_COLUMN) : t(LABEL_TABLE),
           }),
           body: '',
         }}
@@ -221,10 +225,8 @@ const AddCustomMetricPage = () => {
                   className="m-b-0"
                   data-testid="heading"
                   level={5}>
-                  {t('label.add-entity-metric', {
-                    entity: isColumnMetric
-                      ? t('label.column')
-                      : t('label.table'),
+                  {t(LABEL_ADD_ENTITY_METRIC, {
+                    entity: isColumnMetric ? t(LABEL_COLUMN) : t(LABEL_TABLE),
                   })}
                 </Typography.Title>
               </Col>

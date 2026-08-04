@@ -28,6 +28,10 @@ import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import ServiceConnectionDetails from './ServiceConnectionDetails.component';
 
+const LOCALHOST_5432 = 'localhost:5432';
+const SERVICE_CONNECTION_DETAILS = 'service-connection-details';
+const INPUT_FIELD = 'input-field';
+
 jest.mock('../../../../utils/DatabaseServicePureUtils', () => ({
   getDatabaseConfig: jest.fn().mockResolvedValue({
     schema: MOCK_ATHENA_SERVICE,
@@ -71,7 +75,7 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
 }));
 
 const databaseSchema = {
-  hostPort: 'localhost:5432',
+  hostPort: LOCALHOST_5432,
   // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
   password: 'testPassword',
   username: 'testUsername',
@@ -88,7 +92,7 @@ const databaseSchema = {
 };
 
 const pipelineSchema = {
-  hostPort: 'localhost:5432',
+  hostPort: LOCALHOST_5432,
   type: PipelineServiceType.Airbyte,
   numberOfStatus: 2,
   username: 'testUser',
@@ -100,7 +104,7 @@ const metaDataSchema = {
   username: 'AtlasUsername',
   // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
   password: 'AtlasPassword',
-  hostPort: 'localhost:5432',
+  hostPort: LOCALHOST_5432,
   projectName: 'AtlasProject',
 };
 
@@ -144,7 +148,7 @@ describe('ServiceConnectionDetails', () => {
     });
 
     expect(
-      await screen.findByTestId('service-connection-details')
+      await screen.findByTestId(SERVICE_CONNECTION_DETAILS)
     ).toBeInTheDocument();
   });
 
@@ -160,34 +164,34 @@ describe('ServiceConnectionDetails', () => {
     });
 
     expect(
-      await screen.findByTestId('service-connection-details')
+      await screen.findByTestId(SERVICE_CONNECTION_DETAILS)
     ).toBeInTheDocument();
     expect(await screen.findByText('hostPort:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[0]).toHaveValue(
-      'localhost:5432'
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[0]).toHaveValue(
+      LOCALHOST_5432
     );
 
     expect(await screen.findByText('password:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[1]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[1]).toHaveValue(
       'testPassword'
     );
     expect(await screen.findByText('password:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[2]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[2]).toHaveValue(
       'testUsername'
     );
     expect(await screen.findByText('database:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[3]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[3]).toHaveValue(
       'test_db'
     );
     expect(await screen.findByText('scope:')).toBeInTheDocument();
     expect(
       await screen
-        .queryAllByTestId('input-field')[4]
+        .queryAllByTestId(INPUT_FIELD)[4]
         .querySelector('span[title=test_scope1]')
     ).toHaveTextContent('test_scope1');
     expect(
       await screen
-        .queryAllByTestId('input-field')[4]
+        .queryAllByTestId(INPUT_FIELD)[4]
         .querySelector('span[title=test_scope2]')
     ).toHaveTextContent('test_scope2');
   });
@@ -220,20 +224,20 @@ describe('ServiceConnectionDetails', () => {
     });
 
     expect(
-      await screen.findByTestId('service-connection-details')
+      await screen.findByTestId(SERVICE_CONNECTION_DETAILS)
     ).toBeInTheDocument();
     expect(await screen.findByText('hostPort:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[0]).toHaveValue(
-      'localhost:5432'
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[0]).toHaveValue(
+      LOCALHOST_5432
     );
     expect(await screen.findByText('numberOfStatus:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[1]).toHaveValue('2');
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[1]).toHaveValue('2');
     expect(await screen.findByText('username:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[2]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[2]).toHaveValue(
       'testUser'
     );
     expect(await screen.findByText('host:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[3]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[3]).toHaveValue(
       'Dagster'
     );
   });
@@ -250,19 +254,19 @@ describe('ServiceConnectionDetails', () => {
     });
 
     expect(await screen.findByText('username:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[0]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[0]).toHaveValue(
       'AtlasUsername'
     );
     expect(await screen.findByText('password:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[1]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[1]).toHaveValue(
       'AtlasPassword'
     );
     expect(await screen.findByText('hostPort:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[2]).toHaveValue(
-      'localhost:5432'
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[2]).toHaveValue(
+      LOCALHOST_5432
     );
     expect(await screen.findByText('projectName:')).toBeInTheDocument();
-    expect(await screen.queryAllByTestId('input-field')[3]).toHaveValue(
+    expect(await screen.queryAllByTestId(INPUT_FIELD)[3]).toHaveValue(
       'AtlasProject'
     );
   });

@@ -23,6 +23,12 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import csvUtilsClassBase, { CSVUtilsClassBase } from './CSVUtilsClassBase';
 
+const CURRENT_DISPLAY_NAME = 'Current display name';
+const UPDATED_DISPLAY_NAME = 'Updated display name';
+const EXPECTED_EXTENSION_EDITOR_TO_BE_DEFINED =
+  'Expected extension editor to be defined';
+const LABEL_UPDATE = 'label.update';
+
 const mockSelectedReferenceOption: DataAssetOption = {
   displayName: 'Admin User',
   label: 'Admin User',
@@ -564,7 +570,7 @@ describe('CSV utils ClassBase', () => {
       render(
         <>
           {editor({
-            row: { displayName: 'Current display name' },
+            row: { displayName: CURRENT_DISPLAY_NAME },
             column: { key: 'displayName' },
             onRowChange,
             onClose,
@@ -576,16 +582,16 @@ describe('CSV utils ClassBase', () => {
         'bulk-edit-text-cell-editor'
       ) as HTMLInputElement;
 
-      expect(input).toHaveValue('Current display name');
-      expect(input.selectionStart).toBe('Current display name'.length);
+      expect(input).toHaveValue(CURRENT_DISPLAY_NAME);
+      expect(input.selectionStart).toBe(CURRENT_DISPLAY_NAME.length);
 
       fireEvent.change(input, {
-        target: { value: 'Updated display name' },
+        target: { value: UPDATED_DISPLAY_NAME },
       });
       fireEvent.blur(input);
 
       expect(onRowChange).toHaveBeenCalledWith(
-        { displayName: 'Updated display name' },
+        { displayName: UPDATED_DISPLAY_NAME },
         true
       );
       expect(onClose).toHaveBeenCalledWith(true);
@@ -608,7 +614,7 @@ describe('CSV utils ClassBase', () => {
       const { unmount } = render(
         <>
           {editor({
-            row: { displayName: 'Current display name' },
+            row: { displayName: CURRENT_DISPLAY_NAME },
             column: { key: 'displayName' },
             onRowChange,
             onClose,
@@ -617,14 +623,14 @@ describe('CSV utils ClassBase', () => {
       );
 
       fireEvent.change(screen.getByTestId('bulk-edit-text-cell-editor'), {
-        target: { value: 'Updated display name' },
+        target: { value: UPDATED_DISPLAY_NAME },
       });
 
       unmount();
 
       await waitFor(() => {
         expect(onRowChange).toHaveBeenCalledWith(
-          { displayName: 'Updated display name' },
+          { displayName: UPDATED_DISPLAY_NAME },
           true
         );
       });
@@ -643,7 +649,7 @@ describe('CSV utils ClassBase', () => {
       const onClose = jest.fn();
 
       if (!editor) {
-        throw new Error('Expected extension editor to be defined');
+        throw new Error(EXPECTED_EXTENSION_EDITOR_TO_BE_DEFINED);
       }
 
       await act(async () => {
@@ -718,7 +724,7 @@ describe('CSV utils ClassBase', () => {
       const onClose = jest.fn();
 
       if (!editor) {
-        throw new Error('Expected extension editor to be defined');
+        throw new Error(EXPECTED_EXTENSION_EDITOR_TO_BE_DEFINED);
       }
 
       await act(async () => {
@@ -806,7 +812,7 @@ describe('CSV utils ClassBase', () => {
       );
 
       if (!editor) {
-        throw new Error('Expected extension editor to be defined');
+        throw new Error(EXPECTED_EXTENSION_EDITOR_TO_BE_DEFINED);
       }
 
       await act(async () => {
@@ -850,7 +856,7 @@ describe('CSV utils ClassBase', () => {
       const onClose = jest.fn();
 
       if (!editor) {
-        throw new Error('Expected extension editor to be defined');
+        throw new Error(EXPECTED_EXTENSION_EDITOR_TO_BE_DEFINED);
       }
 
       mockGetTypeByFQN
@@ -1138,7 +1144,7 @@ describe('CSV utils ClassBase', () => {
           name: /BusinessGlossary \/ Revenue \/ NetSales/i,
         })
       );
-      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+      fireEvent.click(screen.getByRole('button', { name: LABEL_UPDATE }));
 
       expect(onRowChange).toHaveBeenCalledWith(
         { glossaryTerms: 'BusinessGlossary.Revenue.NetSales' },
@@ -1188,7 +1194,7 @@ describe('CSV utils ClassBase', () => {
       fireEvent.click(
         await screen.findByRole('button', { name: /Marketing/i })
       );
-      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+      fireEvent.click(screen.getByRole('button', { name: LABEL_UPDATE }));
 
       expect(onRowChange).toHaveBeenCalledWith(
         { domains: '"Marketing"' },
@@ -1244,7 +1250,7 @@ describe('CSV utils ClassBase', () => {
       fireEvent.click(
         await screen.findByRole('button', { name: /Aiden Brooks/i })
       );
-      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+      fireEvent.click(screen.getByRole('button', { name: LABEL_UPDATE }));
 
       expect(onRowChange).toHaveBeenCalledWith(
         { reviewers: 'user:aiden' },

@@ -30,6 +30,10 @@ import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import ExploreV1 from './ExploreV1.component';
 
+const EXPORT_SCOPE_MODAL = 'export-scope-modal';
+const LABEL_TOOL_PLURAL = 'label.tool-plural';
+const CLEAR_FILTERS = 'clear-filters';
+const LABEL_EXPORT = 'label.export';
 jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
@@ -472,7 +476,7 @@ describe('ExploreV1', () => {
   it('does not render the toolbar Clear All when no filters are active', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CLEAR_FILTERS)).not.toBeInTheDocument();
     expect(
       screen.getByTestId('explore-query-filter-chips')
     ).toBeInTheDocument();
@@ -494,7 +498,7 @@ describe('ExploreV1', () => {
       { wrapper: Wrapper }
     );
 
-    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CLEAR_FILTERS)).not.toBeInTheDocument();
     expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
   });
 
@@ -514,7 +518,7 @@ describe('ExploreV1', () => {
       screen.getByTestId('explore-query-filter-chips')
     ).toBeInTheDocument();
     expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
-    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CLEAR_FILTERS)).not.toBeInTheDocument();
     expect(onResetAllFilters).not.toHaveBeenCalled();
   });
 
@@ -563,16 +567,16 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    const toolsButton = screen.getByText('label.tool-plural');
+    const toolsButton = screen.getByText(LABEL_TOOL_PLURAL);
     fireEvent.click(toolsButton);
 
-    const exportMenuItem = screen.getByText('label.export');
+    const exportMenuItem = screen.getByText(LABEL_EXPORT);
     fireEvent.click(exportMenuItem);
 
-    const modal = await screen.findByTestId('export-scope-modal');
+    const modal = await screen.findByTestId(EXPORT_SCOPE_MODAL);
 
     const exportButton = within(modal).getByRole('button', {
-      name: 'label.export',
+      name: LABEL_EXPORT,
     });
     await waitFor(() => expect(exportButton).toBeEnabled());
     fireEvent.click(exportButton);
@@ -594,15 +598,15 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    const toolsButton = screen.getByText('label.tool-plural');
+    const toolsButton = screen.getByText(LABEL_TOOL_PLURAL);
     fireEvent.click(toolsButton);
 
-    const exportMenuItem = screen.getByText('label.export');
+    const exportMenuItem = screen.getByText(LABEL_EXPORT);
     fireEvent.click(exportMenuItem);
 
-    const modal = await screen.findByTestId('export-scope-modal');
+    const modal = await screen.findByTestId(EXPORT_SCOPE_MODAL);
     const exportButton = within(modal).getByRole('button', {
-      name: 'label.export',
+      name: LABEL_EXPORT,
     });
 
     expect(exportButton).toBeDisabled();
@@ -644,15 +648,15 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    const toolsButton = screen.getByText('label.tool-plural');
+    const toolsButton = screen.getByText(LABEL_TOOL_PLURAL);
     fireEvent.click(toolsButton);
 
-    const exportMenuItem = screen.getByText('label.export');
+    const exportMenuItem = screen.getByText(LABEL_EXPORT);
     fireEvent.click(exportMenuItem);
 
-    const modal = await screen.findByTestId('export-scope-modal');
+    const modal = await screen.findByTestId(EXPORT_SCOPE_MODAL);
     const exportButton = within(modal).getByRole('button', {
-      name: 'label.export',
+      name: LABEL_EXPORT,
     });
 
     expect(

@@ -15,6 +15,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { LearningResource } from '../../rest/learningResourceAPI';
 import { LearningResourceForm } from './LearningResourceForm.component';
 
+const DRAWER_TITLE = '.drawer-title';
+const SAVE_RESOURCE = 'save-resource';
+
 const mockCreateLearningResource = jest.fn();
 const mockUpdateLearningResource = jest.fn();
 
@@ -74,10 +77,10 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    expect(document.querySelector('.drawer-title')).toHaveTextContent(
+    expect(document.querySelector(DRAWER_TITLE)).toHaveTextContent(
       'label.add-resource'
     );
-    expect(screen.getByTestId('save-resource')).toBeInTheDocument();
+    expect(screen.getByTestId(SAVE_RESOURCE)).toBeInTheDocument();
   });
 
   it('should show edit title when resource is provided', async () => {
@@ -85,7 +88,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} resource={mockResource} />);
     });
 
-    expect(document.querySelector('.drawer-title')).toHaveTextContent(
+    expect(document.querySelector(DRAWER_TITLE)).toHaveTextContent(
       'label.edit-resource'
     );
   });
@@ -119,7 +122,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    const submitBtn = screen.getByTestId('save-resource');
+    const submitBtn = screen.getByTestId(SAVE_RESOURCE);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -134,7 +137,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    expect(screen.getByTestId('save-resource')).toHaveTextContent('label.save');
+    expect(screen.getByTestId(SAVE_RESOURCE)).toHaveTextContent('label.save');
   });
 
   it('should render all form fields', async () => {
@@ -178,7 +181,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} open={false} />);
     });
 
-    expect(document.querySelector('.drawer-title')).toBeNull();
+    expect(document.querySelector(DRAWER_TITLE)).toBeNull();
   });
 
   it('should call onClose when close icon is clicked', async () => {

@@ -15,6 +15,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { testEmailConnection } from '../../../../rest/settingConfigAPI';
 import TestEmail from './TestEmail.component';
 
+const LABEL_TEST = 'label.test';
+const TEST_EMAIL_INPUT = 'test-email-input';
+
 jest.mock('../../../../rest/settingConfigAPI', () => ({
   testEmailConnection: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
@@ -35,7 +38,7 @@ describe('Test Email component', () => {
     render(<TestEmail {...mockProps} />);
 
     expect(screen.getByTestId('test-email-modal')).toBeInTheDocument();
-    expect(screen.getByText('label.test')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_TEST)).toBeInTheDocument();
   });
 
   it('should render test email component form', () => {
@@ -43,7 +46,7 @@ describe('Test Email component', () => {
 
     expect(screen.getByTestId('test-email-form')).toBeInTheDocument();
     expect(screen.getByText('label.email')).toBeInTheDocument();
-    expect(screen.getByTestId('test-email-input')).toBeInTheDocument();
+    expect(screen.getByTestId(TEST_EMAIL_INPUT)).toBeInTheDocument();
   });
 
   it('should trigger onCancel handler on cancel button click', () => {
@@ -61,11 +64,11 @@ describe('Test Email component', () => {
   it('should not trigger api if wrong email provided', async () => {
     render(<TestEmail {...mockProps} />);
 
-    const input = screen.getByTestId('test-email-input');
+    const input = screen.getByTestId(TEST_EMAIL_INPUT);
 
     fireEvent.change(input, { target: { value: 'test.com' } });
 
-    const submitButton = screen.getByText('label.test');
+    const submitButton = screen.getByText(LABEL_TEST);
 
     await act(async () => {
       fireEvent.click(submitButton);
@@ -79,11 +82,11 @@ describe('Test Email component', () => {
   it('should trigger api if correct email provided', async () => {
     render(<TestEmail {...mockProps} />);
 
-    const input = screen.getByTestId('test-email-input');
+    const input = screen.getByTestId(TEST_EMAIL_INPUT);
 
     fireEvent.change(input, { target: { value: 'test@gmail.com' } });
 
-    const submitButton = screen.getByText('label.test');
+    const submitButton = screen.getByText(LABEL_TEST);
 
     await act(async () => {
       fireEvent.click(submitButton);

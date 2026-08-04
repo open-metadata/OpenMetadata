@@ -18,6 +18,9 @@ import { getTableColumnsByFQN } from '../../../../rest/tableAPI';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import { ColumnSummaryList } from './ColumnsSummaryList';
 
+const SUMMARY_LIST = 'summary-list';
+const TAGS_EXTENSION = 'tags,extension';
+
 jest.mock('../../../../rest/tableAPI', () => ({
   getTableColumnsByFQN: jest
     .fn()
@@ -33,7 +36,7 @@ jest.mock('../../../../rest/dataModelsAPI', () => ({
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
-    .mockImplementation(() => <div data-testid="summary-list">SummaryList</div>)
+    .mockImplementation(() => <div data-testid={SUMMARY_LIST}>SummaryList</div>)
 );
 
 jest.mock('../../../../utils/EntitySummaryPanelUtils', () => ({
@@ -121,10 +124,10 @@ describe('ColumnSummaryList Component', () => {
       {
         offset: 0,
         limit: 10,
-        fields: 'tags,extension',
+        fields: TAGS_EXTENSION,
       }
     );
-    expect(screen.getByTestId('summary-list')).toBeInTheDocument();
+    expect(screen.getByTestId(SUMMARY_LIST)).toBeInTheDocument();
   });
 
   it('should fetch and render columns for dashboard data model entity type', async () => {
@@ -148,10 +151,10 @@ describe('ColumnSummaryList Component', () => {
       {
         offset: 0,
         limit: 10,
-        fields: 'tags,extension',
+        fields: TAGS_EXTENSION,
       }
     );
-    expect(screen.getByTestId('summary-list')).toBeInTheDocument();
+    expect(screen.getByTestId(SUMMARY_LIST)).toBeInTheDocument();
   });
 
   it('should handle load more functionality', async () => {
@@ -194,7 +197,7 @@ describe('ColumnSummaryList Component', () => {
       {
         offset: 10,
         limit: 10,
-        fields: 'tags,extension',
+        fields: TAGS_EXTENSION,
       }
     );
   });
@@ -233,6 +236,6 @@ describe('ColumnSummaryList Component', () => {
       );
     });
 
-    expect(screen.getByTestId('summary-list')).toBeInTheDocument();
+    expect(screen.getByTestId(SUMMARY_LIST)).toBeInTheDocument();
   });
 });

@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetMoreOptions from './WidgetMoreOptions';
 
+const MORE_OPTIONS_BUTTON = 'more-options-button' as const;
+
 const mockProps = {
   menuItems: [
     { key: 'edit', label: 'Edit', icon: <TaskIcon data-testid="edit-icon" /> },
@@ -47,13 +49,13 @@ describe('WidgetMoreOptions', () => {
   it('renders more options button', () => {
     renderWidgetMoreOptions();
 
-    expect(screen.getByTestId('more-options-button')).toBeInTheDocument();
+    expect(screen.getByTestId(MORE_OPTIONS_BUTTON)).toBeInTheDocument();
   });
 
   it('shows menu items when button is clicked', () => {
     renderWidgetMoreOptions();
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     expect(screen.getByText('Edit')).toBeInTheDocument();
@@ -64,7 +66,7 @@ describe('WidgetMoreOptions', () => {
   it('calls onMenuClick when menu item is clicked', () => {
     renderWidgetMoreOptions();
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     const editOption = screen.getByText('Edit');
@@ -78,7 +80,7 @@ describe('WidgetMoreOptions', () => {
   it('renders menu items with icons when provided', () => {
     renderWidgetMoreOptions();
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
@@ -88,7 +90,7 @@ describe('WidgetMoreOptions', () => {
   it('handles disabled menu items', () => {
     renderWidgetMoreOptions();
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     const shareOption = screen.getByText('Share');
@@ -101,7 +103,7 @@ describe('WidgetMoreOptions', () => {
   it('applies custom className', () => {
     renderWidgetMoreOptions();
 
-    const moreOptions = screen.getByTestId('more-options-button');
+    const moreOptions = screen.getByTestId(MORE_OPTIONS_BUTTON);
 
     expect(moreOptions).toHaveClass('custom-more-class');
   });
@@ -109,24 +111,24 @@ describe('WidgetMoreOptions', () => {
   it('handles empty menu items gracefully', () => {
     renderWidgetMoreOptions({ menuItems: [] });
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     // Should not crash with empty menu items
-    expect(screen.getByTestId('more-options-button')).toBeInTheDocument();
+    expect(screen.getByTestId(MORE_OPTIONS_BUTTON)).toBeInTheDocument();
   });
 
   it('handles missing onMenuClick gracefully', () => {
     renderWidgetMoreOptions({ onMenuClick: undefined });
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     const editOption = screen.getByText('Edit');
     fireEvent.click(editOption);
 
     // Should not throw error when onMenuClick is undefined
-    expect(screen.getByTestId('more-options-button')).toBeInTheDocument();
+    expect(screen.getByTestId(MORE_OPTIONS_BUTTON)).toBeInTheDocument();
   });
 
   it('handles menu items without icons', () => {
@@ -137,7 +139,7 @@ describe('WidgetMoreOptions', () => {
       ],
     });
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     expect(screen.getByText('Edit')).toBeInTheDocument();
@@ -153,7 +155,7 @@ describe('WidgetMoreOptions', () => {
       ],
     });
 
-    const moreButton = screen.getByTestId('more-options-button');
+    const moreButton = screen.getByTestId(MORE_OPTIONS_BUTTON);
     fireEvent.click(moreButton);
 
     const editOption = screen.getByText('Edit Widget');

@@ -21,6 +21,8 @@ import {
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
 
+const USER_PROFILE_PAGE_TASK_FILTER_ICON = 'user-profile-page-task-filter-icon';
+const LEFT_PANEL_TASK_COUNT = 'left-panel-task-count';
 const mockGetFeedData = jest.fn();
 const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
@@ -214,7 +216,7 @@ describe('ActivityFeedTab', () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() => {
-        const badge = screen.getByTestId('left-panel-task-count');
+        const badge = screen.getByTestId(LEFT_PANEL_TASK_COUNT);
 
         expect(badge).toHaveTextContent('3');
       });
@@ -231,21 +233,17 @@ describe('ActivityFeedTab', () => {
       renderComponent(ActivityFeedTabs.TASKS);
 
       await waitFor(() =>
-        expect(screen.getByTestId('left-panel-task-count')).toHaveTextContent(
-          '3'
-        )
+        expect(screen.getByTestId(LEFT_PANEL_TASK_COUNT)).toHaveTextContent('3')
       );
 
-      fireEvent.click(screen.getByTestId('user-profile-page-task-filter-icon'));
+      fireEvent.click(screen.getByTestId(USER_PROFILE_PAGE_TASK_FILTER_ICON));
 
       const closedItem = await screen.findByTestId('closed-tasks');
 
       fireEvent.click(closedItem);
 
       await waitFor(() =>
-        expect(screen.getByTestId('left-panel-task-count')).toHaveTextContent(
-          '5'
-        )
+        expect(screen.getByTestId(LEFT_PANEL_TASK_COUNT)).toHaveTextContent('5')
       );
     });
 
@@ -264,11 +262,11 @@ describe('ActivityFeedTab', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByTestId('user-profile-page-task-filter-icon')
+          screen.getByTestId(USER_PROFILE_PAGE_TASK_FILTER_ICON)
         ).toBeInTheDocument()
       );
 
-      fireEvent.click(screen.getByTestId('user-profile-page-task-filter-icon'));
+      fireEvent.click(screen.getByTestId(USER_PROFILE_PAGE_TASK_FILTER_ICON));
 
       const closedItem = await screen.findByTestId('closed-tasks');
 

@@ -17,6 +17,8 @@ import {
 } from '../../../generated/configuration/searchSettings';
 import FieldConfiguration from './FieldConfiguration';
 
+const FIELD_CONTAINER_HEADER = 'field-container-header' as const;
+
 const mockProps = {
   field: {
     fieldName: 'description',
@@ -61,7 +63,7 @@ describe('FieldConfiguration', () => {
   it('Should handle highlight fields toggle', () => {
     render(<FieldConfiguration {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('field-container-header'));
+    fireEvent.click(screen.getByTestId(FIELD_CONTAINER_HEADER));
 
     const highlightSwitch = screen.getByTestId('highlight-field-switch');
     fireEvent.click(highlightSwitch);
@@ -74,7 +76,7 @@ describe('FieldConfiguration', () => {
   it('Should handle weight slider change', () => {
     render(<FieldConfiguration {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('field-container-header'));
+    fireEvent.click(screen.getByTestId(FIELD_CONTAINER_HEADER));
 
     const slider = screen.getByRole('slider');
     fireEvent.mouseDown(slider);
@@ -87,7 +89,7 @@ describe('FieldConfiguration', () => {
   it('Should handle delete search field', () => {
     render(<FieldConfiguration {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('field-container-header'));
+    fireEvent.click(screen.getByTestId(FIELD_CONTAINER_HEADER));
 
     const deleteButton = screen.getByTestId('delete-search-field');
     fireEvent.click(deleteButton);

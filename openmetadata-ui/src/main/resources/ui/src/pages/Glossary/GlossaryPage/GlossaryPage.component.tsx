@@ -76,6 +76,9 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
+const LABEL_GLOSSARY = 'label.glossary' as const;
+const LABEL_GLOSSARY_TERM = 'label.glossary-term' as const;
+
 const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
@@ -398,7 +401,7 @@ const GlossaryPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.delete-entity-error', {
-            entity: t('label.glossary'),
+            entity: t(LABEL_GLOSSARY),
           })
         );
       }
@@ -431,7 +434,7 @@ const GlossaryPage = () => {
           }
         } else {
           throw t('server.entity-updating-error', {
-            entity: t('label.glossary-term'),
+            entity: t(LABEL_GLOSSARY_TERM),
           });
         }
       } catch (error) {
@@ -467,7 +470,7 @@ const GlossaryPage = () => {
         showErrorToast(
           err as AxiosError,
           t('server.delete-entity-error', {
-            entity: t('label.glossary-term'),
+            entity: t(LABEL_GLOSSARY_TERM),
           })
         );
       }
@@ -492,7 +495,7 @@ const GlossaryPage = () => {
         <ErrorPlaceHolder
           className="mt-0-important border-none"
           permissionValue={t('label.view-entity', {
-            entity: t('label.glossary'),
+            entity: t(LABEL_GLOSSARY),
           })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
@@ -533,7 +536,7 @@ const GlossaryPage = () => {
                 iconLeading={Plus}
                 size="sm"
                 onPress={handleAddGlossaryClick}>
-                {t('label.add-entity', { entity: t('label.glossary') })}
+                {t('label.add-entity', { entity: t(LABEL_GLOSSARY) })}
               </CoreButton>
             ) : undefined
           }
@@ -550,7 +553,7 @@ const GlossaryPage = () => {
   } else if (isTermNotFound) {
     glossaryElement = (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
+        {getEntityMissingError(t(LABEL_GLOSSARY_TERM), glossaryFqn)}
       </ErrorPlaceHolder>
     );
   } else {
@@ -581,7 +584,7 @@ const GlossaryPage = () => {
           'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         minWidth: 280,
         flex: 0.13,
-        title: t('label.glossary'),
+        title: t(LABEL_GLOSSARY),
         children: (
           <>
             <GlossaryLeftPanel glossaries={glossaries} />
@@ -597,7 +600,7 @@ const GlossaryPage = () => {
       }}
       hideFirstPanel={isImportAction}
       learningPageId={LEARNING_PAGE_IDS.GLOSSARY}
-      learningTitle={t('label.glossary')}
+      learningTitle={t(LABEL_GLOSSARY)}
       pageTitle={getEntityName(activeGlossary)}
       secondPanel={{
         children: glossaryElement,

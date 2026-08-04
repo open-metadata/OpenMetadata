@@ -36,6 +36,8 @@ import ViewToggle, { ViewMode } from '../../common/ViewToggle/ViewToggle';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
+const LABEL_SUB_DOMAIN = 'label.sub-domain' as const;
+
 const SubDomainsTable = ({
   domainFqn,
   permissions,
@@ -87,7 +89,7 @@ const SubDomainsTable = ({
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
     useDomainTableColumns({
-      nameLabelKey: 'label.sub-domain',
+      nameLabelKey: LABEL_SUB_DOMAIN,
       tagSize: 'lg',
     });
 
@@ -135,7 +137,7 @@ const SubDomainsTable = ({
       return (
         <ErrorPlaceHolder
           buttonId="subdomain-add-button"
-          buttonTitle={t('label.add-entity', { entity: t('label.sub-domain') })}
+          buttonTitle={t('label.add-entity', { entity: t(LABEL_SUB_DOMAIN) })}
           className="border-none"
           heading={t('message.no-data-message', {
             entity: t('label.sub-domain-lowercase-plural'),
@@ -152,7 +154,7 @@ const SubDomainsTable = ({
       return (
         <>
           <EntityListingTable
-            ariaLabel={t('label.sub-domain')}
+            ariaLabel={t(LABEL_SUB_DOMAIN)}
             columns={subDomainColumns}
             entities={subdomainListing.entities}
             loading={subdomainListing.loading}
@@ -215,7 +217,7 @@ const SubDomainsTable = ({
               className="tw:max-w-60"
               icon={SearchLg}
               placeholder={t('label.search-entity', {
-                entity: t('label.sub-domain'),
+                entity: t(LABEL_SUB_DOMAIN),
               })}
               value={searchInputValue}
               onChange={(value) => {

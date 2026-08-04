@@ -26,6 +26,18 @@ import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { AddTestCaseList } from './AddTestCaseList.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
+const E_TABLE_SAMPLE_TABLE = '<#E::table::sample.table>';
+const SEARCH_BAR = 'search-bar';
+const FILTER_TABLE = 'filter-table';
+const FILTER_TABLE_SEARCH = 'filter-table-search';
+const FILTER_COLUMN = 'filter-column';
+const CURSOR_POINTER = '.cursor-pointer';
+const CHECKBOX_TEST_CASE_1 = 'checkbox-test_case_1';
+const CHECKBOX_TEST_CASE_2 = 'checkbox-test_case_2';
+const CHECKBOX_TEST_CASE_3 = 'checkbox-test_case_3';
+const SELECT_ALL_TEST_CASES = 'select-all-test-cases';
+const SELECT_ALL_TOTAL_TEST_CASES = 'select-all-total-test-cases';
+
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader Mock</div>);
 });
@@ -192,7 +204,7 @@ const mockTestCases: TestCase[] = [
     id: 'test-case-1',
     name: 'test_case_1',
     displayName: 'Test Case 1',
-    entityLink: '<#E::table::sample.table>',
+    entityLink: E_TABLE_SAMPLE_TABLE,
     testDefinition: {
       id: 'test-def-1',
       name: 'table_column_count_to_equal',
@@ -266,7 +278,7 @@ describe('AddTestCaseList', () => {
       renderWithRouter(mockProps);
     });
 
-    expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId(SEARCH_BAR)).toBeInTheDocument();
     expect(screen.getByTestId('cancel')).toBeInTheDocument();
     expect(screen.getByTestId('submit')).toBeInTheDocument();
     expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
@@ -348,7 +360,7 @@ describe('AddTestCaseList', () => {
         renderWithRouter(mockProps);
       });
 
-      const searchBar = screen.getByTestId('search-bar');
+      const searchBar = screen.getByTestId(SEARCH_BAR);
 
       await act(async () => {
         fireEvent.change(searchBar, { target: { value: 'test_search' } });
@@ -386,7 +398,7 @@ describe('AddTestCaseList', () => {
         renderWithRouter({ ...mockProps, testCaseFilters });
       });
 
-      const searchBar = screen.getByTestId('search-bar');
+      const searchBar = screen.getByTestId(SEARCH_BAR);
 
       await act(async () => {
         fireEvent.change(searchBar, { target: { value: 'column_test' } });
@@ -431,14 +443,12 @@ describe('AddTestCaseList', () => {
         renderWithRouter({ ...mockProps, hideTableFilter: true });
       });
 
-      expect(screen.queryByTestId('filter-table')).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('filter-table-search')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(FILTER_TABLE)).not.toBeInTheDocument();
+      expect(screen.queryByTestId(FILTER_TABLE_SEARCH)).not.toBeInTheDocument();
       expect(
         screen.getByTestId('add-test-case-list-filters')
       ).toBeInTheDocument();
-      expect(screen.getByTestId('filter-column')).toBeInTheDocument();
+      expect(screen.getByTestId(FILTER_COLUMN)).toBeInTheDocument();
     });
 
     it('displays table filter when hideTableFilter is false', async () => {
@@ -446,8 +456,8 @@ describe('AddTestCaseList', () => {
         renderWithRouter({ ...mockProps, hideTableFilter: false });
       });
 
-      expect(screen.getByTestId('filter-table')).toBeInTheDocument();
-      expect(screen.getByTestId('filter-table-search')).toBeInTheDocument();
+      expect(screen.getByTestId(FILTER_TABLE)).toBeInTheDocument();
+      expect(screen.getByTestId(FILTER_TABLE_SEARCH)).toBeInTheDocument();
     });
 
     it('calls getAggregateFieldOptions with columnFilters when columnFilters is passed', async () => {
@@ -589,7 +599,7 @@ describe('AddTestCaseList', () => {
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('filter-column'));
+        fireEvent.click(screen.getByTestId(FILTER_COLUMN));
       });
 
       await waitFor(() => {
@@ -603,7 +613,7 @@ describe('AddTestCaseList', () => {
 
     it('filters list by table selection (server-side)', async () => {
       mockGetListTestCaseBySearch.mockImplementation((params) => {
-        if (params?.entityLink === '<#E::table::sample.table>') {
+        if (params?.entityLink === E_TABLE_SAMPLE_TABLE) {
           return Promise.resolve({
             data: [mockTestCases[0]],
             paging: { total: 1 },
@@ -626,14 +636,14 @@ describe('AddTestCaseList', () => {
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('filter-table'));
+        fireEvent.click(screen.getByTestId(FILTER_TABLE));
       });
 
       // Must pass includeAllTests=true so column-level tests under the
       // table are not dropped by the backend's exact-match entityFQN filter.
       expect(mockGetListTestCaseBySearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          entityLink: '<#E::table::sample.table>',
+          entityLink: E_TABLE_SAMPLE_TABLE,
           includeAllTests: true,
         })
       );
@@ -684,7 +694,7 @@ describe('AddTestCaseList', () => {
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('filter-column'));
+        fireEvent.click(screen.getByTestId(FILTER_COLUMN));
       });
 
       await waitFor(() => {
@@ -712,7 +722,7 @@ describe('AddTestCaseList', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('filter-table-search')).toBeInTheDocument();
+        expect(screen.getByTestId(FILTER_TABLE_SEARCH)).toBeInTheDocument();
       });
 
       const mockSearchQuery = searchQuery as jest.MockedFunction<
@@ -721,7 +731,7 @@ describe('AddTestCaseList', () => {
       mockSearchQuery.mockClear();
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('filter-table-search'));
+        fireEvent.click(screen.getByTestId(FILTER_TABLE_SEARCH));
       });
 
       act(() => {
@@ -762,7 +772,7 @@ describe('AddTestCaseList', () => {
 
       const testCaseCard = screen
         .getByTestId('test_case_1')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
 
       expect(testCaseCard).not.toBeNull();
 
@@ -776,7 +786,7 @@ describe('AddTestCaseList', () => {
         );
       });
 
-      const checkbox = screen.getByTestId('checkbox-test_case_1');
+      const checkbox = screen.getByTestId(CHECKBOX_TEST_CASE_1);
 
       expect(checkbox).toHaveProperty('checked', true);
     });
@@ -794,7 +804,7 @@ describe('AddTestCaseList', () => {
 
       const testCaseCard = screen
         .getByTestId('test_case_1')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
 
       expect(testCaseCard).not.toBeNull();
 
@@ -810,7 +820,7 @@ describe('AddTestCaseList', () => {
         expect(onChange).toHaveBeenLastCalledWith(payloadEmpty());
       });
 
-      const checkbox = screen.getByTestId('checkbox-test_case_1');
+      const checkbox = screen.getByTestId(CHECKBOX_TEST_CASE_1);
 
       expect(checkbox).toHaveProperty('checked', false);
     });
@@ -828,10 +838,10 @@ describe('AddTestCaseList', () => {
 
       const testCaseCard1 = screen
         .getByTestId('test_case_1')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
       const testCaseCard2 = screen
         .getByTestId('test_case_2')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
 
       expect(testCaseCard1).not.toBeNull();
       expect(testCaseCard2).not.toBeNull();
@@ -867,8 +877,8 @@ describe('AddTestCaseList', () => {
       });
 
       await waitFor(() => {
-        const checkbox1 = screen.getByTestId('checkbox-test_case_1');
-        const checkbox2 = screen.getByTestId('checkbox-test_case_2');
+        const checkbox1 = screen.getByTestId(CHECKBOX_TEST_CASE_1);
+        const checkbox2 = screen.getByTestId(CHECKBOX_TEST_CASE_2);
 
         expect(checkbox1).toHaveProperty('checked', true);
         expect(checkbox2).toHaveProperty('checked', true);
@@ -900,15 +910,15 @@ describe('AddTestCaseList', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+        expect(screen.getByTestId(CHECKBOX_TEST_CASE_1)).toHaveProperty(
           'checked',
           true
         );
-        expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+        expect(screen.getByTestId(CHECKBOX_TEST_CASE_2)).toHaveProperty(
           'checked',
           true
         );
-        expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+        expect(screen.getByTestId(CHECKBOX_TEST_CASE_3)).toHaveProperty(
           'checked',
           true
         );
@@ -942,7 +952,7 @@ describe('AddTestCaseList', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+        expect(screen.getByTestId(CHECKBOX_TEST_CASE_1)).toHaveProperty(
           'checked',
           true
         );
@@ -950,7 +960,7 @@ describe('AddTestCaseList', () => {
 
       const testCaseCard = screen
         .getByTestId('test_case_2')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
 
       await act(async () => {
         fireEvent.click(testCaseCard as Element);
@@ -962,11 +972,11 @@ describe('AddTestCaseList', () => {
         );
       });
 
-      expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+      expect(screen.getByTestId(CHECKBOX_TEST_CASE_1)).toHaveProperty(
         'checked',
         true
       );
-      expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+      expect(screen.getByTestId(CHECKBOX_TEST_CASE_2)).toHaveProperty(
         'checked',
         true
       );
@@ -994,7 +1004,7 @@ describe('AddTestCaseList', () => {
 
       const testCaseCard = screen
         .getByTestId('test_case_1')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
 
       expect(testCaseCard).not.toBeNull();
 
@@ -1043,7 +1053,7 @@ describe('AddTestCaseList', () => {
 
       renderWithRouter(mockProps);
 
-      const searchBar = screen.getByTestId('search-bar');
+      const searchBar = screen.getByTestId(SEARCH_BAR);
 
       await act(async () => {
         fireEvent.change(searchBar, { target: { value: 'specific_test' } });
@@ -1099,10 +1109,10 @@ describe('AddTestCaseList', () => {
 
       const testCaseCard1 = screen
         .getByTestId('test_case_1')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
       const testCaseCard2 = screen
         .getByTestId('test_case_2')
-        .closest('.cursor-pointer');
+        .closest(CURSOR_POINTER);
 
       expect(testCaseCard1).not.toBeNull();
       expect(testCaseCard2).not.toBeNull();
@@ -1115,7 +1125,7 @@ describe('AddTestCaseList', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+        expect(screen.getByTestId(CHECKBOX_TEST_CASE_2)).toHaveProperty(
           'checked',
           true
         );
@@ -1214,7 +1224,7 @@ describe('AddTestCaseList', () => {
         id: 'table-test',
         name: 'table_test',
         displayName: 'Table Test',
-        entityLink: '<#E::table::sample.table>',
+        entityLink: E_TABLE_SAMPLE_TABLE,
         testDefinition: {
           id: 'test-def',
           name: 'table_row_count_to_be_between',
@@ -1255,7 +1265,7 @@ describe('AddTestCaseList', () => {
       expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+    expect(screen.getByTestId(SELECT_ALL_TEST_CASES)).toBeInTheDocument();
   });
 
   it('does not render select all button when no items', async () => {
@@ -1272,7 +1282,7 @@ describe('AddTestCaseList', () => {
       expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId('select-all-test-cases')).toBeNull();
+    expect(screen.queryByTestId(SELECT_ALL_TEST_CASES)).toBeNull();
   });
 
   it('select-all checkbox selects all loaded rows', async () => {
@@ -1286,17 +1296,17 @@ describe('AddTestCaseList', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECT_ALL_TEST_CASES)).toBeInTheDocument();
     });
 
     expect(screen.getByText('label.select-all (3)')).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+      expect(screen.getByTestId(CHECKBOX_TEST_CASE_3)).toHaveProperty(
         'checked',
         true
       );
@@ -1319,26 +1329,26 @@ describe('AddTestCaseList', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECT_ALL_TEST_CASES)).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(payloadPartial(mockTestCases));
     });
 
-    expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_1)).toHaveProperty(
       'checked',
       true
     );
-    expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_2)).toHaveProperty(
       'checked',
       true
     );
-    expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_3)).toHaveProperty(
       'checked',
       true
     );
@@ -1360,10 +1370,10 @@ describe('AddTestCaseList', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECT_ALL_TEST_CASES)).toBeInTheDocument();
     });
 
-    const card1 = screen.getByTestId('test_case_1').closest('.cursor-pointer');
+    const card1 = screen.getByTestId('test_case_1').closest(CURSOR_POINTER);
     fireEvent.click(card1 as Element);
 
     await waitFor(() => {
@@ -1371,22 +1381,22 @@ describe('AddTestCaseList', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     await waitFor(() => {
       expect(onChange).toHaveBeenLastCalledWith(payloadPartial(mockTestCases));
     });
 
-    expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_1)).toHaveProperty(
       'checked',
       true
     );
-    expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_2)).toHaveProperty(
       'checked',
       true
     );
-    expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_3)).toHaveProperty(
       'checked',
       true
     );
@@ -1408,11 +1418,11 @@ describe('AddTestCaseList', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECT_ALL_TEST_CASES)).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     await waitFor(() => {
@@ -1422,22 +1432,22 @@ describe('AddTestCaseList', () => {
     onChange.mockClear();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(payloadEmpty());
     });
 
-    expect(screen.getByTestId('checkbox-test_case_1')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_1)).toHaveProperty(
       'checked',
       false
     );
-    expect(screen.getByTestId('checkbox-test_case_2')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_2)).toHaveProperty(
       'checked',
       false
     );
-    expect(screen.getByTestId('checkbox-test_case_3')).toHaveProperty(
+    expect(screen.getByTestId(CHECKBOX_TEST_CASE_3)).toHaveProperty(
       'checked',
       false
     );
@@ -1459,11 +1469,11 @@ describe('AddTestCaseList', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECT_ALL_TEST_CASES)).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -1485,18 +1495,18 @@ describe('AddTestCaseList', () => {
     });
 
     expect(
-      screen.queryByTestId('select-all-total-test-cases')
+      screen.queryByTestId(SELECT_ALL_TOTAL_TEST_CASES)
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('select-all-total-test-cases')).toBeVisible();
+      expect(screen.getByTestId(SELECT_ALL_TOTAL_TEST_CASES)).toBeVisible();
     });
 
-    expect(screen.getByTestId('select-all-total-test-cases')).toHaveTextContent(
+    expect(screen.getByTestId(SELECT_ALL_TOTAL_TEST_CASES)).toHaveTextContent(
       'label.select-all-count-test-cases'
     );
   });
@@ -1518,17 +1528,17 @@ describe('AddTestCaseList', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TEST_CASES));
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('select-all-total-test-cases')).toBeVisible();
+      expect(screen.getByTestId(SELECT_ALL_TOTAL_TEST_CASES)).toBeVisible();
     });
 
     onChange.mockClear();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-all-total-test-cases'));
+      fireEvent.click(screen.getByTestId(SELECT_ALL_TOTAL_TEST_CASES));
     });
 
     await waitFor(() => {

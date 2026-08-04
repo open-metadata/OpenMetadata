@@ -26,6 +26,8 @@ import {
   mockText,
 } from './mocks/EntityUtils.mock';
 
+const TEXT_HIGHLIGHTER = '.text-highlighter';
+
 jest.mock('./StringUtils', () => ({
   bytesToSize: jest.fn(),
   getEncodedFqn: jest.fn(),
@@ -133,7 +135,7 @@ describe('EntitySearchUtils unit tests', () => {
       const result = highlightSearchArrayElement(mockText, 'highlightText');
       const { container } = render(<>{result}</>);
 
-      const highlighted = container.querySelector('.text-highlighter');
+      const highlighted = container.querySelector(TEXT_HIGHLIGHTER);
 
       expect(highlighted).toBeInTheDocument();
       expect(highlighted?.textContent).toBe('highlightText');
@@ -146,8 +148,7 @@ describe('EntitySearchUtils unit tests', () => {
       );
       const { container } = render(<>{result}</>);
 
-      const highlightedElements =
-        container.querySelectorAll('.text-highlighter');
+      const highlightedElements = container.querySelectorAll(TEXT_HIGHLIGHTER);
 
       expect(highlightedElements).toHaveLength(2);
       expect(highlightedElements[0].textContent).toBe('Data');
@@ -167,7 +168,7 @@ describe('EntitySearchUtils unit tests', () => {
       const result = highlightSearchArrayElement(mockText, 'foo');
       const { container } = render(<>{result}</>);
 
-      const highlighted = container.querySelector('.text-highlighter');
+      const highlighted = container.querySelector(TEXT_HIGHLIGHTER);
 
       expect(highlighted).toBeNull();
     });
@@ -176,7 +177,7 @@ describe('EntitySearchUtils unit tests', () => {
       const result = highlightSearchArrayElement(mockText, 'HighlightText');
       const { container } = render(<>{result}</>);
 
-      const highlighted = container.querySelector('.text-highlighter');
+      const highlighted = container.querySelector(TEXT_HIGHLIGHTER);
 
       expect(highlighted).toBeInTheDocument();
       expect(highlighted?.textContent).toBe('highlightText');
@@ -189,7 +190,7 @@ describe('EntitySearchUtils unit tests', () => {
       );
       const { container } = render(<>{result}</>);
 
-      const highlighted = container.querySelector('.text-highlighter');
+      const highlighted = container.querySelector(TEXT_HIGHLIGHTER);
 
       expect(highlighted).toBeInTheDocument();
       expect(highlighted?.textContent).toBe('map(int)');

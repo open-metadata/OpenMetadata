@@ -67,14 +67,23 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceDetailsPage from './ServiceDetailsPage';
 
+const TEST_SERVICE_ID = 'test-service-id';
+const TEST_SERVICE = 'test-service';
+const TEST_USER_ID = 'test-user-id';
+const SERVICE_PAGE = 'service-page';
+const ERROR_PLACEHOLDER = 'error-placeholder';
+const FOLLOW_BUTTON = 'follow-button';
+const DATABASE_1 = 'Database 1';
+const RUN_AGENTS = 'run-agents';
+
 // Mock data
 const mockServiceDetails = {
-  id: 'test-service-id',
-  name: 'test-service',
+  id: TEST_SERVICE_ID,
+  name: TEST_SERVICE,
   displayName: 'Test Service',
   description: 'Test service description',
   serviceType: 'Mysql',
-  fullyQualifiedName: 'test-service',
+  fullyQualifiedName: TEST_SERVICE,
   deleted: false,
   version: 1,
   followers: [],
@@ -99,14 +108,14 @@ jest.mock('../../rest/serviceAPI', () => ({
   addServiceFollower: jest.fn().mockImplementation(() =>
     Promise.resolve({
       changeDescription: {
-        fieldsAdded: [{ newValue: [{ id: 'test-user-id' }] }],
+        fieldsAdded: [{ newValue: [{ id: TEST_USER_ID }] }],
       },
     })
   ),
   removeServiceFollower: jest.fn().mockImplementation(() =>
     Promise.resolve({
       changeDescription: {
-        fieldsDeleted: [{ oldValue: [{ id: 'test-user-id' }] }],
+        fieldsDeleted: [{ oldValue: [{ id: TEST_USER_ID }] }],
       },
     })
   ),
@@ -256,7 +265,7 @@ jest.mock('../../rest/workflowAPI', () => ({
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     currentUser: {
-      id: 'test-user-id',
+      id: TEST_USER_ID,
       name: 'Test User',
       teams: [],
     },
@@ -279,7 +288,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({
-    fqn: 'test-service',
+    fqn: TEST_SERVICE,
   })),
 }));
 
@@ -357,7 +366,7 @@ jest.mock(
       disableRunAgentsButtonMessage,
     }: DataAssetsHeaderProps) => (
       <div data-testid="data-assets-header">
-        <button data-testid="follow-button" onClick={onFollowClick}>
+        <button data-testid={FOLLOW_BUTTON} onClick={onFollowClick}>
           Follow
         </button>
         <button
@@ -378,7 +387,7 @@ jest.mock(
           Clear Style
         </button>
         <button
-          data-testid="run-agents"
+          data-testid={RUN_AGENTS}
           disabled={disableRunAgentsButton}
           title={disableRunAgentsButtonMessage}>
           Run Agents
@@ -464,7 +473,7 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
+      <div data-testid={ERROR_PLACEHOLDER}>ErrorPlaceholder</div>
     ))
 );
 
@@ -648,7 +657,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
@@ -663,7 +672,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
       });
     });
 
@@ -694,7 +703,7 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(getServiceByFQN).toHaveBeenCalledWith(
           ServiceCategory.DATABASE_SERVICES,
-          'test-service',
+          TEST_SERVICE,
           {
             fields: 'owners,tags,followers,dataProducts,domains',
             include: 'all',
@@ -724,7 +733,7 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
           'databaseService',
-          'test-service'
+          TEST_SERVICE
         );
       });
     });
@@ -733,7 +742,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
       const updateNameButton = screen.getByTestId('update-name-button');
@@ -742,7 +751,7 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(patchService).toHaveBeenCalledWith(
           ServiceCategory.DATABASE_SERVICES,
-          'test-service-id',
+          TEST_SERVICE_ID,
           expect.any(Array)
         );
       });
@@ -763,7 +772,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByTestId('clear-style-button'));
@@ -771,7 +780,7 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(patchService).toHaveBeenCalledWith(
           ServiceCategory.DATABASE_SERVICES,
-          'test-service-id',
+          TEST_SERVICE_ID,
           expect.arrayContaining([
             expect.objectContaining({
               op: 'replace',
@@ -791,7 +800,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
       const updateNameButton = screen.getByTestId('update-name-button');
@@ -808,16 +817,16 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
-      const followButton = screen.getByTestId('follow-button');
+      const followButton = screen.getByTestId(FOLLOW_BUTTON);
       fireEvent.click(followButton);
 
       await waitFor(() => {
         expect(addServiceFollower).toHaveBeenCalledWith(
-          'test-service-id',
-          'test-user-id'
+          TEST_SERVICE_ID,
+          TEST_USER_ID
         );
       });
     });
@@ -826,7 +835,7 @@ describe('ServiceDetailsPage', () => {
       // Mock service with current user as follower
       const serviceWithFollower = {
         ...mockServiceDetails,
-        followers: [{ id: 'test-user-id' }],
+        followers: [{ id: TEST_USER_ID }],
       };
       (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
         Promise.resolve(serviceWithFollower)
@@ -835,16 +844,16 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
-      const followButton = screen.getByTestId('follow-button');
+      const followButton = screen.getByTestId(FOLLOW_BUTTON);
       fireEvent.click(followButton);
 
       await waitFor(() => {
         expect(removeServiceFollower).toHaveBeenCalledWith(
-          'test-service-id',
-          'test-user-id'
+          TEST_SERVICE_ID,
+          TEST_USER_ID
         );
       });
     });
@@ -857,10 +866,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
-      const followButton = screen.getByTestId('follow-button');
+      const followButton = screen.getByTestId(FOLLOW_BUTTON);
       fireEvent.click(followButton);
 
       await waitFor(() => {
@@ -885,7 +894,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
       const restoreButton = screen.getByTestId('restore-button');
@@ -894,7 +903,7 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(restoreService).toHaveBeenCalledWith(
           ServiceCategory.DATABASE_SERVICES,
-          'test-service-id'
+          TEST_SERVICE_ID
         );
       });
     });
@@ -907,7 +916,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
 
       const restoreButton = screen.getByTestId('restore-button');
@@ -925,7 +934,7 @@ describe('ServiceDetailsPage', () => {
   describe('Data Fetching', () => {
     it('should fetch databases for database service', async () => {
       (getDatabases as jest.Mock).mockResolvedValue({
-        data: [{ id: 'db1', name: 'Database 1' }],
+        data: [{ id: 'db1', name: DATABASE_1 }],
         paging: { total: 1 },
       });
 
@@ -939,7 +948,7 @@ describe('ServiceDetailsPage', () => {
     it('should include usageSummary in database fields when ViewUsage is allowed', async () => {
       (getPrioritizedViewPermission as jest.Mock).mockReturnValue(true);
       (getDatabases as jest.Mock).mockResolvedValue({
-        data: [{ id: 'db1', name: 'Database 1' }],
+        data: [{ id: 'db1', name: DATABASE_1 }],
         paging: { total: 1 },
       });
 
@@ -957,7 +966,7 @@ describe('ServiceDetailsPage', () => {
     it('should exclude usageSummary from database fields when ViewUsage is denied', async () => {
       (getPrioritizedViewPermission as jest.Mock).mockReturnValue(false);
       (getDatabases as jest.Mock).mockResolvedValue({
-        data: [{ id: 'db1', name: 'Database 1' }],
+        data: [{ id: 'db1', name: DATABASE_1 }],
         paging: { total: 1 },
       });
 
@@ -1035,7 +1044,7 @@ describe('ServiceDetailsPage', () => {
       // Wait for initial load with non-deleted items
       await waitFor(() => {
         expect(getDataModels).toHaveBeenCalledWith({
-          service: 'test-service',
+          service: TEST_SERVICE,
           fields: 'mockedFields, followers',
           include: Include.NonDeleted,
           limit: 0,
@@ -1065,7 +1074,7 @@ describe('ServiceDetailsPage', () => {
       // Wait for data model fetch with deleted items
       await waitFor(() => {
         expect(getDataModels).toHaveBeenCalledWith({
-          service: 'test-service',
+          service: TEST_SERVICE,
           fields: 'mockedFields, followers',
           include: Include.Deleted,
           limit: 0,
@@ -1296,7 +1305,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
     });
   });
@@ -1310,7 +1319,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
       });
     });
 
@@ -1323,7 +1332,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
     });
 
@@ -1335,7 +1344,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+        expect(screen.getByTestId(SERVICE_PAGE)).toBeInTheDocument();
       });
     });
   });
@@ -1349,7 +1358,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('run-agents')).toBeDisabled();
+        expect(screen.getByTestId(RUN_AGENTS)).toBeDisabled();
       });
     });
 
@@ -1360,7 +1369,7 @@ describe('ServiceDetailsPage', () => {
 
       await renderComponent();
 
-      expect(screen.getByTestId('run-agents')).toBeEnabled();
+      expect(screen.getByTestId(RUN_AGENTS)).toBeEnabled();
     });
 
     it('Should disable the AutoPilot Trigger when the isWorkflowStatusLoading is false and the workflow status is running', async () => {
@@ -1375,7 +1384,7 @@ describe('ServiceDetailsPage', () => {
 
       await renderComponent();
 
-      expect(screen.getByTestId('run-agents')).toBeDisabled();
+      expect(screen.getByTestId(RUN_AGENTS)).toBeDisabled();
     });
 
     it('Should enable the AutoPilot Trigger when the isWorkflowStatusLoading is false and the workflow status is not running', async () => {
@@ -1387,7 +1396,7 @@ describe('ServiceDetailsPage', () => {
 
       await renderComponent();
 
-      expect(screen.getByTestId('run-agents')).toBeEnabled();
+      expect(screen.getByTestId(RUN_AGENTS)).toBeEnabled();
     });
 
     it('Should return disableRunAgentsButton as true and disableRunAgentsButtonMessage as undefined when workflow is loading', async () => {
@@ -1398,7 +1407,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        const runAgentsButton = screen.getByTestId('run-agents');
+        const runAgentsButton = screen.getByTestId(RUN_AGENTS);
 
         expect(runAgentsButton).toBeDisabled();
         expect(runAgentsButton).not.toHaveAttribute('title');
@@ -1413,7 +1422,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        const runAgentsButton = screen.getByTestId('run-agents');
+        const runAgentsButton = screen.getByTestId(RUN_AGENTS);
 
         expect(runAgentsButton).toBeEnabled();
         expect(runAgentsButton).not.toHaveAttribute('title');
@@ -1435,7 +1444,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        const runAgentsButton = screen.getByTestId('run-agents');
+        const runAgentsButton = screen.getByTestId(RUN_AGENTS);
 
         expect(runAgentsButton).toBeDisabled();
         expect(runAgentsButton).toHaveAttribute(
@@ -1460,7 +1469,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        const runAgentsButton = screen.getByTestId('run-agents');
+        const runAgentsButton = screen.getByTestId(RUN_AGENTS);
 
         expect(runAgentsButton).toBeEnabled();
         expect(runAgentsButton).not.toHaveAttribute('title');
@@ -1482,7 +1491,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        const runAgentsButton = screen.getByTestId('run-agents');
+        const runAgentsButton = screen.getByTestId(RUN_AGENTS);
 
         expect(runAgentsButton).toBeEnabled();
       });
@@ -1553,7 +1562,7 @@ describe('ServiceDetailsPage', () => {
 
       // The component should show error placeholder when service fetch fails
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
       });
     });
   });
@@ -1579,7 +1588,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
       });
 
       // Should not fetch permissions for OpenMetadata service
@@ -1600,7 +1609,7 @@ describe('ServiceDetailsPage', () => {
       // clearAllMocks keeps implementations, so reset the fqn an earlier test
       // pointed at the OpenMetadata service.
       (useFqn as jest.Mock).mockImplementation(() => ({
-        fqn: 'test-service',
+        fqn: TEST_SERVICE,
       }));
     });
 
@@ -1616,7 +1625,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(TEST_SERVICE);
       });
     });
 
@@ -1631,7 +1640,7 @@ describe('ServiceDetailsPage', () => {
       // AutoPilot creates at most one automation per template, so the list is
       // requested in a single unpaginated call scoped to the service.
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(TEST_SERVICE);
       });
 
       expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
@@ -1689,7 +1698,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(TEST_SERVICE);
       });
     });
   });

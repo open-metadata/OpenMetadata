@@ -20,6 +20,17 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
+const SVC_DB_SCHEMA_USERS = 'svc.db.schema.users' as const;
+const TEST_TABLE = 'test-table' as const;
+const ENTITY_LINK = 'entity-link' as const;
+const SERVICE_ICON = 'service-icon' as const;
+const SETTINGS_SERVICES_DATABASE_SERVICES_SVC =
+  '/settings/services/databaseServices/svc' as const;
+const DATABASE_DB = '/database/db' as const;
+const DATABASE_SCHEMA_SCHEMA = '/databaseSchema/schema' as const;
+const DATABASE_ICON = 'database-icon' as const;
+const DATABASE_SCHEMA_ICON = 'databaseSchema-icon' as const;
+
 const mockPrefetchTable = jest.fn();
 const mockPrefetchDashboard = jest.fn();
 const mockPrefetchPipeline = jest.fn();
@@ -205,7 +216,7 @@ describe('ExploreSearchCard - Card container', () => {
   });
 
   it('always carries the base explore-search-card class', () => {
-    renderCard({ fullyQualifiedName: 'svc.db.schema.users' });
+    renderCard({ fullyQualifiedName: SVC_DB_SCHEMA_USERS });
 
     expect(
       screen.getByTestId('table-data-card_svc.db.schema.users')
@@ -218,7 +229,7 @@ describe('ExploreSearchCard - Card container', () => {
         <ExploreSearchCard
           {...defaultProps}
           className="highlight-card"
-          source={{ ...baseSource, fullyQualifiedName: 'svc.db.schema.users' }}
+          source={{ ...baseSource, fullyQualifiedName: SVC_DB_SCHEMA_USERS }}
         />
       </MemoryRouter>
     );
@@ -231,7 +242,7 @@ describe('ExploreSearchCard - Card container', () => {
 
   it('renders human-readable ranking explanations from matched query names and score explanation', () => {
     renderCard(
-      { fullyQualifiedName: 'svc.db.schema.users' },
+      { fullyQualifiedName: SVC_DB_SCHEMA_USERS },
       {
         matchedQueries: [
           'ranking:closeName:text',
@@ -383,7 +394,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
           {...defaultProps}
           source={{
             ...baseSource,
-            name: 'test-table',
+            name: TEST_TABLE,
             description: 'Base description',
           }}
         />
@@ -405,7 +416,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
           highlight={highlightData}
           source={{
             ...baseSource,
-            name: 'test-table',
+            name: TEST_TABLE,
             displayName: 'Test Table',
           }}
         />
@@ -414,7 +425,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'test-table',
+        name: TEST_TABLE,
         displayName: 'Test Table',
       }),
       highlightData
@@ -433,7 +444,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
           highlight={highlightData}
           source={{
             ...baseSource,
-            name: 'test-table',
+            name: TEST_TABLE,
           }}
         />
       </MemoryRouter>
@@ -441,7 +452,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'test-table',
+        name: TEST_TABLE,
       }),
       highlightData
     );
@@ -548,7 +559,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
           highlight={highlightData}
           source={{
             ...baseSource,
-            name: 'test-table',
+            name: TEST_TABLE,
             description: 'Test description',
           }}
         />
@@ -557,7 +568,7 @@ describe('ExploreSearchCard - Highlight functionality', () => {
 
     expect(highlightEntityNameAndDescription).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'test-table',
+        name: TEST_TABLE,
         description: 'Test description',
       }),
       highlightData
@@ -613,7 +624,7 @@ describe('ExploreSearchCard - Prefetch on hover', () => {
     {
       entityType: 'table',
       mockFn: mockPrefetchTable,
-      fqn: 'svc.db.schema.users',
+      fqn: SVC_DB_SCHEMA_USERS,
     },
     {
       entityType: 'dashboard',
@@ -646,7 +657,7 @@ describe('ExploreSearchCard - Prefetch on hover', () => {
         </MemoryRouter>
       );
 
-      fireEvent.mouseEnter(screen.getByTestId('entity-link'));
+      fireEvent.mouseEnter(screen.getByTestId(ENTITY_LINK));
 
       expect(mockFn).toHaveBeenCalledTimes(1);
       expect(mockFn).toHaveBeenCalledWith(expect.anything(), fqn);
@@ -661,13 +672,13 @@ describe('ExploreSearchCard - Prefetch on hover', () => {
           source={{
             ...baseSource,
             entityType: 'table',
-            fullyQualifiedName: 'svc.db.schema.users',
+            fullyQualifiedName: SVC_DB_SCHEMA_USERS,
           }}
         />
       </MemoryRouter>
     );
 
-    fireEvent.focus(screen.getByTestId('entity-link'));
+    fireEvent.focus(screen.getByTestId(ENTITY_LINK));
 
     expect(mockPrefetchTable).toHaveBeenCalledTimes(1);
   });
@@ -686,7 +697,7 @@ describe('ExploreSearchCard - Prefetch on hover', () => {
       </MemoryRouter>
     );
 
-    fireEvent.mouseEnter(screen.getByTestId('entity-link'));
+    fireEvent.mouseEnter(screen.getByTestId(ENTITY_LINK));
 
     expect(mockPrefetchTable).not.toHaveBeenCalled();
     expect(mockPrefetchDashboard).not.toHaveBeenCalled();
@@ -777,7 +788,7 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
 
     renderCard({});
 
-    expect(screen.getByText('service-icon')).toBeInTheDocument();
+    expect(screen.getByText(SERVICE_ICON)).toBeInTheDocument();
   });
 
   it('passes icons for breadcrumb items from the source hierarchy', () => {
@@ -785,29 +796,30 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
       {
         id: 'svc',
         label: 'svc',
-        href: '/settings/services/databaseServices/svc',
+        href: SETTINGS_SERVICES_DATABASE_SERVICES_SVC,
         icon: () => <span>service-icon</span>,
       },
       {
         id: 'db',
         label: 'db',
-        href: '/database/db',
+        href: DATABASE_DB,
         icon: () => <span>database-icon</span>,
       },
       {
         id: 'schema',
         label: 'schema',
-        href: '/databaseSchema/schema',
+        href: DATABASE_SCHEMA_SCHEMA,
         icon: () => <span>databaseSchema-icon</span>,
       },
     ]);
 
     renderCard({ entityType: 'table' });
 
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     expect(screen.getAllByTestId('breadcrumb-icon')).toHaveLength(3);
-    expect(screen.getByText('service-icon')).toBeInTheDocument();
-    expect(screen.getByText('database-icon')).toBeInTheDocument();
-    expect(screen.getByText('databaseSchema-icon')).toBeInTheDocument();
+    expect(screen.getByText(SERVICE_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DATABASE_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DATABASE_SCHEMA_ICON)).toBeInTheDocument();
   });
 
   it('renders icons correctly when breadcrumb label differs from source service name', () => {
@@ -821,7 +833,7 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
       {
         id: 'db',
         label: 'db',
-        href: '/database/db',
+        href: DATABASE_DB,
         icon: () => <span>database-icon</span>,
       },
     ]);
@@ -835,8 +847,8 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
       },
     });
 
-    expect(screen.getByText('service-icon')).toBeInTheDocument();
-    expect(screen.getByText('database-icon')).toBeInTheDocument();
+    expect(screen.getByText(SERVICE_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DATABASE_ICON)).toBeInTheDocument();
   });
 
   it('renders icons correctly when source service reference is missing', () => {
@@ -844,21 +856,21 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
       {
         id: 'svc',
         label: 'svc',
-        href: '/settings/services/databaseServices/svc',
+        href: SETTINGS_SERVICES_DATABASE_SERVICES_SVC,
         icon: () => <span>service-icon</span>,
       },
       {
         id: 'db',
         label: 'db',
-        href: '/database/db',
+        href: DATABASE_DB,
         icon: () => <span>database-icon</span>,
       },
     ]);
 
     renderCard({ service: undefined });
 
-    expect(screen.getByText('service-icon')).toBeInTheDocument();
-    expect(screen.getByText('database-icon')).toBeInTheDocument();
+    expect(screen.getByText(SERVICE_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DATABASE_ICON)).toBeInTheDocument();
   });
 
   it('does not render icon for category crumb when it has no icon', () => {
@@ -871,19 +883,19 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
       {
         id: 'svc',
         label: 'svc',
-        href: '/settings/services/databaseServices/svc',
+        href: SETTINGS_SERVICES_DATABASE_SERVICES_SVC,
         icon: () => <span>service-icon</span>,
       },
       {
         id: 'db',
         label: 'db',
-        href: '/database/db',
+        href: DATABASE_DB,
         icon: () => <span>database-icon</span>,
       },
       {
         id: 'schema',
         label: 'schema',
-        href: '/databaseSchema/schema',
+        href: DATABASE_SCHEMA_SCHEMA,
         icon: () => <span>databaseSchema-icon</span>,
       },
     ]);
@@ -894,9 +906,9 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
 
     expect(items[0].icon).toBeUndefined();
     expect(screen.getAllByTestId('breadcrumb-icon')).toHaveLength(3);
-    expect(screen.getByText('service-icon')).toBeInTheDocument();
-    expect(screen.getByText('database-icon')).toBeInTheDocument();
-    expect(screen.getByText('databaseSchema-icon')).toBeInTheDocument();
+    expect(screen.getByText(SERVICE_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DATABASE_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DATABASE_SCHEMA_ICON)).toBeInTheDocument();
   });
 
   it('renders only icons present in breadcrumb items', () => {
@@ -904,13 +916,13 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
       {
         id: 'svc',
         label: 'svc',
-        href: '/settings/services/databaseServices/svc',
+        href: SETTINGS_SERVICES_DATABASE_SERVICES_SVC,
         icon: () => <span>service-icon</span>,
       },
       {
         id: 'schema',
         label: 'schema',
-        href: '/databaseSchema/schema',
+        href: DATABASE_SCHEMA_SCHEMA,
         icon: () => <span>databaseSchema-icon</span>,
       },
     ]);
@@ -918,9 +930,9 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
     renderCard({ entityType: 'table' });
 
     expect(screen.getAllByTestId('breadcrumb-icon')).toHaveLength(2);
-    expect(screen.getByText('service-icon')).toBeInTheDocument();
-    expect(screen.getByText('databaseSchema-icon')).toBeInTheDocument();
-    expect(screen.queryByText('database-icon')).not.toBeInTheDocument();
+    expect(screen.getByText(SERVICE_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DATABASE_SCHEMA_ICON)).toBeInTheDocument();
+    expect(screen.queryByText(DATABASE_ICON)).not.toBeInTheDocument();
   });
 
   it('does not render any icons when breadcrumbs list is empty', () => {

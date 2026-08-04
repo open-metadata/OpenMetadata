@@ -38,6 +38,8 @@ import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
  * by the OSS classic page and the AI-mode page; all data/state lives in
  * useTestDefinitionListPage and is passed in.
  */
+const MESSAGE_NO_PERMISSION_FOR_ACTION = 'message.no-permission-for-action';
+
 const TestDefinitionTable = ({
   testDefinitions,
   isLoading,
@@ -106,7 +108,7 @@ const TestDefinitionTable = ({
     if (isExternal) {
       tooltipTitle = t('message.external-test-cannot-be-toggled');
     } else if (!hasEditPermission) {
-      tooltipTitle = t('message.no-permission-for-action');
+      tooltipTitle = t(MESSAGE_NO_PERMISSION_FOR_ACTION);
     }
 
     return (
@@ -140,7 +142,7 @@ const TestDefinitionTable = ({
     } else if (hasEditPermission) {
       editTooltip = t('label.edit');
     } else {
-      editTooltip = t('message.no-permission-for-action');
+      editTooltip = t(MESSAGE_NO_PERMISSION_FOR_ACTION);
     }
 
     let deleteTooltip;
@@ -149,7 +151,7 @@ const TestDefinitionTable = ({
     } else if (hasDeletePermission) {
       deleteTooltip = t('label.delete');
     } else {
-      deleteTooltip = t('message.no-permission-for-action');
+      deleteTooltip = t(MESSAGE_NO_PERMISSION_FOR_ACTION);
     }
 
     return (

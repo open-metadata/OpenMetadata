@@ -14,6 +14,9 @@
 import { render, screen } from '@testing-library/react';
 import HeaderShell from './HeaderShell.component';
 
+const TW_ML_AUTO = '.tw\\:ml-auto';
+const HEADER_SHELL = 'header-shell';
+
 describe('HeaderShell', () => {
   it('renders a string title as a level-3 heading', () => {
     render(<HeaderShell title="My Title" />);
@@ -69,7 +72,7 @@ describe('HeaderShell', () => {
   it('omits the actions container when no actions are passed', () => {
     const { container } = render(<HeaderShell title="No Actions" />);
 
-    expect(container.querySelector('.tw\\:ml-auto')).toBeNull();
+    expect(container.querySelector(TW_ML_AUTO)).toBeNull();
   });
 
   it('renders the actions container when actions are passed', () => {
@@ -80,7 +83,7 @@ describe('HeaderShell', () => {
       />
     );
 
-    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass('tw:shrink-0');
+    expect(container.querySelector(TW_ML_AUTO)).toHaveClass('tw:shrink-0');
     expect(screen.getByTestId('actions')).toBeInTheDocument();
   });
 
@@ -93,7 +96,7 @@ describe('HeaderShell', () => {
       />
     );
 
-    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass(
+    expect(container.querySelector(TW_ML_AUTO)).toHaveClass(
       'tw:min-w-0',
       'tw:flex-1'
     );
@@ -102,7 +105,7 @@ describe('HeaderShell', () => {
   it('applies the Figma gradient and brand border on the gradient variant', () => {
     render(<HeaderShell title="Gradient" variant="gradient" />);
 
-    const { className } = screen.getByTestId('header-shell');
+    const { className } = screen.getByTestId(HEADER_SHELL);
 
     expect(className).toContain('linear-gradient');
     expect(className).toContain('border-brand-50');
@@ -111,7 +114,7 @@ describe('HeaderShell', () => {
   it('does not apply the gradient on the default flat variant', () => {
     render(<HeaderShell title="Flat" />);
 
-    expect(screen.getByTestId('header-shell').className).not.toContain(
+    expect(screen.getByTestId(HEADER_SHELL).className).not.toContain(
       'linear-gradient'
     );
   });
@@ -119,9 +122,7 @@ describe('HeaderShell', () => {
   it('renders the card without a shadow to match the Figma design', () => {
     render(<HeaderShell title="No Shadow" variant="gradient" />);
 
-    expect(screen.getByTestId('header-shell').className).not.toContain(
-      'shadow'
-    );
+    expect(screen.getByTestId(HEADER_SHELL).className).not.toContain('shadow');
   });
 
   it('applies a custom className to the card', () => {
@@ -141,6 +142,6 @@ describe('HeaderShell', () => {
   it('uses the default test id when none is provided', () => {
     render(<HeaderShell title="Default" />);
 
-    expect(screen.getByTestId('header-shell')).toBeInTheDocument();
+    expect(screen.getByTestId(HEADER_SHELL)).toBeInTheDocument();
   });
 });

@@ -86,6 +86,8 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
+const LABEL_SEARCH_INDEX = 'label.search-index';
+
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } = useRequiredParams<{
@@ -475,7 +477,7 @@ function SearchIndexDetailsPage() {
       const { version: newVersion } = await restoreSearchIndex(searchIndexId);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.search-index'),
+          entity: t(LABEL_SEARCH_INDEX),
         })
       );
       handleToggleDelete(newVersion);
@@ -483,7 +485,7 @@ function SearchIndexDetailsPage() {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.search-index'),
+          entity: t(LABEL_SEARCH_INDEX),
         })
       );
     }
@@ -651,7 +653,7 @@ function SearchIndexDetailsPage() {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.search-index'),
+          entity: t(LABEL_SEARCH_INDEX),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
@@ -666,7 +668,7 @@ function SearchIndexDetailsPage() {
     <PageLayoutV1
       pageTitle={entityName}
       title={t('label.entity-detail-plural', {
-        entity: t('label.search-index'),
+        entity: t(LABEL_SEARCH_INDEX),
       })}>
       <Row gutter={[0, 12]}>
         <Col data-testid="entity-page-header" span={24}>

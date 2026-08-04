@@ -22,6 +22,14 @@ import {
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { ContractSemanticFormTab } from './ContractSemanticFormTab';
 
+const CUSTOM_NEXT = 'Custom Next';
+const CUSTOM_PREVIOUS = 'Custom Previous';
+const TEST_SEMANTIC = 'Test Semantic';
+const TEST_DESCRIPTION = 'Test Description';
+const ADD_SEMANTIC_BUTTON = 'add-semantic-button';
+const EDIT_SEMANTIC_0 = 'edit-semantic-0';
+const SAVE_SEMANTIC_BUTTON = 'save-semantic-button';
+
 jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
   getSematicRuleFields: jest.fn(() => ({
     testField: {
@@ -97,8 +105,8 @@ const commonProps = {
   onPrev: mockOnPrev,
   onNext: mockOnNext,
   buttonProps: {
-    nextLabel: 'Custom Next',
-    prevLabel: 'Custom Previous',
+    nextLabel: CUSTOM_NEXT,
+    prevLabel: CUSTOM_PREVIOUS,
     isNextVisible: true,
   },
 };
@@ -106,8 +114,8 @@ const commonProps = {
 const mockInitialValues: Partial<DataContract> = {
   semantics: [
     {
-      name: 'Test Semantic',
-      description: 'Test Description',
+      name: TEST_SEMANTIC,
+      description: TEST_DESCRIPTION,
       rule: 'test rule',
       enabled: true,
       jsonTree: '{"type": "group"}',
@@ -126,7 +134,7 @@ describe('ContractSemanticFormTab', () => {
 
       expect(screen.getByText('Semantics')).toBeInTheDocument();
       expect(screen.getByText('Configure semantic rules')).toBeInTheDocument();
-      expect(screen.getByTestId('add-semantic-button')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_SEMANTIC_BUTTON)).toBeInTheDocument();
     });
 
     it('should render with initial values', () => {
@@ -137,15 +145,15 @@ describe('ContractSemanticFormTab', () => {
         />
       );
 
-      expect(screen.getByDisplayValue('Test Semantic')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Test Description')).toBeInTheDocument();
+      expect(screen.getByDisplayValue(TEST_SEMANTIC)).toBeInTheDocument();
+      expect(screen.getByDisplayValue(TEST_DESCRIPTION)).toBeInTheDocument();
     });
 
     it('should render with custom labels', () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      expect(screen.getByText('Custom Next')).toBeInTheDocument();
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_NEXT)).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_PREVIOUS)).toBeInTheDocument();
     });
   });
 
@@ -153,7 +161,7 @@ describe('ContractSemanticFormTab', () => {
     it('should add new semantic rule when add button is clicked', async () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-semantic-button');
+      const addButton = screen.getByTestId(ADD_SEMANTIC_BUTTON);
 
       await act(async () => {
         fireEvent.click(addButton);
@@ -192,14 +200,14 @@ describe('ContractSemanticFormTab', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const editButton = screen.getByTestId('edit-semantic-0');
+      const editButton = screen.getByTestId(EDIT_SEMANTIC_0);
 
       await act(async () => {
         fireEvent.click(editButton);
       });
 
-      expect(screen.getByDisplayValue('Test Semantic')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Test Description')).toBeInTheDocument();
+      expect(screen.getByDisplayValue(TEST_SEMANTIC)).toBeInTheDocument();
+      expect(screen.getByDisplayValue(TEST_DESCRIPTION)).toBeInTheDocument();
     });
   });
 
@@ -207,13 +215,13 @@ describe('ContractSemanticFormTab', () => {
     it('should validate required fields when saving', async () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-semantic-button');
+      const addButton = screen.getByTestId(ADD_SEMANTIC_BUTTON);
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      const saveButton = screen.getByTestId('save-semantic-button');
+      const saveButton = screen.getByTestId(SAVE_SEMANTIC_BUTTON);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -233,19 +241,19 @@ describe('ContractSemanticFormTab', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const editButton = screen.getByTestId('edit-semantic-0');
+      const editButton = screen.getByTestId(EDIT_SEMANTIC_0);
 
       await act(async () => {
         fireEvent.click(editButton);
       });
 
-      const nameInput = screen.getByDisplayValue('Test Semantic');
+      const nameInput = screen.getByDisplayValue(TEST_SEMANTIC);
 
       await act(async () => {
         fireEvent.change(nameInput, { target: { value: 'Updated Semantic' } });
       });
 
-      const saveButton = screen.getByTestId('save-semantic-button');
+      const saveButton = screen.getByTestId(SAVE_SEMANTIC_BUTTON);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -268,7 +276,7 @@ describe('ContractSemanticFormTab', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const editButton = screen.getByTestId('edit-semantic-0');
+      const editButton = screen.getByTestId(EDIT_SEMANTIC_0);
 
       await act(async () => {
         fireEvent.click(editButton);
@@ -280,9 +288,7 @@ describe('ContractSemanticFormTab', () => {
         fireEvent.click(cancelButton);
       });
 
-      expect(
-        screen.queryByDisplayValue('Test Semantic')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByDisplayValue(TEST_SEMANTIC)).not.toBeInTheDocument();
     });
   });
 
@@ -297,7 +303,7 @@ describe('ContractSemanticFormTab', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const editButton = screen.getByTestId('edit-semantic-0');
+      const editButton = screen.getByTestId(EDIT_SEMANTIC_0);
 
       await act(async () => {
         fireEvent.click(editButton);
@@ -330,7 +336,7 @@ describe('ContractSemanticFormTab', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const editButton = screen.getByTestId('edit-semantic-0');
+      const editButton = screen.getByTestId(EDIT_SEMANTIC_0);
 
       await act(async () => {
         fireEvent.click(editButton);
@@ -357,7 +363,7 @@ describe('ContractSemanticFormTab', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-      const editButton = screen.getByTestId('edit-semantic-0');
+      const editButton = screen.getByTestId(EDIT_SEMANTIC_0);
 
       await act(async () => {
         fireEvent.click(editButton);
@@ -379,14 +385,14 @@ describe('ContractSemanticFormTab', () => {
     it('should display navigation buttons', () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
-      expect(screen.getByText('Custom Next')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_PREVIOUS)).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_NEXT)).toBeInTheDocument();
     });
 
     it('should call onNext when next button is clicked', () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const nextButton = screen.getByText('Custom Next');
+      const nextButton = screen.getByText(CUSTOM_NEXT);
       fireEvent.click(nextButton);
 
       expect(mockOnNext).toHaveBeenCalled();
@@ -395,7 +401,7 @@ describe('ContractSemanticFormTab', () => {
     it('should call onPrev when previous button is clicked', () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const prevButton = screen.getByText('Custom Previous');
+      const prevButton = screen.getByText(CUSTOM_PREVIOUS);
       fireEvent.click(prevButton);
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -424,13 +430,13 @@ describe('ContractSemanticFormTab', () => {
 
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-semantic-button');
+      const addButton = screen.getByTestId(ADD_SEMANTIC_BUTTON);
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      const saveButton = screen.getByTestId('save-semantic-button');
+      const saveButton = screen.getByTestId(SAVE_SEMANTIC_BUTTON);
 
       await act(async () => {
         fireEvent.click(saveButton);
@@ -460,11 +466,11 @@ describe('ContractSemanticFormTab', () => {
     it('should have proper button roles and attributes', () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-semantic-button');
+      const addButton = screen.getByTestId(ADD_SEMANTIC_BUTTON);
 
       expect(addButton).toHaveAttribute('type', 'button');
 
-      const nextButton = screen.getByRole('button', { name: 'Custom Next' });
+      const nextButton = screen.getByRole('button', { name: CUSTOM_NEXT });
 
       expect(nextButton).toHaveAttribute('type', 'button');
     });

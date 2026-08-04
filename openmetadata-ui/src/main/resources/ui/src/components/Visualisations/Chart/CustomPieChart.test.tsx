@@ -15,6 +15,8 @@ import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
 import CustomPieChart from './CustomPieChart.component';
 
+const LEGEND_DOT = '.legend-dot';
+
 describe('CustomPieChart', () => {
   const mockData = [
     { name: 'Category A', value: 400, color: '#0088FE' },
@@ -128,7 +130,7 @@ describe('CustomPieChart', () => {
     });
 
     // Check that legend dots are rendered with correct colors
-    const legendDots = container.querySelectorAll('.legend-dot');
+    const legendDots = container.querySelectorAll(LEGEND_DOT);
 
     expect(legendDots).toHaveLength(mockData.length);
 
@@ -147,8 +149,8 @@ describe('CustomPieChart', () => {
     );
 
     // Check that no legend dots are rendered
-    expect(containerFalse.querySelectorAll('.legend-dot')).toHaveLength(0);
-    expect(containerUndefined.querySelectorAll('.legend-dot')).toHaveLength(0);
+    expect(containerFalse.querySelectorAll(LEGEND_DOT)).toHaveLength(0);
+    expect(containerUndefined.querySelectorAll(LEGEND_DOT)).toHaveLength(0);
   });
 
   it('renders tooltip component', () => {

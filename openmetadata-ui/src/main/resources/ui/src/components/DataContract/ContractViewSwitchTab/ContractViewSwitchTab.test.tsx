@@ -16,6 +16,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import ContractViewSwitchTab from './ContractViewSwitchTab.component';
 
+const CONTRACT_VIEW_SWITCH_TAB_YAML = 'contract-view-switch-tab-yaml' as const;
+const CONTRACT_VIEW_SWITCH_TAB_UI = 'contract-view-switch-tab-ui' as const;
+const ANT_RADIO_BUTTON = '.ant-radio-button' as const;
+const ANT_RADIO_BUTTON_CHECKED = 'ant-radio-button-checked' as const;
+
 const mockHandleModeChange = jest.fn();
 
 describe('ContractViewSwitchTab', () => {
@@ -33,10 +38,10 @@ describe('ContractViewSwitchTab', () => {
       );
 
       expect(
-        screen.getByTestId('contract-view-switch-tab-yaml')
+        screen.getByTestId(CONTRACT_VIEW_SWITCH_TAB_YAML)
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('contract-view-switch-tab-ui')
+        screen.getByTestId(CONTRACT_VIEW_SWITCH_TAB_UI)
       ).toBeInTheDocument();
     });
 
@@ -62,8 +67,8 @@ describe('ContractViewSwitchTab', () => {
         />
       );
 
-      const yamlIcon = screen.getByTestId('contract-view-switch-tab-yaml');
-      const uiIcon = screen.getByTestId('contract-view-switch-tab-ui');
+      const yamlIcon = screen.getByTestId(CONTRACT_VIEW_SWITCH_TAB_YAML);
+      const uiIcon = screen.getByTestId(CONTRACT_VIEW_SWITCH_TAB_UI);
 
       expect(yamlIcon).toHaveAttribute('height', '20');
       expect(yamlIcon).toHaveAttribute('width', '20');
@@ -82,7 +87,7 @@ describe('ContractViewSwitchTab', () => {
       );
 
       const yamlOption = screen
-        .getByTestId('contract-view-switch-tab-yaml')
+        .getByTestId(CONTRACT_VIEW_SWITCH_TAB_YAML)
         .closest('label');
       yamlOption && fireEvent.click(yamlOption);
 
@@ -104,7 +109,7 @@ describe('ContractViewSwitchTab', () => {
       );
 
       const uiOption = screen
-        .getByTestId('contract-view-switch-tab-ui')
+        .getByTestId(CONTRACT_VIEW_SWITCH_TAB_UI)
         .closest('label');
       uiOption && fireEvent.click(uiOption);
 
@@ -158,7 +163,7 @@ describe('ContractViewSwitchTab', () => {
       );
 
       const yamlOption = screen
-        .getByTestId('contract-view-switch-tab-yaml')
+        .getByTestId(CONTRACT_VIEW_SWITCH_TAB_YAML)
         .closest('label');
       yamlOption && fireEvent.click(yamlOption);
 
@@ -184,11 +189,11 @@ describe('ContractViewSwitchTab', () => {
       let radioButtons = container.querySelectorAll('input[type="radio"]');
 
       // UI should be checked initially
-      expect(radioButtons[0].closest('.ant-radio-button')).toHaveClass(
-        'ant-radio-button-checked'
+      expect(radioButtons[0].closest(ANT_RADIO_BUTTON)).toHaveClass(
+        ANT_RADIO_BUTTON_CHECKED
       );
-      expect(radioButtons[1].closest('.ant-radio-button')).not.toHaveClass(
-        'ant-radio-button-checked'
+      expect(radioButtons[1].closest(ANT_RADIO_BUTTON)).not.toHaveClass(
+        ANT_RADIO_BUTTON_CHECKED
       );
 
       rerender(
@@ -201,11 +206,11 @@ describe('ContractViewSwitchTab', () => {
       radioButtons = container.querySelectorAll('input[type="radio"]');
 
       // YAML should be checked after rerender
-      expect(radioButtons[0].closest('.ant-radio-button')).not.toHaveClass(
-        'ant-radio-button-checked'
+      expect(radioButtons[0].closest(ANT_RADIO_BUTTON)).not.toHaveClass(
+        ANT_RADIO_BUTTON_CHECKED
       );
-      expect(radioButtons[1].closest('.ant-radio-button')).toHaveClass(
-        'ant-radio-button-checked'
+      expect(radioButtons[1].closest(ANT_RADIO_BUTTON)).toHaveClass(
+        ANT_RADIO_BUTTON_CHECKED
       );
     });
   });

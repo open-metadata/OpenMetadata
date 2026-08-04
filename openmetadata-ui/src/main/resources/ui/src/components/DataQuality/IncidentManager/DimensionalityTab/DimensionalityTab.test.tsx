@@ -14,6 +14,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
 import DimensionalityTab from './DimensionalityTab';
 
+const SERVICE_DATABASE_SCHEMA_TABLE_TEST = 'service.database.schema.table.test';
 const mockGetTestCaseDimensionResultsByFqn =
   getTestCaseDimensionResultsByFqn as jest.MockedFunction<
     typeof getTestCaseDimensionResultsByFqn
@@ -110,7 +111,7 @@ describe('DimensionalityTab', () => {
 
     await waitFor(() =>
       expect(mockGetTestCaseDimensionResultsByFqn).toHaveBeenCalledWith(
-        'service.database.schema.table.test',
+        SERVICE_DATABASE_SCHEMA_TABLE_TEST,
         {
           dimensionName: 'country',
           startTs: CUSTOM_RANGE.startTs,
@@ -132,7 +133,7 @@ describe('DimensionalityTab', () => {
 
     await waitFor(() =>
       expect(mockGetTestCaseDimensionResultsByFqn).toHaveBeenCalledWith(
-        'service.database.schema.table.test',
+        SERVICE_DATABASE_SCHEMA_TABLE_TEST,
         {
           dimensionName: 'country',
           startTs: PRESET_RANGE.startTs,

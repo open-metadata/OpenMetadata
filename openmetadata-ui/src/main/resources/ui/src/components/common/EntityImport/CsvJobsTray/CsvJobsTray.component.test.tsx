@@ -28,6 +28,9 @@ import {
 import { CsvJobsTray } from './CsvJobsTray.component';
 import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 
+const LABEL_BACKGROUND_JOB_PLURAL = 'label.background-job-plural';
+const RUNNING_JOB = 'running-job';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
     .fn()
@@ -122,7 +125,7 @@ describe('CsvJobsTray', () => {
     await waitFor(() => expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(1));
 
     expect(
-      screen.queryByText('label.background-job-plural')
+      screen.queryByText(LABEL_BACKGROUND_JOB_PLURAL)
     ).not.toBeInTheDocument();
   });
 
@@ -130,14 +133,14 @@ describe('CsvJobsTray', () => {
     mockGetCsvAsyncJobs
       .mockResolvedValueOnce([
         createJob({
-          jobId: 'running-job',
+          jobId: RUNNING_JOB,
           progress: 20,
           result: undefined,
           status: 'RUNNING',
         }),
       ])
       .mockResolvedValueOnce([
-        createJob({ jobId: 'running-job', status: 'COMPLETED' }),
+        createJob({ jobId: RUNNING_JOB, status: 'COMPLETED' }),
       ]);
 
     await renderComponent();
@@ -151,7 +154,7 @@ describe('CsvJobsTray', () => {
     });
 
     expect(
-      await screen.findByText('label.background-job-plural')
+      await screen.findByText(LABEL_BACKGROUND_JOB_PLURAL)
     ).toBeInTheDocument();
 
     expect(
@@ -171,7 +174,7 @@ describe('CsvJobsTray', () => {
     await waitFor(() => expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(1));
 
     expect(
-      screen.queryByText('label.background-job-plural')
+      screen.queryByText(LABEL_BACKGROUND_JOB_PLURAL)
     ).not.toBeInTheDocument();
 
     await act(async () => {
@@ -179,14 +182,14 @@ describe('CsvJobsTray', () => {
     });
 
     expect(
-      await screen.findByText('label.background-job-plural')
+      await screen.findByText(LABEL_BACKGROUND_JOB_PLURAL)
     ).toBeInTheDocument();
   });
 
   it('cancels an active job from the tray', async () => {
     mockGetCsvAsyncJobs.mockResolvedValue([
       createJob({
-        jobId: 'running-job',
+        jobId: RUNNING_JOB,
         progress: 20,
         result: undefined,
         status: 'RUNNING',
@@ -194,7 +197,7 @@ describe('CsvJobsTray', () => {
     ]);
     mockCancelCsvAsyncJob.mockResolvedValue(
       createJob({
-        jobId: 'running-job',
+        jobId: RUNNING_JOB,
         result: undefined,
         status: 'CANCELLED',
       })
@@ -206,7 +209,7 @@ describe('CsvJobsTray', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
     await waitFor(() =>
-      expect(mockCancelCsvAsyncJob).toHaveBeenCalledWith('running-job')
+      expect(mockCancelCsvAsyncJob).toHaveBeenCalledWith(RUNNING_JOB)
     );
   });
 
@@ -237,7 +240,7 @@ describe('CsvJobsTray', () => {
       window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
     });
 
-    fireEvent.click(await screen.findByText('label.background-job-plural'));
+    fireEvent.click(await screen.findByText(LABEL_BACKGROUND_JOB_PLURAL));
     fireEvent.click(screen.getByRole('button', { name: 'label.download' }));
 
     await waitFor(() =>

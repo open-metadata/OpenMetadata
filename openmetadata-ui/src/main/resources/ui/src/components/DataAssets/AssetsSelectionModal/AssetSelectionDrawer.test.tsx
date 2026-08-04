@@ -15,6 +15,8 @@ import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.int
 import { AssetSelectionDrawer } from './AssetSelectionDrawer';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
+const CONTENT_BODY = 'content-body' as const;
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   SlideoutMenu: Object.assign(
     ({
@@ -26,6 +28,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       isOpen: boolean;
       onOpenChange?: (isOpen: boolean) => void;
       children: React.ReactNode;
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       'data-testid'?: string;
     }) =>
       isOpen ? (
@@ -140,7 +143,7 @@ describe('AssetSelectionDrawer', () => {
       />
     );
 
-    expect(screen.queryByTestId('content-body')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONTENT_BODY)).not.toBeInTheDocument();
   });
 
   it('should render content body when open is true', () => {
@@ -152,7 +155,7 @@ describe('AssetSelectionDrawer', () => {
       />
     );
 
-    expect(screen.getByTestId('content-body')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTENT_BODY)).toBeInTheDocument();
   });
 
   it('should render the footer once the drawer is open', () => {
@@ -319,6 +322,6 @@ describe('AssetSelectionDrawer', () => {
       />
     );
 
-    expect(screen.getByTestId('content-body')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTENT_BODY)).toBeInTheDocument();
   });
 });

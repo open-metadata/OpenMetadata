@@ -28,6 +28,7 @@ import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 
+const LABEL_PAGE = 'label.page';
 const NextPrevious: FC<NextPreviousProps> = ({
   className,
   paging,
@@ -111,7 +112,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         <span>{t('label.previous')}</span>
       </Button>
       <span className="pagination-indicator" data-testid="page-indicator">{`${t(
-        'label.page'
+        LABEL_PAGE
       )} ${currentPage} ${t('label.of')} ${displayTotalPages} `}</span>
       <Button
         className="pagination-button hover-button"
@@ -127,7 +128,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
           disabled={isLoading}
           menu={{
             items: pageSizeOptions.map((size) => ({
-              label: `${size} / ${t('label.page')}`,
+              label: `${size} / ${t(LABEL_PAGE)}`,
               value: size,
               key: size,
               onClick: () => onShowSizeChange(size),
@@ -138,7 +139,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
             data-testid="page-size-selection-dropdown"
             type="text"
             onClick={(e) => e.preventDefault()}>
-            {`${pageSize} / ${t('label.page')}`}
+            {`${pageSize} / ${t(LABEL_PAGE)}`}
             <Icon component={DownOutlined} style={ICON_DIMENSION} />
           </Button>
         </Dropdown>

@@ -39,6 +39,7 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+const LABEL_CONTEXT_CENTER = 'label.context-center';
 type KnowledgeCenterFilter = {
   entityId: string;
   entityType: EntityType;
@@ -115,7 +116,7 @@ const KnowledgeCenterFilterPage = () => {
 
     return [
       {
-        name: t('label.context-center'),
+        name: t(LABEL_CONTEXT_CENTER),
         url: ROUTES.CONTEXT_CENTER,
       },
       {
@@ -155,7 +156,7 @@ const KnowledgeCenterFilterPage = () => {
 
   if (isLoading) {
     return (
-      <PageLayoutV1 pageTitle={t('label.context-center')}>
+      <PageLayoutV1 pageTitle={t(LABEL_CONTEXT_CENTER)}>
         <div className="knowledge-center-filter-page">
           <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
             {Array.from({ length: 4 }).map(() => (
@@ -212,7 +213,7 @@ const KnowledgeCenterFilterPage = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.context-center'),
+          entity: t(LABEL_CONTEXT_CENTER),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
@@ -220,7 +221,7 @@ const KnowledgeCenterFilterPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.context-center')}>
+    <PageLayoutV1 pageTitle={t(LABEL_CONTEXT_CENTER)}>
       <div className="knowledge-center-filter-page">
         <Row gutter={[0, 24]}>
           {!isEmpty(breadcrumbs) && (

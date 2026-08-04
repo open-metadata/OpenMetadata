@@ -30,6 +30,11 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DirectoryVersion from './DirectoryVersion';
 import { DirectoryVersionProps } from './DirectoryVersion.interface';
 
+const DATA_ASSETS_VERSION_HEADER = 'data-assets-version-header' as const;
+const ENTITY_VERSION_TIMELINE = 'entity-version-timeline' as const;
+const DRIVE_SERVICE_TEST_DIRECTORY = 'drive-service.test-directory' as const;
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural' as const;
+
 jest.mock('../../../../hooks/useFqn');
 jest.mock('../../../../utils/useRequiredParams');
 jest.mock('../../../../rest/driveAPI');
@@ -134,7 +139,7 @@ const mockShowErrorToast = showErrorToast as jest.Mock;
 const mockDirectoryData: Directory = {
   id: 'directory-1',
   name: 'test-directory',
-  fullyQualifiedName: 'drive-service.test-directory',
+  fullyQualifiedName: DRIVE_SERVICE_TEST_DIRECTORY,
   displayName: 'Test Directory',
   description: 'Test directory description',
   children: [
@@ -229,7 +234,7 @@ const renderDirectoryVersion = (props: Partial<DirectoryVersionProps> = {}) => {
 describe('DirectoryVersion', () => {
   beforeEach(() => {
     mockUseFqn.mockReturnValue({
-      fqn: 'drive-service.test-directory',
+      fqn: DRIVE_SERVICE_TEST_DIRECTORY,
     });
 
     mockUseRequiredParams.mockReturnValue({
@@ -258,10 +263,10 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('data-assets-version-header')
+        screen.getByTestId(DATA_ASSETS_VERSION_HEADER)
       ).toBeInTheDocument();
       expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-      expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+      expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
     });
   });
 
@@ -281,7 +286,7 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('data-assets-version-header')
+        screen.getByTestId(DATA_ASSETS_VERSION_HEADER)
       ).toBeInTheDocument();
     });
   });
@@ -291,7 +296,7 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(mockGetDriveAssetByFqn).toHaveBeenCalledWith(
-        'drive-service.test-directory',
+        DRIVE_SERVICE_TEST_DIRECTORY,
         EntityType.DIRECTORY,
         'children'
       );
@@ -317,7 +322,7 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('data-assets-version-header')
+        screen.getByTestId(DATA_ASSETS_VERSION_HEADER)
       ).toBeInTheDocument();
     });
   });
@@ -327,7 +332,7 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('data-assets-version-header')
+        screen.getByTestId(DATA_ASSETS_VERSION_HEADER)
       ).toBeInTheDocument();
     });
   });
@@ -357,7 +362,7 @@ describe('DirectoryVersion', () => {
     renderDirectoryVersion({ versionHandler });
 
     await waitFor(() => {
-      expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+      expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
     });
   });
 
@@ -366,7 +371,7 @@ describe('DirectoryVersion', () => {
     renderDirectoryVersion({ backHandler });
 
     await waitFor(() => {
-      expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+      expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
     });
   });
 
@@ -382,7 +387,7 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('data-assets-version-header')
+        screen.getByTestId(DATA_ASSETS_VERSION_HEADER)
       ).toBeInTheDocument();
     });
   });
@@ -411,7 +416,7 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('data-assets-version-header')
+        screen.getByTestId(DATA_ASSETS_VERSION_HEADER)
       ).toBeInTheDocument();
     });
   });
@@ -433,7 +438,7 @@ describe('DirectoryVersion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('data-assets-version-header')
+        screen.getByTestId(DATA_ASSETS_VERSION_HEADER)
       ).toBeInTheDocument();
     });
   });
@@ -451,7 +456,7 @@ describe('DirectoryVersion', () => {
 
       await waitFor(() => {
         const customPropertyTabLabel = screen.getByText(
-          'label.custom-property-plural'
+          LABEL_CUSTOM_PROPERTY_PLURAL
         );
 
         expect(customPropertyTabLabel).toBeInTheDocument();
@@ -470,7 +475,7 @@ describe('DirectoryVersion', () => {
 
       await waitFor(() => {
         const customPropertyTabLabel = screen.getByText(
-          'label.custom-property-plural'
+          LABEL_CUSTOM_PROPERTY_PLURAL
         );
 
         expect(customPropertyTabLabel).toBeInTheDocument();
@@ -493,7 +498,7 @@ describe('DirectoryVersion', () => {
 
       await waitFor(() => {
         const customPropertyTabLabel = screen.getByText(
-          'label.custom-property-plural'
+          LABEL_CUSTOM_PROPERTY_PLURAL
         );
 
         expect(customPropertyTabLabel).toBeInTheDocument();

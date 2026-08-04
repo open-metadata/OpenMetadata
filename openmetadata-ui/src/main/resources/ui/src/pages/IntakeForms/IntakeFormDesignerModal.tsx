@@ -45,6 +45,8 @@ import intakeFormClassBase from './IntakeFormClassBase';
 import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
 import { IntakeFormNativeField } from './intakeFormFields';
 
+const LABEL_ENTITY_INTAKE_FORM = 'label.entity-intake-form';
+
 interface FieldRow {
   path: string;
   label: string;
@@ -210,7 +212,7 @@ const IntakeFormDesignerModal = ({
     // of "<Entity> <IntakeForm>" so the listing shows a meaningful label
     // without forcing the user to type one.
     const name = intakeFormClassBase.getEntityTypeApiName(entityType);
-    const defaultDisplayName = t('label.entity-intake-form', {
+    const defaultDisplayName = t(LABEL_ENTITY_INTAKE_FORM, {
       entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
     });
     const displayName = initialValue?.displayName ?? defaultDisplayName;
@@ -358,12 +360,12 @@ const IntakeFormDesignerModal = ({
 
   const title = initialValue
     ? t('label.edit-entity', {
-        entity: t('label.entity-intake-form', {
+        entity: t(LABEL_ENTITY_INTAKE_FORM, {
           entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
         }),
       })
     : t('label.add-entity', {
-        entity: t('label.entity-intake-form', {
+        entity: t(LABEL_ENTITY_INTAKE_FORM, {
           entity: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
         }),
       });

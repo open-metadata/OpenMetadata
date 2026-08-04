@@ -14,6 +14,8 @@ import { fireEvent, render } from '@testing-library/react';
 
 import { WidgetProps } from '@rjsf/utils';
 import { CustomRangeWidget } from './CustomRangeWidget';
+
+const SLIDER_INPUT = 'slider-input';
 const widgetProps = {
   id: 'custom-range-widget',
   name: 'custom-range',
@@ -30,7 +32,7 @@ describe('Test Custom Range Widget', () => {
   it('renders the CustomRangeWidget with a Slider and InputNumber', () => {
     const { getByTestId } = render(<CustomRangeWidget {...widgetProps} />);
     const slider = getByTestId('percentage-input');
-    const inputNumber = getByTestId('slider-input');
+    const inputNumber = getByTestId(SLIDER_INPUT);
 
     expect(slider).toBeInTheDocument();
     expect(inputNumber).toBeInTheDocument();
@@ -38,7 +40,7 @@ describe('Test Custom Range Widget', () => {
 
   it('updates the value when Slider is changed', () => {
     const { getByTestId } = render(<CustomRangeWidget {...widgetProps} />);
-    const slider = getByTestId('slider-input');
+    const slider = getByTestId(SLIDER_INPUT);
 
     fireEvent.change(slider, { target: { value: 75 } });
 
@@ -47,7 +49,7 @@ describe('Test Custom Range Widget', () => {
 
   it('updates the value when InputNumber is changed', () => {
     const { getByTestId } = render(<CustomRangeWidget {...widgetProps} />);
-    const inputNumber = getByTestId('slider-input');
+    const inputNumber = getByTestId(SLIDER_INPUT);
 
     fireEvent.change(inputNumber, { target: { value: '30%' } });
 

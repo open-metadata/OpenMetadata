@@ -49,6 +49,12 @@ import {
   TableConstraintForm,
   TableConstraintModalProps,
 } from './TableConstraintsModal.interface';
+
+const LABEL_SELECT_ENTITY = 'label.select-entity';
+const LABEL_ENTITY_KEY_PLURAL = 'label.entity-key-plural';
+const LABEL_COLUMN = 'label.column';
+const LABEL_FIELD_REQUIRED = 'label.field-required';
+const LABEL_RELATED_COLUMN = 'label.related-column';
 const TableConstraintsModal = ({
   tableDetails,
   constraint,
@@ -318,7 +324,7 @@ const TableConstraintsModal = ({
             autoClearSearchValue
             data-testid="constraint-type-select"
             options={translatedTableConstrantTypeOptions}
-            placeholder={t('label.select-entity', {
+            placeholder={t(LABEL_SELECT_ENTITY, {
               entity: t('label.constraint-type'),
             })}
           />
@@ -328,7 +334,7 @@ const TableConstraintsModal = ({
           <div className="table-constraint-form-container">
             <Form.Item
               className="w-full"
-              label={t('label.entity-key-plural', {
+              label={t(LABEL_ENTITY_KEY_PLURAL, {
                 entity: t('label.primary'),
               })}
               name="primaryConstraints">
@@ -338,7 +344,7 @@ const TableConstraintsModal = ({
                 data-testid="primary-constraint-type-select"
                 mode="multiple"
                 options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
+                placeholder={t(LABEL_SELECT_ENTITY, {
                   entity: t('label.primary-key-plural'),
                 })}
               />
@@ -358,8 +364,8 @@ const TableConstraintsModal = ({
                 data-testid="unique-constraint-type-select"
                 mode="multiple"
                 options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
+                placeholder={t(LABEL_SELECT_ENTITY, {
+                  entity: t(LABEL_ENTITY_KEY_PLURAL, {
                     entity: t('label.unique'),
                   }),
                 })}
@@ -372,7 +378,7 @@ const TableConstraintsModal = ({
           <div className="table-constraint-form-container">
             <Form.Item
               className="w-full"
-              label={t('label.entity-key-plural', {
+              label={t(LABEL_ENTITY_KEY_PLURAL, {
                 entity: t('label.sort'),
               })}
               name="sortConstraints">
@@ -382,8 +388,8 @@ const TableConstraintsModal = ({
                 data-testid="sort-constraint-type-select"
                 mode="multiple"
                 options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
+                placeholder={t(LABEL_SELECT_ENTITY, {
+                  entity: t(LABEL_ENTITY_KEY_PLURAL, {
                     entity: t('label.sort'),
                   }),
                 })}
@@ -396,7 +402,7 @@ const TableConstraintsModal = ({
           <div className="table-constraint-form-container">
             <Form.Item
               className="w-full"
-              label={t('label.entity-key-plural', {
+              label={t(LABEL_ENTITY_KEY_PLURAL, {
                 entity: t('label.dist'),
               })}
               name="distConstraints">
@@ -406,8 +412,8 @@ const TableConstraintsModal = ({
                 data-testid="dist-constraint-type-select"
                 mode="multiple"
                 options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
+                placeholder={t(LABEL_SELECT_ENTITY, {
+                  entity: t(LABEL_ENTITY_KEY_PLURAL, {
                     entity: t('label.dist'),
                   }),
                 })}
@@ -420,7 +426,7 @@ const TableConstraintsModal = ({
           <div className="table-constraint-form-container">
             <Form.Item
               className="w-full"
-              label={t('label.entity-key-plural', {
+              label={t(LABEL_ENTITY_KEY_PLURAL, {
                 entity: t('label.cluster'),
               })}
               name="clusterConstraints">
@@ -430,8 +436,8 @@ const TableConstraintsModal = ({
                 data-testid="cluster-constraint-type-select"
                 mode="multiple"
                 options={tableColumnNameOptions}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.entity-key-plural', {
+                placeholder={t(LABEL_SELECT_ENTITY, {
+                  entity: t(LABEL_ENTITY_KEY_PLURAL, {
                     entity: t('label.cluster'),
                   }),
                 })}
@@ -450,15 +456,15 @@ const TableConstraintsModal = ({
                       className="w-full"
                       {...restField}
                       label={t('label.entity-name', {
-                        entity: t('label.column'),
+                        entity: t(LABEL_COLUMN),
                       })}
                       name={[name, 'columns']}
                       rules={[
                         {
                           required: true,
-                          message: t('label.field-required', {
+                          message: t(LABEL_FIELD_REQUIRED, {
                             field: t('label.entity-name', {
-                              entity: t('label.column'),
+                              entity: t(LABEL_COLUMN),
                             }),
                           }),
                         },
@@ -466,9 +472,9 @@ const TableConstraintsModal = ({
                       <Select
                         data-testid={`${key}-column-type-select`}
                         options={tableColumnNameOptions}
-                        placeholder={t('label.select-entity', {
+                        placeholder={t(LABEL_SELECT_ENTITY, {
                           entity: t('label.table-entity-text', {
-                            entityText: t('label.column'),
+                            entityText: t(LABEL_COLUMN),
                           }),
                         })}
                       />
@@ -483,7 +489,7 @@ const TableConstraintsModal = ({
                       rules={[
                         {
                           required: true,
-                          message: t('label.field-required', {
+                          message: t(LABEL_FIELD_REQUIRED, {
                             field: t('label.entity-type-plural', {
                               entity: t('label.relationship'),
                             }),
@@ -493,7 +499,7 @@ const TableConstraintsModal = ({
                       <Select
                         data-testid={`${key}-relationship-type-select`}
                         options={translatedRelationShipTypeOptions}
-                        placeholder={t('label.select-entity', {
+                        placeholder={t(LABEL_SELECT_ENTITY, {
                           entity: t('label.relationship-type'),
                         })}
                       />
@@ -501,13 +507,13 @@ const TableConstraintsModal = ({
                     <Form.Item
                       {...restField}
                       className="w-full"
-                      label={t('label.related-column')}
+                      label={t(LABEL_RELATED_COLUMN)}
                       name={[name, 'referredColumns']}
                       rules={[
                         {
                           required: true,
-                          message: t('label.field-required', {
-                            field: t('label.related-column'),
+                          message: t(LABEL_FIELD_REQUIRED, {
+                            field: t(LABEL_RELATED_COLUMN),
                           }),
                         },
                       ]}>
@@ -528,8 +534,8 @@ const TableConstraintsModal = ({
                           )
                         }
                         optionLabelProp="label"
-                        placeholder={t('label.select-entity', {
-                          entity: t('label.related-column'),
+                        placeholder={t(LABEL_SELECT_ENTITY, {
+                          entity: t(LABEL_RELATED_COLUMN),
                         })}
                         onSearch={debounceFetcher}>
                         {relatedColumnOptions.map(({ label, value, data }) => (

@@ -27,6 +27,9 @@ import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.inte
 import DataQualityTab from './DataQualityTab';
 
 // Context for dropdown and sort state in mocks
+const LABEL_NAME = 'label.name';
+const LABEL_NEW_ENTITY = 'label.new-entity';
+
 const DropdownContext = React.createContext<{
   isOpen: boolean;
   onOpenChange?: (isOpen: boolean) => void;
@@ -81,6 +84,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onAction,
     isDisabled,
   }: {
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
     'data-testid'?: string;
     label?: string;
     onAction?: () => void;
@@ -333,6 +337,7 @@ const mockProps: DataQualityTabProps = {
 const mockPermissionsData = MOCK_PERMISSIONS;
 const mockNavigateDataQualityTab = jest.fn();
 
+// eslint-disable-next-line sonarjs/no-duplicate-string -- module specifier cannot be a constant
 jest.mock('react-router-dom', () => {
   const actual =
     jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
@@ -440,7 +445,7 @@ describe('DataQualityTab test', () => {
       await findByText(header, 'label.failed-slash-aborted-reason')
     ).toBeInTheDocument();
     expect(await findByText(header, 'label.last-run')).toBeInTheDocument();
-    expect(await findByText(header, 'label.name')).toBeInTheDocument();
+    expect(await findByText(header, LABEL_NAME)).toBeInTheDocument();
     expect(await findByText(header, 'label.table')).toBeInTheDocument();
     expect(await findByText(header, 'label.column')).toBeInTheDocument();
     expect(await findByText(header, 'label.incident')).toBeInTheDocument();
@@ -453,7 +458,7 @@ describe('DataQualityTab test', () => {
     const tableRows = await screen.findAllByRole('row');
     const header = tableRows[0];
 
-    expect(await findByText(header, 'label.name')).toBeInTheDocument();
+    expect(await findByText(header, LABEL_NAME)).toBeInTheDocument();
     expect(screen.queryByText('label.table')).not.toBeInTheDocument();
   });
 
@@ -492,7 +497,7 @@ describe('DataQualityTab test', () => {
     });
     const tableRows = await screen.findAllByRole('row');
     const header = tableRows[0];
-    const nameHeader = await findByText(header, 'label.name');
+    const nameHeader = await findByText(header, LABEL_NAME);
 
     expect(nameHeader).toBeInTheDocument();
 
@@ -588,7 +593,7 @@ describe('DataQualityTab test', () => {
     const mockOnPress = jest.fn();
     const emptyStateAction = {
       key: 'new-test-case',
-      label: 'label.new-entity',
+      label: LABEL_NEW_ENTITY,
       onPress: mockOnPress,
     };
 
@@ -606,7 +611,7 @@ describe('DataQualityTab test', () => {
     );
 
     expect(actionButton).toBeInTheDocument();
-    expect(actionButton).toHaveTextContent('label.new-entity');
+    expect(actionButton).toHaveTextContent(LABEL_NEW_ENTITY);
 
     await act(async () => {
       fireEvent.click(actionButton);
@@ -618,7 +623,7 @@ describe('DataQualityTab test', () => {
   it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
     const emptyStateAction = {
       key: 'new-test-case',
-      label: 'label.new-entity',
+      label: LABEL_NEW_ENTITY,
       onPress: jest.fn(),
     };
 

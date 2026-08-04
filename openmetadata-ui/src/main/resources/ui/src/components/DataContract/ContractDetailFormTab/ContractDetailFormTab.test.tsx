@@ -17,6 +17,7 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/entity/type';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
 
+const CONTRACT_TITLE = 'Contract Title';
 jest.mock('../../../utils/formUtils', () => ({
   generateFormFields: jest.fn((fields) =>
     fields.map(
@@ -99,7 +100,7 @@ describe('ContractDetailFormTab', () => {
       render(<ContractDetailFormTab {...commonProps} />);
 
       expect(screen.getByText('Enter contract details')).toBeInTheDocument();
-      expect(screen.getByText('Contract Title')).toBeInTheDocument();
+      expect(screen.getByText(CONTRACT_TITLE)).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
     });
@@ -118,7 +119,7 @@ describe('ContractDetailFormTab', () => {
         />
       );
 
-      expect(screen.getByText('Contract Title')).toBeInTheDocument();
+      expect(screen.getByText(CONTRACT_TITLE)).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
     });
   });
@@ -127,7 +128,7 @@ describe('ContractDetailFormTab', () => {
     it('should display all required form fields', () => {
       render(<ContractDetailFormTab {...commonProps} />);
 
-      expect(screen.getByText('Contract Title')).toBeInTheDocument();
+      expect(screen.getByText(CONTRACT_TITLE)).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
     });
@@ -255,7 +256,7 @@ describe('ContractDetailFormTab', () => {
         expect.arrayContaining([
           expect.objectContaining({
             name: 'name',
-            label: 'Contract Title',
+            label: CONTRACT_TITLE,
             required: true,
           }),
           expect.objectContaining({

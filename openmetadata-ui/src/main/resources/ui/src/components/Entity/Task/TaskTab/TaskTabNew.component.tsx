@@ -159,6 +159,9 @@ import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHe
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
 
+const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
+const LABEL_ASSIGNEE_PLURAL = 'label.assignee-plural';
+const LABEL_TASK = 'label.task';
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
 );
@@ -540,7 +543,7 @@ export const TaskTabNew = ({
   }, [taskColumnLabel, t]);
 
   const taskDisplayMessage = useMemo(() => {
-    const taskTypeLabel = t(TASK_ENTITY_TYPES[task.type] ?? 'label.task');
+    const taskTypeLabel = t(TASK_ENTITY_TYPES[task.type] ?? LABEL_TASK);
     const entityName = entityFQN
       ? getNameFromFQN(entityFQN)
       : task.about?.name ?? '';
@@ -580,7 +583,7 @@ export const TaskTabNew = ({
       },
       {
         iconSrc: icAssignees,
-        label: t('label.assignee-plural'),
+        label: t(LABEL_ASSIGNEE_PLURAL),
         value: <ClampedAssignees assignees={task.assignees ?? []} />,
       },
     ];
@@ -854,7 +857,7 @@ export const TaskTabNew = ({
       isEmpty(newValue)
     ) {
       showErrorToast(
-        t('message.field-text-is-required', {
+        t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
           fieldText: isTaskTags
             ? t('label.tag-plural')
             : t('label.description'),
@@ -881,7 +884,7 @@ export const TaskTabNew = ({
         requiredFields.some((field) => !payload?.[field])
       ) {
         showErrorToast(
-          t('message.field-text-is-required', {
+          t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
             fieldText: t('label.required-field-plural'),
           })
         );
@@ -1540,8 +1543,8 @@ export const TaskTabNew = ({
                 rules={[
                   {
                     required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.assignee-plural'),
+                    message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                      fieldText: t(LABEL_ASSIGNEE_PLURAL),
                     }),
                   },
                 ]}>
@@ -1581,7 +1584,7 @@ export const TaskTabNew = ({
                 style={{ paddingLeft: 0 }}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
-                  {t('label.assignee-plural')}
+                  {t(LABEL_ASSIGNEE_PLURAL)}
                 </Typography.Text>
               </Col>
               <Col
@@ -1607,7 +1610,7 @@ export const TaskTabNew = ({
                         data-testid="edit-assignees"
                         size="small"
                         title={t('label.edit-entity', {
-                          entity: t('label.assignee-plural'),
+                          entity: t(LABEL_ASSIGNEE_PLURAL),
                         })}
                         onClick={handleEditClick}
                       />
@@ -1901,7 +1904,7 @@ export const TaskTabNew = ({
           }}
           okText={t('label.save')}
           open={showEditTaskModel}
-          title={`${t('label.resolve')} ${t('label.task')} #${taskDisplayId}`}
+          title={`${t('label.resolve')} ${t(LABEL_TASK)} #${taskDisplayId}`}
           width={768}
           onCancel={() => setShowEditTaskModel(false)}
           onOk={form.submit}>
@@ -1968,7 +1971,7 @@ export const TaskTabNew = ({
           }}
           okText={t('label.save')}
           open={isEditAssignee}
-          title={`${t('label.re-assign')} ${t('label.task')} #${taskDisplayId}`}
+          title={`${t('label.re-assign')} ${t(LABEL_TASK)} #${taskDisplayId}`}
           width={768}
           onCancel={() => setIsEditAssignee(false)}
           onOk={assigneesForm.submit}>
@@ -1983,7 +1986,7 @@ export const TaskTabNew = ({
               rules={[
                 {
                   required: true,
-                  message: t('message.field-text-is-required', {
+                  message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                     fieldText: t('label.assignee'),
                   }),
                 },
