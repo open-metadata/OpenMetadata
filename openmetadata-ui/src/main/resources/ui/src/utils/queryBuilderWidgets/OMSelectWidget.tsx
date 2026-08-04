@@ -62,6 +62,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
     return [];
   });
   const requestIdRef = useRef(0);
+  const defaultOptionsRef = useRef<SelectItemType[]>(staticItems);
   const fieldKey = typeof field === 'string' ? field : JSON.stringify(field);
 
   const loadAsync = useCallback(
@@ -74,12 +75,14 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
       const requestId = ++requestIdRef.current;
       const result = await asyncFetch(search);
       if (requestId === requestIdRef.current) {
-        setItems(
-          (result.values as ListItem[]).map((item) => ({
-            id: String(item.value),
-            label: String(item.title ?? item.value),
-          }))
-        );
+        const mapped = (result.values as ListItem[]).map((item) => ({
+          id: String(item.value),
+          label: String(item.title ?? item.value),
+        }));
+        if (search === '') {
+          defaultOptionsRef.current = mapped;
+        }
+        setItems(mapped);
       }
     },
     [asyncFetch]
@@ -110,6 +113,14 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
         size="sm"
         onInputChange={(v) => {
           loadAsync(v);
+        }}
+        onOpenChange={(isOpen) => {
+          if (isOpen) {
+            if (defaultOptionsRef.current.length > 0) {
+              setItems(defaultOptionsRef.current);
+            }
+            loadAsync('');
+          }
         }}
         onSelectionChange={(key) =>
           setValue(key !== null ? String(key) : null)

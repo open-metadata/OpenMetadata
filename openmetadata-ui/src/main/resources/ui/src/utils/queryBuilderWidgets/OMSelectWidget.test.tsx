@@ -11,9 +11,58 @@
  *  limitations under the License.
  */
 import type { SelectWidgetProps } from '@react-awesome-query-builder/ui';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import OMSelectWidget from './OMSelectWidget';
+
+// The real Select.ComboBox is react-aria driven and its overlay cannot be
+// opened under jsdom (positioning hangs). It is a boundary from a separate
+// package, so mock it with the minimal surface the widget uses: a "Show
+// options" button that reports open via onOpenChange, and an input that reports
+// typed text via onInputChange. This lets us assert the widget's own behaviour
+// (reload the full list on open, honour the request-ordering guard) without
+// react-aria internals.
+jest.mock('@openmetadata/ui-core-components', () => {
+  const ReactModule = jest.requireActual('react');
+  const Select: {
+    (props: { isDisabled?: boolean }): JSX.Element;
+    ComboBox?: (props: {
+      isDisabled?: boolean;
+      items?: { id: string; label: string }[];
+      onOpenChange?: (isOpen: boolean) => void;
+      onInputChange?: (value: string) => void;
+    }) => JSX.Element;
+  } = ({ isDisabled }) =>
+    ReactModule.createElement('button', { disabled: isDisabled }, 'select');
+  Select.ComboBox = ({ isDisabled, items, onOpenChange, onInputChange }) =>
+    ReactModule.createElement(
+      'div',
+      null,
+      ReactModule.createElement(
+        'button',
+        {
+          disabled: isDisabled,
+          'aria-label': 'Show options',
+          onClick: () => onOpenChange?.(true),
+        },
+        'open'
+      ),
+      ReactModule.createElement('input', {
+        role: 'combobox',
+        onChange: (event: { target: { value: string } }) =>
+          onInputChange?.(event.target.value),
+      }),
+      ReactModule.createElement(
+        'ul',
+        { 'data-testid': 'options' },
+        (items ?? []).map((item: { id: string; label: string }) =>
+          ReactModule.createElement('li', { key: item.id }, item.label)
+        )
+      )
+    );
+
+  return { Select };
+});
 
 const baseProps = {
   placeholder: 'Select option',
@@ -45,5 +94,61 @@ describe('OMSelectWidget', () => {
     render(<OMSelectWidget {...baseProps} readonly />);
 
     expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('refetches the full option list when the dropdown is reopened', async () => {
+    const allOptions = [
+      { value: 'opt1', title: 'Option 1' },
+      { value: 'opt2', title: 'Option 2' },
+    ];
+    // Mirror the server: an empty query returns the full page, a specific query
+    // returns only its matches (so selecting narrows the list to one option).
+    const asyncFetch = jest.fn().mockImplementation((search: string) =>
+      Promise.resolve({
+        values: search
+          ? allOptions.filter((option) => option.title === search)
+          : allOptions,
+      })
+    );
+    render(
+      <OMSelectWidget
+        {...baseProps}
+        useAsyncSearch
+        asyncFetch={asyncFetch}
+        listValues={undefined}
+        value="opt1"
+      />
+    );
+
+    // Seed fetch fires once on mount and populates the full option list.
+    await waitFor(() => expect(asyncFetch).toHaveBeenCalledWith(''));
+    await waitFor(() =>
+      expect(screen.getByTestId('options').children).toHaveLength(2)
+    );
+
+    // Selecting an item pushes its label into the input, which narrows the list
+    // down to just that option (the reported bug).
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Option 1' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('options').children).toHaveLength(1)
+    );
+
+    // Make the reopen's background refetch hang so we can assert the list is
+    // restored synchronously from cache — no flash of the single selected item.
+    let resolveReopen: (value: unknown) => void = () => undefined;
+    asyncFetch.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveReopen = resolve))
+    );
+
+    // Reopening restores the full option set immediately, before the refetch
+    // resolves.
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+    expect(asyncFetch).toHaveBeenLastCalledWith('');
+
+    resolveReopen({ values: allOptions });
   });
 });
