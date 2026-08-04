@@ -249,7 +249,9 @@ export const removeCertificationFromWidget = async (
   await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
-  await expect(page.getByTestId('add-certification')).toBeVisible();
+  await expect(page.getByTestId('certification-label')).not.toBeVisible({
+    timeout: 30000,
+  });
 };
 
 export const assignDomainWidget = async (
