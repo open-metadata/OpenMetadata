@@ -139,9 +139,11 @@ export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
-  await page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
-  );
+  // No action in this function triggers the dataAsset count query — it fires
+  // from the Explore navigation the caller already performed, so a listener
+  // registered here would race an already-settled response. Wait for the
+  // page to finish loading instead of a specific response.
+  await waitForAllLoadersToDisappear(page);
   await page.getByRole('button', { name: 'Data Assets' }).click();
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'

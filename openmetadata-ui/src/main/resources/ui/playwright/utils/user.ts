@@ -701,9 +701,12 @@ export const addUser = async (
   }
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const initialRolesSearchResponse = page.waitForResponse(
+    '/api/v1/roles/search?*'
+  );
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles/search?*');
+  await initialRolesSearchResponse;
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);
