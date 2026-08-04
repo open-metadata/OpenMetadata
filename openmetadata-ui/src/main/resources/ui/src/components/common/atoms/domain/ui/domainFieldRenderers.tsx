@@ -50,7 +50,7 @@ export const CARD_NAME_WRAP_CLASS = 'tw:min-w-0 tw:[overflow-wrap:anywhere]';
 export const renderDomainNameCell = (
   entity: Domain | DataProduct
 ): ReactNode => (
-  <Box align="start" className={NAME_CELL_WRAP_CLASS} direction="row" gap={3}>
+  <Box align="center" className={NAME_CELL_WRAP_CLASS} direction="row" gap={3}>
     <Avatar size="md" {...getEntityAvatarProps(entity)} />
     <Typography size="text-sm" weight="medium">
       {getEntityName(entity)}

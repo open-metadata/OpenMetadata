@@ -18,6 +18,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { io, Socket } from 'socket.io-client';
@@ -63,8 +64,10 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
     }
   }, [currentUser]);
 
+  const contextValue = useMemo(() => ({ socket }), [socket]);
+
   return (
-    <WebSocketContext.Provider value={{ socket }}>
+    <WebSocketContext.Provider value={contextValue}>
       {children}
     </WebSocketContext.Provider>
   );

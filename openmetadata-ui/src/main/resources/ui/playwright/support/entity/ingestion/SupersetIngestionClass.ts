@@ -61,7 +61,7 @@ class SupersetIngestionClass extends ServiceBaseClass {
 
   async fillIngestionDetails(page: Page) {
     await this.openIngestionFilterSection(page);
-    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('filter-section-dashboardFilterPattern').click();
     await page
       .getByTestId('dashboardFilterPattern-only-specific-button')
       .click();

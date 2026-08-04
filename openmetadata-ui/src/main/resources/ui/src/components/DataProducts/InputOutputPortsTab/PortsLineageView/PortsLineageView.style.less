@@ -19,8 +19,8 @@
   }
 
   .react-flow__controls {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-1);
+    border-radius: var(--om-radius-lg);
     border: 1px solid @grey-200;
     overflow: hidden;
 
@@ -47,11 +47,11 @@
   .data-product-center-node {
     background-color: var(--tw-color-bg-primary);
     border: 2px solid @primary-color;
-    border-radius: 12px;
-    padding: 16px 24px;
+    border-radius: var(--om-radius-xl);
+    padding: var(--om-space-16) var(--om-space-24);
     min-width: 220px;
     max-width: 300px;
-    box-shadow: 0 4px 12px rgba(48, 98, 212, 0.15);
+    box-shadow: 0 4px 12px var(--om-legacy-color-48-98-212-0-15);
     position: relative;
 
     .data-product-badge {
@@ -61,21 +61,21 @@
       transform: translateX(-50%);
       background-color: @primary-color;
       color: var(--tw-color-text-white);
-      padding: 2px 12px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 600;
+      padding: var(--om-space-2) var(--om-space-12);
+      border-radius: var(--om-radius-lg);
+      font-size: var(--om-font-size-11);
+      font-weight: var(--om-font-weight-semibold);
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--om-space-4);
     }
 
     .data-product-content {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
-      margin-top: 8px;
+      gap: var(--om-space-8);
+      margin-top: var(--om-space-8);
 
       .data-product-icon-container {
         width: 40px;
@@ -88,8 +88,8 @@
       }
 
       .data-product-name {
-        font-weight: 600;
-        font-size: 15px;
+        font-weight: var(--om-font-weight-semibold);
+        font-size: var(--om-font-size-15);
         text-align: center;
         overflow: hidden;
         text-overflow: ellipsis;

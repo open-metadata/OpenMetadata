@@ -16,7 +16,7 @@
 .ant-table-wrapper {
   .ant-table-thead {
     tr > th {
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       color: @grey-600;
       border-right: none;
       border-color: @border-color-1;
@@ -102,11 +102,11 @@
 }
 
 .ant-table.ant-table-small .ant-table-thead > tr > th:first-child {
-  padding-left: 16px;
+  padding-left: var(--om-space-16);
 }
 
 .ant-table.ant-table-small .ant-table-tbody > tr > td:first-child {
-  padding-left: 16px;
+  padding-left: var(--om-space-16);
 }
 
 .drop-over-background {
@@ -155,7 +155,7 @@
 .align-table-filter-left {
   .ant-table-filter-column {
     flex-direction: row-reverse;
-    gap: 8px;
+    gap: var(--om-space-8);
   }
 }
 
@@ -205,9 +205,9 @@
 }
 
 .table-expand-icon {
-  margin-right: 8px;
+  margin-right: var(--om-space-8);
   color: @text-color;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
 }
 
 .filter-icon {
@@ -220,6 +220,6 @@
 
 .drag-icon {
   width: 6px;
-  margin-right: 8px;
+  margin-right: var(--om-space-8);
   color: @grey-4;
 }

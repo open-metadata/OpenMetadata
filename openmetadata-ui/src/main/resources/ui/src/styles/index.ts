@@ -47,4 +47,6 @@ import './knowledge-center.less';
 import './modal.less';
 import './tailwind.css';
 import './temp.css';
+// Design tokens (--om-* aliases over globals.css). See ./tokens.css and ./specs/.
+import './tokens.css';
 import './tree.less';

@@ -190,7 +190,14 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   }, [logsFor, rawText]);
 
   const emptyPlaceholder = useMemo(
-    () => getErrorPlaceHolder(agents.length, platform === DISABLED, theme),
+    () =>
+      getErrorPlaceHolder(
+        agents.length,
+        platform === DISABLED,
+        theme,
+        undefined,
+        'tw:bg-primary tw:border tw:border-secondary tw:rounded-xl'
+      ),
     [agents.length, platform, theme]
   );
 

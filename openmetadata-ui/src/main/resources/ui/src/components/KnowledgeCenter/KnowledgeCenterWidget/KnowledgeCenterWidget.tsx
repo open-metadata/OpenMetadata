@@ -95,7 +95,7 @@ const KnowledgeCenterWidget = ({
             width={SIZE.MEDIUM}
           />
         }
-        title={t('label.no-knowledge-articles-available')}
+        title={t('label.no-articles-available')}
       />
     );
   }, [t]);
@@ -187,7 +187,7 @@ const KnowledgeCenterWidget = ({
         handleRemoveWidget={handleRemoveWidget}
         icon={<KnowledgeCenterWidgetIcon height={22} width={22} />}
         isEditView={isEditView}
-        title={t('label.knowledge-center')}
+        title={t('label.context-center')}
         widgetKey={widgetKey}
         onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />

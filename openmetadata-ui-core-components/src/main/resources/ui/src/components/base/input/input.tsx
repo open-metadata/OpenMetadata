@@ -37,6 +37,8 @@ export interface InputBaseProps extends TextFieldProps {
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   /** Placeholder text. */
   placeholder?: string;
+  /** Increment used by numeric inputs. */
+  step?: AriaInputProps['step'];
   /** Class name for the icon. */
   iconClassName?: string;
   /** Class name for the input. */
@@ -74,6 +76,7 @@ export const InputBase = ({
   isDisabled,
   icon: Icon,
   placeholder,
+  step,
   wrapperClassName,
   tooltipClassName,
   inputClassName,
@@ -177,6 +180,7 @@ export const InputBase = ({
         data-testid={inputDataTestId}
         placeholder={placeholder}
         ref={ref}
+        step={step}
       />
 
       {/* Custom trailing slot (e.g. password reveal button) */}
@@ -281,6 +285,7 @@ export const Input = ({
   size = 'sm',
   fontSize = 'sm',
   placeholder,
+  step,
   icon: Icon,
   label,
   hint,
@@ -322,6 +327,7 @@ export const Input = ({
               size,
               fontSize,
               placeholder,
+              step,
               icon: Icon,
               shortcut,
               trailingSlot,
