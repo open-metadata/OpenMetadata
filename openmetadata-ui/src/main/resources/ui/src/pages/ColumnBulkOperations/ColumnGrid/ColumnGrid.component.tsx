@@ -2162,7 +2162,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       columnGridListing.loading,
       columnGridListing.isSelected,
       t,
-      columnGridListing.handleSelect,
       columnGridListing.expandedRows,
       columnGridListing.expandedStructRows,
       pendingRefetchRowIds,
