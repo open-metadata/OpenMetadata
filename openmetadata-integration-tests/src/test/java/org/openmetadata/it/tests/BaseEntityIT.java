@@ -31,8 +31,11 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.it.util.UpdateType;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -149,6 +152,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsDomains = true;
   protected boolean supportsPatchDomains = true; // Can domains be changed via PATCH after creation?
   protected boolean supportsDataProducts = true;
+  protected boolean supportsDataProductAssetsSearch = true;
   protected boolean supportsDataContract = false;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsCustomExtension = true;
@@ -1806,7 +1810,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // TODO: patch_entityUpdatesOutsideASession
 
   // Phase 5: DataProducts/Domain Tests
-  // TODO: patch_dataProducts_200_ok
   // TODO: patch_dataProducts_multipleOperations_200
   // Note: patchWrongDataProducts is covered by patch_invalidDataProducts_4xx
   // Note: patchWrongDomainId is covered by patch_entityWithInvalidDomain_4xx
@@ -2192,9 +2195,92 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
 
   @Test
-  void patch_dataProducts_200(TestNamespace ns) {
-    if (!supportsDataProducts || !supportsDomains || !supportsPatch) return;
-    // DataProduct tests require creating a DataProduct first, skipping for now
+  void patch_dataProducts_200(TestNamespace ns) throws Exception {
+    if (!supportsDataProducts
+        || !supportsDomains
+        || !supportsPatchDomains
+        || !supportsPatch
+        || !supportsSearchIndex) {
+      return;
+    }
+
+    DataProduct dataProduct =
+        SdkClients.adminClient()
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(ns.prefix("minimal_data_product"))
+                    .withDescription("Data product for minimal reference PATCH test")
+                    .withDomains(List.of(testDomain().getFullyQualifiedName())));
+    T entity = createEntity(createMinimalRequest(ns));
+
+    EntityReference domainReference =
+        new EntityReference()
+            .withId(testDomain().getId())
+            .withType(testDomain().getEntityReference().getType())
+            .withName(testDomain().getName())
+            .withFullyQualifiedName(testDomain().getFullyQualifiedName());
+    entity.setDomains(List.of(domainReference));
+    T entityWithDomain = patchEntity(entity.getId().toString(), entity);
+
+    EntityReference minimalDataProductReference =
+        new EntityReference()
+            .withId(dataProduct.getId())
+            .withType(dataProduct.getEntityReference().getType());
+    entityWithDomain.setDataProducts(List.of(minimalDataProductReference));
+    T updated = patchEntity(entityWithDomain.getId().toString(), entityWithDomain);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String entityJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, getResourcePath() + updated.getId() + "?fields=dataProducts", null);
+    JsonNode apiDataProducts = MAPPER.readTree(entityJson).path("dataProducts");
+    assertTrue(apiDataProducts.isArray(), "Entity API must return dataProducts");
+    assertEquals(1, apiDataProducts.size());
+    assertEquals(dataProduct.getId().toString(), apiDataProducts.path(0).path("id").asText());
+    assertEquals(
+        dataProduct.getFullyQualifiedName(),
+        apiDataProducts.path(0).path("fullyQualifiedName").asText());
+
+    Awaitility.await("Wait for minimal data product PATCH to update search-backed assets")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode indexedDataProducts =
+                  MAPPER
+                      .readTree(searchForEntity(updated.getId().toString()))
+                      .path("hits")
+                      .path("hits")
+                      .path(0)
+                      .path("_source")
+                      .path("dataProducts");
+              assertTrue(indexedDataProducts.isArray(), "Search document must have dataProducts");
+              assertEquals(1, indexedDataProducts.size());
+              assertEquals(
+                  dataProduct.getId().toString(), indexedDataProducts.path(0).path("id").asText());
+              assertEquals(
+                  dataProduct.getFullyQualifiedName(),
+                  indexedDataProducts.path(0).path("fullyQualifiedName").asText());
+
+              if (supportsDataProductAssetsSearch) {
+                String assetsJson =
+                    client
+                        .getHttpClient()
+                        .executeForString(
+                            HttpMethod.GET,
+                            "/v1/dataProducts/" + dataProduct.getId() + "/assets?limit=10&offset=0",
+                            null);
+                JsonNode assets = MAPPER.readTree(assetsJson);
+                assertEquals(1, assets.path("paging").path("total").asInt());
+                assertEquals(
+                    updated.getId().toString(), assets.path("data").path(0).path("id").asText());
+              }
+            });
   }
 
   @Test
