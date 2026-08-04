@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { getEncodedFqn, escapeESReservedCharacters } from './entity';
+import { escapeESReservedCharacters, getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
