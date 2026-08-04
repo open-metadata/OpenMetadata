@@ -517,11 +517,14 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
+    const applicationRolesResponse = adminPage.waitForResponse(
+      '/api/v1/roles/search?*'
+    );
     await adminPage
       .getByTestId('profile-edit-roles-select')
       .locator('input')
       .fill('Application');
-    await adminPage.waitForResponse('/api/v1/roles/search?*');
+    await applicationRolesResponse;
     await adminPage
       .locator('.ant-select-item-option-content')
       .getByText('Application bot role', { exact: true })

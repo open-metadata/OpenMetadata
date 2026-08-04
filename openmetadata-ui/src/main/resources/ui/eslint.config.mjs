@@ -512,6 +512,9 @@ export default [
       'playwright/no-force-option': 'error',
       'playwright/no-skipped-test': 'error',
       'playwright/no-wait-for-selector': 'error',
+
+      // Local OpenMetadata Playwright rules.
+      'om-playwright/require-response-listener-before-action': 'error',
     },
   },
 

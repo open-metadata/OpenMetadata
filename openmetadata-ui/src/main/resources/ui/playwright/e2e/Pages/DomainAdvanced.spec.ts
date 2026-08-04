@@ -939,9 +939,12 @@ test.describe('Domain Search and Filter', () => {
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
 
+      const domainSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?q=*&index=domain*'
+      );
       await searchBox.fill(`SearchTestDomain_${uniqueId}`);
 
-      await page.waitForResponse('/api/v1/search/query?q=*&index=domain*');
+      await domainSearchResponse;
 
       await waitForAllLoadersToDisappear(page);
 
