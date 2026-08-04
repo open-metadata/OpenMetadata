@@ -19,12 +19,22 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { getEntityRulesValidation, parseRule } from './RuleEnforcementUtils';
 
+const OWNERSHIP_RULE = 'Ownership Rule';
+const DOMAIN_RULE = 'Domain Rule';
+const DATA_PRODUCT_RULE = 'Data Product Rule';
+const GLOSSARY_TERM_RULE = 'Glossary Term Rule';
+const CUSTOM_RULE = 'Custom Rule';
+const OWNERSHIP_RULE_1 = 'Ownership rule';
+const DOMAIN_RULE_1 = 'Domain rule';
+const DATA_PRODUCT_RULE_1 = 'Data product rule';
+const GLOSSARY_TERM_RULE_1 = 'Glossary term rule';
+
 describe('RuleEnforcementUtils', () => {
   describe('parseRule', () => {
     describe('Rule type detection', () => {
       it('should parse MULTIPLE_USERS_OR_SINGLE_TEAM_OWNERSHIP rule', () => {
         const entityRule: EntityRule = {
-          name: 'Ownership Rule',
+          name: OWNERSHIP_RULE,
           description: 'Multiple users or single team ownership',
           rule: JSON.stringify({ multipleUsersOrSingleTeamOwnership: true }),
           enabled: true,
@@ -40,13 +50,13 @@ describe('RuleEnforcementUtils', () => {
           enabled: true,
           ignoredEntities: [],
           description: 'Multiple users or single team ownership',
-          name: 'Ownership Rule',
+          name: OWNERSHIP_RULE,
         });
       });
 
       it('should parse MULTIPLE_DOMAINS_NOT_ALLOWED rule', () => {
         const entityRule: EntityRule = {
-          name: 'Domain Rule',
+          name: DOMAIN_RULE,
           description: 'Limit domains',
           rule: JSON.stringify({ '<=': 1, var: 'domains' }),
           enabled: true,
@@ -58,12 +68,12 @@ describe('RuleEnforcementUtils', () => {
 
         expect(result.type).toBe(RuleType.MULTIPLE_DOMAINS_NOT_ALLOWED);
         expect(result.condition).toEqual({ '<=': 1, var: 'domains' });
-        expect(result.name).toBe('Domain Rule');
+        expect(result.name).toBe(DOMAIN_RULE);
       });
 
       it('should parse MULTIPLE_DATA_PRODUCTS_NOT_ALLOWED rule', () => {
         const entityRule: EntityRule = {
-          name: 'Data Product Rule',
+          name: DATA_PRODUCT_RULE,
           description: 'Limit data products',
           rule: JSON.stringify({ '<=': 1, var: 'dataProducts' }),
           enabled: true,
@@ -75,7 +85,7 @@ describe('RuleEnforcementUtils', () => {
 
         expect(result.type).toBe(RuleType.MULTIPLE_DATA_PRODUCTS_NOT_ALLOWED);
         expect(result.condition).toEqual({ '<=': 1, var: 'dataProducts' });
-        expect(result.name).toBe('Data Product Rule');
+        expect(result.name).toBe(DATA_PRODUCT_RULE);
       });
 
       it('should parse DATA_PRODUCT_DOMAIN_VALIDATION rule', () => {
@@ -99,7 +109,7 @@ describe('RuleEnforcementUtils', () => {
 
       it('should parse SINGLE_GLOSSARY_TERM_FOR_TABLE rule', () => {
         const entityRule: EntityRule = {
-          name: 'Glossary Term Rule',
+          name: GLOSSARY_TERM_RULE,
           description: 'Single glossary term for table',
           rule: JSON.stringify({
             '<=': 1,
@@ -117,12 +127,12 @@ describe('RuleEnforcementUtils', () => {
           '<=': 1,
           filterTagsBySource: 'Glossary',
         });
-        expect(result.name).toBe('Glossary Term Rule');
+        expect(result.name).toBe(GLOSSARY_TERM_RULE);
       });
 
       it('should parse custom rule when no known pattern matches', () => {
         const entityRule: EntityRule = {
-          name: 'Custom Rule',
+          name: CUSTOM_RULE,
           description: 'A custom validation rule',
           rule: JSON.stringify({ customValidation: true }),
           enabled: true,
@@ -134,7 +144,7 @@ describe('RuleEnforcementUtils', () => {
 
         expect(result.type).toBe('custom');
         expect(result.condition).toEqual({ customValidation: true });
-        expect(result.name).toBe('Custom Rule');
+        expect(result.name).toBe(CUSTOM_RULE);
       });
     });
 
@@ -274,8 +284,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { multipleUsersOrSingleTeamOwnership: true },
             enabled: true,
             ignoredEntities: [],
-            description: 'Ownership rule',
-            name: 'Ownership Rule',
+            description: OWNERSHIP_RULE_1,
+            name: OWNERSHIP_RULE,
           },
         ];
 
@@ -294,8 +304,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [],
-            description: 'Domain rule',
-            name: 'Domain Rule',
+            description: DOMAIN_RULE_1,
+            name: DOMAIN_RULE,
           },
         ];
 
@@ -314,8 +324,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [],
-            description: 'Data product rule',
-            name: 'Data Product Rule',
+            description: DATA_PRODUCT_RULE_1,
+            name: DATA_PRODUCT_RULE,
           },
         ];
 
@@ -353,8 +363,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1, filterTagsBySource: 'Glossary' },
             enabled: true,
             ignoredEntities: [],
-            description: 'Glossary term rule',
-            name: 'Glossary Term Rule',
+            description: GLOSSARY_TERM_RULE_1,
+            name: GLOSSARY_TERM_RULE,
           },
         ];
 
@@ -370,8 +380,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1, filterTagsBySource: 'Glossary' },
             enabled: true,
             ignoredEntities: [],
-            description: 'Glossary term rule',
-            name: 'Glossary Term Rule',
+            description: GLOSSARY_TERM_RULE_1,
+            name: GLOSSARY_TERM_RULE,
           },
         ];
 
@@ -387,8 +397,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1, filterTagsBySource: 'Glossary' },
             enabled: true,
             ignoredEntities: [],
-            description: 'Glossary term rule',
-            name: 'Glossary Term Rule',
+            description: GLOSSARY_TERM_RULE_1,
+            name: GLOSSARY_TERM_RULE,
           },
         ];
 
@@ -406,8 +416,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { multipleUsersOrSingleTeamOwnership: true },
             enabled: false,
             ignoredEntities: [],
-            description: 'Ownership rule',
-            name: 'Ownership Rule',
+            description: OWNERSHIP_RULE_1,
+            name: OWNERSHIP_RULE,
           },
         ];
 
@@ -426,8 +436,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [EntityType.TABLE],
-            description: 'Domain rule',
-            name: 'Domain Rule',
+            description: DOMAIN_RULE_1,
+            name: DOMAIN_RULE,
           },
         ];
 
@@ -444,8 +454,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [EntityType.DASHBOARD],
-            description: 'Domain rule',
-            name: 'Domain Rule',
+            description: DOMAIN_RULE_1,
+            name: DOMAIN_RULE,
           },
         ];
 
@@ -464,16 +474,16 @@ describe('RuleEnforcementUtils', () => {
             condition: { multipleUsersOrSingleTeamOwnership: true },
             enabled: true,
             ignoredEntities: [],
-            description: 'Ownership rule',
-            name: 'Ownership Rule',
+            description: OWNERSHIP_RULE_1,
+            name: OWNERSHIP_RULE,
           },
           {
             type: RuleType.MULTIPLE_DOMAINS_NOT_ALLOWED,
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [],
-            description: 'Domain rule',
-            name: 'Domain Rule',
+            description: DOMAIN_RULE_1,
+            name: DOMAIN_RULE,
           },
           {
             type: RuleType.DATA_PRODUCT_DOMAIN_VALIDATION,
@@ -501,16 +511,16 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [],
-            description: 'Domain rule',
-            name: 'Domain Rule',
+            description: DOMAIN_RULE_1,
+            name: DOMAIN_RULE,
           },
           {
             type: RuleType.MULTIPLE_DATA_PRODUCTS_NOT_ALLOWED,
             condition: { '<=': 1 },
             enabled: false,
             ignoredEntities: [],
-            description: 'Data product rule',
-            name: 'Data Product Rule',
+            description: DATA_PRODUCT_RULE_1,
+            name: DATA_PRODUCT_RULE,
           },
         ];
 
@@ -530,7 +540,7 @@ describe('RuleEnforcementUtils', () => {
             enabled: true,
             ignoredEntities: [],
             description: 'Custom rule',
-            name: 'Custom Rule',
+            name: CUSTOM_RULE,
           },
         ];
 
@@ -557,8 +567,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [],
-            description: 'Domain rule',
-            name: 'Domain Rule',
+            description: DOMAIN_RULE_1,
+            name: DOMAIN_RULE,
           },
         ];
 
@@ -575,8 +585,8 @@ describe('RuleEnforcementUtils', () => {
             condition: { '<=': 1 },
             enabled: true,
             ignoredEntities: [],
-            description: 'Data product rule',
-            name: 'Data Product Rule',
+            description: DATA_PRODUCT_RULE_1,
+            name: DATA_PRODUCT_RULE,
           },
         ];
 

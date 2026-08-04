@@ -17,6 +17,8 @@ import { searchQuery } from '../../rest/searchAPI';
 import Suggestions from './Suggestions';
 
 // Mock dependencies
+const TABLES_OWNED_BY_MARKETING = 'Tables owned by marketing';
+
 jest.mock('../../rest/searchAPI');
 jest.mock('../../context/TourProvider/TourProvider');
 jest.mock('../../utils/SearchUtils', () => ({
@@ -83,7 +85,7 @@ describe('Suggestions Component', () => {
       render(<Suggestions {...defaultProps} isNLPActive searchText="" />);
 
       const aiQueries = [
-        'Tables owned by marketing',
+        TABLES_OWNED_BY_MARKETING,
         'Tables with Tier1 classification',
         'Find dashboards tagged with PII.Sensitive',
         'Topics with schema fields containing address',
@@ -107,11 +109,11 @@ describe('Suggestions Component', () => {
         />
       );
 
-      const firstQueryButton = screen.getByText('Tables owned by marketing');
+      const firstQueryButton = screen.getByText(TABLES_OWNED_BY_MARKETING);
       fireEvent.click(firstQueryButton);
 
       expect(mockOnSearchTextUpdate).toHaveBeenCalledWith(
-        'Tables owned by marketing'
+        TABLES_OWNED_BY_MARKETING
       );
     });
   });

@@ -40,6 +40,7 @@ import { generateFormFields } from '../../../utils/formUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+const LABEL_SELECT_FIELD = 'label.select-field';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../components/Database/SchemaEditor/SchemaEditor'))
 );
@@ -129,7 +130,7 @@ const AddMetricPage = () => {
             label: startCase(granularity.toLowerCase()),
             value: granularity,
           })),
-          placeholder: `${t('label.select-field', {
+          placeholder: `${t(LABEL_SELECT_FIELD, {
             field: t('label.granularity'),
           })}`,
           showSearch: true,
@@ -153,7 +154,7 @@ const AddMetricPage = () => {
             label: startCase(metricType.toLowerCase()),
             value: metricType,
           })),
-          placeholder: `${t('label.select-field', {
+          placeholder: `${t(LABEL_SELECT_FIELD, {
             field: t('label.metric-type'),
           })}`,
           showSearch: true,
@@ -177,7 +178,7 @@ const AddMetricPage = () => {
             label: language,
             value: language,
           })),
-          placeholder: `${t('label.select-field', {
+          placeholder: `${t(LABEL_SELECT_FIELD, {
             field: t('label.language'),
           })}`,
           showSearch: true,
@@ -295,7 +296,7 @@ const AddMetricPage = () => {
                         'customUnitOfMeasurement'
                       )}
                       dataTestId="unitOfMeasurement"
-                      placeholder={t('label.select-field', {
+                      placeholder={t(LABEL_SELECT_FIELD, {
                         field: t('label.unit-of-measurement'),
                       })}
                       onChange={handleUnitOfMeasurementChange}

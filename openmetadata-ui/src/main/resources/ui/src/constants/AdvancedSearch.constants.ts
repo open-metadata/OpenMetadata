@@ -17,13 +17,24 @@ import { SearchIndex } from '../enums/search.enum';
 import { LabelType } from '../generated/type/tagLabel';
 import { t } from '../utils/i18next/LocalUtil';
 
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural';
+const LABEL_OWNER_PLURAL = 'label.owner-plural';
+const LABEL_TIER = 'label.tier';
+const LABEL_SERVICE = 'label.service';
+const LABEL_SERVICE_TYPE = 'label.service-type';
+const LABEL_DATABASE = 'label.database';
+const LABEL_SCHEMA = 'label.schema';
+const LABEL_COLUMN = 'label.column';
+const LABEL_ENTITY_TYPE_PLURAL = 'label.entity-type-plural';
+const LABEL_ENTITY = 'label.entity';
+
 export const COMMON_DROPDOWN_ITEMS = [
   {
-    label: 'label.domain-plural',
+    label: LABEL_DOMAIN_PLURAL,
     key: EntityFields.DOMAINS,
   },
   {
-    label: 'label.owner-plural',
+    label: LABEL_OWNER_PLURAL,
     key: EntityFields.OWNERS,
   },
   {
@@ -31,15 +42,15 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: EntityFields.TAG,
   },
   {
-    label: 'label.tier',
+    label: LABEL_TIER,
     key: EntityFields.TIER,
   },
   {
-    label: 'label.service',
+    label: LABEL_SERVICE,
     key: EntityFields.SERVICE,
   },
   {
-    label: 'label.service-type',
+    label: LABEL_SERVICE_TYPE,
     key: EntityFields.SERVICE_TYPE,
   },
 ];
@@ -50,11 +61,11 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.ENTITY_TYPE_KEYWORD,
   },
   {
-    label: 'label.domain-plural',
+    label: LABEL_DOMAIN_PLURAL,
     key: EntityFields.DOMAINS,
   },
   {
-    label: 'label.owner-plural',
+    label: LABEL_OWNER_PLURAL,
     key: EntityFields.OWNERS,
   },
   {
@@ -62,7 +73,7 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.TAG,
   },
   {
-    label: 'label.tier',
+    label: LABEL_TIER,
     key: EntityFields.TIER,
   },
   {
@@ -70,26 +81,26 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.CERTIFICATION,
   },
   {
-    label: 'label.service',
+    label: LABEL_SERVICE,
     key: EntityFields.SERVICE,
   },
   {
-    label: 'label.service-type',
+    label: LABEL_SERVICE_TYPE,
     key: EntityFields.SERVICE_TYPE,
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
-    label: 'label.database',
+    label: LABEL_DATABASE,
     key: EntityFields.DATABASE,
   },
   {
-    label: 'label.schema',
+    label: LABEL_SCHEMA,
     key: EntityFields.DATABASE_SCHEMA,
   },
   {
-    label: 'label.column',
+    label: LABEL_COLUMN,
     key: EntityFields.COLUMN,
   },
   {
@@ -123,7 +134,7 @@ export const DASHBOARD_DATA_MODEL_TYPE = [
     key: EntityFields.DATA_MODEL_TYPE,
   },
   {
-    label: 'label.column',
+    label: LABEL_COLUMN,
     key: EntityFields.COLUMN,
   },
   {
@@ -172,7 +183,7 @@ export const API_ENDPOINT_DROPDOWN_ITEMS = [
 
 export const CONTAINER_DROPDOWN_ITEMS = [
   {
-    label: 'label.column',
+    label: LABEL_COLUMN,
     key: EntityFields.CONTAINER_COLUMN,
   },
 ];
@@ -187,22 +198,22 @@ export const COLUMN_DROPDOWN_ITEMS = [
     key: EntityFields.TABLE_NAME,
   },
   {
-    label: 'label.database',
+    label: LABEL_DATABASE,
     key: EntityFields.DATABASE,
   },
   {
-    label: 'label.schema',
+    label: LABEL_SCHEMA,
     key: EntityFields.DATABASE_SCHEMA,
   },
 ];
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
-    label: 'label.domain-plural',
+    label: LABEL_DOMAIN_PLURAL,
     key: EntityFields.DOMAINS,
   },
   {
-    label: 'label.owner-plural',
+    label: LABEL_OWNER_PLURAL,
     key: EntityFields.OWNERS,
   },
   {
@@ -221,7 +232,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
 
 export const TAG_DROPDOWN_ITEMS = [
   {
-    label: 'label.domain-plural',
+    label: LABEL_DOMAIN_PLURAL,
     key: EntityFields.DOMAINS,
   },
   {
@@ -232,25 +243,25 @@ export const TAG_DROPDOWN_ITEMS = [
 
 export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   {
-    label: 'label.domain-plural',
+    label: LABEL_DOMAIN_PLURAL,
     key: EntityFields.DOMAINS,
   },
   {
-    label: 'label.owner-plural',
+    label: LABEL_OWNER_PLURAL,
     key: EntityFields.OWNERS,
   },
 ];
 
 export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
   {
-    label: 'label.entity-type-plural',
+    label: LABEL_ENTITY_TYPE_PLURAL,
     labelKeyOptions: {
-      entity: 'label.entity',
+      entity: LABEL_ENTITY,
     },
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: 'label.owner-plural',
+    label: LABEL_OWNER_PLURAL,
     key: EntityFields.OWNERS,
   },
   {
@@ -258,33 +269,33 @@ export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
     key: EntityFields.TAG,
   },
   {
-    label: 'label.tier',
+    label: LABEL_TIER,
     key: EntityFields.TIER,
   },
   {
-    label: 'label.service',
+    label: LABEL_SERVICE,
     key: EntityFields.SERVICE,
   },
   {
-    label: 'label.service-type',
+    label: LABEL_SERVICE_TYPE,
     key: EntityFields.SERVICE_TYPE,
   },
 ];
 
 export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
   {
-    label: 'label.entity-type-plural',
+    label: LABEL_ENTITY_TYPE_PLURAL,
     labelKeyOptions: {
-      entity: 'label.entity',
+      entity: LABEL_ENTITY,
     },
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: 'label.domain-plural',
+    label: LABEL_DOMAIN_PLURAL,
     key: EntityFields.DOMAINS,
   },
   {
-    label: 'label.owner-plural',
+    label: LABEL_OWNER_PLURAL,
     key: EntityFields.OWNERS,
   },
   {
@@ -292,33 +303,33 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
     key: EntityFields.TAG,
   },
   {
-    label: 'label.tier',
+    label: LABEL_TIER,
     key: EntityFields.TIER,
   },
   {
-    label: 'label.service',
+    label: LABEL_SERVICE,
     key: EntityFields.SERVICE,
   },
   {
-    label: 'label.service-type',
+    label: LABEL_SERVICE_TYPE,
     key: EntityFields.SERVICE_TYPE,
   },
 ];
 
 export const TAG_ASSETS_DROPDOWN_ITEMS = [
   {
-    label: 'label.entity-type-plural',
+    label: LABEL_ENTITY_TYPE_PLURAL,
     labelKeyOptions: {
-      entity: 'label.entity',
+      entity: LABEL_ENTITY,
     },
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: 'label.domain-plural',
+    label: LABEL_DOMAIN_PLURAL,
     key: EntityFields.DOMAINS,
   },
   {
-    label: 'label.owner-plural',
+    label: LABEL_OWNER_PLURAL,
     key: EntityFields.OWNERS,
   },
   {
@@ -326,15 +337,15 @@ export const TAG_ASSETS_DROPDOWN_ITEMS = [
     key: EntityFields.TAG,
   },
   {
-    label: 'label.tier',
+    label: LABEL_TIER,
     key: EntityFields.TIER,
   },
   {
-    label: 'label.service',
+    label: LABEL_SERVICE,
     key: EntityFields.SERVICE,
   },
   {
-    label: 'label.service-type',
+    label: LABEL_SERVICE_TYPE,
     key: EntityFields.SERVICE_TYPE,
   },
 ];
@@ -342,22 +353,22 @@ export const TAG_ASSETS_DROPDOWN_ITEMS = [
 export const LINEAGE_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   {
-    label: 'label.database',
+    label: LABEL_DATABASE,
     key: EntityFields.DATABASE,
   },
   {
-    label: 'label.schema',
+    label: LABEL_SCHEMA,
     key: EntityFields.DATABASE_SCHEMA,
   },
   {
-    label: 'label.column',
+    label: LABEL_COLUMN,
     key: EntityFields.COLUMN,
   },
 ];
 
 export const KNOWLEDGE_PAGE_DROPDOWN_ITEMS = [
   {
-    label: t('label.owner-plural'),
+    label: t(LABEL_OWNER_PLURAL),
     key: EntityFields.OWNERS,
   },
   {

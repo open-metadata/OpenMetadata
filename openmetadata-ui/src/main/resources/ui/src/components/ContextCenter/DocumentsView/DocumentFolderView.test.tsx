@@ -26,6 +26,9 @@ import {
   DocumentFolderViewProps,
 } from './DocumentsView.interface';
 
+const FOLDER_ONE = 'Folder One';
+const DELETE_FOLDER_BTN_FOLDER_1 = 'delete-folder-btn-folder-1';
+
 const renderFolderView = (
   props: Partial<DocumentFolderViewProps> = {},
   ref?: React.Ref<DocumentFolderViewHandle>
@@ -199,7 +202,7 @@ const mockFolders = [
   {
     id: 'folder-1',
     name: 'folder-1',
-    displayName: 'Folder One',
+    displayName: FOLDER_ONE,
     childrenCount: 3,
   },
   {
@@ -230,7 +233,7 @@ describe('DocumentFolderView', () => {
   it('renders folder names from the folders prop', () => {
     renderFolderView({ folders: mockFolders });
 
-    expect(screen.getByText('Folder One')).toBeInTheDocument();
+    expect(screen.getByText(FOLDER_ONE)).toBeInTheDocument();
     expect(screen.getByText('Folder Two')).toBeInTheDocument();
   });
 
@@ -244,7 +247,7 @@ describe('DocumentFolderView', () => {
     const onSelectFolder = jest.fn();
     renderFolderView({ folders: mockFolders, onSelectFolder });
 
-    fireEvent.click(screen.getByText('Folder One'));
+    fireEvent.click(screen.getByText(FOLDER_ONE));
 
     expect(onSelectFolder).toHaveBeenCalledWith('folder-1');
   });
@@ -257,7 +260,7 @@ describe('DocumentFolderView', () => {
       onSelectFolder,
     });
 
-    fireEvent.click(screen.getByText('Folder One'));
+    fireEvent.click(screen.getByText(FOLDER_ONE));
 
     expect(onSelectFolder).toHaveBeenCalledWith(undefined);
   });
@@ -296,7 +299,7 @@ describe('DocumentFolderView', () => {
       folders: mockFolders,
     });
 
-    const deleteBtn = screen.getByTestId('delete-folder-btn-folder-1');
+    const deleteBtn = screen.getByTestId(DELETE_FOLDER_BTN_FOLDER_1);
     fireEvent.click(deleteBtn);
 
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
@@ -313,7 +316,7 @@ describe('DocumentFolderView', () => {
       onFoldersChanged,
     });
 
-    fireEvent.click(screen.getByTestId('delete-folder-btn-folder-1'));
+    fireEvent.click(screen.getByTestId(DELETE_FOLDER_BTN_FOLDER_1));
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('confirm-delete-btn'));
@@ -336,7 +339,7 @@ describe('DocumentFolderView', () => {
       onSelectFolder,
     });
 
-    fireEvent.click(screen.getByTestId('delete-folder-btn-folder-1'));
+    fireEvent.click(screen.getByTestId(DELETE_FOLDER_BTN_FOLDER_1));
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('confirm-delete-btn'));
@@ -352,7 +355,7 @@ describe('DocumentFolderView', () => {
       folders: mockFolders,
     });
 
-    fireEvent.click(screen.getByTestId('delete-folder-btn-folder-1'));
+    fireEvent.click(screen.getByTestId(DELETE_FOLDER_BTN_FOLDER_1));
     fireEvent.click(screen.getByTestId('cancel-delete-btn'));
 
     expect(deleteFolder).not.toHaveBeenCalled();

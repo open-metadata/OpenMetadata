@@ -32,6 +32,9 @@ import {
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
+const LABEL_ADD_ENTITY = 'label.add-entity';
+const LABEL_EDIT_ENTITY = 'label.edit-entity';
+
 const AddNotificationPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddNotificationPage/AddNotificationPage')
@@ -358,7 +361,7 @@ const SettingsRouter = () => {
               permissions
             )}>
             <AddPolicyPage
-              pageTitle={t('label.add-entity', {
+              pageTitle={t(LABEL_ADD_ENTITY, {
                 entity: t('label.policy'),
               })}
             />
@@ -384,7 +387,7 @@ const SettingsRouter = () => {
         element={
           <AdminProtectedRoute hasPermission={false}>
             <EditEmailConfigPage
-              pageTitle={t('label.edit-entity', {
+              pageTitle={t(LABEL_EDIT_ENTITY, {
                 entity: t('label.entity-configuration', {
                   entity: t('label.email'),
                 }),
@@ -399,7 +402,7 @@ const SettingsRouter = () => {
         element={
           <AdminProtectedRoute hasPermission={false}>
             <EditUrlConfigurationPage
-              pageTitle={t('label.edit-entity', {
+              pageTitle={t(LABEL_EDIT_ENTITY, {
                 entity: t('label.entity-configuration', {
                   entity: t('label.url-uppercase'),
                 }),
@@ -414,7 +417,7 @@ const SettingsRouter = () => {
         element={
           <AdminProtectedRoute hasPermission={false}>
             <EditLoginConfiguration
-              pageTitle={t('label.edit-entity', {
+              pageTitle={t(LABEL_EDIT_ENTITY, {
                 entity: t('label.login-configuration'),
               })}
             />
@@ -470,7 +473,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AddNotificationPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.notification-alert'),
             })}
           />
@@ -484,7 +487,7 @@ const SettingsRouter = () => {
       <Route
         element={
           <AddNotificationPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.notification-alert'),
             })}
           />

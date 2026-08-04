@@ -56,6 +56,9 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
+
+const LABEL_FIELD_REQUIRED = 'label.field-required';
+const LABEL_KPI_UPPERCASE = 'label.kpi-uppercase';
 const AddKPIPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -150,7 +153,7 @@ const AddKPIPage = () => {
       rules: [
         {
           required: true,
-          message: t('label.field-required', {
+          message: t(LABEL_FIELD_REQUIRED, {
             field: t('label.description-kpi'),
           }),
         },
@@ -197,7 +200,7 @@ const AddKPIPage = () => {
               className="text-base"
               data-testid="form-title">
               {t('label.add-new-entity', {
-                entity: t('label.kpi-uppercase'),
+                entity: t(LABEL_KPI_UPPERCASE),
               })}
             </Typography.Paragraph>
             <Form
@@ -329,7 +332,7 @@ const AddKPIPage = () => {
                     rules={[
                       {
                         required: true,
-                        message: t('label.field-required', {
+                        message: t(LABEL_FIELD_REQUIRED, {
                           field: t('label.start-entity', {
                             entity: t('label.date'),
                           }),
@@ -352,7 +355,7 @@ const AddKPIPage = () => {
                     rules={[
                       {
                         required: true,
-                        message: t('label.field-required', {
+                        message: t(LABEL_FIELD_REQUIRED, {
                           field: t('label.end-date'),
                         }),
                       },
@@ -392,14 +395,14 @@ const AddKPIPage = () => {
         flex: 0.7,
       }}
       pageTitle={t('label.add-new-entity', {
-        entity: t('label.kpi-uppercase'),
+        entity: t(LABEL_KPI_UPPERCASE),
       })}
       secondPanel={{
         children: (
           <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
               {t('label.add-entity', {
-                entity: t('label.kpi-uppercase'),
+                entity: t(LABEL_KPI_UPPERCASE),
               })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>

@@ -22,6 +22,8 @@ import {
   getDirectoryWidgetsFromKey,
 } from './DirectoryDetailsUtils';
 
+const MOCK_COMMON_WIDGETS = 'common-widgets';
+
 jest.mock('../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name, count, isActive }) => (
     <div data-testid={`tab-label-${name}`}>
@@ -46,7 +48,7 @@ jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
   CommonWidgets: jest
     .fn()
     .mockImplementation(({ entityType, widgetConfig }) => (
-      <div data-testid="common-widgets">
+      <div data-testid={MOCK_COMMON_WIDGETS}>
         Common Widgets - {entityType} - {widgetConfig.i}
       </div>
     )),
@@ -314,7 +316,7 @@ describe('DirectoryDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - directory - KnowledgePanel.Description'
@@ -336,7 +338,7 @@ describe('DirectoryDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - directory - KnowledgePanel.Tags')
       ).toBeInTheDocument();
@@ -356,7 +358,7 @@ describe('DirectoryDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - directory - KnowledgePanel.DataProducts'
@@ -378,7 +380,7 @@ describe('DirectoryDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - directory - KnowledgePanel.CustomProperties'
@@ -400,7 +402,7 @@ describe('DirectoryDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - directory - unknown-widget')
       ).toBeInTheDocument();
@@ -444,7 +446,7 @@ describe('DirectoryDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_COMMON_WIDGETS)).toBeInTheDocument();
     });
   });
 

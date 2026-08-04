@@ -24,6 +24,8 @@ import {
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
+const LABEL_REVIEWER_PLURAL = 'label.reviewer-plural' as const;
+
 const UserTeamSelectableList = withSuspenseFallback(
   lazy(() =>
     import(
@@ -78,7 +80,7 @@ export const ReviewerLabelV2 = <
         <UserTeamSelectableList
           previewSelected
           hasPermission={hasEditReviewerAccess}
-          label={t('label.reviewer-plural')}
+          label={t(LABEL_REVIEWER_PLURAL)}
           listHeight={200}
           multiple={{ user: true, team: false }}
           owner={assignedReviewers ?? []}
@@ -88,14 +90,14 @@ export const ReviewerLabelV2 = <
             <WidgetEditButton
               data-testid="edit-reviewer-button"
               title={t('label.edit-entity', {
-                entity: t('label.reviewer-plural'),
+                entity: t(LABEL_REVIEWER_PLURAL),
               })}
             />
           ) : (
             <WidgetPlusButton
               data-testid="Add"
               title={t('label.add-entity', {
-                entity: t('label.reviewer-plural'),
+                entity: t(LABEL_REVIEWER_PLURAL),
               })}
             />
           )}
@@ -109,7 +111,7 @@ export const ReviewerLabelV2 = <
       dataTestId="glossary-reviewer"
       headerExtra={headerExtra}
       isExpandDisabled={!hasReviewers}
-      title={t('label.reviewer-plural')}>
+      title={t(LABEL_REVIEWER_PLURAL)}>
       {hasReviewers ? (
         <div data-testid="glossary-reviewer-name">
           {getOwnerVersionLabel(

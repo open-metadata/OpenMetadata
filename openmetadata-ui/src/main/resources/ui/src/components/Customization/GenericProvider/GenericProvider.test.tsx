@@ -25,6 +25,8 @@ import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/Activity
 import { useGenericContext } from './GenericContext';
 import { GenericProvider } from './GenericProvider';
 
+const CONTEXT_DATA = 'context-data';
+const OPEN_THREAD = 'Open Thread';
 // Mock dependencies
 jest.mock('../../../rest/feedsAPI');
 
@@ -85,7 +87,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      <div data-testid="context-data">{JSON.stringify(context.data)}</div>
+      <div data-testid={CONTEXT_DATA}>{JSON.stringify(context.data)}</div>
       <button
         onClick={() =>
           context.onThreadLinkSelect('test-link', ThreadType.Task)
@@ -121,7 +123,7 @@ describe('GenericProvider', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('context-data')).toHaveTextContent(
+    expect(screen.getByTestId(CONTEXT_DATA)).toHaveTextContent(
       JSON.stringify(mockData)
     );
   });
@@ -139,7 +141,7 @@ describe('GenericProvider', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     // Open thread panel
-    fireEvent.click(screen.getByText('Open Thread'));
+    fireEvent.click(screen.getByText(OPEN_THREAD));
 
     // Thread panel should be visible
     expect(ActivityThreadPanel).toHaveBeenCalledWith(
@@ -164,7 +166,7 @@ describe('GenericProvider', () => {
     );
 
     // Open thread panel
-    fireEvent.click(screen.getByText('Open Thread'));
+    fireEvent.click(screen.getByText(OPEN_THREAD));
 
     // Thread panel should be visible
     expect(ActivityThreadPanel).toHaveBeenCalledWith(
@@ -197,7 +199,7 @@ describe('GenericProvider', () => {
     );
 
     // Open thread panel
-    fireEvent.click(screen.getByText('Open Thread'));
+    fireEvent.click(screen.getByText(OPEN_THREAD));
 
     // Thread panel should be visible
     expect(ActivityThreadPanel).toHaveBeenCalledWith(
@@ -239,7 +241,7 @@ describe('GenericProvider', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('context-data')).toHaveTextContent(
+    expect(screen.getByTestId(CONTEXT_DATA)).toHaveTextContent(
       JSON.stringify(updatedData)
     );
   });
@@ -256,7 +258,7 @@ describe('GenericProvider', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('context-data')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTEXT_DATA)).toBeInTheDocument();
   });
 
   it('should handle update widget height', () => {
@@ -285,7 +287,7 @@ describe('GenericProvider', () => {
       []
     );
 
-    expect(screen.getByTestId('context-data')).toHaveTextContent(
+    expect(screen.getByTestId(CONTEXT_DATA)).toHaveTextContent(
       JSON.stringify(updatedData)
     );
   });

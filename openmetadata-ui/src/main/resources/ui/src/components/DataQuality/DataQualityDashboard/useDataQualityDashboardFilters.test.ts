@@ -23,6 +23,7 @@ import {
   useDataQualityDashboardFilters,
 } from './useDataQualityDashboardFilters';
 
+const GLOSSARY_TERM = 'Glossary.Term';
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -165,14 +166,14 @@ describe('useDataQualityDashboardFilters', () => {
     });
     act(() => {
       findSearch(result.current.filters, 'glossaryTerms').searchProps.onChange([
-        option('Glossary.Term'),
+        option(GLOSSARY_TERM),
       ]);
     });
 
-    expect(result.current.chartFilter.glossaryTerms).toEqual(['Glossary.Term']);
+    expect(result.current.chartFilter.glossaryTerms).toEqual([GLOSSARY_TERM]);
     expect(result.current.defaultFilters.tags).toEqual([
       'PII.Sensitive',
-      'Glossary.Term',
+      GLOSSARY_TERM,
     ]);
     expect(result.current.defaultFilters.glossaryTerms).toBeUndefined();
   });

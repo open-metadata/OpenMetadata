@@ -17,6 +17,7 @@ import personaClassBase, {
   PersonaClassBase,
 } from './PersonaClassBase';
 
+const DATA_ASSETS = 'data-assets';
 jest.mock('./i18next/LocalUtil', () => ({
   __esModule: true,
   default: { t: jest.fn((key: string) => key) },
@@ -56,7 +57,7 @@ describe('PersonaClassBase', () => {
         PageType.LandingPage,
         PageType.DataMarketplace,
         'governance',
-        'data-assets',
+        DATA_ASSETS,
       ]);
     });
 
@@ -98,8 +99,8 @@ describe('PersonaClassBase', () => {
       );
     });
 
-    it('excludes governance, home-page, tag, classification, and data-marketplace PageTypes for "data-assets"', () => {
-      const options = instance.getCustomizePageOptions('data-assets');
+    it('excludes governance, home-page, tag, classification, and data-marketplace PageTypes for DATA_ASSETS', () => {
+      const options = instance.getCustomizePageOptions(DATA_ASSETS);
       const excluded = [
         PageType.Glossary,
         PageType.GlossaryTerm,
@@ -126,7 +127,7 @@ describe('PersonaClassBase', () => {
 
     it('builds each option label via startCase, plus description/icon', () => {
       const [tableOption] = instance
-        .getCustomizePageOptions('data-assets')
+        .getCustomizePageOptions(DATA_ASSETS)
         .filter((option) => option.key === PageType.Table);
 
       expect(tableOption.label).toBe('Table');

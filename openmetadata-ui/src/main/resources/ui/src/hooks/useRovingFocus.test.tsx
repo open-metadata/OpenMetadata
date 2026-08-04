@@ -25,6 +25,8 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import { useRovingFocus } from './useRovingFocus';
 
+const FOCUSED_INDEX = 'focused-index';
+
 function TestRovingFocus({
   totalItems = 3,
   initialIndex = 0,
@@ -51,7 +53,7 @@ function TestRovingFocus({
           Item {i}
         </button>
       ))}
-      <div data-testid="focused-index">{focusedIndex}</div>
+      <div data-testid={FOCUSED_INDEX}>{focusedIndex}</div>
     </div>
   );
 }
@@ -62,7 +64,7 @@ describe('useRovingFocus', () => {
       <TestRovingFocus initialIndex={2} totalItems={5} />
     );
 
-    expect(getByTestId('focused-index').textContent).toBe('2');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('2');
     expect(getByTestId('item-2')).toHaveAttribute('tabindex', '0');
   });
 
@@ -75,14 +77,14 @@ describe('useRovingFocus', () => {
       fireEvent.keyDown(focused, { key: 'ArrowDown' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('2');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('2');
 
     focused = getByTestId('item-2');
     act(() => {
       fireEvent.keyDown(focused, { key: 'ArrowUp' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('1');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('1');
   });
 
   it('should move focus with ArrowRight/ArrowLeft (horizontal)', () => {
@@ -94,14 +96,14 @@ describe('useRovingFocus', () => {
       fireEvent.keyDown(focused, { key: 'ArrowRight' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('2');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('2');
 
     focused = getByTestId('item-2');
     act(() => {
       fireEvent.keyDown(focused, { key: 'ArrowLeft' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('1');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('1');
   });
 
   it('should not move focus out of bounds', () => {
@@ -113,28 +115,28 @@ describe('useRovingFocus', () => {
       fireEvent.keyDown(focused, { key: 'ArrowUp' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('0');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('0');
 
     focused = getByTestId('item-0');
     act(() => {
       fireEvent.keyDown(focused, { key: 'ArrowDown' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('1');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('1');
 
     focused = getByTestId('item-1');
     act(() => {
       fireEvent.keyDown(focused, { key: 'ArrowDown' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('2');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('2');
 
     focused = getByTestId('item-2');
     act(() => {
       fireEvent.keyDown(focused, { key: 'ArrowDown' });
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('2');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('2');
   });
 
   it('should call onSelect with correct index on Enter or Space', () => {
@@ -161,11 +163,11 @@ describe('useRovingFocus', () => {
       <TestRovingFocus initialIndex={2} totalItems={3} />
     );
 
-    expect(getByTestId('focused-index').textContent).toBe('2');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('2');
 
     rerender(<TestRovingFocus initialIndex={2} totalItems={2} />);
 
-    expect(getByTestId('focused-index').textContent).toBe('1');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('1');
   });
 
   it('should set focus when item receives focus', () => {
@@ -178,6 +180,6 @@ describe('useRovingFocus', () => {
       fireEvent.focus(item2);
     });
 
-    expect(getByTestId('focused-index').textContent).toBe('2');
+    expect(getByTestId(FOCUSED_INDEX).textContent).toBe('2');
   });
 });

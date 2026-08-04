@@ -25,6 +25,11 @@ import {
   SharedConceptRow,
 } from './types';
 
+const RELATED_TO = 'Related to';
+const BROADER_NARROWER = 'Broader / narrower';
+const HAS_COLUMN = 'Has column';
+const MENTIONED_IN = 'Mentioned in';
+
 const MAPPED_TO_LABEL = 'Mapped to';
 
 /** RDF entity type string (normalized) -> renderer NodeType. Unknown types fall back to `table`. */
@@ -99,21 +104,21 @@ export const ONTOLOGY_LABELS: Record<string, string> = {
   glossaryterm: MAPPED_TO_LABEL,
   parentof: 'Parent of',
   childof: 'Child of',
-  relatedto: 'Related to',
-  related: 'Related to',
-  isrelatedto: 'Related to',
-  isa: 'Related to',
-  isalso: 'Related to',
+  relatedto: RELATED_TO,
+  related: RELATED_TO,
+  isrelatedto: RELATED_TO,
+  isa: RELATED_TO,
+  isalso: RELATED_TO,
   synonym: 'Synonym',
   synonymof: 'Synonym',
   hassynonym: 'Synonym',
-  broader: 'Broader / narrower',
-  narrower: 'Broader / narrower',
-  broadernarrower: 'Broader / narrower',
+  broader: BROADER_NARROWER,
+  narrower: BROADER_NARROWER,
+  broadernarrower: BROADER_NARROWER,
 };
 
 export const TECHNICAL_LABELS: Record<string, string> = {
-  hascolumn: 'Has column',
+  hascolumn: HAS_COLUMN,
   haslineage: 'Downstream',
   lineage: 'Downstream',
   upstream: 'Downstream',
@@ -137,10 +142,10 @@ export const TECHNICAL_LABELS: Record<string, string> = {
   partofdomain: 'Part of domain',
   hastag: 'Has tag',
   taggedwith: 'Has tag',
-  mentionedin: 'Mentioned in',
-  usedby: 'Mentioned in',
-  usedin: 'Mentioned in',
-  mentions: 'Mentioned in',
+  mentionedin: MENTIONED_IN,
+  usedby: MENTIONED_IN,
+  usedin: MENTIONED_IN,
+  mentions: MENTIONED_IN,
   memberof: 'Member of',
   dependson: 'Depends on',
   sharesconcepts: 'Shares concepts',
@@ -168,10 +173,10 @@ export const RELATION_LABEL_KEYS: Record<string, string> = {
   'Mapped to': 'label.mapped-to',
   'Parent of': 'label.parent-of',
   'Child of': 'label.child-of',
-  'Related to': 'label.related-to',
+  RELATED_TO: 'label.related-to',
   Synonym: 'label.synonym',
-  'Broader / narrower': 'label.broader-narrower',
-  'Has column': 'label.has-column',
+  BROADER_NARROWER: 'label.broader-narrower',
+  HAS_COLUMN: 'label.has-column',
   'Has field': 'label.has-field',
   Downstream: 'label.downstream',
   'Owned by': 'label.owned-by',
@@ -186,7 +191,7 @@ export const RELATION_LABEL_KEYS: Record<string, string> = {
   'Input port': 'label.input-port',
   'Part of domain': 'label.part-of-domain',
   'Has tag': 'label.has-tag',
-  'Mentioned in': 'label.mentioned-in',
+  MENTIONED_IN: 'label.mentioned-in',
   'Member of': 'label.member-of',
   'Depends on': 'label.depends-on',
   'Shares concepts': 'label.shares-concept-plural',
@@ -391,9 +396,9 @@ const extractEntityFields = (
 ): { items: FieldLike[]; label: string } | null => {
   let result: { items: FieldLike[]; label: string } | null = null;
   if (entity?.columns?.length) {
-    result = { items: entity.columns, label: 'Has column' };
+    result = { items: entity.columns, label: HAS_COLUMN };
   } else if (entity?.dataModel?.columns?.length) {
-    result = { items: entity.dataModel.columns, label: 'Has column' };
+    result = { items: entity.dataModel.columns, label: HAS_COLUMN };
   } else if (entity?.messageSchema?.schemaFields?.length) {
     result = { items: entity.messageSchema.schemaFields, label: 'Has field' };
   } else if (entity?.fields?.length) {

@@ -16,6 +16,12 @@ import { CustomProperty } from '../../../../generated/entity/type';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import { EntityTypeDetail } from './CustomPropertiesSection.interface';
 
+const SEARCH_BAR = 'search-bar' as const;
+const SEARCH_INPUT = 'search-input' as const;
+const ERROR_PLACEHOLDER = 'error-placeholder' as const;
+const PROPERTY_NAME = 'property-name' as const;
+const PROPERTY_1 = 'Property 1' as const;
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -168,7 +174,7 @@ const mockEntityTypeDetail: EntityTypeDetail = {
   customProperties: [
     {
       name: 'property1',
-      displayName: 'Property 1',
+      displayName: PROPERTY_1,
       description: 'Property 1 description',
       propertyType: { id: 'type1', name: 'string', type: 'type' },
     },
@@ -259,7 +265,7 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      const errorPlaceholder = screen.getByTestId('error-placeholder');
+      const errorPlaceholder = screen.getByTestId(ERROR_PLACEHOLDER);
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'PERMISSION');
@@ -268,8 +274,8 @@ describe('CustomPropertiesSection', () => {
         'message.no-access-placeholder'
       );
 
-      expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SEARCH_BAR)).not.toBeInTheDocument();
+      expect(screen.queryByTestId(PROPERTY_NAME)).not.toBeInTheDocument();
     });
   });
 
@@ -282,7 +288,7 @@ describe('CustomPropertiesSection', () => {
 
       render(<CustomPropertiesSection {...propsWithNoProperties} />);
 
-      const errorPlaceholder = screen.getByTestId('error-placeholder');
+      const errorPlaceholder = screen.getByTestId(ERROR_PLACEHOLDER);
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'CUSTOM');
@@ -291,7 +297,7 @@ describe('CustomPropertiesSection', () => {
         'message.no-custom-properties-entity'
       );
 
-      expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SEARCH_BAR)).not.toBeInTheDocument();
     });
   });
 
@@ -299,11 +305,11 @@ describe('CustomPropertiesSection', () => {
     it('should render search bar when custom properties exist', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchBar = screen.getByTestId('search-bar');
+      const searchBar = screen.getByTestId(SEARCH_BAR);
 
       expect(searchBar).toBeInTheDocument();
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       expect(searchInput).toBeInTheDocument();
       expect(searchInput).toHaveAttribute(
@@ -320,17 +326,17 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.name}</div>
+          <div data-testid={PROPERTY_NAME}>{property.name}</div>
         )
       );
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'property1' } });
 
-      const properties = screen.getAllByTestId('property-name');
+      const properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(1);
       expect(properties[0]).toHaveTextContent('property1');
@@ -342,20 +348,20 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.displayName}</div>
+          <div data-testid={PROPERTY_NAME}>{property.displayName}</div>
         )
       );
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
-      fireEvent.change(searchInput, { target: { value: 'Property 1' } });
+      fireEvent.change(searchInput, { target: { value: PROPERTY_1 } });
 
-      const properties = screen.getAllByTestId('property-name');
+      const properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(1);
-      expect(properties[0]).toHaveTextContent('Property 1');
+      expect(properties[0]).toHaveTextContent(PROPERTY_1);
     });
 
     it('should filter properties by property type', () => {
@@ -364,17 +370,17 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.propertyType.name}</div>
+          <div data-testid={PROPERTY_NAME}>{property.propertyType.name}</div>
         )
       );
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'string' } });
 
-      const properties = screen.getAllByTestId('property-name');
+      const properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties.length).toBeGreaterThan(0);
 
@@ -389,17 +395,17 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.name}</div>
+          <div data-testid={PROPERTY_NAME}>{property.name}</div>
         )
       );
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'PROPERTY1' } });
 
-      const properties = screen.getAllByTestId('property-name');
+      const properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(1);
       expect(properties[0]).toHaveTextContent('property1');
@@ -408,13 +414,13 @@ describe('CustomPropertiesSection', () => {
     it('should show no results message when search returns no matches', () => {
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       fireEvent.change(searchInput, {
         target: { value: 'nonexistent-property' },
       });
 
-      expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(PROPERTY_NAME)).not.toBeInTheDocument();
 
       const noResultsMessage = screen.getByText(
         'message.no-entity-found-for-name'
@@ -422,7 +428,7 @@ describe('CustomPropertiesSection', () => {
 
       expect(noResultsMessage).toBeInTheDocument();
 
-      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ERROR_PLACEHOLDER)).not.toBeInTheDocument();
     });
   });
 
@@ -433,13 +439,13 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.name}</div>
+          <div data-testid={PROPERTY_NAME}>{property.name}</div>
         )
       );
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const properties = screen.getAllByTestId('property-name');
+      const properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(9);
     });
@@ -471,21 +477,21 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.name}</div>
+          <div data-testid={PROPERTY_NAME}>{property.name}</div>
         )
       );
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      let properties = screen.getAllByTestId('property-name');
+      let properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(9);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'property2' } });
 
-      properties = screen.getAllByTestId('property-name');
+      properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(1);
       expect(properties[0]).toHaveTextContent('property2');
@@ -497,23 +503,23 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.name}</div>
+          <div data-testid={PROPERTY_NAME}>{property.name}</div>
         )
       );
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'property1' } });
 
-      let properties = screen.getAllByTestId('property-name');
+      let properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(1);
 
       fireEvent.change(searchInput, { target: { value: '' } });
 
-      properties = screen.getAllByTestId('property-name');
+      properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(9);
     });
@@ -530,7 +536,7 @@ describe('CustomPropertiesSection', () => {
         render(<CustomPropertiesSection {...propsWithEmptyExtension} />)
       ).not.toThrow();
 
-      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_BAR)).toBeInTheDocument();
     });
 
     it('should render without errors when extension is undefined', () => {
@@ -543,7 +549,7 @@ describe('CustomPropertiesSection', () => {
         render(<CustomPropertiesSection {...propsWithUndefinedExtension} />)
       ).not.toThrow();
 
-      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_BAR)).toBeInTheDocument();
     });
 
     it('should handle properties missing optional fields gracefully', () => {
@@ -563,7 +569,7 @@ describe('CustomPropertiesSection', () => {
         render(<CustomPropertiesSection {...propsWithPartialProperties} />)
       ).not.toThrow();
 
-      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_BAR)).toBeInTheDocument();
     });
 
     it('should handle search with special characters without errors', () => {
@@ -571,18 +577,18 @@ describe('CustomPropertiesSection', () => {
         PropertyValue,
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(() => (
-        <div data-testid="property-name">PropertyValue</div>
+        <div data-testid={PROPERTY_NAME}>PropertyValue</div>
       ));
 
       render(<CustomPropertiesSection {...defaultProps} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       expect(() =>
         fireEvent.change(searchInput, { target: { value: '@#$%^&*()' } })
       ).not.toThrow();
 
-      expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(PROPERTY_NAME)).not.toBeInTheDocument();
     });
 
     it('should handle undefined entityTypeDetail gracefully', () => {
@@ -602,7 +608,7 @@ describe('CustomPropertiesSection', () => {
       } = require('../../../common/CustomPropertyTable/PropertyValue');
       PropertyValue.mockImplementation(
         ({ property }: { property: CustomProperty }) => (
-          <div data-testid="property-name">{property.name || 'no-name'}</div>
+          <div data-testid={PROPERTY_NAME}>{property.name || 'no-name'}</div>
         )
       );
 
@@ -626,11 +632,11 @@ describe('CustomPropertiesSection', () => {
 
       render(<CustomPropertiesSection {...propsWithNullFields} />);
 
-      const searchInput = screen.getByTestId('search-input');
+      const searchInput = screen.getByTestId(SEARCH_INPUT);
 
       fireEvent.change(searchInput, { target: { value: 'valid' } });
 
-      const properties = screen.getAllByTestId('property-name');
+      const properties = screen.getAllByTestId(PROPERTY_NAME);
 
       expect(properties).toHaveLength(1);
       expect(properties[0]).toHaveTextContent('valid-property');

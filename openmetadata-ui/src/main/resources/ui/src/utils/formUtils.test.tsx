@@ -18,61 +18,68 @@ import {
 import { createScrollToErrorHandler } from './formPureUtils';
 import { getField } from './formUtils';
 
+const LABEL_MUTUALLY_EXCLUSIVE = 'label.mutually-exclusive';
+const MESSAGE_MUTUALLY_EXCLUSIVE_ALERT_ENTITY =
+  'message.mutually-exclusive-alert-entity';
+const MUTUALLY_EXCLUSIVE_BUTTON = 'mutually-exclusive-button';
+const ROOT_MUTUALLYEXCLUSIVE = 'root/mutuallyExclusive';
+const FORM_ITEM_ALERT = 'form-item-alert';
+
 describe('formUtils', () => {
   describe('getField', () => {
     it('Should render FormItem with Alert', async () => {
       const result = getField({
         name: 'mutuallyExclusive',
-        label: 'label.mutually-exclusive',
+        label: LABEL_MUTUALLY_EXCLUSIVE,
         type: FieldTypes.SWITCH,
         required: false,
-        helperText: 'message.mutually-exclusive-alert-entity',
+        helperText: MESSAGE_MUTUALLY_EXCLUSIVE_ALERT_ENTITY,
         helperTextType: HelperTextType.ALERT,
         props: {
-          'data-testid': 'mutually-exclusive-button',
+          'data-testid': MUTUALLY_EXCLUSIVE_BUTTON,
         },
-        id: 'root/mutuallyExclusive',
+        id: ROOT_MUTUALLYEXCLUSIVE,
         formItemLayout: FormItemLayout.HORIZONTAL,
       });
 
-      expect(JSON.stringify(result)).toContain('form-item-alert');
+      expect(JSON.stringify(result)).toContain(FORM_ITEM_ALERT);
     });
 
     it('Should not render FormItem with Alert is showHelperText is false', async () => {
       const result = getField({
         name: 'mutuallyExclusive',
-        label: 'label.mutually-exclusive',
+        label: LABEL_MUTUALLY_EXCLUSIVE,
         type: FieldTypes.SWITCH,
         required: false,
-        helperText: 'message.mutually-exclusive-alert-entity',
+        helperText: MESSAGE_MUTUALLY_EXCLUSIVE_ALERT_ENTITY,
         helperTextType: HelperTextType.ALERT,
         showHelperText: false,
         props: {
-          'data-testid': 'mutually-exclusive-button',
+          'data-testid': MUTUALLY_EXCLUSIVE_BUTTON,
         },
-        id: 'root/mutuallyExclusive',
+        id: ROOT_MUTUALLYEXCLUSIVE,
         formItemLayout: FormItemLayout.HORIZONTAL,
       });
 
-      expect(JSON.stringify(result)).not.toContain('form-item-alert');
+      expect(JSON.stringify(result)).not.toContain(FORM_ITEM_ALERT);
     });
 
     it('Should not render FormItem with Alert', async () => {
       const result = getField({
         name: 'mutuallyExclusive',
-        label: 'label.mutually-exclusive',
+        label: LABEL_MUTUALLY_EXCLUSIVE,
         type: FieldTypes.SWITCH,
         required: false,
-        helperText: 'message.mutually-exclusive-alert-entity',
+        helperText: MESSAGE_MUTUALLY_EXCLUSIVE_ALERT_ENTITY,
         helperTextType: HelperTextType.Tooltip,
         props: {
-          'data-testid': 'mutually-exclusive-button',
+          'data-testid': MUTUALLY_EXCLUSIVE_BUTTON,
         },
-        id: 'root/mutuallyExclusive',
+        id: ROOT_MUTUALLYEXCLUSIVE,
         formItemLayout: FormItemLayout.HORIZONTAL,
       });
 
-      expect(JSON.stringify(result)).not.toContain('form-item-alert');
+      expect(JSON.stringify(result)).not.toContain(FORM_ITEM_ALERT);
     });
   });
 

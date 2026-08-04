@@ -68,6 +68,8 @@ import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
+const LABEL_DATA_PRODUCT = 'label.data-product';
+
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
@@ -165,7 +167,7 @@ const DataProductListPage = ({
   });
 
   const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.data-product',
+    titleKey: LABEL_DATA_PRODUCT,
     count: dataProductListing.totalEntities,
     loading: dataProductListing.loading,
   });
@@ -175,7 +177,7 @@ const DataProductListPage = ({
 
   const dataProductColumns: ColumnDef[] = useMemo(
     () => [
-      { id: 'name', label: t('label.data-product') },
+      { id: 'name', label: t(LABEL_DATA_PRODUCT) },
       { id: 'owners', label: t('label.owner') },
       { id: 'glossaryTerms', label: t('label.glossary-term-plural') },
       { id: 'domains', label: t('label.domain-plural') },
@@ -302,7 +304,7 @@ const DataProductListPage = ({
         <ErrorPlaceHolder
           buttonId="data-product-add-button"
           buttonTitle={t('label.add-entity', {
-            entity: t('label.data-product'),
+            entity: t(LABEL_DATA_PRODUCT),
           })}
           className="border-none"
           heading={t('message.no-data-message', {
@@ -320,7 +322,7 @@ const DataProductListPage = ({
       return (
         <>
           <EntityListingTable
-            ariaLabel={t('label.data-product')}
+            ariaLabel={t(LABEL_DATA_PRODUCT)}
             columns={dataProductColumns}
             entities={dataProductListing.entities}
             loading={dataProductListing.loading}

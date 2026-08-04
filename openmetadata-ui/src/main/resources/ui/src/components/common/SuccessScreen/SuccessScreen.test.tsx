@@ -17,6 +17,9 @@ import { useAirflowStatus } from '../../../context/AirflowStatusProvider/Airflow
 import { FormSubmitType } from '../../../enums/form.enum';
 import SuccessScreen, { SuccessScreenProps } from './SuccessScreen';
 
+const AIRFLOW_PLATFORM_MESSAGE = 'airflow-platform-message';
+const ARGO_PLATFORM_MESSAGE = 'argo-platform-message';
+
 jest.mock(
   '../../../context/AirflowStatusProvider/AirflowStatusProvider',
   () => ({
@@ -59,7 +62,7 @@ describe('Test SuccessScreen component', () => {
     const addIngestionBtn = await screen.findByTestId('add-ingestion-button');
     const deployButton = await screen.findByTestId('deploy-ingestion-button');
 
-    const statusMsg = screen.queryByTestId('airflow-platform-message');
+    const statusMsg = screen.queryByTestId(AIRFLOW_PLATFORM_MESSAGE);
 
     expect(successScreenContainer).toBeInTheDocument();
 
@@ -82,9 +85,7 @@ describe('Test SuccessScreen component', () => {
     }));
     render(<SuccessScreen {...mockProps} />);
 
-    const airflowPlatformMessage = screen.getByTestId(
-      'airflow-platform-message'
-    );
+    const airflowPlatformMessage = screen.getByTestId(AIRFLOW_PLATFORM_MESSAGE);
 
     expect(airflowPlatformMessage).toBeInTheDocument();
 
@@ -110,7 +111,7 @@ describe('Test SuccessScreen component', () => {
     }));
     render(<SuccessScreen {...mockProps} />);
 
-    const argoPlatformMessage = screen.getByTestId('argo-platform-message');
+    const argoPlatformMessage = screen.getByTestId(ARGO_PLATFORM_MESSAGE);
 
     expect(argoPlatformMessage).toBeInTheDocument();
 
@@ -130,10 +131,10 @@ describe('Test SuccessScreen component', () => {
     }));
     render(<SuccessScreen {...mockProps} />);
     const airflowPlatformMessage = screen.queryByTestId(
-      'airflow-platform-message'
+      AIRFLOW_PLATFORM_MESSAGE
     );
 
-    const argoPlatformMessage = screen.queryByTestId('argo-platform-message');
+    const argoPlatformMessage = screen.queryByTestId(ARGO_PLATFORM_MESSAGE);
 
     expect(airflowPlatformMessage).not.toBeInTheDocument();
     expect(argoPlatformMessage).not.toBeInTheDocument();
@@ -160,7 +161,7 @@ describe('Test SuccessScreen component', () => {
     }));
     render(<SuccessScreen {...mockProps} />);
 
-    const airflowMessage = screen.getByTestId('airflow-platform-message');
+    const airflowMessage = screen.getByTestId(AIRFLOW_PLATFORM_MESSAGE);
 
     expect(airflowMessage).toBeInTheDocument();
 
@@ -182,7 +183,7 @@ describe('Test SuccessScreen component', () => {
     }));
     render(<SuccessScreen {...mockProps} />);
 
-    const argoMessage = screen.getByTestId('argo-platform-message');
+    const argoMessage = screen.getByTestId(ARGO_PLATFORM_MESSAGE);
 
     expect(argoMessage).toBeInTheDocument();
 

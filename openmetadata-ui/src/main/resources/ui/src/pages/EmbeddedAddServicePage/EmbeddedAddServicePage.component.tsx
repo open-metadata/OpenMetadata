@@ -67,6 +67,11 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';
 import { useServiceNameValidation } from '../AddServicePage/useServiceNameValidation';
 
+const LABEL_ADD_NEW_ENTITY = 'label.add-new-entity';
+const LABEL_SERVICE = 'label.service';
+const ADD_SERVICE = 'add-service';
+const SERVICE_NAME = 'service-name';
+
 const ConnectionConfigForm = lazy(
   () =>
     import(
@@ -190,10 +195,10 @@ const EmbeddedAddServicePage = () => {
       serviceConfig.serviceType
         ? [
             {
-              label: t('label.add-new-entity', {
-                entity: t('label.service'),
+              label: t(LABEL_ADD_NEW_ENTITY, {
+                entity: t(LABEL_SERVICE),
               }),
-              id: 'add-service',
+              id: ADD_SERVICE,
             },
             {
               label: serviceConfig.serviceType,
@@ -206,11 +211,11 @@ const EmbeddedAddServicePage = () => {
               id: 'category',
             },
             {
-              label: t('label.add-new-entity', {
-                entity: t('label.service'),
+              label: t(LABEL_ADD_NEW_ENTITY, {
+                entity: t(LABEL_SERVICE),
               }),
               href: '',
-              id: 'add-service',
+              id: ADD_SERVICE,
             },
           ],
     [
@@ -263,7 +268,7 @@ const EmbeddedAddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
-      document.getElementById('service-name')?.focus();
+      document.getElementById(SERVICE_NAME)?.focus();
 
       return;
     }
@@ -332,7 +337,7 @@ const EmbeddedAddServicePage = () => {
     } catch (error) {
       handleEntityCreationError({
         error: error as AxiosError,
-        entity: t('label.service'),
+        entity: t(LABEL_SERVICE),
         entityLowercase: t('label.service-lowercase'),
         entityLowercasePlural: t('label.service-lowercase-plural'),
         setInlineAlertDetails,
@@ -368,7 +373,7 @@ const EmbeddedAddServicePage = () => {
 
   const handleBreadcrumbAction = useCallback(
     (id: React.Key) => {
-      if (id === 'add-service') {
+      if (id === ADD_SERVICE) {
         if (preselectedServiceType) {
           navigate(backPath);
         } else if (activeServiceStepRef.current > 1) {
@@ -449,7 +454,7 @@ const EmbeddedAddServicePage = () => {
                   data-testid="header"
                   size="text-xl"
                   weight="semibold">
-                  {`${serviceConfig.serviceType} ${t('label.service')}`}
+                  {`${serviceConfig.serviceType} ${t(LABEL_SERVICE)}`}
                 </Typography>
               </div>
             ) : (
@@ -458,7 +463,7 @@ const EmbeddedAddServicePage = () => {
                 data-testid="header"
                 size="text-xl"
                 weight="semibold">
-                {t('label.add-new-entity', { entity: t('label.service') })}
+                {t(LABEL_ADD_NEW_ENTITY, { entity: t(LABEL_SERVICE) })}
               </Typography>
             )}
 
@@ -524,13 +529,13 @@ const EmbeddedAddServicePage = () => {
                               fieldText: t('label.service-name'),
                             })
                           );
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME)?.focus();
 
                           return false;
                         }
 
                         if (nameError || isServiceNameChecking) {
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME)?.focus();
 
                           return false;
                         }
@@ -612,7 +617,7 @@ const EmbeddedAddServicePage = () => {
             allowScroll: true,
           }}
           hideSecondPanel={hideSecondPanel}
-          pageTitle={t('label.add-entity', { entity: t('label.service') })}
+          pageTitle={t('label.add-entity', { entity: t(LABEL_SERVICE) })}
           secondPanel={{
             children: (
               <Suspense fallback={null}>

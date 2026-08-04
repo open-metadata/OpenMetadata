@@ -91,6 +91,17 @@ import {
   getSelectOptionsFromEnum,
 } from './AlertsUtilPure';
 
+const SERVER_ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
+const LABEL_SECOND_PLURAL = 'label.second-plural';
+const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
+const LABEL_SECRET_KEY = 'label.secret-key';
+const LABEL_CLIENT_ID = 'label.client-id';
+const LABEL_CLIENT_SECRET = 'label.client-secret';
+const LABEL_VALUE = 'label.value';
+const LABEL_SEARCH_BY_TYPE = 'label.search-by-type';
+const LABEL_SELECT_FIELD = 'label.select-field';
+const LABEL_EVENT_PLURAL = 'label.event-plural';
+
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
     case SubscriptionType.Slack:
@@ -167,7 +178,7 @@ export const searchEntity = async ({
   } catch (error) {
     showErrorToast(
       error as AxiosError,
-      t('server.entity-fetch-error', {
+      t(SERVER_ENTITY_FETCH_ERROR, {
         entity: t('label.search'),
       })
     );
@@ -217,7 +228,7 @@ const getDataContractSuggestions = async (searchText = '') => {
   } catch (error) {
     showErrorToast(
       error as AxiosError,
-      t('server.entity-fetch-error', {
+      t(SERVER_ENTITY_FETCH_ERROR, {
         entity: t('label.data-contract'),
       })
     );
@@ -284,7 +295,7 @@ export const getSupportedFilterOptions = (
 export const getConnectionTimeoutField = () => (
   <Row align="middle">
     <Col span={7}>{`${t('label.connection-timeout')} (${t(
-      'label.second-plural'
+      LABEL_SECOND_PLURAL
     )})`}</Col>
     <Col span={1}>:</Col>
     <Col data-testid="connection-timeout" span={16}>
@@ -293,7 +304,7 @@ export const getConnectionTimeoutField = () => (
           data-testid="connection-timeout-input"
           defaultValue={10}
           placeholder={`${t('label.connection-timeout')} (${t(
-            'label.second-plural'
+            LABEL_SECOND_PLURAL
           )})`}
           type="number"
         />
@@ -307,7 +318,7 @@ export const getReadTimeoutField = () => (
     <Row align="middle" className="mt-4">
       <Col span={7}>{`${t('label.read-type', {
         type: t('label.timeout'),
-      })} (${t('label.second-plural')})`}</Col>
+      })} (${t(LABEL_SECOND_PLURAL)})`}</Col>
       <Col span={1}>:</Col>
       <Col data-testid="read-timeout" span={16}>
         <Form.Item name="readTimeout">
@@ -316,7 +327,7 @@ export const getReadTimeoutField = () => (
             defaultValue={DEFAULT_READ_TIMEOUT}
             placeholder={`${t('label.read-type', {
               type: t('label.timeout'),
-            })} (${t('label.second-plural')})`}
+            })} (${t(LABEL_SECOND_PLURAL)})`}
             type="number"
           />
         </Form.Item>
@@ -343,7 +354,7 @@ export const getDestinationConfigField = (
               rules={[
                 {
                   required: true,
-                  message: t('message.field-text-is-required', {
+                  message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                     fieldText: t('label.endpoint-url'),
                   }),
                 },
@@ -434,7 +445,7 @@ export const getDestinationConfigField = (
                               <Form.Item
                                 label={
                                   <Typography.Text>{`${t(
-                                    'label.secret-key'
+                                    LABEL_SECRET_KEY
                                   )}:`}</Typography.Text>
                                 }
                                 labelCol={{ span: 24 }}
@@ -447,17 +458,14 @@ export const getDestinationConfigField = (
                                 rules={[
                                   {
                                     required: true,
-                                    message: t(
-                                      'message.field-text-is-required',
-                                      {
-                                        fieldText: t('label.secret-key'),
-                                      }
-                                    ),
+                                    message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                                      fieldText: t(LABEL_SECRET_KEY),
+                                    }),
                                   },
                                 ]}>
                                 <Input.Password
                                   data-testid={`secret-key-input-${fieldName}`}
-                                  placeholder={t('label.secret-key')}
+                                  placeholder={t(LABEL_SECRET_KEY)}
                                 />
                               </Form.Item>
                             </Col>
@@ -485,7 +493,7 @@ export const getDestinationConfigField = (
                                     {
                                       required: true,
                                       message: t(
-                                        'message.field-text-is-required',
+                                        MESSAGE_FIELD_TEXT_IS_REQUIRED,
                                         {
                                           fieldText: t('label.token-url'),
                                         }
@@ -502,7 +510,7 @@ export const getDestinationConfigField = (
                                 <Form.Item
                                   label={
                                     <Typography.Text>{`${t(
-                                      'label.client-id'
+                                      LABEL_CLIENT_ID
                                     )}:`}</Typography.Text>
                                   }
                                   labelCol={{ span: 24 }}
@@ -516,16 +524,16 @@ export const getDestinationConfigField = (
                                     {
                                       required: true,
                                       message: t(
-                                        'message.field-text-is-required',
+                                        MESSAGE_FIELD_TEXT_IS_REQUIRED,
                                         {
-                                          fieldText: t('label.client-id'),
+                                          fieldText: t(LABEL_CLIENT_ID),
                                         }
                                       ),
                                     },
                                   ]}>
                                   <Input.Password
                                     data-testid={`client-id-input-${fieldName}`}
-                                    placeholder={t('label.client-id')}
+                                    placeholder={t(LABEL_CLIENT_ID)}
                                   />
                                 </Form.Item>
                               </Col>
@@ -533,7 +541,7 @@ export const getDestinationConfigField = (
                                 <Form.Item
                                   label={
                                     <Typography.Text>{`${t(
-                                      'label.client-secret'
+                                      LABEL_CLIENT_SECRET
                                     )}:`}</Typography.Text>
                                   }
                                   labelCol={{ span: 24 }}
@@ -547,16 +555,16 @@ export const getDestinationConfigField = (
                                     {
                                       required: true,
                                       message: t(
-                                        'message.field-text-is-required',
+                                        MESSAGE_FIELD_TEXT_IS_REQUIRED,
                                         {
-                                          fieldText: t('label.client-secret'),
+                                          fieldText: t(LABEL_CLIENT_SECRET),
                                         }
                                       ),
                                     },
                                   ]}>
                                   <Input.Password
                                     data-testid={`client-secret-input-${fieldName}`}
-                                    placeholder={t('label.client-secret')}
+                                    placeholder={t(LABEL_CLIENT_SECRET)}
                                   />
                                 </Form.Item>
                               </Col>
@@ -628,7 +636,7 @@ export const getDestinationConfigField = (
                                             {
                                               required: true,
                                               message: t(
-                                                'message.field-text-is-required',
+                                                MESSAGE_FIELD_TEXT_IS_REQUIRED,
                                                 {
                                                   fieldText: t('label.key'),
                                                 }
@@ -649,16 +657,16 @@ export const getDestinationConfigField = (
                                             {
                                               required: true,
                                               message: t(
-                                                'message.field-text-is-required',
+                                                MESSAGE_FIELD_TEXT_IS_REQUIRED,
                                                 {
-                                                  fieldText: t('label.value'),
+                                                  fieldText: t(LABEL_VALUE),
                                                 }
                                               ),
                                             },
                                           ]}>
                                           <Input
                                             data-testid={`header-value-input-${name}`}
-                                            placeholder={t('label.value')}
+                                            placeholder={t(LABEL_VALUE)}
                                           />
                                         </Form.Item>
                                       </Col>
@@ -719,7 +727,7 @@ export const getDestinationConfigField = (
                                             {
                                               required: true,
                                               message: t(
-                                                'message.field-text-is-required',
+                                                MESSAGE_FIELD_TEXT_IS_REQUIRED,
                                                 {
                                                   fieldText: t('label.key'),
                                                 }
@@ -740,16 +748,16 @@ export const getDestinationConfigField = (
                                             {
                                               required: true,
                                               message: t(
-                                                'message.field-text-is-required',
+                                                MESSAGE_FIELD_TEXT_IS_REQUIRED,
                                                 {
-                                                  fieldText: t('label.value'),
+                                                  fieldText: t(LABEL_VALUE),
                                                 }
                                               ),
                                             },
                                           ]}>
                                           <Input
                                             data-testid={`query-param-value-input-${name}`}
-                                            placeholder={t('label.value')}
+                                            placeholder={t(LABEL_VALUE)}
                                           />
                                         </Form.Item>
                                       </Col>
@@ -805,7 +813,7 @@ export const getDestinationConfigField = (
             rules={[
               {
                 required: true,
-                message: t('message.field-text-is-required', {
+                message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                   fieldText: t('label.email'),
                 }),
               },
@@ -829,7 +837,7 @@ export const getDestinationConfigField = (
             rules={[
               {
                 required: true,
-                message: t('message.field-text-is-required', {
+                message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                   fieldText: t('label.entity-list', {
                     entity: t('label.entity-name', {
                       entity:
@@ -932,7 +940,7 @@ export const getFieldByArgumentType = (
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.search') })
+        t(SERVER_ENTITY_FETCH_ERROR, { entity: t('label.search') })
       );
 
       return [];
@@ -955,7 +963,7 @@ export const getFieldByArgumentType = (
           data-testid="fqn-list-select"
           mode="multiple"
           optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.fqn-uppercase'),
           })}
           searchIndex={getFqnSearchIndexes(selectedTrigger, containerEntities)}
@@ -971,7 +979,7 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="domain-select"
           mode="multiple"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.domain-lowercase'),
           })}
         />
@@ -988,7 +996,7 @@ export const getFieldByArgumentType = (
           maxTagTextLength={45}
           mode="multiple"
           optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.table-lowercase'),
           })}
         />
@@ -1005,7 +1013,7 @@ export const getFieldByArgumentType = (
           maxTagTextLength={45}
           mode="multiple"
           optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.entity-lowercase'),
           })}
         />
@@ -1020,7 +1028,7 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="owner-name-select"
           mode="multiple"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.owner-lowercase-plural'),
           })}
         />
@@ -1040,7 +1048,7 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="user-name-select"
           mode="multiple"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.user'),
           })}
         />
@@ -1055,7 +1063,7 @@ export const getFieldByArgumentType = (
           data-testid="event-type-select"
           mode="multiple"
           options={getSelectOptionsFromEnum(EventType)}
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.event-type-lowercase'),
           })}
         />
@@ -1072,7 +1080,7 @@ export const getFieldByArgumentType = (
           maxTagTextLength={45}
           mode="multiple"
           optionLabelProp="uuid"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.entity-id', {
               entity: t('label.data-asset'),
             }),
@@ -1089,7 +1097,7 @@ export const getFieldByArgumentType = (
           data-testid="pipeline-status-select"
           mode="multiple"
           options={getSelectOptionsFromEnum(StatusType)}
-          placeholder={t('label.select-field', {
+          placeholder={t(LABEL_SELECT_FIELD, {
             field: t('label.pipeline-state'),
           })}
         />
@@ -1104,7 +1112,7 @@ export const getFieldByArgumentType = (
           data-testid="pipeline-status-select"
           mode="multiple"
           options={getSelectOptionsFromEnum(PipelineState)}
-          placeholder={t('label.select-field', {
+          placeholder={t(LABEL_SELECT_FIELD, {
             field: t('label.pipeline-state'),
           })}
         />
@@ -1119,7 +1127,7 @@ export const getFieldByArgumentType = (
           data-testid="test-status-select"
           mode="multiple"
           options={getSelectOptionsFromEnum(TestCaseStatus)}
-          placeholder={t('label.select-field', {
+          placeholder={t(LABEL_SELECT_FIELD, {
             field: t('label.test-suite-status'),
           })}
         />
@@ -1134,7 +1142,7 @@ export const getFieldByArgumentType = (
           data-testid="test-result-select"
           mode="multiple"
           options={getSelectOptionsFromEnum(TestCaseStatus)}
-          placeholder={t('label.select-field', {
+          placeholder={t(LABEL_SELECT_FIELD, {
             field: t('label.test-case-result'),
           })}
         />
@@ -1149,7 +1157,7 @@ export const getFieldByArgumentType = (
           data-testid="contract-status-select"
           mode="multiple"
           options={translatedContractStatusOptions}
-          placeholder={t('label.select-field', {
+          placeholder={t(LABEL_SELECT_FIELD, {
             field: t('label.data-contract-status'),
           })}
         />
@@ -1164,7 +1172,7 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="test-suite-select"
           mode="multiple"
-          placeholder={t('label.search-by-type', {
+          placeholder={t(LABEL_SEARCH_BY_TYPE, {
             type: t('label.test-suite'),
           })}
         />
@@ -1313,7 +1321,7 @@ export const getAlertExtraInfo = (
         inlineLayout
         dataTestId="total-events-count"
         label={t('label.total-entity', {
-          entity: t('label.event-plural'),
+          entity: t(LABEL_EVENT_PLURAL),
         })}
         value={alertEventCounts?.totalEventsCount ?? 0}
       />
@@ -1321,7 +1329,7 @@ export const getAlertExtraInfo = (
         inlineLayout
         dataTestId="pending-events-count"
         label={t('label.pending-entity', {
-          entity: t('label.event-plural'),
+          entity: t(LABEL_EVENT_PLURAL),
         })}
         value={alertEventCounts?.pendingEventsCount ?? 0}
       />
@@ -1329,7 +1337,7 @@ export const getAlertExtraInfo = (
         inlineLayout
         dataTestId="failed-events-count"
         label={t('label.failed-entity', {
-          entity: t('label.event-plural'),
+          entity: t(LABEL_EVENT_PLURAL),
         })}
         value={alertEventCounts?.failedEventsCount ?? 0}
       />

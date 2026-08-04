@@ -14,6 +14,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import AppearanceConfigSettingsPage from './AppearanceConfigSettingsPage';
 
+const HTTPS_WWW_GOOGLE_COM = 'https://www.google.com';
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
@@ -116,13 +118,13 @@ describe('Test appearance config page', () => {
     const saveButton = screen.getByTestId('save-btn');
 
     fireEvent.change(customLogoUrlPath, {
-      target: { value: 'https://www.google.com' },
+      target: { value: HTTPS_WWW_GOOGLE_COM },
     });
     fireEvent.change(customMonogramUrlPath, {
-      target: { value: 'https://www.google.com' },
+      target: { value: HTTPS_WWW_GOOGLE_COM },
     });
     fireEvent.change(customFaviconUrlPath, {
-      target: { value: 'https://www.google.com' },
+      target: { value: HTTPS_WWW_GOOGLE_COM },
     });
     fireEvent.change(primaryColorColorInput, {
       target: { value: '#ffffff' },
@@ -156,9 +158,9 @@ describe('Test appearance config page', () => {
         config_type: 'customUiThemePreference',
         config_value: {
           customLogoConfig: {
-            customFaviconUrlPath: 'https://www.google.com',
-            customLogoUrlPath: 'https://www.google.com',
-            customMonogramUrlPath: 'https://www.google.com',
+            customFaviconUrlPath: HTTPS_WWW_GOOGLE_COM,
+            customLogoUrlPath: HTTPS_WWW_GOOGLE_COM,
+            customMonogramUrlPath: HTTPS_WWW_GOOGLE_COM,
           },
           customTheme: {
             errorColor: '#ffffff',

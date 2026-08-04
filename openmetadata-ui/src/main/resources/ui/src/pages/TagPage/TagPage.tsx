@@ -126,6 +126,9 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';
+
+const LABEL_TAG_LOWERCASE = 'label.tag-lowercase';
+const LABEL_ASSET_PLURAL = 'label.asset-plural';
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -404,7 +407,7 @@ const TagPage = () => {
       await deleteTag(id);
       showSuccessToast(
         t('server.entity-deleted-successfully', {
-          entity: t('label.tag-lowercase'),
+          entity: t(LABEL_TAG_LOWERCASE),
         })
       );
 
@@ -454,7 +457,7 @@ const TagPage = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
-          entity: t('label.asset-plural'),
+          entity: t(LABEL_ASSET_PLURAL),
         })
       );
       setAssetCount(0);
@@ -502,7 +505,7 @@ const TagPage = () => {
             label: (
               <ManageButtonItemLabel
                 description={t('message.rename-entity', {
-                  entity: t('label.tag-lowercase'),
+                  entity: t(LABEL_TAG_LOWERCASE),
                 })}
                 icon={EditIcon}
                 id="rename-button"
@@ -520,7 +523,7 @@ const TagPage = () => {
             label: (
               <ManageButtonItemLabel
                 description={t('message.edit-entity-style-description', {
-                  entity: t('label.tag-lowercase'),
+                  entity: t(LABEL_TAG_LOWERCASE),
                 })}
                 icon={StyleIcon}
                 id="rename-button"
@@ -570,7 +573,7 @@ const TagPage = () => {
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
-                    entityType: t('label.tag-lowercase'),
+                    entityType: t(LABEL_TAG_LOWERCASE),
                   }
                 )}
                 icon={IconDelete}
@@ -612,7 +615,7 @@ const TagPage = () => {
             count={assetCount}
             id={EntityTabs.ASSETS}
             isActive={activeTab === EntityTabs.ASSETS}
-            name={t('label.asset-plural')}
+            name={t(LABEL_ASSET_PLURAL)}
           />
         ),
         key: EntityTabs.ASSETS,
@@ -846,7 +849,7 @@ const TagPage = () => {
         type="primary"
         onClick={() => setAssetModalVisible(true)}>
         {t('label.add-entity', {
-          entity: t('label.asset-plural'),
+          entity: t(LABEL_ASSET_PLURAL),
         })}
       </Button>
     ) : null;
@@ -867,7 +870,7 @@ const TagPage = () => {
         <Tooltip
           placement="topRight"
           title={t('label.manage-entity', {
-            entity: t('label.tag-lowercase'),
+            entity: t(LABEL_TAG_LOWERCASE),
           })}>
           <Button
             className="flex-center"

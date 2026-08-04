@@ -27,6 +27,11 @@ import {
 } from '../../../../../mocks/SelectWidget.mock';
 import SelectWidget from './SelectWidget';
 
+const SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA =
+  'select-widget-root/searchIndexMappingLanguage';
+const SELECT_OPTION_JP = 'select-option-JP';
+const SELECT_OPTION_EN = 'select-option-EN';
+
 jest.mock('./TreeSelectWidget', () =>
   jest.fn().mockImplementation(() => <p>TreeSelectWidget</p>)
 );
@@ -57,7 +62,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = screen.getByTestId(
-      'select-widget-root/searchIndexMappingLanguage'
+      SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA
     );
     const treeSelectWidget = screen.queryByText('TreeSelectWidget');
 
@@ -69,7 +74,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} disabled />);
 
     const selectInput = await findByRole(
-      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
+      screen.getByTestId(SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA),
       'combobox'
     );
 
@@ -80,7 +85,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = screen.getByTestId(
-      'select-widget-root/searchIndexMappingLanguage'
+      SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA
     );
 
     fireEvent.focus(selectInput);
@@ -92,7 +97,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = screen.getByTestId(
-      'select-widget-root/searchIndexMappingLanguage'
+      SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA
     );
 
     fireEvent.blur(selectInput);
@@ -104,7 +109,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = await findByRole(
-      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
+      screen.getByTestId(SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA),
       'combobox'
     );
 
@@ -112,10 +117,10 @@ describe('Test SelectWidget Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitFor(() => screen.getByTestId('select-option-JP'));
+    await waitFor(() => screen.getByTestId(SELECT_OPTION_JP));
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('select-option-EN'));
+      fireEvent.click(screen.getByTestId(SELECT_OPTION_EN));
     });
 
     expect(mockOnChange).toHaveBeenCalledTimes(1);
@@ -125,7 +130,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockTreeSelectProps} />);
 
     const selectWidget = screen.queryByTestId(
-      'select-widget-root/searchIndexMappingLanguage'
+      SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA
     );
     const treeSelectWidget = screen.getByText('TreeSelectWidget');
 
@@ -137,7 +142,7 @@ describe('Test SelectWidget Component', () => {
     render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = await findByRole(
-      screen.getByTestId('select-widget-root/searchIndexMappingLanguage'),
+      screen.getByTestId(SELECT_WIDGET_ROOT_SEARCH_INDEX_MAPPING_LA),
       'combobox'
     );
 
@@ -147,9 +152,9 @@ describe('Test SelectWidget Component', () => {
     });
 
     // Wait for dropdown to open and show all options
-    await waitFor(() => screen.getByTestId('select-option-EN'));
+    await waitFor(() => screen.getByTestId(SELECT_OPTION_EN));
 
-    expect(screen.getByTestId('select-option-JP')).toBeInTheDocument();
+    expect(screen.getByTestId(SELECT_OPTION_JP)).toBeInTheDocument();
     expect(screen.getByTestId('select-option-RU')).toBeInTheDocument();
     expect(screen.getByTestId('select-option-ZH')).toBeInTheDocument();
 
@@ -158,10 +163,10 @@ describe('Test SelectWidget Component', () => {
 
     // After filtering, only EN should be visible
     await waitFor(() => {
-      expect(screen.getByTestId('select-option-EN')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECT_OPTION_EN)).toBeInTheDocument();
     });
 
-    expect(screen.queryByTestId('select-option-JP')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SELECT_OPTION_JP)).not.toBeInTheDocument();
     expect(screen.queryByTestId('select-option-RU')).not.toBeInTheDocument();
     expect(screen.queryByTestId('select-option-ZH')).not.toBeInTheDocument();
   });

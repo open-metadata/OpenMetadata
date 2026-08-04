@@ -14,6 +14,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Children, cloneElement, isValidElement, ReactElement } from 'react';
 import QuickFilterDropdown from './QuickFilterDropdown';
 
+const SEARCH_DROPDOWN_ENTITY_TYPE = 'search-dropdown-entityType';
+const UPDATE_BTN = 'update-btn';
+const DROP_DOWN_MENU = 'drop-down-menu';
+
 const mockUseLocation = jest.fn();
 
 jest.mock('react-i18next', () => ({
@@ -147,7 +151,7 @@ describe('QuickFilterDropdown', () => {
     const onGetInitialOptions = jest.fn();
     renderDropdown({ onGetInitialOptions });
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
 
     expect(onGetInitialOptions).toHaveBeenCalledWith('entityType');
   });
@@ -156,12 +160,12 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange });
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Table' }));
 
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('update-btn'));
+    fireEvent.click(screen.getByTestId(UPDATE_BTN));
 
     expect(onChange).toHaveBeenCalledWith(
       [{ key: 'table', label: 'Table', count: 5 }],
@@ -173,10 +177,10 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange, singleSelect: true });
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Table' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Topic' }));
-    fireEvent.click(screen.getByTestId('update-btn'));
+    fireEvent.click(screen.getByTestId(UPDATE_BTN));
 
     expect(onChange).toHaveBeenCalledWith(
       [{ key: 'topic', label: 'Topic', count: 3 }],
@@ -188,9 +192,9 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange, hasNullOption: true });
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
     fireEvent.click(screen.getByTestId('no-option-checkbox'));
-    fireEvent.click(screen.getByTestId('update-btn'));
+    fireEvent.click(screen.getByTestId(UPDATE_BTN));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.arrayContaining([
@@ -205,7 +209,7 @@ describe('QuickFilterDropdown', () => {
     const onSearch = jest.fn();
     renderDropdown({ onSearch });
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
     fireEvent.change(screen.getByTestId('search-input'), {
       target: { value: 'tab' },
     });
@@ -223,7 +227,7 @@ describe('QuickFilterDropdown', () => {
   it('should own the containing block for its option list', () => {
     renderDropdown();
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
 
     expect(screen.getByTestId('quick-filter-option-list')).toHaveClass(
       'tw:relative'
@@ -233,9 +237,9 @@ describe('QuickFilterDropdown', () => {
   it('should close when the route pathname changes', () => {
     const { rerender } = renderDropdown();
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
 
-    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(screen.getByTestId(DROP_DOWN_MENU)).toBeInTheDocument();
 
     mockUseLocation.mockReturnValue({ pathname: '/observability' });
     rerender(
@@ -250,15 +254,15 @@ describe('QuickFilterDropdown', () => {
       />
     );
 
-    expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DROP_DOWN_MENU)).not.toBeInTheDocument();
   });
 
   it('should stay open when parent rerenders with a new search handler', () => {
     const { rerender } = renderDropdown({ onSearch: jest.fn() });
 
-    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+    fireEvent.click(screen.getByTestId(SEARCH_DROPDOWN_ENTITY_TYPE));
 
-    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(screen.getByTestId(DROP_DOWN_MENU)).toBeInTheDocument();
 
     rerender(
       <QuickFilterDropdown
@@ -272,6 +276,6 @@ describe('QuickFilterDropdown', () => {
       />
     );
 
-    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(screen.getByTestId(DROP_DOWN_MENU)).toBeInTheDocument();
   });
 });

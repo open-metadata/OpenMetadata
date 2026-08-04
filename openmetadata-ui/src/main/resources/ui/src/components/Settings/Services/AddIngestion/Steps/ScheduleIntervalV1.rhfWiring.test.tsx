@@ -25,6 +25,9 @@ import { useForm } from 'react-hook-form';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../../constants/Schedular.constants';
 import ScheduleIntervalV1 from './ScheduleIntervalV1';
 
+const SCHEDULAR_ON_DEMAND = 'schedular-on-demand';
+const CUSTOM_CRON_ERROR = 'custom-cron-error';
+const FREQUENCY_CUSTOM = 'frequency-custom';
 // Mirrors how consumers wire the scheduler: the cron is stored as an empty
 // string when cleared, but handed back to the component as undefined.
 const FormWrapper = ({
@@ -85,12 +88,12 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
 
     expect(screen.getByTestId('schedular-schedule')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('schedular-on-demand'));
+    fireEvent.click(screen.getByTestId(SCHEDULAR_ON_DEMAND));
 
     expect(screen.getByTestId('probe').textContent).toBe('""');
     expect(
       screen
-        .getByTestId('schedular-on-demand')
+        .getByTestId(SCHEDULAR_ON_DEMAND)
         .querySelector('[data-testid="selected-indicator"]')
     ).toBeInTheDocument();
   });
@@ -98,7 +101,7 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
   it('keeps the custom field selected and editable while a cron is being typed', () => {
     render(<FormWrapper />);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
 
     const input = screen.getByRole('textbox');
 
@@ -107,21 +110,21 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
     fireEvent.change(input, { target: { value: '0 0 * *' } });
 
     expect(screen.getByRole('textbox')).toHaveValue('0 0 * *');
-    expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_CRON_ERROR)).toBeInTheDocument();
 
     // Completing it emits, and the echo back from the form must not switch the
     // frequency to Daily even though the cron matches the daily pattern.
     fireEvent.change(input, { target: { value: '0 0 * * *' } });
 
     expect(screen.getByRole('textbox')).toHaveValue('0 0 * * *');
-    expect(screen.queryByTestId('custom-cron-error')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CUSTOM_CRON_ERROR)).not.toBeInTheDocument();
   });
 
   it('stays on the schedule card and reports a required error when the custom cron is cleared in one go', () => {
     const handleValidityChange = jest.fn();
     render(<FormWrapper onValidityChange={handleValidityChange} />);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
 
     // Select-all + backspace clears the field in a single change event. The
     // emitted empty cron comes back as undefined, which must not be mistaken
@@ -134,7 +137,7 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
         .getByTestId('schedular-schedule')
         .querySelector('[data-testid="selected-indicator"]')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_CRON_ERROR)).toBeInTheDocument();
     expect(handleValidityChange).toHaveBeenLastCalledWith(false);
   });
 
@@ -142,19 +145,19 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
     const handleValidityChange = jest.fn();
     render(<FormWrapper onValidityChange={handleValidityChange} />);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '0 0 * *' },
     });
 
-    expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_CRON_ERROR)).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('frequency-day'));
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
 
     // The frequency switch restored a valid cron, so the message from the
     // previous expression must be gone with it.
-    expect(screen.queryByTestId('custom-cron-error')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CUSTOM_CRON_ERROR)).not.toBeInTheDocument();
     expect(handleValidityChange).toHaveBeenLastCalledWith(true);
   });
 
@@ -168,7 +171,7 @@ describe('ScheduleIntervalV1 react-hook-form wiring', () => {
         onChange={handleChange}
       />
     );
-    fireEvent.click(screen.getByTestId('schedular-on-demand'));
+    fireEvent.click(screen.getByTestId(SCHEDULAR_ON_DEMAND));
 
     expect(handleChange).toHaveBeenCalledWith(undefined);
   });

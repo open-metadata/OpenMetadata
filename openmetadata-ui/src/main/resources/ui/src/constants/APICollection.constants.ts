@@ -20,20 +20,28 @@ import {
   DataTypeTopic,
 } from '../generated/entity/data/apiEndpoint';
 
+const A5580B17_739B_4F86_B72A_96EB5C59DE6F =
+  'a5580b17-739b-4f86-b72a-96eb5c59de6f';
+const C5D3B9FF_C8B4_4D3C_A695_7E94C798E3F8 =
+  'c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8';
+const ACCESS_TO_PETSTORE_ORDERS = 'Access to Petstore orders';
+const PET_API_SERVICE_STORE = 'pet_api_service.store';
+const INGESTION_BOT = 'ingestion-bot';
+
 export const API_COLLECTION_DUMMY_DATA: APICollection = {
-  id: 'a5580b17-739b-4f86-b72a-96eb5c59de6f',
+  id: A5580B17_739B_4F86_B72A_96EB5C59DE6F,
   name: 'store',
   displayName: 'Store',
-  fullyQualifiedName: 'pet_api_service.store',
-  description: 'Access to Petstore orders',
+  fullyQualifiedName: PET_API_SERVICE_STORE,
+  description: ACCESS_TO_PETSTORE_ORDERS,
   version: 0.1,
   updatedAt: 1728661471889,
-  updatedBy: 'ingestion-bot',
+  updatedBy: INGESTION_BOT,
   endpointURL: 'https://petstore3.swagger.io/api/v3/openapi.json#tag/store',
   owners: [],
   tags: [],
   service: {
-    id: 'c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
+    id: C5D3B9FF_C8B4_4D3C_A695_7E94C798E3F8,
     type: 'apiService',
     name: 'pet_api_service',
     fullyQualifiedName: 'pet_api_service',
@@ -62,33 +70,33 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       'For valid response try integer IDs with value < 1000. Anything above 1000 or nonintegers will generate API errors',
     version: 0.1,
     updatedAt: 1728661472246,
-    updatedBy: 'ingestion-bot',
+    updatedBy: INGESTION_BOT,
     endpointURL:
       'https://petstore3.swagger.io/api/v3/openapi.json#operation/deleteOrder',
     requestMethod: APIRequestMethod.Delete,
     apiCollection: {
-      id: 'a5580b17-739b-4f86-b72a-96eb5c59de6f',
+      id: A5580B17_739B_4F86_B72A_96EB5C59DE6F,
       type: 'apiCollection',
       name: 'store',
-      fullyQualifiedName: 'pet_api_service.store',
-      description: 'Access to Petstore orders',
+      fullyQualifiedName: PET_API_SERVICE_STORE,
+      description: ACCESS_TO_PETSTORE_ORDERS,
       displayName: 'store',
       deleted: false,
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols, sonarjs/no-duplicate-string -- fixture URL
       href: 'http://sandbox-beta.open-metadata.org/api/v1/apiCollections/a5580b17-739b-4f86-b72a-96eb5c59de6f',
     },
     // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/apiEndpoints/eb95db42-9b0d-46e0-945d-dc6a4e115692',
     owners: [],
     service: {
-      id: 'c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
+      id: C5D3B9FF_C8B4_4D3C_A695_7E94C798E3F8,
       type: 'apiService',
       name: 'pet_api_service',
       fullyQualifiedName: 'pet_api_service',
       description: '',
       displayName: 'pet_api_service',
       deleted: false,
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols, sonarjs/no-duplicate-string -- fixture URL
       href: 'http://sandbox-beta.open-metadata.org/api/v1/services/apiServices/c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
     },
     serviceType: APIServiceType.REST,
@@ -102,16 +110,16 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
     description: 'Returns a map of status codes to quantities',
     version: 0.1,
     updatedAt: 1728661471960,
-    updatedBy: 'ingestion-bot',
+    updatedBy: INGESTION_BOT,
     endpointURL:
       'https://petstore3.swagger.io/api/v3/openapi.json#operation/getInventory',
     requestMethod: APIRequestMethod.Get,
     apiCollection: {
-      id: 'a5580b17-739b-4f86-b72a-96eb5c59de6f',
+      id: A5580B17_739B_4F86_B72A_96EB5C59DE6F,
       type: 'apiCollection',
       name: 'store',
-      fullyQualifiedName: 'pet_api_service.store',
-      description: 'Access to Petstore orders',
+      fullyQualifiedName: PET_API_SERVICE_STORE,
+      description: ACCESS_TO_PETSTORE_ORDERS,
       displayName: 'store',
       deleted: false,
       // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
@@ -121,7 +129,7 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
     href: 'http://sandbox-beta.open-metadata.org/api/v1/apiEndpoints/24f70b58-d285-4f5e-881e-8d27076a3050',
     owners: [],
     service: {
-      id: 'c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
+      id: C5D3B9FF_C8B4_4D3C_A695_7E94C798E3F8,
       type: 'apiService',
       name: 'pet_api_service',
       fullyQualifiedName: 'pet_api_service',
@@ -143,7 +151,7 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       'For valid response try integer IDs with value <= 5 or > 10. Other values will generate exceptions.',
     version: 0.1,
     updatedAt: 1728661472148,
-    updatedBy: 'ingestion-bot',
+    updatedBy: INGESTION_BOT,
     endpointURL:
       'https://petstore3.swagger.io/api/v3/openapi.json#operation/getOrderById',
     requestMethod: APIRequestMethod.Get,
@@ -188,11 +196,11 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       ],
     },
     apiCollection: {
-      id: 'a5580b17-739b-4f86-b72a-96eb5c59de6f',
+      id: A5580B17_739B_4F86_B72A_96EB5C59DE6F,
       type: 'apiCollection',
       name: 'store',
-      fullyQualifiedName: 'pet_api_service.store',
-      description: 'Access to Petstore orders',
+      fullyQualifiedName: PET_API_SERVICE_STORE,
+      description: ACCESS_TO_PETSTORE_ORDERS,
       displayName: 'store',
       deleted: false,
       // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
@@ -202,7 +210,7 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
     href: 'http://sandbox-beta.open-metadata.org/api/v1/apiEndpoints/80cebee6-c433-4aca-be10-00835607f434',
     owners: [],
     service: {
-      id: 'c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
+      id: C5D3B9FF_C8B4_4D3C_A695_7E94C798E3F8,
       type: 'apiService',
       name: 'pet_api_service',
       fullyQualifiedName: 'pet_api_service',
@@ -223,7 +231,7 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
     description: 'Place a new order in the store',
     version: 0.1,
     updatedAt: 1728661472057,
-    updatedBy: 'ingestion-bot',
+    updatedBy: INGESTION_BOT,
     endpointURL:
       'https://petstore3.swagger.io/api/v3/openapi.json#operation/placeOrder',
     requestMethod: APIRequestMethod.Post,
@@ -308,18 +316,18 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       ],
     },
     apiCollection: {
-      id: 'a5580b17-739b-4f86-b72a-96eb5c59de6f',
+      id: A5580B17_739B_4F86_B72A_96EB5C59DE6F,
       type: 'apiCollection',
       name: 'store',
-      fullyQualifiedName: 'pet_api_service.store',
-      description: 'Access to Petstore orders',
+      fullyQualifiedName: PET_API_SERVICE_STORE,
+      description: ACCESS_TO_PETSTORE_ORDERS,
       displayName: 'store',
       deleted: false,
     },
 
     owners: [],
     service: {
-      id: 'c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
+      id: C5D3B9FF_C8B4_4D3C_A695_7E94C798E3F8,
       type: 'apiService',
       name: 'pet_api_service',
       fullyQualifiedName: 'pet_api_service',
@@ -340,7 +348,7 @@ export const API_ENDPOINT_DUMMY_DATA: APIEndpoint = {
   description: 'Add a new pet to the store',
   version: 0.2,
   updatedAt: 1739265637241,
-  updatedBy: 'ingestion-bot',
+  updatedBy: INGESTION_BOT,
   endpointURL:
     'https://petstore3.swagger.io/api/v3/openapi.json#operation/addPet',
   requestMethod: APIRequestMethod.Post,
@@ -473,7 +481,7 @@ export const API_ENDPOINT_DUMMY_DATA: APIEndpoint = {
   followers: [],
   tags: [],
   service: {
-    id: 'c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
+    id: C5D3B9FF_C8B4_4D3C_A695_7E94C798E3F8,
     type: 'apiService',
     name: 'pet_api_service',
     fullyQualifiedName: 'pet_api_service',

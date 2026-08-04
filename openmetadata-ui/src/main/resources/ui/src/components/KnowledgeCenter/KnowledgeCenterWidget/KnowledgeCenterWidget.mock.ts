@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 /* eslint-disable max-len */
+const STR_9304F330_2E9A_4513_883B_C939E29683A8 =
+  '9304f330-2e9a-4513-883b-c939e29683a8';
+const HTTP_LOCALHOST_8585_API_V1_USERS_9304F330 =
+  'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8';
+
 export const MOCK_KNOWLEDGE_PAGE_LIST = [
   {
     id: '8e6427d6-98cc-4334-b2f2-15fb62bde887',
@@ -39,22 +44,22 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     },
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     votes: {
@@ -62,7 +67,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       downVotes: 0,
       upVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',
@@ -103,22 +108,22 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     },
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     votes: {
@@ -126,7 +131,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       downVotes: 0,
       upVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',
@@ -165,12 +170,12 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     },
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [],
@@ -180,7 +185,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       upVoters: [],
       downVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',
@@ -218,22 +223,22 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     },
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     votes: {
@@ -241,7 +246,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       downVotes: 0,
       upVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',
@@ -280,22 +285,22 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     },
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     votes: {
@@ -304,7 +309,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       upVoters: [],
       downVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',
@@ -342,22 +347,22 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     },
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     votes: {
@@ -366,7 +371,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       upVoters: [],
       downVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',
@@ -404,22 +409,22 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     },
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     votes: {
@@ -427,7 +432,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       downVotes: 0,
       upVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',
@@ -454,22 +459,22 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     href: 'http://localhost:8585/api/v1/contextCenter/pages/bdea47a9-46d6-401a-a58e-a80882c9c68c',
     owners: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     followers: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/users/9304f330-2e9a-4513-883b-c939e29683a8',
+        href: HTTP_LOCALHOST_8585_API_V1_USERS_9304F330,
       },
     ],
     votes: {
@@ -477,7 +482,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
       downVotes: 0,
       upVoters: [
         {
-          id: '9304f330-2e9a-4513-883b-c939e29683a8',
+          id: STR_9304F330_2E9A_4513_883B_C939E29683A8,
           type: 'user',
           name: 'admin',
           fullyQualifiedName: 'admin',

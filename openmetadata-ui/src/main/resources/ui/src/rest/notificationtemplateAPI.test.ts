@@ -27,6 +27,12 @@ import {
   validateNotificationTemplate,
 } from './notificationtemplateAPI';
 
+const TEST_TEMPLATE = 'test-template';
+const TEST_TEMPLATE_2 = 'Test Template';
+const TEST_TEMPLATE_3 = 'test.template';
+const TEST_SUBJECT = 'Test Subject';
+const NOTIFICATIONTEMPLATES = '/notificationTemplates';
+
 jest.mock('./index');
 
 describe('notificationtemplateAPI', () => {
@@ -40,20 +46,20 @@ describe('notificationtemplateAPI', () => {
     it('should create a notification template', async () => {
       const mockTemplate: NotificationTemplate = {
         id: 'test-id',
-        name: 'test-template',
-        displayName: 'Test Template',
-        fullyQualifiedName: 'test.template',
+        name: TEST_TEMPLATE,
+        displayName: TEST_TEMPLATE_2,
+        fullyQualifiedName: TEST_TEMPLATE_3,
         provider: ProviderType.User,
-        templateSubject: 'Test Subject',
+        templateSubject: TEST_SUBJECT,
         templateBody: 'Test Body',
         updatedAt: 123456,
         deleted: false,
       };
 
       const createData: CreateNotificationTemplate = {
-        name: 'test-template',
-        displayName: 'Test Template',
-        templateSubject: 'Test Subject',
+        name: TEST_TEMPLATE,
+        displayName: TEST_TEMPLATE_2,
+        templateSubject: TEST_SUBJECT,
         templateBody: 'Test Body',
       };
 
@@ -62,7 +68,7 @@ describe('notificationtemplateAPI', () => {
       const result = await createNotificationTemplate(createData);
 
       expect(mockAPIClient.post).toHaveBeenCalledWith(
-        '/notificationTemplates',
+        NOTIFICATIONTEMPLATES,
         createData
       );
       expect(result).toEqual(mockTemplate);
@@ -70,9 +76,9 @@ describe('notificationtemplateAPI', () => {
 
     it('should handle creation errors', async () => {
       const createData: CreateNotificationTemplate = {
-        name: 'test-template',
-        displayName: 'Test Template',
-        templateSubject: 'Test Subject',
+        name: TEST_TEMPLATE,
+        displayName: TEST_TEMPLATE_2,
+        templateSubject: TEST_SUBJECT,
         templateBody: 'Test Body',
       };
 
@@ -88,11 +94,11 @@ describe('notificationtemplateAPI', () => {
     it('should patch a notification template', async () => {
       const mockTemplate: NotificationTemplate = {
         id: 'test-id',
-        name: 'test-template',
+        name: TEST_TEMPLATE,
         displayName: 'Updated Template',
-        fullyQualifiedName: 'test.template',
+        fullyQualifiedName: TEST_TEMPLATE_3,
         provider: ProviderType.User,
-        templateSubject: 'Test Subject',
+        templateSubject: TEST_SUBJECT,
         templateBody: 'Test Body',
         updatedAt: 123456,
         deleted: false,
@@ -130,11 +136,11 @@ describe('notificationtemplateAPI', () => {
     it('should get a notification template by FQN', async () => {
       const mockTemplate: NotificationTemplate = {
         id: 'test-id',
-        name: 'test-template',
-        displayName: 'Test Template',
-        fullyQualifiedName: 'test.template',
+        name: TEST_TEMPLATE,
+        displayName: TEST_TEMPLATE_2,
+        fullyQualifiedName: TEST_TEMPLATE_3,
         provider: ProviderType.User,
-        templateSubject: 'Test Subject',
+        templateSubject: TEST_SUBJECT,
         templateBody: 'Test Body',
         updatedAt: 123456,
         deleted: false,
@@ -142,7 +148,7 @@ describe('notificationtemplateAPI', () => {
 
       mockAPIClient.get.mockResolvedValue({ data: mockTemplate });
 
-      const result = await getNotificationTemplateByFqn('test.template');
+      const result = await getNotificationTemplateByFqn(TEST_TEMPLATE_3);
 
       expect(mockAPIClient.get).toHaveBeenCalledWith(
         '/notificationTemplates/name/test.template',
@@ -154,11 +160,11 @@ describe('notificationtemplateAPI', () => {
     it('should handle FQN with special characters', async () => {
       const mockTemplate: NotificationTemplate = {
         id: 'test-id',
-        name: 'test-template',
-        displayName: 'Test Template',
+        name: TEST_TEMPLATE,
+        displayName: TEST_TEMPLATE_2,
         fullyQualifiedName: 'test/template',
         provider: ProviderType.User,
-        templateSubject: 'Test Subject',
+        templateSubject: TEST_SUBJECT,
         templateBody: 'Test Body',
         updatedAt: 123456,
         deleted: false,
@@ -177,11 +183,11 @@ describe('notificationtemplateAPI', () => {
     it('should pass params to the API call', async () => {
       const mockTemplate: NotificationTemplate = {
         id: 'test-id',
-        name: 'test-template',
-        displayName: 'Test Template',
-        fullyQualifiedName: 'test.template',
+        name: TEST_TEMPLATE,
+        displayName: TEST_TEMPLATE_2,
+        fullyQualifiedName: TEST_TEMPLATE_3,
         provider: ProviderType.User,
-        templateSubject: 'Test Subject',
+        templateSubject: TEST_SUBJECT,
         templateBody: 'Test Body',
         updatedAt: 123456,
         deleted: false,
@@ -190,7 +196,7 @@ describe('notificationtemplateAPI', () => {
       mockAPIClient.get.mockResolvedValue({ data: mockTemplate });
 
       const params = { fields: 'owner,tags' };
-      await getNotificationTemplateByFqn('test.template', params);
+      await getNotificationTemplateByFqn(TEST_TEMPLATE_3, params);
 
       expect(mockAPIClient.get).toHaveBeenCalledWith(
         '/notificationTemplates/name/test.template',
@@ -202,7 +208,7 @@ describe('notificationtemplateAPI', () => {
       mockAPIClient.get.mockRejectedValue(new Error('Not found'));
 
       await expect(
-        getNotificationTemplateByFqn('test.template')
+        getNotificationTemplateByFqn(TEST_TEMPLATE_3)
       ).rejects.toThrow('Not found');
     });
   });
@@ -261,7 +267,7 @@ describe('notificationtemplateAPI', () => {
 
       const result = await getAllNotificationTemplates();
 
-      expect(mockAPIClient.get).toHaveBeenCalledWith('/notificationTemplates', {
+      expect(mockAPIClient.get).toHaveBeenCalledWith(NOTIFICATIONTEMPLATES, {
         params: undefined,
       });
       expect(result).toEqual(mockResponse);
@@ -279,7 +285,7 @@ describe('notificationtemplateAPI', () => {
       const params = { limit: 10, offset: 0, provider: ProviderType.User };
       await getAllNotificationTemplates(params);
 
-      expect(mockAPIClient.get).toHaveBeenCalledWith('/notificationTemplates', {
+      expect(mockAPIClient.get).toHaveBeenCalledWith(NOTIFICATIONTEMPLATES, {
         params,
       });
     });
@@ -316,14 +322,14 @@ describe('notificationtemplateAPI', () => {
       mockAPIClient.post.mockResolvedValue({ data: mockValidationResponse });
 
       const result = await validateNotificationTemplate(
-        'Test Subject',
+        TEST_SUBJECT,
         'Test Body'
       );
 
       expect(mockAPIClient.post).toHaveBeenCalledWith(
         '/notificationTemplates/validate',
         {
-          templateSubject: 'Test Subject',
+          templateSubject: TEST_SUBJECT,
           templateBody: 'Test Body',
         }
       );

@@ -24,6 +24,10 @@ import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeS
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomizablePageHeader } from './CustomizablePageHeader';
 
+const RESET_BUTTON = 'reset-button';
+const SAVE_BUTTON = 'save-button';
+const LABEL_RESET_DEFAULT_LAYOUT = 'label.reset-default-layout';
+
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'test-persona' }),
 }));
@@ -71,8 +75,8 @@ describe('CustomizablePageHeader', () => {
     );
 
     expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
-    expect(screen.getByTestId('reset-button')).toBeInTheDocument();
-    expect(screen.getByTestId('save-button')).toBeInTheDocument();
+    expect(screen.getByTestId(RESET_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(SAVE_BUTTON)).toBeInTheDocument();
   });
 
   it('should handle save button click', async () => {
@@ -82,7 +86,7 @@ describe('CustomizablePageHeader', () => {
       </MemoryRouter>
     );
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(SAVE_BUTTON);
 
     await act(async () => {
       fireEvent.click(saveButton);
@@ -103,7 +107,7 @@ describe('CustomizablePageHeader', () => {
       </MemoryRouter>
     );
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(SAVE_BUTTON);
 
     expect(saveButton).toBeDisabled();
   });
@@ -115,9 +119,9 @@ describe('CustomizablePageHeader', () => {
       </MemoryRouter>
     );
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(SAVE_BUTTON);
     const cancelButton = screen.getByTestId('cancel-button');
-    const resetButton = screen.getByTestId('reset-button');
+    const resetButton = screen.getByTestId(RESET_BUTTON);
 
     act(() => {
       fireEvent.click(saveButton);
@@ -142,9 +146,9 @@ describe('CustomizablePageHeader', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByTestId('reset-button'));
+    fireEvent.click(screen.getByTestId(RESET_BUTTON));
 
-    expect(screen.getByText('label.reset-default-layout')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_RESET_DEFAULT_LAYOUT)).toBeInTheDocument();
     expect(
       screen.getByText('message.reset-layout-confirmation')
     ).toBeInTheDocument();
@@ -159,14 +163,12 @@ describe('CustomizablePageHeader', () => {
 
     // Open reset modal
     act(() => {
-      fireEvent.click(screen.getByTestId('reset-button'));
+      fireEvent.click(screen.getByTestId(RESET_BUTTON));
     });
 
     // Wait for modal to appear and find the reset button in modal by text
     await waitFor(() => {
-      expect(
-        screen.getByText('label.reset-default-layout')
-      ).toBeInTheDocument();
+      expect(screen.getByText(LABEL_RESET_DEFAULT_LAYOUT)).toBeInTheDocument();
     });
 
     const modalResetButton = screen.getByRole('button', {
@@ -189,14 +191,12 @@ describe('CustomizablePageHeader', () => {
 
     // Open reset modal
     act(() => {
-      fireEvent.click(screen.getByTestId('reset-button'));
+      fireEvent.click(screen.getByTestId(RESET_BUTTON));
     });
 
     // Wait for modal to appear and find cancel button by role and text
     await waitFor(() => {
-      expect(
-        screen.getByText('label.reset-default-layout')
-      ).toBeInTheDocument();
+      expect(screen.getByText(LABEL_RESET_DEFAULT_LAYOUT)).toBeInTheDocument();
     });
 
     const cancelButton = screen.getByRole('button', { name: 'label.cancel' });

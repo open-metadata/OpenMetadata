@@ -55,6 +55,15 @@ import {
   splitCSV,
 } from './CSVPureUtils';
 
+const PW_DOMAIN_7429A05D = 'PW%domain.7429a05d';
+const TEST_ENTITY = 'test-entity';
+const PW_0B440530_CLEVER3CD5511B_PW_10739BE3_SHARK22DFBA =
+  'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9';
+const PW_DOMAIN_09E0BF05 = 'PW%domain.09e0bf05';
+const PII_NONSENSITIVE = 'PII.NonSensitive';
+const ENTITY_UPDATED = 'Entity updated';
+const ENTITY_CREATED = 'Entity created';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Tooltip: jest.fn().mockImplementation(({ children, title }) => (
     <div data-testid="tooltip" title={title}>
@@ -388,7 +397,7 @@ describe('CSVUtils', () => {
       ];
       const dataSource = [
         {
-          domains: 'PW%domain.7429a05d',
+          domains: PW_DOMAIN_7429A05D,
           'name*': 'test-database',
         },
       ];
@@ -408,7 +417,7 @@ describe('CSVUtils', () => {
       const dataSource = [
         {
           tags: 'PII.Sensitive',
-          'name*': 'test-entity',
+          'name*': TEST_ENTITY,
         },
       ];
       const csvString = getCSVStringFromColumnsAndDataSource(
@@ -423,7 +432,7 @@ describe('CSVUtils', () => {
       const columns = [{ name: 'domains', key: 'domains' }];
       const dataSource = [
         {
-          domains: 'PW%domain.7429a05d',
+          domains: PW_DOMAIN_7429A05D,
         },
       ];
       const csvString = getCSVStringFromColumnsAndDataSource(
@@ -505,7 +514,7 @@ describe('CSVUtils', () => {
       const columns = [{ name: 'domains', key: 'domains' }];
       const dataSource = [
         {
-          domains: 'PW%domain.7429a05d',
+          domains: PW_DOMAIN_7429A05D,
         },
       ];
       const csvString = getCSVStringFromColumnsAndDataSource(
@@ -524,7 +533,7 @@ describe('CSVUtils', () => {
       ];
       const dataSource = [
         {
-          domains: 'PW%domain.7429a05d',
+          domains: PW_DOMAIN_7429A05D,
           fullyQualifiedName: '"pw.db.service.e2f0f527".pwdatabasea8657c',
           'name*': 'test-database',
         },
@@ -602,8 +611,7 @@ describe('CSVUtils', () => {
         const columns = [{ name: 'glossaryTerms', key: 'glossaryTerms' }];
         const dataSource = [
           {
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9',
+            glossaryTerms: PW_0B440530_CLEVER3CD5511B_PW_10739BE3_SHARK22DFBA,
           },
         ];
         const csvString = getCSVStringFromColumnsAndDataSource(
@@ -703,7 +711,7 @@ describe('CSVUtils', () => {
         const columns = [{ name: 'domains', key: 'domains' }];
         const dataSource = [
           {
-            domains: 'PW%domain.09e0bf05',
+            domains: PW_DOMAIN_09E0BF05,
           },
         ];
         const csvString = getCSVStringFromColumnsAndDataSource(
@@ -799,7 +807,7 @@ describe('CSVUtils', () => {
         const columns = [{ name: 'tags', key: 'tags' }];
         const dataSource = [
           {
-            tags: 'PII.NonSensitive',
+            tags: PII_NONSENSITIVE,
           },
         ];
         const csvString = getCSVStringFromColumnsAndDataSource(
@@ -961,11 +969,10 @@ describe('CSVUtils', () => {
         ];
         const dataSource = [
           {
-            'name*': 'test-entity',
-            tags: 'PII.NonSensitive',
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9',
-            domains: 'PW%domain.09e0bf05',
+            'name*': TEST_ENTITY,
+            tags: PII_NONSENSITIVE,
+            glossaryTerms: PW_0B440530_CLEVER3CD5511B_PW_10739BE3_SHARK22DFBA,
+            domains: PW_DOMAIN_09E0BF05,
             description: 'Test description',
           },
         ];
@@ -977,12 +984,12 @@ describe('CSVUtils', () => {
         expect(csvString).toContain(
           'name*,tags,glossaryTerms,domains,description'
         );
-        expect(csvString).toContain('test-entity');
-        expect(csvString).toContain('PII.NonSensitive');
+        expect(csvString).toContain(TEST_ENTITY);
+        expect(csvString).toContain(PII_NONSENSITIVE);
         expect(csvString).toContain(
           '"PW%0b440530.Clever3cd5511b"".PW.10739be3%Shark22dfbaf9"'
         );
-        expect(csvString).toContain('PW%domain.09e0bf05');
+        expect(csvString).toContain(PW_DOMAIN_09E0BF05);
         expect(csvString).toContain('Test description');
       });
 
@@ -1015,8 +1022,7 @@ describe('CSVUtils', () => {
         const dataSource = [
           {
             'name*': 'entity1',
-            glossaryTerms:
-              'PW%0b440530.Clever3cd5511b".PW.10739be3%Shark22dfbaf9',
+            glossaryTerms: PW_0B440530_CLEVER3CD5511B_PW_10739BE3_SHARK22DFBA,
           },
           {
             'name*': 'entity2',
@@ -1941,13 +1947,13 @@ describe('CSVUtils', () => {
 
     it('should classify an updated row as UPDATE', () => {
       expect(
-        getImportOperation({ status: 'success', details: 'Entity updated' })
+        getImportOperation({ status: 'success', details: ENTITY_UPDATED })
       ).toBe('UPDATE');
     });
 
     it('should classify a created row as CREATE', () => {
       expect(
-        getImportOperation({ status: 'success', details: 'Entity created' })
+        getImportOperation({ status: 'success', details: ENTITY_CREATED })
       ).toBe('CREATE');
     });
 
@@ -1959,7 +1965,7 @@ describe('CSVUtils', () => {
       expect(
         getImportOperationRowClass({
           status: 'success',
-          details: 'Entity updated',
+          details: ENTITY_UPDATED,
         })
       ).toBe('bulk-edit-op-row-update');
       expect(getImportOperationRowClass({ status: 'failure' })).toBe(
@@ -1969,9 +1975,9 @@ describe('CSVUtils', () => {
 
     it('should summarise operations across rows', () => {
       const summary = getImportOperationSummary([
-        { status: 'success', details: 'Entity created' },
-        { status: 'success', details: 'Entity created' },
-        { status: 'success', details: 'Entity updated' },
+        { status: 'success', details: ENTITY_CREATED },
+        { status: 'success', details: ENTITY_CREATED },
+        { status: 'success', details: ENTITY_UPDATED },
         { status: 'failure', details: 'bad' },
       ]);
 

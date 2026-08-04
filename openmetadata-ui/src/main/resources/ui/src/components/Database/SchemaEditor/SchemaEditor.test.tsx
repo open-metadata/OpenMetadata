@@ -15,6 +15,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import SchemaEditor from './SchemaEditor';
 
+const QUERY_COPY_BUTTON = 'query-copy-button';
+
 const mockOnChange = jest.fn();
 const mockOnCopyToClipBoard = jest.fn();
 
@@ -29,6 +31,7 @@ jest.mock('../../../constants/constants', () => ({
 }));
 
 jest.mock('../../../utils/SchemaEditor.utils', () => ({
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   getSchemaEditorValue: jest.fn().mockReturnValue('test SQL query'),
 }));
 
@@ -143,7 +146,7 @@ describe('SchemaEditor component test', () => {
       await screen.findByTestId('code-mirror-container')
     ).toBeInTheDocument();
 
-    expect(await screen.findByTestId('query-copy-button')).toBeInTheDocument();
+    expect(await screen.findByTestId(QUERY_COPY_BUTTON)).toBeInTheDocument();
   });
 
   it('Value provided via props should be visible', async () => {
@@ -157,13 +160,13 @@ describe('SchemaEditor component test', () => {
   it('Copy button should not be visible', async () => {
     render(<SchemaEditor {...mockProps} showCopyButton={false} />);
 
-    expect(screen.queryByTestId('query-copy-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(QUERY_COPY_BUTTON)).not.toBeInTheDocument();
   });
 
   it('Should call onCopyToClipBoard', async () => {
     render(<SchemaEditor {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('query-copy-button'));
+    fireEvent.click(screen.getByTestId(QUERY_COPY_BUTTON));
 
     expect(mockOnCopyToClipBoard).toHaveBeenCalled();
   });

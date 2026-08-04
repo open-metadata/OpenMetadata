@@ -14,6 +14,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import Searchbar from './SearchBar.component';
 
+const TEST_SEARCH = 'Test Search';
+
 const mockOnUserSearch = jest.fn();
 
 jest.mock('../Loader/Loader', () => {
@@ -37,11 +39,11 @@ describe('Test Searchbar Component', () => {
   it('Renders the searchbar with the search text sent to it', async () => {
     act(() => {
       const onSearch = jest.fn();
-      render(<Searchbar searchValue="Test Search" onSearch={onSearch} />);
+      render(<Searchbar searchValue={TEST_SEARCH} onSearch={onSearch} />);
     });
     const searchElement = screen.getByTestId('searchbar') as HTMLInputElement;
 
-    expect(searchElement.value).toBe('Test Search');
+    expect(searchElement.value).toBe(TEST_SEARCH);
   });
 
   it('Renders the searchbar with blank text if the search text is blank or not sent', async () => {
@@ -68,12 +70,12 @@ describe('Test Searchbar Component', () => {
     act(() => {
       fireEvent.focus(searchElement);
 
-      fireEvent.change(searchElement, { target: { value: 'Test Search' } });
+      fireEvent.change(searchElement, { target: { value: TEST_SEARCH } });
 
       fireEvent.blur(searchElement);
     });
 
-    expect(searchElement.value).toBe('Test Search');
+    expect(searchElement.value).toBe(TEST_SEARCH);
   });
 
   it('Calls the callback function on keyup after timer runs out', async () => {
@@ -86,9 +88,9 @@ describe('Test Searchbar Component', () => {
 
     expect(searchElement.value).toBe('');
 
-    fireEvent.change(searchElement, { target: { value: 'Test Search' } });
+    fireEvent.change(searchElement, { target: { value: TEST_SEARCH } });
 
-    expect(searchElement.value).toBe('Test Search');
+    expect(searchElement.value).toBe(TEST_SEARCH);
   });
 
   it('should handle search input with debounce', async () => {

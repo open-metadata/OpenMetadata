@@ -21,6 +21,8 @@ import DomainDetailPage from '../Domain/DomainDetailPage/DomainDetailPage.compon
 import DomainsListPage from '../DomainListing/DomainListPage';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural';
+
 const DomainRouter = () => {
   const { permissions } = usePermissionProvider();
   const domainPermission = useMemo(
@@ -35,7 +37,7 @@ const DomainRouter = () => {
         index
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainsListPage pageTitle={i18n.t('label.domain-plural')} />
+            <DomainsListPage pageTitle={i18n.t(LABEL_DOMAIN_PLURAL)} />
           </AdminProtectedRoute>
         }
         path="/"
@@ -43,7 +45,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainDetailPage pageTitle={i18n.t('label.domain-plural')} />
+            <DomainDetailPage pageTitle={i18n.t(LABEL_DOMAIN_PLURAL)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS.replace(ROUTES.DOMAIN, '')}
@@ -51,7 +53,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainDetailPage pageTitle={i18n.t('label.domain-plural')} />
+            <DomainDetailPage pageTitle={i18n.t(LABEL_DOMAIN_PLURAL)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS_WITH_TAB.replace(ROUTES.DOMAIN, '')}
@@ -59,7 +61,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainDetailPage pageTitle={i18n.t('label.domain-plural')} />
+            <DomainDetailPage pageTitle={i18n.t(LABEL_DOMAIN_PLURAL)} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS_WITH_SUBTAB.replace(ROUTES.DOMAIN, '')}

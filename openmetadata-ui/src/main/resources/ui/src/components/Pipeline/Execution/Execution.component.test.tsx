@@ -14,6 +14,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import ExecutionsTab from './Execution.component';
 
+const DATA_RANGE_PICKER_BUTTON = 'data-range-picker-button' as const;
+
 jest.mock('./ListView/ListViewTab.component', () =>
   jest.fn().mockImplementation(() => <div>ListViewTab</div>)
 );
@@ -57,7 +59,7 @@ describe('Test Execution Component', () => {
     expect(screen.getByTestId('execution-tab')).toBeInTheDocument();
     expect(screen.getByTestId('radio-switch')).toBeInTheDocument();
     expect(screen.getByTestId('status-button')).toBeInTheDocument();
-    expect(screen.getByTestId('data-range-picker-button')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_RANGE_PICKER_BUTTON)).toBeInTheDocument();
     expect(screen.getByTestId('data-range-picker')).toBeInTheDocument();
   });
 
@@ -86,7 +88,7 @@ describe('Test Execution Component', () => {
 
     expect(screen.getByText('ListViewTab')).toBeInTheDocument();
 
-    expect(screen.getByTestId('data-range-picker-button')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_RANGE_PICKER_BUTTON)).toBeInTheDocument();
 
     const treeRadioButton = screen.getByText('Tree');
 
@@ -97,7 +99,7 @@ describe('Test Execution Component', () => {
     expect(screen.getByText('TreeViewTab')).toBeInTheDocument();
 
     expect(
-      screen.queryByTestId('data-range-picker-button')
+      screen.queryByTestId(DATA_RANGE_PICKER_BUTTON)
     ).not.toBeInTheDocument();
   });
 });

@@ -16,6 +16,12 @@ import { ConstraintType } from '../../../generated/entity/data/table';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import FieldCard from './FieldCard';
 
+const FIELD_CARD = '.field-card';
+const LABEL_NO_ENTITY_ENTITY_LABEL_DESCRIPTION =
+  'label.no-entity - {"entity":"label.description"}';
+const FIELD_CARD_HIGHLIGHTED = 'field-card-highlighted';
+const GLOSSARY_TERM_ITEM = '.glossary-term-item';
+
 // Mock i18n
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -131,7 +137,7 @@ describe('FieldCard', () => {
   it('renders basic structure and content', () => {
     const { container } = render(<FieldCard {...baseProps} />);
 
-    expect(container.querySelector('.field-card')).toBeInTheDocument();
+    expect(container.querySelector(FIELD_CARD)).toBeInTheDocument();
     expect(container.querySelector('.field-card-header')).toBeInTheDocument();
     expect(container.querySelector('.field-card-content')).toBeInTheDocument();
 
@@ -161,15 +167,15 @@ describe('FieldCard', () => {
     render(<FieldCard {...baseProps} description={undefined} />);
 
     expect(
-      screen.getByText('label.no-entity - {"entity":"label.description"}')
+      screen.getByText(LABEL_NO_ENTITY_ENTITY_LABEL_DESCRIPTION)
     ).toBeInTheDocument();
   });
 
   it('applies highlighted class when isHighlighted is true', () => {
     const { container } = render(<FieldCard {...baseProps} isHighlighted />);
 
-    expect(container.querySelector('.field-card')).toHaveClass(
-      'field-card-highlighted'
+    expect(container.querySelector(FIELD_CARD)).toHaveClass(
+      FIELD_CARD_HIGHLIGHTED
     );
   });
 
@@ -254,7 +260,7 @@ describe('FieldCard', () => {
         screen.getByText(/label\.glossary-term-plural/)
       ).toBeInTheDocument();
 
-      const termItems = container.querySelectorAll('.glossary-term-item');
+      const termItems = container.querySelectorAll(GLOSSARY_TERM_ITEM);
 
       expect(termItems).toHaveLength(1);
 
@@ -275,7 +281,7 @@ describe('FieldCard', () => {
         <FieldCard {...baseProps} tags={mockGlossaryTerms} />
       );
 
-      const termItems = container.querySelectorAll('.glossary-term-item');
+      const termItems = container.querySelectorAll(GLOSSARY_TERM_ITEM);
 
       // In test environment with wide containers, all 3 terms are shown
       expect(termItems).toHaveLength(3);
@@ -288,7 +294,7 @@ describe('FieldCard', () => {
         <FieldCard {...baseProps} tags={mockGlossaryTerms} />
       );
 
-      const termItems = container.querySelectorAll('.glossary-term-item');
+      const termItems = container.querySelectorAll(GLOSSARY_TERM_ITEM);
 
       // In test environment with wide containers, all terms are shown
       expect(termItems).toHaveLength(3);
@@ -328,7 +334,7 @@ describe('FieldCard', () => {
       ).toBeInTheDocument();
 
       const tagItems = container.querySelectorAll('.tag-item');
-      const termItems = container.querySelectorAll('.glossary-term-item');
+      const termItems = container.querySelectorAll(GLOSSARY_TERM_ITEM);
 
       expect(tagItems).toHaveLength(2);
       expect(termItems).toHaveLength(1);
@@ -340,7 +346,7 @@ describe('FieldCard', () => {
       );
 
       const tagItems = container.querySelectorAll('.tag-item');
-      const termItems = container.querySelectorAll('.glossary-term-item');
+      const termItems = container.querySelectorAll(GLOSSARY_TERM_ITEM);
 
       expect(tagItems).toHaveLength(3);
       expect(termItems).toHaveLength(3);
@@ -393,7 +399,7 @@ describe('FieldCard', () => {
       );
 
       const tagItems = container.querySelectorAll('.tag-item');
-      const termItems = container.querySelectorAll('.glossary-term-item');
+      const termItems = container.querySelectorAll(GLOSSARY_TERM_ITEM);
 
       expect(tagItems).toHaveLength(1);
       expect(termItems).toHaveLength(1);
@@ -478,7 +484,7 @@ describe('FieldCard', () => {
 
       expect(container.querySelector('.tag-item')).not.toBeInTheDocument();
       expect(
-        container.querySelector('.glossary-term-item')
+        container.querySelector(GLOSSARY_TERM_ITEM)
       ).not.toBeInTheDocument();
     });
 
@@ -489,7 +495,7 @@ describe('FieldCard', () => {
 
       expect(container.querySelectorAll('.tag-item')).toHaveLength(3);
       expect(
-        container.querySelector('.glossary-term-item')
+        container.querySelector(GLOSSARY_TERM_ITEM)
       ).not.toBeInTheDocument();
     });
 
@@ -499,14 +505,14 @@ describe('FieldCard', () => {
       );
 
       expect(container.querySelector('.tag-item')).not.toBeInTheDocument();
-      expect(container.querySelectorAll('.glossary-term-item')).toHaveLength(3);
+      expect(container.querySelectorAll(GLOSSARY_TERM_ITEM)).toHaveLength(3);
     });
 
     it('handles null or undefined description', () => {
       render(<FieldCard {...baseProps} description={undefined} />);
 
       expect(
-        screen.getByText('label.no-entity - {"entity":"label.description"}')
+        screen.getByText(LABEL_NO_ENTITY_ENTITY_LABEL_DESCRIPTION)
       ).toBeInTheDocument();
     });
 
@@ -514,7 +520,7 @@ describe('FieldCard', () => {
       render(<FieldCard {...baseProps} description="" />);
 
       expect(
-        screen.getByText('label.no-entity - {"entity":"label.description"}')
+        screen.getByText(LABEL_NO_ENTITY_ENTITY_LABEL_DESCRIPTION)
       ).toBeInTheDocument();
     });
 
@@ -537,11 +543,11 @@ describe('FieldCard', () => {
         <FieldCard {...baseProps} isHighlighted={false} />
       );
 
-      expect(highlightedContainer.querySelector('.field-card')).toHaveClass(
-        'field-card-highlighted'
+      expect(highlightedContainer.querySelector(FIELD_CARD)).toHaveClass(
+        FIELD_CARD_HIGHLIGHTED
       );
-      expect(normalContainer.querySelector('.field-card')).not.toHaveClass(
-        'field-card-highlighted'
+      expect(normalContainer.querySelector(FIELD_CARD)).not.toHaveClass(
+        FIELD_CARD_HIGHLIGHTED
       );
     });
 

@@ -19,11 +19,13 @@ import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import MetricDetails from './MetricDetails';
 import { MetricDetailsProps } from './MetricDetails.interface';
 
+const TEST_METRIC = 'test.metric';
+
 const mockMetricDetails: Metric = {
   id: 'test-metric-id',
   name: 'test-metric',
   displayName: 'Test Metric',
-  fullyQualifiedName: 'test.metric',
+  fullyQualifiedName: TEST_METRIC,
   description: 'Test metric description',
   version: 0.1,
   updatedAt: 1234567890,
@@ -71,8 +73,8 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({
-    fqn: 'test.metric',
-    entityFqn: 'test.metric',
+    fqn: TEST_METRIC,
+    entityFqn: TEST_METRIC,
   }),
 }));
 

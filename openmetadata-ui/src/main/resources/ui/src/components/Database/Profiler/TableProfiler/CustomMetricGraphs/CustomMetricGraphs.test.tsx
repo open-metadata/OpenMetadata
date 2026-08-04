@@ -14,6 +14,8 @@ import { queryByAttribute, render, screen } from '@testing-library/react';
 import { useTableProfiler } from '../TableProfilerProvider';
 import CustomMetricGraphs from './CustomMetricGraphs.component';
 
+const CUSTOM_METRIC_GRAPH_CONTAINER = 'custom-metric-graph-container';
+
 const mockProps = {
   customMetricsGraphData: {
     CountOfFRAddress: [
@@ -86,7 +88,7 @@ describe('CustomMetricGraphs', () => {
     const metric2 = mockProps.customMetrics[1].name;
 
     expect(
-      await screen.findByTestId('custom-metric-graph-container')
+      await screen.findByTestId(CUSTOM_METRIC_GRAPH_CONTAINER)
     ).toBeInTheDocument();
     expect(await screen.findByText(metric1)).toBeInTheDocument();
     expect(await screen.findByText(metric2)).toBeInTheDocument();
@@ -125,7 +127,7 @@ describe('CustomMetricGraphs', () => {
     render(<CustomMetricGraphs {...mockProps} />);
 
     expect(
-      await screen.findByTestId('custom-metric-graph-container')
+      await screen.findByTestId(CUSTOM_METRIC_GRAPH_CONTAINER)
     ).toBeInTheDocument();
   });
 
@@ -133,7 +135,7 @@ describe('CustomMetricGraphs', () => {
     render(<CustomMetricGraphs {...mockProps} />);
 
     expect(
-      await screen.findByTestId('custom-metric-graph-container')
+      await screen.findByTestId(CUSTOM_METRIC_GRAPH_CONTAINER)
     ).toBeInTheDocument();
   });
 

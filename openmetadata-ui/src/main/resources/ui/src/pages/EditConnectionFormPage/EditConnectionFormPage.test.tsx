@@ -15,6 +15,7 @@ import { act } from 'react';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
+const NEXT_BUTTON = 'next-button';
 const mockServiceData = {
   id: 'a831deb9-143e-4832-9eb2-82f635b6964b',
   name: 'mySQL',
@@ -251,7 +252,7 @@ describe('EditConnectionFormPage component', () => {
       render(<EditConnectionFormPage {...mockProps} />);
     });
 
-    const nextButton = screen.getByTestId('next-button');
+    const nextButton = screen.getByTestId(NEXT_BUTTON);
     await act(async () => {
       fireEvent.click(nextButton);
     });
@@ -266,7 +267,7 @@ describe('EditConnectionFormPage component', () => {
 
     // Move to step 2
     await act(async () => {
-      fireEvent.click(screen.getByTestId('next-button'));
+      fireEvent.click(screen.getByTestId(NEXT_BUTTON));
     });
 
     // Click footer back button → confirmation modal appears
@@ -291,7 +292,7 @@ describe('EditConnectionFormPage component', () => {
 
     // Move to step 2
     await act(async () => {
-      fireEvent.click(screen.getByTestId('next-button'));
+      fireEvent.click(screen.getByTestId(NEXT_BUTTON));
     });
 
     // Submit filters form in step 2
@@ -312,7 +313,7 @@ describe('EditConnectionFormPage component', () => {
 
     // Move to step 2
     await act(async () => {
-      fireEvent.click(screen.getByTestId('next-button'));
+      fireEvent.click(screen.getByTestId(NEXT_BUTTON));
     });
 
     // Submit filters form in step 2

@@ -39,6 +39,8 @@ import Loader from '../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
 import { AddSqlQueryFormModalProps } from './AddSqlQueryFormModal.interface';
 
+const LABEL_QUERY = 'label.query';
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -104,7 +106,7 @@ const AddSqlQueryFormModal = ({
     try {
       await postQuery(updatedValues);
       showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.query') })
+        t('server.create-entity-success', { entity: t(LABEL_QUERY) })
       );
       onCancel();
     } catch (error) {
@@ -113,7 +115,7 @@ const AddSqlQueryFormModal = ({
       ) {
         showErrorToast(
           t('server.entity-already-exist-message-without-name', {
-            entity: t('label.query'),
+            entity: t(LABEL_QUERY),
             entityPlural: t('label.query-lowercase-plural'),
           })
         );
@@ -155,7 +157,7 @@ const AddSqlQueryFormModal = ({
       }}
       okText={t('label.save')}
       open={open}
-      title={t('label.add-new-entity', { entity: t('label.query') })}
+      title={t('label.add-new-entity', { entity: t(LABEL_QUERY) })}
       width={750}
       onCancel={onCancel}>
       {isLoading ? (

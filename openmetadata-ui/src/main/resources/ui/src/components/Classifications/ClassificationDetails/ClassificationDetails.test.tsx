@@ -21,6 +21,14 @@ import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getTags } from '../../../rest/tagAPI';
 import ClassificationDetails from './ClassificationDetails';
 
+const TAGS_TABLE = 'tags-table';
+const DOMAIN_LABEL = 'domain-label';
+const OWNER_LABEL = 'owner-label';
+const ADD_NEW_TAG_BUTTON = 'add-new-tag-button';
+const DISABLE_BUTTON = 'disable-button';
+const TAG_DISABLE_TOGGLE_TAG1 = 'tag-disable-toggle-Tag1';
+const ARIA_DISABLED = 'aria-disabled';
+
 const mockNavigate = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -160,7 +168,7 @@ jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
 
 jest.mock('../../common/Table/Table', () =>
   jest.fn().mockImplementation(({ columns, dataSource, loading, locale }) => (
-    <div data-testid="tags-table">
+    <div data-testid={TAGS_TABLE}>
       {loading && <span data-testid="table-loading">Loading...</span>}
       {dataSource?.length === 0 && !loading && locale?.emptyText}
       {dataSource?.map((tag: Tag) => (
@@ -199,13 +207,13 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 jest.mock('../../DataAssets/DomainLabelV2/DomainLabelV2', () => ({
   DomainLabelV2: jest
     .fn()
-    .mockImplementation(() => <div data-testid="domain-label">Domain</div>),
+    .mockImplementation(() => <div data-testid={DOMAIN_LABEL}>Domain</div>),
 }));
 
 jest.mock('../../DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
   OwnerLabelV2: jest
     .fn()
-    .mockImplementation(() => <div data-testid="owner-label">Owner</div>),
+    .mockImplementation(() => <div data-testid={OWNER_LABEL}>Owner</div>),
 }));
 
 jest.mock('../../common/Badge/Badge.component', () =>
@@ -295,8 +303,8 @@ describe('ClassificationDetails', () => {
       'TestClassification'
     );
     expect(screen.getByTestId('tag-row-Tag2')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-label')).toBeInTheDocument();
-    expect(screen.getByTestId('owner-label')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_LABEL)).toBeInTheDocument();
+    expect(screen.getByTestId(OWNER_LABEL)).toBeInTheDocument();
   });
 
   it('should show empty state when classification has no tags', async () => {
@@ -321,10 +329,10 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('add-new-tag-button')).toBeInTheDocument()
+      expect(screen.getByTestId(ADD_NEW_TAG_BUTTON)).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByTestId('add-new-tag-button'));
+    fireEvent.click(screen.getByTestId(ADD_NEW_TAG_BUTTON));
 
     expect(defaultProps.handleAddNewTagClick).toHaveBeenCalled();
   });
@@ -420,7 +428,7 @@ describe('ClassificationDetails', () => {
       expect(screen.getByTestId('system-badge')).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('disable-button')).toBeInTheDocument();
+    expect(screen.getByTestId(DISABLE_BUTTON)).toBeInTheDocument();
   });
 
   it('should toggle classification enabled state when disable button is clicked', async () => {
@@ -439,10 +447,10 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('disable-button')).toBeInTheDocument()
+      expect(screen.getByTestId(DISABLE_BUTTON)).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByTestId('disable-button'));
+    fireEvent.click(screen.getByTestId(DISABLE_BUTTON));
 
     expect(defaultProps.handleUpdateClassification).toHaveBeenCalledWith(
       expect.objectContaining({ disabled: true })
@@ -465,7 +473,7 @@ describe('ClassificationDetails', () => {
       expect(screen.getByTestId('disabled-indicator')).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('add-new-tag-button')).toBeDisabled();
+    expect(screen.getByTestId(ADD_NEW_TAG_BUTTON)).toBeDisabled();
   });
 
   it('should hide edit controls when user is in version view or lacks permissions', async () => {
@@ -479,7 +487,7 @@ describe('ClassificationDetails', () => {
       expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument()
     );
 
-    expect(screen.queryByTestId('add-new-tag-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ADD_NEW_TAG_BUTTON)).not.toBeInTheDocument();
 
     unmount();
 
@@ -512,11 +520,11 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('tag-disable-toggle-Tag1')).toBeInTheDocument()
+      expect(screen.getByTestId(TAG_DISABLE_TOGGLE_TAG1)).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('tag-disable-toggle-Tag1')).not.toHaveAttribute(
-      'aria-disabled',
+    expect(screen.getByTestId(TAG_DISABLE_TOGGLE_TAG1)).not.toHaveAttribute(
+      ARIA_DISABLED,
       'true'
     );
 
@@ -537,8 +545,8 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
-        'aria-disabled',
+      expect(screen.getByTestId(TAG_DISABLE_TOGGLE_TAG1)).toHaveAttribute(
+        ARIA_DISABLED,
         'true'
       )
     );
@@ -557,8 +565,8 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('tag-disable-toggle-Tag1')).toHaveAttribute(
-        'aria-disabled',
+      expect(screen.getByTestId(TAG_DISABLE_TOGGLE_TAG1)).toHaveAttribute(
+        ARIA_DISABLED,
         'true'
       )
     );
@@ -579,9 +587,9 @@ describe('ClassificationDetails', () => {
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(screen.queryByTestId('header')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('tags-table')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-label')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('owner-label')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TAGS_TABLE)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DOMAIN_LABEL)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(OWNER_LABEL)).not.toBeInTheDocument();
   });
 
   it('should not show loader or content when classification is undefined and not loading', async () => {
@@ -599,7 +607,7 @@ describe('ClassificationDetails', () => {
 
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     expect(screen.queryByTestId('header')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('tags-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(TAGS_TABLE)).not.toBeInTheDocument();
   });
 
   it('should render content and not loader when classification is available', async () => {
@@ -613,9 +621,9 @@ describe('ClassificationDetails', () => {
 
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     expect(screen.getByTestId('header')).toBeInTheDocument();
-    expect(screen.getByTestId('tags-table')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-label')).toBeInTheDocument();
-    expect(screen.getByTestId('owner-label')).toBeInTheDocument();
+    expect(screen.getByTestId(TAGS_TABLE)).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_LABEL)).toBeInTheDocument();
+    expect(screen.getByTestId(OWNER_LABEL)).toBeInTheDocument();
   });
 
   it('should pass currentClassification directly to GenericProvider', async () => {
@@ -650,6 +658,6 @@ describe('ClassificationDetails', () => {
 
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     expect(screen.getByTestId('header')).toBeInTheDocument();
-    expect(screen.getByTestId('tags-table')).toBeInTheDocument();
+    expect(screen.getByTestId(TAGS_TABLE)).toBeInTheDocument();
   });
 });

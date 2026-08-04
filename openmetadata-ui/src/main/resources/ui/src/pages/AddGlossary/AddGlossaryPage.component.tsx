@@ -36,6 +36,8 @@ import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+const LABEL_GLOSSARY = 'label.glossary';
+
 const AddGlossaryPage: FunctionComponent = () => {
   const navigate = useNavigate();
   const { permissions } = usePermissionProvider();
@@ -77,7 +79,7 @@ const AddGlossaryPage: FunctionComponent = () => {
       handleSaveFailure(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
-              entity: t('label.glossary'),
+              entity: t(LABEL_GLOSSARY),
               entityPlural: t('label.glossary-lowercase-plural'),
               name: data.name,
             })
@@ -122,12 +124,12 @@ const AddGlossaryPage: FunctionComponent = () => {
   useEffect(() => {
     setSlashedBreadcrumb([
       {
-        name: t('label.glossary'),
+        name: t(LABEL_GLOSSARY),
         url: getGlossaryPath(),
       },
       {
         name: t('label.add-entity', {
-          entity: t('label.glossary'),
+          entity: t(LABEL_GLOSSARY),
         }),
         url: '',
         activeTitle: true,
@@ -141,7 +143,7 @@ const AddGlossaryPage: FunctionComponent = () => {
         allowAccess={createPermission}
         fetchTags={fetchTags}
         header={t('label.add-entity', {
-          entity: t('label.glossary'),
+          entity: t(LABEL_GLOSSARY),
         })}
         isLoading={isLoading}
         isTagLoading={isTagLoading}

@@ -79,6 +79,8 @@ import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/User
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
+const LABEL_DOMAIN = 'label.domain' as const;
+
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   knowledgePage,
   contentChangeState,
@@ -322,7 +324,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const metaEl = (
     <Box align="center" className="tw:text-sm tw:mt-2" gap={3} wrap="wrap">
       <Box align="center" gap={1}>
-        <Tooltip title={t('label.domain')}>
+        <Tooltip title={t(LABEL_DOMAIN)}>
           <TooltipTrigger className="tw:leading-0">
             <GlobeIcon
               className="tw:shrink-0 tw:text-quaternary"
@@ -338,7 +340,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           weight="regular">
           {firstDomain
             ? firstDomain.displayName ?? firstDomain.name
-            : t('label.no-entity', { entity: t('label.domain') })}
+            : t('label.no-entity', { entity: t(LABEL_DOMAIN) })}
         </Typography>
         {extraDomains.length > 0 && (
           <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-tertiary tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-tertiary">
@@ -358,7 +360,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               data-testid="edit-domain-btn"
               icon={<EditIcon height={14} width={14} />}
               tooltip={t('label.edit-entity', {
-                entity: t('label.domain'),
+                entity: t(LABEL_DOMAIN),
               })}
             />
           </DomainSelectableList>

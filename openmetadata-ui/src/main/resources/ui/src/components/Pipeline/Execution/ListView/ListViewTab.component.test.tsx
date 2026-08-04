@@ -16,6 +16,8 @@ import { StatusType } from '../../../../generated/entity/data/pipeline';
 import { EXECUTION_LIST_MOCK } from '../../../../mocks/PipelineVersion.mock';
 import ListView from './ListViewTab.component';
 
+const LIST_VIEW_TABLE = 'list-view-table';
+
 jest.mock('../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>FilterTablePlaceHolder</div>)
 );
@@ -59,13 +61,13 @@ describe('Test ListViewTab Component', () => {
   it('Should render component properly if not loading', async () => {
     render(<ListView {...mockProps} />);
 
-    expect(screen.getByTestId('list-view-table')).toBeInTheDocument();
+    expect(screen.getByTestId(LIST_VIEW_TABLE)).toBeInTheDocument();
   });
 
   it('Should render NoDataPlaceholder if no data present', async () => {
     render(<ListView {...mockProps} executions={[]} />);
 
-    expect(screen.getByTestId('list-view-table')).toBeInTheDocument();
+    expect(screen.getByTestId(LIST_VIEW_TABLE)).toBeInTheDocument();
 
     expect(screen.getByText('FilterTablePlaceHolder')).toBeInTheDocument();
   });
@@ -73,7 +75,7 @@ describe('Test ListViewTab Component', () => {
   it('Should render columns if data present', async () => {
     render(<ListView {...mockProps} />);
 
-    expect(screen.getByTestId('list-view-table')).toBeInTheDocument();
+    expect(screen.getByTestId(LIST_VIEW_TABLE)).toBeInTheDocument();
 
     expect(
       screen.queryByText('FilterTablePlaceHolder')

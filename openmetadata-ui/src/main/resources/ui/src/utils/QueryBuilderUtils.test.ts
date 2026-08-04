@@ -387,6 +387,7 @@ describe('jsonLogicToElasticsearch', () => {
             {
               '==': [
                 {
+                  // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
                   var: 'database.name',
                 },
                 'default',

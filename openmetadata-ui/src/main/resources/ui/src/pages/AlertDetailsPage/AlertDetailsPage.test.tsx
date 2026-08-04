@@ -30,6 +30,7 @@ import * as AlertsAPIs from '../../rest/alertsAPI';
 import * as ObservabilityAPIs from '../../rest/observabilityAPI';
 import AlertDetailsPage from './AlertDetailsPage';
 
+const EDIT_BUTTON = 'edit-button';
 const mockNavigate = jest.fn();
 const mockUpdateNotificationAlert = jest.fn();
 const mockUpdateObservabilityAlert = jest.fn();
@@ -177,7 +178,7 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByText('EntityHeaderTitle')).toBeInTheDocument();
     expect(screen.getByText('OwnerLabel')).toBeInTheDocument();
     expect(screen.getAllByText('ExtraInfoLabel')).toHaveLength(3);
-    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_BUTTON)).toBeInTheDocument();
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
     expect(screen.getByText('label.configuration')).toBeInTheDocument();
     expect(screen.getByText('label.recent-event-plural')).toBeInTheDocument();
@@ -199,7 +200,7 @@ describe('AlertDetailsPage', () => {
       wrapper: MemoryRouter,
     });
 
-    const editButton = await screen.findByTestId('edit-button');
+    const editButton = await screen.findByTestId(EDIT_BUTTON);
     fireEvent.click(editButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('notification-alert-edit-path');
@@ -210,7 +211,7 @@ describe('AlertDetailsPage', () => {
       wrapper: MemoryRouter,
     });
 
-    const editButton = await screen.findByTestId('edit-button');
+    const editButton = await screen.findByTestId(EDIT_BUTTON);
 
     fireEvent.click(editButton);
 
@@ -264,7 +265,7 @@ describe('AlertDetailsPage', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.queryByTestId('edit-button')).toBeNull();
+    expect(screen.queryByTestId(EDIT_BUTTON)).toBeNull();
     expect(screen.queryByTestId('delete-button')).toBeNull();
   });
 

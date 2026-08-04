@@ -20,6 +20,30 @@ import { processDocMarkdown } from '../../../utils/ServiceUtils';
 import CodeBlockComponent from '../../BlockEditor/Extensions/CodeBlock/CodeBlockComponent';
 import ServiceDocPanel from './ServiceDocPanel';
 
+const SNOWFLAKE = '# Snowflake';
+const REQUIREMENTS = '## Requirements';
+const GRANT_METADATA_PRIVILEGES = 'Grant metadata privileges.';
+const CONNECTION_DETAILS = '## Connection Details';
+const DATABASE_ID_DATABASE = '### Database $(id="database")';
+const DATABASE_GUIDANCE = 'Database guidance.';
+const FOCUSED_SERVICE_DOCS_INTRO = '.focused-service-docs-intro';
+const MESSAGE_CONNECTION_DOC_TITLE = 'message.connection-doc-title';
+const USAGE_LINEAGE = '### Usage & Lineage';
+const USERNAME_GUIDANCE = 'Username guidance.';
+const DATABASE_FILTER_PATTERN_GUIDANCE = 'Database filter pattern guidance.';
+const PASSWORD_ID_PASSWORD = '### Password $(id="password")';
+const PASSWORD_GUIDANCE = 'Password guidance.';
+const MESSAGE_AUTHENTICATION_DOC_TITLE = 'message.authentication-doc-title';
+const FOCUSED_DOC_AUTH_GRID = '.focused-doc-auth-grid';
+const LINEAGE_GUIDANCE = 'Lineage guidance.';
+const FOCUSED_SERVICE_DOCS_EYEBROW = '.focused-service-docs-eyebrow';
+const LABEL_SCOPE_AND_OPTION_PLURAL = 'label.scope-and-option-plural';
+const CONNECT_TO_OPEN_METADATA_USING_OPEN_METADA =
+  'Connect to OpenMetadata using OpenMetadata SDK';
+const CODE_BLOCK_COPY_ICON = 'code-block-copy-icon';
+const CODE_COPY_BUTTON = '.code-copy-button';
+const DATA_COPIED = 'data-copied';
+
 jest.mock('../Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
@@ -258,13 +282,13 @@ describe('ServiceDocPanel Component', () => {
     it('should render section docs, requirements and the focused field docs for a connection field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '## Connection Details',
+          SNOWFLAKE,
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          CONNECTION_DETAILS,
           '$$section',
-          '### Database $(id="database")',
-          'Database guidance.',
+          DATABASE_ID_DATABASE,
+          DATABASE_GUIDANCE,
           '$$',
           '$$section',
           '### Warehouse $(id="warehouse")',
@@ -283,16 +307,16 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-intro')
-        ).toHaveTextContent('message.connection-doc-title');
+          container.querySelector(FOCUSED_SERVICE_DOCS_INTRO)
+        ).toHaveTextContent(MESSAGE_CONNECTION_DOC_TITLE);
         expect(
-          container.querySelector('.focused-service-docs-intro')
+          container.querySelector(FOCUSED_SERVICE_DOCS_INTRO)
         ).toHaveTextContent('message.connection-doc-description');
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Database guidance.')
+          expect.stringContaining(DATABASE_GUIDANCE)
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
           expect.stringContaining('Warehouse guidance.')
@@ -303,20 +327,20 @@ describe('ServiceDocPanel Component', () => {
     it('should render full requirements on focused docs landing state', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Requirements',
-          'Grant metadata privileges.',
+          SNOWFLAKE,
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
           '$$note',
           'Use Snowflake 8.0.0 and up.',
           '$$',
-          '### Usage & Lineage',
+          USAGE_LINEAGE,
           'Grant lineage privileges.',
           '### Profiler & Data Quality',
           'Grant profiler privileges.',
-          '## Connection Details',
+          CONNECTION_DETAILS,
           '$$section',
-          '### Database $(id="database")',
-          'Database guidance.',
+          DATABASE_ID_DATABASE,
+          DATABASE_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -328,7 +352,7 @@ describe('ServiceDocPanel Component', () => {
           expect.stringContaining('### label.metadata')
         );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('$$note\nUse Snowflake 8.0.0 and up.\n$$')
@@ -346,7 +370,7 @@ describe('ServiceDocPanel Component', () => {
           expect.stringContaining('Grant profiler privileges.')
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Database guidance.')
+          expect.stringContaining(DATABASE_GUIDANCE)
         );
       });
     });
@@ -354,13 +378,13 @@ describe('ServiceDocPanel Component', () => {
     it('should show the identity section docs for the service name focused field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '## Connection Details',
+          SNOWFLAKE,
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          CONNECTION_DETAILS,
           '$$section',
-          '### Database $(id="database")',
-          'Database guidance.',
+          DATABASE_ID_DATABASE,
+          DATABASE_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -381,10 +405,10 @@ describe('ServiceDocPanel Component', () => {
           screen.getByText('message.identity-doc-description')
         ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Database guidance.')
+          expect.stringContaining(DATABASE_GUIDANCE)
         );
       });
     });
@@ -393,12 +417,12 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Salesforce',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '## Connection Details',
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          CONNECTION_DETAILS,
           '$$section',
           '### Username $(id="username")',
-          'Username guidance.',
+          USERNAME_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -413,16 +437,16 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-intro')
-        ).toHaveTextContent('message.connection-doc-title');
+          container.querySelector(FOCUSED_SERVICE_DOCS_INTRO)
+        ).toHaveTextContent(MESSAGE_CONNECTION_DOC_TITLE);
         expect(
           container.querySelector('.focused-service-docs-field-markdown')
         ).not.toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Username guidance.')
+          expect.stringContaining(USERNAME_GUIDANCE)
         );
       });
     });
@@ -431,12 +455,12 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Salesforce',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '## Connection Details',
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          CONNECTION_DETAILS,
           '$$section',
           '### Username $(id="username")',
-          'Username guidance.',
+          USERNAME_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -459,7 +483,7 @@ describe('ServiceDocPanel Component', () => {
           screen.queryByText('The Snowflake account identifier.')
         ).not.toBeInTheDocument();
         expect(
-          screen.getByText('message.connection-doc-title')
+          screen.getByText(MESSAGE_CONNECTION_DOC_TITLE)
         ).toBeInTheDocument();
       });
     });
@@ -468,12 +492,12 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# MySQL',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '## Connection Details',
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          CONNECTION_DETAILS,
           '$$section',
           '### Database Filter Pattern $(id="databaseFilterPattern")',
-          'Database filter pattern guidance.',
+          DATABASE_FILTER_PATTERN_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -489,10 +513,10 @@ describe('ServiceDocPanel Component', () => {
       await waitFor(() => {
         expect(screen.getByText('message.scope-doc-title')).toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Database filter pattern guidance.')
+          expect.stringContaining(DATABASE_FILTER_PATTERN_GUIDANCE)
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
       });
     });
@@ -500,11 +524,11 @@ describe('ServiceDocPanel Component', () => {
     it('should show the auth section docs with guidance cards for the authType field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Connection Details',
+          SNOWFLAKE,
+          CONNECTION_DETAILS,
           '$$section',
-          '### Password $(id="password")',
-          'Password guidance.',
+          PASSWORD_ID_PASSWORD,
+          PASSWORD_GUIDANCE,
           '$$',
           '$$section',
           '### Private Key $(id="privateKey")',
@@ -523,13 +547,13 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.authentication-doc-title')
+          screen.getByText(MESSAGE_AUTHENTICATION_DOC_TITLE)
         ).toBeInTheDocument();
         expect(
-          container.querySelector('.focused-doc-auth-grid')
+          container.querySelector(FOCUSED_DOC_AUTH_GRID)
         ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Password guidance.')
+          expect.stringContaining(PASSWORD_GUIDANCE)
         );
       });
     });
@@ -537,11 +561,11 @@ describe('ServiceDocPanel Component', () => {
     it('should show guidance cards for any auth field when the connector offers password and key pair', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Connection Details',
+          SNOWFLAKE,
+          CONNECTION_DETAILS,
           '$$section',
-          '### Password $(id="password")',
-          'Password guidance.',
+          PASSWORD_ID_PASSWORD,
+          PASSWORD_GUIDANCE,
           '$$',
           '$$section',
           '### Private Key $(id="privateKey")',
@@ -560,7 +584,7 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-doc-auth-grid')
+          container.querySelector(FOCUSED_DOC_AUTH_GRID)
         ).toBeInTheDocument();
         expect(
           screen.getByText('message.password-auth-doc-description')
@@ -569,7 +593,7 @@ describe('ServiceDocPanel Component', () => {
           screen.getByText('message.key-pair-auth-doc-description')
         ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Password guidance.')
+          expect.stringContaining(PASSWORD_GUIDANCE)
         );
       });
     });
@@ -578,10 +602,10 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Mysql',
-          '## Connection Details',
+          CONNECTION_DETAILS,
           '$$section',
-          '### Password $(id="password")',
-          'Password guidance.',
+          PASSWORD_ID_PASSWORD,
+          PASSWORD_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -596,10 +620,10 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.authentication-doc-title')
+          screen.getByText(MESSAGE_AUTHENTICATION_DOC_TITLE)
         ).toBeInTheDocument();
         expect(
-          container.querySelector('.focused-doc-auth-grid')
+          container.querySelector(FOCUSED_DOC_AUTH_GRID)
         ).not.toBeInTheDocument();
       });
     });
@@ -607,11 +631,11 @@ describe('ServiceDocPanel Component', () => {
     it('should show the auth section docs without guidance cards for other auth fields when key pair is unavailable', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Connection Details',
+          SNOWFLAKE,
+          CONNECTION_DETAILS,
           '$$section',
-          '### Password $(id="password")',
-          'Password guidance.',
+          PASSWORD_ID_PASSWORD,
+          PASSWORD_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -626,13 +650,13 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.authentication-doc-title')
+          screen.getByText(MESSAGE_AUTHENTICATION_DOC_TITLE)
         ).toBeInTheDocument();
         expect(
-          container.querySelector('.focused-doc-auth-grid')
+          container.querySelector(FOCUSED_DOC_AUTH_GRID)
         ).not.toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Password guidance.')
+          expect.stringContaining(PASSWORD_GUIDANCE)
         );
       });
     });
@@ -640,11 +664,11 @@ describe('ServiceDocPanel Component', () => {
     it('should show advanced section docs without requirements for a lineage field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '### Usage & Lineage',
-          'Lineage guidance.',
+          SNOWFLAKE,
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          USAGE_LINEAGE,
+          LINEAGE_GUIDANCE,
         ].join('\n')
       );
 
@@ -664,19 +688,17 @@ describe('ServiceDocPanel Component', () => {
           screen.getByText('message.advanced-doc-description')
         ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Lineage guidance.')
+          expect.stringContaining(LINEAGE_GUIDANCE)
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
       });
     });
 
     it('should show the identity section docs for the service description focused field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
-        ['# Snowflake', '## Requirements', 'Grant metadata privileges.'].join(
-          '\n'
-        )
+        [SNOWFLAKE, REQUIREMENTS, GRANT_METADATA_PRIVILEGES].join('\n')
       );
 
       render(
@@ -692,7 +714,7 @@ describe('ServiceDocPanel Component', () => {
           screen.getByText('message.identity-doc-title')
         ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
       });
     });
@@ -700,13 +722,13 @@ describe('ServiceDocPanel Component', () => {
     it('should render the requirements block before the focused field docs', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '## Connection Details',
+          SNOWFLAKE,
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          CONNECTION_DETAILS,
           '$$section',
-          '### Database $(id="database")',
-          'Database guidance.',
+          DATABASE_ID_DATABASE,
+          DATABASE_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -739,13 +761,13 @@ describe('ServiceDocPanel Component', () => {
     it('should not render requirements for the authType focused field even when the markdown has them', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
-          '# Snowflake',
-          '## Requirements',
-          'Grant metadata privileges.',
-          '## Connection Details',
+          SNOWFLAKE,
+          REQUIREMENTS,
+          GRANT_METADATA_PRIVILEGES,
+          CONNECTION_DETAILS,
           '$$section',
-          '### Password $(id="password")',
-          'Password guidance.',
+          PASSWORD_ID_PASSWORD,
+          PASSWORD_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -760,13 +782,13 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.authentication-doc-title')
+          screen.getByText(MESSAGE_AUTHENTICATION_DOC_TITLE)
         ).toBeInTheDocument();
         expect(
           container.querySelector('.focused-service-docs-section')
         ).not.toBeInTheDocument();
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
+          expect.stringContaining(GRANT_METADATA_PRIVILEGES)
         );
       });
     });
@@ -795,7 +817,7 @@ describe('ServiceDocPanel Component', () => {
       await waitFor(() => {
         expect(screen.getByText('Enable Debug Log')).toBeInTheDocument();
         expect(
-          screen.queryByText('message.connection-doc-title')
+          screen.queryByText(MESSAGE_CONNECTION_DOC_TITLE)
         ).not.toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('Debug log guidance.')
@@ -809,7 +831,7 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# MySQL',
-          '## Connection Details',
+          CONNECTION_DETAILS,
           '$$section',
           '### Host Port $(id="hostPort")',
           'Host port guidance.',
@@ -827,8 +849,8 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-eyebrow')
-        ).toHaveTextContent('label.scope-and-option-plural');
+          container.querySelector(FOCUSED_SERVICE_DOCS_EYEBROW)
+        ).toHaveTextContent(LABEL_SCOPE_AND_OPTION_PLURAL);
       });
     });
 
@@ -836,10 +858,10 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# MySQL',
-          '## Connection Details',
+          CONNECTION_DETAILS,
           '$$section',
           '### Database Filter Pattern $(id="databaseFilterPattern")',
-          'Database filter pattern guidance.',
+          DATABASE_FILTER_PATTERN_GUIDANCE,
           '$$',
         ].join('\n')
       );
@@ -854,8 +876,8 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-eyebrow')
-        ).toHaveTextContent('label.scope-and-option-plural');
+          container.querySelector(FOCUSED_SERVICE_DOCS_EYEBROW)
+        ).toHaveTextContent(LABEL_SCOPE_AND_OPTION_PLURAL);
       });
     });
 
@@ -863,7 +885,7 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# MySQL',
-          '## Connection Details',
+          CONNECTION_DETAILS,
           '$$section',
           '### Host Port $(id="hostPort")',
           'Host port guidance.',
@@ -881,14 +903,14 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-eyebrow')
+          container.querySelector(FOCUSED_SERVICE_DOCS_EYEBROW)
         ).toHaveTextContent('label.connection');
       });
     });
 
     it('should still show the Advanced Config eyebrow for a lineage field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
-        ['# MySQL', '### Usage & Lineage', 'Lineage guidance.'].join('\n')
+        ['# MySQL', USAGE_LINEAGE, LINEAGE_GUIDANCE].join('\n')
       );
 
       const { container } = render(
@@ -901,7 +923,7 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-eyebrow')
+          container.querySelector(FOCUSED_SERVICE_DOCS_EYEBROW)
         ).toHaveTextContent('label.advanced-config');
       });
     });
@@ -910,7 +932,7 @@ describe('ServiceDocPanel Component', () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# BigQuery',
-          '## Connection Details',
+          CONNECTION_DETAILS,
           '$$section',
           '### Usage Location $(id="usageLocation")',
           'Usage location guidance.',
@@ -929,14 +951,14 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-eyebrow')
-        ).toHaveTextContent('label.scope-and-option-plural');
+          container.querySelector(FOCUSED_SERVICE_DOCS_EYEBROW)
+        ).toHaveTextContent(LABEL_SCOPE_AND_OPTION_PLURAL);
       });
     });
 
     it('should use activeFieldMeta.section even when a matching docs section is absent', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
-        ['# BigQuery', '## Connection Details'].join('\n')
+        ['# BigQuery', CONNECTION_DETAILS].join('\n')
       );
 
       const { container } = render(
@@ -950,8 +972,8 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(
-          container.querySelector('.focused-service-docs-eyebrow')
-        ).toHaveTextContent('label.scope-and-option-plural');
+          container.querySelector(FOCUSED_SERVICE_DOCS_EYEBROW)
+        ).toHaveTextContent(LABEL_SCOPE_AND_OPTION_PLURAL);
       });
     });
   });
@@ -966,7 +988,7 @@ describe('ServiceDocPanel Component', () => {
     it('should replace OpenMetadata with BRAND_NAME when env var is set', async () => {
       process.env = { ...originalEnv, BRAND_NAME: 'Collate' };
       mockFetchMarkdownFile.mockResolvedValue(
-        'Connect to OpenMetadata using OpenMetadata SDK'
+        CONNECT_TO_OPEN_METADATA_USING_OPEN_METADA
       );
 
       render(<ServiceDocPanel {...defaultProps} />);
@@ -982,14 +1004,14 @@ describe('ServiceDocPanel Component', () => {
       process.env = { ...originalEnv };
       delete process.env.BRAND_NAME;
       mockFetchMarkdownFile.mockResolvedValue(
-        'Connect to OpenMetadata using OpenMetadata SDK'
+        CONNECT_TO_OPEN_METADATA_USING_OPEN_METADA
       );
 
       render(<ServiceDocPanel {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          'Connect to OpenMetadata using OpenMetadata SDK'
+          CONNECT_TO_OPEN_METADATA_USING_OPEN_METADA
         );
       });
     });
@@ -1203,14 +1225,14 @@ describe('CodeBlockComponent', () => {
   it('should render the copy button', () => {
     render(<CodeBlockComponent {...mockNodeViewProps} />);
 
-    expect(screen.getByTestId('code-block-copy-icon')).toBeInTheDocument();
+    expect(screen.getByTestId(CODE_BLOCK_COPY_ICON)).toBeInTheDocument();
   });
 
   it('should set data-copied to false initially', () => {
     const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
 
-    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-      'data-copied',
+    expect(container.querySelector(CODE_COPY_BUTTON)).toHaveAttribute(
+      DATA_COPIED,
       'false'
     );
   });
@@ -1218,7 +1240,7 @@ describe('CodeBlockComponent', () => {
   it('should copy node text content to clipboard on click', async () => {
     render(<CodeBlockComponent {...mockNodeViewProps} />);
 
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+    fireEvent.click(screen.getByTestId(CODE_BLOCK_COPY_ICON));
 
     await waitFor(() => {
       expect(mockWriteText).toHaveBeenCalledWith('SELECT * FROM table;');
@@ -1228,11 +1250,11 @@ describe('CodeBlockComponent', () => {
   it('should set data-copied to true after clicking copy', async () => {
     const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
 
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+    fireEvent.click(screen.getByTestId(CODE_BLOCK_COPY_ICON));
 
     await waitFor(() => {
-      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-        'data-copied',
+      expect(container.querySelector(CODE_COPY_BUTTON)).toHaveAttribute(
+        DATA_COPIED,
         'true'
       );
     });
@@ -1241,20 +1263,20 @@ describe('CodeBlockComponent', () => {
   it('should remain in copied state after rapid clicks', async () => {
     const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
 
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+    fireEvent.click(screen.getByTestId(CODE_BLOCK_COPY_ICON));
 
     await waitFor(() => {
       expect(mockWriteText).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+    fireEvent.click(screen.getByTestId(CODE_BLOCK_COPY_ICON));
 
     await waitFor(() => {
       expect(mockWriteText).toHaveBeenCalledTimes(2);
     });
 
-    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-      'data-copied',
+    expect(container.querySelector(CODE_COPY_BUTTON)).toHaveAttribute(
+      DATA_COPIED,
       'true'
     );
   });

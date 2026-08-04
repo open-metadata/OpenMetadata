@@ -30,6 +30,12 @@ import {
   tagTableObject,
 } from './TableColumn.util';
 
+const MOCK_TAGS_VIEWER = 'tags-viewer';
+const MOCK_RICH_TEXT_PREVIEW = 'rich-text-preview';
+const SHOULD_RETURN_COLUMN_CONFIGURATION_WITH_CO =
+  'should return column configuration with correct structure';
+const SHOULD_HAVE_RENDER_FUNCTION = 'should have render function';
+
 jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
@@ -63,7 +69,7 @@ jest.mock(
 jest.mock('../components/Tag/TagsViewer/TagsViewer', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ tags, sizeCap }) => (
-    <div data-testid="tags-viewer">
+    <div data-testid={MOCK_TAGS_VIEWER}>
       {tags?.length ?? 0}:{sizeCap}
     </div>
   )),
@@ -73,7 +79,7 @@ jest.mock('../components/common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
-      <div data-testid="rich-text-preview">{markdown}</div>
+      <div data-testid={MOCK_RICH_TEXT_PREVIEW}>{markdown}</div>
     ))
 );
 
@@ -82,7 +88,7 @@ jest.unmock('./TableColumn.util');
 
 describe('TableColumn.util', () => {
   describe('ownerTableObject', () => {
-    it('should return column configuration with correct structure', () => {
+    it(SHOULD_RETURN_COLUMN_CONFIGURATION_WITH_CO, () => {
       const columns = ownerTableObject<{ owners?: EntityReference[] }>();
 
       expect(columns).toHaveLength(1);
@@ -101,7 +107,7 @@ describe('TableColumn.util', () => {
       expect(typeof columns[0].filterIcon).toBe('function');
     });
 
-    it('should have render function', () => {
+    it(SHOULD_HAVE_RENDER_FUNCTION, () => {
       const columns = ownerTableObject<{ owners?: EntityReference[] }>();
 
       expect(columns[0].render).toBeDefined();
@@ -161,7 +167,7 @@ describe('TableColumn.util', () => {
   });
 
   describe('domainTableObject', () => {
-    it('should return column configuration with correct structure', () => {
+    it(SHOULD_RETURN_COLUMN_CONFIGURATION_WITH_CO, () => {
       const columns = domainTableObject<{ domains?: EntityReference[] }>();
 
       expect(columns).toHaveLength(1);
@@ -173,7 +179,7 @@ describe('TableColumn.util', () => {
       });
     });
 
-    it('should have render function', () => {
+    it(SHOULD_HAVE_RENDER_FUNCTION, () => {
       const columns = domainTableObject<{ domains?: EntityReference[] }>();
 
       expect(columns[0].render).toBeDefined();
@@ -234,7 +240,7 @@ describe('TableColumn.util', () => {
   });
 
   describe('dataProductTableObject', () => {
-    it('should return column configuration with correct structure', () => {
+    it(SHOULD_RETURN_COLUMN_CONFIGURATION_WITH_CO, () => {
       const columns = dataProductTableObject<{
         dataProducts?: EntityReference[];
       }>();
@@ -248,7 +254,7 @@ describe('TableColumn.util', () => {
       });
     });
 
-    it('should have render function', () => {
+    it(SHOULD_HAVE_RENDER_FUNCTION, () => {
       const columns = dataProductTableObject<{
         dataProducts?: EntityReference[];
       }>();
@@ -319,7 +325,7 @@ describe('TableColumn.util', () => {
   });
 
   describe('tagTableObject', () => {
-    it('should return column configuration with correct structure', () => {
+    it(SHOULD_RETURN_COLUMN_CONFIGURATION_WITH_CO, () => {
       const columns = tagTableObject<{ tags?: TagLabel[] }>();
 
       expect(columns).toHaveLength(1);
@@ -331,7 +337,7 @@ describe('TableColumn.util', () => {
       });
     });
 
-    it('should have render function', () => {
+    it(SHOULD_HAVE_RENDER_FUNCTION, () => {
       const columns = tagTableObject<{ tags?: TagLabel[] }>();
 
       expect(columns[0].render).toBeDefined();
@@ -358,7 +364,7 @@ describe('TableColumn.util', () => {
       const renderResult = columns[0].render?.(undefined, record as never, 0);
 
       render(<>{renderResult}</>);
-      const tagsViewer = await screen.findByTestId('tags-viewer');
+      const tagsViewer = await screen.findByTestId(MOCK_TAGS_VIEWER);
 
       expect(tagsViewer).toBeInTheDocument();
       expect(tagsViewer?.textContent).toBe(`2:${TAG_LIST_SIZE}`);
@@ -370,7 +376,7 @@ describe('TableColumn.util', () => {
       const renderResult = columns[0].render?.(undefined, record as never, 0);
 
       render(<>{renderResult}</>);
-      const tagsViewer = await screen.findByTestId('tags-viewer');
+      const tagsViewer = await screen.findByTestId(MOCK_TAGS_VIEWER);
 
       expect(tagsViewer).toBeInTheDocument();
       expect(tagsViewer?.textContent).toBe(`0:${TAG_LIST_SIZE}`);
@@ -411,7 +417,7 @@ describe('TableColumn.util', () => {
       const renderResult = columns[0].render?.(undefined, record as never, 0);
 
       render(<>{renderResult}</>);
-      const tagsViewer = await screen.findByTestId('tags-viewer');
+      const tagsViewer = await screen.findByTestId(MOCK_TAGS_VIEWER);
 
       expect(tagsViewer).toBeInTheDocument();
       expect(tagsViewer?.textContent).toBe(`0:${TAG_LIST_SIZE}`);
@@ -430,7 +436,7 @@ describe('TableColumn.util', () => {
       });
     });
 
-    it('should have render function', () => {
+    it(SHOULD_HAVE_RENDER_FUNCTION, () => {
       const columns = descriptionTableObject<{ description?: string }>();
 
       expect(columns[0].render).toBeDefined();
@@ -461,7 +467,7 @@ describe('TableColumn.util', () => {
       const renderResult = columns[0].render?.(description, {} as never, 0);
 
       render(<>{renderResult}</>);
-      const richTextPreview = await screen.findByTestId('rich-text-preview');
+      const richTextPreview = await screen.findByTestId(MOCK_RICH_TEXT_PREVIEW);
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview?.textContent).toBe(description);
@@ -472,7 +478,7 @@ describe('TableColumn.util', () => {
       const renderResult = columns[0].render?.('', {} as never, 0);
 
       render(<>{renderResult}</>);
-      const richTextPreview = await screen.findByTestId('rich-text-preview');
+      const richTextPreview = await screen.findByTestId(MOCK_RICH_TEXT_PREVIEW);
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview?.textContent).toBe('');
@@ -502,7 +508,7 @@ describe('TableColumn.util', () => {
       const renderResult = columns[0].render?.(description, {} as never, 0);
 
       render(<>{renderResult}</>);
-      const richTextPreview = await screen.findByTestId('rich-text-preview');
+      const richTextPreview = await screen.findByTestId(MOCK_RICH_TEXT_PREVIEW);
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview?.textContent).toBe(description);
@@ -532,7 +538,7 @@ describe('TableColumn.util', () => {
       const description = 'Test';
       const renderResult = columns[0].render?.(description, {} as never, 0);
       render(<>{renderResult}</>);
-      const richTextPreview = await screen.findByTestId('rich-text-preview');
+      const richTextPreview = await screen.findByTestId(MOCK_RICH_TEXT_PREVIEW);
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview).toHaveTextContent(description);

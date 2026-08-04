@@ -102,6 +102,13 @@ import {
 import AddDomainFormExtensionFields from './AddDomainFormExtensionFields';
 import { getExtensionPropertyNameFromFormKey } from './AddDomainFormExtensionFields.utils';
 
+const LABEL_FIELD_REQUIRED = 'label.field-required';
+const LABEL_NAME = 'label.name';
+const LABEL_SELECT_FIELD = 'label.select-field';
+const LABEL_DOMAIN_TYPE = 'label.domain-type';
+const LABEL_SELECT_ENTITY = 'label.select-entity';
+const LABEL_DOMAIN = 'label.domain';
+
 export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   name: '',
   displayName: '',
@@ -733,7 +740,7 @@ const AddDomainForm = ({
         return field;
       }
       const message =
-        rf.errorMessage || t('label.field-required', { field: rf.fieldLabel });
+        rf.errorMessage || t(LABEL_FIELD_REQUIRED, { field: rf.fieldLabel });
 
       return {
         ...field,
@@ -752,7 +759,7 @@ const AddDomainForm = ({
       }
 
       return (
-        rf.errorMessage || t('label.field-required', { field: rf.fieldLabel })
+        rf.errorMessage || t(LABEL_FIELD_REQUIRED, { field: rf.fieldLabel })
       );
     },
     [nativeRequiredFieldsByPath, t]
@@ -760,16 +767,16 @@ const AddDomainForm = ({
 
   const nameField: FieldProp = applyIntakeFormRequired({
     id: 'root/name',
-    label: t('label.name'),
+    label: t(LABEL_NAME),
     name: 'name',
-    placeholder: t('label.name'),
+    placeholder: t(LABEL_NAME),
     props: { 'data-testid': 'name' },
     required: true,
     rules: {
-      required: t('label.field-required', { field: t('label.name') }),
+      required: t(LABEL_FIELD_REQUIRED, { field: t(LABEL_NAME) }),
       maxLength: {
         message: t('message.entity-size-in-between', {
-          entity: t('label.name'),
+          entity: t(LABEL_NAME),
           max: 128,
           min: 1,
         }),
@@ -777,7 +784,7 @@ const AddDomainForm = ({
       },
       minLength: {
         message: t('message.entity-size-in-between', {
-          entity: t('label.name'),
+          entity: t(LABEL_NAME),
           max: 128,
           min: 1,
         }),
@@ -804,7 +811,7 @@ const AddDomainForm = ({
     id: 'root/iconURL',
     label: t('label.icon'),
     name: 'iconURL',
-    placeholder: t('label.select-field', { field: t('label.icon') }),
+    placeholder: t(LABEL_SELECT_FIELD, { field: t('label.icon') }),
     props: {
       allowUrl: true,
       'data-testid': 'icon-url',
@@ -837,7 +844,7 @@ const AddDomainForm = ({
     id: 'root/tags',
     label: t('label.tag-plural'),
     name: 'tags',
-    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
+    placeholder: t(LABEL_SELECT_FIELD, { field: t('label.tag-plural') }),
     props: {
       'data-testid': 'tags-container',
       filterOption: () => true,
@@ -862,10 +869,10 @@ const AddDomainForm = ({
   });
 
   const domainTypeField: FieldProp = applyIntakeFormRequired({
-    label: t('label.domain-type'),
+    label: t(LABEL_DOMAIN_TYPE),
     name: 'domainType',
-    placeholder: t('label.select-entity', {
-      entity: t('label.domain-type'),
+    placeholder: t(LABEL_SELECT_ENTITY, {
+      entity: t(LABEL_DOMAIN_TYPE),
     }),
     props: {
       options: domainTypeOptions,
@@ -875,8 +882,8 @@ const AddDomainForm = ({
     required: domainTypeFieldRequired,
     rules: domainTypeFieldRequired
       ? {
-          required: t('label.field-required', {
-            field: t('label.domain-type'),
+          required: t(LABEL_FIELD_REQUIRED, {
+            field: t(LABEL_DOMAIN_TYPE),
           }),
         }
       : undefined,
@@ -885,9 +892,9 @@ const AddDomainForm = ({
 
   const domainField: FieldProp = applyIntakeFormRequired({
     id: 'root/domains',
-    label: t('label.domain'),
+    label: t(LABEL_DOMAIN),
     name: 'domains',
-    placeholder: t('label.select-field', { field: t('label.domain') }),
+    placeholder: t(LABEL_SELECT_FIELD, { field: t(LABEL_DOMAIN) }),
     props: {
       filterOption: () => true,
       onFocus: handleDomainFocus,
@@ -896,8 +903,8 @@ const AddDomainForm = ({
     },
     required: true,
     rules: {
-      required: t('label.field-required', {
-        field: t('label.domain'),
+      required: t(LABEL_FIELD_REQUIRED, {
+        field: t(LABEL_DOMAIN),
       }),
     },
     type: FieldTypes.DOMAIN_SELECT,
@@ -907,7 +914,7 @@ const AddDomainForm = ({
     id: 'root/owners',
     label: t('label.owner-plural'),
     name: 'owners',
-    placeholder: t('label.select-field', {
+    placeholder: t(LABEL_SELECT_FIELD, {
       field: t('label.owner-plural'),
     }),
     props: {
@@ -925,7 +932,7 @@ const AddDomainForm = ({
     id: 'root/experts',
     label: t('label.expert-plural'),
     name: 'experts',
-    placeholder: t('label.select-field', {
+    placeholder: t(LABEL_SELECT_FIELD, {
       field: t('label.expert-plural'),
     }),
     props: {
@@ -943,7 +950,7 @@ const AddDomainForm = ({
     id: 'root/reviewers',
     label: t('label.reviewer-plural'),
     name: 'reviewers',
-    placeholder: t('label.select-field', {
+    placeholder: t(LABEL_SELECT_FIELD, {
       field: t('label.reviewer-plural'),
     }),
     props: {
@@ -961,7 +968,7 @@ const AddDomainForm = ({
     id: 'root/dataProductType',
     label: t('label.type'),
     name: 'dataProductType',
-    placeholder: t('label.select-entity', { entity: t('label.type') }),
+    placeholder: t(LABEL_SELECT_ENTITY, { entity: t('label.type') }),
     props: {
       'data-testid': 'dataProductType',
       options: dataProductTypeOptions,
@@ -975,7 +982,7 @@ const AddDomainForm = ({
     id: 'root/visibility',
     label: t('label.visibility'),
     name: 'visibility',
-    placeholder: t('label.select-entity', { entity: t('label.visibility') }),
+    placeholder: t(LABEL_SELECT_ENTITY, { entity: t('label.visibility') }),
     props: {
       'data-testid': 'visibility',
       options: visibilityOptions,
@@ -989,7 +996,7 @@ const AddDomainForm = ({
     id: 'root/portfolioPriority',
     label: t('label.portfolio-priority'),
     name: 'portfolioPriority',
-    placeholder: t('label.select-entity', {
+    placeholder: t(LABEL_SELECT_ENTITY, {
       entity: t('label.portfolio-priority'),
     }),
     props: {
@@ -1005,7 +1012,7 @@ const AddDomainForm = ({
     () => ({
       required:
         intakeFormRequiredMessage('description') ??
-        t('label.field-required', { field: t('label.description') }),
+        t(LABEL_FIELD_REQUIRED, { field: t('label.description') }),
     }),
     [intakeFormRequiredMessage, t]
   );
@@ -1094,7 +1101,7 @@ const AddDomainForm = ({
           <GlossaryTermTreeSelect
             data-testid="glossary-terms"
             label={t('label.glossary-term-plural')}
-            placeholder={t('label.select-field', {
+            placeholder={t(LABEL_SELECT_FIELD, {
               field: t('label.glossary-term-plural'),
             })}
             value={field.value}

@@ -29,6 +29,8 @@ import { hasEditAccess } from '../../../../../utils/EntityPermissionUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { TeamsHeadingLabelProps } from '../team.interface';
 
+const LABEL_DISPLAY_NAME = 'label.display-name';
+
 const TeamsHeadingLabel = ({
   currentTeam,
   updateTeamHandler,
@@ -64,7 +66,7 @@ const TeamsHeadingLabel = ({
     if (isEmpty(heading)) {
       return showErrorToast(
         t('label.field-required', {
-          field: t('label.display-name'),
+          field: t(LABEL_DISPLAY_NAME),
         })
       );
     }
@@ -140,7 +142,7 @@ const TeamsHeadingLabel = ({
                 className="m-b-0 flex-1 w-min-0 text-grey-muted text-sm"
                 data-testid="team-heading">
                 {t('label.no-entity', {
-                  entity: t('label.display-name'),
+                  entity: t(LABEL_DISPLAY_NAME),
                 })}
               </Typography.Text>
             )}
@@ -150,7 +152,7 @@ const TeamsHeadingLabel = ({
                 title={
                   hasEditDisplayNamePermission
                     ? t('label.edit-entity', {
-                        entity: t('label.display-name'),
+                        entity: t(LABEL_DISPLAY_NAME),
                       })
                     : t('message.no-permission-for-action')
                 }>

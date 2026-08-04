@@ -17,6 +17,10 @@ import {
 } from '../../../constants/Mydata.constants';
 import HeaderTheme from './HeaderTheme';
 
+const CUSTOMISE_LANDING_PAGE_HEADER = 'customise-landing-page-header' as const;
+const DATA_BACKGROUND_COLOR = 'data-background-color' as const;
+const OPTION_COLOR = '.option-color' as const;
+
 // Mock dependencies
 jest.mock(
   '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader',
@@ -60,17 +64,17 @@ describe('HeaderTheme Component', () => {
       expect(screen.getByText('label.preview-header')).toBeInTheDocument();
       expect(screen.getByText('label.select-background')).toBeInTheDocument();
       expect(
-        screen.getByTestId('customise-landing-page-header')
+        screen.getByTestId(CUSTOMISE_LANDING_PAGE_HEADER)
       ).toBeInTheDocument();
     });
 
     it('should render preview header with correct props', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const previewHeader = screen.getByTestId('customise-landing-page-header');
+      const previewHeader = screen.getByTestId(CUSTOMISE_LANDING_PAGE_HEADER);
 
       expect(previewHeader).toHaveAttribute(
-        'data-background-color',
+        DATA_BACKGROUND_COLOR,
         defaultSelectedColor
       );
       expect(previewHeader).toHaveAttribute(
@@ -84,7 +88,7 @@ describe('HeaderTheme Component', () => {
     it('should call setSelectedColor when a color option is clicked', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const firstColorOption = document.querySelector('.option-color');
+      const firstColorOption = document.querySelector(OPTION_COLOR);
       fireEvent.click(firstColorOption as HTMLElement);
 
       expect(mockSetSelectedColor).toHaveBeenCalledTimes(1);
@@ -96,7 +100,7 @@ describe('HeaderTheme Component', () => {
     it('should call setSelectedColor with correct color for each option', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const colorOptions = document.querySelectorAll('.option-color');
+      const colorOptions = document.querySelectorAll(OPTION_COLOR);
 
       headerBackgroundColors.forEach((colorOption, index) => {
         fireEvent.click(colorOptions[index]);
@@ -112,7 +116,7 @@ describe('HeaderTheme Component', () => {
     it('should handle multiple color selections', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const colorOptions = document.querySelectorAll('.option-color');
+      const colorOptions = document.querySelectorAll(OPTION_COLOR);
 
       // Click first color
       fireEvent.click(colorOptions[0]);
@@ -138,22 +142,19 @@ describe('HeaderTheme Component', () => {
       const { rerender } = render(<HeaderTheme {...defaultProps} />);
 
       // Initial render
-      let previewHeader = screen.getByTestId('customise-landing-page-header');
+      let previewHeader = screen.getByTestId(CUSTOMISE_LANDING_PAGE_HEADER);
 
       expect(previewHeader).toHaveAttribute(
-        'data-background-color',
+        DATA_BACKGROUND_COLOR,
         defaultSelectedColor
       );
 
       // Rerender with new color
       rerender(<HeaderTheme {...defaultProps} selectedColor={customColor} />);
 
-      previewHeader = screen.getByTestId('customise-landing-page-header');
+      previewHeader = screen.getByTestId(CUSTOMISE_LANDING_PAGE_HEADER);
 
-      expect(previewHeader).toHaveAttribute(
-        'data-background-color',
-        customColor
-      );
+      expect(previewHeader).toHaveAttribute(DATA_BACKGROUND_COLOR, customColor);
     });
   });
 });

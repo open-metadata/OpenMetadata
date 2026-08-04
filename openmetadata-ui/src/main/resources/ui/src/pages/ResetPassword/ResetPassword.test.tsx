@@ -19,6 +19,8 @@ import {
 } from '@testing-library/react';
 import ResetPassword from './ResetPassword.component';
 
+const SUBMIT_BUTTON = 'submit-button';
+
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest
     .fn()
@@ -77,8 +79,9 @@ describe('ResetPassword', () => {
     ).toBeInTheDocument();
     expect(await screen.findByTestId('brand-image')).toBeInTheDocument();
     expect(await screen.findByTestId('password')).toBeInTheDocument();
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     expect(await screen.findByTestId('confirm-password')).toBeInTheDocument();
-    expect(await screen.findByTestId('submit-button')).toBeInTheDocument();
+    expect(await screen.findByTestId(SUBMIT_BUTTON)).toBeInTheDocument();
     expect(await screen.findByText('Reset Your Password')).toBeInTheDocument();
   });
 
@@ -86,11 +89,12 @@ describe('ResetPassword', () => {
     jest.useFakeTimers();
     render(<ResetPassword />);
 
-    const submitButton = await screen.findByTestId('submit-button');
+    const submitButton = await screen.findByTestId(SUBMIT_BUTTON);
     const password = await screen.findByTestId('password');
     const confirmPwd = await screen.findByTestId('confirm-password');
 
     await act(async () => {
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       fireEvent.change(password, { target: { value: 'Password@123' } });
       fireEvent.change(confirmPwd, { target: { value: 'Password@123' } });
       fireEvent.click(submitButton);
@@ -109,7 +113,7 @@ describe('ResetPassword', () => {
   it('confirm password alert should be visible', async () => {
     render(<ResetPassword />);
 
-    const submitButton = await screen.findByTestId('submit-button');
+    const submitButton = await screen.findByTestId(SUBMIT_BUTTON);
     const password = await screen.findByTestId('password');
     const confirmPwd = await screen.findByTestId('confirm-password');
 
@@ -127,7 +131,7 @@ describe('ResetPassword', () => {
   it('required field validation should work', async () => {
     render(<ResetPassword />);
 
-    const submitButton = await screen.findByTestId('submit-button');
+    const submitButton = await screen.findByTestId(SUBMIT_BUTTON);
 
     await act(async () => {
       fireEvent.click(submitButton);

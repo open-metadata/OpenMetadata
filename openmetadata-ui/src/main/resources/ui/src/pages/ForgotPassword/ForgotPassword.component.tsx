@@ -25,6 +25,8 @@ import { ROUTES } from '../../constants/constants';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './forgot-password.styles.less';
 
+const LABEL_EMAIL = 'label.email';
+
 const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
@@ -96,20 +98,20 @@ const ForgotPassword = () => {
             onFinish={handleSubmit}>
             <Col span={24}>
               <Form.Item
-                label={t('label.email')}
+                label={t(LABEL_EMAIL)}
                 name="email"
                 rules={[
                   {
                     required: true,
                     type: 'email',
                     message: t('label.field-invalid', {
-                      field: t('label.email'),
+                      field: t(LABEL_EMAIL),
                     }),
                   },
                 ]}>
                 <Input
                   className="input-field"
-                  placeholder={t('label.email')}
+                  placeholder={t(LABEL_EMAIL)}
                   type="email"
                 />
               </Form.Item>

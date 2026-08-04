@@ -47,6 +47,8 @@ import {
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
 
+const TW_TEXT_UTILITY_ERROR_300 = 'tw:text-utility-error-300';
+
 const STEP_LABEL_KEYS: Record<string, string> = {
   CheckAccess: 'message.test-connection-step-check-access',
   GetDatabases: 'message.test-connection-step-get-databases',
@@ -789,7 +791,7 @@ export function ConnectionCapabilitySection(
                       {result.errorLog &&
                         renderColoredLines(
                           result.errorLog,
-                          'tw:text-utility-error-300',
+                          TW_TEXT_UTILITY_ERROR_300,
                           'err-'
                         )}
                       {result.diagnosis &&
@@ -893,7 +895,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   result.errorLog,
-                  'tw:text-utility-error-300',
+                  TW_TEXT_UTILITY_ERROR_300,
                   `${stepIdx}-err-`
                 )
               );
@@ -1096,11 +1098,7 @@ export function ConnectionRemediationCard(
       )}
       {!diagnosis && errorContent && (
         <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
-          {renderColoredLines(
-            errorContent,
-            'tw:text-utility-error-300',
-            'rem-'
-          )}
+          {renderColoredLines(errorContent, TW_TEXT_UTILITY_ERROR_300, 'rem-')}
         </pre>
       )}
     </div>

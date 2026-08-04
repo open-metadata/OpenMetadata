@@ -20,6 +20,9 @@ import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import NavBarComponent from './NavBar';
 
+const MOCK_GLOBAL_SEARCH_BAR = 'global-search-bar';
+const MOCK_DOMAIN_SELECTABLE_LIST = 'domain-selectable-list';
+
 // Place these at the very top of your test file, before any imports!
 const mockGetItem = jest.fn();
 const mockSetItem = jest.fn();
@@ -54,7 +57,7 @@ jest.mock('../GlobalSearchBar/GlobalSearchBar', () => ({
   GlobalSearchBar: jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="global-search-bar">GlobalSearchBar</div>
+      <div data-testid={MOCK_GLOBAL_SEARCH_BAR}>GlobalSearchBar</div>
     )),
 }));
 
@@ -185,7 +188,9 @@ jest.mock(
     default: jest
       .fn()
       .mockImplementation(() => (
-        <div data-testid="domain-selectable-list">DomainSelectableList</div>
+        <div data-testid={MOCK_DOMAIN_SELECTABLE_LIST}>
+          DomainSelectableList
+        </div>
       )),
   })
 );
@@ -224,7 +229,9 @@ describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(MOCK_GLOBAL_SEARCH_BAR)
+    ).not.toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
@@ -249,9 +256,11 @@ describe('Test NavBar Component', () => {
 
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('domain-selectable-list')
+      screen.queryByTestId(MOCK_GLOBAL_SEARCH_BAR)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(MOCK_DOMAIN_SELECTABLE_LIST)
     ).not.toBeInTheDocument();
   });
 
@@ -261,9 +270,9 @@ describe('Test NavBar Component', () => {
 
     render(<NavBarComponent />);
 
-    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_GLOBAL_SEARCH_BAR)).toBeInTheDocument();
     expect(
-      await screen.findByTestId('domain-selectable-list')
+      await screen.findByTestId(MOCK_DOMAIN_SELECTABLE_LIST)
     ).toBeInTheDocument();
   });
 
@@ -273,8 +282,8 @@ describe('Test NavBar Component', () => {
 
     render(<NavBarComponent />);
 
-    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_GLOBAL_SEARCH_BAR)).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DOMAIN_SELECTABLE_LIST)).toBeInTheDocument();
   });
 
   it('should show global search bar and domain dropdown on settings route', () => {
@@ -283,8 +292,8 @@ describe('Test NavBar Component', () => {
 
     render(<NavBarComponent />);
 
-    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_GLOBAL_SEARCH_BAR)).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DOMAIN_SELECTABLE_LIST)).toBeInTheDocument();
   });
 });
 
@@ -310,7 +319,7 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     jest.spyOn(global.Date, 'now').mockReturnValue(now);
 
     render(<NavBarComponent />);
-    await screen.findByTestId('global-search-bar');
+    await screen.findByTestId(MOCK_GLOBAL_SEARCH_BAR);
 
     // Clear the initial getVersion call from mount
     jest.clearAllMocks();
@@ -330,7 +339,7 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     (global.Date.now as jest.Mock).mockReturnValue(now);
 
     render(<NavBarComponent />);
-    await screen.findByTestId('global-search-bar');
+    await screen.findByTestId(MOCK_GLOBAL_SEARCH_BAR);
 
     // Clear the initial getVersion call from mount
     jest.clearAllMocks();
@@ -354,7 +363,7 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     (global.Date.now as jest.Mock).mockReturnValue(now);
 
     render(<NavBarComponent />);
-    await screen.findByTestId('global-search-bar');
+    await screen.findByTestId(MOCK_GLOBAL_SEARCH_BAR);
 
     // Clear the initial getVersion call from mount
     jest.clearAllMocks();

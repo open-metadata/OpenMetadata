@@ -48,6 +48,8 @@ import { RowData } from '../../../Database/SampleDataTable/RowData';
 import { SampleDataType } from '../../../Database/SampleDataTable/SampleData.interface';
 import { FailedTestCaseSampleDataProps } from './FailedTestCaseSampleData.interface';
 
+const LABEL_SAMPLE_DATA = 'label.sample-data';
+
 const DIFF_TYPE = 'diffType';
 const ROW_KEY = '__rowKey';
 
@@ -115,7 +117,7 @@ const FailedTestCaseSampleData = ({
       label: (
         <ManageButtonItemLabel
           description={t('message.delete-entity-type-action-description', {
-            entityType: t('label.sample-data'),
+            entityType: t(LABEL_SAMPLE_DATA),
           })}
           icon={IconDelete}
           id="delete-button"
@@ -193,7 +195,7 @@ const FailedTestCaseSampleData = ({
         showErrorToast(
           error as AxiosError,
           t('server.delete-entity-error', {
-            entity: t('label.sample-data'),
+            entity: t(LABEL_SAMPLE_DATA),
           })
         );
       } finally {
@@ -242,7 +244,7 @@ const FailedTestCaseSampleData = ({
     <div className="w-full">
       <Space className="m-b-md justify-between w-full">
         <Typography className="right-panel-label" size="text-sm">
-          {t('label.sample-data')}
+          {t(LABEL_SAMPLE_DATA)}
         </Typography>
         <div className="d-flex gap-4">
           {testCaseData?.inspectionQuery && !isVersionPage && (
@@ -270,7 +272,7 @@ const FailedTestCaseSampleData = ({
               <Tooltip
                 placement="topLeft"
                 title={t('label.manage-entity', {
-                  entity: t('label.sample-data'),
+                  entity: t(LABEL_SAMPLE_DATA),
                 })}>
                 <Button
                   className="flex-center px-1.5"
@@ -285,7 +287,7 @@ const FailedTestCaseSampleData = ({
       </Space>
       <div className="tw:overflow-x-auto tw:border tw:border-border-secondary tw:rounded-[10px]">
         <Table
-          aria-label={t('label.sample-data')}
+          aria-label={t(LABEL_SAMPLE_DATA)}
           data-testid="sample-data-table"
           size="sm">
           <Table.Header columns={sampleData.columns}>
@@ -361,9 +363,9 @@ const FailedTestCaseSampleData = ({
       </div>
       {isDeleteModalOpen && (
         <DeleteModal
-          entityTitle={t('label.sample-data')}
+          entityTitle={t(LABEL_SAMPLE_DATA)}
           isDeleting={isDeleting}
-          message={getEntityDeleteMessage(t('label.sample-data'), '')}
+          message={getEntityDeleteMessage(t(LABEL_SAMPLE_DATA), '')}
           open={isDeleteModalOpen}
           onCancel={handleDeleteModal}
           onDelete={handleDeleteSampleData}

@@ -23,6 +23,8 @@ import {
   getUniqueSuggestions,
 } from './SuggestionUtils';
 
+const JANE_SMITH = 'Jane Smith';
+
 describe('getSuggestionByType', () => {
   it('should correctly group suggestions by createdBy name and type', () => {
     const suggestionMock: Suggestion[] = [
@@ -32,7 +34,7 @@ describe('getSuggestionByType', () => {
       } as Suggestion,
       {
         type: SuggestionType.SuggestDescription,
-        createdBy: { id: '2', name: 'Jane Smith' } as EntityReference,
+        createdBy: { id: '2', name: JANE_SMITH } as EntityReference,
       } as Suggestion,
       {
         type: SuggestionType.SuggestTagLabel,
@@ -51,7 +53,7 @@ describe('getSuggestionByType', () => {
 
     // Check if the suggestions are grouped correctly by createdBy name
     const johnGroup = result.groupedSuggestions.get('John Doe');
-    const janeGroup = result.groupedSuggestions.get('Jane Smith');
+    const janeGroup = result.groupedSuggestions.get(JANE_SMITH);
 
     expect(johnGroup?.tags).toHaveLength(2); // John has 2 SuggestTagLabel
     expect(johnGroup?.description).toHaveLength(1); // John has 1 SuggestDescription
@@ -72,19 +74,19 @@ describe('getSuggestionByType', () => {
       } as Suggestion,
       {
         type: SuggestionType.SuggestDescription,
-        createdBy: { id: '1', name: 'Jane Smith' } as EntityReference,
+        createdBy: { id: '1', name: JANE_SMITH } as EntityReference,
       } as Suggestion,
     ];
 
     const result = getSuggestionByType(suggestionMock);
 
-    expect(result.allUsersList).toEqual([{ id: '1', name: 'Jane Smith' }]);
+    expect(result.allUsersList).toEqual([{ id: '1', name: JANE_SMITH }]);
     expect(result.groupedSuggestions.has('')).toBe(false);
     expect(
       result.groupedSuggestions.get('Missing id')?.description
     ).toHaveLength(1);
     expect(
-      result.groupedSuggestions.get('Jane Smith')?.combinedData
+      result.groupedSuggestions.get(JANE_SMITH)?.combinedData
     ).toHaveLength(1);
   });
 });

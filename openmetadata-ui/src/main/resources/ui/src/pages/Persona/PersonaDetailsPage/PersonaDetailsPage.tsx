@@ -57,6 +57,8 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';
 
+const CUSTOMIZE_UI = 'customize-ui' as const;
+
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
   const navigate = useNavigate();
@@ -71,7 +73,7 @@ export const PersonaDetailsPage = () => {
   );
   const location = useCustomLocation();
   const { activeKey, activeCategory, fullHash } = useMemo(() => {
-    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
+    const activeKey = (location.hash?.replace('#', '') || CUSTOMIZE_UI).split(
       '.'
     )[0];
     const activeCategory = (location.hash?.replace('#', '') || '').split(
@@ -148,7 +150,7 @@ export const PersonaDetailsPage = () => {
       return;
     }
 
-    if (!location.hash.includes('customize-ui')) {
+    if (!location.hash.includes(CUSTOMIZE_UI)) {
       navigate(
         {
           pathname: location.pathname,
@@ -280,7 +282,7 @@ export const PersonaDetailsPage = () => {
     return [
       {
         label: t('label.customize-ui'),
-        key: 'customize-ui',
+        key: CUSTOMIZE_UI,
         children: <CustomizeUI />,
       },
       {

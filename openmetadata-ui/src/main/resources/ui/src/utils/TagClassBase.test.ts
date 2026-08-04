@@ -19,6 +19,8 @@ import { Tag } from '../generated/entity/classification/tag';
 import { searchQuery } from '../rest/searchAPI';
 import tagClassBase, { TagClassBase } from './TagClassBase';
 
+const RETURNS_NULL = 'returns null';
+
 jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
@@ -383,14 +385,14 @@ describe('TagClassBase', () => {
   });
 
   describe('getAutoClassificationComponent', () => {
-    it('returns null', () => {
+    it(RETURNS_NULL, () => {
       expect(tagClassBase.getAutoClassificationComponent(true)).toBeNull();
       expect(tagClassBase.getAutoClassificationComponent(false)).toBeNull();
     });
   });
 
   describe('getRecognizerFeedbackPopup', () => {
-    it('returns null', () => {
+    it(RETURNS_NULL, () => {
       const result = tagClassBase.getRecognizerFeedbackPopup(
         {} as never,
         'entity.fqn',
@@ -402,7 +404,7 @@ describe('TagClassBase', () => {
   });
 
   describe('getClassificationReviewerWidget', () => {
-    it('returns null', () => {
+    it(RETURNS_NULL, () => {
       expect(tagClassBase.getClassificationReviewerWidget()).toBeNull();
     });
   });

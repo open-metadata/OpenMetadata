@@ -33,6 +33,8 @@ import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAsse
 import DomainSelectableListNew from '../DomainSelectableList/DomainSelectableListNew.component';
 import { DomainLabelProps } from './DomainLabel.interface';
 
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural';
+
 export const DomainLabelNew = ({
   afterDomainUpdateAction,
   hasPermission,
@@ -116,7 +118,7 @@ export const DomainLabelNew = ({
               const inheritedIcon = domain?.inherited ? (
                 <Tooltip
                   title={t('label.inherited-entity', {
-                    entity: t('label.domain-plural'),
+                    entity: t(LABEL_DOMAIN_PLURAL),
                   })}>
                   <span className="inherit-icon-container d-flex items-center flex-center">
                     <InheritIcon className="inherit-icon" height={8} />
@@ -158,7 +160,7 @@ export const DomainLabelNew = ({
         <Typography.Text
           className={classNames('text-sm no-data-chip-placeholder')}
           data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain-plural') })}
+          {t('label.no-entity', { entity: t(LABEL_DOMAIN_PLURAL) })}
         </Typography.Text>
       );
     }
@@ -202,7 +204,7 @@ export const DomainLabelNew = ({
 
         <div className="d-flex justify-between w-full">
           <Typography.Text className="text-sm font-medium p-l-xss">
-            {t('label.domain-plural')}
+            {t(LABEL_DOMAIN_PLURAL)}
           </Typography.Text>
           {selectableList}
         </div>

@@ -24,6 +24,8 @@ import {
   parseRuleFilterTree,
 } from './PersonaAIContextUtils';
 
+const KPI_METRICS = 'KPI metrics';
+
 const versionSnapshot = (
   version: number,
   contextDefinition: unknown,
@@ -172,7 +174,7 @@ describe('PersonaAIContextUtils', () => {
     it('sorts newest-first, flags current and describes rule/setting diffs', () => {
       const rule = {
         id: 'r1',
-        name: 'KPI metrics',
+        name: KPI_METRICS,
         entityType: EntityType.TABLE,
       };
       const history = {
@@ -199,13 +201,13 @@ describe('PersonaAIContextUtils', () => {
       expect(entries[0].changes).toEqual([
         {
           key: 'message.persona-context-history-rule-always',
-          values: { name: 'KPI metrics' },
+          values: { name: KPI_METRICS },
         },
       ]);
       expect(entries[1].changes).toEqual([
         {
           key: 'message.persona-context-history-rule-added',
-          values: { name: 'KPI metrics' },
+          values: { name: KPI_METRICS },
         },
         {
           key: 'message.persona-context-history-budget',

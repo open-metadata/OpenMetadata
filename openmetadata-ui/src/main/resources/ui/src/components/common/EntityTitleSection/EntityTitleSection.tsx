@@ -36,6 +36,8 @@ import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.compon
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { EntityTitleSectionProps } from './EntityTitleSection.interface';
 
+const LABEL_DISPLAY_NAME = 'label.display-name';
+
 export const EntityTitleSection = ({
   entityDetails,
   entityLink,
@@ -96,7 +98,7 @@ export const EntityTitleSection = ({
 
         showSuccessToast(
           t('server.update-entity-success', {
-            entity: t('label.display-name'),
+            entity: t(LABEL_DISPLAY_NAME),
           })
         );
 
@@ -107,7 +109,7 @@ export const EntityTitleSection = ({
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.display-name'),
+            entity: t(LABEL_DISPLAY_NAME),
           })
         );
       } finally {
@@ -169,7 +171,7 @@ export const EntityTitleSection = ({
             displayName,
           }}
           title={t('label.edit-entity', {
-            entity: t('label.display-name'),
+            entity: t(LABEL_DISPLAY_NAME),
           })}
           visible={isEditModalOpen}
           onCancel={() => setIsEditModalOpen(false)}

@@ -18,6 +18,8 @@ import axiosClient from '../../../rest';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 
+const TOKEN_EXPIRED = 'Token expired';
+
 const localStorageMock = {
   getItem: jest.fn(),
   setItem: jest.fn(),
@@ -239,7 +241,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: { url: '/api/test' },
     };
@@ -264,7 +266,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: { url: '/api/test' },
     };
@@ -295,7 +297,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: {
         url: '/api/test',
@@ -326,7 +328,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: {
         url: '/users/login',
@@ -356,7 +358,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: {
         url: '/users/refresh',
@@ -386,7 +388,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: {
         url: 'auth/refresh',
@@ -416,7 +418,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: {
         url: '/auth/refresh',
@@ -446,7 +448,7 @@ describe('Test axios response interceptor', () => {
     const mockError = {
       response: {
         status: 401,
-        data: { message: 'Token expired' },
+        data: { message: TOKEN_EXPIRED },
       },
       config: {
         url: '/users/loggedInUser',

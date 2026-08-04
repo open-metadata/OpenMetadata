@@ -22,6 +22,9 @@ import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';
 import APICollectionPage from './APICollectionPage';
+
+const TEST_API_COLLECTION = 'test-api-collection';
+const API_COLLECTION_V2 = 'api.collection.v2';
 jest.mock('../../rest/apiCollectionsAPI', () => ({
   getApiCollectionByFQN: jest.fn().mockResolvedValue({}),
   restoreApiCollection: jest.fn().mockResolvedValue({ version: 1 }),
@@ -48,6 +51,7 @@ jest.mock('../../utils/FeedUtilsPure', () => ({
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
+  // eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
   useFqn: jest.fn().mockReturnValue({ fqn: 'api.collection.v1' }),
 }));
 
@@ -194,28 +198,28 @@ describe('APICollectionPage', () => {
 
     // Change FQN
     (useParams as jest.Mock).mockReturnValue({
-      fqn: 'api.collection.v2',
+      fqn: API_COLLECTION_V2,
       tab: 'api_endpoint',
     });
-    (useFqn as jest.Mock).mockReturnValue({ fqn: 'api.collection.v2' });
+    (useFqn as jest.Mock).mockReturnValue({ fqn: API_COLLECTION_V2 });
 
     // Rerender with new FQN
     rerender(<APICollectionPage />);
 
     // Verify APIs are called with new FQN
     await waitFor(() => {
-      expect(getApiCollectionByFQN).toHaveBeenCalledWith('api.collection.v2', {
+      expect(getApiCollectionByFQN).toHaveBeenCalledWith(API_COLLECTION_V2, {
         fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
       expect(getApiEndPoints).toHaveBeenCalledWith({
-        apiCollection: 'api.collection.v2',
+        apiCollection: API_COLLECTION_V2,
         service: '',
         paging: { limit: 0 },
         include: Include.NonDeleted,
       });
       expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
-        'api.collection.v2',
+        API_COLLECTION_V2,
         expect.any(Function)
       );
     });
@@ -228,7 +232,7 @@ describe('APICollectionPage', () => {
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
     const mockApiCollectionDetails = {
-      name: 'test-api-collection',
+      name: TEST_API_COLLECTION,
       id: '123',
     };
 
@@ -241,7 +245,7 @@ describe('APICollectionPage', () => {
     await waitFor(() => {
       expect(PageLayoutV1).toHaveBeenCalledWith(
         expect.objectContaining({
-          pageTitle: 'test-api-collection',
+          pageTitle: TEST_API_COLLECTION,
         }),
         expect.anything()
       );

@@ -17,6 +17,9 @@ import {
   isDomainExist,
 } from '../utils/DomainFilterUtils';
 
+const PARENT_CHILD = 'parent.child' as const;
+const PARENT_CHILD_GRANDCHILD = 'parent.child.grandchild' as const;
+
 jest.mock('../hooks/useDomainStore');
 jest.mock('./RouterUtils');
 
@@ -40,12 +43,12 @@ describe('isDomainExist', () => {
         {
           id: '2',
           name: 'Child',
-          fullyQualifiedName: 'parent.child',
+          fullyQualifiedName: PARENT_CHILD,
         },
       ],
     } as Domain;
 
-    expect(isDomainExist(domain, 'parent.child')).toBe(true);
+    expect(isDomainExist(domain, PARENT_CHILD)).toBe(true);
   });
 
   it('should return true if domain fqn exists in nested children', () => {
@@ -59,19 +62,19 @@ describe('isDomainExist', () => {
         {
           id: '2',
           name: 'Child',
-          fullyQualifiedName: 'parent.child',
+          fullyQualifiedName: PARENT_CHILD,
           children: [
             {
               id: '3',
               name: 'GrandChild',
-              fullyQualifiedName: 'parent.child.grandchild',
+              fullyQualifiedName: PARENT_CHILD_GRANDCHILD,
             },
           ],
         },
       ],
     } as unknown as Domain;
 
-    expect(isDomainExist(domain, 'parent.child.grandchild')).toBe(true);
+    expect(isDomainExist(domain, PARENT_CHILD_GRANDCHILD)).toBe(true);
   });
 
   it('should return false if domain fqn does not exist', () => {
@@ -83,7 +86,7 @@ describe('isDomainExist', () => {
         {
           id: '2',
           name: 'Child',
-          fullyQualifiedName: 'parent.child',
+          fullyQualifiedName: PARENT_CHILD,
         },
       ],
     } as Domain;
@@ -101,7 +104,7 @@ describe('isDomainExist', () => {
       domainType: DomainType.Aggregate,
     } as unknown as Domain;
 
-    expect(isDomainExist(domain, 'parent.child')).toBe(false);
+    expect(isDomainExist(domain, PARENT_CHILD)).toBe(false);
   });
 
   it('should handle domain with description and type', () => {
@@ -115,19 +118,19 @@ describe('isDomainExist', () => {
         {
           id: '2',
           name: 'Child',
-          fullyQualifiedName: 'parent.child',
+          fullyQualifiedName: PARENT_CHILD,
           children: [
             {
               id: '3',
               name: 'GrandChild',
-              fullyQualifiedName: 'parent.child.grandchild',
+              fullyQualifiedName: PARENT_CHILD_GRANDCHILD,
             },
           ],
         },
       ],
     } as unknown as Domain;
 
-    expect(isDomainExist(domain, 'parent.child.grandchild')).toBe(true);
+    expect(isDomainExist(domain, PARENT_CHILD_GRANDCHILD)).toBe(true);
   });
 
   describe('getQueryFilterToIncludeDomain', () => {
@@ -181,7 +184,7 @@ describe('isDomainExist', () => {
     });
 
     it('should create filter with nested domain fqn', () => {
-      const domainFqn = 'parent.child.grandchild';
+      const domainFqn = PARENT_CHILD_GRANDCHILD;
       const dataProductFqn = 'product.subproduct';
 
       const result = getQueryFilterToIncludeDomain(domainFqn, dataProductFqn);

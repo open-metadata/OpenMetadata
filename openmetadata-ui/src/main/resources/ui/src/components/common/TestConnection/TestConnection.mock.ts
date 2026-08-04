@@ -10,27 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+const MYSQL_PYMYSQL = 'mysql+pymysql';
+const MYSQL_3306 = 'mysql:3306';
+const TEST_CONNECTION_MYSQL_01 = 'test-connection-Mysql-01';
+
 export const FORM_DATA = {
   type: 'Mysql',
-  scheme: 'mysql+pymysql',
+  scheme: MYSQL_PYMYSQL,
   username: 'openmetadata_user',
   // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
   password: 'openmetadata_password',
-  hostPort: 'mysql:3306',
+  hostPort: MYSQL_3306,
 };
 
 export const CREATE_WORKFLOW_PAYLOAD = {
-  name: 'test-connection-Mysql-01',
+  name: TEST_CONNECTION_MYSQL_01,
   workflowType: 'TEST_CONNECTION',
   request: {
     connection: {
       config: {
         type: 'Mysql',
-        scheme: 'mysql+pymysql',
+        scheme: MYSQL_PYMYSQL,
         username: 'openmetadata_user',
         // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
         password: 'openmetadata_password',
-        hostPort: 'mysql:3306',
+        hostPort: MYSQL_3306,
       },
     },
     serviceType: 'Database',
@@ -39,17 +43,17 @@ export const CREATE_WORKFLOW_PAYLOAD = {
 };
 
 export const CREATE_WORKFLOW_PAYLOAD_WITH_RUNNER = {
-  name: 'test-connection-Mysql-01',
+  name: TEST_CONNECTION_MYSQL_01,
   workflowType: 'TEST_CONNECTION',
   request: {
     connection: {
       config: {
         type: 'Mysql',
-        scheme: 'mysql+pymysql',
+        scheme: MYSQL_PYMYSQL,
         username: 'openmetadata_user',
         // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
         password: 'openmetadata_password',
-        hostPort: 'mysql:3306',
+        hostPort: MYSQL_3306,
       },
     },
     serviceType: 'Database',
@@ -60,7 +64,7 @@ export const CREATE_WORKFLOW_PAYLOAD_WITH_RUNNER = {
 
 export const WORKFLOW_DETAILS = {
   id: 'd6a5178d-06ba-4702-9b32-ce72349aa88c',
-  name: 'test-connection-Mysql-01',
+  name: TEST_CONNECTION_MYSQL_01,
   description: 'mysql test connection workflow',
   fullyQualifiedName: 'test-connection-mysql-01',
   workflowType: 'TEST_CONNECTION',
@@ -69,11 +73,11 @@ export const WORKFLOW_DETAILS = {
     connection: {
       config: {
         type: 'Mysql',
-        scheme: 'mysql+pymysql',
+        scheme: MYSQL_PYMYSQL,
         username: 'openmetadata_user',
         // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
         password: 'openmetadata_password',
-        hostPort: 'mysql:3306',
+        hostPort: MYSQL_3306,
         supportsMetadataExtraction: true,
         supportsDBTExtraction: true,
         supportsProfiler: true,

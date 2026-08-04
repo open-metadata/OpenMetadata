@@ -20,16 +20,28 @@ import { User } from '../../../../generated/entity/teams/user';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import LineageTabContent from './LineageTabContent';
 
+const MOCK_CHEVRON_RIGHT_ICON = 'chevron-right-icon';
+const MOCK_DOTS_HORIZONTAL_ICON = 'dots-horizontal-icon';
+const UPSTREAM_TABLE = 'Upstream Table';
+const DOWNSTREAM_TABLE = 'Downstream Table';
+const CURRENT_ENTITY = 'current-entity';
+const SERVICE_DATABASE_SCHEMA_CURRENT_TABLE =
+  'service.database.schema.current_table';
+const UPSTREAM_BUTTON_ACTIVE = 'upstream-button-active';
+const LINEAGE_ITEM_DIRECTION = '.lineage-item-direction';
+const LABEL_LINEAGE_NOT_FOUND = 'label.lineage-not-found';
+const CURRENT_TABLE = 'Current Table';
+
 jest.mock('@untitledui/icons', () => ({
   ChevronRight: jest
     .fn()
     .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
-      <svg data-testid="chevron-right-icon" {...props} />
+      <svg data-testid={MOCK_CHEVRON_RIGHT_ICON} {...props} />
     )),
   DotsHorizontal: jest
     .fn()
     .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
-      <svg data-testid="dots-horizontal-icon" {...props} />
+      <svg data-testid={MOCK_DOTS_HORIZONTAL_ICON} {...props} />
     )),
 }));
 
@@ -61,12 +73,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
             {displayItems.map((item, index) => (
               <li key={item.id}>
                 {shouldCollapse && index === 1 ? (
-                  <svg data-testid="dots-horizontal-icon" />
+                  <svg data-testid={MOCK_DOTS_HORIZONTAL_ICON} />
                 ) : (
                   <span>{item.label}</span>
                 )}
                 {index < displayItems.length - 1 && (
-                  <svg data-testid="chevron-right-icon" />
+                  <svg data-testid={MOCK_CHEVRON_RIGHT_ICON} />
                 )}
               </li>
             ))}
@@ -194,6 +206,7 @@ jest.mock('../../../../enums/common.enum', () => ({
 }));
 
 // Mock utility functions
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest
     .fn()
@@ -241,7 +254,7 @@ const mockUpstreamEntity: LineageEntityReference & {
   id: 'upstream-1',
   type: 'table',
   name: 'upstream_table',
-  displayName: 'Upstream Table',
+  displayName: UPSTREAM_TABLE,
   fullyQualifiedName: 'service.database.schema.upstream_table',
   serviceType: FormattedDatabaseServiceType.BigQuery,
   entityType: 'table',
@@ -253,7 +266,7 @@ const mockDownstreamEntity: LineageEntityReference & {
   id: 'downstream-1',
   type: 'table',
   name: 'downstream_table',
-  displayName: 'Downstream Table',
+  displayName: DOWNSTREAM_TABLE,
   fullyQualifiedName: 'service.database.schema.downstream_table',
   serviceType: FormattedDatabaseServiceType.Snowflake,
   entityType: 'table',
@@ -273,13 +286,13 @@ const mockLineageData: LineageData = {
   upstreamEdges: {
     'edge-1': {
       fromEntity: mockUpstreamEntity,
-      toEntity: { id: 'current-entity', type: 'table' },
+      toEntity: { id: CURRENT_ENTITY, type: 'table' },
     },
   },
   downstreamEdges: {
     'edge-2': {
       fromEntity: {
-        id: 'current-entity',
+        id: CURRENT_ENTITY,
         type: 'table',
       },
       toEntity: mockDownstreamEntity,
@@ -288,7 +301,7 @@ const mockLineageData: LineageData = {
 };
 
 const defaultProps = {
-  entityFqn: 'service.database.schema.current_table',
+  entityFqn: SERVICE_DATABASE_SCHEMA_CURRENT_TABLE,
   filter: 'upstream' as const,
   lineageData: mockLineageData,
   onFilterChange: jest.fn(),
@@ -313,7 +326,7 @@ describe('LineageTabContent', () => {
     it('should render without crashing', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      const buttons = screen.getAllByTestId('upstream-button-active');
+      const buttons = screen.getAllByTestId(UPSTREAM_BUTTON_ACTIVE);
 
       expect(buttons).toHaveLength(1);
     });
@@ -337,7 +350,7 @@ describe('LineageTabContent', () => {
     it('should render upstream and downstream filter buttons', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      const upstreamButton = screen.getByTestId('upstream-button-active');
+      const upstreamButton = screen.getByTestId(UPSTREAM_BUTTON_ACTIVE);
       const downstreamButton = screen.getByTestId('downstream-button-');
 
       expect(upstreamButton).toBeInTheDocument();
@@ -355,7 +368,7 @@ describe('LineageTabContent', () => {
     it('should highlight active filter button', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(screen.getByTestId('upstream-button-active')).toBeInTheDocument();
+      expect(screen.getByTestId(UPSTREAM_BUTTON_ACTIVE)).toBeInTheDocument();
     });
 
     it('should highlight downstream filter when active', () => {
@@ -403,9 +416,9 @@ describe('LineageTabContent', () => {
     it('should render upstream lineage items when filter is upstream', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
-      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
-      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
+      expect(screen.getByText(UPSTREAM_TABLE)).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DOTS_HORIZONTAL_ICON)).toBeInTheDocument();
+      expect(screen.getAllByTestId(MOCK_CHEVRON_RIGHT_ICON)).toHaveLength(2);
     });
 
     it('should render direction icon for upstream items', () => {
@@ -413,9 +426,7 @@ describe('LineageTabContent', () => {
         <LineageTabContent {...defaultProps} filter="upstream" />
       );
 
-      const directionElement = container.querySelector(
-        '.lineage-item-direction'
-      );
+      const directionElement = container.querySelector(LINEAGE_ITEM_DIRECTION);
 
       expect(directionElement).toBeInTheDocument();
       // Icon is rendered (SVG mock might resolve differently in test environment)
@@ -427,7 +438,7 @@ describe('LineageTabContent', () => {
 
       // Note: The component shows direction via icon, not text with .item-direction-text class
       const directionElements = document.querySelectorAll(
-        '.lineage-item-direction'
+        LINEAGE_ITEM_DIRECTION
       );
 
       expect(directionElements.length).toBeGreaterThan(0);
@@ -442,7 +453,7 @@ describe('LineageTabContent', () => {
     it('should not render downstream items when filter is upstream', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(screen.queryByText('Downstream Table')).not.toBeInTheDocument();
+      expect(screen.queryByText(DOWNSTREAM_TABLE)).not.toBeInTheDocument();
     });
   });
 
@@ -450,9 +461,9 @@ describe('LineageTabContent', () => {
     it('should render downstream lineage items when filter is downstream', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
-      expect(screen.getByText('Downstream Table')).toBeInTheDocument();
-      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
-      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
+      expect(screen.getByText(DOWNSTREAM_TABLE)).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DOTS_HORIZONTAL_ICON)).toBeInTheDocument();
+      expect(screen.getAllByTestId(MOCK_CHEVRON_RIGHT_ICON)).toHaveLength(2);
     });
 
     it('should render downstream direction text', () => {
@@ -460,7 +471,7 @@ describe('LineageTabContent', () => {
 
       // Note: The component shows direction via icon, not text with .item-direction-text class
       const directionElements = document.querySelectorAll(
-        '.lineage-item-direction'
+        LINEAGE_ITEM_DIRECTION
       );
 
       expect(directionElements.length).toBeGreaterThan(0);
@@ -475,7 +486,7 @@ describe('LineageTabContent', () => {
     it('should not render upstream items when filter is downstream', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
-      expect(screen.queryByText('Upstream Table')).not.toBeInTheDocument();
+      expect(screen.queryByText(UPSTREAM_TABLE)).not.toBeInTheDocument();
     });
   });
 
@@ -505,7 +516,7 @@ describe('LineageTabContent', () => {
       const { container } = render(<LineageTabContent {...defaultProps} />);
 
       const directionElements = container.querySelectorAll(
-        '.lineage-item-direction'
+        LINEAGE_ITEM_DIRECTION
       );
 
       expect(directionElements.length).toBeGreaterThan(0);
@@ -516,14 +527,14 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('schema')).toBeInTheDocument();
-      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
-      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
+      expect(screen.getByTestId(MOCK_DOTS_HORIZONTAL_ICON)).toBeInTheDocument();
+      expect(screen.getAllByTestId(MOCK_CHEVRON_RIGHT_ICON)).toHaveLength(2);
     });
 
     it('should render entity display name or name', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(screen.getByText(UPSTREAM_TABLE)).toBeInTheDocument();
     });
   });
 
@@ -538,7 +549,7 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
       expect(screen.getByTestId('no-data-icon')).toBeInTheDocument();
-      expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE_NOT_FOUND)).toBeInTheDocument();
     });
 
     it('should render no data found message with correct structure', () => {
@@ -559,17 +570,17 @@ describe('LineageTabContent', () => {
 
   describe('Entity Filtering', () => {
     it('should exclude current entity from upstream items', () => {
-      const currentEntityFqn = 'service.database.schema.current_table';
+      const currentEntityFqn = SERVICE_DATABASE_SCHEMA_CURRENT_TABLE;
       const lineageDataWithCurrentEntity = {
         ...mockLineageData,
         nodes: {
           ...mockLineageData.nodes,
-          'current-entity': {
+          [CURRENT_ENTITY]: {
             entity: {
-              id: 'current-entity',
+              id: CURRENT_ENTITY,
               type: 'table',
               name: 'current_table',
-              displayName: 'Current Table',
+              displayName: CURRENT_TABLE,
               fullyQualifiedName: currentEntityFqn,
               serviceType: FormattedDatabaseServiceType.BigQuery,
               entityType: 'table',
@@ -583,10 +594,10 @@ describe('LineageTabContent', () => {
         upstreamNodes: [
           mockUpstreamEntity,
           {
-            id: 'current-entity',
+            id: CURRENT_ENTITY,
             type: 'table',
             name: 'current_table',
-            displayName: 'Current Table',
+            displayName: CURRENT_TABLE,
             fullyQualifiedName: currentEntityFqn,
             serviceType: FormattedDatabaseServiceType.BigQuery,
             entityType: 'table',
@@ -603,22 +614,22 @@ describe('LineageTabContent', () => {
         />
       );
 
-      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
-      expect(screen.queryByText('Current Table')).not.toBeInTheDocument();
+      expect(screen.getByText(UPSTREAM_TABLE)).toBeInTheDocument();
+      expect(screen.queryByText(CURRENT_TABLE)).not.toBeInTheDocument();
     });
 
     it('should exclude current entity from downstream items', () => {
-      const currentEntityFqn = 'service.database.schema.current_table';
+      const currentEntityFqn = SERVICE_DATABASE_SCHEMA_CURRENT_TABLE;
       const lineageDataWithCurrentEntity = {
         ...mockLineageData,
         nodes: {
           ...mockLineageData.nodes,
-          'current-entity': {
+          [CURRENT_ENTITY]: {
             entity: {
-              id: 'current-entity',
+              id: CURRENT_ENTITY,
               type: 'table',
               name: 'current_table',
-              displayName: 'Current Table',
+              displayName: CURRENT_TABLE,
               fullyQualifiedName: currentEntityFqn,
               serviceType: FormattedDatabaseServiceType.BigQuery,
               entityType: 'table',
@@ -633,10 +644,10 @@ describe('LineageTabContent', () => {
         downstreamNodes: [
           mockDownstreamEntity,
           {
-            id: 'current-entity',
+            id: CURRENT_ENTITY,
             type: 'table',
             name: 'current_table',
-            displayName: 'Current Table',
+            displayName: CURRENT_TABLE,
             fullyQualifiedName: currentEntityFqn,
             serviceType: FormattedDatabaseServiceType.BigQuery,
             entityType: 'table',
@@ -653,8 +664,8 @@ describe('LineageTabContent', () => {
         />
       );
 
-      expect(screen.getByText('Downstream Table')).toBeInTheDocument();
-      expect(screen.queryByText('Current Table')).not.toBeInTheDocument();
+      expect(screen.getByText(DOWNSTREAM_TABLE)).toBeInTheDocument();
+      expect(screen.queryByText(CURRENT_TABLE)).not.toBeInTheDocument();
     });
   });
 
@@ -674,8 +685,8 @@ describe('LineageTabContent', () => {
 
       expect(screen.getByText('service')).toBeInTheDocument();
       expect(screen.getByText('table')).toBeInTheDocument();
-      expect(screen.getByTestId('dots-horizontal-icon')).toBeInTheDocument();
-      expect(screen.getAllByTestId('chevron-right-icon')).toHaveLength(2);
+      expect(screen.getByTestId(MOCK_DOTS_HORIZONTAL_ICON)).toBeInTheDocument();
+      expect(screen.getAllByTestId(MOCK_CHEVRON_RIGHT_ICON)).toHaveLength(2);
     });
 
     it('should handle entities without fullyQualifiedName', () => {
@@ -691,7 +702,7 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(screen.getByText(UPSTREAM_TABLE)).toBeInTheDocument();
     });
 
     it('should handle entities with empty fullyQualifiedName', () => {
@@ -707,7 +718,7 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(screen.getByText(UPSTREAM_TABLE)).toBeInTheDocument();
     });
   });
 
@@ -715,7 +726,7 @@ describe('LineageTabContent', () => {
     it('should display displayName when available', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(screen.getByText(UPSTREAM_TABLE)).toBeInTheDocument();
     });
 
     it('should fallback to name when displayName is not available', () => {
@@ -848,7 +859,7 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(screen.getByText(UPSTREAM_TABLE)).toBeInTheDocument();
       expect(screen.getByText('Upstream Table 2')).toBeInTheDocument();
     });
 
@@ -873,7 +884,7 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
-      expect(screen.getByText('Downstream Table')).toBeInTheDocument();
+      expect(screen.getByText(DOWNSTREAM_TABLE)).toBeInTheDocument();
       expect(screen.getByText('Downstream Table 2')).toBeInTheDocument();
     });
   });
@@ -919,7 +930,7 @@ describe('LineageTabContent', () => {
         />
       );
 
-      expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE_NOT_FOUND)).toBeInTheDocument();
     });
 
     it('should handle missing edges in lineage data', () => {
@@ -941,7 +952,7 @@ describe('LineageTabContent', () => {
         />
       );
 
-      expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE_NOT_FOUND)).toBeInTheDocument();
     });
   });
 });

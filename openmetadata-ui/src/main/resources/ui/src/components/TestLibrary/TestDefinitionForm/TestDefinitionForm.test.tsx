@@ -24,6 +24,8 @@ import {
 } from '../../../rest/testAPI';
 import TestDefinitionForm from './TestDefinitionForm.component';
 
+const CREATE_BTN = 'create-btn' as const;
+
 jest.mock('../../../rest/testAPI', () => ({
   createTestDefinition: jest.fn().mockResolvedValue({}),
   patchTestDefinition: jest.fn().mockResolvedValue({}),
@@ -103,7 +105,7 @@ describe('TestDefinitionForm wrapper', () => {
 
     expect(screen.getByTestId('form-body')).toBeInTheDocument();
     expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
-    expect(screen.getByTestId('create-btn')).toBeInTheDocument();
+    expect(screen.getByTestId(CREATE_BTN)).toBeInTheDocument();
   });
 
   it('uses the add title when there are no initialValues', () => {
@@ -143,7 +145,7 @@ describe('TestDefinitionForm wrapper', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId(CREATE_BTN));
 
     await waitFor(() => {
       expect(createTestDefinition).toHaveBeenCalledWith(
@@ -179,7 +181,7 @@ describe('TestDefinitionForm wrapper', () => {
     );
 
     fireEvent.click(screen.getByTestId('set-display-name'));
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId(CREATE_BTN));
 
     await waitFor(() => {
       expect(patchTestDefinition).toHaveBeenCalledWith(
@@ -210,7 +212,7 @@ describe('TestDefinitionForm wrapper', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId(CREATE_BTN));
 
     await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
 
@@ -231,7 +233,7 @@ describe('TestDefinitionForm wrapper', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('create-btn'));
+    fireEvent.click(screen.getByTestId(CREATE_BTN));
 
     await waitFor(() => expect(createTestDefinition).toHaveBeenCalled());
 

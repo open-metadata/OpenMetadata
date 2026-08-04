@@ -50,6 +50,8 @@ import {
   FolderFilesState,
 } from './DocumentsView.interface';
 
+const LABEL_FOLDER = 'label.folder' as const;
+
 const FOLDERS_SCROLL_THRESHOLD = 100;
 
 const DocumentFolderView = (
@@ -276,7 +278,7 @@ const DocumentFolderView = (
         onSelectFolder(undefined);
       }
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.folder') })
+        t('server.entity-deleted-successfully', { entity: t(LABEL_FOLDER) })
       );
       setFolderToDelete(undefined);
     } catch (err) {
@@ -315,7 +317,7 @@ const DocumentFolderView = (
             </div>
             <div>
               <Typography size="text-md" weight="semibold">
-                {t('label.folder')}
+                {t(LABEL_FOLDER)}
               </Typography>
               <Typography
                 className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
@@ -337,7 +339,7 @@ const DocumentFolderView = (
               data-testid="add-folder-btn"
               icon={Plus}
               size="sm"
-              tooltip={t('label.add-entity', { entity: t('label.folder') })}
+              tooltip={t('label.add-entity', { entity: t(LABEL_FOLDER) })}
               onClick={() => setIsCreateModalOpen(true)}
             />
           )}

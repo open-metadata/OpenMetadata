@@ -21,15 +21,18 @@ import { ROUTES } from '../../../../constants/constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import MarketPlaceAppDetails from './MarketPlaceAppDetails.component';
 
+const MARKETPLACE_DESCRIPTION = 'marketplace description';
+const SUPPORT_EMAIL_COM = 'support@email.com';
+const HTTPS_XYZ_COM = 'https://xyz.com';
 const mockNavigate = jest.fn();
 const mockShowErrorToast = jest.fn();
 let mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 let mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
-  description: 'marketplace description',
+  description: MARKETPLACE_DESCRIPTION,
   fullyQualifiedName: 'marketplace fqn',
-  supportEmail: 'support@email.com',
-  developerUrl: 'https://xyz.com',
-  privacyPolicyUrl: 'https://xyz.com',
+  supportEmail: SUPPORT_EMAIL_COM,
+  developerUrl: HTTPS_XYZ_COM,
+  privacyPolicyUrl: HTTPS_XYZ_COM,
   appScreenshots: ['screenshot1', 'screenshot2'],
   enabled: true,
 });
@@ -129,11 +132,11 @@ describe('MarketPlaceAppDetails component', () => {
   it('should show install button disabled', async () => {
     mockGetApplicationByName = jest.fn().mockReturnValue([]);
     mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
-      description: 'marketplace description',
+      description: MARKETPLACE_DESCRIPTION,
       fullyQualifiedName: 'marketplace fqn',
-      supportEmail: 'support@email.com',
-      developerUrl: 'https://xyz.com',
-      privacyPolicyUrl: 'https://xyz.com',
+      supportEmail: SUPPORT_EMAIL_COM,
+      developerUrl: HTTPS_XYZ_COM,
+      privacyPolicyUrl: HTTPS_XYZ_COM,
       appScreenshots: ['screenshot1', 'screenshot2'],
       enabled: false,
     });
@@ -155,11 +158,11 @@ describe('MarketPlaceAppDetails component', () => {
     mockGetApplicationByName = jest.fn().mockReturnValue([]);
     mockGetMarketPlaceApplicationByFqn = jest.fn().mockReturnValue({
       name: 'CacheWarmupApplication',
-      description: 'marketplace description',
+      description: MARKETPLACE_DESCRIPTION,
       fullyQualifiedName: 'CacheWarmupApplication',
-      supportEmail: 'support@email.com',
-      developerUrl: 'https://xyz.com',
-      privacyPolicyUrl: 'https://xyz.com',
+      supportEmail: SUPPORT_EMAIL_COM,
+      developerUrl: HTTPS_XYZ_COM,
+      privacyPolicyUrl: HTTPS_XYZ_COM,
       appScreenshots: ['screenshot1', 'screenshot2'],
       enabled: false,
     });

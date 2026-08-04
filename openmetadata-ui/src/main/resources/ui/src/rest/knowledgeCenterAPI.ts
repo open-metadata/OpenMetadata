@@ -27,6 +27,8 @@ import {
 } from '../interface/knowledge-center.interface';
 import APIClient from '../rest/index';
 
+const CONTEXTCENTER_PAGES = '/contextCenter/pages';
+
 export interface KnowledgePageHierarchyParams {
   parent?: string;
   pageType?: PageType;
@@ -48,7 +50,7 @@ export const getListKnowledgePages = async (
   params?: KnowledgePageListParams
 ) => {
   const response = await APIClient.get<PagingResponse<KnowledgePage[]>>(
-    '/contextCenter/pages',
+    CONTEXTCENTER_PAGES,
     { params }
   );
 
@@ -94,7 +96,7 @@ export const postKnowledgePage = async (data: CreateKnowledgePage) => {
   const response = await APIClient.post<
     CreateKnowledgePage,
     AxiosResponse<KnowledgePage>
-  >('/contextCenter/pages', data);
+  >(CONTEXTCENTER_PAGES, data);
 
   return response.data;
 };
@@ -103,7 +105,7 @@ export const putKnowledgePage = async (data: CreateKnowledgePage) => {
   const response = await APIClient.put<
     CreateKnowledgePage,
     AxiosResponse<KnowledgePage>
-  >('/contextCenter/pages', data);
+  >(CONTEXTCENTER_PAGES, data);
 
   return response.data;
 };

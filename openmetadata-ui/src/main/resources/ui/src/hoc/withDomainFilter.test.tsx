@@ -17,6 +17,12 @@ import { useDomainStore } from '../hooks/useDomainStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 import { withDomainFilter } from './withDomainFilter';
 
+const API_TABLES = '/api/tables' as const;
+const API_SEARCH = '/api/search' as const;
+const SEARCH_QUERY = '/search/query' as const;
+const ENGINEERING = 'engineering.' as const;
+const ENGINEERING_BACKEND_SERVICES = 'engineering.backend.services' as const;
+
 jest.mock('../hooks/useDomainStore');
 jest.mock('../utils/LocationUtils', () => ({
   getPathNameFromWindowLocation: jest.fn(),
@@ -115,11 +121,11 @@ describe('withDomainFilter', () => {
   describe('regular GET requests', () => {
     it('should add domain parameter for regular GET requests with active domain', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/tables'
+        API_TABLES
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/api/tables');
+      const config = createMockConfig('get', API_TABLES);
       const result = withDomainFilter(config);
 
       expect(result.params).toEqual({
@@ -129,11 +135,11 @@ describe('withDomainFilter', () => {
 
     it('should preserve existing params when adding domain parameter', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/tables'
+        API_TABLES
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/api/tables', {
+      const config = createMockConfig('get', API_TABLES, {
         limit: 10,
         offset: 0,
       });
@@ -150,11 +156,11 @@ describe('withDomainFilter', () => {
   describe('search query requests', () => {
     it('should add should filter with term and prefix for /search/query with active domain', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
       });
       const result = withDomainFilter(config);
@@ -177,7 +183,7 @@ describe('withDomainFilter', () => {
                     },
                     {
                       prefix: {
-                        'domains.fullyQualifiedName': 'engineering.',
+                        'domains.fullyQualifiedName': ENGINEERING,
                       },
                     },
                   ],
@@ -191,11 +197,11 @@ describe('withDomainFilter', () => {
 
     it('should return config unchanged for TAG index searches', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TAG,
       });
       const result = withDomainFilter(config);
@@ -206,11 +212,11 @@ describe('withDomainFilter', () => {
 
     it('should use fullyQualifiedName field for DOMAIN index searches', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.DOMAIN,
       });
       const result = withDomainFilter(config);
@@ -221,13 +227,13 @@ describe('withDomainFilter', () => {
 
       expect(shouldClauses).toEqual([
         { term: { fullyQualifiedName: 'engineering' } },
-        { prefix: { fullyQualifiedName: 'engineering.' } },
+        { prefix: { fullyQualifiedName: ENGINEERING } },
       ]);
     });
 
     it('should preserve existing query_filter and add should filter', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
@@ -245,7 +251,7 @@ describe('withDomainFilter', () => {
         },
       };
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
         query_filter: JSON.stringify(existingFilter),
       });
@@ -269,7 +275,7 @@ describe('withDomainFilter', () => {
             },
             {
               prefix: {
-                'domains.fullyQualifiedName': 'engineering.',
+                'domains.fullyQualifiedName': ENGINEERING,
               },
             },
           ],
@@ -279,11 +285,11 @@ describe('withDomainFilter', () => {
 
     it('should handle invalid JSON in query_filter gracefully', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
         query_filter: 'invalid-json',
       });
@@ -305,7 +311,7 @@ describe('withDomainFilter', () => {
                     },
                     {
                       prefix: {
-                        'domains.fullyQualifiedName': 'engineering.',
+                        'domains.fullyQualifiedName': ENGINEERING,
                       },
                     },
                   ],
@@ -319,7 +325,7 @@ describe('withDomainFilter', () => {
 
     it('should handle query_filter with empty must array', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
@@ -329,7 +335,7 @@ describe('withDomainFilter', () => {
         },
       };
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
         query_filter: JSON.stringify(existingFilter),
       });
@@ -348,7 +354,7 @@ describe('withDomainFilter', () => {
             },
             {
               prefix: {
-                'domains.fullyQualifiedName': 'engineering.',
+                'domains.fullyQualifiedName': ENGINEERING,
               },
             },
           ],
@@ -358,11 +364,11 @@ describe('withDomainFilter', () => {
 
     it('should handle empty object query_filter gracefully', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
         query_filter: '{}',
       });
@@ -384,7 +390,7 @@ describe('withDomainFilter', () => {
                     },
                     {
                       prefix: {
-                        'domains.fullyQualifiedName': 'engineering.',
+                        'domains.fullyQualifiedName': ENGINEERING,
                       },
                     },
                   ],
@@ -398,11 +404,11 @@ describe('withDomainFilter', () => {
 
     it('should preserve existing params when adding query_filter', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
         limit: 10,
         offset: 0,
@@ -417,7 +423,7 @@ describe('withDomainFilter', () => {
 
     it('should preserve non-bool top-level clauses when adding domain filter', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
@@ -428,7 +434,7 @@ describe('withDomainFilter', () => {
         },
       });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
         query_filter: existingFilter,
       });
@@ -452,7 +458,7 @@ describe('withDomainFilter', () => {
             },
             {
               prefix: {
-                'domains.fullyQualifiedName': 'engineering.',
+                'domains.fullyQualifiedName': ENGINEERING,
               },
             },
           ],
@@ -465,29 +471,29 @@ describe('withDomainFilter', () => {
   describe('nested domain paths', () => {
     it('should handle nested domain paths correctly', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/tables'
+        API_TABLES
       );
       mockGetState.mockReturnValue({
-        activeDomain: 'engineering.backend.services',
+        activeDomain: ENGINEERING_BACKEND_SERVICES,
       });
 
-      const config = createMockConfig('get', '/api/tables');
+      const config = createMockConfig('get', API_TABLES);
       const result = withDomainFilter(config);
 
       expect(result.params).toEqual({
-        domain: 'engineering.backend.services',
+        domain: ENGINEERING_BACKEND_SERVICES,
       });
     });
 
     it('should add should filter with nested domain for search queries', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/api/search'
+        API_SEARCH
       );
       mockGetState.mockReturnValue({
-        activeDomain: 'engineering.backend.services',
+        activeDomain: ENGINEERING_BACKEND_SERVICES,
       });
 
-      const config = createMockConfig('get', '/search/query', {
+      const config = createMockConfig('get', SEARCH_QUERY, {
         index: SearchIndex.TABLE,
       });
       const result = withDomainFilter(config);
@@ -499,7 +505,7 @@ describe('withDomainFilter', () => {
           should: [
             {
               term: {
-                'domains.fullyQualifiedName': 'engineering.backend.services',
+                'domains.fullyQualifiedName': ENGINEERING_BACKEND_SERVICES,
               },
             },
             {

@@ -13,6 +13,8 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useLogStream } from './useLogStream';
 
+const MY_PIPELINE = 'my.pipeline';
+
 jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn().mockResolvedValue('test-token'),
 }));
@@ -60,7 +62,7 @@ afterEach(() => {
 
 describe('useLogStream', () => {
   it('does not fetch when enabled is false', () => {
-    renderHook(() => useLogStream('my.pipeline', 'run-1', false));
+    renderHook(() => useLogStream(MY_PIPELINE, 'run-1', false));
 
     expect(global.fetch).not.toHaveBeenCalled();
   });
@@ -68,7 +70,7 @@ describe('useLogStream', () => {
   it('fetches with the correct URL and Authorization header', async () => {
     mockFetch(['data: hello\n\n']);
 
-    renderHook(() => useLogStream('my.pipeline', 'run-1', true));
+    renderHook(() => useLogStream(MY_PIPELINE, 'run-1', true));
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
 
@@ -84,7 +86,7 @@ describe('useLogStream', () => {
     mockFetch(['data: line one\ndata: line two\n']);
 
     const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     await waitFor(() => expect(result.current.streamDone).toBe(true));
@@ -96,7 +98,7 @@ describe('useLogStream', () => {
     mockFetch(['event: open\nid: 1\ndata: real line\nretry: 3000\n\n']);
 
     const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     await waitFor(() => expect(result.current.streamDone).toBe(true));
@@ -108,7 +110,7 @@ describe('useLogStream', () => {
     mockFetch(['data: first line\n']);
 
     const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     expect(result.current.loading).toBe(true);
@@ -120,7 +122,7 @@ describe('useLogStream', () => {
     mockFetch(['data: only line\n']);
 
     const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     await waitFor(() => expect(result.current.streamDone).toBe(true));
@@ -132,7 +134,7 @@ describe('useLogStream', () => {
     mockFetch([], false, 404);
 
     const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     await waitFor(() =>
@@ -149,7 +151,7 @@ describe('useLogStream', () => {
     );
 
     const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     await waitFor(() => expect(result.current.error).toBe('Network failure'));
@@ -162,7 +164,7 @@ describe('useLogStream', () => {
     mockFetch(['data: last line without newline']);
 
     const { result } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     await waitFor(() => expect(result.current.streamDone).toBe(true));
@@ -174,7 +176,7 @@ describe('useLogStream', () => {
     mockFetch(['data: line\n']);
 
     const { unmount } = renderHook(() =>
-      useLogStream('my.pipeline', 'run-1', true)
+      useLogStream(MY_PIPELINE, 'run-1', true)
     );
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
@@ -195,13 +197,13 @@ describe('useLogStream', () => {
     const { result, rerender } = renderHook(
       ({ fqn, runId }: { fqn: string; runId: string }) =>
         useLogStream(fqn, runId, true),
-      { initialProps: { fqn: 'my.pipeline', runId: 'run-1' } }
+      { initialProps: { fqn: MY_PIPELINE, runId: 'run-1' } }
     );
 
     await waitFor(() => expect(result.current.streamDone).toBe(true));
 
     mockFetch(['data: run-2 line\n']);
-    rerender({ fqn: 'my.pipeline', runId: 'run-2' });
+    rerender({ fqn: MY_PIPELINE, runId: 'run-2' });
 
     await waitFor(() => expect(result.current.logs).toBe('run-2 line'));
   });

@@ -58,6 +58,8 @@ import { getServiceType } from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
+const LABEL_INGESTION_WORKFLOW = 'label.ingestion-workflow' as const;
+
 const AddIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
   const { ingestionType, serviceCategory } = useRequiredParams<{
@@ -160,7 +162,7 @@ const AddIngestionPage = () => {
           } else {
             showErrorToast(
               t('server.create-entity-error', {
-                entity: t('label.ingestion-workflow'),
+                entity: t(LABEL_INGESTION_WORKFLOW),
               })
             );
             reject();
@@ -183,7 +185,7 @@ const AddIngestionPage = () => {
                   showErrorToast(
                     err,
                     t('server.deploy-entity-error', {
-                      entity: t('label.ingestion-workflow'),
+                      entity: t(LABEL_INGESTION_WORKFLOW),
                     })
                   );
                 } else {
@@ -194,7 +196,7 @@ const AddIngestionPage = () => {
                 showErrorToast(
                   err,
                   t('server.create-entity-error', {
-                    entity: t('label.ingestion-workflow'),
+                    entity: t(LABEL_INGESTION_WORKFLOW),
                   })
                 );
                 reject();

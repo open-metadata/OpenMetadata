@@ -18,6 +18,14 @@ import CardinalityDistributionChart, {
   CardinalityDistributionChartProps,
 } from './CardinalityDistributionChart.component';
 
+const ERROR_PLACEHOLDER = 'error-placeholder';
+const CHART_CONTAINER = 'chart-container';
+const CARDINALITY_TAG = 'cardinality-tag';
+const FIRSTDAYDATA_CARDINALITY = 'firstDayData-cardinality';
+const CURRENTDAYDATA_CARDINALITY = 'currentDayData-cardinality';
+const MESSAGE_ALL_VALUES_UNIQUE_NO_DISTRIBUTION =
+  'message.all-values-unique-no-distribution-available';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: ({
     children,
@@ -56,7 +64,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   }: {
     placeholderText: string | React.ReactNode;
   }) {
-    return <div data-testid="error-placeholder">{placeholderText}</div>;
+    return <div data-testid={ERROR_PLACEHOLDER}>{placeholderText}</div>;
   };
 });
 
@@ -123,7 +131,7 @@ describe('CardinalityDistributionChart', () => {
     it('should render chart container when data is provided', async () => {
       render(<CardinalityDistributionChart {...defaultProps} />);
 
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
     });
 
     it('should render dual charts when both firstDayData and currentDayData have cardinality data', async () => {
@@ -132,12 +140,12 @@ describe('CardinalityDistributionChart', () => {
       );
 
       expect(await screen.findAllByTestId('date')).toHaveLength(2);
-      expect(await screen.findAllByTestId('cardinality-tag')).toHaveLength(2);
+      expect(await screen.findAllByTestId(CARDINALITY_TAG)).toHaveLength(2);
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
 
@@ -152,12 +160,12 @@ describe('CardinalityDistributionChart', () => {
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
       expect(await screen.findAllByTestId('date')).toHaveLength(1);
-      expect(await screen.findAllByTestId('cardinality-tag')).toHaveLength(1);
+      expect(await screen.findAllByTestId(CARDINALITY_TAG)).toHaveLength(1);
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).not.toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
 
@@ -172,12 +180,12 @@ describe('CardinalityDistributionChart', () => {
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
       expect(await screen.findAllByTestId('date')).toHaveLength(1);
-      expect(await screen.findAllByTestId('cardinality-tag')).toHaveLength(1);
+      expect(await screen.findAllByTestId(CARDINALITY_TAG)).toHaveLength(1);
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).not.toBeInTheDocument();
     });
 
@@ -192,13 +200,11 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
       expect(
         await screen.findByText('No cardinality data available')
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(CHART_CONTAINER)).not.toBeInTheDocument();
     });
 
     it('should render error placeholder with default message when no cardinality data and no placeholder text', async () => {
@@ -211,10 +217,8 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
+      expect(screen.queryByTestId(CHART_CONTAINER)).not.toBeInTheDocument();
     });
   });
 
@@ -226,10 +230,10 @@ describe('CardinalityDistributionChart', () => {
 
       // Should render chart containers with unique IDs
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
 
@@ -255,9 +259,9 @@ describe('CardinalityDistributionChart', () => {
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
       // Should still render the chart container
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
 
@@ -283,9 +287,9 @@ describe('CardinalityDistributionChart', () => {
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
       // Should still render the chart container even with empty data
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
   });
@@ -303,7 +307,7 @@ describe('CardinalityDistributionChart', () => {
     it('should display total categories count in tags', async () => {
       render(<CardinalityDistributionChart {...defaultProps} />);
 
-      const cardinalityTags = await screen.findAllByTestId('cardinality-tag');
+      const cardinalityTags = await screen.findAllByTestId(CARDINALITY_TAG);
 
       expect(cardinalityTags[0]).toHaveTextContent('label.total-entity: 4');
       expect(cardinalityTags[1]).toHaveTextContent('label.total-entity: 3');
@@ -330,7 +334,7 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      const cardinalityTag = await screen.findByTestId('cardinality-tag');
+      const cardinalityTag = await screen.findByTestId(CARDINALITY_TAG);
 
       expect(cardinalityTag).toHaveTextContent('label.total-entity: 0');
     });
@@ -349,7 +353,7 @@ describe('CardinalityDistributionChart', () => {
       // Single graph should render one chart
       expect(await screen.findAllByTestId('date')).toHaveLength(1);
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
 
@@ -361,10 +365,10 @@ describe('CardinalityDistributionChart', () => {
       // Dual graphs should render two charts
       expect(await screen.findAllByTestId('date')).toHaveLength(2);
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
   });
@@ -377,10 +381,8 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
+      expect(screen.queryByTestId(CHART_CONTAINER)).not.toBeInTheDocument();
     });
 
     it('should handle data with undefined cardinality distribution', async () => {
@@ -399,10 +401,8 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
+      expect(screen.queryByTestId(CHART_CONTAINER)).not.toBeInTheDocument();
     });
 
     it('should handle missing timestamp gracefully', async () => {
@@ -437,9 +437,7 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
       expect(
         await screen.findByText('Custom No Data Message')
       ).toBeInTheDocument();
@@ -455,10 +453,8 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('chart-container')).not.toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
+      expect(screen.queryByTestId(CHART_CONTAINER)).not.toBeInTheDocument();
     });
   });
 
@@ -468,7 +464,7 @@ describe('CardinalityDistributionChart', () => {
         <CardinalityDistributionChart {...defaultProps} />
       );
 
-      const cardinalityTags = await screen.findAllByTestId('cardinality-tag');
+      const cardinalityTags = await screen.findAllByTestId(CARDINALITY_TAG);
 
       // First profile has 4 categories, second has 3
       expect(cardinalityTags[0]).toHaveTextContent('4');
@@ -476,10 +472,10 @@ describe('CardinalityDistributionChart', () => {
 
       // Both charts should render
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
     });
 
@@ -493,9 +489,7 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
     });
   });
 
@@ -510,15 +504,15 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(ERROR_PLACEHOLDER);
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
-        'message.all-values-unique-no-distribution-available'
+        MESSAGE_ALL_VALUES_UNIQUE_NO_DISTRIBUTION
       );
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
       expect(screen.queryByTestId('date')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('cardinality-tag')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(CARDINALITY_TAG)).not.toBeInTheDocument();
     });
 
     it('should render message in first chart position when only firstDayData has allValuesUnique true', async () => {
@@ -531,22 +525,22 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(ERROR_PLACEHOLDER);
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
-        'message.all-values-unique-no-distribution-available'
+        MESSAGE_ALL_VALUES_UNIQUE_NO_DISTRIBUTION
       );
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
 
       // Second chart should still render normally
       expect(await screen.findByTestId('date')).toBeInTheDocument();
-      expect(await screen.findByTestId('cardinality-tag')).toBeInTheDocument();
+      expect(await screen.findByTestId(CARDINALITY_TAG)).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).not.toBeInTheDocument();
     });
 
@@ -560,22 +554,22 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(ERROR_PLACEHOLDER);
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
-        'message.all-values-unique-no-distribution-available'
+        MESSAGE_ALL_VALUES_UNIQUE_NO_DISTRIBUTION
       );
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
 
       // First chart should still render normally
       expect(await screen.findByTestId('date')).toBeInTheDocument();
-      expect(await screen.findByTestId('cardinality-tag')).toBeInTheDocument();
+      expect(await screen.findByTestId(CARDINALITY_TAG)).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).not.toBeInTheDocument();
     });
 
@@ -601,13 +595,13 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
       expect(await screen.findByTestId('date')).toBeInTheDocument();
-      expect(await screen.findByTestId('cardinality-tag')).toBeInTheDocument();
+      expect(await screen.findByTestId(CARDINALITY_TAG)).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ERROR_PLACEHOLDER)).not.toBeInTheDocument();
     });
 
     it('should render charts normally when allValuesUnique is undefined', async () => {
@@ -620,16 +614,16 @@ describe('CardinalityDistributionChart', () => {
 
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
       expect(await screen.findAllByTestId('date')).toHaveLength(2);
-      expect(await screen.findAllByTestId('cardinality-tag')).toHaveLength(2);
+      expect(await screen.findAllByTestId(CARDINALITY_TAG)).toHaveLength(2);
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
       expect(
-        queryByAttribute('id', container, 'currentDayData-cardinality')
+        queryByAttribute('id', container, CURRENTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ERROR_PLACEHOLDER)).not.toBeInTheDocument();
     });
 
     it('should handle allValuesUnique with empty categories array', async () => {
@@ -654,14 +648,14 @@ describe('CardinalityDistributionChart', () => {
 
       render(<CardinalityDistributionChart {...props} />);
 
-      const errorPlaceholder = await screen.findByTestId('error-placeholder');
+      const errorPlaceholder = await screen.findByTestId(ERROR_PLACEHOLDER);
 
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveTextContent(
-        'message.all-values-unique-no-distribution-available'
+        MESSAGE_ALL_VALUES_UNIQUE_NO_DISTRIBUTION
       );
       expect(screen.queryByTestId('date')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('cardinality-tag')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(CARDINALITY_TAG)).not.toBeInTheDocument();
     });
 
     it('should maintain 50% width layout when one chart has allValuesUnique', async () => {
@@ -675,17 +669,15 @@ describe('CardinalityDistributionChart', () => {
       const { container } = render(<CardinalityDistributionChart {...props} />);
 
       // Chart container should exist
-      expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
+      expect(await screen.findByTestId(CHART_CONTAINER)).toBeInTheDocument();
 
       // First chart should render normally
       expect(
-        queryByAttribute('id', container, 'firstDayData-cardinality')
+        queryByAttribute('id', container, FIRSTDAYDATA_CARDINALITY)
       ).toBeInTheDocument();
 
       // Error placeholder should exist for second chart
-      expect(
-        await screen.findByTestId('error-placeholder')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
     });
   });
 });

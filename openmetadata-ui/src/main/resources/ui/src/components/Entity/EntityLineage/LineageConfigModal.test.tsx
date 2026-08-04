@@ -14,6 +14,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import LineageConfigModal from './LineageConfigModal';
 
+const FIELD_UPSTREAM = 'field-upstream';
+const FIELD_DOWNSTREAM = 'field-downstream';
+const FIELD_NODES_PER_LAYER = 'field-nodes-per-layer';
+
 const onCancel = jest.fn();
 const onSave = jest.fn();
 
@@ -39,11 +43,9 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    const fieldUpstream = await screen.findByTestId('field-upstream');
-    const fieldDownstream = await screen.findByTestId('field-downstream');
-    const fieldNodesPerLayer = await screen.findByTestId(
-      'field-nodes-per-layer'
-    );
+    const fieldUpstream = await screen.findByTestId(FIELD_UPSTREAM);
+    const fieldDownstream = await screen.findByTestId(FIELD_DOWNSTREAM);
+    const fieldNodesPerLayer = await screen.findByTestId(FIELD_NODES_PER_LAYER);
 
     expect(fieldUpstream).toBeInTheDocument();
     expect(fieldDownstream).toBeInTheDocument();
@@ -75,11 +77,9 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    const fieldUpstream = await screen.findByTestId('field-upstream');
-    const fieldDownstream = await screen.findByTestId('field-downstream');
-    const fieldNodesPerLayer = await screen.findByTestId(
-      'field-nodes-per-layer'
-    );
+    const fieldUpstream = await screen.findByTestId(FIELD_UPSTREAM);
+    const fieldDownstream = await screen.findByTestId(FIELD_DOWNSTREAM);
+    const fieldNodesPerLayer = await screen.findByTestId(FIELD_NODES_PER_LAYER);
 
     // Update values
     fireEvent.change(fieldUpstream, { target: { value: '5' } });
@@ -108,7 +108,7 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    const fieldUpstream = await screen.findByTestId('field-upstream');
+    const fieldUpstream = await screen.findByTestId(FIELD_UPSTREAM);
 
     // Try to set negative value
     fireEvent.change(fieldUpstream, { target: { value: '-1' } });
@@ -131,7 +131,7 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    const fieldDownstream = await screen.findByTestId('field-downstream');
+    const fieldDownstream = await screen.findByTestId(FIELD_DOWNSTREAM);
 
     // Try to set negative value
     fireEvent.change(fieldDownstream, { target: { value: '-1' } });
@@ -154,9 +154,7 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    const fieldNodesPerLayer = await screen.findByTestId(
-      'field-nodes-per-layer'
-    );
+    const fieldNodesPerLayer = await screen.findByTestId(FIELD_NODES_PER_LAYER);
 
     // Try to set value less than minimum (5)
     fireEvent.change(fieldNodesPerLayer, { target: { value: '4' } });
@@ -179,11 +177,9 @@ describe('LineageConfigModal', () => {
       />
     );
 
-    const fieldUpstream = await screen.findByTestId('field-upstream');
-    const fieldDownstream = await screen.findByTestId('field-downstream');
-    const fieldNodesPerLayer = await screen.findByTestId(
-      'field-nodes-per-layer'
-    );
+    const fieldUpstream = await screen.findByTestId(FIELD_UPSTREAM);
+    const fieldDownstream = await screen.findByTestId(FIELD_DOWNSTREAM);
+    const fieldNodesPerLayer = await screen.findByTestId(FIELD_NODES_PER_LAYER);
 
     // Clear all fields
     fireEvent.change(fieldUpstream, { target: { value: '' } });

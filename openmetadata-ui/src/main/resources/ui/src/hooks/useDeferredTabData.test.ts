@@ -13,6 +13,9 @@
 import { renderHook } from '@testing-library/react-hooks';
 import { useDeferredTabData } from './useDeferredTabData';
 
+const SVC_DB_TBL1 = 'svc.db.tbl1';
+const SVC_DB_TBL2 = 'svc.db.tbl2';
+
 describe('useDeferredTabData', () => {
   it('does not fire when the activated tab does not match the gated key', () => {
     const fetcher = jest.fn();
@@ -81,20 +84,20 @@ describe('useDeferredTabData', () => {
     const { rerender } = renderHook(
       ({ activeTab, fqn }: { activeTab: string; fqn: string }) =>
         useDeferredTabData('queries', activeTab, fetcher, [fqn]),
-      { initialProps: { activeTab: 'queries', fqn: 'svc.db.tbl1' } }
+      { initialProps: { activeTab: 'queries', fqn: SVC_DB_TBL1 } }
     );
 
     expect(fetcher).toHaveBeenCalledTimes(1);
 
     // Move off the tab, then change the entity — counter stays at 1 because the
     // tab is no longer the active one.
-    rerender({ activeTab: 'overview', fqn: 'svc.db.tbl1' });
-    rerender({ activeTab: 'overview', fqn: 'svc.db.tbl2' });
+    rerender({ activeTab: 'overview', fqn: SVC_DB_TBL1 });
+    rerender({ activeTab: 'overview', fqn: SVC_DB_TBL2 });
 
     expect(fetcher).toHaveBeenCalledTimes(1);
 
     // Activate the gated tab on the new entity — re-armed, so it fires.
-    rerender({ activeTab: 'queries', fqn: 'svc.db.tbl2' });
+    rerender({ activeTab: 'queries', fqn: SVC_DB_TBL2 });
 
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
@@ -104,14 +107,14 @@ describe('useDeferredTabData', () => {
     const { rerender } = renderHook(
       ({ fqn }: { fqn: string }) =>
         useDeferredTabData('queries', 'queries', fetcher, [fqn]),
-      { initialProps: { fqn: 'svc.db.tbl1' } }
+      { initialProps: { fqn: SVC_DB_TBL1 } }
     );
 
     expect(fetcher).toHaveBeenCalledTimes(1);
 
     // Same active tab, different entity — the badge needs to update without the
     // user toggling the tab off and back on.
-    rerender({ fqn: 'svc.db.tbl2' });
+    rerender({ fqn: SVC_DB_TBL2 });
 
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
@@ -121,10 +124,10 @@ describe('useDeferredTabData', () => {
     const { rerender } = renderHook(
       ({ fqn }: { fqn: string }) =>
         useDeferredTabData('queries', 'queries', fetcher, [fqn]),
-      { initialProps: { fqn: 'svc.db.tbl1' } }
+      { initialProps: { fqn: SVC_DB_TBL1 } }
     );
 
-    rerender({ fqn: 'svc.db.tbl2' });
+    rerender({ fqn: SVC_DB_TBL2 });
 
     // Reset-effect fires (once for new fqn) but the activation effect must NOT
     // also fire in the same render — the reset path sets the once-flag first.
@@ -167,7 +170,7 @@ describe('useDeferredTabData', () => {
         initialProps: {
           fetcher: firstFetcher,
           activeTab: 'queries',
-          fqn: 'svc.db.tbl1',
+          fqn: SVC_DB_TBL1,
         },
       }
     );
@@ -180,7 +183,7 @@ describe('useDeferredTabData', () => {
     rerender({
       fetcher: secondFetcher,
       activeTab: 'queries',
-      fqn: 'svc.db.tbl2',
+      fqn: SVC_DB_TBL2,
     });
 
     expect(firstFetcher).toHaveBeenCalledTimes(1);

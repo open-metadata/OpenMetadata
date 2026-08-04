@@ -35,6 +35,9 @@ import {
 } from '../../../../utils/ServiceConnectionUtils';
 import EmbeddedConnectionConfigForm from './EmbeddedConnectionConfigForm';
 
+const IP_ADDRESS = 'ip-address';
+const SUBMIT_BUTTON = 'submit-button';
+
 const formData = {
   type: 'Mysql',
   scheme: 'mysql+pymysql',
@@ -247,6 +250,7 @@ jest.mock(
   '../../../../context/AirflowStatusProvider/AirflowStatusProvider',
   () => ({
     useAirflowStatus: jest.fn().mockImplementation(() => ({
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       reason: 'reason message',
       isAirflowAvailable: true,
       platform: 'Argo',
@@ -341,7 +345,7 @@ describe('EmbeddedConnectionConfigForm', () => {
       render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('ip-address')).toBeInTheDocument();
+    expect(await screen.findByTestId(IP_ADDRESS)).toBeInTheDocument();
   });
 
   it('does not show IP alert when host IP fetch does not return success', async () => {
@@ -354,7 +358,7 @@ describe('EmbeddedConnectionConfigForm', () => {
       render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
 
-    expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(IP_ADDRESS)).not.toBeInTheDocument();
   });
 
   it('shows fallback IP alert when host IP fetch fails', async () => {
@@ -366,7 +370,7 @@ describe('EmbeddedConnectionConfigForm', () => {
       render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('ip-address')).toBeInTheDocument();
+    expect(await screen.findByTestId(IP_ADDRESS)).toBeInTheDocument();
   });
 
   it('falls back to the empty connection schema when schema loading fails', async () => {
@@ -412,7 +416,7 @@ describe('EmbeddedConnectionConfigForm', () => {
     await act(async () => {
       render(<EmbeddedConnectionConfigForm {...mockProps} />);
     });
-    const submitButton = await screen.findByTestId('submit-button');
+    const submitButton = await screen.findByTestId(SUBMIT_BUTTON);
 
     fireEvent.click(submitButton);
 
@@ -478,7 +482,7 @@ describe('EmbeddedConnectionConfigForm', () => {
       render(<EmbeddedConnectionConfigForm {...mockProps} isSubmitDisabled />);
     });
 
-    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+    expect(await screen.findByTestId(SUBMIT_BUTTON)).toBeDisabled();
   });
 
   it('does not gate the submit button on test connection results', async () => {
@@ -488,12 +492,12 @@ describe('EmbeddedConnectionConfigForm', () => {
       );
     });
 
-    expect(await screen.findByTestId('submit-button')).not.toBeDisabled();
+    expect(await screen.findByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
 
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
   });
 
@@ -628,7 +632,7 @@ describe('EmbeddedConnectionConfigForm', () => {
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
   });
 });

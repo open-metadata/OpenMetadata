@@ -22,6 +22,18 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import ContractSecurityCard from './ContractSecurityCard.component';
 
+const TABLE_CUSTOMER_ID = 'table.customer_id' as const;
+const CONTRACT_SECURITY_CLASSIFICATION =
+  'contract-security-classification' as const;
+const CONTRACT_SECURITY_ACCESS_POLICY_0 =
+  'contract-security-access-policy-0' as const;
+const USER_EXAMPLE_COM = 'user@example.com' as const;
+const CONTRACT_SECURITY_ROW_FILTER_0_0 =
+  'contract-security-rowFilter-0-0' as const;
+const CUSTOMER_ID = 'Customer ID =' as const;
+const LABEL_IDENTITIES = 'label.identities' as const;
+const LABEL_ROW_FILTER_PLURAL = 'label.row-filter-plural' as const;
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -41,7 +53,7 @@ const mockTableData: Partial<Table> = {
     {
       name: 'customer_id',
       displayName: 'Customer ID',
-      fullyQualifiedName: 'table.customer_id',
+      fullyQualifiedName: TABLE_CUSTOMER_ID,
       dataType: DataType.Binary,
       dataTypeDisplay: 'binary',
     },
@@ -63,7 +75,7 @@ const mockTableData: Partial<Table> = {
 };
 
 const mockRowFilter1: RowFilter = {
-  columnName: 'table.customer_id',
+  columnName: TABLE_CUSTOMER_ID,
   values: ['123', '456', '789'],
 };
 
@@ -110,7 +122,7 @@ describe('ContractSecurityCard', () => {
 
     expect(screen.getByText('label.classification')).toBeInTheDocument();
     expect(
-      screen.getByTestId('contract-security-classification')
+      screen.getByTestId(CONTRACT_SECURITY_CLASSIFICATION)
     ).toBeInTheDocument();
     expect(screen.queryByTestId('label.policy-plural')).not.toBeInTheDocument();
     // Should show NO_DATA_PLACEHOLDER when security is undefined
@@ -121,7 +133,7 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
     expect(
-      screen.getByTestId('contract-security-classification')
+      screen.getByTestId(CONTRACT_SECURITY_CLASSIFICATION)
     ).toBeInTheDocument();
     expect(screen.getByText('PII')).toBeInTheDocument();
     expect(screen.getByText('Sensitive')).toBeInTheDocument();
@@ -136,7 +148,7 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     expect(
-      screen.getByTestId('contract-security-classification')
+      screen.getByTestId(CONTRACT_SECURITY_CLASSIFICATION)
     ).toBeInTheDocument();
     expect(screen.getByText('PII')).toBeInTheDocument();
     expect(screen.getByText('Sensitive')).toBeInTheDocument();
@@ -152,7 +164,7 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     expect(
-      screen.getByTestId('contract-security-classification')
+      screen.getByTestId(CONTRACT_SECURITY_CLASSIFICATION)
     ).toBeInTheDocument();
     // Should show NO_DATA_PLACEHOLDER for empty dataClassification
     expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
@@ -163,7 +175,7 @@ describe('ContractSecurityCard', () => {
 
     // Check access policies with data-testid
     expect(
-      screen.getByTestId('contract-security-access-policy-0')
+      screen.getByTestId(CONTRACT_SECURITY_ACCESS_POLICY_0)
     ).toHaveTextContent('Read Only');
     expect(
       screen.getByTestId('contract-security-access-policy-1')
@@ -183,7 +195,7 @@ describe('ContractSecurityCard', () => {
 
   it('should render NO_DATA_PLACEHOLDER when access policy is undefined', () => {
     const policyWithoutAccessPolicy: Policy = {
-      identities: ['user@example.com'],
+      identities: [USER_EXAMPLE_COM],
       rowFilters: [],
     };
     const security: ContractSecurity = {
@@ -194,7 +206,7 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     expect(
-      screen.getByTestId('contract-security-access-policy-0')
+      screen.getByTestId(CONTRACT_SECURITY_ACCESS_POLICY_0)
     ).toHaveTextContent(NO_DATA_PLACEHOLDER);
   });
 
@@ -203,8 +215,8 @@ describe('ContractSecurityCard', () => {
 
     // Check row filters with data-testid
     expect(
-      screen.getByTestId('contract-security-rowFilter-0-0')
-    ).toHaveTextContent('Customer ID =');
+      screen.getByTestId(CONTRACT_SECURITY_ROW_FILTER_0_0)
+    ).toHaveTextContent(CUSTOMER_ID);
     expect(
       screen.getByTestId('contract-security-rowFilter-1-0')
     ).toHaveTextContent('Account Balance =');
@@ -237,7 +249,7 @@ describe('ContractSecurityCard', () => {
   it('should use column name directly when not found in tableColumnNameMap', () => {
     const policyWithUnknownColumn: Policy = {
       accessPolicy: 'Read',
-      identities: ['user@example.com'],
+      identities: [USER_EXAMPLE_COM],
       rowFilters: [
         {
           columnName: 'unknown.column',
@@ -258,7 +270,7 @@ describe('ContractSecurityCard', () => {
   it('should render identities label for each policy', () => {
     render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
-    const identitiesLabels = screen.getAllByText('label.identities');
+    const identitiesLabels = screen.getAllByText(LABEL_IDENTITIES);
 
     expect(identitiesLabels).toHaveLength(2);
   });
@@ -267,7 +279,7 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
     // Both policies have row filters in mockSecurityWithPolicies
-    const rowFiltersLabels = screen.getAllByText('label.row-filter-plural');
+    const rowFiltersLabels = screen.getAllByText(LABEL_ROW_FILTER_PLURAL);
 
     expect(rowFiltersLabels).toHaveLength(2);
   });
@@ -275,7 +287,7 @@ describe('ContractSecurityCard', () => {
   it('should not render row filter section when rowFilters is undefined', () => {
     const policyWithUndefinedRowFilters: Policy = {
       accessPolicy: 'Read',
-      identities: ['user@example.com'],
+      identities: [USER_EXAMPLE_COM],
       rowFilters: undefined,
     };
     const security: ContractSecurity = {
@@ -285,9 +297,7 @@ describe('ContractSecurityCard', () => {
 
     render(<ContractSecurityCard security={security} />);
 
-    expect(
-      screen.queryByText('label.row-filter-plural')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_ROW_FILTER_PLURAL)).not.toBeInTheDocument();
   });
 
   it('should render empty state when no policies are provided', () => {
@@ -311,9 +321,9 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     expect(
-      screen.getByTestId('contract-security-access-policy-0')
+      screen.getByTestId(CONTRACT_SECURITY_ACCESS_POLICY_0)
     ).toHaveTextContent('Read');
-    expect(screen.getByText('label.identities')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_IDENTITIES)).toBeInTheDocument();
     // Should show NO_DATA_PLACEHOLDER for empty identities
     expect(screen.getAllByText(NO_DATA_PLACEHOLDER)).toHaveLength(1);
   });
@@ -321,7 +331,7 @@ describe('ContractSecurityCard', () => {
   it('should not render row filters section when rowFilters array is empty', () => {
     const policyWithoutRowFilters: Policy = {
       accessPolicy: 'Read',
-      identities: ['user@example.com'],
+      identities: [USER_EXAMPLE_COM],
       rowFilters: [],
     };
     const security: ContractSecurity = {
@@ -332,9 +342,7 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     // Row filters section should not be rendered when empty
-    expect(
-      screen.queryByText('label.row-filter-plural')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_ROW_FILTER_PLURAL)).not.toBeInTheDocument();
     expect(screen.queryByText(/=/)).not.toBeInTheDocument();
   });
 
@@ -413,10 +421,10 @@ describe('ContractSecurityCard', () => {
   it('should handle row filters without values', () => {
     const policyWithEmptyValues: Policy = {
       accessPolicy: 'Read',
-      identities: ['user@example.com'],
+      identities: [USER_EXAMPLE_COM],
       rowFilters: [
         {
-          columnName: 'table.customer_id',
+          columnName: TABLE_CUSTOMER_ID,
           values: [],
         },
       ],
@@ -429,17 +437,17 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     expect(
-      screen.getByTestId('contract-security-rowFilter-0-0')
-    ).toHaveTextContent('Customer ID =');
+      screen.getByTestId(CONTRACT_SECURITY_ROW_FILTER_0_0)
+    ).toHaveTextContent(CUSTOMER_ID);
   });
 
   it('should handle row filters with undefined values', () => {
     const policyWithUndefinedValues: Policy = {
       accessPolicy: 'Read',
-      identities: ['user@example.com'],
+      identities: [USER_EXAMPLE_COM],
       rowFilters: [
         {
-          columnName: 'table.customer_id',
+          columnName: TABLE_CUSTOMER_ID,
           values: undefined,
         },
       ],
@@ -452,8 +460,8 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     expect(
-      screen.getByTestId('contract-security-rowFilter-0-0')
-    ).toHaveTextContent('Customer ID =');
+      screen.getByTestId(CONTRACT_SECURITY_ROW_FILTER_0_0)
+    ).toHaveTextContent(CUSTOMER_ID);
   });
 
   it('should handle policies with undefined identities', () => {
@@ -470,9 +478,9 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard security={security} />);
 
     expect(
-      screen.getByTestId('contract-security-access-policy-0')
+      screen.getByTestId(CONTRACT_SECURITY_ACCESS_POLICY_0)
     ).toHaveTextContent('Read');
-    expect(screen.getByText('label.identities')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_IDENTITIES)).toBeInTheDocument();
     // Should show NO_DATA_PLACEHOLDER for undefined identities
     expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
   });

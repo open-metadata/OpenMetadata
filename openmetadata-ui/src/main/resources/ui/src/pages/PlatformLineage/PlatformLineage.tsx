@@ -78,6 +78,8 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
+
+const LABEL_LINEAGE = 'label.lineage';
 const PlatformLineage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -206,9 +208,9 @@ const PlatformLineage = () => {
 
   const handleExport = useCallback(() => {
     showModal({
-      name: `${t('label.lineage')}_${getCurrentISODate()}`,
+      name: `${t(LABEL_LINEAGE)}_${getCurrentISODate()}`,
       exportTypes: [ExportTypes.PNG],
-      title: t('label.lineage'),
+      title: t(LABEL_LINEAGE),
       documentSelector: LINEAGE_EXPORT_SELECTOR,
       viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
       onExport: async () => '',
@@ -322,7 +324,7 @@ const PlatformLineage = () => {
   }, [selectedEntity, loading, permissions, entityType, header]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.lineage')}>
+    <PageLayoutV1 pageTitle={t(LABEL_LINEAGE)}>
       <Grid rowGap="2">
         {isFullScreen ? null : (
           <>
@@ -337,7 +339,7 @@ const PlatformLineage = () => {
                     activeTitle: true,
                   },
                   {
-                    name: t('label.lineage'),
+                    name: t(LABEL_LINEAGE),
                     url: '',
                   },
                 ]}
@@ -354,7 +356,7 @@ const PlatformLineage = () => {
                     subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
                   }}
                   learningPageId={LEARNING_PAGE_IDS.LINEAGE}
-                  title={t('label.lineage')}
+                  title={t(LABEL_LINEAGE)}
                 />
               </Card>
             </Grid.Item>

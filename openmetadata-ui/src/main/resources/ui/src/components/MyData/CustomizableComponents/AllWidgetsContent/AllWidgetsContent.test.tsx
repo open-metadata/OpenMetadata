@@ -14,6 +14,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import AllWidgetsContent from './AllWidgetsContent';
 
+const NOT_SELECTED = 'not-selected';
+const ACTIVITY_FEED_WIDGET = 'Activity Feed Widget';
+const WIDGET_CARD_WIDGET_1 = 'widget-card-widget-1';
+const SELECTED_WIDGET_1 = 'selected-widget-1';
+const SELECTED_WIDGET_2 = 'selected-widget-2';
+const SELECTED_WIDGET_3 = 'selected-widget-3';
+
 // Mock WidgetCard component
 jest.mock('../WidgetCard/WidgetCard', () => {
   return function MockWidgetCard({
@@ -33,7 +40,7 @@ jest.mock('../WidgetCard/WidgetCard', () => {
         onClick={() => onSelectWidget?.(widget.id ?? '')}>
         <span>{widget.name}</span>
         <span data-testid={`selected-${widget.id}`}>
-          {isSelected ? 'selected' : 'not-selected'}
+          {isSelected ? 'selected' : NOT_SELECTED}
         </span>
       </div>
     );
@@ -43,7 +50,7 @@ jest.mock('../WidgetCard/WidgetCard', () => {
 const mockWidgets: DocStoreDocument[] = [
   {
     id: 'widget-1',
-    name: 'Activity Feed Widget',
+    name: ACTIVITY_FEED_WIDGET,
     fullyQualifiedName: 'KnowledgePanel.ActivityFeed',
     description: 'Shows recent activity feed',
     entityType: 'KnowledgePanel',
@@ -83,7 +90,7 @@ describe('AllWidgetsContent', () => {
     it('should render all widgets', () => {
       render(<AllWidgetsContent {...defaultProps} />);
 
-      expect(screen.getByTestId('widget-card-widget-1')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_CARD_WIDGET_1)).toBeInTheDocument();
       expect(screen.getByTestId('widget-card-widget-2')).toBeInTheDocument();
       expect(screen.getByTestId('widget-card-widget-3')).toBeInTheDocument();
     });
@@ -91,7 +98,7 @@ describe('AllWidgetsContent', () => {
     it('should render widget names correctly', () => {
       render(<AllWidgetsContent {...defaultProps} />);
 
-      expect(screen.getByText('Activity Feed Widget')).toBeInTheDocument();
+      expect(screen.getByText(ACTIVITY_FEED_WIDGET)).toBeInTheDocument();
       expect(screen.getByText('Data Insights Widget')).toBeInTheDocument();
       expect(screen.getByText('My Data Widget')).toBeInTheDocument();
     });
@@ -125,14 +132,14 @@ describe('AllWidgetsContent', () => {
     it('should show widgets as not selected by default', () => {
       render(<AllWidgetsContent {...defaultProps} />);
 
-      expect(screen.getByTestId('selected-widget-1')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_1)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-2')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_2)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-3')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_3)).toHaveTextContent(
+        NOT_SELECTED
       );
     });
 
@@ -144,13 +151,13 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      expect(screen.getByTestId('selected-widget-1')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_WIDGET_1)).toHaveTextContent(
         'selected'
       );
-      expect(screen.getByTestId('selected-widget-2')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_2)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-3')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_WIDGET_3)).toHaveTextContent(
         'selected'
       );
     });
@@ -166,14 +173,14 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      expect(screen.getByTestId('selected-widget-1')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_WIDGET_1)).toHaveTextContent(
         'selected'
       );
-      expect(screen.getByTestId('selected-widget-2')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_WIDGET_2)).toHaveTextContent(
         'selected'
       );
-      expect(screen.getByTestId('selected-widget-3')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_3)).toHaveTextContent(
+        NOT_SELECTED
       );
     });
 
@@ -186,14 +193,14 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      expect(screen.getByTestId('selected-widget-1')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_WIDGET_1)).toHaveTextContent(
         'selected'
       ); // already added
-      expect(screen.getByTestId('selected-widget-2')).toHaveTextContent(
+      expect(screen.getByTestId(SELECTED_WIDGET_2)).toHaveTextContent(
         'selected'
       ); // newly selected
-      expect(screen.getByTestId('selected-widget-3')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_3)).toHaveTextContent(
+        NOT_SELECTED
       );
     });
 
@@ -214,7 +221,7 @@ describe('AllWidgetsContent', () => {
       render(<AllWidgetsContent {...props} />);
 
       // Should not crash and should handle gracefully
-      expect(screen.getByText('Activity Feed Widget')).toBeInTheDocument();
+      expect(screen.getByText(ACTIVITY_FEED_WIDGET)).toBeInTheDocument();
     });
   });
 
@@ -228,7 +235,7 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      fireEvent.click(screen.getByTestId('widget-card-widget-1'));
+      fireEvent.click(screen.getByTestId(WIDGET_CARD_WIDGET_1));
 
       expect(mockOnSelectWidget).toHaveBeenCalledWith('widget-1');
       expect(mockOnSelectWidget).toHaveBeenCalledTimes(1);
@@ -243,7 +250,7 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      fireEvent.click(screen.getByTestId('widget-card-widget-1'));
+      fireEvent.click(screen.getByTestId(WIDGET_CARD_WIDGET_1));
       fireEvent.click(screen.getByTestId('widget-card-widget-2'));
       fireEvent.click(screen.getByTestId('widget-card-widget-3'));
 
@@ -262,7 +269,7 @@ describe('AllWidgetsContent', () => {
       render(<AllWidgetsContent {...props} />);
 
       expect(() => {
-        fireEvent.click(screen.getByTestId('widget-card-widget-1'));
+        fireEvent.click(screen.getByTestId(WIDGET_CARD_WIDGET_1));
       }).not.toThrow();
     });
   });
@@ -276,14 +283,14 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      expect(screen.getByTestId('selected-widget-1')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_1)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-2')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_2)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-3')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_3)).toHaveTextContent(
+        NOT_SELECTED
       );
     });
 
@@ -295,14 +302,14 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      expect(screen.getByTestId('selected-widget-1')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_1)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-2')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_2)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-3')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_3)).toHaveTextContent(
+        NOT_SELECTED
       );
     });
 
@@ -314,14 +321,14 @@ describe('AllWidgetsContent', () => {
 
       render(<AllWidgetsContent {...props} />);
 
-      expect(screen.getByTestId('selected-widget-1')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_1)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-2')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_2)).toHaveTextContent(
+        NOT_SELECTED
       );
-      expect(screen.getByTestId('selected-widget-3')).toHaveTextContent(
-        'not-selected'
+      expect(screen.getByTestId(SELECTED_WIDGET_3)).toHaveTextContent(
+        NOT_SELECTED
       );
     });
   });

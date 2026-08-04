@@ -20,6 +20,8 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardBody from './FeedCardBody';
 
+const SAVE_BUTTON = 'save-button';
+
 const mockCancel = jest.fn();
 
 const mockUpdate = jest.fn();
@@ -78,7 +80,7 @@ describe('Test FeedCardBody component', () => {
 
     const cancelButton = await findByTestId(container, 'cancel-button');
 
-    const saveButton = await findByTestId(container, 'save-button');
+    const saveButton = await findByTestId(container, SAVE_BUTTON);
 
     expect(editor).toBeInTheDocument();
 
@@ -118,7 +120,7 @@ describe('Test FeedCardBody component', () => {
 
     const editor = await findByTestId(container, 'editor');
 
-    const saveButton = await findByTestId(container, 'save-button');
+    const saveButton = await findByTestId(container, SAVE_BUTTON);
 
     expect(editor).toBeInTheDocument();
 
@@ -139,7 +141,7 @@ describe('Test FeedCardBody component', () => {
 
     const editor = await findByTestId(container, 'editor');
 
-    const saveButton = await findByTestId(container, 'save-button');
+    const saveButton = await findByTestId(container, SAVE_BUTTON);
 
     expect(editor).toBeInTheDocument();
 

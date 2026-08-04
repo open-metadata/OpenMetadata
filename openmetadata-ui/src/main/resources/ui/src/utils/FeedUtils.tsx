@@ -40,6 +40,8 @@ import {
 } from './ProfilerUtils';
 import { getTermQuery } from './SearchPureUtils';
 
+const LABEL_UPDATED_LOWERCASE = 'label.updated-lowercase';
+
 export async function suggestions(
   searchTerm: string,
   mentionChar: string
@@ -355,7 +357,7 @@ export const getActivityEventHeaderText = (
           }
           values={{
             field: t('label.description'),
-            action: t('label.updated-lowercase'),
+            action: t(LABEL_UPDATED_LOWERCASE),
           }}
         />
       );
@@ -388,7 +390,7 @@ export const getActivityEventHeaderText = (
           }
           values={{
             field: t('label.owner'),
-            action: t('label.updated-lowercase'),
+            action: t(LABEL_UPDATED_LOWERCASE),
           }}
         />
       );
@@ -404,7 +406,7 @@ export const getActivityEventHeaderText = (
           }
           values={{
             field: t('label.domain'),
-            action: t('label.updated-lowercase'),
+            action: t(LABEL_UPDATED_LOWERCASE),
           }}
         />
       );
@@ -420,7 +422,7 @@ export const getActivityEventHeaderText = (
           }
           values={{
             field: t('label.tier'),
-            action: t('label.updated-lowercase'),
+            action: t(LABEL_UPDATED_LOWERCASE),
           }}
         />
       );
@@ -456,7 +458,7 @@ export const getActivityEventHeaderText = (
 
       return (
         <Typography.Text className="font-bold">
-          {t('label.updated-lowercase')}
+          {t(LABEL_UPDATED_LOWERCASE)}
         </Typography.Text>
       );
   }

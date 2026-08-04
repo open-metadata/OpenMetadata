@@ -105,6 +105,8 @@ import {
   MemoryFormValues,
 } from './CreateMemoryModal.interface';
 
+const LABEL_MEMORY = 'label.memory';
+
 const TagSelectForm = withSuspenseFallback(
   lazy(
     () =>
@@ -244,13 +246,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [isViewOnly, setIsViewOnly] = useState(viewOnly);
   const isEditMode = Boolean(memoryToEdit) && !isViewOnly;
 
-  let modalTitle = t('label.add-entity', { entity: t('label.memory') });
+  let modalTitle = t('label.add-entity', { entity: t(LABEL_MEMORY) });
   if (isEditMode) {
-    modalTitle = t('label.edit-entity', { entity: t('label.memory') });
+    modalTitle = t('label.edit-entity', { entity: t(LABEL_MEMORY) });
   } else if (isViewOnly) {
     modalTitle =
       memoryToEdit?.title ||
-      t('label.edit-entity', { entity: t('label.memory') });
+      t('label.edit-entity', { entity: t(LABEL_MEMORY) });
   }
 
   const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
@@ -269,7 +271,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   const submitLabel = isEditMode
     ? t('label.save-entity', { entity: t('label.change-plural') })
-    : t('label.create-entity', { entity: t('label.memory') });
+    : t('label.create-entity', { entity: t(LABEL_MEMORY) });
 
   // ── RHF form state ──────────────────────────────────────────────────────────
   const form = useForm<MemoryFormValues>({
@@ -466,7 +468,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         const patch = compare(original, updated);
         await updateContextMemory(memoryToEdit.id, patch);
         showSuccessToast(
-          t('server.entity-updated-success', { entity: t('label.memory') })
+          t('server.entity-updated-success', { entity: t(LABEL_MEMORY) })
         );
         onUpdated?.();
       } else {
@@ -488,7 +490,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         });
 
         showSuccessToast(
-          t('server.create-entity-success', { entity: t('label.memory') })
+          t('server.create-entity-success', { entity: t(LABEL_MEMORY) })
         );
         onCreated();
       }
@@ -509,7 +511,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     try {
       await deleteContextMemory(memoryToEdit.id);
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.memory') })
+        t('server.entity-deleted-successfully', { entity: t(LABEL_MEMORY) })
       );
       onDeleted?.();
       handleClose();
@@ -729,7 +731,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       name="memory"
                       rules={{
                         required: t('label.field-required', {
-                          field: t('label.memory'),
+                          field: t(LABEL_MEMORY),
                         }),
                       }}>
                       {({ field, fieldState }) => (
@@ -737,7 +739,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           <div className="tw:flex tw:items-center tw:justify-between">
                             <div className="tw:flex tw:items-center tw:gap-1">
                               <FormItemLabel
-                                label={t('label.memory')}
+                                label={t(LABEL_MEMORY)}
                                 required={!isViewOnly}
                               />
                               <Tooltip

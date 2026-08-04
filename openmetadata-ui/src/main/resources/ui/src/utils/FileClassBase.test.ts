@@ -29,6 +29,9 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import fileClassBase, { FileClassBase } from './FileClassBase';
 import { FileDetailPageTabProps } from './FileDetailsUtils';
 
+const ACTIVITY_FEED = 'Activity Feed' as const;
+const CUSTOM_PROPERTIES = 'Custom Properties' as const;
+
 jest.mock('../constants/File.constant', () => ({
   FILE_DUMMY_DATA: {
     id: 'test-file-id',
@@ -41,6 +44,7 @@ jest.mock('../constants/File.constant', () => ({
   } as File,
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('./FileDetailsUtils', () => ({
   getFileDetailsPageTabs: jest.fn((): TabProps[] => [
     {
@@ -113,21 +117,21 @@ describe('FileClassBase', () => {
         activityFeedTab: React.createElement(
           'div',
           {},
-          'Activity Feed'
+          ACTIVITY_FEED
         ) as JSX.Element,
         lineageTab: React.createElement('div', {}, 'Lineage') as JSX.Element,
         customPropertiesTab: React.createElement(
           'div',
           {},
-          'Custom Properties'
+          CUSTOM_PROPERTIES
         ) as JSX.Element,
         activeTab: EntityTabs.OVERVIEW,
         feedCount: { totalCount: 5 },
         labelMap: {
           [EntityTabs.OVERVIEW]: 'File Overview',
-          [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
+          [EntityTabs.ACTIVITY_FEED]: ACTIVITY_FEED,
           [EntityTabs.LINEAGE]: 'Lineage',
-          [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
+          [EntityTabs.CUSTOM_PROPERTIES]: CUSTOM_PROPERTIES,
         } as Record<string, string>,
       };
 

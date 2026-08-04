@@ -68,6 +68,8 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MlModelDetailProp } from './MlModelDetail.interface';
+
+const LABEL_ML_MODEL = 'label.ml-model';
 const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelDetailsState,
   mlModelDetail,
@@ -114,7 +116,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
-          entity: t('label.ml-model'),
+          entity: t(LABEL_ML_MODEL),
         })
       );
     }
@@ -219,7 +221,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       const { version: newVersion } = await restoreMlmodel(mlModelDetail.id);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.ml-model'),
+          entity: t(LABEL_ML_MODEL),
         })
       );
       handleToggleDelete(newVersion);
@@ -227,7 +229,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.ml-model'),
+          entity: t(LABEL_ML_MODEL),
         })
       );
     }

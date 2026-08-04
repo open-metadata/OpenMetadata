@@ -13,6 +13,12 @@
 
 import i18n from '../utils/i18next/LocalUtil';
 
+const LABEL_ADD_ENTITY = 'label.add-entity' as const;
+const MESSAGE_ENTITY_INGESTION_ADDED_SUCCESSFULLY =
+  'message.entity-ingestion-added-successfully' as const;
+const MESSAGE_INGESTION_PIPELINE_NAME_SUCCESSFULLY_DEPLOYED =
+  'message.ingestion-pipeline-name-successfully-deployed-entity' as const;
+
 const schedulingIngestionGuide = {
   step: 4,
   title: i18n.t('label.schedule-for-entity', {
@@ -24,7 +30,7 @@ const schedulingIngestionGuide = {
 export const addMetadataIngestionGuide = [
   {
     step: 1,
-    title: i18n.t('label.add-entity', {
+    title: i18n.t(LABEL_ADD_ENTITY, {
       entity: i18n.t('label.metadata-ingestion'),
     }),
     description: i18n.t('message.metadata-ingestion-description'),
@@ -39,22 +45,19 @@ export const addMetadataIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('message.entity-ingestion-added-successfully', {
+    title: i18n.t(MESSAGE_ENTITY_INGESTION_ADDED_SUCCESSFULLY, {
       entity: i18n.t('label.metadata'),
     }),
-    description: i18n.t(
-      'message.ingestion-pipeline-name-successfully-deployed-entity',
-      {
-        entity: i18n.t('label.metadata-lowercase'),
-      }
-    ),
+    description: i18n.t(MESSAGE_INGESTION_PIPELINE_NAME_SUCCESSFULLY_DEPLOYED, {
+      entity: i18n.t('label.metadata-lowercase'),
+    }),
   },
 ];
 
 export const addUsageIngestionGuide = [
   {
     step: 1,
-    title: i18n.t('label.add-entity', {
+    title: i18n.t(LABEL_ADD_ENTITY, {
       entity: i18n.t('label.usage-ingestion'),
     }),
     description: i18n.t('message.usage-ingestion-description'),
@@ -64,22 +67,19 @@ export const addUsageIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('message.entity-ingestion-added-successfully', {
+    title: i18n.t(MESSAGE_ENTITY_INGESTION_ADDED_SUCCESSFULLY, {
       entity: i18n.t('label.usage'),
     }),
-    description: i18n.t(
-      'message.ingestion-pipeline-name-successfully-deployed-entity',
-      {
-        entity: i18n.t('label.usage-lowercase'),
-      }
-    ),
+    description: i18n.t(MESSAGE_INGESTION_PIPELINE_NAME_SUCCESSFULLY_DEPLOYED, {
+      entity: i18n.t('label.usage-lowercase'),
+    }),
   },
 ];
 
 export const addLineageIngestionGuide = [
   {
     step: 1,
-    title: i18n.t('label.add-entity', {
+    title: i18n.t(LABEL_ADD_ENTITY, {
       entity: i18n.t('label.lineage-ingestion'),
     }),
     description: i18n.t('message.lineage-ingestion-description'),
@@ -89,22 +89,19 @@ export const addLineageIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('message.entity-ingestion-added-successfully', {
+    title: i18n.t(MESSAGE_ENTITY_INGESTION_ADDED_SUCCESSFULLY, {
       entity: i18n.t('label.lineage'),
     }),
-    description: i18n.t(
-      'message.ingestion-pipeline-name-successfully-deployed-entity',
-      {
-        entity: i18n.t('label.lineage-lowercase'),
-      }
-    ),
+    description: i18n.t(MESSAGE_INGESTION_PIPELINE_NAME_SUCCESSFULLY_DEPLOYED, {
+      entity: i18n.t('label.lineage-lowercase'),
+    }),
   },
 ];
 
 export const addProfilerIngestionGuide = [
   {
     step: 1,
-    title: i18n.t('label.add-entity', {
+    title: i18n.t(LABEL_ADD_ENTITY, {
       entity: i18n.t('label.profiler-ingestion'),
     }),
     description: i18n.t('message.profiler-ingestion-description'),
@@ -112,22 +109,19 @@ export const addProfilerIngestionGuide = [
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: i18n.t('message.entity-ingestion-added-successfully', {
+    title: i18n.t(MESSAGE_ENTITY_INGESTION_ADDED_SUCCESSFULLY, {
       entity: i18n.t('label.profiler'),
     }),
-    description: i18n.t(
-      'message.ingestion-pipeline-name-successfully-deployed-entity',
-      {
-        entity: i18n.t('label.profiler-lowercase'),
-      }
-    ),
+    description: i18n.t(MESSAGE_INGESTION_PIPELINE_NAME_SUCCESSFULLY_DEPLOYED, {
+      entity: i18n.t('label.profiler-lowercase'),
+    }),
   },
 ];
 
 export const addDBTIngestionGuide = [
   {
     step: 2,
-    title: i18n.t('label.add-entity', {
+    title: i18n.t(LABEL_ADD_ENTITY, {
       entity: i18n.t('label.dbt-ingestion'),
     }),
     description: i18n.t('message.dbt-ingestion-description'),
@@ -135,15 +129,12 @@ export const addDBTIngestionGuide = [
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: i18n.t('message.entity-ingestion-added-successfully', {
+    title: i18n.t(MESSAGE_ENTITY_INGESTION_ADDED_SUCCESSFULLY, {
       entity: i18n.t('label.dbt-lowercase'),
     }),
-    description: i18n.t(
-      'message.ingestion-pipeline-name-successfully-deployed-entity',
-      {
-        entity: i18n.t('label.profiler-lowercase'),
-      }
-    ),
+    description: i18n.t(MESSAGE_INGESTION_PIPELINE_NAME_SUCCESSFULLY_DEPLOYED, {
+      entity: i18n.t('label.profiler-lowercase'),
+    }),
   },
 ];
 

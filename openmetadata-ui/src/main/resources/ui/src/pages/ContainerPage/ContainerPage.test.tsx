@@ -254,6 +254,7 @@ jest.mock('../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: {},
   getPrioritizedEditPermission: jest.fn().mockReturnValue(true),

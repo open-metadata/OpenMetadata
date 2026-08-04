@@ -15,6 +15,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import AnnouncementsWidgetV3Body from './AnnouncementsWidgetV3Body.component';
 
+const MOCK_MOCK_ANNOUNCEMENT_ITEM = 'mock-announcement-item';
+const ANNOUNCEMENT_PREV_BTN = 'announcement-prev-btn';
+const ANNOUNCEMENT_NEXT_BTN = 'announcement-next-btn';
+const VIEW_ALL_BTN = 'view-all-btn';
+const ANNOUNCEMENTS_WIDGET_V3 = 'announcements-widget-v3';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -27,6 +33,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     children?: React.ReactNode;
     className?: string;
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     'data-testid'?: string;
   }) => (
     <div className={className} data-testid={dataTestId}>
@@ -80,7 +87,7 @@ jest.mock('./AnnouncementItemV3.component', () => ({
     onClick: () => void;
   }) => (
     <div
-      data-testid="mock-announcement-item"
+      data-testid={MOCK_MOCK_ANNOUNCEMENT_ITEM}
       role="presentation"
       onClick={onClick}>
       {announcement.displayName}
@@ -125,7 +132,7 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.getAllByTestId('mock-announcement-item')).toHaveLength(1);
+    expect(screen.getAllByTestId(MOCK_MOCK_ANNOUNCEMENT_ITEM)).toHaveLength(1);
     expect(screen.getByText('Announcement 0')).toBeInTheDocument();
   });
 
@@ -137,8 +144,8 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.getByTestId('announcement-prev-btn')).toBeDisabled();
-    expect(screen.getByTestId('announcement-next-btn')).not.toBeDisabled();
+    expect(screen.getByTestId(ANNOUNCEMENT_PREV_BTN)).toBeDisabled();
+    expect(screen.getByTestId(ANNOUNCEMENT_NEXT_BTN)).not.toBeDisabled();
   });
 
   it('pages forward and backward through the announcements', () => {
@@ -149,19 +156,19 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+    fireEvent.click(screen.getByTestId(ANNOUNCEMENT_NEXT_BTN));
 
     expect(screen.getByText('Announcement 1')).toBeInTheDocument();
     expect(screen.getByText('2/3')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+    fireEvent.click(screen.getByTestId(ANNOUNCEMENT_NEXT_BTN));
 
     expect(screen.getByText('Announcement 2')).toBeInTheDocument();
     expect(screen.getByText('3/3')).toBeInTheDocument();
-    expect(screen.getByTestId('announcement-next-btn')).toBeDisabled();
-    expect(screen.getByTestId('announcement-prev-btn')).not.toBeDisabled();
+    expect(screen.getByTestId(ANNOUNCEMENT_NEXT_BTN)).toBeDisabled();
+    expect(screen.getByTestId(ANNOUNCEMENT_PREV_BTN)).not.toBeDisabled();
 
-    fireEvent.click(screen.getByTestId('announcement-prev-btn'));
+    fireEvent.click(screen.getByTestId(ANNOUNCEMENT_PREV_BTN));
 
     expect(screen.getByText('Announcement 1')).toBeInTheDocument();
     expect(screen.getByText('2/3')).toBeInTheDocument();
@@ -175,12 +182,8 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('announcement-prev-btn')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('announcement-next-btn')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ANNOUNCEMENT_PREV_BTN)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ANNOUNCEMENT_NEXT_BTN)).not.toBeInTheDocument();
     expect(screen.queryByText('1/1')).not.toBeInTheDocument();
     expect(screen.getByText('Announcement 0')).toBeInTheDocument();
   });
@@ -194,7 +197,7 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('mock-announcement-item'));
+    fireEvent.click(screen.getByTestId(MOCK_MOCK_ANNOUNCEMENT_ITEM));
 
     expect(onItemClick).toHaveBeenCalledWith(mockAnnouncements[0]);
   });
@@ -209,7 +212,7 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('view-all-btn'));
+    fireEvent.click(screen.getByTestId(VIEW_ALL_BTN));
 
     expect(onViewAll).toHaveBeenCalledTimes(1);
   });
@@ -222,7 +225,7 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.queryByTestId('view-all-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(VIEW_ALL_BTN)).not.toBeInTheDocument();
   });
 
   it('renders only the skeleton while loading, suppressing the header and item', () => {
@@ -239,11 +242,13 @@ describe('AnnouncementsWidgetV3Body', () => {
     expect(screen.getByTestId('custom-widget-loading')).toBeInTheDocument();
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.getByTestId('custom-widget')).toBeInTheDocument();
-    expect(screen.queryAllByTestId('mock-announcement-item')).toHaveLength(0);
+    expect(screen.queryAllByTestId(MOCK_MOCK_ANNOUNCEMENT_ITEM)).toHaveLength(
+      0
+    );
     expect(
       screen.queryByText('label.announcement-plural')
     ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('view-all-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(VIEW_ALL_BTN)).not.toBeInTheDocument();
   });
 
   it('renders nothing when there are no announcements', () => {
@@ -252,7 +257,7 @@ describe('AnnouncementsWidgetV3Body', () => {
     );
 
     expect(
-      screen.queryByTestId('announcements-widget-v3')
+      screen.queryByTestId(ANNOUNCEMENTS_WIDGET_V3)
     ).not.toBeInTheDocument();
   });
 
@@ -264,8 +269,8 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('announcement-next-btn'));
-    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+    fireEvent.click(screen.getByTestId(ANNOUNCEMENT_NEXT_BTN));
+    fireEvent.click(screen.getByTestId(ANNOUNCEMENT_NEXT_BTN));
 
     expect(screen.getByText('3/3')).toBeInTheDocument();
 
@@ -293,15 +298,17 @@ describe('AnnouncementsWidgetV3Body', () => {
       />
     );
 
-    expect(screen.getByTestId('announcements-widget-v3')).toBeInTheDocument();
+    expect(screen.getByTestId(ANNOUNCEMENTS_WIDGET_V3)).toBeInTheDocument();
 
     rerender(
       <AnnouncementsWidgetV3Body announcements={[]} onItemClick={jest.fn()} />
     );
 
     expect(
-      screen.queryByTestId('announcements-widget-v3')
+      screen.queryByTestId(ANNOUNCEMENTS_WIDGET_V3)
     ).not.toBeInTheDocument();
-    expect(screen.queryAllByTestId('mock-announcement-item')).toHaveLength(0);
+    expect(screen.queryAllByTestId(MOCK_MOCK_ANNOUNCEMENT_ITEM)).toHaveLength(
+      0
+    );
   });
 });

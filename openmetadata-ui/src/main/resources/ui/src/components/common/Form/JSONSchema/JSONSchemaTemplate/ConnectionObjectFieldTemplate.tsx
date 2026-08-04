@@ -47,6 +47,8 @@ import { CoreObjectFieldTemplate } from '../../../FormBuilderV1/templates/CoreOb
 import './connection-object-field-template.less';
 import { ObjectFieldTemplate } from './ObjectFieldTemplate';
 
+const LABEL_OPTIONAL = 'label.optional';
+
 const SingleCredentialNote = ({ method }: { method: string }) => {
   return (
     <div className="tw:flex tw:items-center tw:gap-1.5 tw:text-xs">
@@ -743,7 +745,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
                     })}
                   </ReqBadge>
                 ) : (
-                  <ReqBadge>{t('label.optional')}</ReqBadge>
+                  <ReqBadge>{t(LABEL_OPTIONAL)}</ReqBadge>
                 ),
             },
           ]
@@ -773,7 +775,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
                     })}
                   </ReqBadge>
                 ) : (
-                  <ReqBadge>{t('label.optional')}</ReqBadge>
+                  <ReqBadge>{t(LABEL_OPTIONAL)}</ReqBadge>
                 ),
             } as SectionConfig,
           ]
@@ -795,7 +797,7 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
                 'scopeOptions'
               ),
               onFocus: connectionFormContext?.handleFocus,
-              badge: <ReqBadge>{t('label.optional')}</ReqBadge>,
+              badge: <ReqBadge>{t(LABEL_OPTIONAL)}</ReqBadge>,
             } as SectionConfig,
           ]
         : []),

@@ -24,6 +24,8 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { BundleSuiteFormData } from './BundleSuiteForm.interface';
 import BundleSuiteFormBody from './BundleSuiteFormBody';
 
+const PIPELINE_NAME = 'pipeline-name';
+
 jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
   useLimitStore: jest.fn().mockReturnValue({
     config: {
@@ -188,7 +190,7 @@ describe('BundleSuiteFormBody', () => {
       renderBody();
     });
 
-    expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(PIPELINE_NAME)).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('schedule-interval-v1')
     ).not.toBeInTheDocument();
@@ -205,7 +207,7 @@ describe('BundleSuiteFormBody', () => {
       formRef?.setValue('enableScheduler', true);
     });
 
-    expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
+    expect(await screen.findByTestId(PIPELINE_NAME)).toBeInTheDocument();
     expect(
       await screen.findByTestId('schedule-interval-v1')
     ).toBeInTheDocument();
@@ -222,14 +224,14 @@ describe('BundleSuiteFormBody', () => {
       formRef?.setValue('enableScheduler', true);
     });
 
-    expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
+    expect(await screen.findByTestId(PIPELINE_NAME)).toBeInTheDocument();
 
     await act(async () => {
       formRef?.setValue('enableScheduler', false);
     });
 
     await waitFor(() => {
-      expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(PIPELINE_NAME)).not.toBeInTheDocument();
     });
   });
 

@@ -17,6 +17,8 @@ import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
+const LABEL_STATUS = 'label.status' as const;
+
 const mockProps: TestCaseStatusModalProps = {
   open: true,
   testCaseFqn: 'test',
@@ -41,7 +43,7 @@ describe('TestCaseStatusModal component', () => {
     render(<TestCaseStatusModal {...mockProps} />);
 
     expect(await screen.findByTestId('update-status-form')).toBeInTheDocument();
-    expect(await screen.findByLabelText('label.status')).toBeInTheDocument();
+    expect(await screen.findByLabelText(LABEL_STATUS)).toBeInTheDocument();
     expect(await screen.findByText('label.cancel')).toBeInTheDocument();
     expect(await screen.findByText('label.save')).toBeInTheDocument();
   });
@@ -56,7 +58,7 @@ describe('TestCaseStatusModal component', () => {
       />
     );
 
-    expect(await screen.findByLabelText('label.status')).toBeInTheDocument();
+    expect(await screen.findByLabelText(LABEL_STATUS)).toBeInTheDocument();
     expect(await screen.findByLabelText('label.reason')).toBeInTheDocument();
     expect(await screen.findByText('RichTextEditor')).toBeInTheDocument();
   });
@@ -82,7 +84,7 @@ describe('TestCaseStatusModal component', () => {
   it.skip('should call onSubmit function, on click of save button', async () => {
     render(<TestCaseStatusModal {...mockProps} />);
     const submitBtn = await screen.findByText('label.save');
-    const status = await screen.findByLabelText('label.status');
+    const status = await screen.findByLabelText(LABEL_STATUS);
 
     await act(async () => {
       userEvent.click(status);

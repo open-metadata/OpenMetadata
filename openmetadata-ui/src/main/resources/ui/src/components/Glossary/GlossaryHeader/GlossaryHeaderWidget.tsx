@@ -17,6 +17,8 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 
+const GLOSSARY_TERM_2 = 'Glossary Term';
+
 export const GlossaryHeaderWidget = ({
   isGlossary = true,
 }: {
@@ -52,9 +54,9 @@ export const GlossaryHeaderWidget = ({
         showName
         breadcrumb={[
           { name: 'Glossaries', url: '#', activeTitle: false },
-          { name: 'Glossary Term', url: '#', activeTitle: false },
+          { name: GLOSSARY_TERM_2, url: '#', activeTitle: false },
         ]}
-        entityData={{ name: 'Glossary Term', displayName: 'Glossary Term' }}
+        entityData={{ name: GLOSSARY_TERM_2, displayName: GLOSSARY_TERM_2 }}
         entityType={EntityType.GLOSSARY_TERM}
         icon={icon}
         serviceName=""

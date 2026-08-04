@@ -31,6 +31,9 @@ import {
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
+
+const LABEL_DATA_PRODUCT_PLURAL = 'label.data-product-plural';
+
 interface DataProductsContainerProps {
   showHeader?: boolean;
   hasPermission: boolean;
@@ -109,7 +112,7 @@ const DataProductsContainer = ({
         )}
         fetchOptions={fetchAPI}
         mode={multiple ? 'multiple' : undefined}
-        placeholder={t('label.data-product-plural')}
+        placeholder={t(LABEL_DATA_PRODUCT_PLURAL)}
         onCancel={handleCancel}
         onSubmit={handleSave}
       />
@@ -177,7 +180,7 @@ const DataProductsContainer = ({
               isEmpty(activeDomains)
                 ? t('message.select-domain-to-add-data-product')
                 : t('label.add-entity', {
-                    entity: t('label.data-product-plural'),
+                    entity: t(LABEL_DATA_PRODUCT_PLURAL),
                   })
             }
             onClick={isEmpty(activeDomains) ? undefined : handleAddClick}
@@ -187,7 +190,7 @@ const DataProductsContainer = ({
           <WidgetEditButton
             data-testid="edit-button"
             title={t('label.edit-entity', {
-              entity: t('label.data-product-plural'),
+              entity: t(LABEL_DATA_PRODUCT_PLURAL),
             })}
             onClick={handleAddClick}
           />
@@ -241,7 +244,7 @@ const DataProductsContainer = ({
         forceExpand={isEditMode}
         headerExtra={headerExtra}
         isExpandDisabled={isEmpty(dataProducts) && !isEditMode}
-        title={t('label.data-product-plural')}>
+        title={t(LABEL_DATA_PRODUCT_PLURAL)}>
         {renderer}
       </WidgetCard>
     );
@@ -252,7 +255,7 @@ const DataProductsContainer = ({
       {showHeader && (
         <Space align="center" size="middle">
           <Typography size="text-sm" weight="medium">
-            {t('label.data-product-plural')}
+            {t(LABEL_DATA_PRODUCT_PLURAL)}
           </Typography>
           {headerExtra}
         </Space>

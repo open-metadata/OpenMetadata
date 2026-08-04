@@ -14,6 +14,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import CopyLinkButton from './CopyLinkButton.component';
 
+const COPY_LINK_BTN = 'copy-link-btn' as const;
+
 const mockOnCopyToClipBoard = jest.fn();
 
 jest.mock('../../hooks/useClipBoard', () => ({
@@ -58,7 +60,7 @@ describe('CopyLinkButton', () => {
   it('renders the button with the children icon in idle state', () => {
     renderComponent();
 
-    expect(screen.getByTestId('copy-link-btn')).toBeInTheDocument();
+    expect(screen.getByTestId(COPY_LINK_BTN)).toBeInTheDocument();
     expect(screen.getByTestId('link-icon')).toBeInTheDocument();
     expect(screen.queryByTestId('check-icon')).not.toBeInTheDocument();
   });
@@ -66,7 +68,7 @@ describe('CopyLinkButton', () => {
   it('calls onCopyToClipBoard when the button is clicked', () => {
     renderComponent();
 
-    fireEvent.click(screen.getByTestId('copy-link-btn'));
+    fireEvent.click(screen.getByTestId(COPY_LINK_BTN));
 
     expect(mockOnCopyToClipBoard).toHaveBeenCalledTimes(1);
   });
@@ -93,7 +95,7 @@ describe('CopyLinkButton', () => {
 
     renderComponent();
 
-    expect(screen.getByTestId('copy-link-btn').className).toContain(
+    expect(screen.getByTestId(COPY_LINK_BTN).className).toContain(
       'tw:bg-success-solid'
     );
   });
@@ -101,7 +103,7 @@ describe('CopyLinkButton', () => {
   it('applies the round class in idle state', () => {
     renderComponent();
 
-    expect(screen.getByTestId('copy-link-btn').className).toContain(
+    expect(screen.getByTestId(COPY_LINK_BTN).className).toContain(
       'tw:rounded-md'
     );
   });

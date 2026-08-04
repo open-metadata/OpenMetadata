@@ -21,18 +21,20 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
+const LABEL_COLUMN_BULK_OPERATIONS = 'label.column-bulk-operations' as const;
+
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
 
   const breadcrumbItems = [
     isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
-    { label: t('label.column-bulk-operations') },
+    { label: t(LABEL_COLUMN_BULK_OPERATIONS) },
   ];
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.column-bulk-operations')}
+      pageTitle={t(LABEL_COLUMN_BULK_OPERATIONS)}
       variant={isAiMode ? 'compact' : 'default'}>
       <div className="tw:flex tw:flex-col tw:gap-4">
         {isAiMode ? (
@@ -47,7 +49,7 @@ const ColumnBulkOperations = () => {
             className="tw:mb-0!"
             padding="comfortable"
             subtitle={t('message.column-bulk-operations-subtitle')}
-            title={t('label.column-bulk-operations')}
+            title={t(LABEL_COLUMN_BULK_OPERATIONS)}
             variant="gradient"
           />
         ) : (

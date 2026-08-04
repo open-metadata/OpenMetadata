@@ -21,6 +21,8 @@ import {
 import { useAgentRuns } from '../hooks/useAgentRuns';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
+const DRAWER_RUN_NOW_BUTTON = 'drawer-run-now-button';
+
 jest.mock('./RunStepRow.component', () =>
   jest.fn().mockImplementation(() => <p>RunStepRow</p>)
 );
@@ -154,17 +156,13 @@ describe('RunHistoryDrawer', () => {
   it('should hide the Run now button for a running agent', () => {
     renderDrawer(undefined, { status: 'running' });
 
-    expect(
-      screen.queryByTestId('drawer-run-now-button')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DRAWER_RUN_NOW_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should hide the Run now button for a queued agent to avoid a duplicate run', () => {
     renderDrawer(undefined, { status: 'queued' });
 
-    expect(
-      screen.queryByTestId('drawer-run-now-button')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DRAWER_RUN_NOW_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should hide the Run now button without trigger permission', () => {
@@ -174,9 +172,7 @@ describe('RunHistoryDrawer', () => {
       delete: true,
     });
 
-    expect(
-      screen.queryByTestId('drawer-run-now-button')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DRAWER_RUN_NOW_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should hide the Run now button while permissions are unresolved', () => {
@@ -190,9 +186,7 @@ describe('RunHistoryDrawer', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('drawer-run-now-button')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DRAWER_RUN_NOW_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should forward fetchRuns to useAgentRuns', () => {

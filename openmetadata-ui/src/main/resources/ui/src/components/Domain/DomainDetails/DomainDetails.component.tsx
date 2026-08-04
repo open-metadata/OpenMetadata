@@ -137,6 +137,11 @@ import { DomainFormType } from '../DomainPage.interface';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { DomainDetailsProps } from './DomainDetails.interface';
 
+const SERVER_ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
+const SERVER_ADD_ENTITY_ERROR = 'server.add-entity-error';
+const LABEL_DATA_PRODUCT = 'label.data-product';
+const LABEL_SUB_DOMAIN = 'label.sub-domain';
+const LABEL_DOMAIN = 'label.domain';
 const DomainDetails = ({
   domain,
   onUpdate,
@@ -259,7 +264,7 @@ const DomainDetails = ({
         setAssetCount(0);
         showErrorToast(
           error as AxiosError,
-          t('server.entity-fetch-error', {
+          t(SERVER_ENTITY_FETCH_ERROR, {
             entity: t('label.asset-plural-lowercase'),
           })
         );
@@ -283,7 +288,7 @@ const DomainDetails = ({
         setDataProductsCount(0);
         showErrorToast(
           error as AxiosError,
-          t('server.entity-fetch-error', {
+          t(SERVER_ENTITY_FETCH_ERROR, {
             entity: t('label.data-product-lowercase'),
           })
         );
@@ -312,7 +317,7 @@ const DomainDetails = ({
         setSubDomainsCount(0);
         showErrorToast(
           error as AxiosError,
-          t('server.entity-fetch-error', {
+          t(SERVER_ENTITY_FETCH_ERROR, {
             entity: t('label.sub-domain-lowercase'),
           })
         );
@@ -392,7 +397,7 @@ const DomainDetails = ({
         await createEntityWithCoverImage({
           formData,
           entityType: EntityType.DATA_PRODUCT,
-          entityLabel: t('label.data-product'),
+          entityLabel: t(LABEL_DATA_PRODUCT),
           entityPluralLabel: 'data-products',
           createEntity: addDataProducts,
           patchEntity: patchDataProduct,
@@ -408,10 +413,10 @@ const DomainDetails = ({
           dataProductForm,
           'name',
           t('message.entity-with-name-already-exists', {
-            entity: t('label.data-product'),
+            entity: t(LABEL_DATA_PRODUCT),
           }),
-          t('server.add-entity-error', {
-            entity: t('label.data-product').toLowerCase(),
+          t(SERVER_ADD_ENTITY_ERROR, {
+            entity: t(LABEL_DATA_PRODUCT).toLowerCase(),
           })
         );
 
@@ -435,7 +440,7 @@ const DomainDetails = ({
     openDrawer: openDataProductDrawer,
     closeDrawer: closeDataProductDrawer,
   } = useFormDrawerWithHook<DomainFormValues>({
-    title: t('label.add-entity', { entity: t('label.data-product') }),
+    title: t('label.add-entity', { entity: t(LABEL_DATA_PRODUCT) }),
     width: 670,
     closeOnEscape: false,
     className: 'tw:z-[20]',
@@ -566,7 +571,7 @@ const DomainDetails = ({
         await createEntityWithCoverImage({
           formData,
           entityType: EntityType.DOMAIN,
-          entityLabel: t('label.sub-domain'),
+          entityLabel: t(LABEL_SUB_DOMAIN),
           entityPluralLabel: 'sub-domains',
           createEntity: addDomains,
           patchEntity: patchDomains,
@@ -582,10 +587,10 @@ const DomainDetails = ({
           subDomainForm,
           'name',
           t('message.entity-with-name-already-exists', {
-            entity: t('label.sub-domain'),
+            entity: t(LABEL_SUB_DOMAIN),
           }),
-          t('server.add-entity-error', {
-            entity: t('label.sub-domain').toLowerCase(),
+          t(SERVER_ADD_ENTITY_ERROR, {
+            entity: t(LABEL_SUB_DOMAIN).toLowerCase(),
           })
         );
 
@@ -608,7 +613,7 @@ const DomainDetails = ({
     openDrawer: openSubDomainDrawer,
     closeDrawer: closeSubDomainDrawer,
   } = useFormDrawerWithHook<DomainFormValues>({
-    title: t('label.add-entity', { entity: t('label.sub-domain') }),
+    title: t('label.add-entity', { entity: t(LABEL_SUB_DOMAIN) }),
     width: 670,
     closeOnEscape: false,
     className: 'tw:z-[20]',
@@ -701,12 +706,12 @@ const DomainDetails = ({
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
             ? t('server.entity-already-exist', {
-                entity: t('label.sub-domain'),
+                entity: t(LABEL_SUB_DOMAIN),
                 entityPlural: t('label.sub-domain-lowercase-plural'),
                 name: data.name,
               })
             : (error as AxiosError),
-          t('server.add-entity-error', {
+          t(SERVER_ADD_ENTITY_ERROR, {
             entity: t('label.sub-domain-lowercase'),
           })
         );
@@ -820,7 +825,7 @@ const DomainDetails = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.rename-entity', {
-                  entity: t('label.domain'),
+                  entity: t(LABEL_DOMAIN),
                 })}
                 icon={EditIcon}
                 id="rename-button"
@@ -842,7 +847,7 @@ const DomainDetails = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.edit-entity-style-description', {
-                  entity: t('label.domain'),
+                  entity: t(LABEL_DOMAIN),
                 })}
                 icon={StyleIcon}
                 id="edit-style-button"
@@ -866,7 +871,7 @@ const DomainDetails = ({
                 description={t(
                   'message.delete-entity-type-action-description',
                   {
-                    entityType: t('label.domain'),
+                    entityType: t(LABEL_DOMAIN),
                   }
                 )}
                 icon={DeleteIcon}
@@ -1086,7 +1091,7 @@ const DomainDetails = ({
                   <Tooltip
                     placement="topRight"
                     title={t('label.manage-entity', {
-                      entity: t('label.domain'),
+                      entity: t(LABEL_DOMAIN),
                     })}>
                     <Button
                       className="domain-manage-dropdown-button tw-px-1.5"

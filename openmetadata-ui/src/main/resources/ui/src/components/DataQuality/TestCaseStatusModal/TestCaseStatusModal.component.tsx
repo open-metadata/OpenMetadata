@@ -45,6 +45,8 @@ import { getUsers } from '../../../rest/userAPI';
 import { generateFormFields } from '../../../utils/formUtils';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
+const LABEL_STATUS = 'label.status';
+
 export const TestCaseStatusModal = ({
   open,
   data,
@@ -300,7 +302,7 @@ export const TestCaseStatusModal = ({
       }}
       okText={t('label.save')}
       open={open}
-      title={t('label.update-entity', { entity: t('label.status') })}
+      title={t('label.update-entity', { entity: t(LABEL_STATUS) })}
       width={750}
       onCancel={onCancel}>
       <Form<CreateTestCaseResolutionStatus>
@@ -312,7 +314,7 @@ export const TestCaseStatusModal = ({
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleFormSubmit}>
         <Form.Item
-          label={t('label.status')}
+          label={t(LABEL_STATUS)}
           name="testCaseResolutionStatusType"
           rules={[
             {
@@ -323,7 +325,7 @@ export const TestCaseStatusModal = ({
             data-testid="test-case-resolution-status-type"
             options={statusOptions}
             placeholder={t('label.please-select-entity', {
-              entity: t('label.status'),
+              entity: t(LABEL_STATUS),
             })}
           />
         </Form.Item>

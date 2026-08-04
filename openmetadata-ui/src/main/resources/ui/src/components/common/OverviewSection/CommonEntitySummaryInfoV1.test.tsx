@@ -15,6 +15,10 @@ import { ReactNode } from 'react';
 import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import { EntityInfoItemV1 } from './CommonEntitySummaryInfoV1.interface';
 
+const TYPE_LABEL = 'Type-label';
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural';
+const OWNERS_LABEL = 'Owners-label';
+
 // Mock i18n
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -73,7 +77,7 @@ describe('CommonEntitySummaryInfoV1', () => {
 
     expect(rows).toHaveLength(3);
 
-    expect(screen.getByTestId('Type-label')).toBeInTheDocument();
+    expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
     expect(screen.getByTestId('Type-value')).toHaveTextContent('Table');
     expect(screen.getByTestId('Rows-label')).toBeInTheDocument();
     expect(screen.getByTestId('Rows-value')).toHaveTextContent('1000');
@@ -97,7 +101,7 @@ describe('CommonEntitySummaryInfoV1', () => {
 
   it('shows domain item when isDomainVisible is true regardless of visibility array', () => {
     const items: EntityInfoItemV1[] = [
-      { name: 'label.domain-plural', value: 'Domain A', visible: ['other'] },
+      { name: LABEL_DOMAIN_PLURAL, value: 'Domain A', visible: ['other'] },
     ];
 
     render(
@@ -206,9 +210,9 @@ describe('CommonEntitySummaryInfoV1', () => {
       />
     );
 
-    expect(screen.getByTestId('Type-label')).toBeInTheDocument();
+    expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
     expect(screen.getByTestId('Rows-label')).toBeInTheDocument();
-    expect(screen.queryByTestId('Owners-label')).toBeNull();
+    expect(screen.queryByTestId(OWNERS_LABEL)).toBeNull();
     expect(screen.queryByTestId('Tier-label')).toBeNull();
   });
 
@@ -226,8 +230,8 @@ describe('CommonEntitySummaryInfoV1', () => {
       />
     );
 
-    expect(screen.getByTestId('Type-label')).toBeInTheDocument();
-    expect(screen.getByTestId('Owners-label')).toBeInTheDocument();
+    expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
+    expect(screen.getByTestId(OWNERS_LABEL)).toBeInTheDocument();
   });
 
   it('renders all items when excludedItems is not provided', () => {
@@ -240,8 +244,8 @@ describe('CommonEntitySummaryInfoV1', () => {
       <CommonEntitySummaryInfoV1 componentType="explore" entityInfo={items} />
     );
 
-    expect(screen.getByTestId('Type-label')).toBeInTheDocument();
-    expect(screen.getByTestId('Owners-label')).toBeInTheDocument();
+    expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
+    expect(screen.getByTestId(OWNERS_LABEL)).toBeInTheDocument();
   });
 
   it('combines excludedItems with visibility filtering', () => {
@@ -260,8 +264,8 @@ describe('CommonEntitySummaryInfoV1', () => {
       />
     );
 
-    expect(screen.getByTestId('Type-label')).toBeInTheDocument();
-    expect(screen.queryByTestId('Owners-label')).toBeNull();
+    expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
+    expect(screen.queryByTestId(OWNERS_LABEL)).toBeNull();
     expect(screen.queryByTestId('Hidden-label')).toBeNull();
     expect(screen.queryByTestId('Tier-label')).toBeNull();
   });
@@ -269,7 +273,7 @@ describe('CommonEntitySummaryInfoV1', () => {
   it('shows domain item when isDomainVisible is true even if in excludedItems', () => {
     const items: EntityInfoItemV1[] = [
       { name: 'Type', value: 'Table', visible: ['explore'] },
-      { name: 'label.domain-plural', value: 'Domain A', visible: ['other'] },
+      { name: LABEL_DOMAIN_PLURAL, value: 'Domain A', visible: ['other'] },
     ];
 
     render(
@@ -277,11 +281,11 @@ describe('CommonEntitySummaryInfoV1', () => {
         isDomainVisible
         componentType="explore"
         entityInfo={items}
-        excludedItems={['label.domain-plural']}
+        excludedItems={[LABEL_DOMAIN_PLURAL]}
       />
     );
 
-    expect(screen.getByTestId('Type-label')).toBeInTheDocument();
+    expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
     expect(screen.queryByTestId('label.domain-plural-label')).toBeNull();
   });
 

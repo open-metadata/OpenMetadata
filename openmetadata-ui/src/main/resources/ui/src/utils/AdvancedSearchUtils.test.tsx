@@ -68,6 +68,8 @@ import {
   mockShortOptionsArray,
 } from './mocks/AdvancedSearchUtils.mock';
 
+const TESTFIELD_KEYWORD = 'testField.keyword';
+const TEST_FIELD = 'Test Field';
 jest.mock('./AdvancedSearchClassBase', () => ({
   __esModule: true,
   default: {
@@ -440,7 +442,7 @@ describe('AdvancedSearchUtils tests', () => {
 
     const mockDataObject = {
       type: 'select',
-      label: 'Test Field',
+      label: TEST_FIELD,
       valueSources: ['value'],
     };
 
@@ -469,7 +471,7 @@ describe('AdvancedSearchUtils tests', () => {
     it('should add subfield directly when entityType is specified', () => {
       const subfields: Record<string, FieldOrGroup> = {};
       const mockResult = {
-        subfieldsKey: 'testField.keyword',
+        subfieldsKey: TESTFIELD_KEYWORD,
         dataObject: mockDataObject,
       };
 
@@ -484,7 +486,7 @@ describe('AdvancedSearchUtils tests', () => {
         'table'
       );
 
-      expect(subfields['testField.keyword']).toEqual({
+      expect(subfields[TESTFIELD_KEYWORD]).toEqual({
         ...mockDataObject,
         valueSources: ['value'],
       });
@@ -493,7 +495,7 @@ describe('AdvancedSearchUtils tests', () => {
     it('should create nested subfields when entityType is not specified', () => {
       const subfields: Record<string, FieldOrGroup> = {};
       const mockResult = {
-        subfieldsKey: 'testField.keyword',
+        subfieldsKey: TESTFIELD_KEYWORD,
         dataObject: mockDataObject,
       };
 
@@ -508,7 +510,7 @@ describe('AdvancedSearchUtils tests', () => {
         label: 'Table',
         type: '!group',
         subfields: {
-          'testField.keyword': {
+          [TESTFIELD_KEYWORD]: {
             ...mockDataObject,
             valueSources: ['value'],
           },
@@ -584,10 +586,10 @@ describe('AdvancedSearchUtils tests', () => {
       (
         advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
       ).mockReturnValue({
-        subfieldsKey: 'testField.keyword',
+        subfieldsKey: TESTFIELD_KEYWORD,
         dataObject: {
           type: 'text',
-          label: 'Test Field',
+          label: TEST_FIELD,
           valueSources: ['value'],
         },
       });
@@ -615,7 +617,7 @@ describe('AdvancedSearchUtils tests', () => {
         subfieldsKey: 'testField',
         dataObject: {
           type: 'text',
-          label: 'Test Field',
+          label: TEST_FIELD,
           valueSources: ['value'],
         },
       });
@@ -640,10 +642,10 @@ describe('AdvancedSearchUtils tests', () => {
       (
         advancedSearchClassBase.getCustomPropertiesSubFields as jest.Mock
       ).mockReturnValue({
-        subfieldsKey: 'testField.keyword',
+        subfieldsKey: TESTFIELD_KEYWORD,
         dataObject: {
           type: 'text',
-          label: 'Test Field',
+          label: TEST_FIELD,
           valueSources: ['value'],
         },
       });

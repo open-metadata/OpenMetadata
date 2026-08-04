@@ -14,6 +14,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ProviderSelector from './ProviderSelector';
 
+const CUSTOM_OIDC = 'Custom-OIDC' as const;
+const PROVIDER_ITEM = '.provider-item' as const;
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -107,7 +110,7 @@ describe('ProviderSelector', () => {
 
       expect(screen.getByText('Auth0')).toBeInTheDocument();
 
-      expect(screen.getByText('Custom-OIDC')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_OIDC)).toBeInTheDocument();
 
       expect(screen.getByText('SAML')).toBeInTheDocument();
 
@@ -153,7 +156,7 @@ describe('ProviderSelector', () => {
     it('should call onProviderSelect when Google is selected and configure is clicked', async () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
+      const googleCard = screen.getByText('Google').closest(PROVIDER_ITEM);
 
       expect(googleCard).toBeInTheDocument();
 
@@ -178,8 +181,8 @@ describe('ProviderSelector', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
       const customOidcCard = screen
-        .getByText('Custom-OIDC')
-        .closest('.provider-item');
+        .getByText(CUSTOM_OIDC)
+        .closest(PROVIDER_ITEM);
 
       expect(customOidcCard).toBeInTheDocument();
 
@@ -198,7 +201,7 @@ describe('ProviderSelector', () => {
     it('should call onProviderSelect when SAML is selected and configure is clicked', async () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const samlCard = screen.getByText('SAML').closest('.provider-item');
+      const samlCard = screen.getByText('SAML').closest(PROVIDER_ITEM);
 
       expect(samlCard).toBeInTheDocument();
 
@@ -217,7 +220,7 @@ describe('ProviderSelector', () => {
     it('should only call onProviderSelect once per configure click', async () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
+      const googleCard = screen.getByText('Google').closest(PROVIDER_ITEM);
       fireEvent.click(googleCard as Element);
 
       const configureButton = screen.getByRole('button', {
@@ -235,7 +238,7 @@ describe('ProviderSelector', () => {
     it('should highlight selected provider', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
+      const googleCard = screen.getByText('Google').closest(PROVIDER_ITEM);
       fireEvent.click(googleCard as Element);
 
       expect(googleCard).toHaveClass('selected');
@@ -244,8 +247,8 @@ describe('ProviderSelector', () => {
     it('should allow changing selection', () => {
       render(<ProviderSelector onProviderSelect={mockOnProviderSelect} />);
 
-      const googleCard = screen.getByText('Google').closest('.provider-item');
-      const oktaCard = screen.getByText('Okta').closest('.provider-item');
+      const googleCard = screen.getByText('Google').closest(PROVIDER_ITEM);
+      const oktaCard = screen.getByText('Okta').closest(PROVIDER_ITEM);
 
       fireEvent.click(googleCard as Element);
 

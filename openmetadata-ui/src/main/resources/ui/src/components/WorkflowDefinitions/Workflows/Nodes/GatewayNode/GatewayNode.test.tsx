@@ -15,6 +15,7 @@ import { ReactFlowProvider } from 'reactflow';
 import { useWorkflowStore } from '../../useWorkflowStore';
 import GatewayNode from './GatewayNode';
 
+const TEST_GATEWAY = 'Test Gateway';
 jest.mock('../../useWorkflowStore');
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -23,7 +24,7 @@ jest.mock('react-i18next', () => ({
 const mockData = {
   id: '1',
   position: { x: 0, y: 0 },
-  data: { name: 'Test Gateway' },
+  data: { name: TEST_GATEWAY },
 };
 
 jest.mock('../../../../../utils/EntityNameUtils', () => ({
@@ -48,7 +49,7 @@ describe('GatewayNode', () => {
     );
 
     expect(screen.getByText('label.gateway')).toBeInTheDocument();
-    expect(screen.getByText('Test Gateway')).toBeInTheDocument();
+    expect(screen.getByText(TEST_GATEWAY)).toBeInTheDocument();
   });
 
   it('handles node click correctly', () => {
@@ -68,8 +69,7 @@ describe('GatewayNode', () => {
     );
 
     fireEvent.click(
-      screen.getByText('Test Gateway').parentElement
-        ?.parentElement as HTMLElement
+      screen.getByText(TEST_GATEWAY).parentElement?.parentElement as HTMLElement
     );
 
     expect(mockSetSelectedNode).toHaveBeenCalled();

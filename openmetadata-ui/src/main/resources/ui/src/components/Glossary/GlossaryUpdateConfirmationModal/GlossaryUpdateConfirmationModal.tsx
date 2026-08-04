@@ -34,6 +34,8 @@ import {
   UpdateState,
 } from './GlossaryUpdateConfirmationModal.interface';
 
+const LABEL_CANCEL = 'label.cancel';
+
 export const GlossaryUpdateConfirmationModal = ({
   glossaryTerm,
   onValidationSuccess,
@@ -120,7 +122,7 @@ export const GlossaryUpdateConfirmationModal = ({
           {failedStatus?.numberOfRowsFailed &&
             `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
         </Typography.Text>
-        <Button onClick={onCancel}>{t('label.cancel')}</Button>
+        <Button onClick={onCancel}>{t(LABEL_CANCEL)}</Button>
       </div>
     );
 
@@ -201,7 +203,7 @@ export const GlossaryUpdateConfirmationModal = ({
                 {failedStatus?.numberOfRowsFailed &&
                   `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
               </Typography.Text>
-              <Button onClick={onCancel}>{t('label.cancel')}</Button>
+              <Button onClick={onCancel}>{t(LABEL_CANCEL)}</Button>
             </div>
           ),
         };
@@ -209,7 +211,7 @@ export const GlossaryUpdateConfirmationModal = ({
       case UpdateState.SUCCESS:
         return {
           content: progressBar,
-          footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
+          footer: <Button onClick={onCancel}>{t(LABEL_CANCEL)}</Button>,
         };
     }
   }, [updateState, failedStatus]);

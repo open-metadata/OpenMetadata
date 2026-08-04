@@ -15,11 +15,14 @@ import { AIRFLOW_HYBRID } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AirflowMessageBanner from './AirflowMessageBanner';
 
+const REASON_MESSAGE = 'reason message';
+const NO_AIRFLOW_PLACEHOLDER = 'no-airflow-placeholder';
+
 jest.mock(
   '../../../context/AirflowStatusProvider/AirflowStatusProvider',
   () => ({
     useAirflowStatus: jest.fn().mockImplementation(() => ({
-      reason: 'reason message',
+      reason: REASON_MESSAGE,
       isAirflowAvailable: false,
       isFetchingStatus: false,
       platform: 'unknown',
@@ -31,12 +34,12 @@ describe('Test Airflow Message Banner', () => {
   it('Should render the banner if airflow is not available', () => {
     render(<AirflowMessageBanner />);
 
-    expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(NO_AIRFLOW_PLACEHOLDER)).toBeInTheDocument();
   });
 
   it('Should not render the banner if airflow is available and platform is not hybrid', () => {
     (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
-      reason: 'reason message',
+      reason: REASON_MESSAGE,
       isAirflowAvailable: true,
       isFetchingStatus: false,
       platform: 'unknown',
@@ -44,7 +47,7 @@ describe('Test Airflow Message Banner', () => {
     render(<AirflowMessageBanner />);
 
     expect(
-      screen.queryByTestId('no-airflow-placeholder')
+      screen.queryByTestId(NO_AIRFLOW_PLACEHOLDER)
     ).not.toBeInTheDocument();
   });
 
@@ -58,7 +61,7 @@ describe('Test Airflow Message Banner', () => {
       }));
       render(<AirflowMessageBanner />);
 
-      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId(NO_AIRFLOW_PLACEHOLDER)).toBeInTheDocument();
       expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
     });
 
@@ -71,7 +74,7 @@ describe('Test Airflow Message Banner', () => {
       }));
       render(<AirflowMessageBanner />);
 
-      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId(NO_AIRFLOW_PLACEHOLDER)).toBeInTheDocument();
       expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
     });
 
@@ -85,7 +88,7 @@ describe('Test Airflow Message Banner', () => {
       render(<AirflowMessageBanner />);
 
       expect(
-        screen.queryByTestId('no-airflow-placeholder')
+        screen.queryByTestId(NO_AIRFLOW_PLACEHOLDER)
       ).not.toBeInTheDocument();
     });
   });
@@ -93,7 +96,7 @@ describe('Test Airflow Message Banner', () => {
   describe('Common Scenarios', () => {
     it('Should not render the banner if fetching status', () => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
-        reason: 'reason message',
+        reason: REASON_MESSAGE,
         isAirflowAvailable: false,
         isFetchingStatus: true,
         platform: 'unknown',
@@ -101,7 +104,7 @@ describe('Test Airflow Message Banner', () => {
       render(<AirflowMessageBanner />);
 
       expect(
-        screen.queryByTestId('no-airflow-placeholder')
+        screen.queryByTestId(NO_AIRFLOW_PLACEHOLDER)
       ).not.toBeInTheDocument();
     });
 
@@ -115,7 +118,7 @@ describe('Test Airflow Message Banner', () => {
       render(<AirflowMessageBanner />);
 
       expect(
-        screen.queryByTestId('no-airflow-placeholder')
+        screen.queryByTestId(NO_AIRFLOW_PLACEHOLDER)
       ).not.toBeInTheDocument();
     });
 
@@ -129,7 +132,7 @@ describe('Test Airflow Message Banner', () => {
       render(<AirflowMessageBanner />);
 
       expect(
-        screen.queryByTestId('no-airflow-placeholder')
+        screen.queryByTestId(NO_AIRFLOW_PLACEHOLDER)
       ).not.toBeInTheDocument();
     });
 
@@ -142,9 +145,7 @@ describe('Test Airflow Message Banner', () => {
       }));
       render(<AirflowMessageBanner />);
 
-      expect(
-        screen.queryByTestId('no-airflow-placeholder')
-      ).toBeInTheDocument();
+      expect(screen.queryByTestId(NO_AIRFLOW_PLACEHOLDER)).toBeInTheDocument();
     });
   });
 });

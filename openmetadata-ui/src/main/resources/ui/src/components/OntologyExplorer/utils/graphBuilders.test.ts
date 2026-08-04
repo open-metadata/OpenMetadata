@@ -19,17 +19,30 @@ import {
   convertRdfGraphToOntologyGraph,
 } from './graphBuilders';
 
+const GLOSS_FINANCE_ID = 'gloss-finance-id';
+const GLOSS_RENAMED_ID = 'gloss-renamed-id';
+const FINANCE_REVENUE = 'Finance.Revenue';
+const TERM_KPI_1 = 'term-kpi-1';
+const FINANCE_KPI_1 = 'Finance.KPI 1';
+const TERM_AUDIENCE = 'term-audience';
+const FINANCE_AUDIENCE = 'Finance.Audience';
+const RELATED_TO = 'Related To';
+const _11111111_1111_1111_1111_111111111111 =
+  '11111111-1111-1111-1111-111111111111';
+const _22222222_2222_2222_2222_222222222222 =
+  '22222222-2222-2222-2222-222222222222';
+
 const tStub = ((key: string) => key) as unknown as TFunction;
 
 const glossaries: Glossary[] = [
   {
-    id: 'gloss-finance-id',
+    id: GLOSS_FINANCE_ID,
     name: 'Finance',
     fullyQualifiedName: 'Finance',
     description: 'd',
   } as Glossary,
   {
-    id: 'gloss-renamed-id',
+    id: GLOSS_RENAMED_ID,
     name: 'NewName',
     // The RDF response carries the OLD FQN of a renamed glossary in
     // node.fullyQualifiedName until the RDF projection catches up. The
@@ -48,7 +61,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
           id: 'term-1',
           label: 'Revenue',
           type: 'glossaryTerm',
-          glossaryId: 'gloss-renamed-id',
+          glossaryId: GLOSS_RENAMED_ID,
           // Drift: old FQN no longer matches the renamed glossary; the
           // explicit glossaryId on the node MUST win.
           fullyQualifiedName: 'OldName.Revenue',
@@ -59,7 +72,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
 
     const result = convertRdfGraphToOntologyGraph(rdf, glossaries);
 
-    expect(result.nodes[0].glossaryId).toBe('gloss-renamed-id');
+    expect(result.nodes[0].glossaryId).toBe(GLOSS_RENAMED_ID);
   });
 
   it('falls back to FQN-prefix lookup when glossaryId is not on the node', () => {
@@ -69,7 +82,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
           id: 'term-1',
           label: 'Revenue',
           type: 'glossaryTerm',
-          fullyQualifiedName: 'Finance.Revenue',
+          fullyQualifiedName: FINANCE_REVENUE,
         },
       ],
       edges: [],
@@ -77,7 +90,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
 
     const result = convertRdfGraphToOntologyGraph(rdf, glossaries);
 
-    expect(result.nodes[0].glossaryId).toBe('gloss-finance-id');
+    expect(result.nodes[0].glossaryId).toBe(GLOSS_FINANCE_ID);
   });
 
   it('falls back to node.group when no glossaryId and FQN does not match', () => {
@@ -95,7 +108,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
 
     const result = convertRdfGraphToOntologyGraph(rdf, glossaries);
 
-    expect(result.nodes[0].glossaryId).toBe('gloss-finance-id');
+    expect(result.nodes[0].glossaryId).toBe(GLOSS_FINANCE_ID);
   });
 
   it('leaves glossaryId undefined when nothing resolves', () => {
@@ -123,7 +136,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
           id: 'term-1',
           label: 'Revenue',
           type: 'glossaryTerm',
-          glossaryId: 'gloss-finance-id',
+          glossaryId: GLOSS_FINANCE_ID,
           group: 'Finance',
         },
       ],
@@ -142,7 +155,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
           id: 'term-1',
           label: '12345678-1234-1234-1234-123456789012',
           type: 'glossaryTerm',
-          fullyQualifiedName: 'Finance.Revenue',
+          fullyQualifiedName: FINANCE_REVENUE,
         },
       ],
       edges: [],
@@ -157,28 +170,28 @@ describe('convertRdfGraphToOntologyGraph', () => {
     const rdf: GraphData = {
       nodes: [
         {
-          id: 'term-kpi-1',
+          id: TERM_KPI_1,
           label: 'KPI 1',
           type: 'glossaryTerm',
-          fullyQualifiedName: 'Finance.KPI 1',
+          fullyQualifiedName: FINANCE_KPI_1,
         },
         {
-          id: 'term-audience',
+          id: TERM_AUDIENCE,
           label: 'Audience',
           type: 'glossaryTerm',
-          fullyQualifiedName: 'Finance.Audience',
+          fullyQualifiedName: FINANCE_AUDIENCE,
         },
       ],
       edges: [
         {
-          from: 'term-kpi-1',
-          to: 'term-audience',
-          label: 'Related To',
+          from: TERM_KPI_1,
+          to: TERM_AUDIENCE,
+          label: RELATED_TO,
           relationType: 'relatedTo',
         },
         {
-          from: 'term-kpi-1',
-          to: 'term-audience',
+          from: TERM_KPI_1,
+          to: TERM_AUDIENCE,
           label: 'Part Of',
           relationType: 'partOf',
         },
@@ -201,13 +214,13 @@ describe('convertRdfGraphToOntologyGraph', () => {
           id: 'term-1',
           label: 'Revenue',
           type: 'glossaryTerm',
-          fullyQualifiedName: 'Finance.Revenue',
+          fullyQualifiedName: FINANCE_REVENUE,
         },
         {
           id: 'term-1',
           label: 'Revenue',
           type: 'glossaryTerm',
-          fullyQualifiedName: 'Finance.Revenue',
+          fullyQualifiedName: FINANCE_REVENUE,
         },
         {
           id: 'term-2',
@@ -232,7 +245,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
           id: 'term-1',
           label: 'Revenue',
           type: 'glossaryTerm',
-          fullyQualifiedName: 'Finance.Revenue',
+          fullyQualifiedName: FINANCE_REVENUE,
         },
         {
           id: 'term-2',
@@ -245,13 +258,13 @@ describe('convertRdfGraphToOntologyGraph', () => {
         {
           from: 'term-1',
           to: 'term-2',
-          label: 'Related To',
+          label: RELATED_TO,
           relationType: 'relatedTo',
         },
         {
           from: 'term-1',
           to: 'missing-node',
-          label: 'Related To',
+          label: RELATED_TO,
           relationType: 'relatedTo',
         },
       ],
@@ -266,7 +279,7 @@ describe('convertRdfGraphToOntologyGraph', () => {
 
 describe('buildGraphFromAllTerms', () => {
   const baseGlossary = {
-    id: 'gloss-finance-id',
+    id: GLOSS_FINANCE_ID,
     name: 'Finance',
     fullyQualifiedName: 'Finance',
     displayName: 'Finance',
@@ -275,62 +288,62 @@ describe('buildGraphFromAllTerms', () => {
   it('preserves multiple relations between the same pair of terms', () => {
     const terms: GlossaryTerm[] = [
       {
-        id: '11111111-1111-1111-1111-111111111111',
+        id: _11111111_1111_1111_1111_111111111111,
         name: 'KPI 1',
         displayName: 'KPI 1',
-        fullyQualifiedName: 'Finance.KPI 1',
+        fullyQualifiedName: FINANCE_KPI_1,
         glossary: {
-          id: 'gloss-finance-id',
+          id: GLOSS_FINANCE_ID,
           name: 'Finance',
           type: 'glossary',
         },
         relatedTerms: [
           {
             term: {
-              id: '22222222-2222-2222-2222-222222222222',
+              id: _22222222_2222_2222_2222_222222222222,
               type: 'glossaryTerm',
               name: 'Audience',
-              fullyQualifiedName: 'Finance.Audience',
+              fullyQualifiedName: FINANCE_AUDIENCE,
             },
             relationType: 'relatedTo',
           },
           {
             term: {
-              id: '22222222-2222-2222-2222-222222222222',
+              id: _22222222_2222_2222_2222_222222222222,
               type: 'glossaryTerm',
               name: 'Audience',
-              fullyQualifiedName: 'Finance.Audience',
+              fullyQualifiedName: FINANCE_AUDIENCE,
             },
             relationType: 'partOf',
           },
         ],
       } as GlossaryTerm,
       {
-        id: '22222222-2222-2222-2222-222222222222',
+        id: _22222222_2222_2222_2222_222222222222,
         name: 'Audience',
         displayName: 'Audience',
-        fullyQualifiedName: 'Finance.Audience',
+        fullyQualifiedName: FINANCE_AUDIENCE,
         glossary: {
-          id: 'gloss-finance-id',
+          id: GLOSS_FINANCE_ID,
           name: 'Finance',
           type: 'glossary',
         },
         relatedTerms: [
           {
             term: {
-              id: '11111111-1111-1111-1111-111111111111',
+              id: _11111111_1111_1111_1111_111111111111,
               type: 'glossaryTerm',
               name: 'KPI 1',
-              fullyQualifiedName: 'Finance.KPI 1',
+              fullyQualifiedName: FINANCE_KPI_1,
             },
             relationType: 'relatedTo',
           },
           {
             term: {
-              id: '11111111-1111-1111-1111-111111111111',
+              id: _11111111_1111_1111_1111_111111111111,
               type: 'glossaryTerm',
               name: 'KPI 1',
-              fullyQualifiedName: 'Finance.KPI 1',
+              fullyQualifiedName: FINANCE_KPI_1,
             },
             relationType: 'hasPart',
           },
@@ -356,11 +369,11 @@ describe('buildGraphFromAllTerms', () => {
 
   it('dedupes terms that appear more than once in the input', () => {
     const term = {
-      id: '11111111-1111-1111-1111-111111111111',
+      id: _11111111_1111_1111_1111_111111111111,
       name: 'KPI 1',
       displayName: 'KPI 1',
-      fullyQualifiedName: 'Finance.KPI 1',
-      glossary: { id: 'gloss-finance-id', name: 'Finance', type: 'glossary' },
+      fullyQualifiedName: FINANCE_KPI_1,
+      glossary: { id: GLOSS_FINANCE_ID, name: 'Finance', type: 'glossary' },
     } as GlossaryTerm;
 
     const result = buildGraphFromAllTerms([term, term], [baseGlossary], tStub);
@@ -371,11 +384,11 @@ describe('buildGraphFromAllTerms', () => {
   it('drops related-term edges whose target term is not in the loaded set', () => {
     const terms: GlossaryTerm[] = [
       {
-        id: '11111111-1111-1111-1111-111111111111',
+        id: _11111111_1111_1111_1111_111111111111,
         name: 'KPI 1',
         displayName: 'KPI 1',
-        fullyQualifiedName: 'Finance.KPI 1',
-        glossary: { id: 'gloss-finance-id', name: 'Finance', type: 'glossary' },
+        fullyQualifiedName: FINANCE_KPI_1,
+        glossary: { id: GLOSS_FINANCE_ID, name: 'Finance', type: 'glossary' },
         relatedTerms: [
           {
             term: {

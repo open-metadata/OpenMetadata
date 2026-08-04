@@ -27,6 +27,12 @@ import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
 import { SearchedDataProps } from './SearchedData.interface';
 
+const RAW_SPAN_CLASS_TEXT_HIGHLIGHTER_CUSTOMER_S =
+  'raw_<span class="text-highlighter">customer</span>';
+const TABLE_DATA_CARD_FULLYQUALIFIEDNAME1 =
+  'table-data-card_fullyQualifiedName1';
+const SEARCH_RESULTS_COUNT = 'search-results-count';
+
 const TestWrapper = ({ children }: PropsWithChildren) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -64,12 +70,10 @@ const mockData: SearchedDataProps['data'] = [
       },
     },
     highlight: {
-      name: ['raw_<span class="text-highlighter">customer</span>'],
-      displayName: ['raw_<span class="text-highlighter">customer</span>'],
-      'name.ngram': ['raw_<span class="text-highlighter">customer</span>'],
-      'displayName.ngram': [
-        'raw_<span class="text-highlighter">customer</span>',
-      ],
+      name: [RAW_SPAN_CLASS_TEXT_HIGHLIGHTER_CUSTOMER_S],
+      displayName: [RAW_SPAN_CLASS_TEXT_HIGHLIGHTER_CUSTOMER_S],
+      'name.ngram': [RAW_SPAN_CLASS_TEXT_HIGHLIGHTER_CUSTOMER_S],
+      'displayName.ngram': [RAW_SPAN_CLASS_TEXT_HIGHLIGHTER_CUSTOMER_S],
     },
   },
   {
@@ -164,7 +168,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
       wrapper: TestWrapper,
     });
-    const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
+    const card1 = getByTestId(container, TABLE_DATA_CARD_FULLYQUALIFIEDNAME1);
     const card2 = getByTestId(container, 'table-data-card_fullyQualifiedName2');
     const card3 = getByTestId(container, 'table-data-card_fullyQualifiedName3');
 
@@ -178,7 +182,7 @@ describe('Test SearchedData Component', () => {
       wrapper: TestWrapper,
     });
 
-    const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
+    const card1 = getByTestId(container, TABLE_DATA_CARD_FULLYQUALIFIEDNAME1);
     const card2 = getByTestId(container, 'table-data-card_fullyQualifiedName2');
     const card3 = getByTestId(container, 'table-data-card_fullyQualifiedName3');
 
@@ -201,7 +205,7 @@ describe('Test SearchedData Component', () => {
       wrapper: TestWrapper,
     });
 
-    const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
+    const card1 = getByTestId(container, TABLE_DATA_CARD_FULLYQUALIFIEDNAME1);
 
     expect(card1).toBeInTheDocument();
 
@@ -261,7 +265,7 @@ describe('Test SearchedData Component', () => {
     );
 
     expect(
-      queryByTestId(container, 'search-results-count')
+      queryByTestId(container, SEARCH_RESULTS_COUNT)
     ).not.toBeInTheDocument();
   });
 
@@ -276,7 +280,7 @@ describe('Test SearchedData Component', () => {
       { wrapper: TestWrapper }
     );
 
-    const countEl = getByTestId(container, 'search-results-count');
+    const countEl = getByTestId(container, SEARCH_RESULTS_COUNT);
 
     expect(countEl).toBeInTheDocument();
     expect(countEl).toHaveTextContent('42 results');
@@ -293,7 +297,7 @@ describe('Test SearchedData Component', () => {
       { wrapper: TestWrapper }
     );
 
-    const countEl = getByTestId(container, 'search-results-count');
+    const countEl = getByTestId(container, SEARCH_RESULTS_COUNT);
 
     expect(countEl).toBeInTheDocument();
     expect(countEl).toHaveTextContent(`${MAX_RESULT_HITS} results`);

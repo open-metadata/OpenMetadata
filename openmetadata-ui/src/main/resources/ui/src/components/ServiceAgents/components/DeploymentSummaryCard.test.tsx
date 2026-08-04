@@ -16,6 +16,9 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { Agent } from '../AgentsPage.interface';
 import DeploymentSummaryCard from './DeploymentSummaryCard.component';
 
+const DEPLOYMENT_SUMMARY_TITLE = 'deployment-summary-title';
+const DEPLOYMENT_PROGRESS_BAR = 'deployment-progress-bar';
+const SERVICE_AGENT_2 = 'service.agent-2';
 const buildAgent = (overrides: Partial<Agent>): Agent => ({
   id: 'agent-1',
   fqn: 'service.agent-1',
@@ -47,15 +50,15 @@ describe('DeploymentSummaryCard', () => {
       <DeploymentSummaryCard
         agents={[
           buildAgent({ status: 'running', pct: 40, eta: 120 }),
-          buildAgent({ id: 'agent-2', fqn: 'service.agent-2' }),
+          buildAgent({ id: 'agent-2', fqn: SERVICE_AGENT_2 }),
         ]}
       />
     );
 
-    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+    expect(screen.getByTestId(DEPLOYMENT_SUMMARY_TITLE)).toHaveTextContent(
       'message.agents-deploying-ingesting'
     );
-    expect(screen.getByTestId('deployment-progress-bar')).toBeInTheDocument();
+    expect(screen.getByTestId(DEPLOYMENT_PROGRESS_BAR)).toBeInTheDocument();
     expect(screen.getByTestId('summary-eta-remaining')).toBeInTheDocument();
   });
 
@@ -64,16 +67,16 @@ describe('DeploymentSummaryCard', () => {
       <DeploymentSummaryCard
         agents={[
           buildAgent({}),
-          buildAgent({ id: 'agent-2', fqn: 'service.agent-2' }),
+          buildAgent({ id: 'agent-2', fqn: SERVICE_AGENT_2 }),
         ]}
       />
     );
 
-    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+    expect(screen.getByTestId(DEPLOYMENT_SUMMARY_TITLE)).toHaveTextContent(
       'label.deployment-complete'
     );
     expect(
-      screen.queryByTestId('deployment-progress-bar')
+      screen.queryByTestId(DEPLOYMENT_PROGRESS_BAR)
     ).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('summary-eta-remaining')
@@ -85,7 +88,7 @@ describe('DeploymentSummaryCard', () => {
       <DeploymentSummaryCard
         agents={[
           buildAgent({ assets: 120 }),
-          buildAgent({ id: 'agent-2', fqn: 'service.agent-2', assets: 30 }),
+          buildAgent({ id: 'agent-2', fqn: SERVICE_AGENT_2, assets: 30 }),
           buildAgent({
             id: 'agent-3',
             fqn: 'service.agent-3',
@@ -116,7 +119,7 @@ describe('DeploymentSummaryCard', () => {
           buildAgent({ assets: 80 }),
           buildAgent({
             id: 'agent-2',
-            fqn: 'service.agent-2',
+            fqn: SERVICE_AGENT_2,
             pipelineType: PipelineType.Profiler,
             status: 'running',
             pct: 20,
@@ -138,7 +141,7 @@ describe('DeploymentSummaryCard', () => {
           buildAgent({ status: 'none', pct: 0 }),
           buildAgent({
             id: 'agent-2',
-            fqn: 'service.agent-2',
+            fqn: SERVICE_AGENT_2,
             status: 'none',
             pct: 0,
           }),
@@ -156,7 +159,7 @@ describe('DeploymentSummaryCard', () => {
           buildAgent({}),
           buildAgent({
             id: 'agent-2',
-            fqn: 'service.agent-2',
+            fqn: SERVICE_AGENT_2,
             status: 'none',
             pct: 0,
           }),
@@ -164,11 +167,11 @@ describe('DeploymentSummaryCard', () => {
       />
     );
 
-    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+    expect(screen.getByTestId(DEPLOYMENT_SUMMARY_TITLE)).toHaveTextContent(
       'label.deployment-complete'
     );
     expect(
-      screen.queryByTestId('deployment-progress-bar')
+      screen.queryByTestId(DEPLOYMENT_PROGRESS_BAR)
     ).not.toBeInTheDocument();
   });
 
@@ -179,7 +182,7 @@ describe('DeploymentSummaryCard', () => {
           buildAgent({ status: 'running', pct: 40, eta: 120 }),
           buildAgent({
             id: 'agent-2',
-            fqn: 'service.agent-2',
+            fqn: SERVICE_AGENT_2,
             status: 'none',
             pct: 0,
           }),
@@ -187,10 +190,10 @@ describe('DeploymentSummaryCard', () => {
       />
     );
 
-    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+    expect(screen.getByTestId(DEPLOYMENT_SUMMARY_TITLE)).toHaveTextContent(
       'message.agents-deploying-ingesting'
     );
-    expect(screen.getByTestId('deployment-progress-bar')).toHaveTextContent(
+    expect(screen.getByTestId(DEPLOYMENT_PROGRESS_BAR)).toHaveTextContent(
       'message.percent-complete-all-agents'
     );
   });
@@ -200,7 +203,7 @@ describe('DeploymentSummaryCard', () => {
       <DeploymentSummaryCard
         agents={[
           buildAgent({ errors: 2 }),
-          buildAgent({ id: 'agent-2', fqn: 'service.agent-2', errors: 3 }),
+          buildAgent({ id: 'agent-2', fqn: SERVICE_AGENT_2, errors: 3 }),
         ]}
       />
     );

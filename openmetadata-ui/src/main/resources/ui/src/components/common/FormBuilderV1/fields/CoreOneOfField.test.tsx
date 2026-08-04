@@ -16,6 +16,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import CoreOneOfField from './CoreOneOfField';
 
+const SELECTED_KEY = 'selected-key';
+const SCHEMA_FIELD = 'schema-field';
+const ROOT_SAMPLEDATASTORAGECONFIG_CONFIG_STORAG =
+  'root/sampleDataStorageConfig/config/storageConfig';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -41,7 +46,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => (
         <div>
           {label && <span>{label}</span>}
-          <div data-testid="selected-key">{selectedKey}</div>
+          <div data-testid={SELECTED_KEY}>{selectedKey}</div>
           <button
             data-testid="clear-selection"
             type="button"
@@ -121,7 +126,7 @@ const getBaseProps = (
         }) => (
           <div
             data-hide-label={String(Boolean(hideLabel))}
-            data-testid="schema-field"
+            data-testid={SCHEMA_FIELD}
             data-ui-field={String(uiSchema?.['ui:field'] ?? '')}
             data-ui-label={String(uiSchema?.['ui:label'] ?? '')}>
             {schema.title}
@@ -180,7 +185,7 @@ describe('CoreOneOfField', () => {
     );
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getByTestId('schema-field')).toBeEmptyDOMElement();
+    expect(screen.getByTestId(SCHEMA_FIELD)).toBeEmptyDOMElement();
   });
 
   it('does not pass a parent ui field to the selected schema branch', () => {
@@ -190,7 +195,7 @@ describe('CoreOneOfField', () => {
       />
     );
 
-    expect(screen.getByTestId('schema-field')).toHaveAttribute(
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveAttribute(
       'data-ui-field',
       ''
     );
@@ -203,12 +208,12 @@ describe('CoreOneOfField', () => {
           {},
           DEFAULT_SCHEMA,
           {},
-          'root/sampleDataStorageConfig/config/storageConfig'
+          ROOT_SAMPLEDATASTORAGECONFIG_CONFIG_STORAG
         )}
       />
     );
 
-    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.getByTestId(SELECTED_KEY)).toHaveTextContent('0');
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
@@ -230,7 +235,7 @@ describe('CoreOneOfField', () => {
       />
     );
 
-    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.getByTestId(SELECTED_KEY)).toHaveTextContent('0');
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
@@ -241,7 +246,7 @@ describe('CoreOneOfField', () => {
       />
     );
 
-    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.getByTestId(SELECTED_KEY)).toHaveTextContent('0');
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
@@ -258,7 +263,7 @@ describe('CoreOneOfField', () => {
             title: 'Storage Config',
           },
           {},
-          'root/sampleDataStorageConfig/config/storageConfig'
+          ROOT_SAMPLEDATASTORAGECONFIG_CONFIG_STORAG
         )}
       />
     );
@@ -285,7 +290,7 @@ describe('CoreOneOfField', () => {
             title: 'Storage Config',
           },
           {},
-          'root/sampleDataStorageConfig/config/storageConfig'
+          ROOT_SAMPLEDATASTORAGECONFIG_CONFIG_STORAG
         )}
       />
     );
@@ -344,15 +349,15 @@ describe('CoreOneOfField', () => {
       />
     );
 
-    expect(screen.getByTestId('selected-key')).toHaveTextContent('0');
+    expect(screen.getByTestId(SELECTED_KEY)).toHaveTextContent('0');
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     expect(container.querySelector('.core-one-of-field')).toHaveClass(
       'core-one-of-field-inline-selected'
     );
-    expect(screen.getByTestId('schema-field')).toHaveTextContent(
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveTextContent(
       'Single Project ID'
     );
-    expect(screen.getByTestId('schema-field')).toHaveAttribute(
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveAttribute(
       'data-ui-label',
       ''
     );
@@ -369,6 +374,6 @@ describe('CoreOneOfField', () => {
     );
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getByTestId('schema-field')).toHaveTextContent('Only Option');
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveTextContent('Only Option');
   });
 });

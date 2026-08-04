@@ -127,6 +127,10 @@ import {
   CSVImportJobType,
 } from './BulkEntityImportPage.interface';
 
+const MESSAGE_IMPORT_CSV_READING_FILE = 'message.import-csv-reading-file';
+const LABEL_IMPORT_ENTITY = 'label.import-entity';
+const LABEL_IMPORT = 'label.import';
+
 interface SelectedCsvFile {
   content: string;
   name: string;
@@ -774,7 +778,7 @@ const BulkEntityImportPage = () => {
 
     try {
       setIsValidating(true);
-      setActiveImportLogLines([t('message.import-csv-reading-file')]);
+      setActiveImportLogLines([t(MESSAGE_IMPORT_CSV_READING_FILE)]);
       isBulkActionProcessingRef.current = {
         isProcessing: true,
         entityType,
@@ -783,7 +787,7 @@ const BulkEntityImportPage = () => {
       const initialLoadJobData: CSVImportJobType = {
         type: 'initialLoad',
         initialResult: selectedCsvFile.content,
-        message: t('message.import-csv-reading-file'),
+        message: t(MESSAGE_IMPORT_CSV_READING_FILE),
       };
 
       setActiveAsyncImportJob(initialLoadJobData);
@@ -1345,7 +1349,7 @@ const BulkEntityImportPage = () => {
     () => [
       {
         key: 'reading',
-        label: t('message.import-csv-reading-file'),
+        label: t(MESSAGE_IMPORT_CSV_READING_FILE),
         state: 'done',
       },
       {
@@ -1509,7 +1513,7 @@ const BulkEntityImportPage = () => {
           <h2>
             {importUploadConfig
               ? t(importUploadConfig.headingKey)
-              : t('label.import-entity', {
+              : t(LABEL_IMPORT_ENTITY, {
                   entity: entityDisplayName,
                 })}
           </h2>
@@ -1662,7 +1666,7 @@ const BulkEntityImportPage = () => {
           isDisabled={!activeAsyncImportJob?.jobId}
           isLoading={isCancellingJob}
           onPress={handleCancelActiveJob}>
-          {t('label.cancel-entity', { entity: t('label.import') })}
+          {t('label.cancel-entity', { entity: t(LABEL_IMPORT) })}
         </Button>
       </div>
     </div>
@@ -1673,10 +1677,10 @@ const BulkEntityImportPage = () => {
 
   const metricImportWorkflowHeaderConfig = useMemo(
     () => ({
-      currentLabel: t('label.import'),
+      currentLabel: t(LABEL_IMPORT),
       description: t('message.import-entity-workflow-help'),
       steps: translatedSteps,
-      title: t('label.import-entity', {
+      title: t(LABEL_IMPORT_ENTITY, {
         entity: entityPluralDisplayName.toLowerCase(),
       }),
     }),
@@ -1685,7 +1689,7 @@ const BulkEntityImportPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.import-entity', {
+      pageTitle={t(LABEL_IMPORT_ENTITY, {
         entity: entityType,
       })}>
       <div className="p-x-lg csv-import-page-stack">
@@ -1736,10 +1740,10 @@ const BulkEntityImportPage = () => {
             <CsvWorkflowHeader
               activeStep={activeStep}
               breadcrumbList={breadcrumbList}
-              currentLabel={t('label.import')}
+              currentLabel={t(LABEL_IMPORT)}
               description={t('message.import-entity-workflow-help')}
               steps={translatedSteps}
-              title={t('label.import-entity', {
+              title={t(LABEL_IMPORT_ENTITY, {
                 entity: entityPluralDisplayName.toLowerCase(),
               })}
             />
@@ -1932,7 +1936,7 @@ const BulkEntityImportPage = () => {
                       onPress={handleValidate}>
                       {activeStep === VALIDATION_STEP.EDIT_VALIDATE &&
                       isRichGridImport
-                        ? `${t('label.start')} ${t('label.import')}`
+                        ? `${t('label.start')} ${t(LABEL_IMPORT)}`
                         : activeStep === VALIDATION_STEP.UPDATE
                         ? t('label.update')
                         : t('label.next')}

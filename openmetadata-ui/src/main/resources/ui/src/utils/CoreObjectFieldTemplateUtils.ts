@@ -34,6 +34,8 @@ import {
 } from '../constants/CoreObjectFieldTemplate.constants';
 import { t } from './i18next/LocalUtil';
 
+const LABEL_ADVANCED_CONFIG = 'label.advanced-config';
+
 export const isPlainObject = (
   value: unknown
 ): value is Record<string, unknown> =>
@@ -261,7 +263,7 @@ export const getAdvancedHeaderLabel = (
 ) => {
   if (isGatedCredentialConfig) {
     return `${t(isOpen ? 'label.hide' : 'label.show')} ${t(
-      'label.advanced-config'
+      LABEL_ADVANCED_CONFIG
     )} (${orderedAdvancedPropertiesLength})`;
   }
 
@@ -288,8 +290,8 @@ export const getAdvancedHeaderLabel = (
   }
 
   return title
-    ? `${title} ${t('label.advanced-config')}`
-    : t('label.advanced-config');
+    ? `${title} ${t(LABEL_ADVANCED_CONFIG)}`
+    : t(LABEL_ADVANCED_CONFIG);
 };
 
 export const partitionProperties = (

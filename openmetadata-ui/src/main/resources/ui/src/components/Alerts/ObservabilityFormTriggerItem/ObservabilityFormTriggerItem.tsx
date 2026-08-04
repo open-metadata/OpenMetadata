@@ -28,6 +28,8 @@ import {
 } from '../../../utils/Alerts/AlertsUtil';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
+const LABEL_TRIGGER = 'label.trigger';
+
 function ObservabilityFormTriggerItem({
   supportedTriggers,
   isViewMode = false,
@@ -51,7 +53,7 @@ function ObservabilityFormTriggerItem({
 
   return (
     <FormCardSection
-      heading={t('label.trigger')}
+      heading={t(LABEL_TRIGGER)}
       subHeading={t('message.alerts-trigger-description')}>
       <Form.List name={['input', 'actions']}>
         {(fields, { add, remove }, { errors }) => {
@@ -85,7 +87,7 @@ function ObservabilityFormTriggerItem({
                                 {
                                   required: true,
                                   message: t('message.field-text-is-required', {
-                                    fieldText: t('label.trigger'),
+                                    fieldText: t(LABEL_TRIGGER),
                                   }),
                                 },
                               ]}>
@@ -93,7 +95,7 @@ function ObservabilityFormTriggerItem({
                                 data-testid={`trigger-select-${name}`}
                                 options={triggerOptions}
                                 placeholder={t('label.select-field', {
-                                  field: t('label.trigger'),
+                                  field: t(LABEL_TRIGGER),
                                 })}
                                 onChange={() => {
                                   form.setFieldValue(
@@ -153,7 +155,7 @@ function ObservabilityFormTriggerItem({
                       })
                     }>
                     {t('label.add-entity', {
-                      entity: t('label.trigger'),
+                      entity: t(LABEL_TRIGGER),
                     })}
                   </Button>
                 </Col>

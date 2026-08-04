@@ -45,6 +45,10 @@ import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ImportType } from './ImportTeamsPage.interface';
 
+const LABEL_IMPORT_ENTITY = 'label.import-entity';
+const LABEL_USER_PLURAL = 'label.user-plural';
+const LABEL_TEAM_PLURAL = 'label.team-plural';
+
 const ImportTeamsPage = () => {
   const { fqn } = useFqn();
   const navigate = useNavigate();
@@ -167,11 +171,11 @@ const ImportTeamsPage = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.create-entity', {
-          entity: t('label.import-entity', {
+          entity: t(LABEL_IMPORT_ENTITY, {
             entity:
               type === ImportType.USERS
-                ? t('label.user-plural')
-                : t('label.team-plural'),
+                ? t(LABEL_USER_PLURAL)
+                : t(LABEL_TEAM_PLURAL),
           }),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
@@ -197,11 +201,11 @@ const ImportTeamsPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.import-entity', {
+      pageTitle={t(LABEL_IMPORT_ENTITY, {
         entity:
           type === ImportType.USERS
-            ? t('label.user-plural')
-            : t('label.team-plural'),
+            ? t(LABEL_USER_PLURAL)
+            : t(LABEL_TEAM_PLURAL),
       })}>
       <Row
         className="import-teams w-full"
@@ -212,11 +216,11 @@ const ImportTeamsPage = () => {
         </Col>
         <Col span={24}>
           <Typography.Title data-testid="title" level={5}>
-            {t('label.import-entity', {
+            {t(LABEL_IMPORT_ENTITY, {
               entity:
                 type === ImportType.USERS
-                  ? t('label.user-plural')
-                  : t('label.team-plural'),
+                  ? t(LABEL_USER_PLURAL)
+                  : t(LABEL_TEAM_PLURAL),
             })}
           </Typography.Title>
         </Col>

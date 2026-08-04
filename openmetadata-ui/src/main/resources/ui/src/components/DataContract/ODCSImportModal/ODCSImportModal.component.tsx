@@ -66,6 +66,11 @@ import {
   ParsedOpenMetadataContract,
 } from './ODCSImportModal.interface';
 
+const LABEL_SCHEMA_VALIDATION = 'label.schema-validation';
+const LABEL_SYNTAX = 'label.syntax';
+const LABEL_FAILED = 'label.failed';
+const LABEL_SCHEMA = 'label.schema';
+const LABEL_VALID = 'label.valid';
 type ParsedContract = ParsedODCSContract | ParsedOpenMetadataContract;
 
 const ContractImportModal: React.FC<ContractImportModalProps> = ({
@@ -481,7 +486,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     if (isODCSFormat) {
       const odcsContract = parsedContract as ParsedODCSContract;
       if (odcsContract.hasSchema) {
-        includedFeatures.push(t('label.schema'));
+        includedFeatures.push(t(LABEL_SCHEMA));
       }
       if (odcsContract.hasSla) {
         includedFeatures.push(t('label.sla'));
@@ -543,7 +548,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
 
     const omContract = parsedContract as ParsedOpenMetadataContract;
     if (omContract.hasSchema) {
-      includedFeatures.push(t('label.schema'));
+      includedFeatures.push(t(LABEL_SCHEMA));
     }
     if (omContract.hasSla) {
       includedFeatures.push(t('label.sla'));
@@ -613,7 +618,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               iconLeading={XClose}
               size="sm"
               type="pill-color">
-              {t('label.failed')}
+              {t(LABEL_FAILED)}
             </BadgeWithIcon>
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
@@ -639,7 +644,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Box align="center" gap={2}>
               <XCircle className="tw:text-utility-error-600" size={16} />
               <Typography size="text-sm">
-                {t('label.syntax')} :{' '}
+                {t(LABEL_SYNTAX)} :{' '}
                 <strong className="tw:font-medium">{t('label.invalid')}</strong>
               </Typography>
             </Box>
@@ -674,14 +679,14 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
             justify="between">
             <Typography weight="medium">
-              {t('label.schema-validation')}
+              {t(LABEL_SCHEMA_VALIDATION)}
             </Typography>
             <BadgeWithIcon
               color="error"
               iconLeading={XClose}
               size="sm"
               type="pill-color">
-              {t('label.failed')}
+              {t(LABEL_FAILED)}
             </BadgeWithIcon>
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
@@ -693,14 +698,14 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Box align="center" className="tw:mb-2" gap={2}>
               <CheckCircle className="tw:text-utility-success-500" size={16} />
               <Typography>
-                {t('label.syntax')} :{' '}
-                <strong className="tw:font-medium">{t('label.valid')}</strong>
+                {t(LABEL_SYNTAX)} :{' '}
+                <strong className="tw:font-medium">{t(LABEL_VALID)}</strong>
               </Typography>
             </Box>
             <Box align="center" gap={2}>
               <XCircle className="tw:text-utility-error-600" size={16} />
               <Typography>
-                {t('label.schema')} :{' '}
+                {t(LABEL_SCHEMA)} :{' '}
                 <strong className="tw:font-medium">{t('label.error')}</strong>
               </Typography>
             </Box>
@@ -723,14 +728,14 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
             justify="between">
             <Typography weight="medium">
-              {t('label.schema-validation')}
+              {t(LABEL_SCHEMA_VALIDATION)}
             </Typography>
             <BadgeWithIcon
               color="error"
               iconLeading={XClose}
               size="sm"
               type="pill-color">
-              {t('label.failed')}
+              {t(LABEL_FAILED)}
             </BadgeWithIcon>
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:overflow-y-auto">
@@ -777,15 +782,14 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Box align="center" className="tw:mb-2" gap={2}>
               <CheckCircle className="tw:text-utility-success-500" size={16} />
               <Typography size="text-sm">
-                {t('label.syntax')} :{' '}
-                <strong className="tw:font-medium">{t('label.valid')}</strong>
+                {t(LABEL_SYNTAX)} :{' '}
+                <strong className="tw:font-medium">{t(LABEL_VALID)}</strong>
               </Typography>
             </Box>
             <Box align="center" gap={2}>
               <XCircle className="tw:text-utility-error-600" size={16} />
               <Typography size="text-sm">
-                {t('label.schema')} :{' '}
-                {serverValidation.schemaValidation?.failed}{' '}
+                {t(LABEL_SCHEMA)} : {serverValidation.schemaValidation?.failed}{' '}
                 {t('label.field-plural-lowercase')} {t('label.with-issues')}
               </Typography>
             </Box>
@@ -824,7 +828,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               iconLeading={XClose}
               size="sm"
               type="pill-color">
-              {t('label.failed')}
+              {t(LABEL_FAILED)}
             </BadgeWithIcon>
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
@@ -851,8 +855,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Box align="center" className="tw:mb-2" gap={2}>
               <CheckCircle className="tw:text-utility-success-500" size={16} />
               <Typography size="text-sm">
-                {t('label.syntax')} :{' '}
-                <strong className="tw:font-medium">{t('label.valid')}</strong>
+                {t(LABEL_SYNTAX)} :{' '}
+                <strong className="tw:font-medium">{t(LABEL_VALID)}</strong>
               </Typography>
             </Box>
             <Box align="center" gap={2}>
@@ -882,9 +886,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           align="center"
           className="tw:mb-4 tw:pb-4 tw:border-b tw:border-secondary"
           justify="between">
-          <Typography weight="medium">
-            {t('label.schema-validation')}
-          </Typography>
+          <Typography weight="medium">{t(LABEL_SCHEMA_VALIDATION)}</Typography>
           <BadgeWithIcon
             color={hasTypeMismatches ? 'warning' : 'success'}
             iconLeading={CheckVerified01}
@@ -943,8 +945,8 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           <Box align="center" className="tw:mb-2" gap={2}>
             <CheckCircle className="tw:text-utility-success-700" size={16} />
             <Typography size="text-sm">
-              {t('label.syntax')} :{' '}
-              <strong className="tw:font-medium">{t('label.valid')}</strong>
+              {t(LABEL_SYNTAX)} :{' '}
+              <strong className="tw:font-medium">{t(LABEL_VALID)}</strong>
             </Typography>
           </Box>
           {serverValidation?.schemaValidation?.total !== undefined &&
@@ -955,7 +957,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   size={16}
                 />
                 <Typography size="text-sm">
-                  {t('label.schema')} :{' '}
+                  {t(LABEL_SCHEMA)} :{' '}
                   {serverValidation.schemaValidation?.passed}{' '}
                   {t('label.field-plural-lowercase')} {t('label.verified')}
                 </Typography>

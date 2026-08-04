@@ -16,6 +16,9 @@ import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interfac
 import Voting from './Voting.component';
 import { VotingProps } from './voting.interface';
 
+const UP_VOTE_BTN = 'up-vote-btn';
+const DOWN_VOTE_BTN = 'down-vote-btn';
+
 const mockOnUpdateVote = jest.fn();
 
 const mockProps: VotingProps = {
@@ -34,8 +37,8 @@ describe('Voting component test', () => {
   it('voting component should render', async () => {
     render(<Voting {...mockProps} />);
 
-    expect(await screen.findByTestId('up-vote-btn')).toBeInTheDocument();
-    expect(await screen.findByTestId('down-vote-btn')).toBeInTheDocument();
+    expect(await screen.findByTestId(UP_VOTE_BTN)).toBeInTheDocument();
+    expect(await screen.findByTestId(DOWN_VOTE_BTN)).toBeInTheDocument();
 
     expect(await screen.findByTestId('up-vote-count')).toHaveTextContent('0');
     expect(await screen.findByTestId('down-vote-count')).toHaveTextContent('0');
@@ -49,8 +52,8 @@ describe('Voting component test', () => {
       />
     );
 
-    expect(await screen.findByTestId('up-vote-btn')).toBeInTheDocument();
-    expect(await screen.findByTestId('down-vote-btn')).toBeInTheDocument();
+    expect(await screen.findByTestId(UP_VOTE_BTN)).toBeInTheDocument();
+    expect(await screen.findByTestId(DOWN_VOTE_BTN)).toBeInTheDocument();
 
     expect(await screen.findByTestId('up-vote-count')).toHaveTextContent('3');
     expect(await screen.findByTestId('down-vote-count')).toHaveTextContent('5');
@@ -59,7 +62,7 @@ describe('Voting component test', () => {
   it('update handler should call with up voting', async () => {
     render(<Voting {...mockProps} />);
 
-    const upVoteButton = await screen.findByTestId('up-vote-btn');
+    const upVoteButton = await screen.findByTestId(UP_VOTE_BTN);
 
     expect(upVoteButton).toBeInTheDocument();
 
@@ -73,7 +76,7 @@ describe('Voting component test', () => {
   it('update handler should call with down voting', async () => {
     render(<Voting {...mockProps} />);
 
-    const downButton = await screen.findByTestId('down-vote-btn');
+    const downButton = await screen.findByTestId(DOWN_VOTE_BTN);
 
     expect(downButton).toBeInTheDocument();
 
@@ -87,7 +90,7 @@ describe('Voting component test', () => {
   it('update handler should call with un-voted when already selected of up-voted', async () => {
     render(<Voting {...mockProps} voteStatus={QueryVoteType.votedUp} />);
 
-    const upVoteButton = await screen.findByTestId('up-vote-btn');
+    const upVoteButton = await screen.findByTestId(UP_VOTE_BTN);
 
     expect(upVoteButton).toBeInTheDocument();
 
@@ -101,7 +104,7 @@ describe('Voting component test', () => {
   it('update handler should call with un-voted when already selected of down-voted', async () => {
     render(<Voting {...mockProps} voteStatus={QueryVoteType.votedDown} />);
 
-    const downVoteButton = await screen.findByTestId('down-vote-btn');
+    const downVoteButton = await screen.findByTestId(DOWN_VOTE_BTN);
 
     expect(downVoteButton).toBeInTheDocument();
 
@@ -115,7 +118,7 @@ describe('Voting component test', () => {
   it('voting button should be disabled as per props', async () => {
     render(<Voting {...mockProps} disabled />);
 
-    expect(await screen.findByTestId('up-vote-btn')).toBeDisabled();
-    expect(await screen.findByTestId('down-vote-btn')).toBeDisabled();
+    expect(await screen.findByTestId(UP_VOTE_BTN)).toBeDisabled();
+    expect(await screen.findByTestId(DOWN_VOTE_BTN)).toBeDisabled();
   });
 });

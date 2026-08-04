@@ -16,14 +16,16 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DraggableMenuItemV2 from './DraggableMenuItemV2.component';
 
+const TEST_COLUMN = 'Test Column';
+
 const mockOnSelect = jest.fn();
 const mockOnMoveItem = jest.fn();
 
 const mockProps = {
-  currentItem: { label: 'Test Column', value: 'test' },
+  currentItem: { label: TEST_COLUMN, value: 'test' },
   index: 0,
   itemList: [
-    { label: 'Test Column', value: 'test' },
+    { label: TEST_COLUMN, value: 'test' },
     { label: 'Another Column', value: 'another' },
   ],
   selectedOptions: ['test'],
@@ -45,7 +47,7 @@ describe('DraggableMenuItemV2', () => {
   it('should render the component', () => {
     renderComponent();
 
-    expect(screen.getByText('Test Column')).toBeInTheDocument();
+    expect(screen.getByText(TEST_COLUMN)).toBeInTheDocument();
   });
 
   it('should show eye icon when item is selected', () => {
@@ -66,7 +68,7 @@ describe('DraggableMenuItemV2', () => {
   it('should call onSelect with correct arguments when clicked', () => {
     renderComponent();
 
-    fireEvent.click(screen.getByText('Test Column'));
+    fireEvent.click(screen.getByText(TEST_COLUMN));
 
     expect(mockOnSelect).toHaveBeenCalledWith('test', false);
   });
@@ -77,7 +79,7 @@ describe('DraggableMenuItemV2', () => {
       selectedOptions: [],
     });
 
-    fireEvent.click(screen.getByText('Test Column'));
+    fireEvent.click(screen.getByText(TEST_COLUMN));
 
     expect(mockOnSelect).toHaveBeenCalledWith('test', true);
   });
@@ -86,7 +88,7 @@ describe('DraggableMenuItemV2', () => {
     renderComponent();
 
     const menuItem = screen
-      .getByText('Test Column')
+      .getByText(TEST_COLUMN)
       .closest('.draggable-menu-item-v2');
 
     expect(menuItem).toBeInTheDocument();

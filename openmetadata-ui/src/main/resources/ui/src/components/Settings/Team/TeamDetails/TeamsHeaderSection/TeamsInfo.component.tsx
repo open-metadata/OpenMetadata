@@ -51,6 +51,8 @@ import { SubscriptionWebhook, TeamsInfoProps } from '../team.interface';
 import './teams-info.less';
 import TeamsSubscription from './TeamsSubscription.component';
 
+const LABEL_EMAIL = 'label.email' as const;
+
 const TeamsInfo = ({
   parentTeams,
   isGroupType,
@@ -176,12 +178,12 @@ const TeamsInfo = ({
       <Space align="start" className="d-flex flex-col gap-2">
         <div className="d-flex gap-1">
           <Typography className="text-primary" weight="medium">{`${t(
-            'label.email'
+            LABEL_EMAIL
           )}`}</Typography>
           {hasEditPermission && (
             <Tooltip
               title={t('label.edit-entity', {
-                entity: t('label.email'),
+                entity: t(LABEL_EMAIL),
               })}>
               <Button
                 className="flex-center teams-info-email-edit-button p-0"
@@ -220,7 +222,7 @@ const TeamsInfo = ({
                     pattern: EMAIL_REG_EX,
                     type: 'email',
                     message: t('message.field-text-is-invalid', {
-                      fieldText: t('label.email'),
+                      fieldText: t(LABEL_EMAIL),
                     }),
                   },
                 ]}>

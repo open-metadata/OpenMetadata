@@ -23,6 +23,8 @@ import { mockCommonEntityInfo } from '../mocks/CommonEntitySummaryInfo.mock';
 import CommonEntitySummaryInfo from './CommonEntitySummaryInfo';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
+const EXTERNAL_LINK_ICON = 'external-link-icon';
+
 const mockProps: CommonEntitySummaryInfoProps = {
   entityInfo: mockCommonEntityInfo,
   componentType: DRAWER_NAVIGATION_OPTIONS.explore,
@@ -50,7 +52,7 @@ describe('CommonEntitySummaryInfo component', () => {
       'http://localhost:8080/tree?dag_id=presto_etl'
     );
     expect(externalURL.getAttribute('target')).toEqual('_blank');
-    expect(getByTestId(externalURL, 'external-link-icon')).toBeInTheDocument();
+    expect(getByTestId(externalURL, EXTERNAL_LINK_ICON)).toBeInTheDocument();
   });
 
   it('Component should render correct fields for Lineage page', () => {
@@ -93,9 +95,7 @@ describe('CommonEntitySummaryInfo component', () => {
     expect(serviceURL.getAttribute('href')).toEqual(
       '/service/databaseServices/sample_airflow'
     );
-    expect(getByTestId(externalURL, 'external-link-icon')).toBeInTheDocument();
-    expect(
-      queryByText(serviceURL, 'external-link-icon')
-    ).not.toBeInTheDocument();
+    expect(getByTestId(externalURL, EXTERNAL_LINK_ICON)).toBeInTheDocument();
+    expect(queryByText(serviceURL, EXTERNAL_LINK_ICON)).not.toBeInTheDocument();
   });
 });

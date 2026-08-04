@@ -19,6 +19,10 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import QueryCardExtraOption from './QueryCardExtraOption.component';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
+const QUERY_LINE = 'query-line';
+const UP_VOTE_BTN = 'up-vote-btn';
+const DOWN_VOTE_BTN = 'down-vote-btn';
+
 const mockProps: QueryCardExtraOptionProps = {
   permission: DEFAULT_ENTITY_PERMISSION,
   query: MOCK_QUERIES[0] as Query,
@@ -62,16 +66,16 @@ describe('QueryCardExtraOption component test', () => {
     expect(
       await screen.findByTestId('extra-option-container')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('query-line')).toBeInTheDocument();
+    expect(await screen.findByTestId(QUERY_LINE)).toBeInTheDocument();
     expect(await screen.findByTestId('query-btn')).toBeInTheDocument();
-    expect(await screen.findByTestId('up-vote-btn')).toBeInTheDocument();
-    expect(await screen.findByTestId('down-vote-btn')).toBeInTheDocument();
+    expect(await screen.findByTestId(UP_VOTE_BTN)).toBeInTheDocument();
+    expect(await screen.findByTestId(DOWN_VOTE_BTN)).toBeInTheDocument();
   });
 
   it('Line badge should show correct data', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const badge = await screen.findByTestId('query-line');
+    const badge = await screen.findByTestId(QUERY_LINE);
 
     expect(badge).toBeInTheDocument();
 
@@ -84,7 +88,7 @@ describe('QueryCardExtraOption component test', () => {
       <QueryCardExtraOption {...mockProps} query={MOCK_QUERIES[1] as Query} />
     );
 
-    const badge = await screen.findByTestId('query-line');
+    const badge = await screen.findByTestId(QUERY_LINE);
 
     expect(badge).toBeInTheDocument();
 
@@ -95,8 +99,8 @@ describe('QueryCardExtraOption component test', () => {
   it('Up vote & down vote button should display respective count', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const voteUp = await screen.findByTestId('up-vote-btn');
-    const voteDown = await screen.findByTestId('down-vote-btn');
+    const voteUp = await screen.findByTestId(UP_VOTE_BTN);
+    const voteDown = await screen.findByTestId(DOWN_VOTE_BTN);
 
     expect(voteUp).toBeInTheDocument();
     expect(voteDown).toBeInTheDocument();
@@ -107,7 +111,7 @@ describe('QueryCardExtraOption component test', () => {
   it('OnClick of Vote up it should vote if logged-in user has not voted yest', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const voteUp = await screen.findByTestId('up-vote-btn');
+    const voteUp = await screen.findByTestId(UP_VOTE_BTN);
     fireEvent.click(voteUp);
 
     expect(voteUp).toBeInTheDocument();
@@ -120,7 +124,7 @@ describe('QueryCardExtraOption component test', () => {
   it('OnClick of Vote up it should vote up, if logged-in user has voted down', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const voteUp = await screen.findByTestId('up-vote-btn');
+    const voteUp = await screen.findByTestId(UP_VOTE_BTN);
     fireEvent.click(voteUp);
 
     expect(voteUp).toBeInTheDocument();
@@ -134,7 +138,7 @@ describe('QueryCardExtraOption component test', () => {
   it.skip('OnClick of Vote up it should un vote if logged-in user has already up voted', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const voteUp = await screen.findByTestId('up-vote-btn');
+    const voteUp = await screen.findByTestId(UP_VOTE_BTN);
     fireEvent.click(voteUp);
 
     expect(voteUp).toBeInTheDocument();
@@ -147,7 +151,7 @@ describe('QueryCardExtraOption component test', () => {
   it('OnClick of Vote down it should vote if logged-in user has not voted yest', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const voteDown = await screen.findByTestId('down-vote-btn');
+    const voteDown = await screen.findByTestId(DOWN_VOTE_BTN);
     fireEvent.click(voteDown);
 
     expect(voteDown).toBeInTheDocument();
@@ -161,7 +165,7 @@ describe('QueryCardExtraOption component test', () => {
   it.skip('OnClick of Vote down it should un vote if logged-in user has already down voted', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const voteDown = await screen.findByTestId('down-vote-btn');
+    const voteDown = await screen.findByTestId(DOWN_VOTE_BTN);
     fireEvent.click(voteDown);
 
     expect(voteDown).toBeInTheDocument();
@@ -181,7 +185,7 @@ describe('QueryCardExtraOption component test', () => {
     };
     render(<QueryCardExtraOption {...mockProps} />);
 
-    const voteDown = await screen.findByTestId('down-vote-btn');
+    const voteDown = await screen.findByTestId(DOWN_VOTE_BTN);
     fireEvent.click(voteDown);
 
     expect(voteDown).toBeInTheDocument();

@@ -16,8 +16,13 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 
+const DISPLAYNAME_KEYWORD = 'displayName.keyword';
+const LABEL_NAME = 'label.name';
+const LABEL_RELEVANCE = 'label.relevance';
+const LABEL_LAST_UPDATED = 'label.last-updated';
+
 export const INITIAL_SORT_FIELD = 'totalVotes';
-export const TAGS_INITIAL_SORT_FIELD = 'displayName.keyword';
+export const TAGS_INITIAL_SORT_FIELD = DISPLAYNAME_KEYWORD;
 export const TAGS_INITIAL_SORT_ORDER = SORT_ORDER.ASC;
 export const TIER_FQN_KEY = 'tier.tagFQN';
 export const TAG_FQN_KEY = 'tags.tagFQN';
@@ -42,16 +47,16 @@ export const tableSortingFields: SortingField[] = [
     value: 'totalVotes',
   },
   {
-    name: 'label.name',
-    value: 'displayName.keyword',
+    name: LABEL_NAME,
+    value: DISPLAYNAME_KEYWORD,
   },
   {
     name: 'label.weekly-usage',
     value: 'usageSummary.weeklyStats.count',
   },
-  { name: 'label.relevance', value: '_score' },
+  { name: LABEL_RELEVANCE, value: '_score' },
   {
-    name: 'label.last-updated',
+    name: LABEL_LAST_UPDATED,
     value: 'updatedAt',
   },
 ];
@@ -62,24 +67,24 @@ export const entitySortingFields = [
     value: 'totalVotes',
   },
   {
-    name: 'label.name',
-    value: 'displayName.keyword',
+    name: LABEL_NAME,
+    value: DISPLAYNAME_KEYWORD,
   },
-  { name: 'label.relevance', value: '_score' },
+  { name: LABEL_RELEVANCE, value: '_score' },
   {
-    name: 'label.last-updated',
+    name: LABEL_LAST_UPDATED,
     value: 'updatedAt',
   },
 ];
 
 export const tagSortingFields = [
   {
-    name: 'label.name',
-    value: 'displayName.keyword',
+    name: LABEL_NAME,
+    value: DISPLAYNAME_KEYWORD,
   },
-  { name: 'label.relevance', value: '_score' },
+  { name: LABEL_RELEVANCE, value: '_score' },
   {
-    name: 'label.last-updated',
+    name: LABEL_LAST_UPDATED,
     value: 'updatedAt',
   },
 ];
@@ -94,12 +99,12 @@ export const columnSortingFields: SortingField[] = [
     value: 'table.name.keyword',
   },
   {
-    name: 'label.name',
-    value: 'displayName.keyword',
+    name: LABEL_NAME,
+    value: DISPLAYNAME_KEYWORD,
   },
-  { name: 'label.relevance', value: '_score' },
+  { name: LABEL_RELEVANCE, value: '_score' },
   {
-    name: 'label.last-updated',
+    name: LABEL_LAST_UPDATED,
     value: 'updatedAt',
   },
 ];

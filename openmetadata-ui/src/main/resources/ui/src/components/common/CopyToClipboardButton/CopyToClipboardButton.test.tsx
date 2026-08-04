@@ -14,6 +14,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CopyToClipboardButton } from './CopyToClipboardButton';
 
+const COPY_SECRET = 'copy-secret' as const;
+const DATA_TITLE = 'data-title' as const;
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Tooltip: jest.fn().mockImplementation(({ children, title }) => (
     <div data-testid="tooltip" data-title={title}>
@@ -64,13 +67,13 @@ describe('Test CopyToClipboardButton Component', () => {
     render(<CopyToClipboardButton copyText={value} />);
 
     expect(screen.getByTestId('copy-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('copy-secret')).toBeInTheDocument();
+    expect(screen.getByTestId(COPY_SECRET)).toBeInTheDocument();
   });
 
   it('Should calls onCopy callback when clicked', async () => {
     render(<CopyToClipboardButton copyText={value} onCopy={callBack} />);
 
-    fireEvent.click(screen.getByTestId('copy-secret'));
+    fireEvent.click(screen.getByTestId(COPY_SECRET));
 
     await waitFor(() => expect(callBack).toHaveBeenCalled());
   });
@@ -79,11 +82,11 @@ describe('Test CopyToClipboardButton Component', () => {
     jest.useFakeTimers();
     render(<CopyToClipboardButton copyText={value} />);
 
-    fireEvent.click(screen.getByTestId('copy-secret'));
+    fireEvent.click(screen.getByTestId(COPY_SECRET));
 
     await waitFor(() => {
       expect(screen.getByTestId('tooltip')).toHaveAttribute(
-        'data-title',
+        DATA_TITLE,
         'message.copied-to-clipboard'
       );
     });
@@ -95,7 +98,7 @@ describe('Test CopyToClipboardButton Component', () => {
     render(<CopyToClipboardButton copyText={value} />);
 
     expect(screen.getByTestId('tooltip')).toHaveAttribute(
-      'data-title',
+      DATA_TITLE,
       'message.copy-to-clipboard'
     );
   });
@@ -103,7 +106,7 @@ describe('Test CopyToClipboardButton Component', () => {
   it('Should have copied text in clipboard', async () => {
     render(<CopyToClipboardButton copyText={value} />);
 
-    fireEvent.click(screen.getByTestId('copy-secret'));
+    fireEvent.click(screen.getByTestId(COPY_SECRET));
 
     await waitFor(() =>
       expect(clipboardWriteTextMock).toHaveBeenCalledWith(value)
@@ -118,11 +121,11 @@ describe('Test CopyToClipboardButton Component', () => {
 
     render(<CopyToClipboardButton copyText={value} />);
 
-    fireEvent.click(screen.getByTestId('copy-secret'));
+    fireEvent.click(screen.getByTestId(COPY_SECRET));
 
     await waitFor(() => {
       expect(screen.getByTestId('tooltip')).toHaveAttribute(
-        'data-title',
+        DATA_TITLE,
         'message.copy-to-clipboard'
       );
     });
@@ -131,6 +134,6 @@ describe('Test CopyToClipboardButton Component', () => {
   it('Should render button with correct testid', () => {
     render(<CopyToClipboardButton copyText={value} position="top" />);
 
-    expect(screen.getByTestId('copy-secret')).toBeInTheDocument();
+    expect(screen.getByTestId(COPY_SECRET)).toBeInTheDocument();
   });
 });

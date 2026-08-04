@@ -39,6 +39,8 @@ import { getTeamOptionsFromType } from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AddTeamFormType } from './AddTeamForm.interface';
 
+const LABEL_NAME = 'label.name' as const;
+
 const AddTeamForm: React.FC<AddTeamFormType> = ({
   visible,
   onCancel,
@@ -175,7 +177,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSubmit}>
         <Form.Item
-          label={t('label.name')}
+          label={t(LABEL_NAME)}
           name="name"
           rules={[
             ...NAME_FIELD_RULES,
@@ -186,7 +188,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                 ) {
                   return Promise.reject(
                     t('message.entity-already-exists', {
-                      entity: t('label.name'),
+                      entity: t(LABEL_NAME),
                     })
                   );
                 }
@@ -197,7 +199,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           ]}>
           <Input
             data-testid="name"
-            placeholder={t('label.enter-entity', { entity: t('label.name') })}
+            placeholder={t('label.enter-entity', { entity: t(LABEL_NAME) })}
           />
         </Form.Item>
         <Form.Item

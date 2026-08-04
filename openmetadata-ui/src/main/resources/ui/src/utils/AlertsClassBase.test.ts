@@ -37,6 +37,11 @@ import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
+
+const TEST_ALERT_DISPLAY = 'Test Alert Display';
+const TEST_ALERT_DESCRIPTION = 'Test alert description';
+const TEST_ALERT = 'test.alert';
+
 interface MockHeaderParam {
   key: string;
   value: string;
@@ -147,8 +152,8 @@ describe('AlertsClassBase', () => {
 
   const mockModifiedData: ModifiedCreateEventSubscription = {
     name: 'Test Alert',
-    displayName: 'Test Alert Display',
-    description: 'Test alert description',
+    displayName: TEST_ALERT_DISPLAY,
+    description: TEST_ALERT_DESCRIPTION,
     alertType: AlertType.Notification,
     timeout: 15,
     readTimeout: 30,
@@ -166,7 +171,7 @@ describe('AlertsClassBase', () => {
     name: 'openMetadata_alert_old123',
     displayName: 'Old Alert Display',
     description: 'Old alert description',
-    fullyQualifiedName: 'test.alert',
+    fullyQualifiedName: TEST_ALERT,
     alertType: AlertType.Notification,
     destinations: [
       {
@@ -212,7 +217,7 @@ describe('AlertsClassBase', () => {
 
       expect(result).toBeDefined();
       expect(result.alertName).toBe('openMetadata_alert_abc123456');
-      expect(result.alertDisplayName).toBe('Test Alert Display');
+      expect(result.alertDisplayName).toBe(TEST_ALERT_DISPLAY);
       expect(getRandomizedAlertName).toHaveBeenCalled();
       expect(getEntityName).toHaveBeenCalledWith(mockModifiedData);
     });
@@ -278,8 +283,8 @@ describe('AlertsClassBase', () => {
 
       expect(result).toBeDefined();
       expect(result.name).toBe('openMetadata_alert_abc123456');
-      expect(result.displayName).toBe('Test Alert Display');
-      expect(result.description).toBe('Test alert description');
+      expect(result.displayName).toBe(TEST_ALERT_DISPLAY);
+      expect(result.description).toBe(TEST_ALERT_DESCRIPTION);
       expect(result.destinations).toHaveLength(1);
     });
 
@@ -332,8 +337,8 @@ describe('AlertsClassBase', () => {
       expect(result).toBeDefined();
       expect(result.id).toBe(mockInitialData.id);
       expect(result.name).toBe('openMetadata_alert_old123');
-      expect(result.displayName).toBe('Test Alert Display');
-      expect(result.description).toBe('Test alert description');
+      expect(result.displayName).toBe(TEST_ALERT_DISPLAY);
+      expect(result.description).toBe(TEST_ALERT_DESCRIPTION);
     });
 
     it('should update input filters and actions', () => {
@@ -442,7 +447,7 @@ describe('AlertsClassBase', () => {
     it('should update existing alert when fqn and initialData are provided', async () => {
       await alertsClass.handleAlertSave({
         data: mockModifiedData,
-        fqn: 'test.alert',
+        fqn: TEST_ALERT,
         initialData: mockInitialData,
         createAlertAPI: mockCreateAPI,
         updateAlertAPI: mockUpdateAPI,
@@ -490,7 +495,7 @@ describe('AlertsClassBase', () => {
 
       await alertsClass.handleAlertSave({
         data: mockModifiedData,
-        fqn: 'test.alert',
+        fqn: TEST_ALERT,
         initialData: mockInitialData,
         createAlertAPI: mockCreateAPI,
         updateAlertAPI: mockUpdateAPI,

@@ -13,6 +13,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import GlossaryTermReferencesModal from './GlossaryTermReferencesModal.component';
 
+const LABEL_NAME = 'label.name';
+const LABEL_ENDPOINT = 'label.endpoint';
+const HTTPS_WWW_GOOGLE_COM = 'https://www.google.com';
+
 const mockOnSave = jest.fn();
 const mockOnClose = jest.fn();
 
@@ -43,8 +47,8 @@ describe('GlossaryTermReferencesModal', () => {
       <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
     );
 
-    const nameInputs = getAllByPlaceholderText('label.name');
-    const endpointInputs = getAllByPlaceholderText('label.endpoint');
+    const nameInputs = getAllByPlaceholderText(LABEL_NAME);
+    const endpointInputs = getAllByPlaceholderText(LABEL_ENDPOINT);
     await act(async () => {
       fireEvent.click(getByTestId('save-btn'));
 
@@ -52,20 +56,20 @@ describe('GlossaryTermReferencesModal', () => {
 
       fireEvent.change(nameInputs[0], { target: { value: 'google' } });
       fireEvent.change(endpointInputs[0], {
-        target: { value: 'https://www.google.com' },
+        target: { value: HTTPS_WWW_GOOGLE_COM },
       });
 
       fireEvent.click(getByTestId('save-btn'));
     });
 
     expect(nameInputs[0]).toHaveValue('google');
-    expect(endpointInputs[0]).toHaveValue('https://www.google.com');
+    expect(endpointInputs[0]).toHaveValue(HTTPS_WWW_GOOGLE_COM);
     expect(getByTestId('save-btn')).toBeInTheDocument();
 
     expect(mockOnSave).toHaveBeenCalledTimes(1);
 
     expect(mockOnSave.mock.calls).toEqual([
-      [[{ name: 'google', endpoint: 'https://www.google.com' }]],
+      [[{ name: 'google', endpoint: HTTPS_WWW_GOOGLE_COM }]],
     ]);
   });
 
@@ -74,8 +78,8 @@ describe('GlossaryTermReferencesModal', () => {
       <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
     );
 
-    const nameInputs = getAllByPlaceholderText('label.name');
-    const endpointInputs = getAllByPlaceholderText('label.endpoint');
+    const nameInputs = getAllByPlaceholderText(LABEL_NAME);
+    const endpointInputs = getAllByPlaceholderText(LABEL_ENDPOINT);
 
     await act(async () => {
       fireEvent.change(nameInputs[0], { target: { value: 'BBC' } });
@@ -99,8 +103,8 @@ describe('GlossaryTermReferencesModal', () => {
       <GlossaryTermReferencesModal {...{ ...defaultProps, references: [] }} />
     );
 
-    const nameInputs = getAllByPlaceholderText('label.name');
-    const endpointInputs = getAllByPlaceholderText('label.endpoint');
+    const nameInputs = getAllByPlaceholderText(LABEL_NAME);
+    const endpointInputs = getAllByPlaceholderText(LABEL_ENDPOINT);
 
     await act(async () => {
       fireEvent.change(nameInputs[0], { target: { value: 'BBC' } });

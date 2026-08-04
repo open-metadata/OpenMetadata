@@ -42,7 +42,40 @@ import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
 
+const PROVIDER_SELECTOR = 'provider-selector';
+const SELECT_GOOGLE = 'Select Google';
+const SSO_CONFIGURATION_FORM_CARD = 'sso-configuration-form-card';
+const GOOGLE_LABEL_SET_UP = 'Google label.set-up';
+const SAML_LABEL_SET_UP = 'SAML label.set-up';
+const LDAP_LABEL_SET_UP = 'Ldap label.set-up';
+const HTTPS_ACCOUNTS_GOOGLE_COM = 'https://accounts.google.com';
+const HTTPS_APP_EXAMPLE_COM_CALLBACK = 'https://app.example.com/callback';
+const TEST_CLIENT_ID = 'test-client-id';
+const HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2 =
+  'https://www.googleapis.com/oauth2/v3/certs';
+const TEST_SECRET = 'test-secret';
+const HTTPS_ACCOUNTS_GOOGLE_COM_WELL =
+  'https://accounts.google.com/.well-known/openid-configuration';
+const ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH =
+  'org.openmetadata.service.security.DefaultAuthorizer';
+const ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER =
+  'org.openmetadata.service.security.JwtFilter';
+const SAVE_SSO_CONFIGURATION = 'save-sso-configuration';
+const CANCEL_SSO_CONFIGURATION = 'cancel-sso-configuration';
+const VALIDATION_SUCCESSFUL = 'Validation successful';
+const OPENID_EMAIL_PROFILE = 'openid email profile';
+const VALIDATION_FAILED = 'Validation failed';
+const CLIENT_ID_IS_REQUIRED = 'Client ID is required';
+const TEST_SSO_CONFIGURATION = 'test-sso-configuration';
+const OKTA_LABEL_SET_UP = 'Okta label.set-up';
+const HTTPS_IDP_EXAMPLE_COM = 'https://idp.example.com';
+const SAML_CLIENT_ID = 'saml-client-id';
+const UNSAVED_CHANGES_MODAL = 'unsaved-changes-modal';
+const GOOGLE_CLIENT_ID = 'google-client-id';
+const GENERAL_VALIDATION_ERROR = 'General validation error';
+
 // Mock dependencies
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -302,17 +335,17 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('Google label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(GOOGLE_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
 
@@ -320,7 +353,7 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
       const samlButton = screen.getByText('Select SAML');
@@ -328,9 +361,9 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('SAML label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(SAML_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
 
@@ -338,7 +371,7 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
       const ldapButton = screen.getByText('Select LDAP');
@@ -346,9 +379,9 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('Ldap label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(LDAP_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
 
@@ -357,10 +390,10 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ onProviderSelect: mockOnProviderSelect });
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
@@ -374,25 +407,24 @@ describe('SSOConfigurationForm', () => {
       const mockConfigData = {
         authenticationConfiguration: {
           provider: AuthProvider.Google,
-          authority: 'https://accounts.google.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: TEST_CLIENT_ID,
           clientType: ClientType.Confidential,
           providerName: 'Google',
           jwtPrincipalClaims: ['email'],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
           oidcConfiguration: {
             id: 'test-id',
-            secret: 'test-secret',
-            discoveryUri:
-              'https://accounts.google.com/.well-known/openid-configuration',
+            secret: TEST_SECRET,
+            discoveryUri: HTTPS_ACCOUNTS_GOOGLE_COM_WELL,
             tenant: 'default',
           },
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: ['admin@test.com'],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -407,11 +439,9 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ forceEditMode: true });
 
       await waitFor(() => {
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
         expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
-        expect(
-          screen.getByTestId('cancel-sso-configuration')
+          screen.getByTestId(CANCEL_SSO_CONFIGURATION)
         ).toBeInTheDocument();
       });
     });
@@ -425,23 +455,23 @@ describe('SSOConfigurationForm', () => {
     it('should validate and save new configuration successfully', async () => {
       const mockValidationData = {
         status: VALIDATION_STATUS.SUCCESS,
-        message: 'Validation successful',
+        message: VALIDATION_SUCCESSFUL,
         results: [],
       };
 
       const mockAuthConfig: AuthenticationConfiguration = {
         provider: AuthProvider.Google,
-        authority: 'https://accounts.google.com',
-        callbackUrl: 'https://app.example.com/callback',
-        clientId: 'test-client-id',
+        authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+        clientId: TEST_CLIENT_ID,
         providerName: 'Google',
         jwtPrincipalClaims: ['email'],
-        publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+        publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
       };
       const mockAuthorizerConfig: AuthorizerConfiguration = {
         adminPrincipals: ['admin'],
-        className: 'org.openmetadata.service.security.DefaultAuthorizer',
-        containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+        className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+        containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
         enableSecureSocketConnection: false,
         enforcePrincipalDomain: false,
         principalDomain: '',
@@ -457,26 +487,24 @@ describe('SSOConfigurationForm', () => {
       mockFetchAuthorizerConfig.mockResolvedValue(mockAuthorizerConfig);
       mockGetAuthConfig.mockReturnValue({
         ...mockAuthConfig,
-        scope: 'openid email profile',
+        scope: OPENID_EMAIL_PROFILE,
       });
       mockOnLogoutHandler.mockResolvedValue(undefined);
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -490,12 +518,12 @@ describe('SSOConfigurationForm', () => {
     it('should handle validation failure', async () => {
       const mockValidationData = {
         status: VALIDATION_STATUS.FAILED,
-        message: 'Validation failed',
+        message: VALIDATION_FAILED,
         results: [
           {
             component: 'authentication',
             status: VALIDATION_STATUS.FAILED,
-            message: 'Client ID is required',
+            message: CLIENT_ID_IS_REQUIRED,
           },
         ],
       };
@@ -507,19 +535,17 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -531,24 +557,24 @@ describe('SSOConfigurationForm', () => {
     it('should handle logout failure and clear storage', async () => {
       const mockValidationData = {
         status: VALIDATION_STATUS.SUCCESS,
-        message: 'Validation successful',
+        message: VALIDATION_SUCCESSFUL,
         results: [],
       };
 
       const mockAuthConfig: AuthenticationConfiguration = {
         provider: AuthProvider.Google,
-        authority: 'https://accounts.google.com',
-        callbackUrl: 'https://app.example.com/callback',
-        clientId: 'test-client-id',
+        authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+        clientId: TEST_CLIENT_ID,
         providerName: 'Google',
         jwtPrincipalClaims: ['email'],
-        publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+        publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
       };
 
       const mockAuthorizerConfig: AuthorizerConfiguration = {
         adminPrincipals: ['admin'],
-        className: 'org.openmetadata.service.security.DefaultAuthorizer',
-        containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+        className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+        containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
         enableSecureSocketConnection: false,
         enforcePrincipalDomain: false,
         principalDomain: '',
@@ -564,26 +590,24 @@ describe('SSOConfigurationForm', () => {
       mockFetchAuthorizerConfig.mockResolvedValue(mockAuthorizerConfig);
       mockGetAuthConfig.mockReturnValue({
         ...mockAuthConfig,
-        scope: 'openid email profile',
+        scope: OPENID_EMAIL_PROFILE,
       });
       mockOnLogoutHandler.mockRejectedValue(new Error('Logout failed'));
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -599,15 +623,13 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText('Select Google'));
+      fireEvent.click(screen.getByText(SELECT_GOOGLE));
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('test-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_SSO_CONFIGURATION)).toBeInTheDocument();
       });
     };
 
@@ -618,7 +640,7 @@ describe('SSOConfigurationForm', () => {
     it('should render the test configuration button in edit mode', async () => {
       await selectGoogleProvider();
 
-      expect(screen.getByTestId('test-sso-configuration')).toBeInTheDocument();
+      expect(screen.getByTestId(TEST_SSO_CONFIGURATION)).toBeInTheDocument();
     });
 
     it('should show a lockout warning for a new configuration', async () => {
@@ -638,7 +660,7 @@ describe('SSOConfigurationForm', () => {
 
       await selectGoogleProvider();
 
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+      fireEvent.click(screen.getByTestId(TEST_SSO_CONFIGURATION));
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
@@ -657,7 +679,7 @@ describe('SSOConfigurationForm', () => {
           errors: [
             {
               field: 'authenticationConfiguration.clientId',
-              error: 'Client ID is required',
+              error: CLIENT_ID_IS_REQUIRED,
             },
           ],
         } as SecurityValidationResponse)
@@ -665,7 +687,7 @@ describe('SSOConfigurationForm', () => {
 
       await selectGoogleProvider();
 
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+      fireEvent.click(screen.getByTestId(TEST_SSO_CONFIGURATION));
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
@@ -686,7 +708,7 @@ describe('SSOConfigurationForm', () => {
 
       await selectGoogleProvider();
 
-      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+      fireEvent.click(screen.getByTestId(TEST_SSO_CONFIGURATION));
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalled();
@@ -700,9 +722,9 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('Okta label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(OKTA_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
 
@@ -710,7 +732,7 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ selectedProvider: AuthProvider.Basic });
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
     });
 
@@ -719,18 +741,18 @@ describe('SSOConfigurationForm', () => {
       const mockConfigData = {
         authenticationConfiguration: {
           provider: AuthProvider.Google,
-          authority: 'https://accounts.google.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: TEST_CLIENT_ID,
           clientType: ClientType.Confidential,
           providerName: 'Google',
           jwtPrincipalClaims: ['email'],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: ['admin'],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -758,18 +780,18 @@ describe('SSOConfigurationForm', () => {
       const mockConfigData = {
         authenticationConfiguration: {
           provider: AuthProvider.Google,
-          authority: 'https://accounts.google.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: TEST_CLIENT_ID,
           clientType: ClientType.Confidential,
           providerName: 'Google',
           jwtPrincipalClaims: ['email'],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: ['admin'],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -783,9 +805,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('resizable-panels')).toBeInTheDocument();
-        expect(
-          screen.queryByText('Google label.set-up')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(GOOGLE_LABEL_SET_UP)).not.toBeInTheDocument();
       });
     });
   });
@@ -797,7 +817,7 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
       const oktaButton = screen.getByText('Select Okta');
@@ -805,7 +825,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
 
@@ -822,7 +842,7 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
     });
 
@@ -830,7 +850,7 @@ describe('SSOConfigurationForm', () => {
       const mockError = new Error('Save failed');
       const mockValidationData = {
         status: VALIDATION_STATUS.SUCCESS,
-        message: 'Validation successful',
+        message: VALIDATION_SUCCESSFUL,
         results: [],
       };
 
@@ -843,19 +863,17 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -867,16 +885,16 @@ describe('SSOConfigurationForm', () => {
   describe('Provider Icons', () => {
     it('should display correct provider title for each provider', async () => {
       const providers = [
-        { provider: AuthProvider.Google, displayName: 'Google label.set-up' },
+        { provider: AuthProvider.Google, displayName: GOOGLE_LABEL_SET_UP },
         { provider: AuthProvider.Azure, displayName: 'Azure AD label.set-up' },
-        { provider: AuthProvider.Okta, displayName: 'Okta label.set-up' },
+        { provider: AuthProvider.Okta, displayName: OKTA_LABEL_SET_UP },
         { provider: AuthProvider.Auth0, displayName: 'Auth0 label.set-up' },
         {
           provider: AuthProvider.AwsCognito,
           displayName: 'AWS Cognito label.set-up',
         },
-        { provider: AuthProvider.LDAP, displayName: 'Ldap label.set-up' },
-        { provider: AuthProvider.Saml, displayName: 'SAML label.set-up' },
+        { provider: AuthProvider.LDAP, displayName: LDAP_LABEL_SET_UP },
+        { provider: AuthProvider.Saml, displayName: SAML_LABEL_SET_UP },
       ];
 
       for (const { provider, displayName } of providers) {
@@ -884,7 +902,7 @@ describe('SSOConfigurationForm', () => {
 
         await waitFor(() => {
           expect(
-            screen.getByTestId('sso-configuration-form-card')
+            screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
           ).toBeInTheDocument();
           expect(screen.getByText(displayName)).toBeInTheDocument();
         });
@@ -898,15 +916,15 @@ describe('SSOConfigurationForm', () => {
     it('should cleanup provider-specific fields before submission', async () => {
       const mockValidationData = {
         status: VALIDATION_STATUS.SUCCESS,
-        message: 'Validation successful',
+        message: VALIDATION_SUCCESSFUL,
         results: [],
       };
 
       const mockAuthConfig: AuthenticationConfiguration = {
         provider: AuthProvider.Saml,
-        authority: 'https://idp.example.com',
-        callbackUrl: 'https://app.example.com/callback',
-        clientId: 'saml-client-id',
+        authority: HTTPS_IDP_EXAMPLE_COM,
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+        clientId: SAML_CLIENT_ID,
         providerName: 'SAML',
         jwtPrincipalClaims: ['email'],
         publicKeyUrls: [],
@@ -914,8 +932,8 @@ describe('SSOConfigurationForm', () => {
 
       const mockAuthorizerConfig: AuthorizerConfiguration = {
         adminPrincipals: ['admin'],
-        className: 'org.openmetadata.service.security.DefaultAuthorizer',
-        containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+        className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+        containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
         enableSecureSocketConnection: false,
         enforcePrincipalDomain: false,
         principalDomain: '',
@@ -932,25 +950,23 @@ describe('SSOConfigurationForm', () => {
       mockFetchAuthorizerConfig.mockResolvedValue(mockAuthorizerConfig);
       mockGetAuthConfig.mockReturnValue({
         ...mockAuthConfig,
-        scope: 'openid email profile',
+        scope: OPENID_EMAIL_PROFILE,
       });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
       const samlButton = screen.getByText('Select SAML');
       fireEvent.click(samlButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -971,12 +987,12 @@ describe('SSOConfigurationForm', () => {
       // Field-specific errors have a field property and don't trigger toast
       const mockValidationData = {
         status: 'failed',
-        message: 'Validation failed',
+        message: VALIDATION_FAILED,
         results: [
           {
             component: 'authenticationConfiguration.oidcConfiguration.id',
             status: 'failed',
-            message: 'Client ID is required',
+            message: CLIENT_ID_IS_REQUIRED,
           },
           {
             component: 'authenticationConfiguration.oidcConfiguration.secret',
@@ -994,21 +1010,19 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
       // Select Google provider (OIDC with Confidential client)
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
       // Try to save without filling required fields
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1028,7 +1042,7 @@ describe('SSOConfigurationForm', () => {
           provider: AuthProvider.Azure,
           clientType: ClientType.Confidential,
           authority: 'https://login.microsoftonline.com',
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
           clientId: 'azure-client-id',
           providerName: 'Azure',
           jwtPrincipalClaims: ['email'],
@@ -1043,8 +1057,8 @@ describe('SSOConfigurationForm', () => {
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: ['azure-admin@test.com'],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -1058,7 +1072,7 @@ describe('SSOConfigurationForm', () => {
       await waitFor(() => {
         expect(mockGetSecurityConfiguration).not.toHaveBeenCalled();
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1067,9 +1081,9 @@ describe('SSOConfigurationForm', () => {
       const mockSamlConfig = {
         authenticationConfiguration: {
           provider: AuthProvider.Saml,
-          authority: 'https://idp.example.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'saml-client-id',
+          authority: HTTPS_IDP_EXAMPLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: SAML_CLIENT_ID,
           providerName: 'SAML',
           jwtPrincipalClaims: ['email'],
           publicKeyUrls: [],
@@ -1080,8 +1094,8 @@ describe('SSOConfigurationForm', () => {
         } as unknown as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: [],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -1094,7 +1108,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1103,23 +1117,23 @@ describe('SSOConfigurationForm', () => {
       const mockSamlConfig = {
         authenticationConfiguration: {
           provider: AuthProvider.Saml,
-          authority: 'https://idp.example.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'saml-client-id',
+          authority: HTTPS_IDP_EXAMPLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: SAML_CLIENT_ID,
           providerName: 'SAML',
           jwtPrincipalClaims: ['email'],
           publicKeyUrls: [],
           samlConfiguration: {
             idp: {},
             sp: {
-              callback: 'https://app.example.com/callback',
+              callback: HTTPS_APP_EXAMPLE_COM_CALLBACK,
             },
           },
         },
         authorizerConfiguration: {
           adminPrincipals: [],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -1132,7 +1146,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1144,7 +1158,7 @@ describe('SSOConfigurationForm', () => {
         authenticationConfiguration: {
           provider: AuthProvider.Okta,
           authority: 'https://okta.example.com',
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
           clientId: 'okta-client-id',
           clientType: ClientType.Confidential,
           providerName: 'Okta',
@@ -1160,8 +1174,8 @@ describe('SSOConfigurationForm', () => {
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: ['admin@okta.com'],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -1182,12 +1196,10 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ forceEditMode: true });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1206,7 +1218,7 @@ describe('SSOConfigurationForm', () => {
     it('should handle Save and Exit from modal for new config', async () => {
       const mockValidationData = {
         status: VALIDATION_STATUS.SUCCESS,
-        message: 'Validation successful',
+        message: VALIDATION_SUCCESSFUL,
         results: [],
       };
 
@@ -1220,23 +1232,23 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('cancel-sso-configuration')
+          screen.getByTestId(CANCEL_SSO_CONFIGURATION)
         ).toBeInTheDocument();
       });
 
-      const cancelButton = screen.getByTestId('cancel-sso-configuration');
+      const cancelButton = screen.getByTestId(CANCEL_SSO_CONFIGURATION);
       fireEvent.click(cancelButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId('unsaved-changes-modal')).toBeInTheDocument();
+        expect(screen.getByTestId(UNSAVED_CHANGES_MODAL)).toBeInTheDocument();
       });
 
       const saveModalButton = screen.getByText('Save');
@@ -1251,18 +1263,18 @@ describe('SSOConfigurationForm', () => {
       const mockExistingConfigData = {
         authenticationConfiguration: {
           provider: AuthProvider.Google,
-          authority: 'https://accounts.google.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'google-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: GOOGLE_CLIENT_ID,
           clientType: ClientType.Public,
           providerName: 'Google',
           jwtPrincipalClaims: ['email'],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: [],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -1284,15 +1296,15 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('cancel-sso-configuration')
+          screen.getByTestId(CANCEL_SSO_CONFIGURATION)
         ).toBeInTheDocument();
       });
 
-      const cancelButton = screen.getByTestId('cancel-sso-configuration');
+      const cancelButton = screen.getByTestId(CANCEL_SSO_CONFIGURATION);
       fireEvent.click(cancelButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId('unsaved-changes-modal')).toBeInTheDocument();
+        expect(screen.getByTestId(UNSAVED_CHANGES_MODAL)).toBeInTheDocument();
       });
 
       const saveModalButton = screen.getByText('Save');
@@ -1310,23 +1322,23 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('cancel-sso-configuration')
+          screen.getByTestId(CANCEL_SSO_CONFIGURATION)
         ).toBeInTheDocument();
       });
 
-      const cancelButton = screen.getByTestId('cancel-sso-configuration');
+      const cancelButton = screen.getByTestId(CANCEL_SSO_CONFIGURATION);
       fireEvent.click(cancelButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId('unsaved-changes-modal')).toBeInTheDocument();
+        expect(screen.getByTestId(UNSAVED_CHANGES_MODAL)).toBeInTheDocument();
       });
 
       const closeButton = screen.getByText('Cancel');
@@ -1334,7 +1346,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId('unsaved-changes-modal')
+          screen.queryByTestId(UNSAVED_CHANGES_MODAL)
         ).not.toBeInTheDocument();
       });
     });
@@ -1348,12 +1360,12 @@ describe('SSOConfigurationForm', () => {
     it('should handle validation errors from response', async () => {
       const mockValidationData = {
         status: 'failed',
-        message: 'Validation failed',
+        message: VALIDATION_FAILED,
         results: [
           {
             component: 'authenticationConfiguration.clientId',
             status: 'failed',
-            message: 'Client ID is required',
+            message: CLIENT_ID_IS_REQUIRED,
           },
         ],
       };
@@ -1365,19 +1377,17 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1391,7 +1401,7 @@ describe('SSOConfigurationForm', () => {
         response: {
           data: {
             status: 'failed',
-            message: 'Validation failed',
+            message: VALIDATION_FAILED,
             results: [
               {
                 component:
@@ -1409,19 +1419,17 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1432,7 +1440,7 @@ describe('SSOConfigurationForm', () => {
     it('should handle errors with both field and general messages', async () => {
       const mockMixedErrorsData = {
         status: 'failed',
-        message: 'General validation error',
+        message: GENERAL_VALIDATION_ERROR,
         errors: [
           {
             field: 'authenticationConfiguration.authority',
@@ -1440,7 +1448,7 @@ describe('SSOConfigurationForm', () => {
           },
           {
             field: '',
-            error: 'General validation error',
+            error: GENERAL_VALIDATION_ERROR,
           },
         ],
       };
@@ -1454,24 +1462,22 @@ describe('SSOConfigurationForm', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
 
-      const googleButton = screen.getByText('Select Google');
+      const googleButton = screen.getByText(SELECT_GOOGLE);
       fireEvent.click(googleButton);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(
-          'General validation error'
+          GENERAL_VALIDATION_ERROR
         );
       });
     });
@@ -1487,7 +1493,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
       // Form is rendered and client type switching can occur
@@ -1505,9 +1511,9 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('Google label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(GOOGLE_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
 
@@ -1516,9 +1522,9 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('SAML label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(SAML_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
 
@@ -1527,7 +1533,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
         expect(screen.getByText('Auth0 label.set-up')).toBeInTheDocument();
       });
@@ -1538,9 +1544,9 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('Okta label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(OKTA_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
 
@@ -1549,7 +1555,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1559,7 +1565,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1569,7 +1575,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1579,9 +1585,9 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
-        expect(screen.getByText('Ldap label.set-up')).toBeInTheDocument();
+        expect(screen.getByText(LDAP_LABEL_SET_UP)).toBeInTheDocument();
       });
     });
   });
@@ -1596,12 +1602,12 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
 
       // Form is interactive and changes can be tracked
-      expect(screen.getByTestId('save-sso-configuration')).toBeInTheDocument();
+      expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
     });
 
     it('should handle edit mode for existing Google Public config', async () => {
@@ -1609,17 +1615,17 @@ describe('SSOConfigurationForm', () => {
         authenticationConfiguration: {
           provider: AuthProvider.Google,
           clientType: ClientType.Public,
-          authority: 'https://accounts.google.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: TEST_CLIENT_ID,
           providerName: 'Google',
           jwtPrincipalClaims: ['email'],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: ['admin@example.com'],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -1634,7 +1640,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1643,26 +1649,25 @@ describe('SSOConfigurationForm', () => {
       const mockGoogleConfidentialConfigData = {
         authenticationConfiguration: {
           provider: AuthProvider.Google,
-          authority: 'https://accounts.google.com',
-          callbackUrl: 'https://app.example.com/callback',
-          clientId: 'google-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+          clientId: GOOGLE_CLIENT_ID,
           clientType: ClientType.Confidential,
           providerName: 'Google',
           jwtPrincipalClaims: ['email'],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
           oidcConfiguration: {
-            id: 'google-client-id',
+            id: GOOGLE_CLIENT_ID,
             secret: 'google-secret',
-            discoveryUri:
-              'https://accounts.google.com/.well-known/openid-configuration',
+            discoveryUri: HTTPS_ACCOUNTS_GOOGLE_COM_WELL,
             tenant: 'default',
           },
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           adminPrincipals: ['admin@example.com'],
           botPrincipals: ['bot@example.com'],
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           enableSecureSocketConnection: false,
           enforcePrincipalDomain: false,
           principalDomain: '',
@@ -1677,7 +1682,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1695,12 +1700,10 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ selectedProvider: AuthProvider.Google });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1736,12 +1739,10 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ selectedProvider: AuthProvider.Google });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('save-sso-configuration')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SAVE_SSO_CONFIGURATION)).toBeInTheDocument();
       });
 
-      const saveButton = screen.getByTestId('save-sso-configuration');
+      const saveButton = screen.getByTestId(SAVE_SSO_CONFIGURATION);
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -1775,7 +1776,7 @@ describe('SSOConfigurationForm', () => {
       renderComponent({});
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
     });
   });
@@ -1787,18 +1788,19 @@ describe('SSOConfigurationForm', () => {
           provider: AuthProvider.Google,
           providerName: 'Google',
           clientType: ClientType.Public,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
+          // eslint-disable-next-line sonarjs/no-duplicate-string
           callbackUrl: 'http://localhost:8585/callback',
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
           tokenValidationAlgorithm: 'RS256',
           enableSelfSignup: false,
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -1816,7 +1818,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
 
@@ -1831,7 +1833,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1842,26 +1844,25 @@ describe('SSOConfigurationForm', () => {
           provider: AuthProvider.Google,
           providerName: 'Google',
           clientType: ClientType.Confidential,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
           tokenValidationAlgorithm: 'RS256',
           callbackUrl: 'https://custom.callback.com/auth',
           enableSelfSignup: false,
           oidcConfiguration: {
             id: 'test-id',
-            secret: 'test-secret',
+            secret: TEST_SECRET,
             callbackUrl: 'https://custom.callback.com/auth',
-            discoveryUri:
-              'https://accounts.google.com/.well-known/openid-configuration',
+            discoveryUri: HTTPS_ACCOUNTS_GOOGLE_COM_WELL,
             tenant: '',
           },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -1877,7 +1878,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1889,7 +1890,7 @@ describe('SSOConfigurationForm', () => {
           providerName: 'Azure',
           clientType: ClientType.Confidential,
           authority: 'https://login.microsoftonline.com',
-          clientId: 'test-client-id',
+          clientId: TEST_CLIENT_ID,
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
           publicKeyUrls: [],
@@ -1897,16 +1898,16 @@ describe('SSOConfigurationForm', () => {
           callbackUrl: 'http://localhost:8585/callback',
           enableSelfSignup: false,
           oidcConfiguration: {
-            id: 'test-client-id',
-            secret: 'test-secret',
+            id: TEST_CLIENT_ID,
+            secret: TEST_SECRET,
             discoveryUri:
               'https://login.microsoftonline.com/.well-known/openid-configuration',
             tenant: 'common',
           },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -1922,7 +1923,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1936,19 +1937,18 @@ describe('SSOConfigurationForm', () => {
             provider: AuthProvider.Google,
             providerName: 'google',
             clientType: ClientType.Public,
-            authority: 'https://accounts.google.com',
+            authority: HTTPS_ACCOUNTS_GOOGLE_COM,
             clientId: 'existing-client-id',
-            callbackUrl: 'https://app.example.com/callback',
-            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
+            publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
             jwtPrincipalClaims: ['email'],
             jwtPrincipalClaimsMapping: [],
             tokenValidationAlgorithm: 'RS256',
             enableSelfSignup: false,
           },
           authorizerConfiguration: {
-            className: 'org.openmetadata.service.security.DefaultAuthorizer',
-            containerRequestFilter:
-              'org.openmetadata.service.security.JwtFilter',
+            className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+            containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
             adminPrincipals: [],
             principalDomain: '',
             enforcePrincipalDomain: false,
@@ -1961,7 +1961,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -1975,19 +1975,18 @@ describe('SSOConfigurationForm', () => {
             provider: AuthProvider.Google,
             providerName: 'google',
             clientType: ClientType.Public,
-            authority: 'https://accounts.google.com',
-            clientId: 'test-client-id',
+            authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+            clientId: TEST_CLIENT_ID,
             callbackUrl: 'http://localhost:8585/callback',
             jwtPrincipalClaims: ['email'],
             jwtPrincipalClaimsMapping: [],
-            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
             tokenValidationAlgorithm: 'RS256',
             enableSelfSignup: false,
           },
           authorizerConfiguration: {
-            className: 'org.openmetadata.service.security.DefaultAuthorizer',
-            containerRequestFilter:
-              'org.openmetadata.service.security.JwtFilter',
+            className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+            containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
             adminPrincipals: [],
             principalDomain: '',
             enforcePrincipalDomain: false,
@@ -2000,7 +1999,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
 
@@ -2017,19 +2016,18 @@ describe('SSOConfigurationForm', () => {
             provider: AuthProvider.Google,
             providerName: 'google',
             clientType: ClientType.Public,
-            authority: 'https://accounts.google.com',
-            clientId: 'test-client-id',
+            authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+            clientId: TEST_CLIENT_ID,
             callbackUrl: 'http://localhost:8585/callback',
             jwtPrincipalClaims: ['email'],
             jwtPrincipalClaimsMapping: [],
-            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
             tokenValidationAlgorithm: 'RS256',
             enableSelfSignup: false,
           },
           authorizerConfiguration: {
-            className: 'org.openmetadata.service.security.DefaultAuthorizer',
-            containerRequestFilter:
-              'org.openmetadata.service.security.JwtFilter',
+            className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+            containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
             adminPrincipals: [],
             principalDomain: '',
             enforcePrincipalDomain: false,
@@ -2042,14 +2040,14 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
 
       // Verify the form card is rendered
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
     });
@@ -2063,19 +2061,18 @@ describe('SSOConfigurationForm', () => {
             provider: AuthProvider.Google,
             providerName: 'google',
             clientType: ClientType.Public,
-            authority: 'https://accounts.google.com',
-            clientId: 'test-client-id',
+            authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+            clientId: TEST_CLIENT_ID,
             callbackUrl: 'http://localhost:8585/callback',
             jwtPrincipalClaims: ['email'],
             jwtPrincipalClaimsMapping: [],
-            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2],
             tokenValidationAlgorithm: 'RS256',
             enableSelfSignup: false,
           },
           authorizerConfiguration: {
-            className: 'org.openmetadata.service.security.DefaultAuthorizer',
-            containerRequestFilter:
-              'org.openmetadata.service.security.JwtFilter',
+            className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULTAUTH,
+            containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWTFILTER,
             adminPrincipals: [],
             principalDomain: '',
             enforcePrincipalDomain: false,
@@ -2088,7 +2085,7 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('sso-configuration-form-card')
+          screen.getByTestId(SSO_CONFIGURATION_FORM_CARD)
         ).toBeInTheDocument();
       });
 

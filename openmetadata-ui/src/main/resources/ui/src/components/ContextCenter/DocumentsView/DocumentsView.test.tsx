@@ -27,6 +27,7 @@ jest.mock('react-aria-components', () => ({
     }: {
       children: React.ReactNode | (() => React.ReactNode);
       onAction?: () => void;
+      // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
       'data-testid'?: string;
     }) => (
       <div

@@ -17,6 +17,8 @@ import * as ToastUtils from '../../../utils/ToastUtils';
 import EditAnnouncementModal from './EditAnnouncementModal';
 
 // Mock dependencies
+const TEST_ANNOUNCEMENT_DESCRIPTION = 'Test announcement description';
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -40,7 +42,7 @@ const mockShowErrorToast = ToastUtils.showErrorToast as jest.MockedFunction<
 >;
 
 const mockAnnouncement = {
-  description: 'Test announcement description',
+  description: TEST_ANNOUNCEMENT_DESCRIPTION,
   startTime: DateTime.now().plus({ hours: 1 }).toMillis(),
   endTime: DateTime.now().plus({ hours: 3 }).toMillis(),
 };
@@ -122,7 +124,7 @@ describe('EditAnnouncementModal', () => {
 
       const updatedAnnouncement = {
         ...mockAnnouncement,
-        description: 'Test announcement description',
+        description: TEST_ANNOUNCEMENT_DESCRIPTION,
         startTime: startTimeMs,
         endTime: endTimeMs,
       };
@@ -133,7 +135,7 @@ describe('EditAnnouncementModal', () => {
 
     expect(onConfirmMock).toHaveBeenCalledWith('Updated Announcement Title', {
       ...mockAnnouncement,
-      description: 'Test announcement description',
+      description: TEST_ANNOUNCEMENT_DESCRIPTION,
       startTime: validStartTime.toMillis(),
       endTime: validEndTime.toMillis(),
     });

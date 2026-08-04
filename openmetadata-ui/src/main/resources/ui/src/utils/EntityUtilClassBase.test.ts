@@ -21,6 +21,8 @@ import {
 } from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
+const TEST_DEFAULT = 'test.default';
+
 jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
   getEditWebhookPath: jest.fn(),
@@ -194,11 +196,11 @@ describe('EntityUtilClassBase', () => {
   });
 
   it('should return testSuite details path for testSuite EntityType', () => {
-    const fqn = 'test.default';
+    const fqn = TEST_DEFAULT;
     entityUtil.getEntityLink(EntityType.TEST_SUITE, fqn);
 
     expect(getTestSuiteDetailsPath).toHaveBeenCalledWith({
-      fullyQualifiedName: 'test.default',
+      fullyQualifiedName: TEST_DEFAULT,
       isExecutableTestSuite: undefined,
     });
   });
@@ -216,7 +218,7 @@ describe('EntityUtilClassBase', () => {
   });
 
   it('should return table details path for default case', () => {
-    const fqn = 'test.default';
+    const fqn = TEST_DEFAULT;
     entityUtil.getEntityLink('default', fqn);
 
     expect(getEntityDetailsPath).toHaveBeenCalledWith(

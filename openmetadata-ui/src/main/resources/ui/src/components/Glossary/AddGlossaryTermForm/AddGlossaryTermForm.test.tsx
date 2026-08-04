@@ -32,6 +32,9 @@ import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import AddGlossaryTermForm from './AddGlossaryTermForm.component';
 import { GlossaryTermForm } from './AddGlossaryTermForm.interface';
 
+const SUBMIT_VALUES = 'submit-values';
+const EXTENSION_SUMMARY = 'extension-summary';
+
 // AddGlossaryTermForm is a legacy antd form whose required `formRef` prop must be
 // a real antd FormInstance from the same module instance the component uses.
 // `jest.requireActual` returns a separate copy (fields stay unregistered,
@@ -246,7 +249,7 @@ const FormHarness = ({
       />
       {formValues && (
         <button
-          data-testid="submit-values"
+          data-testid={SUBMIT_VALUES}
           onClick={() => {
             form.setFieldsValue(formValues);
             form.submit();
@@ -291,7 +294,7 @@ describe('AddGlossaryTermForm intake fields', () => {
 
     render(<FormHarness onSave={jest.fn()} />);
 
-    expect(await screen.findByTestId('extension-summary')).toBeInTheDocument();
+    expect(await screen.findByTestId(EXTENSION_SUMMARY)).toBeInTheDocument();
     expect(screen.getByTestId('extension-relatedTerm')).toBeInTheDocument();
     expect(
       screen.getByTestId('extension-documentation-url')
@@ -351,10 +354,10 @@ describe('AddGlossaryTermForm intake fields', () => {
       />
     );
 
-    expect(await screen.findByTestId('extension-summary')).toBeInTheDocument();
+    expect(await screen.findByTestId(EXTENSION_SUMMARY)).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-values'));
+      fireEvent.click(screen.getByTestId(SUBMIT_VALUES));
     });
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
@@ -376,11 +379,11 @@ describe('AddGlossaryTermForm intake fields', () => {
 
     await waitFor(() => expect(mockedGetIntakeForm).toHaveBeenCalled());
 
-    expect(screen.queryByTestId('extension-summary')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EXTENSION_SUMMARY)).not.toBeInTheDocument();
 
     await act(async () => resolveCustomProperties(customProperties));
 
-    expect(await screen.findByTestId('extension-summary')).toBeInTheDocument();
+    expect(await screen.findByTestId(EXTENSION_SUMMARY)).toBeInTheDocument();
   });
 
   it('does not fetch or render intake fields in edit mode', () => {
@@ -388,7 +391,7 @@ describe('AddGlossaryTermForm intake fields', () => {
 
     expect(mockedGetIntakeForm).not.toHaveBeenCalled();
     expect(mockedGetCustomProperties).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('extension-summary')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EXTENSION_SUMMARY)).not.toBeInTheDocument();
   });
 
   it('serializes values typed into the intake fields into the submit payload', async () => {
@@ -422,7 +425,7 @@ describe('AddGlossaryTermForm intake fields', () => {
     fireEvent.change(extensionInput('extension-score'), {
       target: { value: '42' },
     });
-    fireEvent.change(extensionInput('extension-summary'), {
+    fireEvent.change(extensionInput(EXTENSION_SUMMARY), {
       target: { value: 'governed term' },
     });
     fireEvent.change(extensionInput('extension-documentation-url'), {
@@ -430,7 +433,7 @@ describe('AddGlossaryTermForm intake fields', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-values'));
+      fireEvent.click(screen.getByTestId(SUBMIT_VALUES));
     });
 
     await waitFor(() =>
@@ -465,10 +468,10 @@ describe('AddGlossaryTermForm intake fields', () => {
       />
     );
 
-    await screen.findByTestId('extension-summary');
+    await screen.findByTestId(EXTENSION_SUMMARY);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('submit-values'));
+      fireEvent.click(screen.getByTestId(SUBMIT_VALUES));
     });
 
     expect(onSave).not.toHaveBeenCalled();
@@ -502,7 +505,7 @@ describe('AddGlossaryTermForm intake fields', () => {
       await waitFor(() => expect(mockedGetIntakeForm).toHaveBeenCalled());
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('submit-values'));
+        fireEvent.click(screen.getByTestId(SUBMIT_VALUES));
       });
 
       expect(await screen.findByText(errorMessage)).toBeInTheDocument();

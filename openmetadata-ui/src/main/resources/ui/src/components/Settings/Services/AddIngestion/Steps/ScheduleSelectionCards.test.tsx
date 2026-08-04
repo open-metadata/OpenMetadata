@@ -15,6 +15,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
 import ScheduleSelectionCards from './ScheduleSelectionCards';
 
+const SCHEDULAR_ON_DEMAND = 'schedular-onDemand';
+
 const OPTIONS: SelectionOption[] = [
   {
     value: 'schedule',
@@ -47,7 +49,7 @@ describe('ScheduleSelectionCards', () => {
     render(<ScheduleSelectionCards options={OPTIONS} value="schedule" />);
 
     const scheduleCard = screen.getByTestId('schedular-schedule');
-    const onDemandCard = screen.getByTestId('schedular-onDemand');
+    const onDemandCard = screen.getByTestId(SCHEDULAR_ON_DEMAND);
 
     expect(
       within(scheduleCard).getByTestId('selected-indicator')
@@ -67,7 +69,7 @@ describe('ScheduleSelectionCards', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('schedular-onDemand'));
+    fireEvent.click(screen.getByTestId(SCHEDULAR_ON_DEMAND));
 
     expect(onChange).toHaveBeenCalledWith('onDemand');
   });
@@ -83,7 +85,7 @@ describe('ScheduleSelectionCards', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('schedular-onDemand'));
+    fireEvent.click(screen.getByTestId(SCHEDULAR_ON_DEMAND));
 
     expect(onChange).not.toHaveBeenCalled();
   });

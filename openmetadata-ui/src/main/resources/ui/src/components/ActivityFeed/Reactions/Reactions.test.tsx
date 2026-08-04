@@ -15,6 +15,10 @@ import { fireEvent, render } from '@testing-library/react';
 import { ReactionType } from '../../../generated/type/reaction';
 import Reactions from './Reactions';
 
+const _2E424734_761A_443F_BF2A_A5B361823C80 =
+  '2e424734-761a-443f-bf2a-a5b361823c80';
+const AARON_JOHNSON = 'Aaron Johnson';
+
 jest.mock('./Emoji', () =>
   jest.fn().mockReturnValue(<button data-testid="emoji">Emoji</button>)
 );
@@ -29,88 +33,88 @@ const reactions = [
   {
     reactionType: ReactionType.Heart,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },
   {
     reactionType: ReactionType.Confused,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },
   {
     reactionType: ReactionType.Laugh,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },
   {
     reactionType: ReactionType.ThumbsDown,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },
   {
     reactionType: ReactionType.ThumbsUp,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },
   {
     reactionType: ReactionType.Hooray,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },
   {
     reactionType: ReactionType.Rocket,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },
   {
     reactionType: ReactionType.Eyes,
     user: {
-      id: '2e424734-761a-443f-bf2a-a5b361823c80',
+      id: _2E424734_761A_443F_BF2A_A5B361823C80,
       type: 'user',
       name: 'aaron_johnson0',
       fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
+      displayName: AARON_JOHNSON,
       deleted: false,
     },
   },

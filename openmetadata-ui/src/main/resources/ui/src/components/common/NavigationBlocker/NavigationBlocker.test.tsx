@@ -15,6 +15,11 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { NavigationBlocker } from './NavigationBlocker';
 
+const UNSAVED_CHANGES = 'Unsaved changes' as const;
+const DO_YOU_WANT_TO_SAVE_OR =
+  'Do you want to save or discard changes?' as const;
+const SAVE_CHANGES = 'Save changes' as const;
+
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -98,13 +103,11 @@ describe('NavigationBlocker component', () => {
     fireEvent.click(link);
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
-    expect(
-      screen.getByText('Do you want to save or discard changes?')
-    ).toBeInTheDocument();
+    expect(screen.getByText(UNSAVED_CHANGES)).toBeInTheDocument();
+    expect(screen.getByText(DO_YOU_WANT_TO_SAVE_OR)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Save changes' })
+      screen.getByRole('button', { name: SAVE_CHANGES })
     ).toBeInTheDocument();
   });
 
@@ -129,7 +132,7 @@ describe('NavigationBlocker component', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     // Click save button (which calls onConfirm)
-    const saveButton = screen.getByRole('button', { name: 'Save changes' });
+    const saveButton = screen.getByRole('button', { name: SAVE_CHANGES });
     await act(async () => {
       await fireEvent.click(saveButton);
     });
@@ -203,13 +206,11 @@ describe('NavigationBlocker component', () => {
 
     // Check default content
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
-    expect(
-      screen.getByText('Do you want to save or discard changes?')
-    ).toBeInTheDocument();
+    expect(screen.getByText(UNSAVED_CHANGES)).toBeInTheDocument();
+    expect(screen.getByText(DO_YOU_WANT_TO_SAVE_OR)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Save changes' })
+      screen.getByRole('button', { name: SAVE_CHANGES })
     ).toBeInTheDocument();
   });
 

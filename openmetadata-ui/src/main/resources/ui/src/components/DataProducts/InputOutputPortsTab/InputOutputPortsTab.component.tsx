@@ -50,6 +50,11 @@ import {
 import { PortsLineageView } from './PortsLineageView';
 import { PortsListView, PortsListViewRef } from './PortsListView';
 
+const LABEL_INPUT = 'label.input';
+const LABEL_OUTPUT = 'label.output';
+const LABEL_ENTITY_PORT_PLURAL = 'label.entity-port-plural';
+const LABEL_ADD_ENTITY = 'label.add-entity';
+
 export const InputOutputPortsTab = forwardRef<
   InputOutputPortsTabRef,
   InputOutputPortsTabProps
@@ -250,8 +255,8 @@ export const InputOutputPortsTab = forwardRef<
                       <Typography
                         as="p"
                         className="tw:text-xs tw:text-secondary tw:font-light">
-                        ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
-                        {outputPortsCount} {t('label.output').toLowerCase()})
+                        ({inputPortsCount} {t(LABEL_INPUT).toLowerCase()},{' '}
+                        {outputPortsCount} {t(LABEL_OUTPUT).toLowerCase()})
                       </Typography>
                     )}
                   </div>
@@ -298,8 +303,8 @@ export const InputOutputPortsTab = forwardRef<
                   <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
                     <div className="tw:flex tw:items-baseline tw:gap-1">
                       <Typography as="span" className="tw:text-md">
-                        {t('label.entity-port-plural', {
-                          entity: t('label.input'),
+                        {t(LABEL_ENTITY_PORT_PLURAL, {
+                          entity: t(LABEL_INPUT),
                         })}
                       </Typography>
                       <Typography
@@ -351,9 +356,9 @@ export const InputOutputPortsTab = forwardRef<
                             data-testid="add-input-port-button"
                             iconLeading={<PlusOutlined />}
                             onClick={handleAddInputPort}>
-                            {t('label.add-entity', {
-                              entity: t('label.entity-port-plural', {
-                                entity: t('label.input'),
+                            {t(LABEL_ADD_ENTITY, {
+                              entity: t(LABEL_ENTITY_PORT_PLURAL, {
+                                entity: t(LABEL_INPUT),
                               }),
                             })}
                           </Button>
@@ -388,8 +393,8 @@ export const InputOutputPortsTab = forwardRef<
                   <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
                     <div className="tw:flex tw:items-baseline tw:gap-1">
                       <Typography as="span" className="tw:text-md">
-                        {t('label.entity-port-plural', {
-                          entity: t('label.output'),
+                        {t(LABEL_ENTITY_PORT_PLURAL, {
+                          entity: t(LABEL_OUTPUT),
                         })}
                       </Typography>
                       <Typography
@@ -443,9 +448,9 @@ export const InputOutputPortsTab = forwardRef<
                             data-testid="add-output-port-button"
                             iconLeading={<PlusOutlined />}
                             onClick={handleAddOutputPort}>
-                            {t('label.add-entity', {
-                              entity: t('label.entity-port-plural', {
-                                entity: t('label.output'),
+                            {t(LABEL_ADD_ENTITY, {
+                              entity: t(LABEL_ENTITY_PORT_PLURAL, {
+                                entity: t(LABEL_OUTPUT),
                               }),
                             })}
                           </Button>
@@ -470,8 +475,8 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
-          title={t('label.add-entity', {
-            entity: t('label.entity-port-plural', { entity: t('label.input') }),
+          title={t(LABEL_ADD_ENTITY, {
+            entity: t(LABEL_ENTITY_PORT_PLURAL, { entity: t(LABEL_INPUT) }),
           })}
           type={AssetsOfEntity.DATA_PRODUCT_INPUT_PORT}
           onCancel={() => setIsAddingInputPort(false)}
@@ -483,9 +488,9 @@ export const InputOutputPortsTab = forwardRef<
           infoBannerText={t('message.output-ports-from-data-product-assets')}
           open={isAddingOutputPort}
           queryFilter={portQueryFilter}
-          title={t('label.add-entity', {
-            entity: t('label.entity-port-plural', {
-              entity: t('label.output'),
+          title={t(LABEL_ADD_ENTITY, {
+            entity: t(LABEL_ENTITY_PORT_PLURAL, {
+              entity: t(LABEL_OUTPUT),
             }),
           })}
           type={AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT}

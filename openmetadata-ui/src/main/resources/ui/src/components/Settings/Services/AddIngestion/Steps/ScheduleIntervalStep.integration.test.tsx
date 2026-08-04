@@ -27,6 +27,8 @@ import { LOADING_STATE } from '../../../../../enums/common.enum';
 import { ScheduleIntervalHandle } from './ScheduleInterval.interface';
 import ScheduleIntervalStep from './ScheduleIntervalStep';
 
+const FREQUENCY_CUSTOM = 'frequency-custom';
+
 const mockOnDeploy = jest.fn();
 
 const renderStep = (ref: React.Ref<ScheduleIntervalHandle>) =>
@@ -48,7 +50,7 @@ describe('ScheduleIntervalStep with the real scheduler', () => {
     const ref = createRef<ScheduleIntervalHandle>();
     renderStep(ref);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } });
 
     expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
@@ -64,7 +66,7 @@ describe('ScheduleIntervalStep with the real scheduler', () => {
     const ref = createRef<ScheduleIntervalHandle>();
     renderStep(ref);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '0 0 * *' },
     });
@@ -82,7 +84,7 @@ describe('ScheduleIntervalStep with the real scheduler', () => {
     const ref = createRef<ScheduleIntervalHandle>();
     renderStep(ref);
 
-    fireEvent.click(screen.getByTestId('frequency-custom'));
+    fireEvent.click(screen.getByTestId(FREQUENCY_CUSTOM));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } });
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: '0 3 * * *' },

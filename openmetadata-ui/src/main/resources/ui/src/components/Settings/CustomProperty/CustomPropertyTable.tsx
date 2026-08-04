@@ -35,6 +35,8 @@ import EditCustomPropertyModal, {
   FormData,
 } from './EditCustomPropertyModal/EditCustomPropertyModal';
 
+const LABEL_PROPERTY = 'label.property';
+
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
   updateEntityType,
@@ -209,7 +211,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               title={
                 hasAccess
                   ? t('label.edit-entity', {
-                      entity: t('label.property'),
+                      entity: t(LABEL_PROPERTY),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
@@ -230,7 +232,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               title={
                 hasAccess
                   ? t('label.delete-entity', {
-                      entity: t('label.property'),
+                      entity: t(LABEL_PROPERTY),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
@@ -267,7 +269,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
             <ErrorPlaceHolder
               className="mt-xs border-none"
               doc={ADD_CUSTOM_PROPERTIES_DOCS}
-              heading={t('label.property')}
+              heading={t(LABEL_PROPERTY)}
               permission={hasAccess}
               permissionValue={t('label.create-entity', {
                 entity: t('label.custom-property'),

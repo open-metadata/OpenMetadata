@@ -19,6 +19,10 @@ import {
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import ContractSemantics from './ContractSemantics.component';
 
+const FIRST_SEMANTIC_RULE_DESCRIPTION = 'First semantic rule description';
+const AND_VAR_NAME_TEST = '{"and":[{"==":[{"var":"name"},"test"]}]}';
+const SECOND_SEMANTIC_RULE_DESCRIPTION = 'Second semantic rule description';
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
   return function MockRichTextEditorPreviewerNew({
     markdown,
@@ -61,13 +65,13 @@ jest.mock('react-i18next', () => ({
 const mockSemantics: SemanticsRule[] = [
   {
     name: 'Rule 1',
-    description: 'First semantic rule description',
-    rule: '{"and":[{"==":[{"var":"name"},"test"]}]}',
+    description: FIRST_SEMANTIC_RULE_DESCRIPTION,
+    rule: AND_VAR_NAME_TEST,
     enabled: true,
   },
   {
     name: 'Rule 2',
-    description: 'Second semantic rule description',
+    description: SECOND_SEMANTIC_RULE_DESCRIPTION,
     rule: '{"and":[{"==":[{"var":"age"},"25"]}]}',
     enabled: true,
   },
@@ -84,7 +88,7 @@ const mockLatestContractResults: DataContractResult = {
     failedRules: [
       {
         ruleName: 'Rule 2',
-        reason: 'Second semantic rule description',
+        reason: SECOND_SEMANTIC_RULE_DESCRIPTION,
       },
     ],
   },
@@ -107,10 +111,10 @@ describe('ContractSemantics', () => {
       render(<ContractSemantics semantics={mockSemantics} />);
 
       expect(
-        screen.getByText('First semantic rule description')
+        screen.getByText(FIRST_SEMANTIC_RULE_DESCRIPTION)
       ).toBeInTheDocument();
       expect(
-        screen.getByText('Second semantic rule description')
+        screen.getByText(SECOND_SEMANTIC_RULE_DESCRIPTION)
       ).toBeInTheDocument();
     });
 
@@ -204,10 +208,10 @@ describe('ContractSemantics', () => {
 
       expect(richTextPreviews).toHaveLength(2);
       expect(richTextPreviews[0]).toHaveTextContent(
-        'First semantic rule description'
+        FIRST_SEMANTIC_RULE_DESCRIPTION
       );
       expect(richTextPreviews[1]).toHaveTextContent(
-        'Second semantic rule description'
+        SECOND_SEMANTIC_RULE_DESCRIPTION
       );
     });
   });
@@ -243,7 +247,7 @@ describe('ContractSemantics', () => {
         {
           name: 'Rule Without Description',
           description: '',
-          rule: '{"and":[{"==":[{"var":"name"},"test"]}]}',
+          rule: AND_VAR_NAME_TEST,
           enabled: true,
         },
       ];
@@ -297,7 +301,7 @@ describe('ContractSemantics', () => {
         {
           name: 'Single Rule',
           description: 'Single rule description',
-          rule: '{"and":[{"==":[{"var":"name"},"test"]}]}',
+          rule: AND_VAR_NAME_TEST,
           enabled: true,
         },
       ];

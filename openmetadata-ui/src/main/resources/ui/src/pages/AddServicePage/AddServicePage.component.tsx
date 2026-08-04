@@ -70,6 +70,9 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
+const LABEL_SERVICE = 'label.service';
+const SERVICE_NAME = 'service-name';
+
 const ConnectionConfigForm = lazy(
   () =>
     import(
@@ -156,7 +159,7 @@ const AddServicePage = () => {
         ? [
             {
               label: t('label.add-new-entity', {
-                entity: t('label.service'),
+                entity: t(LABEL_SERVICE),
               }),
               id: 'add-service',
             },
@@ -216,7 +219,7 @@ const AddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
-      document.getElementById('service-name')?.focus();
+      document.getElementById(SERVICE_NAME)?.focus();
 
       return;
     }
@@ -285,7 +288,7 @@ const AddServicePage = () => {
     } catch (error) {
       handleEntityCreationError({
         error: error as AxiosError,
-        entity: t('label.service'),
+        entity: t(LABEL_SERVICE),
         entityLowercase: t('label.service-lowercase'),
         entityLowercasePlural: t('label.service-lowercase-plural'),
         setInlineAlertDetails,
@@ -395,7 +398,7 @@ const AddServicePage = () => {
                   data-testid="header"
                   size="text-xl"
                   weight="semibold">
-                  {`${serviceConfig.serviceType} ${t('label.service')}`}
+                  {`${serviceConfig.serviceType} ${t(LABEL_SERVICE)}`}
                 </Typography>
               </div>
             ) : (
@@ -404,7 +407,7 @@ const AddServicePage = () => {
                 data-testid="header"
                 size="text-xl"
                 weight="semibold">
-                {t('label.add-new-entity', { entity: t('label.service') })}
+                {t('label.add-new-entity', { entity: t(LABEL_SERVICE) })}
               </Typography>
             )}
 
@@ -470,13 +473,13 @@ const AddServicePage = () => {
                               fieldText: t('label.service-name'),
                             })
                           );
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME)?.focus();
 
                           return false;
                         }
 
                         if (nameError || isServiceNameChecking) {
-                          document.getElementById('service-name')?.focus();
+                          document.getElementById(SERVICE_NAME)?.focus();
 
                           return false;
                         }
@@ -558,7 +561,7 @@ const AddServicePage = () => {
             wrapInCard: false,
           }}
           hideSecondPanel={hideSecondPanel}
-          pageTitle={t('label.add-entity', { entity: t('label.service') })}
+          pageTitle={t('label.add-entity', { entity: t(LABEL_SERVICE) })}
           secondPanel={{
             children: (
               <Suspense fallback={null}>

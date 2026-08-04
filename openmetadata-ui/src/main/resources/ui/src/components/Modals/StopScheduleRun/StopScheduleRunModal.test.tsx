@@ -21,6 +21,8 @@ import { stopApp } from '../../../rest/applicationAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import StopScheduleModal from './StopScheduleRunModal';
 
+const LABEL_CONFIRM = 'label.confirm' as const;
+
 jest.mock('../../../rest/applicationAPI', () => ({
   stopApp: jest.fn(),
 }));
@@ -54,7 +56,7 @@ describe('StopScheduleModal', () => {
 
     render(<StopScheduleModal {...mockProps} />);
 
-    const confirmButton = screen.getByText('label.confirm');
+    const confirmButton = screen.getByText(LABEL_CONFIRM);
     fireEvent.click(confirmButton);
 
     expect(stopApp).toHaveBeenCalledWith('test-app', undefined);
@@ -70,7 +72,7 @@ describe('StopScheduleModal', () => {
 
     render(<StopScheduleModal {...mockProps} />);
 
-    const confirmButton = screen.getByText('label.confirm');
+    const confirmButton = screen.getByText(LABEL_CONFIRM);
     await act(async () => {
       fireEvent.click(confirmButton);
     });
@@ -97,7 +99,7 @@ describe('StopScheduleModal', () => {
 
     render(<StopScheduleModal {...mockProps} runId="run-123" />);
 
-    const confirmButton = screen.getByText('label.confirm');
+    const confirmButton = screen.getByText(LABEL_CONFIRM);
     fireEvent.click(confirmButton);
 
     expect(stopApp).toHaveBeenCalledWith('test-app', 'run-123');
@@ -112,7 +114,7 @@ describe('StopScheduleModal', () => {
 
     render(<StopScheduleModal {...mockProps} />);
 
-    const confirmButton = screen.getByText('label.confirm');
+    const confirmButton = screen.getByText(LABEL_CONFIRM);
     fireEvent.click(confirmButton);
 
     expect(stopApp).toHaveBeenCalledWith('test-app', undefined);

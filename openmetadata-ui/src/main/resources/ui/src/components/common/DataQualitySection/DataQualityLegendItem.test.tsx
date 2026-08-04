@@ -13,6 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import { DataQualityLegendItem } from './DataQualityLegendItem';
 
+const LEGEND_ITEM = '.legend-item';
+const LEGEND_DOT = '.legend-dot';
 jest.mock('antd', () => {
   const actual = jest.requireActual('antd');
 
@@ -44,7 +46,7 @@ describe('DataQualityLegendItem', () => {
       <DataQualityLegendItem count={0} label="Passed" type="success" />
     );
 
-    const legendItem = container.querySelector('.legend-item');
+    const legendItem = container.querySelector(LEGEND_ITEM);
 
     expect(legendItem).not.toBeInTheDocument();
   });
@@ -54,7 +56,7 @@ describe('DataQualityLegendItem', () => {
       <DataQualityLegendItem count={-5} label="Passed" type="success" />
     );
 
-    const legendItem = container.querySelector('.legend-item');
+    const legendItem = container.querySelector(LEGEND_ITEM);
 
     expect(legendItem).not.toBeInTheDocument();
   });
@@ -64,7 +66,7 @@ describe('DataQualityLegendItem', () => {
       <DataQualityLegendItem count={10} label="Passed" type="success" />
     );
 
-    const legendDot = container.querySelector('.legend-dot');
+    const legendDot = container.querySelector(LEGEND_DOT);
 
     expect(legendDot).toHaveClass('success');
   });
@@ -74,7 +76,7 @@ describe('DataQualityLegendItem', () => {
       <DataQualityLegendItem count={5} label="Aborted" type="aborted" />
     );
 
-    const legendDot = container.querySelector('.legend-dot');
+    const legendDot = container.querySelector(LEGEND_DOT);
 
     expect(legendDot).toHaveClass('aborted');
   });
@@ -84,7 +86,7 @@ describe('DataQualityLegendItem', () => {
       <DataQualityLegendItem count={3} label="Failed" type="failed" />
     );
 
-    const legendDot = container.querySelector('.legend-dot');
+    const legendDot = container.querySelector(LEGEND_DOT);
 
     expect(legendDot).toHaveClass('failed');
   });
@@ -126,11 +128,11 @@ describe('DataQualityLegendItem', () => {
       <DataQualityLegendItem count={10} label="Passed" type="success" />
     );
 
-    const legendItem = container.querySelector('.legend-item');
+    const legendItem = container.querySelector(LEGEND_ITEM);
 
     expect(legendItem).toHaveClass('legend-item');
 
-    const legendDot = legendItem?.querySelector('.legend-dot');
+    const legendDot = legendItem?.querySelector(LEGEND_DOT);
 
     expect(legendDot).toHaveClass('legend-dot');
     expect(legendDot).toHaveClass('success');
@@ -145,7 +147,7 @@ describe('DataQualityLegendItem', () => {
       <DataQualityLegendItem count={0} label="Zero" type="success" />
     );
 
-    const legendItem = container.querySelector('.legend-item');
+    const legendItem = container.querySelector(LEGEND_ITEM);
 
     expect(legendItem).not.toBeInTheDocument();
   });

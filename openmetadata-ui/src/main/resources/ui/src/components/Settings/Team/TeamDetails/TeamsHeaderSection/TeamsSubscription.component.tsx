@@ -38,6 +38,9 @@ import { Webhook } from '../../../../../generated/type/profile';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 import './teams-subscription.less';
+
+const LABEL_SUBSCRIPTION = 'label.subscription';
+const LABEL_ENDPOINT = 'label.endpoint';
 const TeamsSubscription = ({
   subscription,
   hasEditPermission,
@@ -146,12 +149,12 @@ const TeamsSubscription = ({
       data-testid="teams-subscription">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
         <Typography.Text className="right-panel-label text-sm font-medium subscription-label">
-          {`${t('label.subscription')}`}
+          {`${t(LABEL_SUBSCRIPTION)}`}
         </Typography.Text>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
           <Tooltip
             title={t('label.edit-entity', {
-              entity: t('label.subscription'),
+              entity: t(LABEL_SUBSCRIPTION),
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
@@ -169,7 +172,7 @@ const TeamsSubscription = ({
         {isEmpty(subscription) && hasEditPermission && (
           <Tooltip
             title={t('label.edit-entity', {
-              entity: t('label.subscription'),
+              entity: t(LABEL_SUBSCRIPTION),
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
@@ -211,7 +214,7 @@ const TeamsSubscription = ({
             }}
             okText={t('label.confirm')}
             title={t('label.add-entity', {
-              entity: t('label.subscription'),
+              entity: t(LABEL_SUBSCRIPTION),
             })}
             onCancel={() => setEditSubscription(false)}>
             <Form
@@ -229,13 +232,13 @@ const TeamsSubscription = ({
                 />
               </Form.Item>
               <Form.Item
-                label={t('label.endpoint')}
+                label={t(LABEL_ENDPOINT)}
                 name="endpoint"
                 rules={[
                   {
                     required: !isWebhookEmpty,
                     message: t('label.field-required-plural', {
-                      field: t('label.endpoint'),
+                      field: t(LABEL_ENDPOINT),
                     }),
                   },
                   {
@@ -246,7 +249,7 @@ const TeamsSubscription = ({
                 <Input
                   disabled={isWebhookEmpty}
                   placeholder={t('label.enter-entity-value', {
-                    entity: t('label.endpoint'),
+                    entity: t(LABEL_ENDPOINT),
                   })}
                 />
               </Form.Item>

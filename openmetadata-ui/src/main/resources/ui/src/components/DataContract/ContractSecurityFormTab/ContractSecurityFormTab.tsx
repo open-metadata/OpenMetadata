@@ -50,6 +50,9 @@ import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-security-form-tab.less';
 
+const LABEL_PLEASE_ENTER_ENTITY_NAME = 'label.please-enter-entity-name';
+const LABEL_PLEASE_ENTER_VALUE = 'label.please-enter-value';
+
 export const ContractSecurityFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
   onNext: () => void;
@@ -183,7 +186,7 @@ export const ContractSecurityFormTab: React.FC<{
               name="dataClassification">
               <Input
                 data-testid="data-classification-input"
-                placeholder={t('label.please-enter-entity-name', {
+                placeholder={t(LABEL_PLEASE_ENTER_ENTITY_NAME, {
                   entity: t('label.data-classification'),
                 })}
               />
@@ -287,7 +290,7 @@ export const ContractSecurityFormTab: React.FC<{
                                   <Input
                                     data-testid={`access-policy-input-${policyIndex}`}
                                     placeholder={t(
-                                      'label.please-enter-entity-name',
+                                      LABEL_PLEASE_ENTER_ENTITY_NAME,
                                       {
                                         entity: t('label.access-policy'),
                                       }
@@ -305,7 +308,7 @@ export const ContractSecurityFormTab: React.FC<{
                                     id={`identities-input-${policyIndex}`}
                                     mode="tags"
                                     open={false}
-                                    placeholder={t('label.please-enter-value', {
+                                    placeholder={t(LABEL_PLEASE_ENTER_VALUE, {
                                       name: t('label.identities'),
                                     })}
                                   />
@@ -380,7 +383,7 @@ export const ContractSecurityFormTab: React.FC<{
                                                         id={`columnName-input-${policyIndex}-${rowFilterIndex}`}
                                                         options={columnOptions}
                                                         placeholder={t(
-                                                          'label.please-enter-entity-name',
+                                                          LABEL_PLEASE_ENTER_ENTITY_NAME,
                                                           {
                                                             entity:
                                                               t('label.column'),
@@ -405,7 +408,7 @@ export const ContractSecurityFormTab: React.FC<{
                                                         mode="tags"
                                                         open={false}
                                                         placeholder={t(
-                                                          'label.please-enter-value',
+                                                          LABEL_PLEASE_ENTER_VALUE,
                                                           {
                                                             name: t(
                                                               'label.column-plural'
@@ -499,7 +502,7 @@ export const ContractSecurityFormTab: React.FC<{
                                               disabled
                                               data-testid={`columnName-input-${policyIndex}-${rowFilterIndex}`}
                                               placeholder={t(
-                                                'label.please-enter-entity-name',
+                                                LABEL_PLEASE_ENTER_ENTITY_NAME,
                                                 {
                                                   entity: t('label.column'),
                                                 }
@@ -522,7 +525,7 @@ export const ContractSecurityFormTab: React.FC<{
                                               mode="tags"
                                               open={false}
                                               placeholder={t(
-                                                'label.please-enter-value',
+                                                LABEL_PLEASE_ENTER_VALUE,
                                                 {
                                                   name: t(
                                                     'label.column-plural'

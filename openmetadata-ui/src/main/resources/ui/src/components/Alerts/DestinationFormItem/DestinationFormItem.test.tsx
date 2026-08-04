@@ -25,6 +25,10 @@ import { testAlertDestination } from '../../../rest/alertsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DestinationFormItem from './DestinationFormItem.component';
 
+const ADD_DESTINATION_BUTTON = 'add-destination-button';
+const HTTPS_EXAMPLE_COM_WEBHOOK = 'https://example.com/webhook';
+const TEST_DESTINATION_BUTTON = 'test-destination-button';
+
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn(),
 }));
@@ -98,7 +102,7 @@ describe('DestinationFormItem', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('label.add-entity')).toBeInTheDocument();
 
-    expect(screen.getByTestId('add-destination-button')).toBeInTheDocument();
+    expect(screen.getByTestId(ADD_DESTINATION_BUTTON)).toBeInTheDocument();
   });
 
   it('add destination button should be disabled if there is no selected trigger', () => {
@@ -117,7 +121,7 @@ describe('DestinationFormItem', () => {
 
     render(<DestinationFormItem />);
 
-    expect(screen.getByTestId('add-destination-button')).toBeDisabled();
+    expect(screen.getByTestId(ADD_DESTINATION_BUTTON)).toBeDisabled();
   });
 
   it('add destination button should be enabled if there is selected trigger', () => {
@@ -136,7 +140,7 @@ describe('DestinationFormItem', () => {
 
     render(<DestinationFormItem />);
 
-    expect(screen.getByTestId('add-destination-button')).toBeEnabled();
+    expect(screen.getByTestId(ADD_DESTINATION_BUTTON)).toBeEnabled();
   });
 
   it('should display the connection timeout field', () => {
@@ -170,7 +174,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
             headers: [{ key: 'Content-Type', value: 'application/json' }],
             queryParams: [{ key: 'param1', value: 'value1' }],
           },
@@ -190,7 +194,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
             headers: { 'Content-Type': 'application/json' },
             queryParams: { param1: 'value1' },
           },
@@ -233,7 +237,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
             headers: { 'Content-Type': 'application/json' },
             queryParams: { param1: 'value1' },
           },
@@ -243,7 +247,7 @@ describe('DestinationFormItem', () => {
 
       render(<DestinationFormItem />);
 
-      const testButton = screen.getByTestId('test-destination-button');
+      const testButton = screen.getByTestId(TEST_DESTINATION_BUTTON);
 
       expect(testButton).toBeEnabled();
 
@@ -271,7 +275,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
         },
         {
@@ -287,7 +291,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
         },
         {
@@ -325,7 +329,7 @@ describe('DestinationFormItem', () => {
 
       render(<DestinationFormItem />);
 
-      const testButton = screen.getByTestId('test-destination-button');
+      const testButton = screen.getByTestId(TEST_DESTINATION_BUTTON);
 
       await act(async () => {
         fireEvent.click(testButton);
@@ -338,7 +342,7 @@ describe('DestinationFormItem', () => {
               category: SubscriptionCategory.External,
               type: SubscriptionType.Webhook,
               config: {
-                endpoint: 'https://example.com/webhook',
+                endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
               },
             },
           ],
@@ -353,7 +357,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
         },
         {
@@ -369,7 +373,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
         },
         {
@@ -407,7 +411,7 @@ describe('DestinationFormItem', () => {
 
       render(<DestinationFormItem />);
 
-      const testButton = screen.getByTestId('test-destination-button');
+      const testButton = screen.getByTestId(TEST_DESTINATION_BUTTON);
 
       await act(async () => {
         fireEvent.click(testButton);
@@ -420,7 +424,7 @@ describe('DestinationFormItem', () => {
               category: SubscriptionCategory.External,
               type: SubscriptionType.Webhook,
               config: {
-                endpoint: 'https://example.com/webhook',
+                endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
               },
             },
           ],
@@ -436,7 +440,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
         },
       ];
@@ -469,7 +473,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
         },
       ]);
@@ -477,7 +481,7 @@ describe('DestinationFormItem', () => {
 
       render(<DestinationFormItem />);
 
-      const testButton = screen.getByTestId('test-destination-button');
+      const testButton = screen.getByTestId(TEST_DESTINATION_BUTTON);
 
       await act(async () => {
         fireEvent.click(testButton);
@@ -525,7 +529,7 @@ describe('DestinationFormItem', () => {
 
       render(<DestinationFormItem />);
 
-      const testButton = screen.getByTestId('test-destination-button');
+      const testButton = screen.getByTestId(TEST_DESTINATION_BUTTON);
 
       await act(async () => {
         fireEvent.click(testButton);
@@ -573,7 +577,7 @@ describe('DestinationFormItem', () => {
 
       render(<DestinationFormItem />);
 
-      const testButton = screen.getByTestId('test-destination-button');
+      const testButton = screen.getByTestId(TEST_DESTINATION_BUTTON);
 
       expect(testButton).toBeDisabled();
     });
@@ -585,7 +589,7 @@ describe('DestinationFormItem', () => {
           category: SubscriptionCategory.External,
           type: SubscriptionType.Webhook,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
         },
       ];
@@ -615,7 +619,7 @@ describe('DestinationFormItem', () => {
 
       render(<DestinationFormItem />);
 
-      const testButton = screen.getByTestId('test-destination-button');
+      const testButton = screen.getByTestId(TEST_DESTINATION_BUTTON);
 
       expect(testButton).toBeEnabled();
     });

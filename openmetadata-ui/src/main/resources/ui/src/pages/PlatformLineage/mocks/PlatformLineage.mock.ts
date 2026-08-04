@@ -16,6 +16,9 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
 import { AppPreferences } from '../../../interface/store.interface';
 
+const LINEAGE_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHO =
+  '/lineage/table/sample_data.ecommerce_db.shopify.dim_customer';
+
 export const MOCK_TABLE_ENTITY: SourceType = {
   id: '123e4567-e89b-12d3-a456-426614174000',
   name: 'dim_customer',
@@ -192,28 +195,28 @@ export const MOCK_APP_PREFERENCES = {
 } as unknown as AppPreferences;
 
 export const MOCK_LOCATION_DEFAULT = {
-  pathname: '/lineage/table/sample_data.ecommerce_db.shopify.dim_customer',
+  pathname: LINEAGE_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHO,
   search: '',
   hash: '',
   state: null,
 };
 
 export const MOCK_LOCATION_FULLSCREEN = {
-  pathname: '/lineage/table/sample_data.ecommerce_db.shopify.dim_customer',
+  pathname: LINEAGE_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHO,
   search: '?fullscreen=true',
   hash: '',
   state: null,
 };
 
 export const MOCK_LOCATION_WITH_PLATFORM_VIEW = {
-  pathname: '/lineage/table/sample_data.ecommerce_db.shopify.dim_customer',
+  pathname: LINEAGE_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHO,
   search: '?platformView=Domain',
   hash: '',
   state: null,
 };
 
 export const MOCK_LOCATION_FULLSCREEN_AND_PLATFORM_VIEW = {
-  pathname: '/lineage/table/sample_data.ecommerce_db.shopify.dim_customer',
+  pathname: LINEAGE_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHO,
   search: '?fullscreen=true&platformView=DataProduct',
   hash: '',
   state: null,

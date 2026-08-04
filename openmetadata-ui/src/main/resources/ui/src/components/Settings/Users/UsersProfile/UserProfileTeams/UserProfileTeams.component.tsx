@@ -27,6 +27,8 @@ import Chip from '../../../../common/Chip/Chip.component';
 import TeamsSelectableNew from '../../../Team/TeamsSelectable/TeamsSelectableNew';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
+const LABEL_TEAM_PLURAL = 'label.team-plural';
+
 const UserProfileTeams = ({
   teams,
   isDeletedUser,
@@ -120,7 +122,7 @@ const UserProfileTeams = ({
 
         <div className="d-flex justify-between w-full">
           <Typography.Text className="text-sm font-medium p-l-xss">
-            {t('label.team-plural')}
+            {t(LABEL_TEAM_PLURAL)}
           </Typography.Text>
 
           <Popover
@@ -137,7 +139,7 @@ const UserProfileTeams = ({
                   </div>
 
                   <Typography.Text className="user-profile-edit-popover-card-title">
-                    {t('label.team-plural')}
+                    {t(LABEL_TEAM_PLURAL)}
                   </Typography.Text>
                 </div>
 
@@ -200,7 +202,7 @@ const UserProfileTeams = ({
             {isAdminUser && !isDeletedUser && (
               <Tooltip
                 title={t('label.edit-entity', {
-                  entity: t('label.team-plural'),
+                  entity: t(LABEL_TEAM_PLURAL),
                 })}>
                 <EditIcon
                   className="cursor-pointer"

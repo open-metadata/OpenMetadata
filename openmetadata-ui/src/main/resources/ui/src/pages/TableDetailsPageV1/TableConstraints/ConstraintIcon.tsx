@@ -24,6 +24,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConstraintType } from '../../../generated/entity/data/table';
 
+const LABEL_ENTITY_KEY = 'label.entity-key';
+
 interface ConstraintIconProps {
   constraintType: ConstraintType;
   showOnlyIcon: boolean;
@@ -40,7 +42,7 @@ const ConstraintIcon = ({
       case ConstraintType.PrimaryKey:
         return {
           icon: IconKey,
-          title: t('label.entity-key', {
+          title: t(LABEL_ENTITY_KEY, {
             entity: t('label.primary'),
           }),
         };
@@ -52,14 +54,14 @@ const ConstraintIcon = ({
       case ConstraintType.DistKey:
         return {
           icon: IconDistribution,
-          title: t('label.entity-key', {
+          title: t(LABEL_ENTITY_KEY, {
             entity: t('label.dist'),
           }),
         };
       case ConstraintType.ClusterKey:
         return {
           icon: IconDistribution,
-          title: t('label.entity-key', {
+          title: t(LABEL_ENTITY_KEY, {
             entity: t('label.cluster'),
           }),
         };
@@ -67,7 +69,7 @@ const ConstraintIcon = ({
       default:
         return {
           icon: IconSort,
-          title: t('label.entity-key', {
+          title: t(LABEL_ENTITY_KEY, {
             entity: t('label.sort'),
           }),
         };

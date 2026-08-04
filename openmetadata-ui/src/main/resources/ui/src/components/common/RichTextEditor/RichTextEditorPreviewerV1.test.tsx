@@ -15,6 +15,13 @@ import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants
 import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from './RichTextEditorPreviewerV1';
 
+const BLOCK_EDITOR = 'block-editor' as const;
+const VIEWER_CONTAINER = 'viewer-container' as const;
+const MARKDOWN_PARSER = 'markdown-parser' as const;
+const LABEL_NO_DESCRIPTION = 'label.no-description' as const;
+const READ_MORE_BUTTON = 'read-more-button' as const;
+const READ_LESS_BUTTON = 'read-less-button' as const;
+
 jest.mock('../../BlockEditor/BlockEditor', () => {
   return jest
     .fn()
@@ -59,23 +66,23 @@ describe('RichTextEditorPreviewerV1', () => {
   it('should render the component with markdown content', async () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} />);
 
-    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
-    expect(screen.getByTestId('markdown-parser')).toBeInTheDocument();
-    expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
+    expect(screen.getByTestId(VIEWER_CONTAINER)).toBeInTheDocument();
+    expect(screen.getByTestId(MARKDOWN_PARSER)).toBeInTheDocument();
+    expect(await screen.findByTestId(BLOCK_EDITOR)).toBeInTheDocument();
   });
 
   it('should render no-description placeholder when markdown is empty', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} markdown="" />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
-    expect(screen.queryByTestId('viewer-container')).not.toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
+    expect(screen.queryByTestId(VIEWER_CONTAINER)).not.toBeInTheDocument();
   });
 
   it('should apply custom className', () => {
     const customClass = 'custom-class';
     render(<RichTextEditorPreviewerV1 {...mockProp} className={customClass} />);
 
-    const container = screen.getByTestId('viewer-container');
+    const container = screen.getByTestId(VIEWER_CONTAINER);
 
     expect(container).toHaveClass('rich-text-editor-container', customClass);
   });
@@ -83,9 +90,9 @@ describe('RichTextEditorPreviewerV1', () => {
   it('should apply text variant className', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} textVariant="white" />);
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
 
-    expect(parser).toHaveClass('markdown-parser', 'white');
+    expect(parser).toHaveClass(MARKDOWN_PARSER, 'white');
   });
 
   it('should apply reducePreviewLineClass when not expanded', () => {
@@ -96,7 +103,7 @@ describe('RichTextEditorPreviewerV1', () => {
       />
     );
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
 
     expect(parser).toHaveClass('custom-line-clamp');
   });
@@ -110,7 +117,7 @@ describe('RichTextEditorPreviewerV1', () => {
       />
     );
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
 
     expect(parser).not.toHaveClass('custom-line-clamp');
   });
@@ -123,7 +130,7 @@ describe('RichTextEditorPreviewerV1', () => {
 
     render(<RichTextEditorPreviewerV1 {...mockProp} />);
 
-    const container = screen.getByTestId('viewer-container');
+    const container = screen.getByTestId(VIEWER_CONTAINER);
 
     expect(container).toHaveClass('text-right');
     expect(container).toHaveAttribute('dir', 'rtl');
@@ -132,7 +139,7 @@ describe('RichTextEditorPreviewerV1', () => {
   it('should show read more button when content exceeds maxLength', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
-    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
   });
 
   it('should not show read more button when content is within maxLength', () => {
@@ -144,7 +151,7 @@ describe('RichTextEditorPreviewerV1', () => {
       />
     );
 
-    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should not show read more button when enableSeeMoreVariant is false', () => {
@@ -152,31 +159,31 @@ describe('RichTextEditorPreviewerV1', () => {
       <RichTextEditorPreviewerV1 {...mockProp} enableSeeMoreVariant={false} />
     );
 
-    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should not show read more button when showReadMoreBtn is false', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} showReadMoreBtn={false} />);
 
-    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should toggle read more state when button is clicked', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
-    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
 
     act(() => {
-      fireEvent.click(screen.getByTestId('read-more-button'));
+      fireEvent.click(screen.getByTestId(READ_MORE_BUTTON));
     });
 
-    expect(screen.getByTestId('read-less-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_LESS_BUTTON)).toBeInTheDocument();
 
     act(() => {
-      fireEvent.click(screen.getByTestId('read-less-button'));
+      fireEvent.click(screen.getByTestId(READ_LESS_BUTTON));
     });
 
-    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
   });
 
   it('should render trimmed content when not expanded', () => {
@@ -190,10 +197,10 @@ describe('RichTextEditorPreviewerV1', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
     act(() => {
-      fireEvent.click(screen.getByTestId('read-more-button'));
+      fireEvent.click(screen.getByTestId(READ_MORE_BUTTON));
     });
 
-    const blockEditor = screen.getByTestId('block-editor');
+    const blockEditor = screen.getByTestId(BLOCK_EDITOR);
 
     // Normalize whitespace in the expected markdown since textContent collapses newlines and spaces
     expect(blockEditor).toHaveTextContent(
@@ -206,7 +213,7 @@ describe('RichTextEditorPreviewerV1', () => {
       <RichTextEditorPreviewerV1 {...mockProp} markdown="Initial content" />
     );
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
+    expect(screen.getByTestId(BLOCK_EDITOR)).toHaveTextContent(
       'Initial content'
     );
 
@@ -214,7 +221,7 @@ describe('RichTextEditorPreviewerV1', () => {
       <RichTextEditorPreviewerV1 {...mockProp} markdown="Updated content" />
     );
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
+    expect(screen.getByTestId(BLOCK_EDITOR)).toHaveTextContent(
       'Updated content'
     );
   });
@@ -231,7 +238,7 @@ describe('RichTextEditorPreviewerV1', () => {
   it('should initialize with expanded state based on isDescriptionExpanded prop', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} isDescriptionExpanded />);
 
-    expect(screen.getByTestId('read-less-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_LESS_BUTTON)).toBeInTheDocument();
   });
 
   it('should update expanded state when isDescriptionExpanded prop changes', () => {
@@ -239,17 +246,17 @@ describe('RichTextEditorPreviewerV1', () => {
       <RichTextEditorPreviewerV1 {...mockProp} isDescriptionExpanded={false} />
     );
 
-    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
 
     rerender(<RichTextEditorPreviewerV1 {...mockProp} isDescriptionExpanded />);
 
-    expect(screen.getByTestId('read-less-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_LESS_BUTTON)).toBeInTheDocument();
   });
 
   it('should render with default props', () => {
     render(<RichTextEditorPreviewerV1 />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should render read more button with correct translation', () => {
@@ -274,7 +281,7 @@ describe('RichTextEditorPreviewerV1', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
     act(() => {
-      fireEvent.click(screen.getByTestId('read-more-button'));
+      fireEvent.click(screen.getByTestId(READ_MORE_BUTTON));
     });
 
     expect(mockT).toHaveBeenCalledWith('label.less-lowercase');
@@ -311,7 +318,7 @@ describe('RichTextEditorPreviewerV1', () => {
 
     render(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
-    expect(screen.getByTestId('block-editor')).toHaveTextContent(
+    expect(screen.getByTestId(BLOCK_EDITOR)).toHaveTextContent(
       'Trimmed content...'
     );
   });
@@ -319,7 +326,7 @@ describe('RichTextEditorPreviewerV1', () => {
   it('should handle empty content after formatting', () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} markdown="" />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should set BlockEditor to non-editable mode', () => {
@@ -345,7 +352,7 @@ describe('RichTextEditorPreviewerV1', () => {
       />
     );
 
-    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
   });
 
   it('should calculate hasReadMore correctly based on markdown length', () => {
@@ -358,7 +365,7 @@ describe('RichTextEditorPreviewerV1', () => {
       />
     );
 
-    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
 
     rerender(
       <RichTextEditorPreviewerV1
@@ -368,7 +375,7 @@ describe('RichTextEditorPreviewerV1', () => {
       />
     );
 
-    expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_MORE_BUTTON)).toBeInTheDocument();
   });
 
   it('should maintain readMore state across re-renders', () => {
@@ -377,13 +384,13 @@ describe('RichTextEditorPreviewerV1', () => {
     );
 
     act(() => {
-      fireEvent.click(screen.getByTestId('read-more-button'));
+      fireEvent.click(screen.getByTestId(READ_MORE_BUTTON));
     });
 
-    expect(screen.getByTestId('read-less-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_LESS_BUTTON)).toBeInTheDocument();
 
     rerender(<RichTextEditorPreviewerV1 {...mockProp} maxLength={50} />);
 
-    expect(screen.getByTestId('read-less-button')).toBeInTheDocument();
+    expect(screen.getByTestId(READ_LESS_BUTTON)).toBeInTheDocument();
   });
 });

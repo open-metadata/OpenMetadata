@@ -54,6 +54,10 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
+const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
+const LABEL_DESTINATION = 'label.destination';
+const LABEL_SELECT_FIELD = 'label.select-field';
+
 function DestinationSelectItem({
   selectorKey,
   id,
@@ -250,8 +254,8 @@ function DestinationSelectItem({
                 rules={[
                   {
                     required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.destination'),
+                    message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                      fieldText: t(LABEL_DESTINATION),
                     }),
                   },
                 ]}>
@@ -262,8 +266,8 @@ function DestinationSelectItem({
                     customDestinationDropdown(menu, selectorKey)
                   }
                   options={destinationOptions}
-                  placeholder={t('label.select-field', {
-                    field: t('label.destination'),
+                  placeholder={t(LABEL_SELECT_FIELD, {
+                    field: t(LABEL_DESTINATION),
                   })}
                   onSelect={(value) => {
                     form.setFieldValue(['destinations', id], {
@@ -294,7 +298,7 @@ function DestinationSelectItem({
                       rules={[
                         {
                           required: true,
-                          message: t('message.field-text-is-required', {
+                          message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                             fieldText: t('label.field'),
                           }),
                         },
@@ -303,8 +307,8 @@ function DestinationSelectItem({
                         className="w-full"
                         data-testid={`destination-type-select-${id}`}
                         options={getSubscriptionTypeOptions(destinationType)}
-                        placeholder={t('label.select-field', {
-                          field: t('label.destination'),
+                        placeholder={t(LABEL_SELECT_FIELD, {
+                          field: t(LABEL_DESTINATION),
                         })}
                         popupClassName="select-options-container"
                       />
@@ -367,7 +371,7 @@ function DestinationSelectItem({
                   rules={[
                     {
                       required: true,
-                      message: t('message.field-text-is-required', {
+                      message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                         fieldText: t('label.field'),
                       }),
                     },
@@ -392,8 +396,8 @@ function DestinationSelectItem({
                     className="w-full"
                     data-testid={`destination-downstream-depth-${id}`}
                     defaultValue={1}
-                    placeholder={t('label.select-field', {
-                      field: t('label.destination'),
+                    placeholder={t(LABEL_SELECT_FIELD, {
+                      field: t(LABEL_DESTINATION),
                     })}
                     type="number"
                   />

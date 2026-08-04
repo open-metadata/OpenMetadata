@@ -18,6 +18,8 @@ import { mockIngestionWorkFlow } from '../../../../mocks/Ingestion.mock';
 import { mockAddIngestionButtonProps } from '../../../../mocks/IngestionListTable.mock';
 import AddIngestionButton from './AddIngestionButton.component';
 
+const ADD_NEW_INGESTION_BUTTON = 'add-new-ingestion-button' as const;
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../../../hoc/LimitWrapper', () =>
@@ -37,7 +39,7 @@ describe('AddIngestionButton', () => {
         wrapper: MemoryRouter,
       });
     });
-    const addIngestionButton = screen.getByTestId('add-new-ingestion-button');
+    const addIngestionButton = screen.getByTestId(ADD_NEW_INGESTION_BUTTON);
 
     fireEvent.click(addIngestionButton);
 
@@ -58,7 +60,7 @@ describe('AddIngestionButton', () => {
         }
       );
     });
-    const addIngestionButton = screen.getByTestId('add-new-ingestion-button');
+    const addIngestionButton = screen.getByTestId(ADD_NEW_INGESTION_BUTTON);
 
     await act(async () => {
       userEvent.click(addIngestionButton);
@@ -74,7 +76,7 @@ describe('AddIngestionButton', () => {
       });
     });
 
-    fireEvent.click(screen.getByTestId('add-new-ingestion-button'));
+    fireEvent.click(screen.getByTestId(ADD_NEW_INGESTION_BUTTON));
 
     expect(
       screen.queryByTestId('agent-item-policyAgent')

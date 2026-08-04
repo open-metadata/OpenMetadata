@@ -20,6 +20,9 @@ import {
 } from './suggestionsAPI';
 import { resolveTask, TaskEntityStatus, TaskResolutionType } from './tasksAPI';
 
+const DB_SCHEMA_MY_TABLE = 'db.schema.my_table';
+const USER_UUID_123 = 'user-uuid-123';
+
 jest.mock('./index', () => ({
   __esModule: true,
   default: { get: jest.fn() },
@@ -36,7 +39,7 @@ const makeTask = (
   suggestionType = 'Description'
 ) => ({
   id,
-  about: { type: 'table', fullyQualifiedName: 'db.schema.my_table' },
+  about: { type: 'table', fullyQualifiedName: DB_SCHEMA_MY_TABLE },
   payload: {
     fieldPath,
     suggestionType,
@@ -147,14 +150,14 @@ describe('suggestionsAPI', () => {
         data: { data: [], paging: {} },
       });
 
-      await getSuggestionsByUserId('user-uuid-123', {
-        entityFQN: 'db.schema.my_table',
+      await getSuggestionsByUserId(USER_UUID_123, {
+        entityFQN: DB_SCHEMA_MY_TABLE,
       });
 
       expect(APIClient.get).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          params: expect.objectContaining({ createdById: 'user-uuid-123' }),
+          params: expect.objectContaining({ createdById: USER_UUID_123 }),
         })
       );
     });
@@ -169,8 +172,8 @@ describe('suggestionsAPI', () => {
       (resolveTask as jest.Mock).mockResolvedValue({});
 
       await approveRejectAllSuggestions(
-        'user-uuid-123',
-        'db.schema.my_table',
+        USER_UUID_123,
+        DB_SCHEMA_MY_TABLE,
         SuggestionType.SuggestDescription,
         SuggestionAction.Accept
       );
@@ -178,7 +181,7 @@ describe('suggestionsAPI', () => {
       expect(APIClient.get).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          params: expect.objectContaining({ createdById: 'user-uuid-123' }),
+          params: expect.objectContaining({ createdById: USER_UUID_123 }),
         })
       );
     });
@@ -200,7 +203,7 @@ describe('suggestionsAPI', () => {
 
       await approveRejectAllSuggestions(
         'user-1',
-        'db.schema.my_table',
+        DB_SCHEMA_MY_TABLE,
         SuggestionType.SuggestDescription,
         SuggestionAction.Accept
       );
@@ -231,7 +234,7 @@ describe('suggestionsAPI', () => {
 
       await approveRejectAllSuggestions(
         'user-1',
-        'db.schema.my_table',
+        DB_SCHEMA_MY_TABLE,
         SuggestionType.SuggestDescription,
         SuggestionAction.Accept
       );

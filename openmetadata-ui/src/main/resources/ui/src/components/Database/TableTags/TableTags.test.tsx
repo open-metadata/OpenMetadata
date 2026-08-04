@@ -18,6 +18,8 @@ import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { LabelType, State, TagSource } from '../../../generated/type/schema';
 import TableTags from './TableTags.component';
 
+const CLASSIFICATION_TAGS_0 = 'classification-tags-0';
+
 jest.mock('../../../utils/FeedElementUtils', () => ({
   getFieldThreadElement: jest
     .fn()
@@ -110,7 +112,7 @@ describe('Test EntityTableTags Component', () => {
       wrapper: Wrapper,
     });
 
-    const tagContainer = await screen.findByTestId('classification-tags-0');
+    const tagContainer = await screen.findByTestId(CLASSIFICATION_TAGS_0);
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -131,7 +133,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('classification-tags-0');
+    const tagContainer = await screen.findByTestId(CLASSIFICATION_TAGS_0);
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -151,7 +153,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('classification-tags-0');
+    const tagContainer = await screen.findByTestId(CLASSIFICATION_TAGS_0);
     const tagPersonal = await screen.findByTestId('tag-PersonalData.Personal');
 
     expect(tagContainer).toBeInTheDocument();
@@ -174,7 +176,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('classification-tags-0');
+    const tagContainer = await screen.findByTestId(CLASSIFICATION_TAGS_0);
     const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();
@@ -197,7 +199,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('classification-tags-0');
+    const tagContainer = await screen.findByTestId(CLASSIFICATION_TAGS_0);
     const entityTasks = screen.queryByText('EntityTasks');
 
     expect(tagContainer).toBeInTheDocument();

@@ -28,6 +28,9 @@ import {
 import ParameterFields from './ParameterFields';
 import { FormValues } from './TestCaseFormV1.interface';
 
+const ADD_ALLOWEDVALUES = 'add-allowedValues';
+const CASE_SENSITIVE = 'Case Sensitive';
+const ALLOWED_VALUES = 'Allowed Values';
 jest.mock('@untitledui/icons', () => ({
   Trash01: () => <span data-testid="trash-icon" />,
 }));
@@ -163,7 +166,7 @@ describe('ParameterFields', () => {
       parameterDefinition: [
         {
           name: 'caseSensitive',
-          displayName: 'Case Sensitive',
+          displayName: CASE_SENSITIVE,
           dataType: TestDataType.Boolean,
         },
       ],
@@ -171,9 +174,9 @@ describe('ParameterFields', () => {
 
     renderWithForm(definition);
 
-    expect(screen.getByText('Case Sensitive')).toBeInTheDocument();
+    expect(screen.getByText(CASE_SENSITIVE)).toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Case Sensitive' })
+      screen.getByRole('switch', { name: CASE_SENSITIVE })
     ).toBeInTheDocument();
   });
 
@@ -225,7 +228,7 @@ describe('ParameterFields', () => {
       parameterDefinition: [
         {
           name: 'allowedValues',
-          displayName: 'Allowed Values',
+          displayName: ALLOWED_VALUES,
           dataType: TestDataType.Array,
         },
       ],
@@ -233,7 +236,7 @@ describe('ParameterFields', () => {
 
     renderWithForm(definition);
 
-    expect(screen.getByText('Allowed Values')).toBeInTheDocument();
+    expect(screen.getByText(ALLOWED_VALUES)).toBeInTheDocument();
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
   });
 
@@ -243,7 +246,7 @@ describe('ParameterFields', () => {
       parameterDefinition: [
         {
           name: 'allowedValues',
-          displayName: 'Allowed Values',
+          displayName: ALLOWED_VALUES,
           dataType: TestDataType.Array,
         },
       ],
@@ -254,7 +257,7 @@ describe('ParameterFields', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('add-allowedValues'));
+      fireEvent.click(screen.getByTestId(ADD_ALLOWEDVALUES));
     });
 
     expect(screen.getAllByRole('textbox')).toHaveLength(2);
@@ -266,7 +269,7 @@ describe('ParameterFields', () => {
       parameterDefinition: [
         {
           name: 'allowedValues',
-          displayName: 'Allowed Values',
+          displayName: ALLOWED_VALUES,
           dataType: TestDataType.Array,
         },
       ],
@@ -275,7 +278,7 @@ describe('ParameterFields', () => {
     renderWithForm(definition);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('add-allowedValues'));
+      fireEvent.click(screen.getByTestId(ADD_ALLOWEDVALUES));
     });
 
     expect(screen.getAllByRole('textbox')).toHaveLength(2);
@@ -295,7 +298,7 @@ describe('ParameterFields', () => {
       parameterDefinition: [
         {
           name: 'allowedValues',
-          displayName: 'Allowed Values',
+          displayName: ALLOWED_VALUES,
           dataType: TestDataType.Array,
         },
       ],
@@ -306,7 +309,7 @@ describe('ParameterFields', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('add-allowedValues'));
+      fireEvent.click(screen.getByTestId(ADD_ALLOWEDVALUES));
     });
 
     const inputs = screen.getAllByRole('textbox');

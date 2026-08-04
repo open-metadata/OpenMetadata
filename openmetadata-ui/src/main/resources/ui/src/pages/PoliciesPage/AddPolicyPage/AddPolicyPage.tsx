@@ -38,6 +38,9 @@ import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
+const LABEL_POLICY = 'label.policy';
+const LABEL_ADD_ENTITY = 'label.add-entity';
+
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const AddPolicyPage = () => {
@@ -79,7 +82,7 @@ const AddPolicyPage = () => {
       showErrorToast(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
-              entity: t('label.policy'),
+              entity: t(LABEL_POLICY),
               entityPlural: t('label.policy-lowercase-plural'),
               name: data.name,
             })
@@ -134,7 +137,7 @@ const AddPolicyPage = () => {
                 className="text-base"
                 data-testid="form-title">
                 {t('label.add-new-entity', {
-                  entity: t('label.policy'),
+                  entity: t(LABEL_POLICY),
                 })}
               </Typography.Paragraph>
               <Form
@@ -161,7 +164,7 @@ const AddPolicyPage = () => {
                 {getField(descriptionField)}
 
                 <Divider data-testid="add-rule-divider">
-                  {t('label.add-entity', {
+                  {t(LABEL_ADD_ENTITY, {
                     entity: t('label.rule'),
                   })}
                 </Divider>
@@ -190,13 +193,13 @@ const AddPolicyPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.policy') })}
+      pageTitle={t(LABEL_ADD_ENTITY, { entity: t(LABEL_POLICY) })}
       secondPanel={{
         children: (
           <>
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.add-entity', {
-                entity: t('label.policy'),
+              {t(LABEL_ADD_ENTITY, {
+                entity: t(LABEL_POLICY),
               })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>

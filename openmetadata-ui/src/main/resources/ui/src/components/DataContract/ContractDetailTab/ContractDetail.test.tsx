@@ -42,6 +42,25 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
+const NO_CONTRACT_HAS_BEEN_DEFINED_FOR_THIS_ENTITY =
+  'No contract has been defined for this entity.';
+const CONTRACT_1 = 'contract-1';
+const TEST_CONTRACT = 'Test Contract';
+const ERROR_PLACEHOLDER = 'error-placeholder';
+const MANAGE_CONTRACT_ACTIONS = 'manage-contract-actions';
+const DELETE_CONTRACT_BUTTON = 'delete-contract-button';
+const CONTRACT_RUN_NOW_BUTTON = 'contract-run-now-button';
+const EXPORT_ODCS_CONTRACT_BUTTON = 'export-odcs-contract-button';
+const SECURITY_CARD = 'security-card';
+const CONTRACT_SECURITY_CARD = 'contract-security-card';
+const IMPORT_ODCS_CONTRACT_BUTTON = 'import-odcs-contract-button';
+const IMPORT_OPENMETADATA_CONTRACT_BUTTON =
+  'import-openmetadata-contract-button';
+const IMPORT_MODAL_FORMAT = 'import-modal-format';
+const IMPORT_MODAL_VISIBLE = 'import-modal-visible';
+const ADD_CONTRACT_BUTTON = 'add-contract-button';
+const CREATE_CONTRACT_BUTTON = 'create-contract-button';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
@@ -275,7 +294,7 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
     children?: React.ReactNode;
   }) {
     return (
-      <div data-testid="error-placeholder" data-type={type}>
+      <div data-testid={ERROR_PLACEHOLDER} data-type={type}>
         {children}
       </div>
     );
@@ -307,7 +326,7 @@ jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
     security?: { dataClassification?: string };
   }) {
     return (
-      <div data-testid="contract-security-card">
+      <div data-testid={CONTRACT_SECURITY_CARD}>
         ContractSecurityCard - {security?.dataClassification}
       </div>
     );
@@ -348,8 +367,8 @@ jest.mock('../ODCSImportModal', () => {
   }) {
     return (
       <div data-testid="contract-import-modal">
-        <span data-testid="import-modal-format">{format}</span>
-        <span data-testid="import-modal-visible">
+        <span data-testid={IMPORT_MODAL_FORMAT}>{format}</span>
+        <span data-testid={IMPORT_MODAL_VISIBLE}>
           {visible ? 'true' : 'false'}
         </span>
         <button
@@ -449,7 +468,7 @@ jest.mock('react-i18next', () => ({
         'label.odcs-contract': 'ODCS Contract',
         'message.entity-imported-successfully': `${options?.entity} imported successfully`,
         'message.no-contract-description':
-          'No contract has been defined for this entity.',
+          NO_CONTRACT_HAS_BEEN_DEFINED_FOR_THIS_ENTITY,
         'message.create-contract-description':
           'Create a contract based on all the metadata which you got for this entity.',
       };
@@ -472,8 +491,8 @@ const mockOnEdit = jest.fn();
 const mockOnDelete = jest.fn();
 
 const mockContract: DataContract = {
-  id: 'contract-1',
-  name: 'Test Contract',
+  id: CONTRACT_1,
+  name: TEST_CONTRACT,
   description: 'Test Description',
   owners: [{ id: 'user-1', name: 'Test User', type: 'user' }],
   schema: [
@@ -542,7 +561,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
     });
 
     it('should render contract details when contract is provided', async () => {
@@ -557,7 +576,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByText('Test Contract')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CONTRACT)).toBeInTheDocument();
       expect(screen.getByText('label.description')).toBeInTheDocument();
       expect(
         screen.getAllByText('RichTextEditorPreviewerV1').length
@@ -576,7 +595,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+      expect(getByTestId(MANAGE_CONTRACT_ACTIONS)).toBeInTheDocument();
     });
 
     it('should not render description and terms when content is empty', () => {
@@ -616,7 +635,7 @@ describe('ContractDetail', () => {
         queryByTestId('contract-created-at-label')
       ).not.toBeInTheDocument();
 
-      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+      expect(getByTestId(MANAGE_CONTRACT_ACTIONS)).toBeInTheDocument();
     });
 
     it('should display contract created by or created at if data is present', () => {
@@ -639,7 +658,7 @@ describe('ContractDetail', () => {
 
       expect(queryByTestId('contract-created-at-label')).toBeInTheDocument();
 
-      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+      expect(getByTestId(MANAGE_CONTRACT_ACTIONS)).toBeInTheDocument();
     });
   });
 
@@ -657,7 +676,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
 
       const editButton = screen.getByTestId('contract-edit-button');
       fireEvent.click(editButton);
@@ -678,8 +697,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const deleteButton = screen.getByTestId('delete-contract-button');
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const deleteButton = screen.getByTestId(DELETE_CONTRACT_BUTTON);
       fireEvent.click(deleteButton);
 
       expect(mockOnDelete).toHaveBeenCalled();
@@ -703,8 +722,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const deleteButton = screen.getByTestId('delete-contract-button');
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const deleteButton = screen.getByTestId(DELETE_CONTRACT_BUTTON);
 
       // The delete menu item should have disabled class
       expect(deleteButton).toHaveClass('disabled');
@@ -736,8 +755,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const deleteButton = screen.getByTestId('delete-contract-button');
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const deleteButton = screen.getByTestId(DELETE_CONTRACT_BUTTON);
 
       // The delete menu item should NOT have disabled class
       expect(deleteButton).not.toHaveClass('disabled');
@@ -760,14 +779,14 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const validateButton = screen.getByTestId('contract-run-now-button');
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const validateButton = screen.getByTestId(CONTRACT_RUN_NOW_BUTTON);
 
       await act(async () => {
         fireEvent.click(validateButton);
       });
 
-      expect(validateContractById).toHaveBeenCalledWith('contract-1');
+      expect(validateContractById).toHaveBeenCalledWith(CONTRACT_1);
       expect(onContractUpdated).toHaveBeenCalled();
       expect(showSuccessToast).toHaveBeenCalledWith(
         'message.contract-validation-trigger-successfully'
@@ -790,8 +809,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const validateButton = screen.getByTestId('contract-run-now-button');
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const validateButton = screen.getByTestId(CONTRACT_RUN_NOW_BUTTON);
 
       await act(async () => {
         fireEvent.click(validateButton);
@@ -815,8 +834,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const validateButton = screen.getByTestId('contract-run-now-button');
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const validateButton = screen.getByTestId(CONTRACT_RUN_NOW_BUTTON);
 
       await act(async () => {
         fireEvent.click(validateButton);
@@ -837,7 +856,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
       const exportButton = screen.getByTestId('export-contract-button');
 
       await act(async () => {
@@ -861,20 +880,18 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const exportOdcsButton = screen.getByTestId(
-        'export-odcs-contract-button'
-      );
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const exportOdcsButton = screen.getByTestId(EXPORT_ODCS_CONTRACT_BUTTON);
 
       await act(async () => {
         fireEvent.click(exportOdcsButton);
       });
 
       await waitFor(() => {
-        expect(exportContractToODCSYaml).toHaveBeenCalledWith('contract-1');
+        expect(exportContractToODCSYaml).toHaveBeenCalledWith(CONTRACT_1);
         expect(downloadContractAsODCSYaml).toHaveBeenCalledWith(
           'yaml-content',
-          'Test Contract'
+          TEST_CONTRACT
         );
         expect(showSuccessToast).toHaveBeenCalled();
       });
@@ -895,10 +912,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      const exportOdcsButton = screen.getByTestId(
-        'export-odcs-contract-button'
-      );
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      const exportOdcsButton = screen.getByTestId(EXPORT_ODCS_CONTRACT_BUTTON);
 
       await act(async () => {
         fireEvent.click(exportOdcsButton);
@@ -1035,7 +1050,7 @@ describe('ContractDetail', () => {
       );
 
       // Owner component would be rendered
-      expect(screen.getByText('Test Contract')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CONTRACT)).toBeInTheDocument();
     });
 
     it('should display contract schema information', () => {
@@ -1051,7 +1066,7 @@ describe('ContractDetail', () => {
       );
 
       // Schema information would be displayed in cards/tables
-      expect(screen.getByText('Test Contract')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CONTRACT)).toBeInTheDocument();
     });
 
     it('should not render schema table card when schema is empty', () => {
@@ -1084,7 +1099,7 @@ describe('ContractDetail', () => {
       );
 
       // Semantic rules would be displayed
-      expect(screen.getByText('Test Contract')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CONTRACT)).toBeInTheDocument();
     });
 
     it('should not render semantics card when semantics are empty', () => {
@@ -1131,9 +1146,9 @@ describe('ContractDetail', () => {
       );
 
       // security-card is non-lazy; contract-security-card is inside lazy ContractSecurityCard
-      expect(screen.getByTestId('security-card')).toBeInTheDocument();
+      expect(screen.getByTestId(SECURITY_CARD)).toBeInTheDocument();
       expect(
-        await screen.findByTestId('contract-security-card')
+        await screen.findByTestId(CONTRACT_SECURITY_CARD)
       ).toBeInTheDocument();
       expect(
         screen.getByText('ContractSecurityCard - PII,Sensitive')
@@ -1152,9 +1167,9 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.queryByTestId('security-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SECURITY_CARD)).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('contract-security-card')
+        screen.queryByTestId(CONTRACT_SECURITY_CARD)
       ).not.toBeInTheDocument();
     });
 
@@ -1180,8 +1195,8 @@ describe('ContractDetail', () => {
 
       // isEmpty returns false for objects with properties, even if values are empty
       // So the security section will be displayed
-      expect(screen.getByTestId('security-card')).toBeInTheDocument();
-      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
+      expect(screen.getByTestId(SECURITY_CARD)).toBeInTheDocument();
+      expect(screen.getByTestId(CONTRACT_SECURITY_CARD)).toBeInTheDocument();
       expect(screen.getByText('ContractSecurityCard -')).toBeInTheDocument();
     });
   });
@@ -1199,7 +1214,7 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
     });
   });
 
@@ -1240,10 +1255,10 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
 
       expect(
-        screen.getByTestId('import-odcs-contract-button')
+        screen.getByTestId(IMPORT_ODCS_CONTRACT_BUTTON)
       ).toBeInTheDocument();
     });
 
@@ -1261,10 +1276,10 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
 
       expect(
-        screen.getByTestId('import-openmetadata-contract-button')
+        screen.getByTestId(IMPORT_OPENMETADATA_CONTRACT_BUTTON)
       ).toBeInTheDocument();
     });
 
@@ -1282,13 +1297,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      fireEvent.click(screen.getByTestId('import-odcs-contract-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      fireEvent.click(screen.getByTestId(IMPORT_ODCS_CONTRACT_BUTTON));
 
-      expect(screen.getByTestId('import-modal-format')).toHaveTextContent(
-        'odcs'
-      );
-      expect(screen.getByTestId('import-modal-visible')).toHaveTextContent(
+      expect(screen.getByTestId(IMPORT_MODAL_FORMAT)).toHaveTextContent('odcs');
+      expect(screen.getByTestId(IMPORT_MODAL_VISIBLE)).toHaveTextContent(
         'true'
       );
     });
@@ -1307,15 +1320,13 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      fireEvent.click(
-        screen.getByTestId('import-openmetadata-contract-button')
-      );
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      fireEvent.click(screen.getByTestId(IMPORT_OPENMETADATA_CONTRACT_BUTTON));
 
-      expect(screen.getByTestId('import-modal-format')).toHaveTextContent(
+      expect(screen.getByTestId(IMPORT_MODAL_FORMAT)).toHaveTextContent(
         'openmetadata'
       );
-      expect(screen.getByTestId('import-modal-visible')).toHaveTextContent(
+      expect(screen.getByTestId(IMPORT_MODAL_VISIBLE)).toHaveTextContent(
         'true'
       );
     });
@@ -1334,13 +1345,13 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      fireEvent.click(screen.getByTestId('import-odcs-contract-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      fireEvent.click(screen.getByTestId(IMPORT_ODCS_CONTRACT_BUTTON));
 
       fireEvent.click(screen.getByTestId('mock-import-success'));
 
       expect(mockOnContractUpdated).toHaveBeenCalled();
-      expect(screen.getByTestId('import-modal-visible')).toHaveTextContent(
+      expect(screen.getByTestId(IMPORT_MODAL_VISIBLE)).toHaveTextContent(
         'false'
       );
     });
@@ -1359,25 +1370,21 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('add-contract-button'));
+      fireEvent.click(screen.getByTestId(ADD_CONTRACT_BUTTON));
 
-      fireEvent.click(screen.getByTestId('create-contract-button'));
+      fireEvent.click(screen.getByTestId(CREATE_CONTRACT_BUTTON));
 
       expect(mockOnEdit).toHaveBeenCalled();
 
-      fireEvent.click(screen.getByTestId('add-contract-button'));
-      fireEvent.click(screen.getByTestId('import-odcs-contract-button'));
+      fireEvent.click(screen.getByTestId(ADD_CONTRACT_BUTTON));
+      fireEvent.click(screen.getByTestId(IMPORT_ODCS_CONTRACT_BUTTON));
 
-      expect(screen.getByTestId('import-modal-format')).toHaveTextContent(
-        'odcs'
-      );
+      expect(screen.getByTestId(IMPORT_MODAL_FORMAT)).toHaveTextContent('odcs');
 
-      fireEvent.click(screen.getByTestId('add-contract-button'));
-      fireEvent.click(
-        screen.getByTestId('import-openmetadata-contract-button')
-      );
+      fireEvent.click(screen.getByTestId(ADD_CONTRACT_BUTTON));
+      fireEvent.click(screen.getByTestId(IMPORT_OPENMETADATA_CONTRACT_BUTTON));
 
-      expect(screen.getByTestId('import-modal-format')).toHaveTextContent(
+      expect(screen.getByTestId(IMPORT_MODAL_FORMAT)).toHaveTextContent(
         'openmetadata'
       );
     });
@@ -1477,12 +1484,10 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('add-contract-button'));
+      fireEvent.click(screen.getByTestId(ADD_CONTRACT_BUTTON));
 
-      const createButton = screen.getByTestId('create-contract-button');
-      const importODCSButton = screen.getByTestId(
-        'import-odcs-contract-button'
-      );
+      const createButton = screen.getByTestId(CREATE_CONTRACT_BUTTON);
+      const importODCSButton = screen.getByTestId(IMPORT_ODCS_CONTRACT_BUTTON);
 
       await act(async () => {
         fireEvent.mouseEnter(createButton);
@@ -1517,16 +1522,16 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      fireEvent.click(screen.getByTestId('import-odcs-contract-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      fireEvent.click(screen.getByTestId(IMPORT_ODCS_CONTRACT_BUTTON));
 
-      expect(screen.getByTestId('import-modal-visible')).toHaveTextContent(
+      expect(screen.getByTestId(IMPORT_MODAL_VISIBLE)).toHaveTextContent(
         'true'
       );
 
       fireEvent.click(screen.getByTestId('mock-import-close'));
 
-      expect(screen.getByTestId('import-modal-visible')).toHaveTextContent(
+      expect(screen.getByTestId(IMPORT_MODAL_VISIBLE)).toHaveTextContent(
         'false'
       );
     });
@@ -1549,8 +1554,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('manage-contract-actions'));
-      fireEvent.click(screen.getByTestId('export-odcs-contract-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_CONTRACT_ACTIONS));
+      fireEvent.click(screen.getByTestId(EXPORT_ODCS_CONTRACT_BUTTON));
 
       await waitFor(() => {
         expect(exportContractToODCSYaml).not.toHaveBeenCalled();
@@ -1572,13 +1577,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
       expect(
-        screen.getByText('No contract has been defined for this entity.')
+        screen.getByText(NO_CONTRACT_HAS_BEEN_DEFINED_FOR_THIS_ENTITY)
       ).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('add-contract-button')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ADD_CONTRACT_BUTTON)).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('contract-import-modal')
       ).not.toBeInTheDocument();
@@ -1597,9 +1600,9 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('add-contract-button')).toBeInTheDocument();
+      expect(screen.getByTestId(ADD_CONTRACT_BUTTON)).toBeInTheDocument();
       expect(
-        screen.queryByText('No contract has been defined for this entity.')
+        screen.queryByText(NO_CONTRACT_HAS_BEEN_DEFINED_FOR_THIS_ENTITY)
       ).not.toBeInTheDocument();
     });
 
@@ -1652,8 +1655,8 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      fireEvent.click(screen.getByTestId('add-contract-button'));
-      fireEvent.click(screen.getByTestId('create-contract-button'));
+      fireEvent.click(screen.getByTestId(ADD_CONTRACT_BUTTON));
+      fireEvent.click(screen.getByTestId(CREATE_CONTRACT_BUTTON));
 
       expect(mockOnEdit).toHaveBeenCalled();
     });

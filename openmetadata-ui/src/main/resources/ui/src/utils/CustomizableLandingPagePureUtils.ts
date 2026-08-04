@@ -23,6 +23,7 @@ import type { Document } from '../generated/entity/docStore/document';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 
+const EMPTYWIDGETPLACEHOLDER = '.EmptyWidgetPlaceholder';
 type WidgetHeightResolver = (widgetName: string) => number;
 
 /**
@@ -112,10 +113,10 @@ const createPlaceholderWidget = (x = 0, y = 0) => ({
  */
 export const separateWidgets = (layout: WidgetConfig[]) => {
   const regularWidgets = layout.filter(
-    (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
+    (widget) => !widget.i.endsWith(EMPTYWIDGETPLACEHOLDER)
   );
   const placeholderWidget = layout.find((widget) =>
-    widget.i.endsWith('.EmptyWidgetPlaceholder')
+    widget.i.endsWith(EMPTYWIDGETPLACEHOLDER)
   );
 
   return { regularWidgets, placeholderWidget };
@@ -449,7 +450,7 @@ export const getUniqueFilteredLayout = (layout: WidgetConfig[]) => {
     layout.filter(
       (widget) =>
         widget.i.startsWith('KnowledgePanel') &&
-        !widget.i.endsWith('.EmptyWidgetPlaceholder')
+        !widget.i.endsWith(EMPTYWIDGETPLACEHOLDER)
     ),
     'i'
   );

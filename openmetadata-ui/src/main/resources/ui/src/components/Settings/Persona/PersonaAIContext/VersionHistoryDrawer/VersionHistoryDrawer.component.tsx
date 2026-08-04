@@ -47,6 +47,8 @@ import {
 } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 
+const LABEL_RESTORE = 'label.restore';
+
 interface VersionHistoryDrawerProps {
   canEdit: boolean;
   open: boolean;
@@ -194,13 +196,13 @@ export const VersionHistoryDrawer = ({
                 </Box>
                 {canEdit && !entry.isCurrent && (
                   <Button
-                    aria-label={t('label.restore')}
+                    aria-label={t(LABEL_RESTORE)}
                     color="secondary"
                     data-testid={`restore-version-${entry.version}`}
                     iconLeading={RefreshCcw01}
                     isLoading={restoringVersion === entry.version}
                     size="sm"
-                    title={t('label.restore')}
+                    title={t(LABEL_RESTORE)}
                     onClick={() => setRestoreTarget(entry)}
                   />
                 )}
@@ -338,7 +340,7 @@ export const VersionHistoryDrawer = ({
                     data-testid="confirm-restore-version"
                     iconLeading={RefreshCcw01}
                     onClick={handleRestore}>
-                    {t('label.restore')}
+                    {t(LABEL_RESTORE)}
                   </Button>
                 </Box>
               </Dialog.Content>

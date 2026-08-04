@@ -30,6 +30,8 @@ import { exportTestCasesInCSV } from '../rest/testAPI';
 import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
+const LABEL_TEST_CASE_LOWERCASE_PLURAL = 'label.test-case-lowercase-plural';
+
 export const getTestCaseResultCount = (
   count: number,
   status: TestCaseStatus
@@ -76,7 +78,7 @@ export const getTestCaseManageMenuItems = (
             icon: ImportIcon,
             title: t('label.import'),
             description: t('message.import-entity-help', {
-              entity: t('label.test-case-lowercase-plural'),
+              entity: t(LABEL_TEST_CASE_LOWERCASE_PLURAL),
             }),
             wrapper: withLimit,
             onClick: () =>
@@ -93,7 +95,7 @@ export const getTestCaseManageMenuItems = (
             icon: ExportIcon,
             title: t('label.export'),
             description: t('message.export-entity-help', {
-              entity: t('label.test-case-lowercase-plural'),
+              entity: t(LABEL_TEST_CASE_LOWERCASE_PLURAL),
             }),
             onClick: () =>
               showModal({
@@ -111,7 +113,7 @@ export const getTestCaseManageMenuItems = (
             icon: IconEdit,
             title: t('label.bulk-edit'),
             description: t('message.bulk-edit-entity-help', {
-              entity: t('label.test-case-lowercase-plural'),
+              entity: t(LABEL_TEST_CASE_LOWERCASE_PLURAL),
             }),
             wrapper: withLimit,
             onClick: () =>

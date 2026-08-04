@@ -25,6 +25,13 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import FilesTable from './FilesTable';
 import { FilesTableProps } from './FilesTable.interface';
 
+const TEST_DRIVE_SERVICE = 'test-drive-service';
+const TEST_DRIVE_SERVICE_2 = 'Test Drive Service';
+const DELETED_TXT = 'deleted.txt';
+const FILES_TABLE = 'files-table';
+const FILE_ROW_0 = 'file-row-0';
+const SHOW_DELETED = 'show-deleted';
+
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../../utils/TableColumn.util');
@@ -45,7 +52,7 @@ jest.mock('../../../common/Table/Table', () =>
       customPaginationProps,
       extraTableFilters,
     }) => (
-      <div data-testid="files-table">
+      <div data-testid={FILES_TABLE}>
         <div data-testid="table-columns-count">{columns?.length || 0}</div>
         <div data-testid="table-filters">{extraTableFilters}</div>
         {loading ? (
@@ -89,9 +96,9 @@ const mockFiles: File[] = [
     service: {
       id: 'service-1',
       type: 'driveService',
-      name: 'test-drive-service',
-      fullyQualifiedName: 'test-drive-service',
-      displayName: 'Test Drive Service',
+      name: TEST_DRIVE_SERVICE,
+      fullyQualifiedName: TEST_DRIVE_SERVICE,
+      displayName: TEST_DRIVE_SERVICE_2,
       deleted: false,
     },
     deleted: false,
@@ -110,9 +117,9 @@ const mockFiles: File[] = [
     service: {
       id: 'service-1',
       type: 'driveService',
-      name: 'test-drive-service',
-      fullyQualifiedName: 'test-drive-service',
-      displayName: 'Test Drive Service',
+      name: TEST_DRIVE_SERVICE,
+      fullyQualifiedName: TEST_DRIVE_SERVICE,
+      displayName: TEST_DRIVE_SERVICE_2,
       deleted: false,
     },
     deleted: false,
@@ -123,7 +130,7 @@ const mockFiles: File[] = [
   },
   {
     id: 'file-3',
-    name: 'deleted.txt',
+    name: DELETED_TXT,
     displayName: 'Deleted File',
     fullyQualifiedName: 'test-service.deleted.txt',
     description: 'This file has been deleted',
@@ -131,9 +138,9 @@ const mockFiles: File[] = [
     service: {
       id: 'service-1',
       type: 'driveService',
-      name: 'test-drive-service',
-      fullyQualifiedName: 'test-drive-service',
-      displayName: 'Test Drive Service',
+      name: TEST_DRIVE_SERVICE,
+      fullyQualifiedName: TEST_DRIVE_SERVICE,
+      displayName: TEST_DRIVE_SERVICE_2,
       deleted: false,
     },
     deleted: true,
@@ -188,16 +195,16 @@ describe('FilesTable', () => {
   it('should render files table successfully', () => {
     renderFilesTable();
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
     expect(screen.getByTestId('table-filters')).toBeInTheDocument();
   });
 
   it('should display files data correctly', () => {
     renderFilesTable();
 
-    expect(screen.getByTestId('file-row-0')).toHaveTextContent('document.pdf');
+    expect(screen.getByTestId(FILE_ROW_0)).toHaveTextContent('document.pdf');
     expect(screen.getByTestId('file-row-1')).toHaveTextContent('data.csv');
-    expect(screen.getByTestId('file-row-2')).toHaveTextContent('deleted.txt');
+    expect(screen.getByTestId('file-row-2')).toHaveTextContent(DELETED_TXT);
   });
 
   it('should show loading state when isLoading is true', () => {
@@ -211,7 +218,7 @@ describe('FilesTable', () => {
   it('should render show deleted toggle in filters', () => {
     renderFilesTable();
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
 
     expect(deleteToggle).toBeInTheDocument();
     expect(deleteToggle).not.toBeChecked();
@@ -223,7 +230,7 @@ describe('FilesTable', () => {
       handleShowDeleted: mockHandleShowDeleted,
     });
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
     fireEvent.click(deleteToggle);
 
     await waitFor(() => {
@@ -243,7 +250,7 @@ describe('FilesTable', () => {
       showDeleted: true,
     });
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
 
     expect(deleteToggle).toBeChecked();
   });
@@ -272,8 +279,8 @@ describe('FilesTable', () => {
       files: [],
     });
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
-    expect(screen.queryByTestId('file-row-0')).not.toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
+    expect(screen.queryByTestId(FILE_ROW_0)).not.toBeInTheDocument();
   });
 
   it('should handle different page sizes', () => {
@@ -297,7 +304,7 @@ describe('FilesTable', () => {
       showDeleted: true,
     });
 
-    expect(screen.getByTestId('file-row-2')).toHaveTextContent('deleted.txt');
+    expect(screen.getByTestId('file-row-2')).toHaveTextContent(DELETED_TXT);
   });
 
   it('should handle files without description', () => {
@@ -308,7 +315,7 @@ describe('FilesTable', () => {
       files: filesWithoutDescription,
     });
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
   });
 
   it('should handle files with rich description content', () => {
@@ -323,7 +330,7 @@ describe('FilesTable', () => {
       files: filesWithRichDescription,
     });
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
   });
 
   it('should handle pagination when showing all data', () => {
@@ -336,7 +343,7 @@ describe('FilesTable', () => {
       paging: largePaging,
     });
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
   });
 
   it('should handle files with long names', () => {
@@ -352,7 +359,7 @@ describe('FilesTable', () => {
       files: filesWithLongNames,
     });
 
-    expect(screen.getByTestId('file-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(FILE_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle files without displayName gracefully', () => {
@@ -367,7 +374,7 @@ describe('FilesTable', () => {
       files: filesWithoutDisplayName as File[],
     });
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
   });
 
   it('should show correct number of files', () => {
@@ -385,7 +392,7 @@ describe('FilesTable', () => {
       handleShowDeleted: mockHandleShowDeleted,
     });
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
 
     fireEvent.click(deleteToggle);
 
@@ -399,7 +406,7 @@ describe('FilesTable', () => {
       files: [],
     });
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
   });
 
   it('should handle files with undefined fullyQualifiedName', () => {
@@ -414,6 +421,6 @@ describe('FilesTable', () => {
       files: filesWithUndefinedFQN as File[],
     });
 
-    expect(screen.getByTestId('files-table')).toBeInTheDocument();
+    expect(screen.getByTestId(FILES_TABLE)).toBeInTheDocument();
   });
 });

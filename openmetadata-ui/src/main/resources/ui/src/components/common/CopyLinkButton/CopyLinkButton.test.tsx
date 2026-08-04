@@ -16,6 +16,8 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import CopyLinkButton from './CopyLinkButton';
 
+const COPY_COLUMN_LINK_BUTTON = 'copy-column-link-button';
+
 jest.mock('../../../hooks/useClipBoard', () => ({
   useClipboard: jest.fn(),
 }));
@@ -32,7 +34,7 @@ describe('CopyLinkButton', () => {
   const defaultProps = {
     entityType: EntityType.TABLE,
     fieldFqn: 'test.database.schema.table.column1',
-    testId: 'copy-column-link-button',
+    testId: COPY_COLUMN_LINK_BUTTON,
   };
 
   beforeEach(() => {
@@ -51,7 +53,7 @@ describe('CopyLinkButton', () => {
   it('should render the copy button', () => {
     render(<CopyLinkButton {...defaultProps} />);
 
-    expect(screen.getByTestId('copy-column-link-button')).toBeInTheDocument();
+    expect(screen.getByTestId(COPY_COLUMN_LINK_BUTTON)).toBeInTheDocument();
   });
 
   it('should render with default test id when not provided', () => {
@@ -65,7 +67,7 @@ describe('CopyLinkButton', () => {
   it('should display copy URL tooltip before clicking', () => {
     render(<CopyLinkButton {...defaultProps} />);
 
-    const button = screen.getByTestId('copy-column-link-button');
+    const button = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
 
     expect(button).toBeInTheDocument();
   });
@@ -73,7 +75,7 @@ describe('CopyLinkButton', () => {
   it('should call copyEntityLink with field FQN when clicked', async () => {
     render(<CopyLinkButton {...defaultProps} />);
 
-    const button = screen.getByTestId('copy-column-link-button');
+    const button = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -91,7 +93,7 @@ describe('CopyLinkButton', () => {
 
     render(<CopyLinkButton {...defaultProps} />);
 
-    const button = screen.getByTestId('copy-column-link-button');
+    const button = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
 
     expect(button).toBeInTheDocument();
   });
@@ -99,7 +101,7 @@ describe('CopyLinkButton', () => {
   it('should be disabled when fieldFqn is empty', () => {
     render(<CopyLinkButton {...defaultProps} fieldFqn="" />);
 
-    const button = screen.getByTestId('copy-column-link-button');
+    const button = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
 
     expect(button).toBeDisabled();
   });
@@ -107,7 +109,7 @@ describe('CopyLinkButton', () => {
   it('should not call copyEntityLink when fieldFqn is empty', () => {
     render(<CopyLinkButton {...defaultProps} fieldFqn="" />);
 
-    const button = screen.getByTestId('copy-column-link-button');
+    const button = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
     fireEvent.click(button);
 
     expect(mockOnCopyToClipBoard).not.toHaveBeenCalled();
@@ -116,7 +118,7 @@ describe('CopyLinkButton', () => {
   it('should apply correct button styles', () => {
     render(<CopyLinkButton {...defaultProps} />);
 
-    const button = screen.getByTestId('copy-column-link-button');
+    const button = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
 
     expect(button).toHaveStyle({
       padding: '0',
@@ -128,7 +130,7 @@ describe('CopyLinkButton', () => {
   it('should have correct CSS classes', () => {
     render(<CopyLinkButton {...defaultProps} />);
 
-    const button = screen.getByTestId('copy-column-link-button');
+    const button = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
 
     expect(button).toHaveClass(
       'cursor-pointer',

@@ -17,6 +17,7 @@ import { getDashboardByFqn } from '../../rest/dashboardAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import DashboardDetailsPage from './DashboardDetailsPage.component';
 
+const TEST_DASHBOARD = 'test-dashboard';
 // Mock the required dependencies
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: 'test-dashboard' }),
@@ -41,8 +42,8 @@ jest.mock(
 
 const mockDashboard = {
   id: '123',
-  name: 'test-dashboard',
-  fullyQualifiedName: 'test-dashboard',
+  name: TEST_DASHBOARD,
+  fullyQualifiedName: TEST_DASHBOARD,
   displayName: 'Test Dashboard',
   version: 1,
 };
@@ -109,7 +110,7 @@ describe('DashboardDetailsPage', () => {
     });
 
     await waitFor(() =>
-      expect(getDashboardByFqn).toHaveBeenCalledWith('test-dashboard', {
+      expect(getDashboardByFqn).toHaveBeenCalledWith(TEST_DASHBOARD, {
         fields:
           'domains,owners, followers, tags, charts,votes,dataProducts,extension,usageSummary',
       })

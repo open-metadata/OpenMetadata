@@ -52,6 +52,14 @@ import {
   StorageServiceType,
 } from '../generated/entity/services/storageService';
 
+const HTTP_JSON_SCHEMA_ORG_DRAFT_07_SCHEMA =
+  'http://json-schema.org/draft-07/schema#';
+const SERVICE_TYPE = 'Service type.';
+const AWSATHENA_REST = 'awsathena+rest';
+const SERVICE_TYPE_2 = 'Service Type';
+const AWS_REGION = 'AWS Region';
+const SUPPORTS_METADATA_EXTRACTION = 'Supports Metadata Extraction.';
+
 export const MOCK_CHANGE_DESCRIPTION = {
   fieldsAdded: [
     {
@@ -372,7 +380,7 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
 };
 
 export const MOCK_ATHENA_SERVICE = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
+  $schema: HTTP_JSON_SCHEMA_ORG_DRAFT_07_SCHEMA,
   title: 'AthenaConnection',
   description: 'AWS Athena Connection Config',
   type: 'object',
@@ -380,7 +388,7 @@ export const MOCK_ATHENA_SERVICE = {
     'org.openmetadata.schema.services.connections.database.AthenaConnection',
   definitions: {
     athenaType: {
-      description: 'Service type.',
+      description: SERVICE_TYPE,
       type: 'string',
       enum: ['Athena'],
       default: 'Athena',
@@ -388,14 +396,14 @@ export const MOCK_ATHENA_SERVICE = {
     athenaScheme: {
       description: 'SQLAlchemy driver scheme options.',
       type: 'string',
-      enum: ['awsathena+rest'],
-      default: 'awsathena+rest',
+      enum: [AWSATHENA_REST],
+      default: AWSATHENA_REST,
     },
   },
   properties: {
     type: {
-      title: 'Service Type',
-      description: 'Service Type',
+      title: SERVICE_TYPE_2,
+      description: SERVICE_TYPE_2,
       default: 'Athena',
       type: 'string',
       enum: ['Athena'],
@@ -403,13 +411,13 @@ export const MOCK_ATHENA_SERVICE = {
     scheme: {
       title: 'Connection Scheme',
       description: 'SQLAlchemy driver scheme options.',
-      default: 'awsathena+rest',
+      default: AWSATHENA_REST,
       type: 'string',
-      enum: ['awsathena+rest'],
+      enum: [AWSATHENA_REST],
     },
     awsConfig: {
       title: 'AWS Credentials Configuration',
-      $schema: 'http://json-schema.org/draft-07/schema#',
+      $schema: HTTP_JSON_SCHEMA_ORG_DRAFT_07_SCHEMA,
       description: 'AWS credentials configs.',
       type: 'object',
       javaType: 'org.openmetadata.schema.security.credentials.AWSCredentials',
@@ -426,8 +434,8 @@ export const MOCK_ATHENA_SERVICE = {
           format: 'password',
         },
         awsRegion: {
-          title: 'AWS Region',
-          description: 'AWS Region',
+          title: AWS_REGION,
+          description: AWS_REGION,
           type: 'string',
         },
         awsSessionToken: {
@@ -511,7 +519,7 @@ export const MOCK_ATHENA_SERVICE = {
     },
     supportsMetadataExtraction: {
       title: 'Supports Metadata Extraction',
-      description: 'Supports Metadata Extraction.',
+      description: SUPPORTS_METADATA_EXTRACTION,
       type: 'boolean',
       default: true,
     },
@@ -580,7 +588,7 @@ export const MOCK_ATHENA_SERVICE = {
                   oneOf: [
                     {
                       title: 'AWS S3 Storage Config',
-                      $schema: 'http://json-schema.org/draft-07/schema#',
+                      $schema: HTTP_JSON_SCHEMA_ORG_DRAFT_07_SCHEMA,
                       description: 'AWS credentials configs.',
                       type: 'object',
                       javaType:
@@ -598,8 +606,8 @@ export const MOCK_ATHENA_SERVICE = {
                           format: 'password',
                         },
                         awsRegion: {
-                          title: 'AWS Region',
-                          description: 'AWS Region',
+                          title: AWS_REGION,
+                          description: AWS_REGION,
                           type: 'string',
                         },
                         awsSessionToken: {
@@ -667,7 +675,7 @@ export const MOCK_ATHENA_SERVICE = {
 };
 
 export const AIR_BYTE_CONNECTION = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
+  $schema: HTTP_JSON_SCHEMA_ORG_DRAFT_07_SCHEMA,
   title: 'AirbyteConnection',
   description: 'Airbyte Metadata Database Connection Config',
   type: 'object',
@@ -675,7 +683,7 @@ export const AIR_BYTE_CONNECTION = {
     'org.openmetadata.schema.services.connections.pipeline.AirbyteConnection',
   definitions: {
     AirbyteType: {
-      description: 'Service type.',
+      description: SERVICE_TYPE,
       type: 'string',
       enum: ['Airbyte'],
       default: 'Airbyte',
@@ -683,8 +691,8 @@ export const AIR_BYTE_CONNECTION = {
   },
   properties: {
     type: {
-      title: 'Service Type',
-      description: 'Service Type',
+      title: SERVICE_TYPE_2,
+      description: SERVICE_TYPE_2,
       default: 'Airbyte',
       type: 'string',
       enum: ['Airbyte'],
@@ -708,7 +716,7 @@ export const AIR_BYTE_CONNECTION = {
     },
     supportsMetadataExtraction: {
       title: 'Supports Metadata Extraction',
-      description: 'Supports Metadata Extraction.',
+      description: SUPPORTS_METADATA_EXTRACTION,
       type: 'boolean',
       default: true,
     },
@@ -718,7 +726,7 @@ export const AIR_BYTE_CONNECTION = {
 };
 
 export const ATLAS_CONNECTION = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
+  $schema: HTTP_JSON_SCHEMA_ORG_DRAFT_07_SCHEMA,
   title: 'AtlasConnection',
   description: 'Atlas Connection Config',
   type: 'object',
@@ -726,7 +734,7 @@ export const ATLAS_CONNECTION = {
     'org.openmetadata.schema.services.connections.metadata.AtlasConnection',
   definitions: {
     atlasType: {
-      description: 'Service type.',
+      description: SERVICE_TYPE,
       type: 'string',
       enum: ['Atlas'],
       default: 'Atlas',
@@ -734,7 +742,7 @@ export const ATLAS_CONNECTION = {
   },
   properties: {
     type: {
-      description: 'Service Type',
+      description: SERVICE_TYPE_2,
       default: 'Atlas',
       type: 'string',
       enum: ['Atlas'],
@@ -798,7 +806,7 @@ export const ATLAS_CONNECTION = {
       },
     },
     supportsMetadataExtraction: {
-      description: 'Supports Metadata Extraction.',
+      description: SUPPORTS_METADATA_EXTRACTION,
       type: 'boolean',
       default: true,
     },

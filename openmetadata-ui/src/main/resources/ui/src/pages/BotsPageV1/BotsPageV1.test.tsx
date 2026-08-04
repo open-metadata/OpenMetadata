@@ -14,6 +14,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BotsPageV1 from './BotsPageV1.component';
 
+const MOCK_BOT_DELETED = 'Bot Deleted';
+
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -26,7 +28,7 @@ jest.mock('../../components/Settings/Bot/BotListV1/BotListV1.component', () =>
     .mockImplementation(
       ({ handleAddBotClick, handleShowDeleted, showDeleted }) => (
         <>
-          <p>{showDeleted ? 'Bot Deleted' : ''}</p>
+          <p>{showDeleted ? MOCK_BOT_DELETED : ''}</p>
           <button onClick={handleAddBotClick}>Add Bot</button>
           <button onClick={() => handleShowDeleted(true)}>Delete Bot</button>
         </>
@@ -50,16 +52,16 @@ describe('BotsPageV1 component', () => {
   it('Bot deleted should not present by default', () => {
     render(<BotsPageV1 />);
 
-    expect(screen.queryByText('Bot Deleted')).not.toBeInTheDocument();
+    expect(screen.queryByText(MOCK_BOT_DELETED)).not.toBeInTheDocument();
   });
 
   it('Delete Bot button should delete bot', async () => {
     render(<BotsPageV1 />);
 
-    expect(screen.queryByText('Bot Deleted')).not.toBeInTheDocument();
+    expect(screen.queryByText(MOCK_BOT_DELETED)).not.toBeInTheDocument();
 
     userEvent.click(screen.getByRole('button', { name: 'Delete Bot' }));
 
-    expect(await screen.findByText('Bot Deleted')).toBeInTheDocument();
+    expect(await screen.findByText(MOCK_BOT_DELETED)).toBeInTheDocument();
   });
 });

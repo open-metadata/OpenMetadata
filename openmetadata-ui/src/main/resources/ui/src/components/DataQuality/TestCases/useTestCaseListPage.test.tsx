@@ -27,6 +27,9 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
+const SVC_DB_TBL = 'svc.db.tbl';
+const SVC_DB_TC1 = 'svc.db.tc1';
+
 const mockNavigate = jest.fn();
 
 const mockLocation = { search: '' };
@@ -222,7 +225,7 @@ describe('useTestCaseListPage', () => {
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
     act(() => {
-      result.current.handleSearchParam('tableFqn', 'svc.db.tbl');
+      result.current.handleSearchParam('tableFqn', SVC_DB_TBL);
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -308,7 +311,7 @@ describe('useTestCaseListPage', () => {
   });
 
   it('should optimistically replace the matching row by fullyQualifiedName on handleStatusSubmit', async () => {
-    const original = buildTestCase('id-1', 'svc.db.tc1');
+    const original = buildTestCase('id-1', SVC_DB_TC1);
     const other = buildTestCase('id-2', 'svc.db.tc2');
     (getListTestCaseBySearch as jest.Mock).mockResolvedValueOnce({
       data: [original, other],
@@ -319,7 +322,7 @@ describe('useTestCaseListPage', () => {
 
     await waitFor(() => expect(result.current.testCase).toHaveLength(2));
 
-    const updated = buildTestCase('id-1', 'svc.db.tc1', {
+    const updated = buildTestCase('id-1', SVC_DB_TC1, {
       name: 'updated-name',
     });
 
@@ -332,7 +335,7 @@ describe('useTestCaseListPage', () => {
   });
 
   it('should merge the matching row by id on handleTestCaseUpdate', async () => {
-    const original = buildTestCase('id-1', 'svc.db.tc1');
+    const original = buildTestCase('id-1', SVC_DB_TC1);
     const other = buildTestCase('id-2', 'svc.db.tc2');
     (getListTestCaseBySearch as jest.Mock).mockResolvedValueOnce({
       data: [original, other],
@@ -345,7 +348,7 @@ describe('useTestCaseListPage', () => {
 
     act(() => {
       result.current.handleTestCaseUpdate(
-        buildTestCase('id-1', 'svc.db.tc1', { name: 'merged-name' })
+        buildTestCase('id-1', SVC_DB_TC1, { name: 'merged-name' })
       );
     });
 
@@ -516,7 +519,7 @@ describe('useTestCaseListPage', () => {
     );
 
     act(() => {
-      tableDescriptor?.onChange('svc.db.tbl');
+      tableDescriptor?.onChange(SVC_DB_TBL);
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -552,7 +555,7 @@ describe('useTestCaseListPage', () => {
   });
 
   it('should reflect the URL filter value on the matching descriptor', async () => {
-    mockLocation.search = QueryString.stringify({ tableFqn: 'svc.db.tbl' });
+    mockLocation.search = QueryString.stringify({ tableFqn: SVC_DB_TBL });
 
     const { result } = renderHook(() => useTestCaseListPage());
 
@@ -564,7 +567,7 @@ describe('useTestCaseListPage', () => {
       (descriptor) => descriptor.key === TEST_CASE_FILTERS.table
     );
 
-    expect(tableDescriptor?.value).toBe('svc.db.tbl');
+    expect(tableDescriptor?.value).toBe(SVC_DB_TBL);
   });
 
   it('should map URL filter params to the getListTestCaseBySearch request args', async () => {
@@ -612,7 +615,7 @@ describe('useTestCaseListPage', () => {
   it('should reset filters, form and URL while preserving searchValue on clearAll', async () => {
     mockLocation.search = QueryString.stringify({
       searchValue: 'orders',
-      tableFqn: 'svc.db.tbl',
+      tableFqn: SVC_DB_TBL,
     });
 
     const { result } = renderHook(() => useTestCaseListPage());

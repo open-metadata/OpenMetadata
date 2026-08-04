@@ -359,6 +359,14 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 
 import InlineTestCaseIncidentStatus from './InlineTestCaseIncidentStatus.component';
 
+const LABEL_ASSIGNED = 'label.assigned';
+const LABEL_RESOLVED = 'label.resolved';
+const TEST_CASE_NAME_ASSIGNEE_POPOVER = 'test_case_name-assignee-popover';
+const TEST_CASE_NAME_RESOLVED_POPOVER = 'test_case_name-resolved-popover';
+const SUBMIT_ASSIGNEE_POPOVER_BUTTON = 'submit-assignee-popover-button';
+const RESOLVED_COMMENT_TEXTAREA = 'resolved-comment-textarea';
+const SUBMIT_RESOLVED_POPOVER_BUTTON = 'submit-resolved-popover-button';
+
 const CHIP_TEST_ID = 'test_case_name-status';
 
 const mockOnSubmit = jest.fn();
@@ -424,7 +432,7 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
 
       expect(screen.getByTestId(CHIP_TEST_ID)).toHaveTextContent(
-        'label.assigned'
+        LABEL_ASSIGNED
       );
     });
 
@@ -434,7 +442,7 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
 
       expect(screen.getByTestId(CHIP_TEST_ID)).toHaveTextContent(
-        'label.resolved'
+        LABEL_RESOLVED
       );
     });
 
@@ -511,12 +519,12 @@ describe('InlineTestCaseIncidentStatus', () => {
       await openStatusMenu();
 
       await act(async () => {
-        fireEvent.click(screen.getByText('label.assigned'));
+        fireEvent.click(screen.getByText(LABEL_ASSIGNED));
       });
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-assignee-popover')
+          screen.getByTestId(TEST_CASE_NAME_ASSIGNEE_POPOVER)
         ).toBeInTheDocument();
       });
     });
@@ -527,12 +535,12 @@ describe('InlineTestCaseIncidentStatus', () => {
       await openStatusMenu();
 
       await act(async () => {
-        fireEvent.click(screen.getByText('label.resolved'));
+        fireEvent.click(screen.getByText(LABEL_RESOLVED));
       });
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-resolved-popover')
+          screen.getByTestId(TEST_CASE_NAME_RESOLVED_POPOVER)
         ).toBeInTheDocument();
       });
     });
@@ -550,7 +558,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-assignee-popover')
+          screen.getByTestId(TEST_CASE_NAME_ASSIGNEE_POPOVER)
         ).toBeInTheDocument();
       });
     });
@@ -626,7 +634,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('submit-assignee-popover-button')
+          screen.getByTestId(SUBMIT_ASSIGNEE_POPOVER_BUTTON)
         ).toBeDisabled();
       });
     });
@@ -649,7 +657,7 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
 
       expect(
-        screen.getByTestId('submit-assignee-popover-button')
+        screen.getByTestId(SUBMIT_ASSIGNEE_POPOVER_BUTTON)
       ).not.toBeDisabled();
     });
 
@@ -671,7 +679,7 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('submit-assignee-popover-button'));
+        fireEvent.click(screen.getByTestId(SUBMIT_ASSIGNEE_POPOVER_BUTTON));
       });
 
       await waitFor(() => {
@@ -702,7 +710,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-assignee-popover')
+          screen.getByTestId(TEST_CASE_NAME_ASSIGNEE_POPOVER)
         ).toBeInTheDocument();
       });
 
@@ -712,7 +720,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId('test_case_name-assignee-popover')
+          screen.queryByTestId(TEST_CASE_NAME_ASSIGNEE_POPOVER)
         ).not.toBeInTheDocument();
       });
     });
@@ -723,12 +731,12 @@ describe('InlineTestCaseIncidentStatus', () => {
       await openStatusMenu();
 
       await act(async () => {
-        fireEvent.click(screen.getByText('label.assigned'));
+        fireEvent.click(screen.getByText(LABEL_ASSIGNED));
       });
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-assignee-popover')
+          screen.getByTestId(TEST_CASE_NAME_ASSIGNEE_POPOVER)
         ).toBeInTheDocument();
       });
 
@@ -758,7 +766,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-resolved-popover')
+          screen.getByTestId(TEST_CASE_NAME_RESOLVED_POPOVER)
         ).toBeInTheDocument();
       });
     });
@@ -792,7 +800,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('resolved-comment-textarea')
+          screen.getByTestId(RESOLVED_COMMENT_TEXTAREA)
         ).toBeInTheDocument();
       });
     });
@@ -808,7 +816,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('submit-resolved-popover-button')
+          screen.getByTestId(SUBMIT_RESOLVED_POPOVER_BUTTON)
         ).toBeDisabled();
       });
     });
@@ -836,9 +844,7 @@ describe('InlineTestCaseIncidentStatus', () => {
         )
       );
 
-      expect(
-        screen.getByTestId('submit-resolved-popover-button')
-      ).toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_RESOLVED_POPOVER_BUTTON)).toBeDisabled();
     });
 
     it('submit is enabled with both reason and comment', async () => {
@@ -864,12 +870,12 @@ describe('InlineTestCaseIncidentStatus', () => {
         )
       );
 
-      fireEvent.change(screen.getByTestId('resolved-comment-textarea'), {
+      fireEvent.change(screen.getByTestId(RESOLVED_COMMENT_TEXTAREA), {
         target: { value: 'Test comment' },
       });
 
       expect(
-        screen.getByTestId('submit-resolved-popover-button')
+        screen.getByTestId(SUBMIT_RESOLVED_POPOVER_BUTTON)
       ).not.toBeDisabled();
     });
 
@@ -896,12 +902,12 @@ describe('InlineTestCaseIncidentStatus', () => {
         )
       );
 
-      fireEvent.change(screen.getByTestId('resolved-comment-textarea'), {
+      fireEvent.change(screen.getByTestId(RESOLVED_COMMENT_TEXTAREA), {
         target: { value: 'Test comment' },
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('submit-resolved-popover-button'));
+        fireEvent.click(screen.getByTestId(SUBMIT_RESOLVED_POPOVER_BUTTON));
       });
 
       await waitFor(() => {
@@ -932,7 +938,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-resolved-popover')
+          screen.getByTestId(TEST_CASE_NAME_RESOLVED_POPOVER)
         ).toBeInTheDocument();
       });
 
@@ -942,7 +948,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId('test_case_name-resolved-popover')
+          screen.queryByTestId(TEST_CASE_NAME_RESOLVED_POPOVER)
         ).not.toBeInTheDocument();
       });
     });
@@ -953,12 +959,12 @@ describe('InlineTestCaseIncidentStatus', () => {
       await openStatusMenu();
 
       await act(async () => {
-        fireEvent.click(screen.getByText('label.resolved'));
+        fireEvent.click(screen.getByText(LABEL_RESOLVED));
       });
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('test_case_name-resolved-popover')
+          screen.getByTestId(TEST_CASE_NAME_RESOLVED_POPOVER)
         ).toBeInTheDocument();
       });
 

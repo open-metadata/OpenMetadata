@@ -16,6 +16,10 @@ import { ActivityEvent } from '../../../../../generated/entity/activity/activity
 import { TagLabel } from '../../../../../generated/type/tagLabel';
 import ActivityTagsFeed from './ActivityTagsFeed';
 
+const PII_SENSITIVE = 'PII.Sensitive';
+const TAGS_VIEWER = 'tags-viewer';
+const TAG_NEWTAG = 'tag-NewTag';
+const TAG_OLDTAG = 'tag-OldTag';
 jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => {
   return jest.fn(({ tags }) => (
     <div data-testid="tags-viewer">
@@ -59,7 +63,7 @@ describe('ActivityTagsFeed', () => {
     it('should display added tags with add icon', () => {
       const activity = createMockActivity(
         createTagsJson([]),
-        createTagsJson(['PII.Sensitive', 'Tier.Tier1'])
+        createTagsJson([PII_SENSITIVE, 'Tier.Tier1'])
       );
 
       render(<ActivityTagsFeed activity={activity} />);
@@ -71,12 +75,12 @@ describe('ActivityTagsFeed', () => {
     it('should show tags viewer when tags are added', () => {
       const activity = createMockActivity(
         createTagsJson([]),
-        createTagsJson(['PII.Sensitive'])
+        createTagsJson([PII_SENSITIVE])
       );
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tags-viewer')).toBeInTheDocument();
+      expect(screen.getByTestId(TAGS_VIEWER)).toBeInTheDocument();
     });
 
     it('should only show newly added tags, not existing ones', () => {
@@ -87,7 +91,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tag-NewTag')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_NEWTAG)).toBeInTheDocument();
       expect(screen.queryByTestId('tag-ExistingTag')).not.toBeInTheDocument();
     });
   });
@@ -95,7 +99,7 @@ describe('ActivityTagsFeed', () => {
   describe('Tag Removal', () => {
     it('should display removed tags with delete icon', () => {
       const activity = createMockActivity(
-        createTagsJson(['PII.Sensitive', 'Tier.Tier1']),
+        createTagsJson([PII_SENSITIVE, 'Tier.Tier1']),
         createTagsJson([])
       );
 
@@ -127,8 +131,8 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tag-OldTag')).toBeInTheDocument();
-      expect(screen.getByTestId('tag-NewTag')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_OLDTAG)).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_NEWTAG)).toBeInTheDocument();
     });
 
     it('should render two TagsViewer components when both add and remove', () => {
@@ -139,7 +143,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      const tagsViewers = screen.getAllByTestId('tags-viewer');
+      const tagsViewers = screen.getAllByTestId(TAGS_VIEWER);
 
       expect(tagsViewers).toHaveLength(2);
     });
@@ -154,7 +158,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.queryByTestId('tags-viewer')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TAGS_VIEWER)).not.toBeInTheDocument();
     });
 
     it('should not render when both old and new are empty', () => {
@@ -165,7 +169,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.queryByTestId('tags-viewer')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TAGS_VIEWER)).not.toBeInTheDocument();
     });
   });
 
@@ -178,7 +182,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tag-NewTag')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_NEWTAG)).toBeInTheDocument();
     });
 
     it('should handle undefined newValue', () => {
@@ -189,7 +193,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tag-OldTag')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_OLDTAG)).toBeInTheDocument();
     });
 
     it('should handle invalid JSON in oldValue', () => {
@@ -200,7 +204,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tag-NewTag')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_NEWTAG)).toBeInTheDocument();
     });
 
     it('should handle invalid JSON in newValue', () => {
@@ -211,7 +215,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tag-OldTag')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_OLDTAG)).toBeInTheDocument();
     });
 
     it('should handle non-array JSON values', () => {
@@ -222,7 +226,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.getByTestId('tag-NewTag')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_NEWTAG)).toBeInTheDocument();
     });
 
     it('should handle empty strings', () => {
@@ -230,7 +234,7 @@ describe('ActivityTagsFeed', () => {
 
       render(<ActivityTagsFeed activity={activity} />);
 
-      expect(screen.queryByTestId('tags-viewer')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TAGS_VIEWER)).not.toBeInTheDocument();
     });
   });
 });

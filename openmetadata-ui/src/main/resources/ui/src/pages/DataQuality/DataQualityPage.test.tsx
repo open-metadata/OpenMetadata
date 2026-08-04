@@ -23,6 +23,12 @@ import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
+const DATA_INSIGHT_CONTAINER = 'data-insight-container' as const;
+const ADD_TEST_CASE_BTN = 'add-test-case-btn' as const;
+const ADD_TEST_SUITE_BTN = 'add-test-suite-btn' as const;
+const OPEN_FALSE = 'open: false' as const;
+const OPEN_TRUE = 'open: true' as const;
+
 const DATA_QUALITY_TEST_PATHS = {
   testCases: `/data-quality/${DataQualityPageTabs.TEST_CASES}`,
   testSuites: `/data-quality/${DataQualityPageTabs.TEST_SUITES}`,
@@ -221,7 +227,7 @@ describe('DataQualityPage', () => {
       expect(await screen.findByTestId('sub-heading')).toBeInTheDocument();
       expect(await screen.findByTestId('tabs')).toBeInTheDocument();
       expect(
-        await screen.findByTestId('data-insight-container')
+        await screen.findByTestId(DATA_INSIGHT_CONTAINER)
       ).toBeInTheDocument();
     });
 
@@ -238,20 +244,16 @@ describe('DataQualityPage', () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       // Debug: Check if the tab content is being rendered
-      expect(screen.getByTestId('data-insight-container')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_INSIGHT_CONTAINER)).toBeInTheDocument();
 
-      expect(
-        await screen.findByTestId('add-test-case-btn')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ADD_TEST_CASE_BTN)).toBeInTheDocument();
       expect(screen.getByText('label.add-a-entity')).toBeInTheDocument();
     });
 
     it('should show "Add Test Suite" button on TEST_SUITES tab with Create permission', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
 
-      expect(
-        await screen.findByTestId('add-test-suite-btn')
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId(ADD_TEST_SUITE_BTN)).toBeInTheDocument();
     });
   });
 
@@ -259,7 +261,7 @@ describe('DataQualityPage', () => {
     it('should pass create handlers and permissions into DataQualityProvider', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
-      await screen.findByTestId('data-insight-container');
+      await screen.findByTestId(DATA_INSIGHT_CONTAINER);
 
       await waitFor(() => {
         const calls = (DataQualityProvider as unknown as jest.Mock).mock.calls;
@@ -284,9 +286,9 @@ describe('DataQualityPage', () => {
       const drawer = await screen.findByTestId('test-case-form-drawer');
 
       expect(drawer).toBeInTheDocument();
-      expect(within(drawer).getByText('open: false')).toBeInTheDocument();
+      expect(within(drawer).getByText(OPEN_FALSE)).toBeInTheDocument();
 
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
 
       await act(async () => {
         fireEvent.click(addButton);
@@ -295,20 +297,20 @@ describe('DataQualityPage', () => {
       expect(
         within(drawer).getByText('TestCaseFormDrawer')
       ).toBeInTheDocument();
-      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText(OPEN_TRUE)).toBeInTheDocument();
     });
 
     it('should close TestCaseFormDrawer when cancel is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       const drawer = await screen.findByTestId('test-case-form-drawer');
-      const addButton = await screen.findByTestId('add-test-case-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_CASE_BTN);
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText(OPEN_TRUE)).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('test-case-cancel-btn');
 
@@ -317,7 +319,7 @@ describe('DataQualityPage', () => {
       });
 
       await waitFor(() => {
-        expect(within(drawer).getByText('open: false')).toBeInTheDocument();
+        expect(within(drawer).getByText(OPEN_FALSE)).toBeInTheDocument();
       });
     });
 
@@ -327,9 +329,9 @@ describe('DataQualityPage', () => {
       const drawer = await screen.findByTestId('bundle-suite-form-drawer');
 
       expect(drawer).toBeInTheDocument();
-      expect(within(drawer).getByText('open: false')).toBeInTheDocument();
+      expect(within(drawer).getByText(OPEN_FALSE)).toBeInTheDocument();
 
-      const addButton = await screen.findByTestId('add-test-suite-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_SUITE_BTN);
 
       await act(async () => {
         fireEvent.click(addButton);
@@ -338,20 +340,20 @@ describe('DataQualityPage', () => {
       expect(
         within(drawer).getByText('BundleSuiteFormDrawer')
       ).toBeInTheDocument();
-      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText(OPEN_TRUE)).toBeInTheDocument();
     });
 
     it('should close BundleSuiteFormDrawer when cancel is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
 
       const drawer = await screen.findByTestId('bundle-suite-form-drawer');
-      const addButton = await screen.findByTestId('add-test-suite-btn');
+      const addButton = await screen.findByTestId(ADD_TEST_SUITE_BTN);
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText(OPEN_TRUE)).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('bundle-suite-cancel-btn');
 
@@ -360,7 +362,7 @@ describe('DataQualityPage', () => {
       });
 
       await waitFor(() => {
-        expect(within(drawer).getByText('open: false')).toBeInTheDocument();
+        expect(within(drawer).getByText(OPEN_FALSE)).toBeInTheDocument();
       });
     });
   });

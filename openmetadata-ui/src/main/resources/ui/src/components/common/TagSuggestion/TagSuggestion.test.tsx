@@ -15,6 +15,8 @@ import { TagSource } from '../../../generated/entity/data/container';
 import TagSuggestion from './TagSuggestion';
 import { MOCK_GLOSSARY_OPTIONS, MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
 
+const TAG_OPTION_PERSONALDATA_PERSONAL = 'tag-option-PersonalData.Personal';
+const TAG_OPTION_BUSINESS_REVENUE = 'tag-option-Business.Revenue';
 const mockGetTags = jest.fn();
 const mockFetchGlossaryList = jest.fn();
 const mockEnsureComboboxMenuOpen = jest.fn();
@@ -256,11 +258,11 @@ describe('TagSuggestion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('tag-option-PersonalData.Personal')
+        screen.getByTestId(TAG_OPTION_PERSONALDATA_PERSONAL)
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+    fireEvent.click(screen.getByTestId(TAG_OPTION_PERSONALDATA_PERSONAL));
 
     expect(mockOnChange).toHaveBeenCalled();
 
@@ -331,11 +333,11 @@ describe('TagSuggestion', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('tag-option-PersonalData.Personal')
+        screen.getByTestId(TAG_OPTION_PERSONALDATA_PERSONAL)
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+    fireEvent.click(screen.getByTestId(TAG_OPTION_PERSONALDATA_PERSONAL));
 
     expect(mockOnChange.mock.calls[0][0][0].source).toBe(
       TagSource.Classification
@@ -366,11 +368,11 @@ describe('TagSuggestion', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('tag-option-PersonalData.Personal')
+          screen.getByTestId(TAG_OPTION_PERSONALDATA_PERSONAL)
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+      fireEvent.click(screen.getByTestId(TAG_OPTION_PERSONALDATA_PERSONAL));
 
       // mouseDown (not pointerDown) doesn't hit the field handler, so this call
       // comes from the insertion path re-opening the menu.
@@ -409,7 +411,7 @@ describe('TagSuggestion', () => {
       });
 
       expect(
-        screen.getByTestId('tag-option-Business.Revenue')
+        screen.getByTestId(TAG_OPTION_BUSINESS_REVENUE)
       ).toBeInTheDocument();
       expect(
         screen.getByTestId('tag-option-Business.Customer')
@@ -427,11 +429,11 @@ describe('TagSuggestion', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('tag-option-Business.Revenue')
+          screen.getByTestId(TAG_OPTION_BUSINESS_REVENUE)
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('tag-option-Business.Revenue'));
+      fireEvent.click(screen.getByTestId(TAG_OPTION_BUSINESS_REVENUE));
 
       expect(mockOnChange).toHaveBeenCalled();
 

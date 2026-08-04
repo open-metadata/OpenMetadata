@@ -9,6 +9,8 @@ import {
 } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { SearchIndexMappingLanguage } from '../../generated/settings/settings';
 
+const HTTPS_WWW_GETCOLLATE_IO = 'https://www.getcollate.io';
+
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +39,8 @@ export const mockApplicationData = {
   deleted: false,
   provider: ProviderType.User,
   developer: 'Collate Inc.',
-  developerUrl: 'https://www.getcollate.io',
-  privacyPolicyUrl: 'https://www.getcollate.io',
+  developerUrl: HTTPS_WWW_GETCOLLATE_IO,
+  privacyPolicyUrl: HTTPS_WWW_GETCOLLATE_IO,
   supportEmail: 'support@getcollate.io',
   className: 'org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp',
   appType: AppType.Internal,
@@ -118,8 +120,8 @@ export const mockExternalApplicationData = {
   href: 'http://demo.getcollate.io/api/v1/apps/633f579c-512c-4b5f-864b-5664aa56b37f',
   deleted: false,
   developer: 'Collate Inc.',
-  developerUrl: 'https://www.getcollate.io',
-  privacyPolicyUrl: 'https://www.getcollate.io',
+  developerUrl: HTTPS_WWW_GETCOLLATE_IO,
+  privacyPolicyUrl: HTTPS_WWW_GETCOLLATE_IO,
   supportEmail: 'support@getcollate.io',
   className: 'io.collate.service.apps.bundles.collateAI.CollateAIApp',
   sourcePythonClass: 'metadata.applications.collateai.app.CollateAIApp',

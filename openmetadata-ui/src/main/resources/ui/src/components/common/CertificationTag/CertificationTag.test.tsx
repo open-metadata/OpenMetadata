@@ -17,6 +17,9 @@ import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import CertificationTag from './CertificationTag';
 
+const GOLD_MEDAL = 'Gold Medal';
+const HTTPS_EXAMPLE_COM_GOLD_PNG = 'https://example.com/gold.png';
+
 jest.mock('../../../assets/svg/ic-certification.svg', () => ({
   ReactComponent: () => <div data-testid="default-certification-icon" />,
 }));
@@ -31,11 +34,11 @@ const mockCertification: AssetCertification = {
   tagLabel: {
     tagFQN: 'Certification.Gold',
     name: 'Gold',
-    displayName: 'Gold Medal',
+    displayName: GOLD_MEDAL,
     description: 'Gold certified data asset',
     style: {
       color: '#FFD700',
-      iconURL: 'https://example.com/gold.png',
+      iconURL: HTTPS_EXAMPLE_COM_GOLD_PNG,
     },
     source: TagSource.Classification,
     labelType: LabelType.Manual,
@@ -85,13 +88,13 @@ describe('CertificationTag', () => {
   it('should render the certification name when showName is true', () => {
     renderCertificationTag(mockCertification, true);
 
-    expect(screen.getByText('Gold Medal')).toBeInTheDocument();
+    expect(screen.getByText(GOLD_MEDAL)).toBeInTheDocument();
   });
 
   it('should not render the certification name when showName is false', () => {
     renderCertificationTag(mockCertification, false);
 
-    expect(screen.queryByText('Gold Medal')).not.toBeInTheDocument();
+    expect(screen.queryByText(GOLD_MEDAL)).not.toBeInTheDocument();
   });
 
   it('should render a custom icon when iconURL is provided', () => {
@@ -99,7 +102,7 @@ describe('CertificationTag', () => {
 
     expect(screen.getByTestId('custom-certification-icon')).toBeInTheDocument();
     expect(renderIcon).toHaveBeenCalledWith(
-      'https://example.com/gold.png',
+      HTTPS_EXAMPLE_COM_GOLD_PNG,
       expect.objectContaining({
         size: 14,
         className: 'certification-img',
@@ -112,7 +115,7 @@ describe('CertificationTag', () => {
     renderCertificationTag(mockCertification, true);
 
     expect(renderIcon).toHaveBeenCalledWith(
-      'https://example.com/gold.png',
+      HTTPS_EXAMPLE_COM_GOLD_PNG,
       expect.objectContaining({
         size: 14,
       })

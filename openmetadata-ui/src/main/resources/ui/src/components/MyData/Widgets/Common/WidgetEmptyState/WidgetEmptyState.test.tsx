@@ -16,15 +16,19 @@ import { MemoryRouter } from 'react-router-dom';
 import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetEmptyState from './WidgetEmptyState';
 
+const NO_DATA_FOUND = 'No Data Found';
+const THERE_ARE_NO_ITEMS_TO_DISPLAY = 'There are no items to display';
+const TEST_EMPTY_STATE = 'test-empty-state';
+
 const mockProps = {
   icon: <TaskIcon data-testid="empty-icon" />,
-  title: 'No Data Found',
-  description: 'There are no items to display',
+  title: NO_DATA_FOUND,
+  description: THERE_ARE_NO_ITEMS_TO_DISPLAY,
   showActionButton: true,
   actionButtonText: 'Add Item',
   onActionClick: jest.fn(),
   className: 'custom-empty-class',
-  dataTestId: 'test-empty-state',
+  dataTestId: TEST_EMPTY_STATE,
 };
 
 const renderWidgetEmptyState = (props = {}) => {
@@ -44,10 +48,8 @@ describe('WidgetEmptyState', () => {
     renderWidgetEmptyState();
 
     expect(screen.getByTestId('empty-icon')).toBeInTheDocument();
-    expect(screen.getByText('No Data Found')).toBeInTheDocument();
-    expect(
-      screen.getByText('There are no items to display')
-    ).toBeInTheDocument();
+    expect(screen.getByText(NO_DATA_FOUND)).toBeInTheDocument();
+    expect(screen.getByText(THERE_ARE_NO_ITEMS_TO_DISPLAY)).toBeInTheDocument();
   });
 
   it('renders action button when showActionButton is true', () => {
@@ -91,18 +93,16 @@ describe('WidgetEmptyState', () => {
   it('renders without title when not provided', () => {
     renderWidgetEmptyState({ title: undefined });
 
-    expect(screen.queryByText('No Data Found')).not.toBeInTheDocument();
-    expect(
-      screen.getByText('There are no items to display')
-    ).toBeInTheDocument();
+    expect(screen.queryByText(NO_DATA_FOUND)).not.toBeInTheDocument();
+    expect(screen.getByText(THERE_ARE_NO_ITEMS_TO_DISPLAY)).toBeInTheDocument();
   });
 
   it('renders without description when not provided', () => {
     renderWidgetEmptyState({ description: undefined });
 
-    expect(screen.getByText('No Data Found')).toBeInTheDocument();
+    expect(screen.getByText(NO_DATA_FOUND)).toBeInTheDocument();
     expect(
-      screen.queryByText('There are no items to display')
+      screen.queryByText(THERE_ARE_NO_ITEMS_TO_DISPLAY)
     ).not.toBeInTheDocument();
   });
 
@@ -110,13 +110,13 @@ describe('WidgetEmptyState', () => {
     renderWidgetEmptyState({ icon: undefined });
 
     expect(screen.queryByTestId('empty-icon')).not.toBeInTheDocument();
-    expect(screen.getByText('No Data Found')).toBeInTheDocument();
+    expect(screen.getByText(NO_DATA_FOUND)).toBeInTheDocument();
   });
 
   it('applies custom className', () => {
     renderWidgetEmptyState();
 
-    const emptyState = screen.getByTestId('test-empty-state');
+    const emptyState = screen.getByTestId(TEST_EMPTY_STATE);
 
     expect(emptyState).toHaveClass('custom-empty-class');
   });
@@ -138,6 +138,6 @@ describe('WidgetEmptyState', () => {
     });
 
     // Should still render the empty state container
-    expect(screen.getByTestId('test-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId(TEST_EMPTY_STATE)).toBeInTheDocument();
   });
 });

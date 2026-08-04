@@ -15,11 +15,12 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 import { CsvJobsTrayContainer } from './CsvJobsTrayContainer.component';
 
+const CSV_JOBS_TRAY = 'csv-jobs-tray';
 jest.mock('./CsvJobsTray.component', () => ({
   CsvJobsTray: jest.fn(() => <div data-testid="csv-jobs-tray" />),
 }));
 
-const renderTray = () => <div data-testid="csv-jobs-tray" />;
+const renderTray = () => <div data-testid={CSV_JOBS_TRAY} />;
 
 describe('CsvJobsTrayContainer', () => {
   beforeEach(() => {
@@ -32,7 +33,7 @@ describe('CsvJobsTrayContainer', () => {
     const { CsvJobsTray } = require('./CsvJobsTray.component');
     render(<CsvJobsTrayContainer />);
 
-    expect(screen.queryByTestId('csv-jobs-tray')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CSV_JOBS_TRAY)).not.toBeInTheDocument();
     expect(CsvJobsTray).not.toHaveBeenCalled();
   });
 
@@ -43,7 +44,7 @@ describe('CsvJobsTrayContainer', () => {
       window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
     });
 
-    expect(await screen.findByTestId('csv-jobs-tray')).toBeInTheDocument();
+    expect(await screen.findByTestId(CSV_JOBS_TRAY)).toBeInTheDocument();
   });
 
   it('renders nothing (does not crash) when the lazy tray fails to load', async () => {
@@ -63,7 +64,7 @@ describe('CsvJobsTrayContainer', () => {
 
     await waitFor(() => expect(CsvJobsTray).toHaveBeenCalled());
 
-    expect(screen.queryByTestId('csv-jobs-tray')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CSV_JOBS_TRAY)).not.toBeInTheDocument();
 
     consoleErrorSpy.mockRestore();
   });

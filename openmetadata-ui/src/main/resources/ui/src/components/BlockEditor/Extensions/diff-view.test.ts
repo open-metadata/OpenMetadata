@@ -18,6 +18,9 @@ import Paragraph from '@tiptap/extension-paragraph';
 import Text from '@tiptap/extension-text';
 import DiffView from './diff-view';
 
+const DATA_DIFF_TRUE = 'data-diff="true"';
+const DIFF_ADDED = 'diff-added';
+
 describe('DiffView Extension', () => {
   it('should be a Tiptap Node', () => {
     expect(DiffView).toBeInstanceOf(Node);
@@ -56,7 +59,7 @@ describe('DiffView renderHTML — textContent vs innerHTML behaviour', () => {
 
     const output = editor.getHTML();
 
-    expect(output).toContain('data-diff="true"');
+    expect(output).toContain(DATA_DIFF_TRUE);
     expect(output).toContain('plain text');
   });
 
@@ -97,7 +100,7 @@ describe('DiffView renderHTML — textContent vs innerHTML behaviour', () => {
 
     const output = editor.getHTML();
 
-    expect(output).toContain('data-diff="true"');
+    expect(output).toContain(DATA_DIFF_TRUE);
   });
 
   it('preserves data-testid attribute when present', () => {
@@ -126,7 +129,7 @@ describe('DiffView renderHTML — textContent vs innerHTML behaviour', () => {
     const output = editor.getHTML();
 
     expect(output).toContain('diff-removed');
-    expect(output).toContain('diff-added');
+    expect(output).toContain(DIFF_ADDED);
     expect(output).toContain('old');
     expect(output).toContain('new');
   });
@@ -138,7 +141,7 @@ describe('DiffView renderHTML — textContent vs innerHTML behaviour', () => {
 
     const output = editor.getHTML();
 
-    expect(output).toContain('data-diff="true"');
+    expect(output).toContain(DATA_DIFF_TRUE);
     expect(output).not.toContain('data-unknown');
   });
 
@@ -161,7 +164,7 @@ describe('DiffView renderHTML — textContent vs innerHTML behaviour', () => {
             {
               type: 'diffView',
               attrs: {
-                class: 'diff-added',
+                class: DIFF_ADDED,
                 'data-diff': 'true',
                 'data-testid': '',
               },
@@ -245,7 +248,7 @@ describe('DiffView — Tiptap marks vs hardcoded HTML string as content', () => 
             {
               type: 'diffView',
               attrs: {
-                class: 'diff-added',
+                class: DIFF_ADDED,
                 'data-diff': 'true',
                 'data-testid': '',
               },

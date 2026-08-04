@@ -15,10 +15,18 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { VideoPlayer } from './VideoPlayer.component';
 
+const TEST_VIDEO = 'Test Video' as const;
+const HTTPS_WWW_YOUTUBE_COM_WATCH_V =
+  'https://www.youtube.com/watch?v=dQw4w9WgXcQ' as const;
+const HTTPS_WWW_YOUTUBE_COM_EMBED_D =
+  'https://www.youtube.com/embed/dQw4w9WgXcQ' as const;
+const HTTPS_PLAYER_VIMEO_COM_VIDEO_123456789 =
+  'https://player.vimeo.com/video/123456789' as const;
+
 const createMockResource = (url: string): LearningResource => ({
   id: 'test-id',
   name: 'test-video',
-  displayName: 'Test Video',
+  displayName: TEST_VIDEO,
   resourceType: 'Video',
   source: { url },
   contexts: [{ pageId: 'glossary' }],
@@ -26,73 +34,59 @@ const createMockResource = (url: string): LearningResource => ({
 
 describe('VideoPlayer', () => {
   it('should render loading spinner initially', () => {
-    const resource = createMockResource(
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-    );
+    const resource = createMockResource(HTTPS_WWW_YOUTUBE_COM_WATCH_V);
     render(<VideoPlayer resource={resource} />);
 
     expect(document.querySelector('.ant-spin')).toBeInTheDocument();
   });
 
   it('should render iframe with correct YouTube embed URL', () => {
-    const resource = createMockResource(
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-    );
+    const resource = createMockResource(HTTPS_WWW_YOUTUBE_COM_WATCH_V);
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
     expect(iframe).toBeInTheDocument();
-    expect(iframe.getAttribute('src')).toContain(
-      'https://www.youtube.com/embed/dQw4w9WgXcQ'
-    );
+    expect(iframe.getAttribute('src')).toContain(HTTPS_WWW_YOUTUBE_COM_EMBED_D);
   });
 
   it('should handle YouTube short URL format', () => {
     const resource = createMockResource('https://youtu.be/dQw4w9WgXcQ');
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
-    expect(iframe.getAttribute('src')).toContain(
-      'https://www.youtube.com/embed/dQw4w9WgXcQ'
-    );
+    expect(iframe.getAttribute('src')).toContain(HTTPS_WWW_YOUTUBE_COM_EMBED_D);
   });
 
   it('should preserve YouTube embed URL as-is', () => {
-    const resource = createMockResource(
-      'https://www.youtube.com/embed/dQw4w9WgXcQ'
-    );
+    const resource = createMockResource(HTTPS_WWW_YOUTUBE_COM_EMBED_D);
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
-    expect(iframe.getAttribute('src')).toBe(
-      'https://www.youtube.com/embed/dQw4w9WgXcQ'
-    );
+    expect(iframe.getAttribute('src')).toBe(HTTPS_WWW_YOUTUBE_COM_EMBED_D);
   });
 
   it('should handle Vimeo URL format', () => {
     const resource = createMockResource('https://vimeo.com/123456789');
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
     expect(iframe.getAttribute('src')).toBe(
-      'https://player.vimeo.com/video/123456789'
+      HTTPS_PLAYER_VIMEO_COM_VIDEO_123456789
     );
   });
 
   it('should handle Vimeo player URL format', () => {
-    const resource = createMockResource(
-      'https://player.vimeo.com/video/123456789'
-    );
+    const resource = createMockResource(HTTPS_PLAYER_VIMEO_COM_VIDEO_123456789);
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
     expect(iframe.getAttribute('src')).toBe(
-      'https://player.vimeo.com/video/123456789'
+      HTTPS_PLAYER_VIMEO_COM_VIDEO_123456789
     );
   });
 
@@ -100,18 +94,16 @@ describe('VideoPlayer', () => {
     const resource = createMockResource('https://example.com/video.mp4');
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
     expect(iframe.getAttribute('src')).toBe('https://example.com/video.mp4');
   });
 
   it('should have sandbox attribute for security', () => {
-    const resource = createMockResource(
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-    );
+    const resource = createMockResource(HTTPS_WWW_YOUTUBE_COM_WATCH_V);
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
     expect(iframe.getAttribute('sandbox')).toBe(
       'allow-scripts allow-same-origin allow-presentation allow-popups'
@@ -119,12 +111,10 @@ describe('VideoPlayer', () => {
   });
 
   it('should hide loading spinner after iframe loads', () => {
-    const resource = createMockResource(
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-    );
+    const resource = createMockResource(HTTPS_WWW_YOUTUBE_COM_WATCH_V);
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
     fireEvent.load(iframe);
 
     expect(document.querySelector('.ant-spin')).not.toBeInTheDocument();
@@ -135,7 +125,7 @@ describe('VideoPlayer', () => {
       id: 'test-id',
       name: 'test-video-name',
       resourceType: 'Video',
-      source: { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+      source: { url: HTTPS_WWW_YOUTUBE_COM_WATCH_V },
       contexts: [{ pageId: 'glossary' }],
     };
     render(<VideoPlayer resource={resource} />);
@@ -147,7 +137,7 @@ describe('VideoPlayer', () => {
     const resource = createMockResource('not-a-valid-url');
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
     expect(iframe.getAttribute('src')).toBe('not-a-valid-url');
   });
@@ -158,7 +148,7 @@ describe('VideoPlayer', () => {
     );
     render(<VideoPlayer resource={resource} />);
 
-    const iframe = screen.getByTitle('Test Video');
+    const iframe = screen.getByTitle(TEST_VIDEO);
 
     expect(iframe.getAttribute('src')).toBe(
       'https://malicious-site.com/youtube.com/watch?v=abc123'

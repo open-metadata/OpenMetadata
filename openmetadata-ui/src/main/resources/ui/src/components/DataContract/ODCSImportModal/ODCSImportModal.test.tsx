@@ -35,6 +35,20 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContractImportModal from './ODCSImportModal.component';
 
+const IMPORT_ODCS_CONTRACT = 'Import ODCS Contract';
+const CONTRACT_PREVIEW = 'Contract Preview';
+const MERGE_WITH_EXISTING = 'Merge with existing';
+const EXISTING_CONTRACT_DETECTED = 'Existing contract detected';
+const PARSE_ERROR = 'Parse Error';
+const REPLACE_ENTIRE_CONTRACT = 'Replace entire contract';
+const CLICK_TO_UPLOAD = 'Click to upload';
+const CONTRACT_YAML = 'contract.yaml';
+const APPLICATION_X_YAML = 'application/x-yaml';
+const INPUT_TYPE_FILE = 'input[type="file"]';
+const NAME_SIZE_MUST_BE_BETWEEN_1_AND_256 =
+  'name size must be between 1 and 256';
+const OM_CONTRACT_YAML = 'om-contract.yaml';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
@@ -333,10 +347,10 @@ jest.mock('react-i18next', () => ({
       const translations: Record<string, string> = {
         'label.cancel': 'Cancel',
         'label.import': 'Import',
-        'label.import-odcs-contract': 'Import ODCS Contract',
+        'label.import-odcs-contract': IMPORT_ODCS_CONTRACT,
         'label.import-contract': 'Import Contract',
         'label.file': 'File',
-        'label.contract-preview': 'Contract Preview',
+        'label.contract-preview': CONTRACT_PREVIEW,
         'label.name': 'Name',
         'label.display-name': 'Display Name',
         'label.version': 'Version',
@@ -350,7 +364,7 @@ jest.mock('react-i18next', () => ({
         'label.none': 'None',
         'label.not-specified': 'Not specified',
         'label.what-will-happen': 'What will happen',
-        'label.merge-with-existing': 'Merge with existing',
+        'label.merge-with-existing': MERGE_WITH_EXISTING,
         'label.replace-existing': 'Replace existing',
         'label.odcs-contract': 'ODCS Contract',
         'label.contract': 'Contract',
@@ -361,7 +375,7 @@ jest.mock('react-i18next', () => ({
         'message.invalid-odcs-contract-format': 'Invalid ODCS contract format',
         'message.invalid-openmetadata-contract-format':
           'Invalid OpenMetadata contract format',
-        'message.existing-contract-detected': 'Existing contract detected',
+        'message.existing-contract-detected': EXISTING_CONTRACT_DETECTED,
         'message.choose-import-mode': 'Choose import mode',
         'message.import-mode-merge-description':
           'Merge imported data with existing contract',
@@ -386,7 +400,7 @@ jest.mock('react-i18next', () => ({
         'message.select-schema-object-to-import':
           'Select which schema object to import',
         'label.select-schema-object': 'Select Schema Object',
-        'label.parse-error': 'Parse Error',
+        'label.parse-error': PARSE_ERROR,
         'label.failed': 'Failed',
         'message.invalid-odcs-contract-format-required-fields':
           'The following fields are required: APIVersion, Kind, Status',
@@ -403,9 +417,9 @@ jest.mock('react-i18next', () => ({
         'label.verified': 'verified',
         'label.error': 'error',
         'label.not-found-lowercase': 'not found',
-        'label.replace-entire-contract': 'Replace entire contract',
+        'label.replace-entire-contract': REPLACE_ENTIRE_CONTRACT,
         'message.please-select-action-below': 'Please select an action below.',
-        'label.click-to-upload': 'Click to upload',
+        'label.click-to-upload': CLICK_TO_UPLOAD,
         'label.or-drag-and-drop': 'or drag and drop',
         'message.upload-file-description':
           'Upload a contract file to import or validate',
@@ -538,7 +552,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      expect(screen.getByText('Import ODCS Contract')).toBeInTheDocument();
+      expect(screen.getByText(IMPORT_ODCS_CONTRACT)).toBeInTheDocument();
     });
 
     it('should not render modal content when visible is false', () => {
@@ -553,9 +567,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      expect(
-        screen.queryByText('Import ODCS Contract')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(IMPORT_ODCS_CONTRACT)).not.toBeInTheDocument();
     });
 
     it('should show file upload area initially', () => {
@@ -570,7 +582,7 @@ describe('ContractImportModal', () => {
         />
       );
 
-      expect(screen.getByText('Click to upload')).toBeInTheDocument();
+      expect(screen.getByText(CLICK_TO_UPLOAD)).toBeInTheDocument();
       expect(screen.getByText(/or drag and drop/)).toBeInTheDocument();
       expect(screen.getByText('Supports YAML format')).toBeInTheDocument();
     });
@@ -621,20 +633,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('contract.yaml')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_YAML)).toBeInTheDocument();
       });
     });
 
@@ -650,20 +660,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
         expect(screen.getByText(/Test Contract/)).toBeInTheDocument();
         expect(screen.getByText(/1.0.0/)).toBeInTheDocument();
         expect(screen.getByText(/active/)).toBeInTheDocument();
@@ -682,20 +690,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
       });
 
       await waitFor(() => {
@@ -719,12 +725,10 @@ describe('ContractImportModal', () => {
       );
 
       const file = new File([invalidODCSYaml], 'invalid.yaml', {
-        type: 'application/x-yaml',
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -736,7 +740,7 @@ describe('ContractImportModal', () => {
             'The following fields are required: APIVersion, Kind, Status'
           )
         ).toBeInTheDocument();
-        expect(screen.getByText('Parse Error')).toBeInTheDocument();
+        expect(screen.getByText(PARSE_ERROR)).toBeInTheDocument();
       });
     });
 
@@ -753,12 +757,10 @@ describe('ContractImportModal', () => {
       );
 
       const file = new File([invalidODCSYaml], 'invalid.yaml', {
-        type: 'application/x-yaml',
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -783,13 +785,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYamlMinimal], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYamlMinimal], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -814,15 +814,13 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [] } });
       });
 
-      expect(screen.queryByText('contract.yaml')).not.toBeInTheDocument();
+      expect(screen.queryByText(CONTRACT_YAML)).not.toBeInTheDocument();
     });
   });
 
@@ -840,7 +838,7 @@ describe('ContractImportModal', () => {
       );
 
       const dropZone = screen
-        .getByText('Click to upload')
+        .getByText(CLICK_TO_UPLOAD)
         .closest('div') as HTMLElement;
 
       await act(async () => {
@@ -863,7 +861,7 @@ describe('ContractImportModal', () => {
       );
 
       const dropZone = screen
-        .getByText('Click to upload')
+        .getByText(CLICK_TO_UPLOAD)
         .closest('div') as HTMLElement;
 
       await act(async () => {
@@ -886,11 +884,11 @@ describe('ContractImportModal', () => {
       );
 
       const dropZone = screen
-        .getByText('Click to upload')
+        .getByText(CLICK_TO_UPLOAD)
         .closest('div') as HTMLElement;
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
       await act(async () => {
@@ -900,7 +898,7 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('contract.yaml')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_YAML)).toBeInTheDocument();
       });
     });
 
@@ -917,7 +915,7 @@ describe('ContractImportModal', () => {
       );
 
       const dropZone = screen
-        .getByText('Click to upload')
+        .getByText(CLICK_TO_UPLOAD)
         .closest('div') as HTMLElement;
 
       const file = new File(['invalid'], 'contract.txt', {
@@ -946,7 +944,7 @@ describe('ContractImportModal', () => {
       );
 
       const dropZone = screen
-        .getByText('Click to upload')
+        .getByText(CLICK_TO_UPLOAD)
         .closest('div') as HTMLElement;
 
       await act(async () => {
@@ -955,7 +953,7 @@ describe('ContractImportModal', () => {
         });
       });
 
-      expect(screen.getByText('Click to upload')).toBeInTheDocument();
+      expect(screen.getByText(CLICK_TO_UPLOAD)).toBeInTheDocument();
     });
   });
 
@@ -972,20 +970,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('contract.yaml')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_YAML)).toBeInTheDocument();
       });
 
       const removeButton = screen.getByTestId('remove-file-button');
@@ -995,7 +991,7 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Click to upload')).toBeInTheDocument();
+        expect(screen.getByText(CLICK_TO_UPLOAD)).toBeInTheDocument();
       });
     });
   });
@@ -1014,13 +1010,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1028,10 +1022,10 @@ describe('ContractImportModal', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Existing contract detected')
+          screen.getByText(EXISTING_CONTRACT_DETECTED)
         ).toBeInTheDocument();
-        expect(screen.getByText('Merge with existing')).toBeInTheDocument();
-        expect(screen.getByText('Replace entire contract')).toBeInTheDocument();
+        expect(screen.getByText(MERGE_WITH_EXISTING)).toBeInTheDocument();
+        expect(screen.getByText(REPLACE_ENTIRE_CONTRACT)).toBeInTheDocument();
       });
     });
 
@@ -1048,13 +1042,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1062,11 +1054,9 @@ describe('ContractImportModal', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText('Existing contract detected')
+          screen.queryByText(EXISTING_CONTRACT_DETECTED)
         ).not.toBeInTheDocument();
-        expect(
-          screen.queryByText('Merge with existing')
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText(MERGE_WITH_EXISTING)).not.toBeInTheDocument();
       });
     });
 
@@ -1083,20 +1073,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Merge with existing')).toBeInTheDocument();
+        expect(screen.getByText(MERGE_WITH_EXISTING)).toBeInTheDocument();
       });
 
       const mergeRadio = screen.getByDisplayValue('merge');
@@ -1117,13 +1105,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1149,20 +1135,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Replace entire contract')).toBeInTheDocument();
+        expect(screen.getByText(REPLACE_ENTIRE_CONTRACT)).toBeInTheDocument();
       });
 
       const replaceRadio = screen.getByDisplayValue('replace');
@@ -1198,13 +1182,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1229,13 +1211,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1269,13 +1249,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1304,13 +1282,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1326,7 +1302,7 @@ describe('ContractImportModal', () => {
         valid: false,
         entityErrors: [
           'name must match "^((?!::).)*$"',
-          'name size must be between 1 and 256',
+          NAME_SIZE_MUST_BE_BETWEEN_1_AND_256,
         ],
         schemaValidation: {
           passed: 1,
@@ -1347,13 +1323,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1369,7 +1343,7 @@ describe('ContractImportModal', () => {
           screen.getByText('name must match "^((?!::).)*$"')
         ).toBeInTheDocument();
         expect(
-          screen.getByText('name size must be between 1 and 256')
+          screen.getByText(NAME_SIZE_MUST_BE_BETWEEN_1_AND_256)
         ).toBeInTheDocument();
       });
     });
@@ -1399,13 +1373,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1426,7 +1398,7 @@ describe('ContractImportModal', () => {
     it('should disable import button when entity errors are present', async () => {
       (validateODCSYaml as jest.Mock).mockResolvedValue({
         valid: false,
-        entityErrors: ['name size must be between 1 and 256'],
+        entityErrors: [NAME_SIZE_MUST_BE_BETWEEN_1_AND_256],
         schemaValidation: {
           passed: 1,
           failed: 0,
@@ -1446,13 +1418,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1485,13 +1455,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([multiObjectODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1520,13 +1488,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([multiObjectODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1559,13 +1525,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([multiObjectODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1595,13 +1559,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([multiObjectODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([multiObjectODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1648,13 +1610,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1697,13 +1657,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1748,13 +1706,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1801,13 +1757,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1847,13 +1801,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1892,13 +1844,11 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -1934,20 +1884,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validOpenMetadataYaml], 'om-contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validOpenMetadataYaml], OM_CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
       });
 
       const importButton = screen.getByRole('button', { name: 'Import' });
@@ -1981,20 +1929,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validOpenMetadataYaml], 'om-contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validOpenMetadataYaml], OM_CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
       });
 
       const replaceRadio = screen.getByDisplayValue('replace');
@@ -2030,20 +1976,18 @@ describe('ContractImportModal', () => {
         />
       );
 
-      const file = new File([validOpenMetadataYaml], 'om-contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validOpenMetadataYaml], OM_CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
       });
 
       const importButton = screen.getByRole('button', { name: 'Import' });
@@ -2082,20 +2026,18 @@ describe('ContractImportModal', () => {
       const yamlWithStringTerms = `name: om-contract
 termsOfUse: Updated terms`;
 
-      const file = new File([yamlWithStringTerms], 'om-contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([yamlWithStringTerms], OM_CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
       });
 
       const importButton = screen.getByRole('button', { name: 'Import' });
@@ -2157,20 +2099,18 @@ termsOfUse: Updated terms`;
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('contract.yaml')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_YAML)).toBeInTheDocument();
       });
 
       const cancelButton = screen.getByRole('button', { name: 'Cancel' });
@@ -2187,7 +2127,7 @@ termsOfUse: Updated terms`;
         />
       );
 
-      expect(screen.getByText('Click to upload')).toBeInTheDocument();
+      expect(screen.getByText(CLICK_TO_UPLOAD)).toBeInTheDocument();
     });
 
     it('should call onClose when close icon is clicked', () => {
@@ -2227,13 +2167,11 @@ status: active`;
         />
       );
 
-      const file = new File([noNameYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([noNameYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -2256,20 +2194,18 @@ status: active`;
         />
       );
 
-      const file = new File([validODCSYamlMinimal], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYamlMinimal], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
         expect(screen.queryByText('Schema')).not.toBeInTheDocument();
         expect(screen.queryByText('SLA')).not.toBeInTheDocument();
       });
@@ -2288,19 +2224,17 @@ status: active`;
       );
 
       const file = new File([malformedYaml], 'malformed.yaml', {
-        type: 'application/x-yaml',
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Parse Error')).toBeInTheDocument();
+        expect(screen.getByText(PARSE_ERROR)).toBeInTheDocument();
         expect(screen.getByText('Failed')).toBeInTheDocument();
       });
     });
@@ -2324,13 +2258,11 @@ entity:
         />
       );
 
-      const file = new File([omWithDisplayName], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([omWithDisplayName], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
@@ -2355,20 +2287,18 @@ entity:
         />
       );
 
-      const file = new File([validODCSYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validODCSYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
       });
     });
 
@@ -2388,19 +2318,17 @@ version: 1.0`;
       );
 
       const file = new File([invalidOMYaml], 'invalid-om.yaml', {
-        type: 'application/x-yaml',
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Parse Error')).toBeInTheDocument();
+        expect(screen.getByText(PARSE_ERROR)).toBeInTheDocument();
         expect(screen.getByText('Failed')).toBeInTheDocument();
       });
     });
@@ -2419,20 +2347,18 @@ version: 1.0`;
         />
       );
 
-      const file = new File([validOpenMetadataYaml], 'contract.yaml', {
-        type: 'application/x-yaml',
+      const file = new File([validOpenMetadataYaml], CONTRACT_YAML, {
+        type: APPLICATION_X_YAML,
       });
 
-      const input = document.querySelector(
-        'input[type="file"]'
-      ) as HTMLInputElement;
+      const input = document.querySelector(INPUT_TYPE_FILE) as HTMLInputElement;
 
       await act(async () => {
         fireEvent.change(input, { target: { files: [file] } });
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Contract Preview')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_PREVIEW)).toBeInTheDocument();
         expect(screen.getByText('Schema')).toBeInTheDocument();
         expect(screen.getByText('SLA')).toBeInTheDocument();
         expect(screen.getByText('Security')).toBeInTheDocument();

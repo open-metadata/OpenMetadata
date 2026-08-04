@@ -14,6 +14,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import RelatedDataAssets from './RelatedDataAssets';
 
+const EDIT_DATA_ASSETS = 'edit-data-assets';
+const ADD_DATA_ASSETS_BUTTON = 'add-data-assets-button';
+
 jest.mock('./RelatedDataAssetsForm', () => ({
   RelatedDataAssetsForm: () => <div data-testid="dataAssetsForm" />,
 }));
@@ -51,7 +54,7 @@ describe('RelatedDataAssets', () => {
 
     expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
 
-    expect(screen.getByTestId('edit-data-assets')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_DATA_ASSETS)).toBeInTheDocument();
 
     expect(screen.getByTestId('data-assets-list-body')).toBeInTheDocument();
 
@@ -67,7 +70,7 @@ describe('RelatedDataAssets', () => {
 
     // should not render the add data assets button
     expect(
-      screen.queryByTestId('add-data-assets-button')
+      screen.queryByTestId(ADD_DATA_ASSETS_BUTTON)
     ).not.toBeInTheDocument();
 
     // should not render the show more button
@@ -92,7 +95,7 @@ describe('RelatedDataAssets', () => {
     ).toBeInTheDocument();
 
     // should not render the edit button
-    expect(screen.queryByTestId('edit-data-assets')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_DATA_ASSETS)).not.toBeInTheDocument();
   });
 
   it('should render the show more button if relatedDataAssets.length > 5', () => {
@@ -128,7 +131,7 @@ describe('RelatedDataAssets', () => {
 
     // click on edit button
     await act(async () => {
-      fireEvent.click(screen.getByTestId('edit-data-assets'));
+      fireEvent.click(screen.getByTestId(EDIT_DATA_ASSETS));
     });
 
     expect(screen.getByTestId('dataAssetsForm')).toBeInTheDocument();
@@ -220,7 +223,7 @@ describe('RelatedDataAssets', () => {
       screen.queryByText('label.data-asset-plural')
     ).not.toBeInTheDocument();
 
-    expect(screen.queryByTestId('edit-data-assets')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_DATA_ASSETS)).not.toBeInTheDocument();
 
     expect(
       screen.queryByTestId('data-assets-list-body')
@@ -228,7 +231,7 @@ describe('RelatedDataAssets', () => {
 
     // should not render the add data assets button
     expect(
-      screen.queryByTestId('add-data-assets-button')
+      screen.queryByTestId(ADD_DATA_ASSETS_BUTTON)
     ).not.toBeInTheDocument();
 
     // should not render the show more button
@@ -249,7 +252,7 @@ describe('RelatedDataAssets', () => {
     );
 
     expect(
-      screen.queryByTestId('add-data-assets-button')
+      screen.queryByTestId(ADD_DATA_ASSETS_BUTTON)
     ).not.toBeInTheDocument();
   });
 
@@ -263,6 +266,6 @@ describe('RelatedDataAssets', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.queryByTestId('edit-data-assets')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_DATA_ASSETS)).not.toBeInTheDocument();
   });
 });

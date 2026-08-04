@@ -15,6 +15,9 @@ import { MOCK_TASK_DATA } from '../../../../mocks/TestCase.mock';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestCaseIncidentTab from './TestCaseIncidentTab.component';
 
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM =
+  'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between' as const;
+
 const mockUseActivityFeedProviderValue = {
   entityPaging: { total: 4 },
   tasks: MOCK_TASK_DATA,
@@ -96,7 +99,7 @@ describe('TestCaseIssueTab', () => {
       undefined,
       undefined,
       'testCase',
-      'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
+      SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
       'open'
     );
   });
@@ -123,7 +126,7 @@ describe('TestCaseIssueTab', () => {
       undefined,
       undefined,
       'testCase',
-      'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
+      SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
       'closed'
     );
   });

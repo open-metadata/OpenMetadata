@@ -25,6 +25,12 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionList from './TestDefinitionList.component';
 
+const COLUMN_VALUES_TO_BE_NOT_NULL = 'Column Values To Be Not Null';
+const TABLE_ROW_COUNT_TO_BE_BETWEEN = 'Table Row Count To Be Between';
+const LABEL_ENTITY_TYPE = 'label.entity-type';
+const TEST_DEFINITION_FORM = 'test-definition-form';
+const ADD_TEST_DEFINITION_BUTTON = 'add-test-definition-button';
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const TableMock = Object.assign(
     ({
@@ -129,7 +135,7 @@ const mockTestDefinitions = {
       id: 'test-def-1',
       name: 'columnValuesToBeNotNull',
       fullyQualifiedName: 'columnValuesToBeNotNull',
-      displayName: 'Column Values To Be Not Null',
+      displayName: COLUMN_VALUES_TO_BE_NOT_NULL,
       description: 'Ensures that all values in a column are not null',
       entityType: 'COLUMN',
       testPlatforms: ['OpenMetadata'],
@@ -140,7 +146,7 @@ const mockTestDefinitions = {
       id: 'test-def-2',
       name: 'tableRowCountToBeBetween',
       fullyQualifiedName: 'tableRowCountToBeBetween',
-      displayName: 'Table Row Count To Be Between',
+      displayName: TABLE_ROW_COUNT_TO_BE_BETWEEN,
       description: 'Ensures table row count is between min and max values',
       entityType: 'TABLE',
       testPlatforms: ['OpenMetadata', 'DBT'],
@@ -195,7 +201,7 @@ jest.mock('../TestDefinitionForm/TestDefinitionForm.component', () => ({
   default: jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="test-definition-form">TestDefinitionForm</div>
+      <div data-testid={TEST_DEFINITION_FORM}>TestDefinitionForm</div>
     )),
 }));
 
@@ -208,6 +214,7 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
     )),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
@@ -226,6 +233,7 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../hooks/useTableFilters', () => ({
   useTableFilters: jest.fn().mockReturnValue({
     filters: {
@@ -236,6 +244,7 @@ jest.mock('../../../hooks/useTableFilters', () => ({
   }),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../common/atoms/filters/useQuickFiltersWithComponent', () => ({
   ...jest.requireActual(
     '../../common/atoms/filters/useQuickFiltersWithComponent'
@@ -251,6 +260,7 @@ jest.mock('../../common/atoms/filters/useFilterSelection', () => ({
   }),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockResolvedValue({
@@ -296,12 +306,8 @@ describe('TestDefinitionList Component', () => {
       expect(screen.getByTestId('test-definition-table')).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText('Column Values To Be Not Null')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Table Row Count To Be Between')
-    ).toBeInTheDocument();
+    expect(screen.getByText(COLUMN_VALUES_TO_BE_NOT_NULL)).toBeInTheDocument();
+    expect(screen.getByText(TABLE_ROW_COUNT_TO_BE_BETWEEN)).toBeInTheDocument();
   });
 
   it('should render all table columns', async () => {
@@ -313,7 +319,7 @@ describe('TestDefinitionList Component', () => {
 
       expect(labels).toContain('label.name');
       expect(labels).toContain('label.description');
-      expect(labels).toContain('label.entity-type');
+      expect(labels).toContain(LABEL_ENTITY_TYPE);
       expect(labels).toContain('label.test-platform-plural');
       expect(labels).toContain('label.enabled');
       expect(labels).toContain('label.action-plural');
@@ -377,7 +383,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+      expect(screen.getByTestId(TEST_DEFINITION_FORM)).toBeInTheDocument();
     });
   });
 
@@ -465,11 +471,11 @@ describe('TestDefinitionList Component', () => {
 
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
-    const addButton = await screen.findByTestId('add-test-definition-button');
+    const addButton = await screen.findByTestId(ADD_TEST_DEFINITION_BUTTON);
     fireEvent.click(addButton);
 
     await waitFor(() => {
-      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+      expect(screen.getByTestId(TEST_DEFINITION_FORM)).toBeInTheDocument();
     });
 
     const onSuccessCallback = (TestDefinitionForm as jest.Mock).mock.calls[0][0]
@@ -489,7 +495,7 @@ describe('TestDefinitionList Component', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('add-test-definition-button')
+        screen.getByTestId(ADD_TEST_DEFINITION_BUTTON)
       ).toBeInTheDocument();
     });
   });
@@ -497,11 +503,11 @@ describe('TestDefinitionList Component', () => {
   it('should open form drawer when add button is clicked', async () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
-    const addButton = await screen.findByTestId('add-test-definition-button');
+    const addButton = await screen.findByTestId(ADD_TEST_DEFINITION_BUTTON);
     fireEvent.click(addButton);
 
     await waitFor(() => {
-      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+      expect(screen.getByTestId(TEST_DEFINITION_FORM)).toBeInTheDocument();
     });
   });
 
@@ -520,11 +526,11 @@ describe('TestDefinitionList Component', () => {
   it('should refresh list after successful create/update', async () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
-    const addButton = await screen.findByTestId('add-test-definition-button');
+    const addButton = await screen.findByTestId(ADD_TEST_DEFINITION_BUTTON);
     fireEvent.click(addButton);
 
     await waitFor(() => {
-      expect(screen.getByTestId('test-definition-form')).toBeInTheDocument();
+      expect(screen.getByTestId(TEST_DEFINITION_FORM)).toBeInTheDocument();
     });
 
     const initialCallCount = (getListTestDefinitions as jest.Mock).mock.calls
@@ -681,10 +687,10 @@ describe('TestDefinitionList Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Column Values To Be Not Null')
+          screen.getByText(COLUMN_VALUES_TO_BE_NOT_NULL)
         ).toBeInTheDocument();
         expect(
-          screen.getByText('Table Row Count To Be Between')
+          screen.getByText(TABLE_ROW_COUNT_TO_BE_BETWEEN)
         ).toBeInTheDocument();
         expect(screen.getByText('DBT Schema Test')).toBeInTheDocument();
         expect(screen.getByText('Great Expectations Test')).toBeInTheDocument();
@@ -901,7 +907,7 @@ describe('TestDefinitionList Component', () => {
       const mockFilters = [
         {
           key: 'entityType',
-          label: 'label.entity-type',
+          label: LABEL_ENTITY_TYPE,
           value: [{ key: 'TABLE', label: 'Table' }],
         },
       ];
@@ -985,7 +991,7 @@ describe('TestDefinitionList Component', () => {
       const mockFilters = [
         {
           key: 'entityType',
-          label: 'label.entity-type',
+          label: LABEL_ENTITY_TYPE,
           value: [{ key: 'COLUMN', label: 'Column' }],
         },
         {
@@ -1052,7 +1058,7 @@ describe('TestDefinitionList Component', () => {
       const mockFilters = [
         {
           key: 'entityType',
-          label: 'label.entity-type',
+          label: LABEL_ENTITY_TYPE,
           value: [{ key: 'TABLE', label: 'Table' }],
         },
       ];

@@ -20,6 +20,7 @@ import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';
 import { QueryUsedByOtherTableProps } from '../TableQueries.interface';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable.component';
 
+const ASYNCSELECT_COMPONENT = 'AsyncSelect.component';
 jest.mock('../../../common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
@@ -75,7 +76,7 @@ describe('QueryUsedByOtherTable test', () => {
     render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
       wrapper: MemoryRouter,
     });
-    const selectField = await screen.findByText('AsyncSelect.component');
+    const selectField = await screen.findByText(ASYNCSELECT_COMPONENT);
 
     expect(selectField).toBeInTheDocument();
   });
@@ -85,7 +86,7 @@ describe('QueryUsedByOtherTable test', () => {
     render(<QueryUsedByOtherTable {...mockProps} isEditMode />, {
       wrapper: MemoryRouter,
     });
-    const selectField = await screen.findByText('AsyncSelect.component');
+    const selectField = await screen.findByText(ASYNCSELECT_COMPONENT);
 
     expect(selectField).toBeInTheDocument();
     expect(mockSearchQuery).toHaveBeenCalledWith({
@@ -103,7 +104,7 @@ describe('QueryUsedByOtherTable test', () => {
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
 
-    const selectField = await screen.findByText('AsyncSelect.component');
+    const selectField = await screen.findByText(ASYNCSELECT_COMPONENT);
 
     expect(selectField).toBeInTheDocument();
   });

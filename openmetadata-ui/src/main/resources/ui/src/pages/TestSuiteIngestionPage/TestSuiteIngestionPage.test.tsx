@@ -17,6 +17,9 @@ import { getTestSuiteByName } from '../../rest/testAPI';
 import i18n from '../../utils/i18next/LocalUtil';
 import TestSuiteIngestionPage from './TestSuiteIngestionPage';
 
+const LABEL_ADD_ENTITY = 'label.add-entity';
+const LABEL_TEST_SUITE = 'label.test-suite';
+
 const mockTestSuite = {
   id: '58e37b60-aa4f-4228-8cb7-89fe659fa14b',
   name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
@@ -105,8 +108,8 @@ describe('TestSuiteIngestionPage', () => {
     await act(async () => {
       render(
         <TestSuiteIngestionPage
-          pageTitle={i18n.t('label.add-entity', {
-            entity: i18n.t('label.test-suite'),
+          pageTitle={i18n.t(LABEL_ADD_ENTITY, {
+            entity: i18n.t(LABEL_TEST_SUITE),
           })}
         />
       );
@@ -122,8 +125,8 @@ describe('TestSuiteIngestionPage', () => {
     (getTestSuiteByName as jest.Mock).mockResolvedValueOnce(mockTestSuite);
     render(
       <TestSuiteIngestionPage
-        pageTitle={i18n.t('label.add-entity', {
-          entity: i18n.t('label.test-suite'),
+        pageTitle={i18n.t(LABEL_ADD_ENTITY, {
+          entity: i18n.t(LABEL_TEST_SUITE),
         })}
       />
     );
@@ -139,8 +142,8 @@ describe('TestSuiteIngestionPage', () => {
     await act(async () => {
       render(
         <TestSuiteIngestionPage
-          pageTitle={i18n.t('label.add-entity', {
-            entity: i18n.t('label.test-suite'),
+          pageTitle={i18n.t(LABEL_ADD_ENTITY, {
+            entity: i18n.t(LABEL_TEST_SUITE),
           })}
         />
       );
@@ -160,8 +163,8 @@ describe('TestSuiteIngestionPage', () => {
     await act(async () => {
       render(
         <TestSuiteIngestionPage
-          pageTitle={i18n.t('label.add-entity', {
-            entity: i18n.t('label.test-suite'),
+          pageTitle={i18n.t(LABEL_ADD_ENTITY, {
+            entity: i18n.t(LABEL_TEST_SUITE),
           })}
         />
       );

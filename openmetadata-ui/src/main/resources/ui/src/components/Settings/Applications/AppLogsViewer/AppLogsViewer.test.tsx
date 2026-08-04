@@ -21,6 +21,14 @@ import {
 import AppLogsViewer from './AppLogsViewer.component';
 
 // Add TextEncoder polyfill
+const APP_ENTITY_STATS_HISTORY_TABLE = 'app-entity-stats-history-table';
+const STATS_COMPONENT_LABEL_PROCESS_STAT_PLURAL =
+  'stats-component-label.process-stat-plural';
+const STATS_COMPONENT_LABEL_VECTOR_STAT_PLURAL =
+  'stats-component-label.vector-stat-plural';
+const STATS_COMPONENT_LABEL_OVERALL_STAT_PLURAL =
+  'stats-component-label.overall-stat-plural';
+
 class MockTextEncoder {
   encoding = 'utf-8';
   encode() {
@@ -317,7 +325,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps1} />);
 
     expect(
-      screen.queryByTestId('app-entity-stats-history-table')
+      screen.queryByTestId(APP_ENTITY_STATS_HISTORY_TABLE)
     ).not.toBeInTheDocument();
   });
 
@@ -325,7 +333,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps3} />);
 
     expect(
-      screen.getByTestId('app-entity-stats-history-table')
+      screen.getByTestId(APP_ENTITY_STATS_HISTORY_TABLE)
     ).toBeInTheDocument();
 
     expect(screen.getByText('label.name')).toBeInTheDocument();
@@ -340,7 +348,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps2} />);
 
     expect(
-      screen.queryByTestId('app-entity-stats-history-table')
+      screen.queryByTestId(APP_ENTITY_STATS_HISTORY_TABLE)
     ).not.toBeInTheDocument();
   });
 
@@ -348,7 +356,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps4} />);
 
     expect(
-      screen.getByTestId('app-entity-stats-history-table')
+      screen.getByTestId(APP_ENTITY_STATS_HISTORY_TABLE)
     ).toBeInTheDocument();
 
     expect(screen.getByText('label.name')).toBeInTheDocument();
@@ -365,7 +373,7 @@ describe('AppLogsViewer component', () => {
     expect(screen.queryByTestId('stats-component')).not.toBeInTheDocument();
 
     expect(
-      screen.queryByTestId('app-entity-stats-history-table')
+      screen.queryByTestId(APP_ENTITY_STATS_HISTORY_TABLE)
     ).not.toBeInTheDocument();
   });
 
@@ -375,7 +383,7 @@ describe('AppLogsViewer component', () => {
     expect(screen.queryByTestId('stats-component')).not.toBeInTheDocument();
 
     expect(
-      screen.queryByTestId('app-entity-stats-history-table')
+      screen.queryByTestId(APP_ENTITY_STATS_HISTORY_TABLE)
     ).not.toBeInTheDocument();
 
     await act(async () => {
@@ -389,7 +397,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockPropsWithProcessStats} />);
 
     expect(
-      screen.getByTestId('stats-component-label.process-stat-plural')
+      screen.getByTestId(STATS_COMPONENT_LABEL_PROCESS_STAT_PLURAL)
     ).toBeInTheDocument();
   });
 
@@ -397,7 +405,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockPropsWithVectorStats} />);
 
     expect(
-      screen.getByTestId('stats-component-label.vector-stat-plural')
+      screen.getByTestId(STATS_COMPONENT_LABEL_VECTOR_STAT_PLURAL)
     ).toBeInTheDocument();
   });
 
@@ -405,19 +413,19 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockPropsWithAllPipelineStats} />);
 
     expect(
-      screen.getByTestId('stats-component-label.overall-stat-plural')
+      screen.getByTestId(STATS_COMPONENT_LABEL_OVERALL_STAT_PLURAL)
     ).toBeInTheDocument();
     expect(
       screen.getByTestId('stats-component-label.reader-stat-plural')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('stats-component-label.process-stat-plural')
+      screen.getByTestId(STATS_COMPONENT_LABEL_PROCESS_STAT_PLURAL)
     ).toBeInTheDocument();
     expect(
       screen.getByTestId('stats-component-label.sink-stat-plural')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('stats-component-label.vector-stat-plural')
+      screen.getByTestId(STATS_COMPONENT_LABEL_VECTOR_STAT_PLURAL)
     ).toBeInTheDocument();
   });
 
@@ -425,7 +433,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps1} />);
 
     expect(
-      screen.queryByTestId('stats-component-label.process-stat-plural')
+      screen.queryByTestId(STATS_COMPONENT_LABEL_PROCESS_STAT_PLURAL)
     ).not.toBeInTheDocument();
   });
 
@@ -433,7 +441,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps1} />);
 
     expect(
-      screen.queryByTestId('stats-component-label.vector-stat-plural')
+      screen.queryByTestId(STATS_COMPONENT_LABEL_VECTOR_STAT_PLURAL)
     ).not.toBeInTheDocument();
   });
 
@@ -468,7 +476,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...wallClockProps} />);
 
     const overall = screen.getByTestId(
-      'stats-component-label.overall-stat-plural'
+      STATS_COMPONENT_LABEL_OVERALL_STAT_PLURAL
     );
 
     // Label is the wall-clock variant, not "Latency".
@@ -515,7 +523,7 @@ describe('AppLogsViewer component', () => {
       render(<AppLogsViewer {...inflightProps} />);
 
       const overall = screen.getByTestId(
-        'stats-component-label.overall-stat-plural'
+        STATS_COMPONENT_LABEL_OVERALL_STAT_PLURAL
       );
 
       // 1s elapsed, 100 records → 10 ms per record · 100 r/s.

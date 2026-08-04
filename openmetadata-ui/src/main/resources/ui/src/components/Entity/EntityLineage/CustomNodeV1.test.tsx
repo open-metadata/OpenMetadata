@@ -17,6 +17,16 @@ import { ModelType } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import CustomNodeV1Component from './CustomNodeV1.component';
 
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM =
+  'sample_data.ecommerce_db.shopify.dim_address.testSuite' as const;
+const CHILDREN_INFO_DROPDOWN_BTN = 'children-info-dropdown-btn' as const;
+const SEARCH_COLUMN_INPUT = 'search-column-input' as const;
+const COLUMN_CONTAINER = 'column-container' as const;
+const LINEAGE_FILTER_BUTTON = 'lineage-filter-button' as const;
+const PARENT1_CHILD1 = 'parent1.child1' as const;
+const PARENT1_CHILD2 = 'parent1.child2' as const;
+const PARENT2_CHILD1 = 'parent2.child1' as const;
+
 interface PaginationAssertionParams {
   columnsContainer: HTMLElement;
   expectedColumns: string[];
@@ -89,11 +99,10 @@ const mockNodeDataProps = {
       testSuite: {
         deleted: false,
         description: 'This is an executable test suite linked to an entity',
-        displayName: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-        fullyQualifiedName:
-          'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        displayName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
         id: 'fafada0f-a2e7-4dbe-a65c-8de057a63a7c',
-        name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+        name: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
         type: 'testSuite',
       },
     },
@@ -398,9 +407,7 @@ describe('CustomNodeV1', () => {
       </ReactFlowProvider>
     );
 
-    expect(
-      screen.getByTestId('children-info-dropdown-btn')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN)).toBeInTheDocument();
   });
 
   it('should not render footer when there are no children', () => {
@@ -432,7 +439,7 @@ describe('CustomNodeV1', () => {
     );
 
     expect(
-      screen.queryByTestId('children-info-dropdown-btn')
+      screen.queryByTestId(CHILDREN_INFO_DROPDOWN_BTN)
     ).not.toBeInTheDocument();
   });
 
@@ -455,9 +462,7 @@ describe('CustomNodeV1', () => {
       </ReactFlowProvider>
     );
 
-    expect(
-      await screen.findByTestId('search-column-input')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(SEARCH_COLUMN_INPUT)).toBeInTheDocument();
   });
 
   it('should not remove searchbar from node when no columns are matched while searching', () => {
@@ -480,12 +485,12 @@ describe('CustomNodeV1', () => {
     );
 
     const searchInput = screen.getByTestId(
-      'search-column-input'
+      SEARCH_COLUMN_INPUT
     ) as HTMLInputElement;
 
     fireEvent.change(searchInput, { target: { value: 'nonExistingColumn' } });
 
-    expect(screen.getByTestId('search-column-input')).toBeInTheDocument();
+    expect(screen.getByTestId(SEARCH_COLUMN_INPUT)).toBeInTheDocument();
   });
 
   it('should render NodeChildren when column layer is applied and there are no columns', () => {
@@ -507,7 +512,7 @@ describe('CustomNodeV1', () => {
       </ReactFlowProvider>
     );
 
-    expect(screen.getByTestId('column-container')).toBeInTheDocument();
+    expect(screen.getByTestId(COLUMN_CONTAINER)).toBeInTheDocument();
   });
 
   it('should not render NodeChildren when column layer is applied but there are no columns', () => {
@@ -539,7 +544,7 @@ describe('CustomNodeV1', () => {
       </ReactFlowProvider>
     );
 
-    expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_CONTAINER)).not.toBeInTheDocument();
   });
 
   it('should toggle columns list when children dropdown button is clicked', () => {
@@ -561,7 +566,7 @@ describe('CustomNodeV1', () => {
       </ReactFlowProvider>
     );
 
-    const button = screen.getByTestId('children-info-dropdown-btn');
+    const button = screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN);
 
     expect(button).toBeInTheDocument();
 
@@ -669,7 +674,7 @@ describe('CustomNodeV1', () => {
 
   describe('CustomNodeV1 Column Pagination', () => {
     const clickFilterButton = () => {
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
       fireEvent.click(filterButton);
     };
 
@@ -696,7 +701,7 @@ describe('CustomNodeV1', () => {
 
       clickFilterButton();
 
-      const columnsContainer = screen.getByTestId('column-container');
+      const columnsContainer = screen.getByTestId(COLUMN_CONTAINER);
 
       expect(columnsContainer).toBeInTheDocument();
 
@@ -851,7 +856,7 @@ describe('CustomNodeV1', () => {
 
   describe('Only show columns with lineage', () => {
     const clickFilterButton = () => {
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
       fireEvent.click(filterButton);
     };
 
@@ -877,7 +882,7 @@ describe('CustomNodeV1', () => {
         </ReactFlowProvider>
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
       expect(filterButton).toBeInTheDocument();
       expect(filterButton).toHaveAttribute(
@@ -917,10 +922,10 @@ describe('CustomNodeV1', () => {
           </ReactFlowProvider>
         );
 
-        const expandButton = screen.getByTestId('children-info-dropdown-btn');
+        const expandButton = screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN);
         act(() => fireEvent.click(expandButton));
 
-        const columnsContainer = screen.getByTestId('column-container');
+        const columnsContainer = screen.getByTestId(COLUMN_CONTAINER);
         visibleColumns = getColumnsFromCurrentPage(columnsContainer);
 
         expect(visibleColumns).toEqual([
@@ -936,7 +941,7 @@ describe('CustomNodeV1', () => {
           'col9',
         ]);
 
-        const filterButton = screen.getByTestId('lineage-filter-button');
+        const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
         expect(filterButton).toBeInTheDocument();
         expect(filterButton).not.toHaveClass('active');
@@ -975,12 +980,12 @@ describe('CustomNodeV1', () => {
           </ReactFlowProvider>
         );
 
-        const filterButton = screen.getByTestId('lineage-filter-button');
+        const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
         expect(filterButton).toBeInTheDocument();
         expect(filterButton).toHaveClass('active');
 
-        const columnsContainer = screen.getByTestId('column-container');
+        const columnsContainer = screen.getByTestId(COLUMN_CONTAINER);
         const visibleColumns = getColumnsFromContainer(columnsContainer);
 
         expect(visibleColumns).toEqual(['col0', 'col2', 'col5']);
@@ -1009,7 +1014,7 @@ describe('CustomNodeV1', () => {
           </ReactFlowProvider>
         );
 
-        const filterButton = screen.getByTestId('lineage-filter-button');
+        const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
         expect(filterButton).toHaveClass('active');
 
@@ -1020,7 +1025,7 @@ describe('CustomNodeV1', () => {
         );
 
         const filterButtonAfterRerender = screen.getByTestId(
-          'lineage-filter-button'
+          LINEAGE_FILTER_BUTTON
         );
 
         expect(filterButtonAfterRerender).toHaveClass('active');
@@ -1049,7 +1054,7 @@ describe('CustomNodeV1', () => {
           </ReactFlowProvider>
         );
 
-        const filterButton = screen.getByTestId('lineage-filter-button');
+        const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
         expect(filterButton).not.toHaveClass('active');
         expect(filterButton).toBeDisabled();
@@ -1070,13 +1075,13 @@ describe('CustomNodeV1', () => {
                   dataType: 'RECORD',
                 },
                 {
-                  fullyQualifiedName: 'parent1.child1',
-                  name: 'parent1.child1',
+                  fullyQualifiedName: PARENT1_CHILD1,
+                  name: PARENT1_CHILD1,
                   dataType: 'VARCHAR',
                 },
                 {
-                  fullyQualifiedName: 'parent1.child2',
-                  name: 'parent1.child2',
+                  fullyQualifiedName: PARENT1_CHILD2,
+                  name: PARENT1_CHILD2,
                   dataType: 'VARCHAR',
                 },
                 {
@@ -1086,8 +1091,8 @@ describe('CustomNodeV1', () => {
                   children: [],
                 },
                 {
-                  fullyQualifiedName: 'parent2.child1',
-                  name: 'parent2.child1',
+                  fullyQualifiedName: PARENT2_CHILD1,
+                  name: PARENT2_CHILD1,
                   dataType: 'VARCHAR',
                 },
                 {
@@ -1100,7 +1105,7 @@ describe('CustomNodeV1', () => {
           },
         };
         const columnsLineageMap = new Map();
-        columnsLineageMap.set('khjahjfja', new Set(['parent1.child2']));
+        columnsLineageMap.set('khjahjfja', new Set([PARENT1_CHILD2]));
         const nodeFilterStateMap = new Map([['khjahjfja', true]]);
         const mockSetNodeFilterStateFunc = jest.fn(
           (nodeId: string, isVisible: boolean) => {
@@ -1128,10 +1133,10 @@ describe('CustomNodeV1', () => {
         );
 
         expect(screen.queryByText('parent1')).not.toBeInTheDocument();
-        expect(screen.queryByText('parent1.child1')).not.toBeInTheDocument();
-        expect(screen.getByText('parent1.child2')).toBeInTheDocument();
+        expect(screen.queryByText(PARENT1_CHILD1)).not.toBeInTheDocument();
+        expect(screen.getByText(PARENT1_CHILD2)).toBeInTheDocument();
         expect(screen.queryByText('parent2')).not.toBeInTheDocument();
-        expect(screen.queryByText('parent2.child1')).not.toBeInTheDocument();
+        expect(screen.queryByText(PARENT2_CHILD1)).not.toBeInTheDocument();
         expect(screen.queryByText('col0')).not.toBeInTheDocument();
 
         act(() => {
@@ -1170,7 +1175,7 @@ describe('CustomNodeV1', () => {
           </ReactFlowProvider>
         );
 
-        let columnsContainer = screen.getByTestId('column-container');
+        let columnsContainer = screen.getByTestId(COLUMN_CONTAINER);
         let visibleColumns = getColumnsFromContainer(columnsContainer);
 
         expect(visibleColumns).toEqual([
@@ -1182,14 +1187,14 @@ describe('CustomNodeV1', () => {
         ]);
 
         const searchInput = screen.getByTestId(
-          'search-column-input'
+          SEARCH_COLUMN_INPUT
         ) as HTMLInputElement;
 
         act(() => {
           fireEvent.change(searchInput, { target: { value: 'col1' } });
         });
 
-        columnsContainer = screen.getByTestId('column-container');
+        columnsContainer = screen.getByTestId(COLUMN_CONTAINER);
         visibleColumns = getColumnsFromContainer(columnsContainer);
 
         expect(visibleColumns).toEqual(['col10']);

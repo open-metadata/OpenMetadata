@@ -48,6 +48,8 @@ import { t } from './i18next/LocalUtil';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
+const LABEL_IS_ENTITY = 'label.is-entity';
+
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;
   configTypes: Config['types'] = {
@@ -174,15 +176,15 @@ class JSONLogicSearchClassBase {
       label: t('label.is-set'),
     },
     isReviewer: {
-      label: t('label.is-entity', { entity: t('label.reviewer') }),
-      labelForFormat: t('label.is-entity', { entity: t('label.reviewer') }),
+      label: t(LABEL_IS_ENTITY, { entity: t('label.reviewer') }),
+      labelForFormat: t(LABEL_IS_ENTITY, { entity: t('label.reviewer') }),
       cardinality: 0,
       jsonLogic: 'isReviewer',
       sqlOp: 'IS REVIEWER',
     },
     isOwner: {
-      label: t('label.is-entity', { entity: t('label.owner') }),
-      labelForFormat: t('label.is-entity', { entity: t('label.owner') }),
+      label: t(LABEL_IS_ENTITY, { entity: t('label.owner') }),
+      labelForFormat: t(LABEL_IS_ENTITY, { entity: t('label.owner') }),
       cardinality: 0,
       jsonLogic: 'isOwner',
       sqlOp: 'IS OWNER',

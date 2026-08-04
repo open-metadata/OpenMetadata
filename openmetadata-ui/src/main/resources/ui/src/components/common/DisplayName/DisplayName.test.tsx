@@ -16,6 +16,9 @@ import { EntityType } from '../../../enums/entity.enum';
 import DisplayName from './DisplayName';
 import { DisplayNameProps } from './DisplayName.interface';
 
+const SAMPLE_ENTITY = 'Sample Entity';
+const COPY_COLUMN_LINK_BUTTON = 'copy-column-link-button';
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(({ children, ...props }) => (
@@ -45,7 +48,7 @@ const mockOnEditDisplayName = jest.fn();
 
 const mockProps: DisplayNameProps = {
   id: '1',
-  name: 'Sample Entity',
+  name: SAMPLE_ENTITY,
   displayName: 'Sample Display Name',
   link: '/entity/1',
   allowRename: true,
@@ -81,7 +84,7 @@ describe('Test DisplayName Component', () => {
     const nameField = screen.getByTestId('column-name');
 
     expect(nameField).toBeInTheDocument();
-    expect(nameField).toHaveTextContent('Sample Entity');
+    expect(nameField).toHaveTextContent(SAMPLE_ENTITY);
   });
 
   it('Should open the edit modal on edit button click', async () => {
@@ -109,7 +112,7 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const linkElements = screen.getAllByTestId('Sample Entity');
+    const linkElements = screen.getAllByTestId(SAMPLE_ENTITY);
 
     expect(linkElements.length).toBeGreaterThanOrEqual(1);
     expect(linkElements[0].tagName).toBe('A');
@@ -124,7 +127,7 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const nameElements = screen.getAllByTestId('Sample Entity');
+    const nameElements = screen.getAllByTestId(SAMPLE_ENTITY);
 
     expect(nameElements.length).toBeGreaterThanOrEqual(1);
     expect(nameElements[0].tagName).toBe('SPAN');
@@ -139,10 +142,10 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const nameElement = screen.getByTestId('Sample Entity');
+    const nameElement = screen.getByTestId(SAMPLE_ENTITY);
 
     expect(nameElement).toBeInTheDocument();
-    expect(nameElement).toHaveTextContent('Sample Entity');
+    expect(nameElement).toHaveTextContent(SAMPLE_ENTITY);
   });
 
   it('Should render copy link button when entityType is provided', async () => {
@@ -157,7 +160,7 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const copyButton = screen.getByTestId('copy-column-link-button');
+    const copyButton = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
 
     expect(copyButton).toBeInTheDocument();
   });
@@ -169,7 +172,7 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const copyButton = screen.queryByTestId('copy-column-link-button');
+    const copyButton = screen.queryByTestId(COPY_COLUMN_LINK_BUTTON);
 
     expect(copyButton).not.toBeInTheDocument();
   });
@@ -197,7 +200,7 @@ describe('Test DisplayName Component', () => {
       </MemoryRouter>
     );
 
-    const copyButton = screen.getByTestId('copy-column-link-button');
+    const copyButton = screen.getByTestId(COPY_COLUMN_LINK_BUTTON);
 
     await act(async () => {
       fireEvent.click(copyButton);

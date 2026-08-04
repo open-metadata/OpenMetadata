@@ -15,6 +15,8 @@ import { render } from '@testing-library/react';
 import { TAG_CONSTANT } from '../../../constants/Tag.constants';
 import TableDataCardBody from './TableDataCardBody';
 
+const TABLE_BODY = 'table-body';
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -52,7 +54,7 @@ describe('Test TableDataCardBody Component', () => {
     const { getByTestId } = render(
       <TableDataCardBody description="test" extraInfo={extraInfo} tags={tags} />
     );
-    const tableBody = getByTestId('table-body');
+    const tableBody = getByTestId(TABLE_BODY);
 
     expect(tableBody).toBeInTheDocument();
   });
@@ -65,7 +67,7 @@ describe('Test TableDataCardBody Component', () => {
         tags={tags}
       />
     );
-    const tableBody = getByTestId('table-body');
+    const tableBody = getByTestId(TABLE_BODY);
 
     expect(tableBody).toBeInTheDocument();
     expect(getByText('label.no-description')).toBeInTheDocument();
@@ -79,7 +81,7 @@ describe('Test TableDataCardBody Component', () => {
         tags={tags}
       />
     );
-    const tableBody = getByTestId('table-body');
+    const tableBody = getByTestId(TABLE_BODY);
 
     expect(tableBody).toBeInTheDocument();
     expect(getByText('label.no-description')).toBeInTheDocument();

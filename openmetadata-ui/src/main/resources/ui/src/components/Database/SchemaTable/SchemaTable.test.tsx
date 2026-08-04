@@ -24,6 +24,12 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import SchemaTable from './SchemaTable.component';
 
+const BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_PRODUCTS =
+  'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products';
+const BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_COMMENTS =
+  'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments';
+const TAGS_CUSTOMMETRICS_EXTENSION = 'tags,customMetrics,extension';
+const ENTITY_TABLE = 'entity-table';
 const mockTableConstraints = [
   {
     constraintType: 'PRIMARY_KEY',
@@ -37,7 +43,7 @@ const mockColumns = [
     dataLength: 1,
     dataTypeDisplay: 'string',
     fullyQualifiedName:
-      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+      BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_COMMENTS,
     tags: [],
     constraint: 'NULL',
     ordinalPosition: 1,
@@ -50,7 +56,7 @@ const mockColumns = [
     dataTypeDisplay:
       'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
     fullyQualifiedName:
-      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+      BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_PRODUCTS,
     tags: [],
     constraint: 'NULL',
     ordinalPosition: 2,
@@ -75,7 +81,7 @@ const mockColumnsWithNested = [
     dataLength: 1,
     dataTypeDisplay: 'string',
     fullyQualifiedName:
-      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+      BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_COMMENTS,
     tags: [],
     constraint: 'NULL',
     ordinalPosition: 1,
@@ -88,7 +94,7 @@ const mockColumnsWithNested = [
     dataTypeDisplay:
       'array<struct<product_id:character varying(24),price:int,onsale:boolean>>',
     fullyQualifiedName:
-      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+      BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_PRODUCTS,
     tags: [],
     constraint: 'NULL',
     ordinalPosition: 2,
@@ -237,7 +243,7 @@ const columnsWithDisplayName = [
     dataLength: 1,
     dataTypeDisplay: 'string',
     fullyQualifiedName:
-      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+      BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_COMMENTS,
     tags: [],
     constraint: 'NULL',
     ordinalPosition: 1,
@@ -250,7 +256,7 @@ const columnsWithDisplayName = [
     dataTypeDisplay:
       'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
     fullyQualifiedName:
-      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+      BIGQUERY_GCP_ECOMMERCE_SHOPIFY_RAW_PRODUCT_CATALOG_PRODUCTS,
     tags: [],
     constraint: 'NULL',
     ordinalPosition: 2,
@@ -398,7 +404,7 @@ describe('Test EntityTable Component', () => {
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
       {
-        fields: 'tags,customMetrics,extension',
+        fields: TAGS_CUSTOMMETRICS_EXTENSION,
         limit: 50,
         offset: 0,
         sortBy: 'name',
@@ -406,7 +412,7 @@ describe('Test EntityTable Component', () => {
       }
     );
 
-    const entityTable = await screen.findByTestId('entity-table');
+    const entityTable = await screen.findByTestId(ENTITY_TABLE);
 
     screen.debug(entityTable);
 
@@ -423,7 +429,7 @@ describe('Test EntityTable Component', () => {
     expect(getTableColumnsByFQN).toHaveBeenCalledWith(
       MOCK_TABLE.fullyQualifiedName,
       {
-        fields: 'tags,customMetrics,extension',
+        fields: TAGS_CUSTOMMETRICS_EXTENSION,
         limit: 50,
         offset: 0,
         sortBy: 'name',
@@ -468,7 +474,7 @@ describe('Test EntityTable Component', () => {
       });
     });
 
-    const entityTable = await screen.findByTestId('entity-table');
+    const entityTable = await screen.findByTestId(ENTITY_TABLE);
 
     expect(entityTable).toBeInTheDocument();
 
@@ -599,13 +605,13 @@ describe('Test EntityTable Component', () => {
         });
       });
 
-      const entityTable = await screen.findByTestId('entity-table');
+      const entityTable = await screen.findByTestId(ENTITY_TABLE);
 
       expect(entityTable).toBeInTheDocument();
       expect(getTableColumnsByFQN).toHaveBeenCalledWith(
         MOCK_TABLE.fullyQualifiedName,
         expect.objectContaining({
-          fields: 'tags,customMetrics,extension',
+          fields: TAGS_CUSTOMMETRICS_EXTENSION,
         })
       );
     });

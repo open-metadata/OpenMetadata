@@ -16,8 +16,14 @@ import {
   getNameFromUserData,
 } from './AuthProvider.util';
 
+const TESTUSER_GMAIL_COM = 'testUser@gmail.com';
+const JOHN_EXAMPLE_COM = 'john@example.com';
+const JANE_SMITH = 'Jane Smith';
+const USER_EXAMPLE_COM = 'user@example.com';
+const JOHN_DOE_EXAMPLE_COM = 'john.doe@example.com';
+
 const userProfile = {
-  email: 'testUser@gmail.com',
+  email: TESTUSER_GMAIL_COM,
   sub: 'i_am_sub',
   preferred_username: 'i_am_preferred_username',
   name: 'Test User',
@@ -29,7 +35,7 @@ describe('extractNameFromUserProfile', () => {
     it('should return name when name field is present', () => {
       const userProfile: UserProfile = {
         name: 'John Doe',
-        email: 'john@example.com',
+        email: JOHN_EXAMPLE_COM,
         picture: '',
         sub: 'user-123',
       };
@@ -65,7 +71,7 @@ describe('extractNameFromUserProfile', () => {
 
       const result = extractNameFromUserProfile(userProfile);
 
-      expect(result).toBe('Jane Smith');
+      expect(result).toBe(JANE_SMITH);
     });
 
     it('should return only given_name when family_name is missing', () => {
@@ -96,7 +102,7 @@ describe('extractNameFromUserProfile', () => {
       const userProfile = {
         given_name: '  John  ',
         family_name: '  Doe  ',
-        email: 'john@example.com',
+        email: JOHN_EXAMPLE_COM,
         picture: '',
       } as unknown as UserProfile;
 
@@ -110,7 +116,7 @@ describe('extractNameFromUserProfile', () => {
     it('should extract username from preferred_username email format', () => {
       const userProfile: UserProfile = {
         preferred_username: 'john.doe@company.com',
-        email: 'john@example.com',
+        email: JOHN_EXAMPLE_COM,
         name: '',
         picture: '',
       };
@@ -123,7 +129,7 @@ describe('extractNameFromUserProfile', () => {
     it('should return preferred_username as-is if not email format', () => {
       const userProfile: UserProfile = {
         preferred_username: 'johndoe123',
-        email: 'john@example.com',
+        email: JOHN_EXAMPLE_COM,
         name: '',
         picture: '',
       };
@@ -232,7 +238,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should handle Azure/MSAL user profile with preferred_username', () => {
       const azureProfile = {
-        name: 'Jane Smith',
+        name: JANE_SMITH,
         email: 'jane.smith@company.onmicrosoft.com',
         preferred_username: 'jane.smith@company.onmicrosoft.com',
         picture: '',
@@ -241,7 +247,7 @@ describe('extractNameFromUserProfile', () => {
 
       const result = extractNameFromUserProfile(azureProfile);
 
-      expect(result).toBe('Jane Smith');
+      expect(result).toBe(JANE_SMITH);
     });
 
     it('should handle Google OIDC user profile', () => {
@@ -333,7 +339,7 @@ describe('extractNameFromUserProfile', () => {
         name: 'Preferred Name',
         given_name: 'First',
         family_name: 'Last',
-        email: 'user@example.com',
+        email: USER_EXAMPLE_COM,
         picture: '',
       } as unknown as UserProfile;
 
@@ -347,7 +353,7 @@ describe('extractNameFromUserProfile', () => {
         given_name: 'First',
         family_name: 'Last',
         preferred_username: 'different.user@example.com',
-        email: 'user@example.com',
+        email: USER_EXAMPLE_COM,
         name: '',
         picture: '',
       } as unknown as UserProfile;
@@ -372,7 +378,7 @@ describe('extractNameFromUserProfile', () => {
 
     it('should prioritize email over sub', () => {
       const userProfile: UserProfile = {
-        email: 'user@example.com',
+        email: USER_EXAMPLE_COM,
         sub: 'sub-identifier-123',
         name: '',
         picture: '',
@@ -400,7 +406,7 @@ describe('Test Auth Provider utils', () => {
     const { name, email } = getNameFromUserData(userProfile, ['email']);
 
     expect(name).toEqual('testUser');
-    expect(email).toEqual('testUser@gmail.com');
+    expect(email).toEqual(TESTUSER_GMAIL_COM);
   });
 
   it('getNameFromUserData should return name and email from claim: sub', () => {
@@ -430,7 +436,7 @@ describe('Test Auth Provider utils', () => {
     );
 
     expect(name).toEqual('testUser');
-    expect(generatedEmail).toEqual('testUser@gmail.com');
+    expect(generatedEmail).toEqual(TESTUSER_GMAIL_COM);
   });
 
   it('getNameFromUserData should respect domain present in claim over principleClaim', () => {
@@ -441,7 +447,7 @@ describe('Test Auth Provider utils', () => {
     );
 
     expect(name).toEqual('testUser');
-    expect(generatedEmail).toEqual('testUser@gmail.com');
+    expect(generatedEmail).toEqual(TESTUSER_GMAIL_COM);
   });
 
   it('getNameFromUserData should handle the claim if it contains @', () => {
@@ -486,7 +492,7 @@ describe('prepareUserProfileFromClaims', () => {
   const mockUser: OidcUser = {
     profile: {
       name: 'John Doe',
-      email: 'john.doe@example.com',
+      email: JOHN_DOE_EXAMPLE_COM,
     },
   } as OidcUser;
 
@@ -505,7 +511,7 @@ describe('prepareUserProfileFromClaims', () => {
 
     expect(result.profile).toEqual({
       name: 'John Doe',
-      email: 'john.doe@example.com',
+      email: JOHN_DOE_EXAMPLE_COM,
       displayName: 'John Doe',
       picture: undefined,
     });
@@ -522,7 +528,7 @@ describe('prepareUserProfileFromClaims', () => {
 
     expect(result.profile).toEqual({
       name: 'John Doe',
-      email: 'john.doe@example.com',
+      email: JOHN_DOE_EXAMPLE_COM,
     });
   });
 

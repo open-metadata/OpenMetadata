@@ -18,16 +18,21 @@ import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import { SettingsNavigationPage } from './SettingsNavigationPage';
 
+const LABEL_EXPLORE = 'label.explore';
+const LABEL_OBSERVABILITY = 'label.observability';
+const MOCK_DATA_QUALITY = 'data-quality';
+const MOCK_SAVE_BUTTON = 'save-button';
+
 const mockNavigationItems: NavigationItem[] = [
   {
     id: 'explore',
-    title: 'label.explore',
+    title: LABEL_EXPLORE,
     isHidden: false,
     pageId: 'explore',
   },
   {
     id: 'observability',
-    title: 'label.observability',
+    title: LABEL_OBSERVABILITY,
     isHidden: false,
     pageId: 'observability',
     children: [
@@ -38,10 +43,10 @@ const mockNavigationItems: NavigationItem[] = [
         pageId: 'incidents',
       },
       {
-        id: 'data-quality',
+        id: MOCK_DATA_QUALITY,
         title: 'label.data-quality',
         isHidden: true,
-        pageId: 'data-quality',
+        pageId: MOCK_DATA_QUALITY,
       },
     ],
   },
@@ -50,12 +55,12 @@ const mockNavigationItems: NavigationItem[] = [
 const mockTreeData: TreeDataNode[] = [
   {
     key: 'explore',
-    title: 'label.explore',
+    title: LABEL_EXPLORE,
     icon: <div>icon</div>,
   },
   {
     key: 'observability',
-    title: 'label.observability',
+    title: LABEL_OBSERVABILITY,
     icon: <div>icon</div>,
     children: [
       {
@@ -64,7 +69,7 @@ const mockTreeData: TreeDataNode[] = [
         icon: <div>icon</div>,
       },
       {
-        key: 'data-quality',
+        key: MOCK_DATA_QUALITY,
         title: 'label.data-quality',
         icon: <div>icon</div>,
       },
@@ -91,7 +96,9 @@ jest.mock('../../utils/CustomizaNavigation/CustomizeNavigation', () => ({
   getTreeDataForNavigationItems: jest
     .fn()
     .mockImplementation(() => mockTreeData),
-  getHiddenKeysFromNavigationItems: jest.fn().mockReturnValue(['data-quality']),
+  getHiddenKeysFromNavigationItems: jest
+    .fn()
+    .mockReturnValue([MOCK_DATA_QUALITY]),
 }));
 
 jest.mock('../../utils/SettingsNavigationPageUtils', () => ({
@@ -106,7 +113,7 @@ jest.mock(
       .mockImplementation(({ onReset, onSave, personaName }) => (
         <div data-testid="customizable-page-header">
           <span data-testid="persona-name-prop">{personaName}</span>
-          <button data-testid="save-button" onClick={onSave}>
+          <button data-testid={MOCK_SAVE_BUTTON} onClick={onSave}>
             Save
           </button>
           <button data-testid="reset-button" onClick={onReset}>
@@ -172,7 +179,7 @@ describe('SettingsNavigationPage', () => {
     renderComponent();
 
     expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
-    expect(screen.getByTestId('save-button')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_SAVE_BUTTON)).toBeInTheDocument();
     expect(screen.getByTestId('reset-button')).toBeInTheDocument();
     expect(screen.getByText('Navigation Menus')).toBeInTheDocument();
   });
@@ -180,7 +187,7 @@ describe('SettingsNavigationPage', () => {
   it('should have save button enabled by default when state matches current navigation', () => {
     renderComponent();
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(MOCK_SAVE_BUTTON);
 
     expect(saveButton).toBeEnabled();
   });
@@ -195,13 +202,13 @@ describe('SettingsNavigationPage', () => {
     const modifiedTreeData = [
       {
         key: 'observability',
-        title: 'label.observability',
+        title: LABEL_OBSERVABILITY,
         icon: <div>icon</div>,
         children: [],
       },
       {
         key: 'explore',
-        title: 'label.explore',
+        title: LABEL_EXPLORE,
         icon: <div>icon</div>,
       },
     ];
@@ -210,7 +217,7 @@ describe('SettingsNavigationPage', () => {
 
     renderComponent();
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(MOCK_SAVE_BUTTON);
 
     expect(saveButton).toBeEnabled();
   });
@@ -225,14 +232,14 @@ describe('SettingsNavigationPage', () => {
     switches[0].click();
 
     await waitFor(() => {
-      expect(screen.getByTestId('save-button')).toBeEnabled();
+      expect(screen.getByTestId(MOCK_SAVE_BUTTON)).toBeEnabled();
     });
   });
 
   it('should call onSave when save button is clicked', async () => {
     renderComponent();
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(MOCK_SAVE_BUTTON);
 
     saveButton.click();
 

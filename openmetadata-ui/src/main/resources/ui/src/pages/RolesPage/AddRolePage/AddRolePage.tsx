@@ -33,6 +33,8 @@ import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getRoleWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+
+const LABEL_ROLE = 'label.role';
 const { Option } = Select;
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
@@ -81,7 +83,7 @@ const AddRolePage = () => {
       showErrorToast(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
           ? t('server.entity-already-exist', {
-              entity: t('label.role'),
+              entity: t(LABEL_ROLE),
               entityPlural: t('label.role-lowercase-plural'),
               name: data.name,
             })
@@ -140,7 +142,7 @@ const AddRolePage = () => {
                 className="text-base"
                 data-testid="form-title">
                 {t('label.add-new-entity', {
-                  entity: t('label.role'),
+                  entity: t(LABEL_ROLE),
                 })}
               </Typography.Paragraph>
               <Form
@@ -209,14 +211,14 @@ const AddRolePage = () => {
         flex: 0.7,
       }}
       pageTitle={t('label.add-new-entity', {
-        entity: t('label.role'),
+        entity: t(LABEL_ROLE),
       })}
       secondPanel={{
         children: (
           <>
             <Typography.Paragraph className="text-base font-medium">
               {t('label.add-entity', {
-                entity: t('label.role'),
+                entity: t(LABEL_ROLE),
               })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-role-message')}</Typography.Text>

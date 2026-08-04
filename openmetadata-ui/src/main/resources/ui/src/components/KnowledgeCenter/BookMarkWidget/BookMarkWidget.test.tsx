@@ -21,6 +21,10 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserById } from '../../../rest/userAPI';
 import BookMarkWidget from './BookMarkWidget';
 
+const MOCKED_SHOWERRORTOAST = 'Mocked showErrorToast';
+const TEST_PAGE_NAME = 'test-page-name';
+const MOCKED_LOADER = 'Mocked Loader';
+const TEST_PAGE_FQN = 'test-page-fqn';
 const mockUserData: User = {
   name: 'aaron_johnson0',
   email: 'testUser1@email.com',
@@ -80,11 +84,11 @@ describe('BookMarkWidget', () => {
   it('should render BookMarkWidget', async () => {
     render(<BookMarkWidget {...mockProps} />, { wrapper: MemoryRouter });
 
-    await waitForElementToBeRemoved(() => screen.getByText('Mocked Loader'));
+    await waitForElementToBeRemoved(() => screen.getByText(MOCKED_LOADER));
 
     const bookmarkedPage = screen.getByTestId('bookmarked-test-page-name');
 
-    expect(bookmarkedPage).toHaveTextContent('test-page-name');
+    expect(bookmarkedPage).toHaveTextContent(TEST_PAGE_NAME);
     expect(bookmarkedPage).toHaveAttribute(
       'href',
       '/context-center/articles/test-page-fqn'
@@ -92,7 +96,7 @@ describe('BookMarkWidget', () => {
 
     expect(screen.getByText('label.bookmark-plural')).toBeInTheDocument();
 
-    expect(screen.queryByText('Mocked showErrorToast')).not.toBeInTheDocument();
+    expect(screen.queryByText(MOCKED_SHOWERRORTOAST)).not.toBeInTheDocument();
 
     expect(mockHandleRefreshBookMarkWidget).toHaveBeenCalledWith(false);
   });
@@ -106,9 +110,9 @@ describe('BookMarkWidget', () => {
 
     render(<BookMarkWidget {...mockProps} />, { wrapper: MemoryRouter });
 
-    expect(screen.queryByText('test-page-name')).not.toBeInTheDocument();
-    expect(screen.queryByText('test-page-fqn')).not.toBeInTheDocument();
-    expect(screen.queryByText('Mocked showErrorToast')).not.toBeInTheDocument();
+    expect(screen.queryByText(TEST_PAGE_NAME)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEST_PAGE_FQN)).not.toBeInTheDocument();
+    expect(screen.queryByText(MOCKED_SHOWERRORTOAST)).not.toBeInTheDocument();
 
     expect(getUserById).not.toHaveBeenCalled();
   });
@@ -122,11 +126,11 @@ describe('BookMarkWidget', () => {
 
     render(<BookMarkWidget {...mockProps} />, { wrapper: MemoryRouter });
 
-    await waitForElementToBeRemoved(() => screen.getByText('Mocked Loader'));
+    await waitForElementToBeRemoved(() => screen.getByText(MOCKED_LOADER));
 
-    expect(screen.queryByText('test-page-name')).not.toBeInTheDocument();
-    expect(screen.queryByText('test-page-fqn')).not.toBeInTheDocument();
-    expect(screen.queryByText('Mocked showErrorToast')).not.toBeInTheDocument();
+    expect(screen.queryByText(TEST_PAGE_NAME)).not.toBeInTheDocument();
+    expect(screen.queryByText(TEST_PAGE_FQN)).not.toBeInTheDocument();
+    expect(screen.queryByText(MOCKED_SHOWERRORTOAST)).not.toBeInTheDocument();
   });
 
   it("should render the title as 'Untitled' if the displayName is not present", async () => {
@@ -137,7 +141,7 @@ describe('BookMarkWidget', () => {
             type: 'page',
             id: 'test-page-id',
             displayName: null,
-            fullyQualifiedName: 'test-page-fqn',
+            fullyQualifiedName: TEST_PAGE_FQN,
           },
         ],
       });
@@ -145,7 +149,7 @@ describe('BookMarkWidget', () => {
 
     render(<BookMarkWidget {...mockProps} />, { wrapper: MemoryRouter });
 
-    await waitForElementToBeRemoved(() => screen.getByText('Mocked Loader'));
+    await waitForElementToBeRemoved(() => screen.getByText(MOCKED_LOADER));
 
     // test id should have the fullyQualifiedName
     const bookmarkedPage = screen.getByTestId('bookmarked-test-page-fqn');

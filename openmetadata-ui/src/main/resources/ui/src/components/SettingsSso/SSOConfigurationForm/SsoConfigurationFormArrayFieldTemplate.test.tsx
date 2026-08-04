@@ -16,6 +16,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { getRoles } from '../../../rest/rolesAPIV1';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 
+const SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_ADMINPRINCIPALS =
+  'sso-configuration-form-array-field-template-adminPrincipals';
 jest.mock('../../../rest/rolesAPIV1', () => ({
   getRoles: jest.fn(),
 }));
@@ -89,7 +91,7 @@ describe('SsoConfigurationFormArrayFieldTemplate', () => {
     await waitFor(() => {
       expect(
         screen.getByTestId(
-          'sso-configuration-form-array-field-template-adminPrincipals'
+          SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_ADMINPRINCIPALS
         )
       ).toBeInTheDocument();
     });
@@ -115,7 +117,7 @@ describe('SsoConfigurationFormArrayFieldTemplate', () => {
 
     await waitFor(() => {
       const select = screen.getByTestId(
-        'sso-configuration-form-array-field-template-adminPrincipals'
+        SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_ADMINPRINCIPALS
       );
 
       expect(select.closest('.has-error')).toBeInTheDocument();
@@ -133,7 +135,7 @@ describe('SsoConfigurationFormArrayFieldTemplate', () => {
     await waitFor(() => {
       expect(
         screen.getByTestId(
-          'sso-configuration-form-array-field-template-adminPrincipals'
+          SSO_CONFIGURATION_FORM_ARRAY_FIELD_TEMPLATE_ADMINPRINCIPALS
         )
       ).toBeInTheDocument();
     });

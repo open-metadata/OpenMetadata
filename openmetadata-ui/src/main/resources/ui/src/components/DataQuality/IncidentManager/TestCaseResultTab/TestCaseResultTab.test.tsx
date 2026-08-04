@@ -27,13 +27,24 @@ import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import TestCaseResultTab from './TestCaseResultTab.component';
 
+const _48063740_AC35_4854_9AB3_B1B542C820FE =
+  '48063740-ac35-4854-9ab3-b1b542c820fe';
+const TEST_CASE_RESULT_TAB_CONTAINER = 'test-case-result-tab-container';
+const TAGS_CONTAINER_CLASSIFICATION = 'tags-container-Classification';
+const LABEL_COMPUTE_ROW_COUNT = 'label.compute-row-count:';
+const PARAMETER_CONTAINER = 'parameter-container';
+const EDIT_PARAMETER_ICON = 'edit-parameter-icon';
+const DYNAMIC_ASSERTION = 'dynamic-assertion';
+const SELECT_FROM_T = 'select * from t';
+const PII_SENSITIVE = 'PII.Sensitive';
+const COLUMNCOUNT = 'columnCount:';
 const mockTestCaseData: TestCase = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
   name: 'table_column_count_equals',
   fullyQualifiedName:
     'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
   testDefinition: {
-    id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+    id: _48063740_AC35_4854_9AB3_B1B542C820FE,
     type: 'testDefinition',
     name: 'tableColumnCountToEqual',
     fullyQualifiedName: 'tableColumnCountToEqual',
@@ -177,14 +188,10 @@ describe('TestCaseResultTab', () => {
     render(<TestCaseResultTab />);
 
     expect(
-      await screen.findByTestId('test-case-result-tab-container')
+      await screen.findByTestId(TEST_CASE_RESULT_TAB_CONTAINER)
     ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('parameter-container')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('edit-parameter-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(PARAMETER_CONTAINER)).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_PARAMETER_ICON)).toBeInTheDocument();
     expect(await screen.findByText('Description')).toBeInTheDocument();
     expect(await screen.findByText('TestSummary')).toBeInTheDocument();
   });
@@ -192,7 +199,7 @@ describe('TestCaseResultTab', () => {
   it("EditTestCaseModal should be rendered when 'Edit' button is clicked", async () => {
     render(<TestCaseResultTab />);
 
-    const editButton = await screen.findByTestId('edit-parameter-icon');
+    const editButton = await screen.findByTestId(EDIT_PARAMETER_ICON);
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
@@ -210,7 +217,7 @@ describe('TestCaseResultTab', () => {
   it('EditTestCaseModal should be removed on cancel click', async () => {
     const { container } = render(<TestCaseResultTab />);
 
-    const editButton = await screen.findByTestId('edit-parameter-icon');
+    const editButton = await screen.findByTestId(EDIT_PARAMETER_ICON);
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
@@ -224,7 +231,7 @@ describe('TestCaseResultTab', () => {
   it('onTestCaseUpdate should be called while updating params', async () => {
     render(<TestCaseResultTab />);
 
-    const editButton = await screen.findByTestId('edit-parameter-icon');
+    const editButton = await screen.findByTestId(EDIT_PARAMETER_ICON);
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
@@ -241,7 +248,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCasePermission = DEFAULT_ENTITY_PERMISSION;
     const { container } = render(<TestCaseResultTab />);
 
-    const editButton = queryByTestId(container, 'edit-parameter-icon');
+    const editButton = queryByTestId(container, EDIT_PARAMETER_ICON);
 
     expect(editButton).not.toBeInTheDocument();
 
@@ -253,7 +260,7 @@ describe('TestCaseResultTab', () => {
 
     render(<TestCaseResultTab />);
 
-    const useDynamicAssertion = await screen.findByTestId('dynamic-assertion');
+    const useDynamicAssertion = await screen.findByTestId(DYNAMIC_ASSERTION);
 
     expect(useDynamicAssertion).toBeInTheDocument();
 
@@ -264,15 +271,15 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = false;
     mockUseTestCaseStore.testCase.parameterValues = [
       { name: 'columnCount', value: '10' },
-      { name: 'sqlExpression', value: 'select * from t' },
+      { name: 'sqlExpression', value: SELECT_FROM_T },
     ];
 
     render(<TestCaseResultTab />);
 
-    await screen.findByTestId('parameter-container');
+    await screen.findByTestId(PARAMETER_CONTAINER);
 
-    expect(screen.queryByTestId('dynamic-assertion')).not.toBeInTheDocument();
-    expect(screen.getByText('columnCount:')).toBeInTheDocument();
+    expect(screen.queryByTestId(DYNAMIC_ASSERTION)).not.toBeInTheDocument();
+    expect(screen.getByText(COLUMNCOUNT)).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
   });
 
@@ -280,15 +287,15 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = true;
     mockUseTestCaseStore.testCase.parameterValues = [
       { name: 'columnCount', value: '10' },
-      { name: 'sqlExpression', value: 'select * from t' },
+      { name: 'sqlExpression', value: SELECT_FROM_T },
     ];
 
     render(<TestCaseResultTab />);
 
-    await screen.findByTestId('parameter-container');
+    await screen.findByTestId(PARAMETER_CONTAINER);
 
-    expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
-    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+    expect(screen.getByTestId(DYNAMIC_ASSERTION)).toBeInTheDocument();
+    expect(screen.queryByText(COLUMNCOUNT)).not.toBeInTheDocument();
     expect(screen.queryByText('10')).not.toBeInTheDocument();
   });
 
@@ -297,27 +304,27 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = true;
     mockUseTestCaseStore.testCase.parameterValues = [
       { name: 'columnCount', value: '10' },
-      { name: 'sqlExpression', value: 'select * from t' },
+      { name: 'sqlExpression', value: SELECT_FROM_T },
     ];
     mockGetTestDefinitionById.mockResolvedValue({
-      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      id: _48063740_AC35_4854_9AB3_B1B542C820FE,
       name: 'tableColumnCountToEqual',
       supportsRowLevelPassedFailed: true,
     });
 
     render(<TestCaseResultTab />);
 
-    await screen.findByTestId('parameter-container');
+    await screen.findByTestId(PARAMETER_CONTAINER);
 
-    expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
-    expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
-    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+    expect(screen.getByTestId(DYNAMIC_ASSERTION)).toBeInTheDocument();
+    expect(screen.getByText(LABEL_COMPUTE_ROW_COUNT)).toBeInTheDocument();
+    expect(screen.queryByText(COLUMNCOUNT)).not.toBeInTheDocument();
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = true;
     render(<TestCaseResultTab />);
-    const editButton = await screen.findByTestId('edit-parameter-icon');
+    const editButton = await screen.findByTestId(EDIT_PARAMETER_ICON);
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
@@ -367,20 +374,18 @@ describe('TestCaseResultTab', () => {
       };
       mockUseTestCaseStore.testCase = testCaseWithComputeRowCount;
       mockGetTestDefinitionById.mockResolvedValue({
-        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        id: _48063740_AC35_4854_9AB3_B1B542C820FE,
         name: 'columnValuesToMatchRegex',
         supportsRowLevelPassedFailed: true,
       });
 
       render(<TestCaseResultTab />);
 
-      const parameterContainer = await screen.findByTestId(
-        'parameter-container'
-      );
+      const parameterContainer = await screen.findByTestId(PARAMETER_CONTAINER);
 
       expect(parameterContainer).toBeInTheDocument();
       // Check that compute row count label is present in the parameter section
-      expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_COMPUTE_ROW_COUNT)).toBeInTheDocument();
       // Check that the value "true" is present
       expect(screen.getByText('true')).toBeInTheDocument();
     });
@@ -392,18 +397,18 @@ describe('TestCaseResultTab', () => {
       };
       mockUseTestCaseStore.testCase = testCaseWithComputeRowCount;
       mockGetTestDefinitionById.mockResolvedValue({
-        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        id: _48063740_AC35_4854_9AB3_B1B542C820FE,
         name: 'tableColumnCountToEqual',
         supportsRowLevelPassedFailed: false,
       });
 
       render(<TestCaseResultTab />);
 
-      await screen.findByTestId('test-case-result-tab-container');
+      await screen.findByTestId(TEST_CASE_RESULT_TAB_CONTAINER);
 
       // Compute row count should not be shown in parameter section when not supported
       expect(
-        screen.queryByText('label.compute-row-count:')
+        screen.queryByText(LABEL_COMPUTE_ROW_COUNT)
       ).not.toBeInTheDocument();
     });
 
@@ -414,18 +419,18 @@ describe('TestCaseResultTab', () => {
       };
       mockUseTestCaseStore.testCase = testCaseWithoutComputeRowCount;
       mockGetTestDefinitionById.mockResolvedValue({
-        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        id: _48063740_AC35_4854_9AB3_B1B542C820FE,
         name: 'columnValuesToMatchRegex',
         supportsRowLevelPassedFailed: true,
       });
 
       render(<TestCaseResultTab />);
 
-      await screen.findByTestId('test-case-result-tab-container');
+      await screen.findByTestId(TEST_CASE_RESULT_TAB_CONTAINER);
 
       // Compute row count should not be shown when computePassedFailedRowCount is undefined
       expect(
-        screen.queryByText('label.compute-row-count:')
+        screen.queryByText(LABEL_COMPUTE_ROW_COUNT)
       ).not.toBeInTheDocument();
     });
   });
@@ -448,7 +453,7 @@ describe('TestCaseResultTab', () => {
             state: State.Confirmed,
           },
           {
-            tagFQN: 'PII.Sensitive',
+            tagFQN: PII_SENSITIVE,
             source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
@@ -469,7 +474,7 @@ describe('TestCaseResultTab', () => {
 
       // Wait for tags containers to render
       expect(
-        await screen.findByTestId('tags-container-Classification')
+        await screen.findByTestId(TAGS_CONTAINER_CLASSIFICATION)
       ).toBeInTheDocument();
       expect(
         await screen.findByTestId('tags-container-Glossary')
@@ -506,7 +511,7 @@ describe('TestCaseResultTab', () => {
             state: State.Confirmed,
           },
           {
-            tagFQN: 'PII.Sensitive',
+            tagFQN: PII_SENSITIVE,
             source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
@@ -521,7 +526,7 @@ describe('TestCaseResultTab', () => {
 
       // Wait for tags container to render
       expect(
-        await screen.findByTestId('tags-container-Classification')
+        await screen.findByTestId(TAGS_CONTAINER_CLASSIFICATION)
       ).toBeInTheDocument();
 
       // Get the onSelectionChange handler
@@ -554,7 +559,7 @@ describe('TestCaseResultTab', () => {
         ...mockTestCaseData,
         tags: [
           {
-            tagFQN: 'PII.Sensitive',
+            tagFQN: PII_SENSITIVE,
             source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
@@ -575,7 +580,7 @@ describe('TestCaseResultTab', () => {
 
       // Wait for tags containers to render
       expect(
-        await screen.findByTestId('tags-container-Classification')
+        await screen.findByTestId(TAGS_CONTAINER_CLASSIFICATION)
       ).toBeInTheDocument();
       expect(
         await screen.findByTestId('tags-container-Glossary')
@@ -614,7 +619,7 @@ describe('TestCaseResultTab', () => {
             state: State.Confirmed,
           },
           {
-            tagFQN: 'PII.Sensitive',
+            tagFQN: PII_SENSITIVE,
             source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
@@ -629,7 +634,7 @@ describe('TestCaseResultTab', () => {
 
       // Wait for tags container to render
       expect(
-        await screen.findByTestId('tags-container-Classification')
+        await screen.findByTestId(TAGS_CONTAINER_CLASSIFICATION)
       ).toBeInTheDocument();
 
       // Check that TagsContainerV2 is called with filtered tags
@@ -641,7 +646,7 @@ describe('TestCaseResultTab', () => {
 
       // Should only have the non-tier tag
       expect(selectedTags).toHaveLength(1);
-      expect(selectedTags[0].tagFQN).toBe('PII.Sensitive');
+      expect(selectedTags[0].tagFQN).toBe(PII_SENSITIVE);
     });
   });
 });

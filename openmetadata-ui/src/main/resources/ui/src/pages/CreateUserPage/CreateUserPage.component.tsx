@@ -34,6 +34,8 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { getUserCreationErrorMessage } from '../../utils/UsersPureUtils';
+
+const LABEL_USER = 'label.user' as const;
 const CreateUserPage = () => {
   const {
     state,
@@ -136,7 +138,7 @@ const CreateUserPage = () => {
           heading: t('label.error'),
           description: getUserCreationErrorMessage({
             error: error as AxiosError,
-            entity: t('label.user'),
+            entity: t(LABEL_USER),
             entityLowercase: t('label.user-lowercase'),
             entityName: userData.name,
           }),
@@ -162,7 +164,7 @@ const CreateUserPage = () => {
       };
     } else {
       return {
-        name: t('label.user'),
+        name: t(LABEL_USER),
         namePlural: t('label.user-plural'),
         url: getUsersPagePath(),
       };
@@ -187,7 +189,7 @@ const CreateUserPage = () => {
   return (
     <PageLayoutV1
       center
-      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
+      pageTitle={t('label.create-entity', { entity: t(LABEL_USER) })}>
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
         <div className="m-t-md">

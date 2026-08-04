@@ -29,6 +29,13 @@ import SuggestionsProvider, {
 } from './SuggestionsProvider';
 import { SuggestionAction } from './SuggestionsProvider.interface';
 
+const NOT_LOADING = 'not-loading';
+const SUGGESTIONS_COUNT = 'suggestions-count';
+const SUGGESTION_LIMIT = 'suggestion-limit';
+const PENDING_COUNT = 'pending-count';
+const LOADING_STATE = 'loading-state';
+const ACTIVE_USER = 'Active User';
+
 const mockPagingResponse = {
   data: MOCK_SUGGESTIONS,
   paging: { total: 25, after: null, before: null },
@@ -111,9 +118,7 @@ function TestComponent() {
         Fetch Suggestions Skip Merge
       </button>
       <div data-testid="suggestions-count">{contextSuggestions.length}</div>
-      <div data-testid="loading-state">
-        {loading ? 'loading' : 'not-loading'}
-      </div>
+      <div data-testid="loading-state">{loading ? 'loading' : NOT_LOADING}</div>
       <div data-testid="users-count">{allSuggestionsUsers.length}</div>
       <div data-testid="suggestion-limit">{suggestionLimit}</div>
       <div data-testid="pending-count">{suggestionPendingCount}</div>
@@ -148,13 +153,13 @@ describe('SuggestionsProvider', () => {
 
     // Wait for suggestions to be processed and state updated
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('3');
     });
 
     // Verify remaining state updates - derived from useMemo
     expect(screen.getByTestId('users-count')).toHaveTextContent('2');
-    expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('25');
-    expect(screen.getByTestId('pending-count')).toHaveTextContent('22'); // 25 - 3
+    expect(screen.getByTestId(SUGGESTION_LIMIT)).toHaveTextContent('25');
+    expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('22'); // 25 - 3
     expect(screen.getByTestId('grouped-users-count')).toHaveTextContent('2');
   });
 
@@ -194,7 +199,7 @@ describe('SuggestionsProvider', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('3');
     });
 
     const fetchSkipMergeBtn = screen.getByText('Fetch Suggestions Skip Merge');
@@ -202,9 +207,9 @@ describe('SuggestionsProvider', () => {
 
     await waitFor(() => {
       // Should replace all suggestions, not merge
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('1');
-      expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('15');
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('14'); // 15 - 1
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('1');
+      expect(screen.getByTestId(SUGGESTION_LIMIT)).toHaveTextContent('15');
+      expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('14'); // 15 - 1
     });
   });
 
@@ -227,7 +232,7 @@ describe('SuggestionsProvider', () => {
 
     // Should update pending count correctly for user-specific fetch
     await waitFor(() => {
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('8'); // 10 - 2 (still 2 after merge)
+      expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('8'); // 10 - 2 (still 2 after merge)
     });
   });
 
@@ -257,7 +262,7 @@ describe('SuggestionsProvider', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('3');
     });
 
     // Trigger second fetch
@@ -266,9 +271,9 @@ describe('SuggestionsProvider', () => {
 
     await waitFor(() => {
       // Should have original 3 + 1 new unique = 4 total
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('4');
-      expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('30');
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('26'); // 30 - 4
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('4');
+      expect(screen.getByTestId(SUGGESTION_LIMIT)).toHaveTextContent('30');
+      expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('26'); // 30 - 4
     });
   });
 
@@ -288,12 +293,12 @@ describe('SuggestionsProvider', () => {
     );
 
     // Should show loading initially
-    expect(screen.getByTestId('loading-state')).toHaveTextContent('loading');
+    expect(screen.getByTestId(LOADING_STATE)).toHaveTextContent('loading');
 
     await waitFor(
       () => {
-        expect(screen.getByTestId('loading-state')).toHaveTextContent(
-          'not-loading'
+        expect(screen.getByTestId(LOADING_STATE)).toHaveTextContent(
+          NOT_LOADING
         );
       },
       { timeout: 200 }
@@ -318,9 +323,7 @@ describe('SuggestionsProvider', () => {
     });
 
     // Should not be loading after error
-    expect(screen.getByTestId('loading-state')).toHaveTextContent(
-      'not-loading'
-    );
+    expect(screen.getByTestId(LOADING_STATE)).toHaveTextContent(NOT_LOADING);
   });
 
   it('handles acceptRejectSuggestion and updates state optimistically', async () => {
@@ -332,7 +335,7 @@ describe('SuggestionsProvider', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('3');
     });
 
     const acceptBtn = screen.getByText('Accept One');
@@ -347,8 +350,8 @@ describe('SuggestionsProvider', () => {
 
     // Should optimistically update suggestions count without refetch
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('2');
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('22'); // 25 - 3
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('2');
+      expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('22'); // 25 - 3
     });
 
     // Should only call initial fetch, no refetch after successful accept
@@ -367,7 +370,7 @@ describe('SuggestionsProvider', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('3');
     });
 
     const acceptBtn = screen.getByText('Accept One');
@@ -378,7 +381,7 @@ describe('SuggestionsProvider', () => {
     });
 
     // Should still show original count on error (no optimistic update applied)
-    expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+    expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('3');
     // Should only call initial fetch, no refetch on error
     expect(getSuggestionsList).toHaveBeenCalledTimes(1);
   });
@@ -392,11 +395,11 @@ describe('SuggestionsProvider', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('3');
     });
 
     // Set active user
-    const activeUserBtn = screen.getByText('Active User');
+    const activeUserBtn = screen.getByText(ACTIVE_USER);
     fireEvent.click(activeUserBtn);
 
     const acceptAllBtn = screen.getByText('Accept All');
@@ -419,7 +422,7 @@ describe('SuggestionsProvider', () => {
 
     // Should optimistically remove user's suggestions
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('1'); // Removed 2 user suggestions
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('1'); // Removed 2 user suggestions
     });
   });
 
@@ -443,11 +446,11 @@ describe('SuggestionsProvider', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('2');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('2');
     });
 
     // Set active user and accept all
-    const activeUserBtn = screen.getByText('Active User');
+    const activeUserBtn = screen.getByText(ACTIVE_USER);
     fireEvent.click(activeUserBtn);
 
     const acceptAllBtn = screen.getByText('Accept All');
@@ -464,7 +467,7 @@ describe('SuggestionsProvider', () => {
 
     // Should show fresh suggestions
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('1');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('1');
     });
   });
 
@@ -476,7 +479,7 @@ describe('SuggestionsProvider', () => {
     );
 
     // Set active user
-    const activeUserBtn = screen.getByText('Active User');
+    const activeUserBtn = screen.getByText(ACTIVE_USER);
     fireEvent.click(activeUserBtn);
 
     const rejectAllBtn = screen.getByText('Reject All');
@@ -511,10 +514,10 @@ describe('SuggestionsProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('suggestions-count')).toHaveTextContent('0');
+      expect(screen.getByTestId(SUGGESTIONS_COUNT)).toHaveTextContent('0');
       expect(screen.getByTestId('users-count')).toHaveTextContent('0');
-      expect(screen.getByTestId('suggestion-limit')).toHaveTextContent('0');
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('0'); // 0 - 0
+      expect(screen.getByTestId(SUGGESTION_LIMIT)).toHaveTextContent('0');
+      expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('0'); // 0 - 0
     });
   });
 
@@ -531,7 +534,7 @@ describe('SuggestionsProvider', () => {
 
     // Wait for initial load (3 suggestions, limit 25, pending = 22)
     await waitFor(() => {
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('22');
+      expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('22');
     });
 
     const fetchByUserIdBtn = screen.getByText('Fetch By User ID');
@@ -539,7 +542,7 @@ describe('SuggestionsProvider', () => {
 
     await waitFor(() => {
       // After user fetch: still 3 suggestions (duplicate filtered), pending updated based on limit - merged.length
-      expect(screen.getByTestId('pending-count')).toHaveTextContent('22'); // 25 - 3
+      expect(screen.getByTestId(PENDING_COUNT)).toHaveTextContent('22'); // 25 - 3
     });
   });
 });

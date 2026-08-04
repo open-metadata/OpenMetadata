@@ -47,6 +47,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 
+const LABEL_ADD_ENTITY = 'label.add-entity';
+
 const EmptyWidgetPlaceholder = withSuspenseFallback(
   lazy(
     () =>
@@ -405,7 +407,7 @@ export const CustomizeTabWidget = () => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={() => setShowAddTabModal(true)}>
-              {t('label.add-entity', {
+              {t(LABEL_ADD_ENTITY, {
                 entity: t('label.tab'),
               })}
             </Button>
@@ -460,7 +462,7 @@ export const CustomizeTabWidget = () => {
               icon={<PlusOutlined />}
               type="primary"
               onClick={handleOpenAddWidgetModal}>
-              {t('label.add-entity', {
+              {t(LABEL_ADD_ENTITY, {
                 entity: t('label.widget'),
               })}
             </Button>
@@ -508,7 +510,7 @@ export const CustomizeTabWidget = () => {
           closeIcon={null}
           okText={t('label.add')}
           open={showAddTabModal}
-          title={t('label.add-entity', {
+          title={t(LABEL_ADD_ENTITY, {
             entity: t('label.tab'),
           })}
           onCancel={() => setShowAddTabModal(false)}

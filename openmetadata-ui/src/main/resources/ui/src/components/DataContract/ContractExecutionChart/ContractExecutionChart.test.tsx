@@ -31,6 +31,9 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractExecutionChart from './ContractExecutionChart.component';
 
+const MOCK_DATE_PICKER_MENU = 'date-picker-menu';
+const CONTRACT_1 = 'contract-1';
+
 jest.mock('../../../rest/contractAPI', () => ({
   getAllContractResults: jest.fn(),
 }));
@@ -124,7 +127,7 @@ jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {
     handleDateRangeChange: (range: { startTs: number; endTs: number }) => void;
   }) {
     return (
-      <div data-testid="date-picker-menu">
+      <div data-testid={MOCK_DATE_PICKER_MENU}>
         <button
           data-testid="change-date-range"
           onClick={() =>
@@ -209,7 +212,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 const mockContract: DataContract = {
-  id: 'contract-1',
+  id: CONTRACT_1,
   name: 'Test Contract',
   description: 'Test Description',
 } as unknown as DataContract;
@@ -255,7 +258,7 @@ describe('ContractExecutionChart', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_DATE_PICKER_MENU)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
@@ -267,7 +270,7 @@ describe('ContractExecutionChart', () => {
     it('should fetch contract results on component mount', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
-      expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
+      expect(getAllContractResults).toHaveBeenCalledWith(CONTRACT_1, {
         startTs: expect.any(Number),
         endTs: expect.any(Number),
         limit: 10000,
@@ -293,7 +296,7 @@ describe('ContractExecutionChart', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_DATE_PICKER_MENU)).toBeInTheDocument();
       });
 
       const changeDateButton = screen.getByTestId('change-date-range');
@@ -303,7 +306,7 @@ describe('ContractExecutionChart', () => {
       });
 
       expect(getAllContractResults).toHaveBeenCalledTimes(2);
-      expect(getAllContractResults).toHaveBeenLastCalledWith('contract-1', {
+      expect(getAllContractResults).toHaveBeenLastCalledWith(CONTRACT_1, {
         startTs: 1640908800000,
         endTs: 1640995200000,
         limit: 10000,
@@ -481,7 +484,7 @@ describe('ContractExecutionChart', () => {
     it('should initialize with default date range', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
-      expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
+      expect(getAllContractResults).toHaveBeenCalledWith(CONTRACT_1, {
         startTs: expect.any(Number),
         endTs: 1640995200000, // Fixed current time
         limit: 10000,
@@ -492,7 +495,7 @@ describe('ContractExecutionChart', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_DATE_PICKER_MENU)).toBeInTheDocument();
       });
 
       // Simulate no change in date range
@@ -524,7 +527,7 @@ describe('ContractExecutionChart', () => {
         expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATE_PICKER_MENU)).toBeInTheDocument();
     });
   });
 

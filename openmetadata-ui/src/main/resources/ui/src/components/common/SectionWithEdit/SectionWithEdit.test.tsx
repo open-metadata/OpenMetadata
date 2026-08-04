@@ -15,6 +15,8 @@ import SectionWithEdit from './SectionWithEdit';
 
 // Mock i18n Typography usage is internal to antd; we don't need a full mock of antd
 // Mock SVG icon used by the button to avoid SVG import issues
+const EDIT_BUTTON = 'edit-button';
+
 jest.mock('../../../assets/svg/edit.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon">E</div>,
 }));
@@ -56,7 +58,7 @@ describe('SectionWithEdit', () => {
       </SectionWithEdit>
     );
 
-    const button = screen.getByTestId('edit-button');
+    const button = screen.getByTestId(EDIT_BUTTON);
 
     expect(button).toBeInTheDocument();
     expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
@@ -73,13 +75,13 @@ describe('SectionWithEdit', () => {
       </SectionWithEdit>
     );
 
-    expect(screen.queryByTestId('edit-button')).toBeNull();
+    expect(screen.queryByTestId(EDIT_BUTTON)).toBeNull();
   });
 
   it('hides edit button when onEdit is not provided', () => {
     render(<SectionWithEdit title="Title">Content</SectionWithEdit>);
 
-    expect(screen.queryByTestId('edit-button')).toBeNull();
+    expect(screen.queryByTestId(EDIT_BUTTON)).toBeNull();
   });
 
   it('applies custom class names to wrapper, header and content', () => {

@@ -25,6 +25,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import KnowledgeGraph3D from './KnowledgeGraph3D';
 import { KnowledgeGraph3DSceneProps } from './KnowledgeGraph3D.interface';
 
+const KG3D_SCENE = 'kg3d-scene';
+const KNOWLEDGE_GRAPH_3D = 'knowledge-graph-3d';
+const FULL_SCREEN_KNOWLEDGE_GRAPH_3D = 'full-screen-knowledge-graph-3d';
+const EXIT_FULL_SCREEN = 'exit-full-screen';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -132,7 +137,7 @@ jest.mock('./KnowledgeGraph3DScene', () => ({
   __esModule: true,
   default: (props: KnowledgeGraph3DSceneProps) => {
     return (
-      <div data-testid="kg3d-scene">
+      <div data-testid={KG3D_SCENE}>
         <span data-testid="kg3d-scene-node-count">
           {props.data.nodes.length}
         </span>
@@ -205,7 +210,7 @@ describe('KnowledgeGraph3D', () => {
 
     renderGraph();
 
-    expect(await screen.findByTestId('kg3d-scene')).toBeInTheDocument();
+    expect(await screen.findByTestId(KG3D_SCENE)).toBeInTheDocument();
     expect(screen.getByText('label.relationship-plural')).toBeInTheDocument();
     expect(screen.getByText('label.reset-view')).toBeInTheDocument();
     expect(
@@ -224,7 +229,7 @@ describe('KnowledgeGraph3D', () => {
       ).toBeInTheDocument()
     );
 
-    expect(screen.queryByTestId('kg3d-scene')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(KG3D_SCENE)).not.toBeInTheDocument();
   });
 
   it('should render the no-entity placeholder and skip fetching when entity is missing', () => {
@@ -253,7 +258,7 @@ describe('KnowledgeGraph3D', () => {
 
     renderGraph();
 
-    await screen.findByTestId('kg3d-scene');
+    await screen.findByTestId(KG3D_SCENE);
 
     expect(mockGetEntityGraphData.mock.calls[0][0]).toEqual({
       entityId: 'entity-1',
@@ -291,7 +296,7 @@ describe('KnowledgeGraph3D', () => {
       </MemoryRouter>
     );
 
-    await screen.findByTestId('kg3d-scene');
+    await screen.findByTestId(KG3D_SCENE);
 
     const baseNodeCount = Number(
       screen.getByTestId('kg3d-scene-node-count').textContent
@@ -318,7 +323,7 @@ describe('KnowledgeGraph3D', () => {
 
     renderGraph();
 
-    await screen.findByTestId('kg3d-scene');
+    await screen.findByTestId(KG3D_SCENE);
 
     fireEvent.click(screen.getByTestId('kg3d-select-node'));
 
@@ -339,7 +344,7 @@ describe('KnowledgeGraph3D', () => {
 
     renderGraph();
 
-    await screen.findByTestId('kg3d-scene');
+    await screen.findByTestId(KG3D_SCENE);
     fireEvent.click(screen.getByTestId('kg3d-select-node'));
     fireEvent.click(await screen.findByTestId('kg3d-related-node-con-1'));
 
@@ -353,10 +358,10 @@ describe('KnowledgeGraph3D', () => {
 
     renderGraph();
 
-    await screen.findByTestId('kg3d-scene');
+    await screen.findByTestId(KG3D_SCENE);
 
-    expect(screen.getByTestId('knowledge-graph-3d')).not.toHaveClass(
-      'full-screen-knowledge-graph-3d'
+    expect(screen.getByTestId(KNOWLEDGE_GRAPH_3D)).not.toHaveClass(
+      FULL_SCREEN_KNOWLEDGE_GRAPH_3D
     );
   });
 
@@ -365,11 +370,11 @@ describe('KnowledgeGraph3D', () => {
 
     renderGraph(['/?fullscreen=true']);
 
-    await screen.findByTestId('kg3d-scene');
+    await screen.findByTestId(KG3D_SCENE);
 
-    const container = screen.getByTestId('knowledge-graph-3d');
+    const container = screen.getByTestId(KNOWLEDGE_GRAPH_3D);
 
-    expect(container).toHaveClass('full-screen-knowledge-graph-3d');
+    expect(container).toHaveClass(FULL_SCREEN_KNOWLEDGE_GRAPH_3D);
     expect(container).not.toHaveClass('sidebar-collapsed');
     expect(container).not.toHaveClass('sidebar-expanded');
   });
@@ -379,31 +384,31 @@ describe('KnowledgeGraph3D', () => {
 
     renderGraph();
 
-    await screen.findByTestId('kg3d-scene');
+    await screen.findByTestId(KG3D_SCENE);
 
-    expect(screen.getByTestId('knowledge-graph-3d')).not.toHaveClass(
-      'full-screen-knowledge-graph-3d'
+    expect(screen.getByTestId(KNOWLEDGE_GRAPH_3D)).not.toHaveClass(
+      FULL_SCREEN_KNOWLEDGE_GRAPH_3D
     );
 
     fireEvent.click(screen.getByTestId('full-screen'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('knowledge-graph-3d')).toHaveClass(
-        'full-screen-knowledge-graph-3d'
+      expect(screen.getByTestId(KNOWLEDGE_GRAPH_3D)).toHaveClass(
+        FULL_SCREEN_KNOWLEDGE_GRAPH_3D
       )
     );
 
-    expect(screen.getByTestId('exit-full-screen')).toBeInTheDocument();
+    expect(screen.getByTestId(EXIT_FULL_SCREEN)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('exit-full-screen'));
+    fireEvent.click(screen.getByTestId(EXIT_FULL_SCREEN));
 
     await waitFor(() =>
-      expect(screen.getByTestId('knowledge-graph-3d')).not.toHaveClass(
-        'full-screen-knowledge-graph-3d'
+      expect(screen.getByTestId(KNOWLEDGE_GRAPH_3D)).not.toHaveClass(
+        FULL_SCREEN_KNOWLEDGE_GRAPH_3D
       )
     );
 
     expect(screen.getByTestId('full-screen')).toBeInTheDocument();
-    expect(screen.queryByTestId('exit-full-screen')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EXIT_FULL_SCREEN)).not.toBeInTheDocument();
   });
 });

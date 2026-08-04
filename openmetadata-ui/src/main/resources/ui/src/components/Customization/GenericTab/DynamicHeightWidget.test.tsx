@@ -15,6 +15,8 @@ import { act, render, screen } from '@testing-library/react';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { DynamicHeightWidget } from './DynamicHeightWidget';
 
+const TEST_WIDGET = 'test-widget';
+
 // Mock ResizeObserver
 class MockResizeObserver {
   observe = jest.fn();
@@ -29,7 +31,7 @@ global.ResizeObserver = jest.fn().mockImplementation(() => mockResizeObserver);
 
 describe('DynamicHeightWidget', () => {
   const mockWidget: WidgetConfig = {
-    i: 'test-widget',
+    i: TEST_WIDGET,
     x: 0,
     y: 0,
     w: 6,
@@ -105,7 +107,7 @@ describe('DynamicHeightWidget', () => {
         .calls[0][0];
       resizeCallback([{ contentRect: { height: 680 } }]); // 6 grid units: 6 * 116 - 16
 
-      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 6);
+      expect(mockOnHeightChange).toHaveBeenCalledWith(TEST_WIDGET, 6);
     });
 
     it('calls onHeightChange when height decreases', () => {
@@ -121,7 +123,7 @@ describe('DynamicHeightWidget', () => {
         .calls[0][0];
       resizeCallback([{ contentRect: { height: 216 } }]); // 2 grid units: 2 * 116 - 16
 
-      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 2);
+      expect(mockOnHeightChange).toHaveBeenCalledWith(TEST_WIDGET, 2);
     });
 
     it('does not call onHeightChange when height remains the same', () => {
@@ -155,14 +157,14 @@ describe('DynamicHeightWidget', () => {
       // First resize
       resizeCallback([{ contentRect: { height: 332 } }]); // 3 grid units: 3 * 116 - 16
 
-      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 3);
+      expect(mockOnHeightChange).toHaveBeenCalledWith(TEST_WIDGET, 3);
 
       await act(async () => {
         // Second resize
         resizeCallback([{ contentRect: { height: 564 } }]); // 5 grid units: 5 * 116 - 16
       });
 
-      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 5);
+      expect(mockOnHeightChange).toHaveBeenCalledWith(TEST_WIDGET, 5);
 
       // Third resize (same height)
       resizeCallback([{ contentRect: { height: 564 } }]);
@@ -186,10 +188,7 @@ describe('DynamicHeightWidget', () => {
       resizeCallback([{ contentRect: { height: 0 } }]);
 
       // (0 + GRID_VERTICAL_MARGIN) / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN) = 16/116
-      expect(mockOnHeightChange).toHaveBeenCalledWith(
-        'test-widget',
-        16 / 116
-      );
+      expect(mockOnHeightChange).toHaveBeenCalledWith(TEST_WIDGET, 16 / 116);
     });
 
     it('handles very large height values', () => {
@@ -205,7 +204,7 @@ describe('DynamicHeightWidget', () => {
         .calls[0][0];
       resizeCallback([{ contentRect: { height: 11584 } }]); // 100 grid units: 100 * 116 - 16
 
-      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 100);
+      expect(mockOnHeightChange).toHaveBeenCalledWith(TEST_WIDGET, 100);
     });
 
     it('works without onHeightChange callback', () => {

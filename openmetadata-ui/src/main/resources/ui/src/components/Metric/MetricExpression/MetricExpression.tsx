@@ -23,6 +23,8 @@ import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtil
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
+const LABEL_EXPRESSION = 'label.expression';
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -95,13 +97,13 @@ const MetricExpression: FC = () => {
     <div className="d-flex justify-between w-full">
       <Typography>
         {isEditing
-          ? t('label.edit-entity', { entity: t('label.expression') })
-          : metricDetails?.metricExpression?.language ?? t('label.expression')}
+          ? t('label.edit-entity', { entity: t(LABEL_EXPRESSION) })
+          : metricDetails?.metricExpression?.language ?? t(LABEL_EXPRESSION)}
       </Typography>
       {!isEditing && !metricDetails.deleted && (
         <Tooltip
           title={t('label.edit-entity', {
-            entity: t('label.expression'),
+            entity: t(LABEL_EXPRESSION),
           })}>
           <Button
             className="flex-center p-0"

@@ -18,31 +18,37 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import EntityTasks from './EntityTasks.component';
 import { EntityTasksProps } from './EntityTasks.interface';
 
+const FIELD_COLUMNS_VALUE_SALE_ID = 'field=columns&value=sale_id';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SESS =
+  'sample_data.ecommerce_db.shopify.fact_session';
+const ENTITY_TASK = 'entity-task';
+const TASK_ELEMENT = 'task-element';
+
 const mockRequestTags = {
   pathname: '/request-tags/table/sample_data.ecommerce_db.shopify.fact_sale',
-  search: 'field=columns&value=sale_id',
+  search: FIELD_COLUMNS_VALUE_SALE_ID,
 };
 
 const mockUpdateTags = {
   pathname: '/update-tags/table/sample_data.ecommerce_db.shopify.fact_sale',
-  search: 'field=columns&value=sale_id',
+  search: FIELD_COLUMNS_VALUE_SALE_ID,
 };
 
 const mockRequestDescription = {
   pathname:
     '/request-description/table/sample_data.ecommerce_db.shopify.fact_sale',
-  search: 'field=columns&value=sale_id',
+  search: FIELD_COLUMNS_VALUE_SALE_ID,
 };
 
 const mockUpdateDescription = {
   pathname:
     '/update-description/table/sample_data.ecommerce_db.shopify.fact_sale',
-  search: 'field=columns&value=sale_id',
+  search: FIELD_COLUMNS_VALUE_SALE_ID,
 };
 
 const mockProps: EntityTasksProps = {
   data: {
-    fqn: 'sample_data.ecommerce_db.shopify.fact_session',
+    fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SESS,
     field: 'this is test',
   },
   tagSource: TagSource.Classification,
@@ -93,7 +99,7 @@ describe('Entity Task component', () => {
   it('Should render the component', async () => {
     render(<EntityTasks {...mockProps} />);
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
   });
@@ -101,11 +107,11 @@ describe('Entity Task component', () => {
   it('Task Element should be visible when tagSource is not glossary', async () => {
     render(<EntityTasks {...mockProps} />);
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
 
-    const taskElement = screen.queryByTestId('task-element');
+    const taskElement = screen.queryByTestId(TASK_ELEMENT);
 
     expect(taskElement).toBeInTheDocument();
   });
@@ -113,11 +119,11 @@ describe('Entity Task component', () => {
   it('Task Element should not visible when tagSource is glossary', async () => {
     render(<EntityTasks {...mockProps} tagSource={TagSource.Glossary} />);
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
 
-    const taskElement = screen.queryByTestId('task-element');
+    const taskElement = screen.queryByTestId(TASK_ELEMENT);
 
     expect(taskElement).not.toBeInTheDocument();
   });
@@ -125,7 +131,7 @@ describe('Entity Task component', () => {
   it('List conversation should be there in component', async () => {
     render(<EntityTasks {...mockProps} tagSource={TagSource.Glossary} />);
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
 
@@ -137,11 +143,11 @@ describe('Entity Task component', () => {
   it('Handle update tags click', async () => {
     render(<EntityTasks {...mockProps} />);
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
 
-    const taskElement = await screen.findByTestId('task-element');
+    const taskElement = await screen.findByTestId(TASK_ELEMENT);
 
     expect(taskElement).toBeInTheDocument();
 
@@ -157,16 +163,16 @@ describe('Entity Task component', () => {
       <EntityTasks
         {...mockProps}
         data={{
-          fqn: 'sample_data.ecommerce_db.shopify.fact_session',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SESS,
         }}
       />
     );
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
 
-    const taskElement = await screen.findByTestId('task-element');
+    const taskElement = await screen.findByTestId(TASK_ELEMENT);
 
     expect(taskElement).toBeInTheDocument();
 
@@ -182,11 +188,11 @@ describe('Entity Task component', () => {
       <EntityTasks {...mockProps} entityTaskType={EntityField.DESCRIPTION} />
     );
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
 
-    const taskElement = await screen.findByTestId('task-element');
+    const taskElement = await screen.findByTestId(TASK_ELEMENT);
 
     expect(taskElement).toBeInTheDocument();
 
@@ -202,17 +208,17 @@ describe('Entity Task component', () => {
       <EntityTasks
         {...mockProps}
         data={{
-          fqn: 'sample_data.ecommerce_db.shopify.fact_session',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SESS,
         }}
         entityTaskType={EntityField.DESCRIPTION}
       />
     );
 
-    const container = await screen.findByTestId('entity-task');
+    const container = await screen.findByTestId(ENTITY_TASK);
 
     expect(container).toBeInTheDocument();
 
-    const taskElement = await screen.findByTestId('task-element');
+    const taskElement = await screen.findByTestId(TASK_ELEMENT);
 
     expect(taskElement).toBeInTheDocument();
 

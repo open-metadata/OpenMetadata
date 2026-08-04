@@ -14,6 +14,10 @@
 import { render, screen } from '@testing-library/react';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget.component';
 
+const TEST_PASSED_VALUE = 'test-passed-value';
+const TEST_ABORTED_VALUE = 'test-aborted-value';
+const TEST_FAILED_VALUE = 'test-failed-value';
+
 const mockSummary = {
   success: 5,
   aborted: 1,
@@ -32,32 +36,32 @@ describe('TestSuiteSummaryWidget', () => {
     render(<TestSuiteSummaryWidget isLoading />);
 
     expect(screen.getByText('Skeleton.Button')).toBeInTheDocument();
-    expect(screen.queryByTestId('test-passed-value')).toBeNull();
-    expect(screen.queryByTestId('test-aborted-value')).toBeNull();
-    expect(screen.queryByTestId('test-failed-value')).toBeNull();
+    expect(screen.queryByTestId(TEST_PASSED_VALUE)).toBeNull();
+    expect(screen.queryByTestId(TEST_ABORTED_VALUE)).toBeNull();
+    expect(screen.queryByTestId(TEST_FAILED_VALUE)).toBeNull();
   });
 
   it('should render correct status counts when summary is provided', () => {
     render(<TestSuiteSummaryWidget summary={mockSummary} />);
 
-    expect(screen.getByTestId('test-passed-value')).toHaveTextContent('5');
-    expect(screen.getByTestId('test-aborted-value')).toHaveTextContent('1');
-    expect(screen.getByTestId('test-failed-value')).toHaveTextContent('2');
+    expect(screen.getByTestId(TEST_PASSED_VALUE)).toHaveTextContent('5');
+    expect(screen.getByTestId(TEST_ABORTED_VALUE)).toHaveTextContent('1');
+    expect(screen.getByTestId(TEST_FAILED_VALUE)).toHaveTextContent('2');
   });
 
   it('should render 0 count if no summary is provided', () => {
     render(<TestSuiteSummaryWidget />);
 
-    expect(screen.getByTestId('test-passed-value')).toHaveTextContent('0');
-    expect(screen.getByTestId('test-aborted-value')).toHaveTextContent('0');
-    expect(screen.getByTestId('test-failed-value')).toHaveTextContent('0');
+    expect(screen.getByTestId(TEST_PASSED_VALUE)).toHaveTextContent('0');
+    expect(screen.getByTestId(TEST_ABORTED_VALUE)).toHaveTextContent('0');
+    expect(screen.getByTestId(TEST_FAILED_VALUE)).toHaveTextContent('0');
   });
 
   it('should render 0 count if summary values are undefined', () => {
     render(<TestSuiteSummaryWidget summary={{}} />);
 
-    expect(screen.getByTestId('test-passed-value')).toHaveTextContent('0');
-    expect(screen.getByTestId('test-aborted-value')).toHaveTextContent('0');
-    expect(screen.getByTestId('test-failed-value')).toHaveTextContent('0');
+    expect(screen.getByTestId(TEST_PASSED_VALUE)).toHaveTextContent('0');
+    expect(screen.getByTestId(TEST_ABORTED_VALUE)).toHaveTextContent('0');
+    expect(screen.getByTestId(TEST_FAILED_VALUE)).toHaveTextContent('0');
   });
 });

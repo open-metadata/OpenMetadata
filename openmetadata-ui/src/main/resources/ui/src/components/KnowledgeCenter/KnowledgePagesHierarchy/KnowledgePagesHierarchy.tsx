@@ -95,6 +95,8 @@ import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageU
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 
+const LABEL_ARTICLE_PLURAL = 'label.article-plural';
+
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
   activeKey?: string;
@@ -827,7 +829,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
     return (
       <Card
-        aria-label={t('label.article-plural')}
+        aria-label={t(LABEL_ARTICLE_PLURAL)}
         className="tw:h-full tw:flex tw:flex-col tw:py-5 tw:px-0"
         data-testid="knowledge-pages-hierarchy-container"
         role="region"
@@ -865,12 +867,12 @@ const KnowledgePagesHierarchy = forwardRef<
               </div>
               <div>
                 <Typography size="text-md" weight="medium">
-                  {t('label.article-plural')}
+                  {t(LABEL_ARTICLE_PLURAL)}
                 </Typography>
                 <Typography
                   className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
                   size="text-xs">
-                  {knowledgePagesTotalCount} {t('label.article-plural')}
+                  {knowledgePagesTotalCount} {t(LABEL_ARTICLE_PLURAL)}
                 </Typography>
               </div>
             </Box>
@@ -924,7 +926,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
             {!isLoading && !isHierarchyEmpty && (
               <Tree
-                aria-label={t('label.article-plural')}
+                aria-label={t(LABEL_ARTICLE_PLURAL)}
                 className="knowledge-pages-tree"
                 data-testid="knowledge-pages-hierarchy"
                 expandedKeys={new Set(expandedKeys)}

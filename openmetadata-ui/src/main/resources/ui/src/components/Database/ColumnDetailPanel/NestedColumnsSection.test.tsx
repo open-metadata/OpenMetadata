@@ -15,20 +15,32 @@ import { Column } from '../../../generated/entity/data/table';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { NestedColumnsSection } from './NestedColumnsSection';
 
+const SIMPLE_COLUMN = 'Simple Column';
+const NESTED_STRUCT = 'Nested Struct';
+const COMPLEX_STRUCT = 'Complex Struct';
+const SIMPLE_FIELD = 'Simple Field';
+const NESTED_LEVEL_1 = 'Nested Level 1';
+const NESTED_FIELD_A = 'Nested Field A';
+const NESTED_LEVEL_2 = 'Nested Level 2';
+const DEEP_FIELD = 'Deep Field';
+const ANOTHER_SIMPLE_FIELD = 'Another Simple Field';
+const ARRAY_OF_STRUCTS = 'Array of Structs';
+const CREATED_AT = 'Created At';
+
 const mockOnColumnClick = jest.fn();
 
 const mockFlatColumn: Column = {
   name: 'simple_column',
   dataType: DataType.String,
   fullyQualifiedName: 'test.table.simple_column',
-  displayName: 'Simple Column',
+  displayName: SIMPLE_COLUMN,
 };
 
 const mockNestedColumn: Column = {
   name: 'nested_struct',
   dataType: DataType.Struct,
   fullyQualifiedName: 'test.table.nested_struct',
-  displayName: 'Nested Struct',
+  displayName: NESTED_STRUCT,
   children: [
     {
       name: 'field_1',
@@ -81,40 +93,40 @@ const mockComplexNestedColumn: Column = {
   name: 'complex_struct',
   dataType: DataType.Struct,
   fullyQualifiedName: 'test.table.complex_struct',
-  displayName: 'Complex Struct',
+  displayName: COMPLEX_STRUCT,
   children: [
     {
       name: 'simple_field',
       dataType: DataType.String,
       fullyQualifiedName: 'test.table.complex_struct.simple_field',
-      displayName: 'Simple Field',
+      displayName: SIMPLE_FIELD,
     },
     {
       name: 'nested_level_1',
       dataType: DataType.Struct,
       fullyQualifiedName: 'test.table.complex_struct.nested_level_1',
-      displayName: 'Nested Level 1',
+      displayName: NESTED_LEVEL_1,
       children: [
         {
           name: 'nested_field_a',
           dataType: DataType.Int,
           fullyQualifiedName:
             'test.table.complex_struct.nested_level_1.nested_field_a',
-          displayName: 'Nested Field A',
+          displayName: NESTED_FIELD_A,
         },
         {
           name: 'nested_level_2',
           dataType: DataType.Struct,
           fullyQualifiedName:
             'test.table.complex_struct.nested_level_1.nested_level_2',
-          displayName: 'Nested Level 2',
+          displayName: NESTED_LEVEL_2,
           children: [
             {
               name: 'deep_field',
               dataType: DataType.Boolean,
               fullyQualifiedName:
                 'test.table.complex_struct.nested_level_1.nested_level_2.deep_field',
-              displayName: 'Deep Field',
+              displayName: DEEP_FIELD,
             },
           ],
         },
@@ -124,7 +136,7 @@ const mockComplexNestedColumn: Column = {
       name: 'another_simple_field',
       dataType: DataType.Bigint,
       fullyQualifiedName: 'test.table.complex_struct.another_simple_field',
-      displayName: 'Another Simple Field',
+      displayName: ANOTHER_SIMPLE_FIELD,
     },
   ],
 };
@@ -133,7 +145,7 @@ const mockArrayOfStructs: Column = {
   name: 'array_of_structs',
   dataType: DataType.Array,
   fullyQualifiedName: 'test.table.array_of_structs',
-  displayName: 'Array of Structs',
+  displayName: ARRAY_OF_STRUCTS,
   children: [
     {
       name: 'struct_element',
@@ -159,7 +171,7 @@ const mockArrayOfStructs: Column = {
               dataType: DataType.Timestamp,
               fullyQualifiedName:
                 'test.table.array_of_structs.struct_element.metadata.created_at',
-              displayName: 'Created At',
+              displayName: CREATED_AT,
             },
             {
               name: 'updated_at',
@@ -211,7 +223,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      expect(screen.getByText('Simple Column')).toBeInTheDocument();
+      expect(screen.getByText(SIMPLE_COLUMN)).toBeInTheDocument();
     });
 
     it('should render multiple flat columns', () => {
@@ -238,7 +250,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      expect(screen.getByText('Simple Column')).toBeInTheDocument();
+      expect(screen.getByText(SIMPLE_COLUMN)).toBeInTheDocument();
       expect(screen.getByText('Column 2')).toBeInTheDocument();
       expect(screen.getByText('Column 3')).toBeInTheDocument();
       expect(screen.getByText('3')).toBeInTheDocument();
@@ -252,7 +264,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      expect(screen.getByText('Nested Struct')).toBeInTheDocument();
+      expect(screen.getByText(NESTED_STRUCT)).toBeInTheDocument();
       expect(screen.getByText('Field 1')).toBeInTheDocument();
       expect(screen.getByText('Field 2')).toBeInTheDocument();
     });
@@ -293,7 +305,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Simple Column'));
+      fireEvent.click(screen.getByText(SIMPLE_COLUMN));
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(mockFlatColumn);
@@ -307,7 +319,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Nested Struct'));
+      fireEvent.click(screen.getByText(NESTED_STRUCT));
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(mockNestedColumn);
@@ -353,7 +365,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      fireEvent.click(screen.getByText('Nested Struct'));
+      fireEvent.click(screen.getByText(NESTED_STRUCT));
       fireEvent.click(screen.getByText('Field 1'));
       fireEvent.click(screen.getByText('Field 2'));
 
@@ -370,7 +382,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      expect(screen.getByText('Simple Column')).toBeInTheDocument();
+      expect(screen.getByText(SIMPLE_COLUMN)).toBeInTheDocument();
     });
 
     it('should display name when displayName is not available', () => {
@@ -403,7 +415,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      expect(screen.getByText('Simple Column')).toBeInTheDocument();
+      expect(screen.getByText(SIMPLE_COLUMN)).toBeInTheDocument();
     });
 
     it('should handle mixed nested and flat columns', () => {
@@ -416,8 +428,8 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      expect(screen.getByText('Simple Column')).toBeInTheDocument();
-      expect(screen.getByText('Nested Struct')).toBeInTheDocument();
+      expect(screen.getByText(SIMPLE_COLUMN)).toBeInTheDocument();
+      expect(screen.getByText(NESTED_STRUCT)).toBeInTheDocument();
       expect(screen.getByText('Field 1')).toBeInTheDocument();
       expect(screen.getByText('Field 2')).toBeInTheDocument();
     });
@@ -448,7 +460,7 @@ describe('NestedColumnsSection', () => {
         />
       );
 
-      const link = screen.getByText('Simple Column');
+      const link = screen.getByText(SIMPLE_COLUMN);
 
       expect(link.closest('a')).toBeInTheDocument();
     });
@@ -462,7 +474,7 @@ describe('NestedColumnsSection', () => {
       );
 
       // Verify all columns are rendered (parent + 2 children)
-      expect(screen.getByText('Nested Struct')).toBeInTheDocument();
+      expect(screen.getByText(NESTED_STRUCT)).toBeInTheDocument();
       expect(screen.getByText('Field 1')).toBeInTheDocument();
       expect(screen.getByText('Field 2')).toBeInTheDocument();
     });
@@ -478,13 +490,13 @@ describe('NestedColumnsSection', () => {
       );
 
       // Verify all levels are rendered
-      expect(screen.getByText('Complex Struct')).toBeInTheDocument();
-      expect(screen.getByText('Simple Field')).toBeInTheDocument();
-      expect(screen.getByText('Nested Level 1')).toBeInTheDocument();
-      expect(screen.getByText('Nested Field A')).toBeInTheDocument();
-      expect(screen.getByText('Nested Level 2')).toBeInTheDocument();
-      expect(screen.getByText('Deep Field')).toBeInTheDocument();
-      expect(screen.getByText('Another Simple Field')).toBeInTheDocument();
+      expect(screen.getByText(COMPLEX_STRUCT)).toBeInTheDocument();
+      expect(screen.getByText(SIMPLE_FIELD)).toBeInTheDocument();
+      expect(screen.getByText(NESTED_LEVEL_1)).toBeInTheDocument();
+      expect(screen.getByText(NESTED_FIELD_A)).toBeInTheDocument();
+      expect(screen.getByText(NESTED_LEVEL_2)).toBeInTheDocument();
+      expect(screen.getByText(DEEP_FIELD)).toBeInTheDocument();
+      expect(screen.getByText(ANOTHER_SIMPLE_FIELD)).toBeInTheDocument();
     });
 
     it('should handle array of structs with nested metadata', () => {
@@ -496,11 +508,11 @@ describe('NestedColumnsSection', () => {
       );
 
       // Verify all levels are rendered
-      expect(screen.getByText('Array of Structs')).toBeInTheDocument();
+      expect(screen.getByText(ARRAY_OF_STRUCTS)).toBeInTheDocument();
       expect(screen.getByText('Struct Element')).toBeInTheDocument();
       expect(screen.getByText('ID')).toBeInTheDocument();
       expect(screen.getByText('Metadata')).toBeInTheDocument();
-      expect(screen.getByText('Created At')).toBeInTheDocument();
+      expect(screen.getByText(CREATED_AT)).toBeInTheDocument();
       expect(screen.getByText('Updated At')).toBeInTheDocument();
     });
 
@@ -513,7 +525,7 @@ describe('NestedColumnsSection', () => {
       );
 
       // Click on deep nested field
-      fireEvent.click(screen.getByText('Deep Field'));
+      fireEvent.click(screen.getByText(DEEP_FIELD));
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -533,10 +545,10 @@ describe('NestedColumnsSection', () => {
       expect(screen.getByText('2')).toBeInTheDocument();
 
       // Verify both structures are rendered
-      expect(screen.getByText('Complex Struct')).toBeInTheDocument();
-      expect(screen.getByText('Array of Structs')).toBeInTheDocument();
-      expect(screen.getByText('Deep Field')).toBeInTheDocument();
-      expect(screen.getByText('Created At')).toBeInTheDocument();
+      expect(screen.getByText(COMPLEX_STRUCT)).toBeInTheDocument();
+      expect(screen.getByText(ARRAY_OF_STRUCTS)).toBeInTheDocument();
+      expect(screen.getByText(DEEP_FIELD)).toBeInTheDocument();
+      expect(screen.getByText(CREATED_AT)).toBeInTheDocument();
     });
 
     it('should render sibling fields at same nesting level correctly', () => {
@@ -548,12 +560,12 @@ describe('NestedColumnsSection', () => {
       );
 
       // Both siblings at level 1 should be rendered
-      expect(screen.getByText('Simple Field')).toBeInTheDocument();
-      expect(screen.getByText('Another Simple Field')).toBeInTheDocument();
+      expect(screen.getByText(SIMPLE_FIELD)).toBeInTheDocument();
+      expect(screen.getByText(ANOTHER_SIMPLE_FIELD)).toBeInTheDocument();
 
       // Both siblings within nested level should be rendered
-      expect(screen.getByText('Nested Field A')).toBeInTheDocument();
-      expect(screen.getByText('Nested Level 2')).toBeInTheDocument();
+      expect(screen.getByText(NESTED_FIELD_A)).toBeInTheDocument();
+      expect(screen.getByText(NESTED_LEVEL_2)).toBeInTheDocument();
     });
 
     it('should handle clicking on intermediate nested levels', () => {
@@ -565,7 +577,7 @@ describe('NestedColumnsSection', () => {
       );
 
       // Click on intermediate nested level (not leaf node)
-      fireEvent.click(screen.getByText('Nested Level 1'));
+      fireEvent.click(screen.getByText(NESTED_LEVEL_1));
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -575,7 +587,7 @@ describe('NestedColumnsSection', () => {
       jest.clearAllMocks();
 
       // Click on deeper intermediate level
-      fireEvent.click(screen.getByText('Nested Level 2'));
+      fireEvent.click(screen.getByText(NESTED_LEVEL_2));
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
@@ -592,7 +604,7 @@ describe('NestedColumnsSection', () => {
       );
 
       // Click on metadata timestamp field
-      fireEvent.click(screen.getByText('Created At'));
+      fireEvent.click(screen.getByText(CREATED_AT));
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(

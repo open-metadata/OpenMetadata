@@ -65,6 +65,10 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+const LABEL_QUICK_LINK = 'label.quick-link' as const;
+const LABEL_URL_UPPERCASE = 'label.url-uppercase' as const;
+const LABEL_SELECT_FIELD = 'label.select-field' as const;
+
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
   url: string;
@@ -352,7 +356,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
       showSuccessToast(
         t('message.entity-saved-successfully', {
-          entity: t('label.quick-link'),
+          entity: t(LABEL_QUICK_LINK),
         })
       );
       onSave({
@@ -414,12 +418,12 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const urlField: FieldProp = {
     name: 'url',
     required: true,
-    label: t('label.url-uppercase'),
+    label: t(LABEL_URL_UPPERCASE),
     id: 'root/url',
     type: FieldTypes.TEXT,
     rules: {
       required: t('label.field-required', {
-        field: t('label.url-uppercase'),
+        field: t(LABEL_URL_UPPERCASE),
       }),
       validate: (value: string) =>
         isValidUrl(value) || t('message.invalid-url'),
@@ -428,7 +432,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       'data-testid': 'url',
       disabled: !permissions.EditAll,
     },
-    placeholder: t('label.url-uppercase'),
+    placeholder: t(LABEL_URL_UPPERCASE),
   };
 
   const descriptionField: FieldProp = {
@@ -467,7 +471,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
+    placeholder: t(LABEL_SELECT_FIELD, { field: t('label.tag-plural') }),
   };
 
   const glossaryTermsField: FieldProp = {
@@ -493,7 +497,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', {
+    placeholder: t(LABEL_SELECT_FIELD, {
       field: t('label.glossary-term-plural'),
     }),
   };
@@ -520,14 +524,14 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', {
+    placeholder: t(LABEL_SELECT_FIELD, {
       field: t('label.data-asset-plural'),
     }),
   };
 
   const title = isUndefined(quickLink)
-    ? t('label.add-entity', { entity: t('label.quick-link') })
-    : `${t('label.edit-entity', { entity: t('label.quick-link') })} ${
+    ? t('label.add-entity', { entity: t(LABEL_QUICK_LINK) })
+    : `${t('label.edit-entity', { entity: t(LABEL_QUICK_LINK) })} ${
         getEntityName(quickLink) || t('label.untitled')
       }`;
 

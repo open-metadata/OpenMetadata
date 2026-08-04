@@ -15,6 +15,12 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { SelectableListProps } from '../../common/SelectableList/SelectableList.interface';
 import { DataProductsSelectListV1 } from './DataProductsSelectListV1';
 
+const SELECTABLE_LIST = 'selectable-list';
+const UPDATE_BUTTON = 'update-button';
+const DATA_PRODUCT_1 = 'Data Product 1';
+const DOMAIN_DATAPRODUCT1 = 'domain.DataProduct1';
+const TRIGGER_BUTTON = 'trigger-button';
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
@@ -37,17 +43,17 @@ const mockSelectableList = jest
       onCancel?: () => void;
       selectedItems?: DataProduct[];
     }) => (
-      <div data-testid="selectable-list">
+      <div data-testid={SELECTABLE_LIST}>
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button
-          data-testid="update-button"
+          data-testid={UPDATE_BUTTON}
           onClick={() =>
             onUpdate?.([
               {
                 id: 'dp1',
                 name: 'DataProduct1',
-                displayName: 'Data Product 1',
-                fullyQualifiedName: 'domain.DataProduct1',
+                displayName: DATA_PRODUCT_1,
+                fullyQualifiedName: DOMAIN_DATAPRODUCT1,
                 description: 'Test data product',
               },
             ])
@@ -81,8 +87,8 @@ const mockDataProducts: DataProduct[] = [
   {
     id: 'dp1',
     name: 'DataProduct1',
-    displayName: 'Data Product 1',
-    fullyQualifiedName: 'domain.DataProduct1',
+    displayName: DATA_PRODUCT_1,
+    fullyQualifiedName: DOMAIN_DATAPRODUCT1,
     description: 'Test data product',
   } as DataProduct,
 ];
@@ -96,7 +102,7 @@ const defaultProps = {
   onUpdate: mockOnUpdate,
   onCancel: mockOnCancel,
   fetchOptions: mockFetchOptions,
-  children: <button data-testid="trigger-button">Open</button>,
+  children: <button data-testid={TRIGGER_BUTTON}>Open</button>,
   popoverProps: {},
 };
 
@@ -123,25 +129,25 @@ describe('DataProductsSelectListV1', () => {
   it('should render the trigger children', () => {
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    expect(screen.getByTestId('trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TRIGGER_BUTTON)).toBeInTheDocument();
     expect(screen.getByText('Open')).toBeInTheDocument();
   });
 
   it('should open popover when trigger is clicked', async () => {
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    const trigger = screen.getByTestId('trigger-button');
+    const trigger = screen.getByTestId(TRIGGER_BUTTON);
     fireEvent.click(trigger);
 
     await waitFor(() => {
-      expect(screen.getByTestId('selectable-list')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECTABLE_LIST)).toBeInTheDocument();
     });
   });
 
   it('should pass selected data products count to SelectableList', async () => {
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(screen.getByTestId('selected-count')).toHaveTextContent('1');
@@ -151,21 +157,21 @@ describe('DataProductsSelectListV1', () => {
   it('should call onUpdate with converted data products when update is clicked', async () => {
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
-      expect(screen.getByTestId('update-button')).toBeInTheDocument();
+      expect(screen.getByTestId(UPDATE_BUTTON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('update-button'));
+    fireEvent.click(screen.getByTestId(UPDATE_BUTTON));
 
     await waitFor(() => {
       expect(mockOnUpdate).toHaveBeenCalledWith([
         expect.objectContaining({
           id: 'dp1',
           name: 'DataProduct1',
-          displayName: 'Data Product 1',
-          fullyQualifiedName: 'domain.DataProduct1',
+          displayName: DATA_PRODUCT_1,
+          fullyQualifiedName: DOMAIN_DATAPRODUCT1,
         }),
       ]);
     });
@@ -174,23 +180,23 @@ describe('DataProductsSelectListV1', () => {
   it('should close popover after successful update', async () => {
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
-      expect(screen.getByTestId('update-button')).toBeInTheDocument();
+      expect(screen.getByTestId(UPDATE_BUTTON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('update-button'));
+    fireEvent.click(screen.getByTestId(UPDATE_BUTTON));
 
     await waitFor(() => {
-      expect(screen.queryByTestId('selectable-list')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SELECTABLE_LIST)).not.toBeInTheDocument();
     });
   });
 
   it('should call onCancel when cancel is clicked', async () => {
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
@@ -228,7 +234,7 @@ describe('DataProductsSelectListV1', () => {
 
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(mockSelectableList).toHaveBeenCalled();
@@ -247,7 +253,7 @@ describe('DataProductsSelectListV1', () => {
       <DataProductsSelectListV1 {...defaultProps} selectedDataProducts={[]} />
     );
 
-    expect(screen.getByTestId('trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TRIGGER_BUTTON)).toBeInTheDocument();
   });
 
   it('should handle fetch errors gracefully', async () => {
@@ -255,7 +261,7 @@ describe('DataProductsSelectListV1', () => {
 
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(mockSelectableList).toHaveBeenCalled();
@@ -283,7 +289,7 @@ describe('DataProductsSelectListV1', () => {
 
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(mockSelectableList).toHaveBeenCalled();
@@ -310,7 +316,7 @@ describe('DataProductsSelectListV1', () => {
 
     render(<DataProductsSelectListV1 {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(mockSelectableList).toHaveBeenCalled();
@@ -336,6 +342,6 @@ describe('DataProductsSelectListV1', () => {
       />
     );
 
-    expect(screen.getByTestId('selectable-list')).toBeInTheDocument();
+    expect(screen.getByTestId(SELECTABLE_LIST)).toBeInTheDocument();
   });
 });

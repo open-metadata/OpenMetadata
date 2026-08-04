@@ -30,6 +30,9 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import worksheetClassBase, { WorksheetClassBase } from './WorksheetClassBase';
 import { WorksheetDetailPageTabProps } from './WorksheetDetailsUtils';
 
+const ACTIVITY_FEED = 'Activity Feed' as const;
+const CUSTOM_PROPERTIES = 'Custom Properties' as const;
+
 jest.mock('../constants/Worksheet.constant', () => ({
   WORKSHEET_DUMMY_DATA: {
     id: 'test-worksheet-id',
@@ -46,6 +49,7 @@ jest.mock('../constants/Worksheet.constant', () => ({
   } as Worksheet,
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('./WorksheetDetailsUtils', () => ({
   getWorksheetDetailsPageTabs: jest.fn((): TabProps[] => [
     {
@@ -129,21 +133,21 @@ describe('WorksheetClassBase', () => {
         activityFeedTab: React.createElement(
           'div',
           {},
-          'Activity Feed'
+          ACTIVITY_FEED
         ) as JSX.Element,
         lineageTab: React.createElement('div', {}, 'Lineage') as JSX.Element,
         customPropertiesTab: React.createElement(
           'div',
           {},
-          'Custom Properties'
+          CUSTOM_PROPERTIES
         ) as JSX.Element,
         activeTab: EntityTabs.SCHEMA,
         feedCount: { totalCount: 12 },
         labelMap: {
           [EntityTabs.SCHEMA]: 'Worksheet Schema',
-          [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
+          [EntityTabs.ACTIVITY_FEED]: ACTIVITY_FEED,
           [EntityTabs.LINEAGE]: 'Lineage',
-          [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
+          [EntityTabs.CUSTOM_PROPERTIES]: CUSTOM_PROPERTIES,
         } as Record<string, string>,
       };
 

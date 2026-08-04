@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { storedProcedureVersionMockProps } from '../../../mocks/StoredProcedureVersion.mock';
 import StoredProcedureVersion from './StoredProcedureVersion.component';
 
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural';
+
 const mockNavigate = jest.fn();
 
 jest.mock(
@@ -78,7 +80,7 @@ describe('StoredProcedureVersion tests', () => {
     const description = screen.getByText('Description');
     const codeTabLabel = screen.getByText('label.code');
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
 
@@ -109,7 +111,7 @@ describe('StoredProcedureVersion tests', () => {
     );
     const codeTabLabel = screen.queryByText('label.code');
     const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
 
     expect(loader).toBeInTheDocument();
@@ -127,7 +129,7 @@ describe('StoredProcedureVersion tests', () => {
     });
 
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();

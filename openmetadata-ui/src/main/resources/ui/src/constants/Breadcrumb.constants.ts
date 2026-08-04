@@ -15,6 +15,8 @@ import { getPath, getSettingPath } from '../utils/RouterUtils';
 import { ROUTES } from './constants';
 import { GlobalSettingOptions } from './GlobalSettings.constants';
 
+const LABEL_ADD_NEW_ENTITY = 'label.add-new-entity';
+
 export const ADD_KPI_BREADCRUMB = [
   {
     name: 'label.data-insight',
@@ -25,7 +27,7 @@ export const ADD_KPI_BREADCRUMB = [
     url: ROUTES.KPI_LIST,
   },
   {
-    name: 'label.add-new-entity',
+    name: LABEL_ADD_NEW_ENTITY,
     nameData: { entity: 'label.kpi-uppercase' },
     url: '',
     activeTitle: true,
@@ -42,7 +44,7 @@ export const ADD_POLICY_PAGE_BREADCRUMB = [
     url: getPath(GlobalSettingOptions.POLICIES),
   },
   {
-    name: 'label.add-new-entity',
+    name: LABEL_ADD_NEW_ENTITY,
     nameData: { entity: 'label.policy' },
     url: '',
   },
@@ -58,7 +60,7 @@ export const ADD_ROLE_PAGE_BREADCRUMB = [
     url: getPath(GlobalSettingOptions.ROLES),
   },
   {
-    name: 'label.add-new-entity',
+    name: LABEL_ADD_NEW_ENTITY,
     nameData: { entity: 'label.role' },
     url: '',
   },

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../../utils/PermissionsUtils', () => ({
   getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
@@ -55,6 +56,12 @@ import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { useTableProfiler } from '../TableProfilerProvider';
 import { QualityTab } from './QualityTab.component';
+
+const DATA_QUALITY_TAB_COMPONENT = 'DataQualityTab.component';
+const PIPELINE_COUNT = 'pipeline-count';
+const TEST_SUITE_NAME = 'test.suite.name';
+const TEST_TABLE_FQN = 'test.table.fqn';
+const TEST_TABLE_ID = 'test-table-id';
 
 const testCasePermission = {
   Create: true,
@@ -214,6 +221,7 @@ jest.mock(
   })
 );
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../../utils/TestCaseUtils', () => ({
   ExtraTestCaseDropdownOptions: jest.fn().mockReturnValue([]),
 }));
@@ -259,12 +267,12 @@ describe('QualityTab', () => {
       await screen.findByText('label.test-case-plural')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
     expect(
       await screen.findByText('label.pipeline-plural')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
+    expect(await screen.findByTestId(PIPELINE_COUNT)).toHaveTextContent('0');
   });
 
   it("Pagination should be called with 'handlePageChange'", async () => {
@@ -275,7 +283,7 @@ describe('QualityTab', () => {
     // Since DataQualityTab is mocked, pagination is handled within that component
     // Just verify the component renders
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
   });
 
@@ -286,7 +294,7 @@ describe('QualityTab', () => {
 
     // DataQualityTab component handles the add button now
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
   });
 
@@ -295,7 +303,7 @@ describe('QualityTab', () => {
 
     // Component renders successfully
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
   });
 
@@ -320,7 +328,7 @@ describe('QualityTab', () => {
     });
 
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
   });
 
@@ -341,7 +349,7 @@ describe('QualityTab', () => {
 
     // DataQualityTab is still rendered, button visibility is controlled within it
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
   });
 
@@ -371,7 +379,7 @@ describe('QualityTab', () => {
 
     // Component renders with summary data
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
   });
 
@@ -386,7 +394,7 @@ describe('QualityTab', () => {
     });
 
     expect(
-      await screen.findByText('DataQualityTab.component')
+      await screen.findByText(DATA_QUALITY_TAB_COMPONENT)
     ).toBeInTheDocument();
   });
 
@@ -418,7 +426,7 @@ describe('QualityTab', () => {
       table: {
         ...MOCK_TABLE,
         testSuite: {
-          fullyQualifiedName: 'test.suite.name',
+          fullyQualifiedName: TEST_SUITE_NAME,
         },
       },
     });
@@ -427,7 +435,7 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('5');
+    expect(await screen.findByTestId(PIPELINE_COUNT)).toHaveTextContent('5');
   });
 
   it('should show zero count when no test cases or pipelines exist', async () => {
@@ -440,7 +448,7 @@ describe('QualityTab', () => {
       table: {
         ...MOCK_TABLE,
         testSuite: {
-          fullyQualifiedName: 'test.suite.name',
+          fullyQualifiedName: TEST_SUITE_NAME,
         },
       },
     });
@@ -452,7 +460,7 @@ describe('QualityTab', () => {
     expect(await screen.findByTestId('test-cases-count')).toHaveTextContent(
       '0'
     );
-    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
+    expect(await screen.findByTestId(PIPELINE_COUNT)).toHaveTextContent('0');
   });
 
   it('should handle error in fetching pipeline count gracefully', async () => {
@@ -469,7 +477,7 @@ describe('QualityTab', () => {
       table: {
         ...MOCK_TABLE,
         testSuite: {
-          fullyQualifiedName: 'test.suite.name',
+          fullyQualifiedName: TEST_SUITE_NAME,
         },
       },
     });
@@ -478,7 +486,7 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
+    expect(await screen.findByTestId(PIPELINE_COUNT)).toHaveTextContent('0');
   });
 
   it('should render ManageButton component', async () => {
@@ -500,7 +508,7 @@ describe('QualityTab', () => {
       ...mockUseTableProfiler,
       table: {
         ...MOCK_TABLE,
-        fullyQualifiedName: 'test.table.fqn',
+        fullyQualifiedName: TEST_TABLE_FQN,
         deleted: false,
       },
     });
@@ -543,7 +551,7 @@ describe('QualityTab', () => {
       ...mockUseTableProfiler,
       table: {
         ...MOCK_TABLE,
-        fullyQualifiedName: 'test.table.fqn',
+        fullyQualifiedName: TEST_TABLE_FQN,
       },
     });
 
@@ -559,8 +567,8 @@ describe('QualityTab', () => {
       ...mockUseTableProfiler,
       table: {
         ...MOCK_TABLE,
-        id: 'test-table-id',
-        fullyQualifiedName: 'test.table.fqn',
+        id: TEST_TABLE_ID,
+        fullyQualifiedName: TEST_TABLE_FQN,
         deleted: false,
       },
     });
@@ -572,7 +580,7 @@ describe('QualityTab', () => {
     const manageButton = await screen.findByTestId('manage-button');
 
     expect(manageButton).toHaveAttribute('data-deleted', 'false');
-    expect(manageButton).toHaveAttribute('data-entity-id', 'test-table-id');
+    expect(manageButton).toHaveAttribute('data-entity-id', TEST_TABLE_ID);
     expect(manageButton).toHaveAttribute('data-entity-type', 'testCase');
   });
 
@@ -581,8 +589,8 @@ describe('QualityTab', () => {
       ...mockUseTableProfiler,
       table: {
         ...MOCK_TABLE,
-        id: 'test-table-id',
-        fullyQualifiedName: 'test.table.fqn',
+        id: TEST_TABLE_ID,
+        fullyQualifiedName: TEST_TABLE_FQN,
         deleted: true,
       },
     });
@@ -628,7 +636,7 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    const dataQualityTab = await screen.findByText('DataQualityTab.component');
+    const dataQualityTab = await screen.findByText(DATA_QUALITY_TAB_COMPONENT);
 
     expect(dataQualityTab).toHaveAttribute('data-show-pagination', 'true');
   });
@@ -647,7 +655,7 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    const dataQualityTab = await screen.findByText('DataQualityTab.component');
+    const dataQualityTab = await screen.findByText(DATA_QUALITY_TAB_COMPONENT);
 
     expect(dataQualityTab).toHaveAttribute('data-show-pagination', 'false');
   });

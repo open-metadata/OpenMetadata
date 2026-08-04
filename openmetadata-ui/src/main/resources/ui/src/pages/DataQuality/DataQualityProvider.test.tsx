@@ -22,6 +22,9 @@ import DataQualityProvider, {
   useDataQualityProvider,
 } from './DataQualityProvider';
 
+const TEST_CASES_COMPONENT = 'test-cases component';
+const TIER_TIER1 = 'Tier.Tier1';
+
 const mockPermissionsData = {
   permissions: {
     testCase: {
@@ -108,7 +111,7 @@ describe('DataQualityProvider', () => {
     );
 
     expect(await screen.findByText('Loader.component')).toBeInTheDocument();
-    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
+    expect(await screen.findByText(TEST_CASES_COMPONENT)).toBeInTheDocument();
   });
 
   it('isTestCaseSummaryLoading condition should work', async () => {
@@ -122,7 +125,7 @@ describe('DataQualityProvider', () => {
     expect(screen.getByText('Loader.component')).toBeInTheDocument();
 
     // After the delay, the loader should be replaced by the component
-    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
+    expect(await screen.findByText(TEST_CASES_COMPONENT)).toBeInTheDocument();
   });
 
   it('should call fetchTestCaseSummary, fetchEntityCoveredWithDQ & fetchTotalEntityCount', async () => {
@@ -132,7 +135,7 @@ describe('DataQualityProvider', () => {
       </DataQualityProvider>
     );
 
-    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
+    expect(await screen.findByText(TEST_CASES_COMPONENT)).toBeInTheDocument();
     expect(fetchTestCaseSummary).toHaveBeenCalledTimes(1);
     expect(fetchEntityCoveredWithDQ).toHaveBeenCalledTimes(2);
     expect(fetchTotalEntityCount).toHaveBeenCalledTimes(1);
@@ -148,13 +151,13 @@ describe('DataQualityProvider', () => {
       </DataQualityProvider>
     );
 
-    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
+    expect(await screen.findByText(TEST_CASES_COMPONENT)).toBeInTheDocument();
     expect(fetchTestCaseSummary).toHaveBeenCalledWith({
       entityFQN: undefined,
       ownerFqn: undefined,
       testCaseStatus: 'Success',
       testCaseType: 'table',
-      tier: ['Tier.Tier1'],
+      tier: [TIER_TIER1],
     });
     expect(fetchEntityCoveredWithDQ).toHaveBeenCalledWith(
       {
@@ -162,7 +165,7 @@ describe('DataQualityProvider', () => {
         ownerFqn: undefined,
         testCaseStatus: 'Success',
         testCaseType: 'table',
-        tier: ['Tier.Tier1'],
+        tier: [TIER_TIER1],
       },
       true
     );
@@ -171,7 +174,7 @@ describe('DataQualityProvider', () => {
       ownerFqn: undefined,
       testCaseStatus: 'Success',
       testCaseType: 'table',
-      tier: ['Tier.Tier1'],
+      tier: [TIER_TIER1],
     });
   });
 
@@ -184,7 +187,7 @@ describe('DataQualityProvider', () => {
     );
     const { rerender } = render(provider);
 
-    expect(await screen.findByText('test-cases component')).toBeInTheDocument();
+    expect(await screen.findByText(TEST_CASES_COMPONENT)).toBeInTheDocument();
     expect(fetchTestCaseSummary).toHaveBeenCalledTimes(1);
 
     mockLocation.search = '?testCaseStatus=Failed&searchValue=orders';

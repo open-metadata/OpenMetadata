@@ -14,6 +14,10 @@ import { renderHook } from '@testing-library/react';
 import { TestCase } from '../../../generated/tests/testCase';
 import { useTestCaseActions } from './useTestCaseActions';
 
+const SVC_DB_TC1 = 'svc.db.tc1';
+const MERGED_NAME = 'merged-name';
+const SVC_DB_TC2 = 'svc.db.tc2';
+
 const buildTestCase = (
   id: string,
   fullyQualifiedName: string,
@@ -43,7 +47,7 @@ describe('useTestCaseActions', () => {
     const { result } = renderHook(() => useTestCaseActions({ setTestCase }));
 
     result.current.handleTestCaseUpdate(
-      buildTestCase('id-1', 'svc.db.tc1', { name: 'merged-name' })
+      buildTestCase('id-1', SVC_DB_TC1, { name: MERGED_NAME })
     );
 
     expect(setTestCase).toHaveBeenCalledTimes(1);
@@ -51,14 +55,14 @@ describe('useTestCaseActions', () => {
     const updater = setTestCase.mock.calls[0][0] as (
       prev: TestCase[]
     ) => TestCase[];
-    const rowOne = buildTestCase('id-1', 'svc.db.tc1', { name: 'old-name' });
-    const rowTwo = buildTestCase('id-2', 'svc.db.tc2');
+    const rowOne = buildTestCase('id-1', SVC_DB_TC1, { name: 'old-name' });
+    const rowTwo = buildTestCase('id-2', SVC_DB_TC2);
     const next = updater([rowOne, rowTwo]);
 
     expect(next[0]).toEqual({
       id: 'id-1',
-      name: 'merged-name',
-      fullyQualifiedName: 'svc.db.tc1',
+      name: MERGED_NAME,
+      fullyQualifiedName: SVC_DB_TC1,
     });
     expect(next[0]).not.toBe(rowOne);
     expect(next[1]).toBe(rowTwo);
@@ -72,13 +76,13 @@ describe('useTestCaseActions', () => {
     // replace would drop them.
     result.current.handleTestCaseUpdate({
       id: 'id-1',
-      name: 'merged-name',
+      name: MERGED_NAME,
     } as unknown as TestCase);
 
     const updater = setTestCase.mock.calls[0][0] as (
       prev: TestCase[]
     ) => TestCase[];
-    const rowOne = buildTestCase('id-1', 'svc.db.tc1', {
+    const rowOne = buildTestCase('id-1', SVC_DB_TC1, {
       name: 'old-name',
       description: 'keep-me',
     });
@@ -86,8 +90,8 @@ describe('useTestCaseActions', () => {
 
     expect(next[0]).toEqual({
       id: 'id-1',
-      name: 'merged-name',
-      fullyQualifiedName: 'svc.db.tc1',
+      name: MERGED_NAME,
+      fullyQualifiedName: SVC_DB_TC1,
       description: 'keep-me',
     });
   });
@@ -105,7 +109,7 @@ describe('useTestCaseActions', () => {
     const setTestCase = jest.fn();
     const { result } = renderHook(() => useTestCaseActions({ setTestCase }));
 
-    const updated = buildTestCase('changed-id', 'svc.db.tc1', {
+    const updated = buildTestCase('changed-id', SVC_DB_TC1, {
       name: 'replaced',
     });
 
@@ -116,8 +120,8 @@ describe('useTestCaseActions', () => {
     const updater = setTestCase.mock.calls[0][0] as (
       prev: TestCase[]
     ) => TestCase[];
-    const rowOne = buildTestCase('id-1', 'svc.db.tc1', { name: 'old-name' });
-    const rowTwo = buildTestCase('id-2', 'svc.db.tc2');
+    const rowOne = buildTestCase('id-1', SVC_DB_TC1, { name: 'old-name' });
+    const rowTwo = buildTestCase('id-2', SVC_DB_TC2);
     const next = updater([rowOne, rowTwo]);
 
     expect(next[0]).toBe(updated);
@@ -133,8 +137,8 @@ describe('useTestCaseActions', () => {
     const updater = setTestCase.mock.calls[0][0] as (
       prev: TestCase[]
     ) => TestCase[];
-    const rowOne = buildTestCase('id-1', 'svc.db.tc1');
-    const rowTwo = buildTestCase('id-2', 'svc.db.tc2');
+    const rowOne = buildTestCase('id-1', SVC_DB_TC1);
+    const rowTwo = buildTestCase('id-2', SVC_DB_TC2);
     const next = updater([rowOne, rowTwo]);
 
     expect(next[0]).toBe(rowOne);

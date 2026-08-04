@@ -40,6 +40,8 @@ import {
   MoveGlossaryTermWebsocketResponse,
 } from './ChangeParentHierarchy.interface';
 
+const LABEL_PARENT = 'label.parent';
+
 const ChangeParentHierarchy = ({
   selectedData,
   onCancel,
@@ -173,7 +175,7 @@ const ChangeParentHierarchy = ({
         disabled: hasReviewers && !confirmCheckboxChecked,
       }}
       okText={t('label.save')}
-      title={t('label.change-entity', { entity: t('label.parent') })}
+      title={t('label.change-entity', { entity: t(LABEL_PARENT) })}
       onCancel={onCancel}>
       <Form
         form={form}
@@ -192,14 +194,14 @@ const ChangeParentHierarchy = ({
         )}
         <Form.Item
           label={t('label.select-field', {
-            field: t('label.parent'),
+            field: t(LABEL_PARENT),
           })}
           name="parent"
           rules={[
             {
               required: true,
               message: t('label.field-required', {
-                field: t('label.parent'),
+                field: t(LABEL_PARENT),
               }),
             },
           ]}>
@@ -211,7 +213,7 @@ const ChangeParentHierarchy = ({
             isMultiSelect={false}
             open={false}
             placeholder={t('label.select-field', {
-              field: t('label.parent'),
+              field: t(LABEL_PARENT),
             })}
             tagType={TagSource.Glossary}
             onCancel={handleTreeAsyncSelectCancel}

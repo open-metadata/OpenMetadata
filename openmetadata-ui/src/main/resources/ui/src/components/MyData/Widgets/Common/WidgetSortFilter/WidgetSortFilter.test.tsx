@@ -15,6 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WidgetSortFilter from './WidgetSortFilter';
 
+const WIDGET_SORT_BY_DROPDOWN = 'widget-sort-by-dropdown';
+
 const mockProps = {
   sortOptions: [
     { key: 'name', label: 'Name' },
@@ -42,14 +44,14 @@ describe('WidgetSortFilter', () => {
   it('renders sort dropdown with selected option', () => {
     renderWidgetSortFilter();
 
-    expect(screen.getByTestId('widget-sort-by-dropdown')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_SORT_BY_DROPDOWN)).toBeInTheDocument();
     expect(screen.getByText('Name')).toBeInTheDocument();
   });
 
   it('calls onSortChange when sort option is clicked', () => {
     renderWidgetSortFilter();
 
-    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
+    const sortButton = screen.getByTestId(WIDGET_SORT_BY_DROPDOWN);
     fireEvent.click(sortButton);
 
     const dateOption = screen.getByText('Date');
@@ -64,14 +66,14 @@ describe('WidgetSortFilter', () => {
     renderWidgetSortFilter({ isEditView: true });
 
     expect(
-      screen.queryByTestId('widget-sort-by-dropdown')
+      screen.queryByTestId(WIDGET_SORT_BY_DROPDOWN)
     ).not.toBeInTheDocument();
   });
 
   it('shows all sort options in dropdown', () => {
     renderWidgetSortFilter();
 
-    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
+    const sortButton = screen.getByTestId(WIDGET_SORT_BY_DROPDOWN);
     fireEvent.click(sortButton);
 
     expect(screen.getAllByText('Name')).toHaveLength(2);
@@ -82,7 +84,7 @@ describe('WidgetSortFilter', () => {
   it('handles empty sort options gracefully', () => {
     renderWidgetSortFilter({ sortOptions: [] });
 
-    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
+    const sortButton = screen.getByTestId(WIDGET_SORT_BY_DROPDOWN);
 
     expect(sortButton).toHaveTextContent('');
   });
@@ -90,7 +92,7 @@ describe('WidgetSortFilter', () => {
   it('handles missing selectedSortBy gracefully', () => {
     renderWidgetSortFilter({ selectedSortBy: undefined });
 
-    const sortButton = screen.getByTestId('widget-sort-by-dropdown');
+    const sortButton = screen.getByTestId(WIDGET_SORT_BY_DROPDOWN);
 
     expect(sortButton).toHaveTextContent('');
   });

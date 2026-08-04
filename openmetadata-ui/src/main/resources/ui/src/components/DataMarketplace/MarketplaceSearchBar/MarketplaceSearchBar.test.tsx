@@ -27,6 +27,11 @@ import {
 } from '../../../rest/searchAPI';
 import MarketplaceSearchBar from './MarketplaceSearchBar.component';
 
+const SEARCH_RESULT_DOMAIN_DOMAIN_1 = 'search-result-domain-domain-1';
+const MARKETPLACE_SEARCH_INPUT = 'marketplace-search-input';
+const MARKETPLACE_NLQ_TOGGLE = 'marketplace-nlq-toggle';
+const SEARCH_RESULT_DP_DP_1 = 'search-result-dp-dp-1';
+const SEARCH_POPOVER = 'search-popover';
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -156,13 +161,13 @@ describe('MarketplaceSearchBar', () => {
     renderComponent();
 
     expect(screen.getByTestId('marketplace-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('marketplace-search-input')).toBeInTheDocument();
+    expect(screen.getByTestId(MARKETPLACE_SEARCH_INPUT)).toBeInTheDocument();
   });
 
   it('shows NLQ toggle button when NLP is enabled', () => {
     renderComponent();
 
-    const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
+    const toggleBtn = screen.getByTestId(MARKETPLACE_NLQ_TOGGLE);
 
     expect(toggleBtn).toBeInTheDocument();
     expect(toggleBtn).not.toHaveClass('active');
@@ -175,7 +180,7 @@ describe('MarketplaceSearchBar', () => {
 
     expect(screen.getByTestId('search-icon')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('marketplace-nlq-toggle')
+      screen.queryByTestId(MARKETPLACE_NLQ_TOGGLE)
     ).not.toBeInTheDocument();
   });
 
@@ -191,7 +196,7 @@ describe('MarketplaceSearchBar', () => {
 
     await waitFor(() => {
       expect(getNLPEnabledStatus).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('marketplace-nlq-toggle')).toBeInTheDocument();
+      expect(screen.getByTestId(MARKETPLACE_NLQ_TOGGLE)).toBeInTheDocument();
     });
   });
 
@@ -210,7 +215,7 @@ describe('MarketplaceSearchBar', () => {
   it('toggles NLQ active state when the toggle button is clicked', async () => {
     renderComponent();
 
-    const toggleBtn = screen.getByTestId('marketplace-nlq-toggle');
+    const toggleBtn = screen.getByTestId(MARKETPLACE_NLQ_TOGGLE);
 
     expect(toggleBtn).not.toHaveClass('active');
     expect(toggleBtn).toHaveAttribute(
@@ -242,7 +247,7 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'product' } });
@@ -261,7 +266,7 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'revenue data' } });
@@ -277,13 +282,13 @@ describe('MarketplaceSearchBar', () => {
   it('does not open popover when input is empty', async () => {
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: '' } });
     });
 
-    expect(screen.queryByTestId('search-popover')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SEARCH_POPOVER)).not.toBeInTheDocument();
   });
 
   it('shows data product results in the popover', async () => {
@@ -295,14 +300,14 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'product' } });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('search-result-dp-dp-1')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_RESULT_DP_DP_1)).toBeInTheDocument();
       expect(screen.getByText('Product One')).toBeInTheDocument();
     });
   });
@@ -316,7 +321,7 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'marketing' } });
@@ -324,7 +329,7 @@ describe('MarketplaceSearchBar', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('search-result-domain-domain-1')
+        screen.getByTestId(SEARCH_RESULT_DOMAIN_DOMAIN_1)
       ).toBeInTheDocument();
       expect(screen.getByText('Marketing')).toBeInTheDocument();
     });
@@ -335,14 +340,14 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'xyz-no-match' } });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('search-popover')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_POPOVER)).toBeInTheDocument();
       expect(screen.getByText(/no-data-found/i)).toBeInTheDocument();
     });
   });
@@ -356,18 +361,18 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'product' } });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('search-result-dp-dp-1')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_RESULT_DP_DP_1)).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('search-result-dp-dp-1'));
+      fireEvent.click(screen.getByTestId(SEARCH_RESULT_DP_DP_1));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -385,7 +390,7 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'marketing' } });
@@ -393,12 +398,12 @@ describe('MarketplaceSearchBar', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('search-result-domain-domain-1')
+        screen.getByTestId(SEARCH_RESULT_DOMAIN_DOMAIN_1)
       ).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('search-result-domain-domain-1'));
+      fireEvent.click(screen.getByTestId(SEARCH_RESULT_DOMAIN_DOMAIN_1));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('/domain/marketing', {
@@ -415,27 +420,27 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'product' } });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('search-popover')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_POPOVER)).toBeInTheDocument();
     });
 
     await act(async () => {
       fireEvent.change(input, { target: { value: '' } });
     });
 
-    expect(screen.queryByTestId('search-popover')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SEARCH_POPOVER)).not.toBeInTheDocument();
   });
 
   it('does not search when component is in edit view', () => {
     renderComponent({ isEditView: true });
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     expect(input).toBeDisabled();
   });
@@ -445,7 +450,7 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'test query' } });
@@ -465,14 +470,14 @@ describe('MarketplaceSearchBar', () => {
 
     renderComponent();
 
-    const input = screen.getByTestId('marketplace-search-input');
+    const input = screen.getByTestId(MARKETPLACE_SEARCH_INPUT);
 
     await act(async () => {
       fireEvent.change(input, { target: { value: 'error case' } });
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('search-popover')).toBeInTheDocument();
+      expect(screen.getByTestId(SEARCH_POPOVER)).toBeInTheDocument();
       expect(screen.getByText(/no-data-found/i)).toBeInTheDocument();
     });
   });

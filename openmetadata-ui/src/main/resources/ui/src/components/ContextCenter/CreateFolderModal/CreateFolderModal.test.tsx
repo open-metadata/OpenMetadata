@@ -21,6 +21,9 @@ import {
 import { createFolder } from 'rest/assetAPI';
 import CreateFolderModal from './CreateFolderModal.component';
 
+const FOLDER_NAME_INPUT = 'folder-name-input';
+const CREATE_FOLDER_BTN = 'create-folder-btn';
+
 jest.mock('rest/assetAPI', () => ({
   createFolder: jest.fn(),
 }));
@@ -135,33 +138,33 @@ describe('CreateFolderModal', () => {
   it('renders the folder name input', () => {
     render(<CreateFolderModal {...defaultProps} />);
 
-    expect(screen.getByTestId('folder-name-input')).toBeInTheDocument();
+    expect(screen.getByTestId(FOLDER_NAME_INPUT)).toBeInTheDocument();
   });
 
   it('create button is disabled when input is empty', () => {
     render(<CreateFolderModal {...defaultProps} />);
 
-    expect(screen.getByTestId('create-folder-btn')).toBeDisabled();
+    expect(screen.getByTestId(CREATE_FOLDER_BTN)).toBeDisabled();
   });
 
   it('create button is disabled when input is only whitespace', () => {
     render(<CreateFolderModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('folder-name-input'), {
+    fireEvent.change(screen.getByTestId(FOLDER_NAME_INPUT), {
       target: { value: '   ' },
     });
 
-    expect(screen.getByTestId('create-folder-btn')).toBeDisabled();
+    expect(screen.getByTestId(CREATE_FOLDER_BTN)).toBeDisabled();
   });
 
   it('create button is enabled when input has a valid name', () => {
     render(<CreateFolderModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('folder-name-input'), {
+    fireEvent.change(screen.getByTestId(FOLDER_NAME_INPUT), {
       target: { value: 'My Folder' },
     });
 
-    expect(screen.getByTestId('create-folder-btn')).not.toBeDisabled();
+    expect(screen.getByTestId(CREATE_FOLDER_BTN)).not.toBeDisabled();
   });
 
   it('calls createFolder with trimmed name on submit', async () => {
@@ -174,12 +177,12 @@ describe('CreateFolderModal', () => {
 
     render(<CreateFolderModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('folder-name-input'), {
+    fireEvent.change(screen.getByTestId(FOLDER_NAME_INPUT), {
       target: { value: '  My Folder  ' },
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('create-folder-btn'));
+      fireEvent.click(screen.getByTestId(CREATE_FOLDER_BTN));
     });
 
     expect(createFolder).toHaveBeenCalledWith({
@@ -198,12 +201,12 @@ describe('CreateFolderModal', () => {
 
     render(<CreateFolderModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('folder-name-input'), {
+    fireEvent.change(screen.getByTestId(FOLDER_NAME_INPUT), {
       target: { value: 'My Folder' },
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('create-folder-btn'));
+      fireEvent.click(screen.getByTestId(CREATE_FOLDER_BTN));
     });
 
     await waitFor(() =>
@@ -217,12 +220,12 @@ describe('CreateFolderModal', () => {
 
     render(<CreateFolderModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('folder-name-input'), {
+    fireEvent.change(screen.getByTestId(FOLDER_NAME_INPUT), {
       target: { value: 'My Folder' },
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('create-folder-btn'));
+      fireEvent.click(screen.getByTestId(CREATE_FOLDER_BTN));
     });
 
     await waitFor(() => expect(defaultProps.onClose).toHaveBeenCalled());
@@ -234,11 +237,11 @@ describe('CreateFolderModal', () => {
 
     render(<CreateFolderModal {...defaultProps} />);
 
-    const input = screen.getByTestId('folder-name-input');
+    const input = screen.getByTestId(FOLDER_NAME_INPUT);
     fireEvent.change(input, { target: { value: 'My Folder' } });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('create-folder-btn'));
+      fireEvent.click(screen.getByTestId(CREATE_FOLDER_BTN));
     });
 
     await waitFor(() => expect(input).toHaveValue(''));
@@ -248,7 +251,7 @@ describe('CreateFolderModal', () => {
     render(<CreateFolderModal {...defaultProps} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('create-folder-btn'));
+      fireEvent.click(screen.getByTestId(CREATE_FOLDER_BTN));
     });
 
     expect(createFolder).not.toHaveBeenCalled();

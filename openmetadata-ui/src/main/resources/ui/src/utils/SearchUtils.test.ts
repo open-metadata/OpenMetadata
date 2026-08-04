@@ -18,6 +18,11 @@ import {
   parseBucketsData,
 } from './SearchPureUtils';
 import { getGroupLabel } from './SearchUtils';
+
+const USER1_DOMAIN_COM = 'user1@domain.com';
+const CERTIFICATION = 'Certification.*';
+const NESTED_FIELD = 'nested.field';
+const IMPORTANT = '*important*';
 // Add type definition for ESQueryClause to fix type errors
 type ESQueryClause = {
   term?: Record<string, string | number | boolean>;
@@ -284,7 +289,7 @@ describe('parseBucketsData', () => {
                 {
                   _source: {
                     displayName: 'User 1',
-                    fullyQualifiedName: 'user1@domain.com',
+                    fullyQualifiedName: USER1_DOMAIN_COM,
                   },
                 },
               ],
@@ -315,7 +320,7 @@ describe('parseBucketsData', () => {
       });
 
       expect(result).toEqual([
-        { title: 'User 1', value: 'user1@domain.com' },
+        { title: 'User 1', value: USER1_DOMAIN_COM },
         { title: 'User 2', value: 'user2@domain.com' },
       ]);
     });
@@ -330,7 +335,7 @@ describe('parseBucketsData', () => {
               hits: [
                 {
                   _source: {
-                    fullyQualifiedName: 'user1@domain.com',
+                    fullyQualifiedName: USER1_DOMAIN_COM,
                   },
                 },
               ],
@@ -344,7 +349,7 @@ describe('parseBucketsData', () => {
         value: 'fullyQualifiedName',
       });
 
-      expect(result).toEqual([{ title: undefined, value: 'user1@domain.com' }]);
+      expect(result).toEqual([{ title: undefined, value: USER1_DOMAIN_COM }]);
     });
 
     it('should handle missing value field in sourceFieldOptionType', () => {
@@ -422,7 +427,7 @@ describe('parseBucketsData', () => {
         },
       ];
 
-      const result = parseBucketsData(buckets, 'nested.field', {
+      const result = parseBucketsData(buckets, NESTED_FIELD, {
         label: 'displayName',
         value: 'fullyQualifiedName',
       });
@@ -526,7 +531,7 @@ describe('parseBucketsData', () => {
       ];
 
       // Test with sourceFields
-      const resultWithSourceFields = parseBucketsData(buckets, 'nested.field');
+      const resultWithSourceFields = parseBucketsData(buckets, NESTED_FIELD);
 
       expect(resultWithSourceFields).toEqual([
         { value: 'nested_value', title: 'Label 1' }, // Uses bucket.label when available
@@ -535,7 +540,7 @@ describe('parseBucketsData', () => {
       // Test with sourceFieldOptionType
       const resultWithOptionType = parseBucketsData(buckets, undefined, {
         label: 'displayName',
-        value: 'nested.field',
+        value: NESTED_FIELD,
       });
 
       expect(resultWithOptionType).toEqual([
@@ -834,7 +839,7 @@ describe('getTermQuery', () => {
     it('should handle array values in wildcardMustNotQueries', () => {
       const result = getTermQuery({}, 'must', undefined, {
         wildcardMustNotQueries: {
-          fullyQualifiedName: ['Certification.*', 'Tier.*'],
+          fullyQualifiedName: [CERTIFICATION, 'Tier.*'],
         },
       });
 
@@ -843,7 +848,7 @@ describe('getTermQuery', () => {
           bool: {
             must: [],
             must_not: [
-              { wildcard: { fullyQualifiedName: 'Certification.*' } },
+              { wildcard: { fullyQualifiedName: CERTIFICATION } },
               { wildcard: { fullyQualifiedName: 'Tier.*' } },
             ],
           },
@@ -1274,7 +1279,7 @@ describe('getTermQuery', () => {
             'description.keyword': '*table*',
           },
           wildcardMustNotQueries: {
-            fullyQualifiedName: ['Tier.*', 'Certification.*'],
+            fullyQualifiedName: ['Tier.*', CERTIFICATION],
           },
         }
       );
@@ -1301,7 +1306,7 @@ describe('getTermQuery', () => {
             ],
             must_not: [
               { wildcard: { fullyQualifiedName: 'Tier.*' } },
-              { wildcard: { fullyQualifiedName: 'Certification.*' } },
+              { wildcard: { fullyQualifiedName: CERTIFICATION } },
             ],
           },
         },
@@ -1366,8 +1371,8 @@ describe('getTermQuery', () => {
             fullyQualifiedName: ['test.*', '*.temp'],
           },
           wildcardShouldQueries: {
-            'description.keyword': '*important*',
-            'displayName.keyword': '*important*',
+            'description.keyword': IMPORTANT,
+            'displayName.keyword': IMPORTANT,
           },
         }
       );
@@ -1383,8 +1388,8 @@ describe('getTermQuery', () => {
               {
                 bool: {
                   should: [
-                    { wildcard: { 'description.keyword': '*important*' } },
-                    { wildcard: { 'displayName.keyword': '*important*' } },
+                    { wildcard: { 'description.keyword': IMPORTANT } },
+                    { wildcard: { 'displayName.keyword': IMPORTANT } },
                   ],
                   minimum_should_match: 1,
                 },

@@ -39,6 +39,7 @@ jest.mock(
     type: 'object',
     properties: {
       type: {
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         title: 'Service Type',
         description: 'Service Type',
         type: 'string',

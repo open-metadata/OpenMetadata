@@ -40,6 +40,8 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import './add-glossary.less';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
+const LABEL_GLOSSARY = 'label.glossary';
+
 const AddGlossary = ({
   header,
   allowAccess = true,
@@ -112,7 +114,7 @@ const AddGlossary = ({
     <div data-testid="right-panel">
       <Typography.Title level={5}>
         {t('label.configure-entity', {
-          entity: t('label.glossary'),
+          entity: t(LABEL_GLOSSARY),
         })}
       </Typography.Title>
       <Typography.Text className="mb-5">
@@ -184,7 +186,7 @@ const AddGlossary = ({
       type: FieldTypes.SWITCH,
       required: false,
       helperText: t('message.mutually-exclusive-alert', {
-        entity: t('label.glossary'),
+        entity: t(LABEL_GLOSSARY),
         'child-entity': t('label.glossary-term'),
       }),
       helperTextType: HelperTextType.ALERT,
@@ -367,7 +369,7 @@ const AddGlossary = ({
         flex: 0.7,
       }}
       pageTitle={t('label.add-entity', {
-        entity: t('label.glossary'),
+        entity: t(LABEL_GLOSSARY),
       })}
       secondPanel={{
         children: rightPanel,

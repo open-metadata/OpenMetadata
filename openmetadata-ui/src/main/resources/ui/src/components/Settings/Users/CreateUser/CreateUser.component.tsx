@@ -76,6 +76,10 @@ import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserFormData, CreateUserProps } from './CreateUser.interface';
 
+const LABEL_ROLE_PLURAL = 'label.role-plural';
+const LABEL_PERSONA_PLURAL = 'label.persona-plural';
+const LABEL_EMAIL = 'label.email';
+
 const CreateUser = ({
   isLoading,
   onCancel,
@@ -165,7 +169,7 @@ const CreateUser = ({
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.entity-fetch-error', { entity: t('label.role-plural') })
+          t('server.entity-fetch-error', { entity: t(LABEL_ROLE_PLURAL) })
         );
       } finally {
         setIsRolesLoading(false);
@@ -201,7 +205,7 @@ const CreateUser = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.persona-plural') })
+        t('server.entity-fetch-error', { entity: t(LABEL_PERSONA_PLURAL) })
       );
 
       return { data: [], paging: {} };
@@ -331,7 +335,7 @@ const CreateUser = ({
       validateMessages={VALIDATION_MESSAGES}
       onFinish={handleSave}>
       <Form.Item
-        label={t('label.email')}
+        label={t(LABEL_EMAIL)}
         name="email"
         rules={[
           {
@@ -339,15 +343,11 @@ const CreateUser = ({
             required: true,
             type: 'email',
             message: t('message.field-text-is-invalid', {
-              fieldText: t('label.email'),
+              fieldText: t(LABEL_EMAIL),
             }),
           },
         ]}>
-        <Input
-          data-testid="email"
-          name="email"
-          placeholder={t('label.email')}
-        />
+        <Input data-testid="email" name="email" placeholder={t(LABEL_EMAIL)} />
       </Form.Item>
       <Form.Item label={t('label.display-name')} name="displayName">
         <Input
@@ -395,6 +395,7 @@ const CreateUser = ({
                     {t('label.automatically-generate')}
                   </Radio>
                   <Radio value={CreatePasswordGenerator.CreatePassword}>
+                    {/* eslint-disable-next-line sonarjs/no-duplicate-string */}
                     {t('label.password-type', {
                       type: t('label.create'),
                     })}
@@ -511,7 +512,7 @@ const CreateUser = ({
               <Form.Item label={t('label.team-plural')} name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
-              <Form.Item label={t('label.role-plural')} name="roles">
+              <Form.Item label={t(LABEL_ROLE_PLURAL)} name="roles">
                 <Select
                   showSearch
                   data-testid="roles-dropdown"
@@ -522,12 +523,12 @@ const CreateUser = ({
                   mode="multiple"
                   options={roleOptions}
                   placeholder={t('label.please-select-entity', {
-                    entity: t('label.role-plural'),
+                    entity: t(LABEL_ROLE_PLURAL),
                   })}
                   onSearch={debouncedFetchRoleOptions}
                 />
               </Form.Item>
-              <Form.Item label={t('label.persona-plural')} name="personas">
+              <Form.Item label={t(LABEL_PERSONA_PLURAL)} name="personas">
                 <AsyncSelect
                   enableInfiniteScroll
                   showSearch
@@ -543,7 +544,7 @@ const CreateUser = ({
                   }}
                   mode="multiple"
                   placeholder={t('label.please-select-entity', {
-                    entity: t('label.persona-plural'),
+                    entity: t(LABEL_PERSONA_PLURAL),
                   })}
                 />
               </Form.Item>

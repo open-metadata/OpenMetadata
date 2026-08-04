@@ -17,6 +17,12 @@ import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
 import DimensionalityHeatmap from './DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap.interface';
 
+const STR_2025_01_01 = '2025-01-01';
+const DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_LEFT =
+  '.dimensionality-heatmap__scroll-indicator--left';
+const DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_RIGHT =
+  '.dimensionality-heatmap__scroll-indicator--right';
+
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <>{children}</>
 );
@@ -49,7 +55,7 @@ jest.mock('./HeatmapCellTooltip.component', () => ({
 }));
 
 describe('DimensionalityHeatmap Component', () => {
-  const startDate = new Date('2025-01-01').getTime();
+  const startDate = new Date(STR_2025_01_01).getTime();
   const endDate = new Date('2025-01-03').getTime();
 
   const createMockResult = (
@@ -66,9 +72,9 @@ describe('DimensionalityHeatmap Component', () => {
   });
 
   const mockData: DimensionResultWithTimestamp[] = [
-    createMockResult('US', '2025-01-01', TestCaseStatus.Success),
+    createMockResult('US', STR_2025_01_01, TestCaseStatus.Success),
     createMockResult('US', '2025-01-02', TestCaseStatus.Failed),
-    createMockResult('EU', '2025-01-01', TestCaseStatus.Success),
+    createMockResult('EU', STR_2025_01_01, TestCaseStatus.Success),
   ];
 
   beforeEach(() => {
@@ -261,14 +267,10 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--left'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_LEFT)
       ).not.toBeInTheDocument();
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--right'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_RIGHT)
       ).not.toBeInTheDocument();
     });
 
@@ -294,14 +296,10 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--right'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_RIGHT)
       ).toBeInTheDocument();
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--left'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_LEFT)
       ).not.toBeInTheDocument();
     });
 
@@ -327,14 +325,10 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--left'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_LEFT)
       ).toBeInTheDocument();
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--right'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_RIGHT)
       ).not.toBeInTheDocument();
     });
 
@@ -360,7 +354,7 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       const scrollIndicator = container.querySelector(
-        '.dimensionality-heatmap__scroll-indicator--right'
+        DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_RIGHT
       );
       if (scrollIndicator) {
         fireEvent.click(scrollIndicator);
@@ -391,7 +385,7 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       const scrollIndicator = container.querySelector(
-        '.dimensionality-heatmap__scroll-indicator--left'
+        DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_LEFT
       );
       if (scrollIndicator) {
         fireEvent.click(scrollIndicator);
@@ -421,14 +415,10 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--left'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_LEFT)
       ).toBeInTheDocument();
       expect(
-        container.querySelector(
-          '.dimensionality-heatmap__scroll-indicator--right'
-        )
+        container.querySelector(DIMENSIONALITY_HEATMAP_SCROLL_INDICATOR_RIGHT)
       ).toBeInTheDocument();
     });
   });
@@ -491,9 +481,9 @@ describe('DimensionalityHeatmap Component', () => {
   describe('Data Transformations', () => {
     it('should handle multiple dimensions correctly', () => {
       const multiDimensionData = [
-        createMockResult('US', '2025-01-01', TestCaseStatus.Success),
-        createMockResult('EU', '2025-01-01', TestCaseStatus.Failed),
-        createMockResult('APAC', '2025-01-01', TestCaseStatus.Aborted),
+        createMockResult('US', STR_2025_01_01, TestCaseStatus.Success),
+        createMockResult('EU', STR_2025_01_01, TestCaseStatus.Failed),
+        createMockResult('APAC', STR_2025_01_01, TestCaseStatus.Aborted),
       ];
 
       render(
@@ -512,7 +502,7 @@ describe('DimensionalityHeatmap Component', () => {
 
     it('should handle sparse data with missing dates', () => {
       const sparseData = [
-        createMockResult('US', '2025-01-01', TestCaseStatus.Success),
+        createMockResult('US', STR_2025_01_01, TestCaseStatus.Success),
       ];
 
       const { container } = render(

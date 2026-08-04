@@ -40,12 +40,17 @@ import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DirectoryDetailsPage from './DirectoryDetailsPage';
 
+const DIRECTORY_DETAILS = 'directory-details';
+
 // Mock data
 const mockDirectoryDetails: Directory = {
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   id: 'test-directory-id',
   name: 'test-directory',
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   displayName: 'Test Directory',
   description: 'Test directory description',
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   fullyQualifiedName: 'test-service.test-directory',
   deleted: false,
   version: 1,
@@ -77,6 +82,7 @@ jest.mock('../../rest/driveAPI', () => ({
   addDriveAssetFollower: jest.fn().mockImplementation(() =>
     Promise.resolve({
       changeDescription: {
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         fieldsAdded: [{ newValue: [{ id: 'test-user-id' }] }],
       },
     })
@@ -289,7 +295,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('directory-name')).toHaveTextContent(
@@ -396,7 +402,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -419,7 +425,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -445,7 +451,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -464,7 +470,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -487,7 +493,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -506,7 +512,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -532,7 +538,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -568,7 +574,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -594,7 +600,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const deleteButton = screen.getByTestId('delete-button');
@@ -620,7 +626,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');
@@ -710,7 +716,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
     });
 
@@ -726,7 +732,7 @@ describe('DirectoryDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('directory-details')).toBeInTheDocument();
+        expect(screen.getByTestId(DIRECTORY_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');

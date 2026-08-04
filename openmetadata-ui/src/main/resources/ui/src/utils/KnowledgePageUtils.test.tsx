@@ -36,6 +36,15 @@ import {
   getLink,
 } from './KnowledgePageUtils';
 
+const TEST_QUICK_LINK = 'Test Quick Link';
+const TEST_KNOWLEDGE_PAGE = 'Test Knowledge Page';
+const KNOWLEDGE_PAGE = 'knowledge-page';
+const KNOWLEDGE_NO_NAME = 'Knowledge No Name';
+const ARTICLE_A_ARTICLE_B = 'Article_A.Article_B';
+const ARTICLE_A_ARTICLE_B_ARTICLE_C = 'Article_A.Article_B.Article_C';
+const ARTICLE_A_ARTICLE_B_ARTICLE_C_ARTICLE_D =
+  'Article_A.Article_B.Article_C.Article_D';
+
 describe('getKnowledgePageName', () => {
   it('returns displayName when present', () => {
     expect(
@@ -196,9 +205,9 @@ describe('KnowledgePageUtils', () => {
       const quickLinkPage: KnowledgePage = {
         id: '123',
         fullyQualifiedName: 'quicklink.test',
-        displayName: 'Test Quick Link',
+        displayName: TEST_QUICK_LINK,
         pageType: PageType.QUICK_LINK,
-        name: 'Test Quick Link',
+        name: TEST_QUICK_LINK,
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
@@ -222,16 +231,16 @@ describe('KnowledgePageUtils', () => {
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute('href', 'https://example.com');
       expect(link).toHaveAttribute('target', '_blank');
-      expect(link.textContent).toContain('Test Quick Link');
+      expect(link.textContent).toContain(TEST_QUICK_LINK);
     });
 
     it('should render link for knowledge page type', () => {
       const knowledgePage: KnowledgePage = {
         id: '456',
         fullyQualifiedName: 'knowledge.test',
-        displayName: 'Test Knowledge Page',
+        displayName: TEST_KNOWLEDGE_PAGE,
         pageType: PageType.ARTICLE,
-        name: 'Test Knowledge Page',
+        name: TEST_KNOWLEDGE_PAGE,
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
@@ -239,7 +248,7 @@ describe('KnowledgePageUtils', () => {
         href: '/api/v1/knowledgePages/456',
         deleted: false,
       };
-      const testIdPrefix = 'knowledge-page';
+      const testIdPrefix = KNOWLEDGE_PAGE;
 
       render(<TestWrapper>{getLink(knowledgePage, testIdPrefix)}</TestWrapper>);
 
@@ -253,7 +262,7 @@ describe('KnowledgePageUtils', () => {
         '/context-center/articles/knowledge.test'
       );
       expect(link).not.toHaveAttribute('target', '_blank');
-      expect(link.textContent).toContain('Test Knowledge Page');
+      expect(link.textContent).toContain(TEST_KNOWLEDGE_PAGE);
     });
 
     it('should use "Untitled" when displayName is not provided', () => {
@@ -262,7 +271,7 @@ describe('KnowledgePageUtils', () => {
         fullyQualifiedName: 'knowledge.noname',
         pageType: PageType.ARTICLE,
         displayName: undefined,
-        name: 'Knowledge No Name',
+        name: KNOWLEDGE_NO_NAME,
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
@@ -270,7 +279,7 @@ describe('KnowledgePageUtils', () => {
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };
-      const testIdPrefix = 'knowledge-page';
+      const testIdPrefix = KNOWLEDGE_PAGE;
 
       render(<TestWrapper>{getLink(knowledgePage, testIdPrefix)}</TestWrapper>);
 
@@ -279,7 +288,7 @@ describe('KnowledgePageUtils', () => {
       );
 
       expect(link).toBeInTheDocument();
-      expect(link.textContent).toContain('Knowledge No Name');
+      expect(link.textContent).toContain(KNOWLEDGE_NO_NAME);
     });
 
     it('should use fullyQualifiedName in test ID when displayName is not provided', () => {
@@ -288,7 +297,7 @@ describe('KnowledgePageUtils', () => {
         fullyQualifiedName: 'knowledge.noname',
         pageType: PageType.ARTICLE,
         displayName: undefined,
-        name: 'Knowledge No Name',
+        name: KNOWLEDGE_NO_NAME,
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
@@ -296,7 +305,7 @@ describe('KnowledgePageUtils', () => {
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };
-      const testIdPrefix = 'knowledge-page';
+      const testIdPrefix = KNOWLEDGE_PAGE;
 
       render(<TestWrapper>{getLink(knowledgePage, testIdPrefix)}</TestWrapper>);
 
@@ -310,27 +319,27 @@ describe('KnowledgePageUtils', () => {
 
   describe('extractKnowledgePageParentFQN', () => {
     it('should extract parent FQNs from a nested FQN with 2 levels', () => {
-      const fqn = 'Article_A.Article_B';
+      const fqn = ARTICLE_A_ARTICLE_B;
       const result = extractKnowledgePageParentFQN(fqn);
 
       expect(result).toEqual(['Article_A']);
     });
 
     it('should extract parent FQNs from a nested FQN with 3 levels', () => {
-      const fqn = 'Article_A.Article_B.Article_C';
+      const fqn = ARTICLE_A_ARTICLE_B_ARTICLE_C;
       const result = extractKnowledgePageParentFQN(fqn);
 
-      expect(result).toEqual(['Article_A', 'Article_A.Article_B']);
+      expect(result).toEqual(['Article_A', ARTICLE_A_ARTICLE_B]);
     });
 
     it('should extract parent FQNs from a deeply nested FQN with 4 levels', () => {
-      const fqn = 'Article_A.Article_B.Article_C.Article_D';
+      const fqn = ARTICLE_A_ARTICLE_B_ARTICLE_C_ARTICLE_D;
       const result = extractKnowledgePageParentFQN(fqn);
 
       expect(result).toEqual([
         'Article_A',
-        'Article_A.Article_B',
-        'Article_A.Article_B.Article_C',
+        ARTICLE_A_ARTICLE_B,
+        ARTICLE_A_ARTICLE_B_ARTICLE_C,
       ]);
     });
 
@@ -387,7 +396,7 @@ describe('KnowledgePageUtils', () => {
         {
           id: '2',
           name: 'Article_B',
-          fullyQualifiedName: 'Article_A.Article_B',
+          fullyQualifiedName: ARTICLE_A_ARTICLE_B,
           displayName: 'Article B',
           pageType: PageType.ARTICLE,
           childrenCount: 0,
@@ -402,7 +411,7 @@ describe('KnowledgePageUtils', () => {
       expect(result).toHaveLength(1);
       expect(result[0].children).toHaveLength(1);
       expect(result[0].children?.[0].fullyQualifiedName).toBe(
-        'Article_A.Article_B'
+        ARTICLE_A_ARTICLE_B
       );
     });
 
@@ -412,7 +421,7 @@ describe('KnowledgePageUtils', () => {
         {
           id: '3',
           name: 'Article_C',
-          fullyQualifiedName: 'Article_A.Article_B.Article_C',
+          fullyQualifiedName: ARTICLE_A_ARTICLE_B_ARTICLE_C,
           displayName: 'Article C',
           pageType: PageType.ARTICLE,
           childrenCount: 0,
@@ -428,7 +437,7 @@ describe('KnowledgePageUtils', () => {
         {
           id: '2',
           name: 'Article_B',
-          fullyQualifiedName: 'Article_A.Article_B',
+          fullyQualifiedName: ARTICLE_A_ARTICLE_B,
           displayName: 'Article B',
           pageType: PageType.ARTICLE,
           childrenCount: 1,
@@ -447,11 +456,11 @@ describe('KnowledgePageUtils', () => {
       // Should have nested structure
       expect(result[0].children).toHaveLength(1);
       expect(result[0].children?.[0].fullyQualifiedName).toBe(
-        'Article_A.Article_B'
+        ARTICLE_A_ARTICLE_B
       );
       expect(result[0].children?.[0].children).toHaveLength(1);
       expect(result[0].children?.[0].children?.[0].fullyQualifiedName).toBe(
-        'Article_A.Article_B.Article_C'
+        ARTICLE_A_ARTICLE_B_ARTICLE_C
       );
     });
 
@@ -502,7 +511,7 @@ describe('KnowledgePageUtils', () => {
         {
           id: '2',
           name: 'Article_B',
-          fullyQualifiedName: 'Article_A.Article_B',
+          fullyQualifiedName: ARTICLE_A_ARTICLE_B,
           displayName: 'Article B',
           pageType: PageType.ARTICLE,
           childrenCount: 1,
@@ -510,7 +519,7 @@ describe('KnowledgePageUtils', () => {
         {
           id: '3',
           name: 'Article_C',
-          fullyQualifiedName: 'Article_A.Article_B.Article_C',
+          fullyQualifiedName: ARTICLE_A_ARTICLE_B_ARTICLE_C,
           displayName: 'Article C',
           pageType: PageType.ARTICLE,
           childrenCount: 1,
@@ -518,7 +527,7 @@ describe('KnowledgePageUtils', () => {
         {
           id: '4',
           name: 'Article_D',
-          fullyQualifiedName: 'Article_A.Article_B.Article_C.Article_D',
+          fullyQualifiedName: ARTICLE_A_ARTICLE_B_ARTICLE_C_ARTICLE_D,
           displayName: 'Article D',
           pageType: PageType.ARTICLE,
           childrenCount: 0,
@@ -535,16 +544,16 @@ describe('KnowledgePageUtils', () => {
       expect(result[0].fullyQualifiedName).toBe('Article_A');
       expect(result[0].children).toHaveLength(1);
       expect(result[0].children?.[0].fullyQualifiedName).toBe(
-        'Article_A.Article_B'
+        ARTICLE_A_ARTICLE_B
       );
       expect(result[0].children?.[0].children).toHaveLength(1);
       expect(result[0].children?.[0].children?.[0].fullyQualifiedName).toBe(
-        'Article_A.Article_B.Article_C'
+        ARTICLE_A_ARTICLE_B_ARTICLE_C
       );
       expect(result[0].children?.[0].children?.[0].children).toHaveLength(1);
       expect(
         result[0].children?.[0].children?.[0].children?.[0].fullyQualifiedName
-      ).toBe('Article_A.Article_B.Article_C.Article_D');
+      ).toBe(ARTICLE_A_ARTICLE_B_ARTICLE_C_ARTICLE_D);
     });
 
     it('should integrate nodes into existing hierarchy without affecting other branches', () => {
@@ -560,7 +569,7 @@ describe('KnowledgePageUtils', () => {
             {
               id: '2',
               name: 'Article_B',
-              fullyQualifiedName: 'Article_A.Article_B',
+              fullyQualifiedName: ARTICLE_A_ARTICLE_B,
               displayName: 'Article B',
               pageType: PageType.ARTICLE,
               childrenCount: 0,

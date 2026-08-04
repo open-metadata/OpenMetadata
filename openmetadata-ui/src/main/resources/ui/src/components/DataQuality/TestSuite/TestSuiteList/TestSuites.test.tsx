@@ -17,6 +17,8 @@ import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { TestSuites } from './TestSuites.component';
 
+const TEST_SUITE_CONTAINER = 'test-suite-container';
+
 const testSuitePermission = {
   Create: true,
   Delete: true,
@@ -102,6 +104,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onSortChange,
     sortDescriptor,
   }: React.PropsWithChildren<{
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     'data-testid'?: string;
     onSortChange?: (desc: {
       column?: string;
@@ -309,6 +312,7 @@ jest.mock('react-router-dom', () => {
       )),
     useNavigate: jest.fn().mockReturnValue(jest.fn()),
     useParams: jest.fn().mockReturnValue({
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       tab: 'test-cases',
       subTab: 'table-suites',
     }),
@@ -463,9 +467,7 @@ describe('TestSuites component', () => {
 
     render(<TestSuites />);
 
-    expect(
-      await screen.findByTestId('test-suite-container')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(TEST_SUITE_CONTAINER)).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: ['owners', 'summary'],
       includeEmptyTestSuites: false,
@@ -558,9 +560,7 @@ describe('TestSuites component', () => {
 
     render(<TestSuites />, { wrapper: MemoryRouter });
 
-    expect(
-      await screen.findByTestId('test-suite-container')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(TEST_SUITE_CONTAINER)).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
       fields: ['owners', 'summary'],
       includeEmptyTestSuites: false,
@@ -659,7 +659,7 @@ describe('TestSuites component', () => {
 
     render(<TestSuites />);
 
-    await screen.findByTestId('test-suite-container');
+    await screen.findByTestId(TEST_SUITE_CONTAINER);
 
     expect(
       screen.queryByText('NextPrevious.component')

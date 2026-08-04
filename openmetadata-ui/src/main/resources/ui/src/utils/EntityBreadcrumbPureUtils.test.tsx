@@ -29,6 +29,9 @@ import {
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
+const SERVICE_DATABASESERVICES_MYSQL_SAMPLE =
+  '/service/databaseServices/mysql_sample';
+const DATABASE_DEFAULT = '/database/default';
 jest.mock('./RouterUtils', () => ({
   getDataQualityPagePath: jest.fn(),
   getDomainPath: jest.fn(),
@@ -52,9 +55,9 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       (getServiceRouteFromServiceType as jest.Mock).mockReturnValue(mockUrl);
       (getSettingPath as jest.Mock).mockReturnValue(mockSettingUrl);
       (getServiceDetailsPath as jest.Mock).mockReturnValue(
-        '/service/databaseServices/mysql_sample'
+        SERVICE_DATABASESERVICES_MYSQL_SAMPLE
       );
-      (getEntityDetailsPath as jest.Mock).mockReturnValue('/database/default');
+      (getEntityDetailsPath as jest.Mock).mockReturnValue(DATABASE_DEFAULT);
 
       const result = getEntityBreadcrumbs(
         mockEntityForDatabase,
@@ -70,7 +73,7 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
         {
           isServiceBreadcrumb: true,
           name: 'mysql_sample',
-          url: '/service/databaseServices/mysql_sample',
+          url: SERVICE_DATABASESERVICES_MYSQL_SAMPLE,
         },
       ]);
 
@@ -83,9 +86,9 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       (getServiceRouteFromServiceType as jest.Mock).mockReturnValue(mockUrl);
       (getSettingPath as jest.Mock).mockReturnValue(mockSettingUrl);
       (getServiceDetailsPath as jest.Mock).mockReturnValue(
-        '/service/databaseServices/mysql_sample'
+        SERVICE_DATABASESERVICES_MYSQL_SAMPLE
       );
-      (getEntityDetailsPath as jest.Mock).mockReturnValue('/database/default');
+      (getEntityDetailsPath as jest.Mock).mockReturnValue(DATABASE_DEFAULT);
 
       const result = getEntityBreadcrumbs(
         mockEntityForDatabase,
@@ -102,12 +105,12 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
         {
           isServiceBreadcrumb: true,
           name: 'mysql_sample',
-          url: '/service/databaseServices/mysql_sample',
+          url: SERVICE_DATABASESERVICES_MYSQL_SAMPLE,
         },
         {
           iconType: EntityType.DATABASE,
           name: 'default',
-          url: '/database/default',
+          url: DATABASE_DEFAULT,
         },
       ]);
     });

@@ -17,6 +17,10 @@ import { ActivityEvent } from '../../../../generated/entity/activity/activityEve
 import { ReactionType } from '../../../../generated/type/reaction';
 import ActivityEventFooter from './ActivityEventFooter';
 
+const ACTIVITY_123 = 'activity-123';
+const COMMENT_BUTTON = 'comment-button';
+const REACTIONS_COUNT = 'reactions-count';
+
 const mockUpdateActivityReaction = jest.fn();
 
 jest.mock('../../ActivityFeedProvider/ActivityFeedProvider', () => ({
@@ -28,7 +32,7 @@ jest.mock('../../ActivityFeedProvider/ActivityFeedProvider', () => ({
 jest.mock('../../Reactions/Reactions', () => {
   return jest.fn(({ reactions, onReactionSelect }) => (
     <div data-testid="reactions-component">
-      <span data-testid="reactions-count">{reactions?.length ?? 0}</span>
+      <span data-testid={REACTIONS_COUNT}>{reactions?.length ?? 0}</span>
       <button
         data-testid="add-reaction-btn"
         onClick={() =>
@@ -50,7 +54,7 @@ jest.mock('../../Reactions/Reactions', () => {
 const createMockActivity = (
   overrides?: Partial<ActivityEvent>
 ): ActivityEvent => ({
-  id: 'activity-123',
+  id: ACTIVITY_123,
   timestamp: 1234567890,
   eventType: 'entityUpdated' as ActivityEvent['eventType'],
   actor: { id: 'user-1', type: 'user', name: 'testuser' },
@@ -72,7 +76,7 @@ describe('ActivityEventFooter', () => {
 
       render(<ActivityEventFooter activity={activity} />);
 
-      expect(screen.getByTestId('comment-button')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMENT_BUTTON)).toBeInTheDocument();
       expect(screen.getByTestId('comment-icon')).toBeInTheDocument();
     });
 
@@ -100,7 +104,7 @@ describe('ActivityEventFooter', () => {
 
       render(<ActivityEventFooter activity={activity} />);
 
-      expect(screen.getByTestId('reactions-count')).toHaveTextContent('2');
+      expect(screen.getByTestId(REACTIONS_COUNT)).toHaveTextContent('2');
     });
 
     it('should apply margin class when isForFeedTab is true', () => {
@@ -137,7 +141,7 @@ describe('ActivityEventFooter', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('comment-button'));
+      fireEvent.click(screen.getByTestId(COMMENT_BUTTON));
 
       expect(mockOnActivityClick).toHaveBeenCalledWith(activity);
     });
@@ -154,7 +158,7 @@ describe('ActivityEventFooter', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('comment-button'));
+      fireEvent.click(screen.getByTestId(COMMENT_BUTTON));
 
       expect(mockOnActivityClick).not.toHaveBeenCalled();
     });
@@ -165,7 +169,7 @@ describe('ActivityEventFooter', () => {
       render(<ActivityEventFooter isForFeedTab activity={activity} />);
 
       expect(() => {
-        fireEvent.click(screen.getByTestId('comment-button'));
+        fireEvent.click(screen.getByTestId(COMMENT_BUTTON));
       }).not.toThrow();
     });
   });
@@ -180,7 +184,7 @@ describe('ActivityEventFooter', () => {
 
       await waitFor(() => {
         expect(mockUpdateActivityReaction).toHaveBeenCalledWith(
-          'activity-123',
+          ACTIVITY_123,
           ReactionType.ThumbsUp,
           ReactionOperation.ADD
         );
@@ -196,7 +200,7 @@ describe('ActivityEventFooter', () => {
 
       await waitFor(() => {
         expect(mockUpdateActivityReaction).toHaveBeenCalledWith(
-          'activity-123',
+          ACTIVITY_123,
           ReactionType.ThumbsUp,
           ReactionOperation.REMOVE
         );
@@ -220,7 +224,7 @@ describe('ActivityEventFooter', () => {
 
       render(<ActivityEventFooter activity={activity} />);
 
-      expect(screen.getByTestId('reactions-count')).toHaveTextContent('0');
+      expect(screen.getByTestId(REACTIONS_COUNT)).toHaveTextContent('0');
     });
 
     it('should handle undefined reactions', () => {
@@ -228,7 +232,7 @@ describe('ActivityEventFooter', () => {
 
       render(<ActivityEventFooter activity={activity} />);
 
-      expect(screen.getByTestId('reactions-count')).toHaveTextContent('0');
+      expect(screen.getByTestId(REACTIONS_COUNT)).toHaveTextContent('0');
     });
   });
 });

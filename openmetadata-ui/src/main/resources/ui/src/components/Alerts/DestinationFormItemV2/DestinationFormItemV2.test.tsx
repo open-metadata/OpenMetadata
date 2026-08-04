@@ -28,6 +28,11 @@ import { testAlertDestination } from '../../../rest/alertsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DestinationFormItemV2 from './DestinationFormItemV2.component';
 
+const ADD_DESTINATION_BUTTON = 'add-destination-button' as const;
+const DESTINATION_SELECT_ITEM_0 = 'destination-select-item-0' as const;
+const TEST_DESTINATION_BUTTON = 'test-destination-button' as const;
+const HTTPS_SLACK_EXAMPLE_COM = 'https://slack.example.com' as const;
+
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn(),
 }));
@@ -89,6 +94,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     'data-testid': tid,
   }: {
     children?: ReactNode;
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     'data-testid'?: string;
   }) => <div data-testid={tid}>{children}</div>;
 
@@ -174,7 +180,7 @@ describe('DestinationFormItemV2', () => {
     expect(
       screen.getByText('message.alerts-destination-description')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('add-destination-button')).toBeInTheDocument();
+    expect(screen.getByTestId(ADD_DESTINATION_BUTTON)).toBeInTheDocument();
   });
 
   it('renders connection timeout and read timeout inputs', () => {
@@ -189,30 +195,28 @@ describe('DestinationFormItemV2', () => {
   it('disables add button when no resource is selected', () => {
     renderWithForm(<DestinationFormItemV2 />, { resources: [] });
 
-    expect(screen.getByTestId('add-destination-button')).toBeDisabled();
+    expect(screen.getByTestId(ADD_DESTINATION_BUTTON)).toBeDisabled();
   });
 
   it('enables add button when a resource is selected', () => {
     renderWithForm(<DestinationFormItemV2 />, { resources: ['container'] });
 
-    expect(screen.getByTestId('add-destination-button')).toBeEnabled();
+    expect(screen.getByTestId(ADD_DESTINATION_BUTTON)).toBeEnabled();
   });
 
   it('adds a destination row when add button is clicked', async () => {
     renderWithForm(<DestinationFormItemV2 />, { resources: ['container'] });
 
     expect(
-      screen.queryByTestId('destination-select-item-0')
+      screen.queryByTestId(DESTINATION_SELECT_ITEM_0)
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('add-destination-button'));
+      fireEvent.click(screen.getByTestId(ADD_DESTINATION_BUTTON));
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('destination-select-item-0')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(DESTINATION_SELECT_ITEM_0)).toBeInTheDocument();
     });
   });
 
@@ -220,13 +224,11 @@ describe('DestinationFormItemV2', () => {
     renderWithForm(<DestinationFormItemV2 />, { resources: ['container'] });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('add-destination-button'));
+      fireEvent.click(screen.getByTestId(ADD_DESTINATION_BUTTON));
     });
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId('destination-select-item-0')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(DESTINATION_SELECT_ITEM_0)).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -235,7 +237,7 @@ describe('DestinationFormItemV2', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByTestId('destination-select-item-0')
+        screen.queryByTestId(DESTINATION_SELECT_ITEM_0)
       ).not.toBeInTheDocument();
     });
   });
@@ -251,7 +253,7 @@ describe('DestinationFormItemV2', () => {
       ],
     });
 
-    expect(screen.getByTestId('test-destination-button')).toBeDisabled();
+    expect(screen.getByTestId(TEST_DESTINATION_BUTTON)).toBeDisabled();
   });
 
   it('enables test destination button when external destination is selected', () => {
@@ -266,7 +268,7 @@ describe('DestinationFormItemV2', () => {
       ],
     });
 
-    expect(screen.getByTestId('test-destination-button')).toBeEnabled();
+    expect(screen.getByTestId(TEST_DESTINATION_BUTTON)).toBeEnabled();
   });
 
   it('calls testAlertDestination with formatted external destinations', async () => {
@@ -274,7 +276,7 @@ describe('DestinationFormItemV2', () => {
       {
         category: SubscriptionCategory.External,
         type: SubscriptionType.Slack,
-        config: { endpoint: 'https://slack.example.com' },
+        config: { endpoint: HTTPS_SLACK_EXAMPLE_COM },
       },
     ];
 
@@ -288,13 +290,13 @@ describe('DestinationFormItemV2', () => {
           destinationType: SubscriptionType.Slack,
           category: SubscriptionCategory.External,
           type: SubscriptionType.Slack,
-          config: { endpoint: 'https://slack.example.com' },
+          config: { endpoint: HTTPS_SLACK_EXAMPLE_COM },
         },
       ],
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-destination-button'));
+      fireEvent.click(screen.getByTestId(TEST_DESTINATION_BUTTON));
     });
 
     await waitFor(() => {
@@ -309,7 +311,7 @@ describe('DestinationFormItemV2', () => {
       {
         category: SubscriptionCategory.External,
         type: SubscriptionType.Slack,
-        config: { endpoint: 'https://slack.example.com' },
+        config: { endpoint: HTTPS_SLACK_EXAMPLE_COM },
       },
       {
         category: SubscriptionCategory.External,
@@ -336,7 +338,7 @@ describe('DestinationFormItemV2', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-destination-button'));
+      fireEvent.click(screen.getByTestId(TEST_DESTINATION_BUTTON));
     });
 
     await waitFor(() => {
@@ -360,7 +362,7 @@ describe('DestinationFormItemV2', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-destination-button'));
+      fireEvent.click(screen.getByTestId(TEST_DESTINATION_BUTTON));
     });
 
     await waitFor(() => {
@@ -377,7 +379,7 @@ describe('DestinationFormItemV2', () => {
       {
         category: SubscriptionCategory.External,
         type: SubscriptionType.Slack,
-        config: { endpoint: 'https://slack.example.com' },
+        config: { endpoint: HTTPS_SLACK_EXAMPLE_COM },
       },
     ]);
     (testAlertDestination as jest.Mock).mockRejectedValue(mockError);
@@ -393,7 +395,7 @@ describe('DestinationFormItemV2', () => {
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('test-destination-button'));
+      fireEvent.click(screen.getByTestId(TEST_DESTINATION_BUTTON));
     });
 
     await waitFor(() => {
@@ -407,10 +409,10 @@ describe('DestinationFormItemV2', () => {
     });
 
     expect(
-      screen.queryByTestId('add-destination-button')
+      screen.queryByTestId(ADD_DESTINATION_BUTTON)
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('test-destination-button')
+      screen.queryByTestId(TEST_DESTINATION_BUTTON)
     ).not.toBeInTheDocument();
   });
 });

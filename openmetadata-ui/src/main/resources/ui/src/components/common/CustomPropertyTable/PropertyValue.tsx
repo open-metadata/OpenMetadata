@@ -96,6 +96,11 @@ import {
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
 import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
+
+const DATETIME_CP = 'dateTime-cp';
+const MESSAGE_INVALID_UNIX_EPOCH_TIME_MILLISECONDS =
+  'message.invalid-unix-epoch-time-milliseconds';
+const MESSAGE_UNIX_EPOCH_TIME_IN_MS = 'message.unix-epoch-time-in-ms';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -303,7 +308,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'date-cp':
-      case 'dateTime-cp': {
+      case DATETIME_CP: {
         const format = getCustomPropertyLuxonFormat(
           propertyType.name,
           property.customPropertyConfig?.config
@@ -354,7 +359,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
-                  showTime={propertyType.name === 'dateTime-cp'}
+                  showTime={propertyType.name === DATETIME_CP}
                 />
               </Form.Item>
             </Form>
@@ -491,7 +496,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
-                    message: t('message.invalid-unix-epoch-time-milliseconds'),
+                    message: t(MESSAGE_INVALID_UNIX_EPOCH_TIME_MILLISECONDS),
                   },
                 ]}
                 style={commonStyle}>
@@ -499,7 +504,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   allowClear
                   data-testid="timestamp-input"
                   disabled={isLoading}
-                  placeholder={t('message.unix-epoch-time-in-ms', {
+                  placeholder={t(MESSAGE_UNIX_EPOCH_TIME_IN_MS, {
                     prefix: '',
                   })}
                 />
@@ -550,7 +555,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
-                    message: t('message.invalid-unix-epoch-time-milliseconds'),
+                    message: t(MESSAGE_INVALID_UNIX_EPOCH_TIME_MILLISECONDS),
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
@@ -558,7 +563,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   allowClear
                   data-testid="start-input"
                   disabled={isLoading}
-                  placeholder={t('message.unix-epoch-time-in-ms', {
+                  placeholder={t(MESSAGE_UNIX_EPOCH_TIME_IN_MS, {
                     prefix: 'Start',
                   })}
                 />
@@ -568,7 +573,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 rules={[
                   {
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
-                    message: t('message.invalid-unix-epoch-time-milliseconds'),
+                    message: t(MESSAGE_INVALID_UNIX_EPOCH_TIME_MILLISECONDS),
                   },
                 ]}
                 style={commonStyle}>
@@ -576,7 +581,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   allowClear
                   data-testid="end-input"
                   disabled={isLoading}
-                  placeholder={t('message.unix-epoch-time-in-ms', {
+                  placeholder={t(MESSAGE_UNIX_EPOCH_TIME_IN_MS, {
                     prefix: 'End',
                   })}
                 />
@@ -1083,7 +1088,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'email':
       case 'timestamp':
       case 'duration':
-      case 'dateTime-cp':
+      case DATETIME_CP:
       default:
         return (
           <Typography.Text

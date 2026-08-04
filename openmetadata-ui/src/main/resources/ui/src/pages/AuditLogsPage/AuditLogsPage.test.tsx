@@ -23,6 +23,11 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import AuditLogsPage from './AuditLogsPage';
 
+const EXPORT_AUDIT_LOGS_BUTTON = 'export-audit-logs-button';
+const AUDIT_LOG_SEARCH = 'audit-log-search';
+const CLEAR_FILTERS = 'clear-filters';
+const APPLY_FILTER = 'apply-filter';
+const LOGS_COUNT = 'logs-count';
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest
     .fn()
@@ -305,7 +310,7 @@ describe('AuditLogsPage', () => {
       expect(screen.getByTestId('loading')).toBeInTheDocument();
 
       await waitFor(() => {
-        expect(screen.getByTestId('logs-count')).toBeInTheDocument();
+        expect(screen.getByTestId(LOGS_COUNT)).toBeInTheDocument();
       });
     });
 
@@ -317,7 +322,7 @@ describe('AuditLogsPage', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('logs-count')).toHaveTextContent('Logs: 1');
+        expect(screen.getByTestId(LOGS_COUNT)).toHaveTextContent('Logs: 1');
       });
     });
   });
@@ -363,7 +368,7 @@ describe('AuditLogsPage', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('logs-count')).toHaveTextContent('Logs: 0');
+        expect(screen.getByTestId(LOGS_COUNT)).toHaveTextContent('Logs: 0');
       });
     });
   });
@@ -380,7 +385,7 @@ describe('AuditLogsPage', () => {
         expect(mockGetAuditLogs).toHaveBeenCalledTimes(1);
       });
 
-      expect(screen.getByTestId('audit-log-search')).toBeInTheDocument();
+      expect(screen.getByTestId(AUDIT_LOG_SEARCH)).toBeInTheDocument();
     });
 
     it('triggers search when input changes', async () => {
@@ -394,7 +399,7 @@ describe('AuditLogsPage', () => {
         expect(mockGetAuditLogs).toHaveBeenCalledTimes(1);
       });
 
-      const searchInput = screen.getByTestId('audit-log-search');
+      const searchInput = screen.getByTestId(AUDIT_LOG_SEARCH);
       fireEvent.change(searchInput, { target: { value: 'admin' } });
 
       await waitFor(() => {
@@ -420,7 +425,7 @@ describe('AuditLogsPage', () => {
       const initialCallCount = mockGetAuditLogs.mock.calls.length;
 
       // Trigger a search to make the clear button appear
-      const searchInput = screen.getByTestId('audit-log-search');
+      const searchInput = screen.getByTestId(AUDIT_LOG_SEARCH);
       fireEvent.change(searchInput, { target: { value: 'admin' } });
 
       await waitFor(() => {
@@ -430,7 +435,7 @@ describe('AuditLogsPage', () => {
       });
 
       // Clear filters button should appear
-      const clearButton = screen.getByTestId('clear-filters');
+      const clearButton = screen.getByTestId(CLEAR_FILTERS);
       fireEvent.click(clearButton);
 
       await waitFor(() => {
@@ -453,7 +458,7 @@ describe('AuditLogsPage', () => {
         expect(mockGetAuditLogs).toHaveBeenCalledTimes(1);
       });
 
-      const applyFilterButton = screen.getByTestId('apply-filter');
+      const applyFilterButton = screen.getByTestId(APPLY_FILTER);
       fireEvent.click(applyFilterButton);
 
       await waitFor(() => {
@@ -477,14 +482,14 @@ describe('AuditLogsPage', () => {
       });
 
       // Initially, clear button should not be visible
-      expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(CLEAR_FILTERS)).not.toBeInTheDocument();
 
       // Apply a filter
-      const applyFilterButton = screen.getByTestId('apply-filter');
+      const applyFilterButton = screen.getByTestId(APPLY_FILTER);
       fireEvent.click(applyFilterButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId('clear-filters')).toBeInTheDocument();
+        expect(screen.getByTestId(CLEAR_FILTERS)).toBeInTheDocument();
       });
     });
 
@@ -502,15 +507,15 @@ describe('AuditLogsPage', () => {
       const initialCallCount = mockGetAuditLogs.mock.calls.length;
 
       // Apply a filter first
-      const applyFilterButton = screen.getByTestId('apply-filter');
+      const applyFilterButton = screen.getByTestId(APPLY_FILTER);
       fireEvent.click(applyFilterButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId('clear-filters')).toBeInTheDocument();
+        expect(screen.getByTestId(CLEAR_FILTERS)).toBeInTheDocument();
       });
 
       // Click clear
-      fireEvent.click(screen.getByTestId('clear-filters'));
+      fireEvent.click(screen.getByTestId(CLEAR_FILTERS));
 
       await waitFor(() => {
         // Should have called getAuditLogs more times after clearing
@@ -611,7 +616,7 @@ describe('AuditLogsPage', () => {
         expect(mockGetAuditLogs).toHaveBeenCalledTimes(1);
       });
 
-      const exportButton = screen.getByTestId('export-audit-logs-button');
+      const exportButton = screen.getByTestId(EXPORT_AUDIT_LOGS_BUTTON);
       fireEvent.click(exportButton);
 
       await waitFor(() => {
@@ -630,7 +635,7 @@ describe('AuditLogsPage', () => {
         expect(mockGetAuditLogs).toHaveBeenCalledTimes(1);
       });
 
-      const exportButton = screen.getByTestId('export-audit-logs-button');
+      const exportButton = screen.getByTestId(EXPORT_AUDIT_LOGS_BUTTON);
       fireEvent.click(exportButton);
 
       await waitFor(() => {
@@ -651,7 +656,7 @@ describe('AuditLogsPage', () => {
         expect(mockGetAuditLogs).toHaveBeenCalledTimes(1);
       });
 
-      const exportButton = screen.getByTestId('export-audit-logs-button');
+      const exportButton = screen.getByTestId(EXPORT_AUDIT_LOGS_BUTTON);
       fireEvent.click(exportButton);
 
       await waitFor(() => {
@@ -681,7 +686,7 @@ describe('AuditLogsPage', () => {
       });
 
       // Open modal
-      const exportButton = screen.getByTestId('export-audit-logs-button');
+      const exportButton = screen.getByTestId(EXPORT_AUDIT_LOGS_BUTTON);
       fireEvent.click(exportButton);
 
       // Select date range - this is tricky with AntD DatePicker
@@ -736,7 +741,7 @@ describe('AuditLogsPage', () => {
       });
 
       // Open export modal and trigger export (simulated)
-      const exportButton = screen.getByTestId('export-audit-logs-button');
+      const exportButton = screen.getByTestId(EXPORT_AUDIT_LOGS_BUTTON);
       fireEvent.click(exportButton);
 
       // The socket callback would be called when export completes
@@ -778,7 +783,7 @@ describe('AuditLogsPage', () => {
       expect(screen.getByTestId('loading')).toBeInTheDocument();
 
       await waitFor(() => {
-        expect(screen.getByTestId('logs-count')).toBeInTheDocument();
+        expect(screen.getByTestId(LOGS_COUNT)).toBeInTheDocument();
       });
     });
 
@@ -810,7 +815,7 @@ describe('AuditLogsPage', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('logs-count')).toBeInTheDocument();
+        expect(screen.getByTestId(LOGS_COUNT)).toBeInTheDocument();
       });
     });
 
@@ -831,17 +836,17 @@ describe('AuditLogsPage', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('logs-count')).toBeInTheDocument();
+        expect(screen.getByTestId(LOGS_COUNT)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('apply-filter'));
+      fireEvent.click(screen.getByTestId(APPLY_FILTER));
 
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toBeInTheDocument();
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('logs-count')).toBeInTheDocument();
+        expect(screen.getByTestId(LOGS_COUNT)).toBeInTheDocument();
       });
     });
   });
@@ -923,15 +928,15 @@ describe('AuditLogsPage', () => {
       );
 
       // Trigger a search to make the clear button appear
-      const searchInput = screen.getByTestId('audit-log-search');
+      const searchInput = screen.getByTestId(AUDIT_LOG_SEARCH);
       fireEvent.change(searchInput, { target: { value: 'test-search' } });
 
       await waitFor(() => {
-        expect(screen.getByTestId('clear-filters')).toBeVisible();
+        expect(screen.getByTestId(CLEAR_FILTERS)).toBeVisible();
       });
 
       // Click clear button
-      const clearButton = screen.getByTestId('clear-filters');
+      const clearButton = screen.getByTestId(CLEAR_FILTERS);
       fireEvent.click(clearButton);
 
       // Verify search input is cleared

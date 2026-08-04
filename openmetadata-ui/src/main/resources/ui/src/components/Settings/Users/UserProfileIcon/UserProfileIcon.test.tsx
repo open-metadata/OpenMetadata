@@ -18,6 +18,8 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { UserProfileIcon } from './UserProfileIcon.component';
 
+const LABEL_SWITCH_PERSONA = 'label.switch-persona';
+const PERSONA_LABEL = 'persona-label';
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(),
 }));
@@ -42,7 +44,7 @@ const germanTranslations: Record<string, string> = {
   'label.role-plural': 'Rollen',
   'label.team-plural': 'Teams',
   'label.logout': 'Abmelden',
-  'label.switch-persona': 'Persona wechseln',
+  [LABEL_SWITCH_PERSONA]: 'Persona wechseln',
   'label.inherited-role-plural': 'Geerbte Rollen',
   'label.default': 'Standard',
   'label.more': 'mehr',
@@ -183,10 +185,10 @@ describe('UserProfileIcon', () => {
     );
 
     openDropdown();
-    await screen.findByText('label.switch-persona');
+    await screen.findByText(LABEL_SWITCH_PERSONA);
 
     // Initially shows 2 personas (pagination)
-    let personaLabels = screen.getAllByTestId('persona-label');
+    let personaLabels = screen.getAllByTestId(PERSONA_LABEL);
 
     expect(personaLabels).toHaveLength(2);
 
@@ -196,7 +198,7 @@ describe('UserProfileIcon', () => {
 
     // Expand to show all personas
     expandPersonas();
-    personaLabels = screen.getAllByTestId('persona-label');
+    personaLabels = screen.getAllByTestId(PERSONA_LABEL);
 
     expect(personaLabels).toHaveLength(3);
     expect(screen.getAllByRole('radio')).toHaveLength(3);
@@ -215,11 +217,11 @@ describe('UserProfileIcon', () => {
     );
 
     openDropdown();
-    await screen.findByText('label.switch-persona');
+    await screen.findByText(LABEL_SWITCH_PERSONA);
     expandPersonas();
 
     const alphaPersonaLabel = screen
-      .getAllByTestId('persona-label')
+      .getAllByTestId(PERSONA_LABEL)
       .find((label) =>
         label.textContent?.includes('Alpha Persona')
       ) as HTMLElement;
@@ -261,7 +263,7 @@ describe('UserProfileIcon', () => {
     );
 
     openDropdown();
-    await screen.findByText('label.switch-persona');
+    await screen.findByText(LABEL_SWITCH_PERSONA);
 
     expect(screen.getByText('label.role-plural')).toBeInTheDocument();
     expect(screen.getByText('label.team-plural')).toBeInTheDocument();

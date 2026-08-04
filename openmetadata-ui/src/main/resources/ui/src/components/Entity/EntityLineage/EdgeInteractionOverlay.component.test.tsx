@@ -14,6 +14,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Edge } from 'reactflow';
 import { EdgeInteractionOverlay } from './EdgeInteractionOverlay.component';
 
+const DELETE_BUTTON = 'delete-button';
+
 const mockUseViewport = jest.fn().mockReturnValue({ x: 0, y: 0, zoom: 1 });
 const mockUseLineageStore = {
   isEditMode: false,
@@ -103,7 +105,7 @@ describe('EdgeInteractionOverlay', () => {
 
     render(<EdgeInteractionOverlay />);
 
-    const deleteButton = screen.getByTestId('delete-button');
+    const deleteButton = screen.getByTestId(DELETE_BUTTON);
 
     expect(deleteButton).toBeInTheDocument();
   });
@@ -115,7 +117,7 @@ describe('EdgeInteractionOverlay', () => {
 
     render(<EdgeInteractionOverlay />);
 
-    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DELETE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('calls onEdgeRemove when delete button is clicked', () => {
@@ -131,7 +133,7 @@ describe('EdgeInteractionOverlay', () => {
 
     render(<EdgeInteractionOverlay onEdgeRemove={onEdgeRemove} />);
 
-    const deleteButton = screen.getByTestId('delete-button');
+    const deleteButton = screen.getByTestId(DELETE_BUTTON);
     fireEvent.click(deleteButton);
 
     expect(onEdgeRemove).toHaveBeenCalled();

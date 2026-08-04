@@ -61,6 +61,8 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
 
+const LABEL_AUDIT_LOG_PLURAL = 'label.audit-log-plural';
+
 const INITIAL_PAGING: Paging = {
   total: 0,
 };
@@ -326,7 +328,7 @@ const AuditLogsPage = () => {
     <PageLayoutV1
       fullHeight
       mainContainerClassName="audit-logs-page-layout"
-      pageTitle={t('label.audit-log-plural')}>
+      pageTitle={t(LABEL_AUDIT_LOG_PLURAL)}>
       <div
         className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden"
         data-testid="audit-logs-page">
@@ -338,7 +340,7 @@ const AuditLogsPage = () => {
                 label: t('label.access-control'),
                 href: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
               },
-              { label: t('label.audit-log-plural') },
+              { label: t(LABEL_AUDIT_LOG_PLURAL) },
             ]}
             showHome={false}
           />
@@ -485,7 +487,7 @@ const AuditLogsPage = () => {
         okText={t('label.export')}
         open={isExportModalOpen}
         title={t('label.export-entity', {
-          entity: t('label.audit-log-plural'),
+          entity: t(LABEL_AUDIT_LOG_PLURAL),
         })}
         onCancel={handleExportModalClose}
         onOk={handleExport}>

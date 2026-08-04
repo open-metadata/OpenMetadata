@@ -78,6 +78,11 @@ import {
   TAG_FORM_DEFAULTS,
 } from './TagsPage.interface';
 
+const SERVER_ENTITY_ALREADY_EXIST = 'server.entity-already-exist';
+const LABEL_CLASSIFICATION = 'label.classification';
+const LABEL_TAG_LOWERCASE = 'label.tag-lowercase';
+const SERVER_ENTITY_UPDATING_ERROR = 'server.entity-updating-error';
+
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
@@ -227,8 +232,8 @@ const TagsPage = () => {
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
       ) {
         showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.classification'),
+          t(SERVER_ENTITY_ALREADY_EXIST, {
+            entity: t(LABEL_CLASSIFICATION),
             entityPlural: t('label.classification-lowercase-plural'),
             name: data.name,
           })
@@ -291,7 +296,7 @@ const TagsPage = () => {
       } else {
         showErrorToast(
           t('server.delete-entity-error', {
-            entity: t('label.tag-lowercase'),
+            entity: t(LABEL_TAG_LOWERCASE),
           })
         );
       }
@@ -299,7 +304,7 @@ const TagsPage = () => {
       showErrorToast(
         err as AxiosError,
         t('server.delete-entity-error', {
-          entity: t('label.tag-lowercase'),
+          entity: t(LABEL_TAG_LOWERCASE),
         })
       );
     } finally {
@@ -355,8 +360,8 @@ const TagsPage = () => {
             (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
           ) {
             showErrorToast(
-              t('server.entity-already-exist', {
-                entity: t('label.classification'),
+              t(SERVER_ENTITY_ALREADY_EXIST, {
+                entity: t(LABEL_CLASSIFICATION),
                 entityPlural: t('label.classification-lowercase-plural'),
                 name: updatedClassification.name,
               })
@@ -364,7 +369,7 @@ const TagsPage = () => {
           } else {
             showErrorToast(
               error as AxiosError,
-              t('server.entity-updating-error', {
+              t(SERVER_ENTITY_UPDATING_ERROR, {
                 entity: t('label.classification-lowercase'),
               })
             );
@@ -403,7 +408,7 @@ const TagsPage = () => {
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
       ) {
         showErrorToast(
-          t('server.entity-already-exist', {
+          t(SERVER_ENTITY_ALREADY_EXIST, {
             entity: t('label.tag'),
             entityPlural: t('label.tag-lowercase-plural'),
             name: data.name,
@@ -413,7 +418,7 @@ const TagsPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.create-entity-error', {
-            entity: t('label.tag-lowercase'),
+            entity: t(LABEL_TAG_LOWERCASE),
           })
         );
       }
@@ -431,7 +436,7 @@ const TagsPage = () => {
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
         ) {
           showErrorToast(
-            t('server.entity-already-exist', {
+            t(SERVER_ENTITY_ALREADY_EXIST, {
               entity: t('label.tag'),
               entityPlural: t('label.tag-lowercase-plural'),
               name: updatedData.name,
@@ -440,8 +445,8 @@ const TagsPage = () => {
         } else {
           showErrorToast(
             error as AxiosError,
-            t('server.entity-updating-error', {
-              entity: t('label.tag-lowercase'),
+            t(SERVER_ENTITY_UPDATING_ERROR, {
+              entity: t(LABEL_TAG_LOWERCASE),
             })
           );
         }
@@ -479,8 +484,8 @@ const TagsPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-lowercase'),
+        t(SERVER_ENTITY_UPDATING_ERROR, {
+          entity: t(LABEL_TAG_LOWERCASE),
         })
       );
     }
@@ -686,7 +691,7 @@ const TagsPage = () => {
                   }}>
                   <span className="tw:text-brand-600 tw:font-normal">
                     {t('label.add-entity', {
-                      entity: t('label.classification'),
+                      entity: t(LABEL_CLASSIFICATION),
                     })}
                   </span>
                 </Button>

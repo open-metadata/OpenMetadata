@@ -60,6 +60,9 @@ import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './roles-list.less';
 
+const LABEL_ROLE_PLURAL = 'label.role-plural';
+const LABEL_ROLE = 'label.role';
+
 const RolesListPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -104,7 +107,7 @@ const RolesListPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.ACCESS,
-        t('label.role-plural').toString()
+        t(LABEL_ROLE_PLURAL).toString()
       ),
     []
   );
@@ -200,7 +203,7 @@ const RolesListPage = () => {
               title={
                 deleteRolePermission
                   ? t('label.delete-entity', {
-                      entity: t('label.role-plural').toString(),
+                      entity: t(LABEL_ROLE_PLURAL).toString(),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
@@ -285,7 +288,7 @@ const RolesListPage = () => {
   }, [pageSize, pagingCursor]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>
+    <PageLayoutV1 pageTitle={t(LABEL_ROLE_PLURAL).toString()}>
       <Row
         className="roles-list-container"
         data-testid="roles-list-container"
@@ -301,7 +304,7 @@ const RolesListPage = () => {
                 subHeader: t(PAGE_HEADERS.ROLES.subHeader),
               }}
               learningPageId={LEARNING_PAGE_IDS.ROLES}
-              title={t('label.role')}
+              title={t(LABEL_ROLE)}
             />
 
             {addRolePermission && (
@@ -309,7 +312,7 @@ const RolesListPage = () => {
                 data-testid="add-role"
                 type="primary"
                 onClick={handleAddRole}>
-                {t('label.add-entity', { entity: t('label.role').toString() })}
+                {t('label.add-entity', { entity: t(LABEL_ROLE).toString() })}
               </Button>
             )}
           </Space>
@@ -334,10 +337,10 @@ const RolesListPage = () => {
               emptyText: (
                 <ErrorPlaceHolder
                   className="border-none"
-                  heading={t('label.role').toString()}
+                  heading={t(LABEL_ROLE).toString()}
                   permission={addRolePermission}
                   permissionValue={t('label.create-entity', {
-                    entity: t('label.role'),
+                    entity: t(LABEL_ROLE),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={handleAddRole}

@@ -36,6 +36,8 @@ import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.c
 import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
 
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural';
+
 export const DomainLabel = ({
   showDashPlaceholder,
   afterDomainUpdateAction,
@@ -57,7 +59,7 @@ export const DomainLabel = ({
   const defaultDomainText = useMemo(() => {
     return showDashPlaceholder
       ? NO_DATA_PLACEHOLDER
-      : t('label.no-entity', { entity: t('label.domain-plural') });
+      : t('label.no-entity', { entity: t(LABEL_DOMAIN_PLURAL) });
   }, [showDashPlaceholder]);
 
   const handleDomainSave = useCallback(
@@ -123,7 +125,7 @@ export const DomainLabel = ({
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain-plural'),
+              entity: t(LABEL_DOMAIN_PLURAL),
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
@@ -236,12 +238,12 @@ export const DomainLabel = ({
             data-testid="header-domain-container">
             {!headerLayout ? (
               <Typography.Text className="right-panel-label m-r-xss">
-                {t('label.domain-plural')}
+                {t(LABEL_DOMAIN_PLURAL)}
               </Typography.Text>
             ) : (
               <Typography.Text className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
-                  ? t('label.domain-plural')
+                  ? t(LABEL_DOMAIN_PLURAL)
                   : defaultDomainText}
               </Typography.Text>
             )}
@@ -262,7 +264,7 @@ export const DomainLabel = ({
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
             <Typography.Text className="domain-link right-panel-label m-r-xss">
-              {t('label.domain-plural')}
+              {t(LABEL_DOMAIN_PLURAL)}
             </Typography.Text>
             {selectableList}
           </div>

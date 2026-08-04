@@ -39,6 +39,8 @@ import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 
 import { FormActionButtons, MetadataFormSection } from './';
 
+const LABEL_FIELD_VALUE = 'label.field-value';
+
 interface SetActionFormProps {
   node: Node;
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
@@ -211,7 +213,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       return (
         <TagSuggestion
           key="tags"
-          label={t('label.field-value')}
+          label={t(LABEL_FIELD_VALUE)}
           tagType={TagSource.Classification}
           value={parseFieldValueToTags(formData.fieldValue)}
           onChange={handleTagsChange}
@@ -223,7 +225,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       return (
         <TagSuggestion
           key="glossaryTerms"
-          label={t('label.field-value')}
+          label={t(LABEL_FIELD_VALUE)}
           placeholder={t('label.select-field', {
             field: t('label.glossary-term-plural'),
           })}
@@ -239,7 +241,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
         <Select
           data-testid="field-value-select"
           isDisabled={isFormDisabled || isLoadingOptions}
-          label={t('label.field-value')}
+          label={t(LABEL_FIELD_VALUE)}
           value={formData.fieldValue}
           onChange={(e) => updateFormData('fieldValue', String(e ?? ''))}>
           {getSelectOptions(formData.fieldName).map((o) => (
@@ -253,7 +255,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       <Input
         data-testid="field-value-input"
         isDisabled={isFormDisabled}
-        label={t('label.field-value')}
+        label={t(LABEL_FIELD_VALUE)}
         placeholder={t('message.enter-field-value')}
         value={formData.fieldValue}
         onChange={(value) => updateFormData('fieldValue', value)}

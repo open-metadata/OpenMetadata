@@ -21,6 +21,8 @@ import { msalLoginRequest } from '../../../utils/AuthProvider.util';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import MsalAuthenticator from './MsalAuthenticator';
 
+const TEST_EXAMPLE_COM = 'test@example.com';
+const MOCK_ID_TOKEN = 'mock-id-token';
 // Mock MSAL hooks and utilities
 jest.mock('@azure/msal-react', () => ({
   useMsal: jest.fn(),
@@ -70,7 +72,7 @@ describe('MsalAuthenticator', () => {
     // Default mock implementation for useMsal
     (useMsal as jest.Mock).mockReturnValue({
       instance: mockInstance,
-      accounts: [{ username: 'test@example.com' }],
+      accounts: [{ username: TEST_EXAMPLE_COM }],
       inProgress: InteractionStatus.None,
     });
   });
@@ -87,7 +89,7 @@ describe('MsalAuthenticator', () => {
     });
 
     mockInstance.loginPopup.mockResolvedValueOnce({
-      account: { username: 'test@example.com' },
+      account: { username: TEST_EXAMPLE_COM },
     });
 
     render(
@@ -147,7 +149,7 @@ describe('MsalAuthenticator', () => {
 
   it('should handle renewIdToken successfully with forceRefresh', async () => {
     mockInstance.acquireTokenSilent.mockResolvedValueOnce({
-      account: { username: 'test@example.com' },
+      account: { username: TEST_EXAMPLE_COM },
       idToken: 'new-token',
     });
 
@@ -163,7 +165,7 @@ describe('MsalAuthenticator', () => {
     expect(mockInstance.acquireTokenSilent).toHaveBeenCalledWith(
       expect.objectContaining({ forceRefresh: true })
     );
-    expect(result).toBe('mock-id-token');
+    expect(result).toBe(MOCK_ID_TOKEN);
   });
 
   it('should fall back to acquireTokenPopup when renewIdToken encounters InteractionRequiredAuthError', async () => {
@@ -172,7 +174,7 @@ describe('MsalAuthenticator', () => {
     );
     mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
     mockInstance.acquireTokenPopup.mockResolvedValueOnce({
-      account: { username: 'test@example.com' },
+      account: { username: TEST_EXAMPLE_COM },
       idToken: 'popup-token',
     });
 
@@ -187,7 +189,7 @@ describe('MsalAuthenticator', () => {
 
     expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
     expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
-    expect(result).toBe('mock-id-token');
+    expect(result).toBe(MOCK_ID_TOKEN);
   });
 
   it('should throw when acquireTokenPopup also fails', async () => {
@@ -215,7 +217,7 @@ describe('MsalAuthenticator', () => {
   it('should show loader when interaction is in progress', () => {
     (useMsal as jest.Mock).mockReturnValue({
       instance: mockInstance,
-      accounts: [{ username: 'test@example.com' }],
+      accounts: [{ username: TEST_EXAMPLE_COM }],
       inProgress: InteractionStatus.Login,
     });
 

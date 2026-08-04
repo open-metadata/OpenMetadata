@@ -19,6 +19,11 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import OwnersSection from './OwnersSection';
 
+const TYPOGRAPHY_TEXT = 'typography-text';
+const EDIT_ICON = '.edit-icon';
+const OWNER_NAME = '.owner-name';
+const OWNER_SELECTOR_TRIGGER = 'owner-selector-trigger';
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -37,7 +42,7 @@ jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Typography: {
     Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
+      <span className={className} data-testid={TYPOGRAPHY_TEXT} {...props}>
         {children}
       </span>
     )),
@@ -93,7 +98,7 @@ const userTeamSelectableListMock = jest
       <div data-testid="user-selectable-list">
         {children}
         <button
-          data-testid="owner-selector-trigger"
+          data-testid={OWNER_SELECTOR_TRIGGER}
           onClick={() =>
             onUpdate?.([
               { id: '2', name: 'bob', displayName: 'Bob', type: 'user' },
@@ -117,6 +122,7 @@ jest.mock('../UserTeamSelectableList/UserTeamSelectableList.component', () => ({
 }));
 
 // Mock ToastUtils
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -176,7 +182,7 @@ describe('OwnersSection', () => {
     it('should render without crashing', () => {
       render(<OwnersSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(screen.getByTestId(TYPOGRAPHY_TEXT)).toBeInTheDocument();
       expect(screen.getByText('label.owner-plural')).toBeInTheDocument();
     });
 
@@ -206,7 +212,7 @@ describe('OwnersSection', () => {
       );
 
       // Check if edit icon exists
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
 
       expect(editIcon).toBeInTheDocument();
 
@@ -224,13 +230,13 @@ describe('OwnersSection', () => {
     it('should enter edit mode and show selected owners', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       expect(screen.getByTestId('user-selectable-list')).toBeInTheDocument();
       // Initial selected owners are shown in edit display (use selector to avoid duplicates)
       expect(
-        screen.getByText('Alice', { selector: '.owner-name' })
+        screen.getByText('Alice', { selector: OWNER_NAME })
       ).toBeInTheDocument();
     });
   });
@@ -247,11 +253,11 @@ describe('OwnersSection', () => {
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       // Trigger selection which immediately saves
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -270,11 +276,11 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       // Trigger selection which immediately saves
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -292,7 +298,7 @@ describe('OwnersSection', () => {
           <div data-testid="user-selectable-list">
             {children}
             <button
-              data-testid="owner-selector-trigger"
+              data-testid={OWNER_SELECTOR_TRIGGER}
               onClick={() => onUpdate?.(defaultOwners)}>
               Select Owners (No Change)
             </button>
@@ -304,10 +310,10 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -327,7 +333,7 @@ describe('OwnersSection', () => {
           <div data-testid="user-selectable-list">
             {children}
             <button
-              data-testid="owner-selector-trigger"
+              data-testid={OWNER_SELECTOR_TRIGGER}
               onClick={() =>
                 onUpdate?.([
                   {
@@ -348,10 +354,10 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(
@@ -371,9 +377,9 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -386,9 +392,9 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.DASHBOARD} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -409,9 +415,9 @@ describe('OwnersSection', () => {
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -441,7 +447,7 @@ describe('OwnersSection', () => {
           <div data-testid="user-selectable-list">
             {children}
             <button
-              data-testid="owner-selector-trigger"
+              data-testid={OWNER_SELECTOR_TRIGGER}
               onClick={() =>
                 onUpdate?.([
                   {
@@ -467,10 +473,10 @@ describe('OwnersSection', () => {
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -512,15 +518,15 @@ describe('OwnersSection', () => {
 
       expect(screen.getByTestId('owner-label')).toBeInTheDocument();
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       // Verify mixed owners display in edit mode
       expect(
-        screen.getByText('Alice', { selector: '.owner-name' })
+        screen.getByText('Alice', { selector: OWNER_NAME })
       ).toBeInTheDocument();
       expect(
-        screen.getByText('Engineering', { selector: '.owner-name' })
+        screen.getByText('Engineering', { selector: OWNER_NAME })
       ).toBeInTheDocument();
     });
 
@@ -539,14 +545,14 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} owners={teamOwners} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       expect(
-        screen.getByText('Engineering Team', { selector: '.owner-name' })
+        screen.getByText('Engineering Team', { selector: OWNER_NAME })
       ).toBeInTheDocument();
       expect(
-        screen.getByText('data-team', { selector: '.owner-name' })
+        screen.getByText('data-team', { selector: OWNER_NAME })
       ).toBeInTheDocument();
     });
 
@@ -555,7 +561,7 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} hasPermission />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       expect(userTeamSelectableListMock).toHaveBeenCalledWith(
@@ -577,7 +583,7 @@ describe('OwnersSection', () => {
           <div data-testid="user-selectable-list">
             {children}
             <button
-              data-testid="owner-selector-trigger"
+              data-testid={OWNER_SELECTOR_TRIGGER}
               onClick={() => onUpdate?.([])}>
               Clear Owners
             </button>
@@ -593,10 +599,10 @@ describe('OwnersSection', () => {
         />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -611,7 +617,7 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} hasPermission={false} />
       );
 
-      expect(container.querySelector('.edit-icon')).not.toBeInTheDocument();
+      expect(container.querySelector(EDIT_ICON)).not.toBeInTheDocument();
     });
 
     it('should not show edit button when showEditButton is false', () => {
@@ -619,7 +625,7 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} hasPermission showEditButton={false} />
       );
 
-      expect(container.querySelector('.edit-icon')).not.toBeInTheDocument();
+      expect(container.querySelector(EDIT_ICON)).not.toBeInTheDocument();
     });
 
     it('should show edit button only when both hasPermission and showEditButton are true', () => {
@@ -627,7 +633,7 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} hasPermission showEditButton />
       );
 
-      expect(container.querySelector('.edit-icon')).toBeInTheDocument();
+      expect(container.querySelector(EDIT_ICON)).toBeInTheDocument();
     });
   });
 
@@ -637,9 +643,9 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.MLMODEL} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -652,9 +658,9 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.DATA_PRODUCT} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -667,9 +673,9 @@ describe('OwnersSection', () => {
         <OwnersSection {...defaultProps} entityType={EntityType.CONTAINER} />
       );
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
-      const trigger = screen.getByTestId('owner-selector-trigger');
+      const trigger = screen.getByTestId(OWNER_SELECTOR_TRIGGER);
       fireEvent.click(trigger);
 
       await waitFor(() => {
@@ -709,7 +715,7 @@ describe('OwnersSection', () => {
 
       const { container } = render(<OwnersSection {...defaultProps} />);
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       expect(userTeamSelectableListMock).toHaveBeenCalledWith(
@@ -737,9 +743,9 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Verify component renders without errors
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(screen.getByTestId(TYPOGRAPHY_TEXT)).toBeInTheDocument();
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       // Verify UserTeamSelectableList is rendered with the rules
@@ -764,9 +770,9 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Verify component renders without errors
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(screen.getByTestId(TYPOGRAPHY_TEXT)).toBeInTheDocument();
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       // Verify UserTeamSelectableList is rendered
@@ -789,9 +795,9 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Verify component renders without errors
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(screen.getByTestId(TYPOGRAPHY_TEXT)).toBeInTheDocument();
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       // Verify UserTeamSelectableList is rendered
@@ -829,7 +835,7 @@ describe('OwnersSection', () => {
       const { container } = render(<OwnersSection {...defaultProps} />);
 
       // Component should still render even when rules are loading
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
+      expect(screen.getByTestId(TYPOGRAPHY_TEXT)).toBeInTheDocument();
       expect(container.querySelector('.owners-section')).toBeInTheDocument();
     });
 
@@ -842,7 +848,7 @@ describe('OwnersSection', () => {
 
       const { container } = render(<OwnersSection {...defaultProps} />);
 
-      const editIcon = container.querySelector('.edit-icon');
+      const editIcon = container.querySelector(EDIT_ICON);
       fireEvent.click(editIcon as HTMLElement);
 
       // Should use default rules (multiple users and teams allowed)

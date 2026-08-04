@@ -21,6 +21,8 @@ import { getDataInsightPathWithFqn } from '../../utils/DataInsightPureUtils';
 import i18n from '../../utils/i18next/LocalUtil';
 import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import KPIList from './KPIList';
+
+const SIDE_PANEL_ICONS = 'side-panel-icons';
 type LeftSideBarType = {
   key: DataInsightTabs;
   label: string;
@@ -40,7 +42,7 @@ class DataInsightClassBase {
         label: i18n.t('label.data-asset-plural'),
         icon: AppAnalyticsIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS,
         },
       },
       {
@@ -48,7 +50,7 @@ class DataInsightClassBase {
         label: i18n.t('label.app-analytic-plural'),
         icon: DataAssetsIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS,
         },
       },
       {
@@ -56,7 +58,7 @@ class DataInsightClassBase {
         label: i18n.t('label.kpi-uppercase-plural'),
         icon: KPIIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS,
         },
       },
     ];

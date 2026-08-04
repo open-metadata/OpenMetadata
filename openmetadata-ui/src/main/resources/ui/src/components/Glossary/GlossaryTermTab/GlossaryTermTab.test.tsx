@@ -28,6 +28,12 @@ import {
 import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from './GlossaryTermTab.interface';
+const GLOSSARY_TERMS_TABLE = 'glossary-terms-table';
+const EDIT_BUTTON = 'edit-button';
+const GLOSSARY_STATUS_DROPDOWN = 'glossary-status-dropdown';
+const EXPAND_COLLAPSE_ALL_BUTTON = 'expand-collapse-all-button';
+const EXPAND_ICON = 'expand-icon';
+
 const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
@@ -443,7 +449,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('glossary-terms-table')).toBeInTheDocument();
+        expect(screen.getByTestId(GLOSSARY_TERMS_TABLE)).toBeInTheDocument();
       });
     });
 
@@ -506,7 +512,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const editButtons = screen.getAllByTestId('edit-button');
+        const editButtons = screen.getAllByTestId(EDIT_BUTTON);
 
         expect(editButtons).toHaveLength(2);
       });
@@ -559,7 +565,7 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('glossary-status-dropdown')
+          screen.getByTestId(GLOSSARY_STATUS_DROPDOWN)
         ).toBeInTheDocument();
       });
     });
@@ -570,7 +576,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
+        const statusDropdown = screen.getByTestId(GLOSSARY_STATUS_DROPDOWN);
         fireEvent.click(statusDropdown);
 
         expect(statusDropdown).toBeInTheDocument();
@@ -597,7 +603,7 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('expand-collapse-all-button')
+          screen.getByTestId(EXPAND_COLLAPSE_ALL_BUTTON)
         ).toBeInTheDocument();
       });
     });
@@ -608,7 +614,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
+        expect(screen.getByTestId(EXPAND_ICON)).toBeInTheDocument();
       });
     });
 
@@ -618,7 +624,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const expandIcon = screen.getByTestId('expand-icon');
+        const expandIcon = screen.getByTestId(EXPAND_ICON);
         fireEvent.click(expandIcon);
       });
 
@@ -641,7 +647,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const editButtons = screen.getAllByTestId('edit-button');
+        const editButtons = screen.getAllByTestId(EDIT_BUTTON);
         fireEvent.click(editButtons[0]);
       });
 
@@ -695,7 +701,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(EDIT_BUTTON)).not.toBeInTheDocument();
         expect(
           screen.queryByTestId('add-classification')
         ).not.toBeInTheDocument();
@@ -836,7 +842,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const expandIcon = screen.getByTestId('expand-icon');
+        const expandIcon = screen.getByTestId(EXPAND_ICON);
         fireEvent.click(expandIcon);
       });
 
@@ -876,7 +882,7 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         // Status actions would be rendered based on permissions and status
-        const table = screen.getByTestId('glossary-terms-table');
+        const table = screen.getByTestId(GLOSSARY_TERMS_TABLE);
 
         expect(table).toBeInTheDocument();
       });
@@ -988,7 +994,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
+        const statusDropdown = screen.getByTestId(GLOSSARY_STATUS_DROPDOWN);
         fireEvent.click(statusDropdown);
 
         // The dropdown menu should be rendered but we can't easily test the save action
@@ -1003,7 +1009,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
+        const statusDropdown = screen.getByTestId(GLOSSARY_STATUS_DROPDOWN);
         fireEvent.click(statusDropdown);
 
         expect(statusDropdown).toBeInTheDocument();
@@ -1030,7 +1036,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const table = screen.getByTestId('glossary-terms-table');
+        const table = screen.getByTestId(GLOSSARY_TERMS_TABLE);
 
         expect(table).toBeInTheDocument();
       });
@@ -1073,7 +1079,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const table = screen.getByTestId('glossary-terms-table');
+        const table = screen.getByTestId(GLOSSARY_TERMS_TABLE);
 
         expect(table).toBeInTheDocument();
       });
@@ -1109,10 +1115,10 @@ describe('Test GlossaryTermTab component', () => {
 
       // Wait for initial render
       await waitFor(() => {
-        expect(screen.getByTestId('glossary-terms-table')).toBeInTheDocument();
+        expect(screen.getByTestId(GLOSSARY_TERMS_TABLE)).toBeInTheDocument();
       });
 
-      const expandAllButton = screen.getByTestId('expand-collapse-all-button');
+      const expandAllButton = screen.getByTestId(EXPAND_COLLAPSE_ALL_BUTTON);
 
       expect(expandAllButton).toBeInTheDocument();
 
@@ -1135,10 +1141,10 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('glossary-terms-table')).toBeInTheDocument();
+        expect(screen.getByTestId(GLOSSARY_TERMS_TABLE)).toBeInTheDocument();
       });
 
-      const expandAllButton = screen.getByTestId('expand-collapse-all-button');
+      const expandAllButton = screen.getByTestId(EXPAND_COLLAPSE_ALL_BUTTON);
 
       // Button should have either expand or collapse text
       expect(
@@ -1171,7 +1177,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const table = screen.getByTestId('glossary-terms-table');
+        const table = screen.getByTestId(GLOSSARY_TERMS_TABLE);
 
         expect(table).toBeInTheDocument();
       });
@@ -1197,7 +1203,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const table = screen.getByTestId('glossary-terms-table');
+        const table = screen.getByTestId(GLOSSARY_TERMS_TABLE);
 
         expect(table).toBeInTheDocument();
       });
@@ -1217,7 +1223,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const table = screen.getByTestId('glossary-terms-table');
+        const table = screen.getByTestId(GLOSSARY_TERMS_TABLE);
 
         expect(table).toBeInTheDocument();
       });
@@ -1240,7 +1246,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const table = screen.getByTestId('glossary-terms-table');
+        const table = screen.getByTestId(GLOSSARY_TERMS_TABLE);
 
         expect(table).toBeInTheDocument();
       });
@@ -1260,7 +1266,7 @@ describe('Test GlossaryTermTab component', () => {
       // Should show the table even when glossaryChildTerms is not an array
       // The component handles this by returning an empty array for glossaryTerms
       await waitFor(() => {
-        expect(screen.getByTestId('glossary-terms-table')).toBeInTheDocument();
+        expect(screen.getByTestId(GLOSSARY_TERMS_TABLE)).toBeInTheDocument();
       });
     });
   });

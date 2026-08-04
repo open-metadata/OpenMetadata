@@ -19,6 +19,7 @@ import {
 import { render, screen } from '@testing-library/react';
 import ManifestJsonWidget, { validateManifestJson } from './ManifestJsonWidget';
 
+const SCHEMA_EDITOR = 'schema-editor';
 // Mock the SchemaEditor so the widget can be rendered without the
 // heavy CodeMirror dependency. We surface the props we care about as
 // data-* attributes so tests can assert the editor is wired up with
@@ -45,7 +46,7 @@ const mockSchemaEditor = jest
         data-mode-name={mode?.name}
         data-placeholder={options?.placeholder ?? ''}
         data-readonly={String(Boolean(readOnly))}
-        data-testid="schema-editor">
+        data-testid={SCHEMA_EDITOR}>
         {value || '<empty>'}
       </div>
     )
@@ -370,7 +371,7 @@ describe('ManifestJsonWidget', () => {
     const onChange = jest.fn();
     render(<ManifestJsonWidget {...makeProps({ value: '', onChange })} />);
 
-    const editor = await screen.findByTestId('schema-editor');
+    const editor = await screen.findByTestId(SCHEMA_EDITOR);
 
     // The editor value stays empty — the sample must not leak into form state...
     expect(editor).toHaveTextContent('<empty>');
@@ -391,7 +392,7 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    const editor = screen.getByTestId('schema-editor');
+    const editor = screen.getByTestId(SCHEMA_EDITOR);
 
     expect(editor).toHaveTextContent('<empty>');
     expect(editor).toHaveAttribute(
@@ -488,7 +489,7 @@ describe('ManifestJsonWidget', () => {
         })}
       />
     );
-    const editor = screen.getByTestId('schema-editor');
+    const editor = screen.getByTestId(SCHEMA_EDITOR);
 
     expect(editor).toHaveAttribute('data-mode-name', 'javascript');
     expect(editor).toHaveAttribute('data-mode-json', 'true');
@@ -506,7 +507,7 @@ describe('ManifestJsonWidget', () => {
       />
     );
 
-    expect(screen.getByTestId('schema-editor')).toHaveAttribute(
+    expect(screen.getByTestId(SCHEMA_EDITOR)).toHaveAttribute(
       'data-readonly',
       'true'
     );

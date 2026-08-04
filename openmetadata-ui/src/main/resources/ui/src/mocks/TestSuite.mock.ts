@@ -14,6 +14,19 @@
 import { Table } from '../generated/entity/data/table';
 import { TestCase } from '../generated/tests/testCase';
 
+const _9842A678_5D48_4942_B25A_C07511FCEDBB =
+  '9842a678-5d48-4942-b25a-c07511fcedbb';
+const THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST =
+  'This is a critical test suite running tests important for the business';
+const HTTP_LOCALHOST_8585_API_V1_DATAQUALITY_TES =
+  'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb';
+const E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D =
+  '<#E::table::sample_data.ecommerce_db.shopify.dim_address>';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE =
+  'sample_data.ecommerce_db.shopify.dim_address';
+const _21_FEB_11_42 = '21/Feb 11:42';
+const COLUMN_NAME = 'Column Name';
+
 const OWNERS = [
   {
     id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
@@ -48,14 +61,13 @@ export const MOCK_TEST_CASE = [
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.last_name',
     testSuite: {
-      id: '9842a678-5d48-4942-b25a-c07511fcedbb',
+      id: _9842A678_5D48_4942_B25A_C07511FCEDBB,
       type: 'testSuite',
       name: 'critical_metrics_suite',
       fullyQualifiedName: 'critical_metrics_suite',
-      description:
-        'This is a critical test suite running tests important for the business',
+      description: THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: HTTP_LOCALHOST_8585_API_V1_DATAQUALITY_TES,
     },
     parameterValues: [
       {
@@ -102,14 +114,13 @@ export const MOCK_TEST_CASE = [
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.shop_id',
     testSuite: {
-      id: '9842a678-5d48-4942-b25a-c07511fcedbb',
+      id: _9842A678_5D48_4942_B25A_C07511FCEDBB,
       type: 'testSuite',
       name: 'critical_metrics_suite',
       fullyQualifiedName: 'critical_metrics_suite',
-      description:
-        'This is a critical test suite running tests important for the business',
+      description: THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: HTTP_LOCALHOST_8585_API_V1_DATAQUALITY_TES,
     },
     parameterValues: [
       {
@@ -155,17 +166,16 @@ export const MOCK_TEST_CASE = [
       deleted: false,
       href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/95c5d470-2f5f-4c6b-89cb-4f52a77be26e',
     },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-    entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+    entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
+    entityFQN: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE,
     testSuite: {
-      id: '9842a678-5d48-4942-b25a-c07511fcedbb',
+      id: _9842A678_5D48_4942_B25A_C07511FCEDBB,
       type: 'testSuite',
       name: 'critical_metrics_suite',
       fullyQualifiedName: 'critical_metrics_suite',
-      description:
-        'This is a critical test suite running tests important for the business',
+      description: THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: HTTP_LOCALHOST_8585_API_V1_DATAQUALITY_TES,
     },
     parameterValues: [
       {
@@ -211,17 +221,16 @@ export const MOCK_TEST_CASE = [
       deleted: false,
       href: 'http://localhost:8585/api/v1/dataQuality/testDefinitions/6d96ba53-e630-4cde-85e7-effca05d859e',
     },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-    entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+    entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
+    entityFQN: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE,
     testSuite: {
-      id: '9842a678-5d48-4942-b25a-c07511fcedbb',
+      id: _9842A678_5D48_4942_B25A_C07511FCEDBB,
       type: 'testSuite',
       name: 'critical_metrics_suite',
       fullyQualifiedName: 'critical_metrics_suite',
-      description:
-        'This is a critical test suite running tests important for the business',
+      description: THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: HTTP_LOCALHOST_8585_API_V1_DATAQUALITY_TES,
     },
     parameterValues: [
       {
@@ -267,14 +276,13 @@ export const MOCK_TEST_CASE = [
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.zip',
     testSuite: {
-      id: '9842a678-5d48-4942-b25a-c07511fcedbb',
+      id: _9842A678_5D48_4942_B25A_C07511FCEDBB,
       type: 'testSuite',
       name: 'critical_metrics_suite',
       fullyQualifiedName: 'critical_metrics_suite',
-      description:
-        'This is a critical test suite running tests important for the business',
+      description: THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST,
       deleted: false,
-      href: 'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: HTTP_LOCALHOST_8585_API_V1_DATAQUALITY_TES,
     },
     parameterValues: [
       {
@@ -326,15 +334,14 @@ export const MOCK_SQL_TEST_CASE = {
     deleted: false,
     href: '',
   },
-  entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-  entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+  entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
+  entityFQN: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE,
   testSuite: {
     id: 'e858fe50-364b-46ea-bc26-86852c30ce10',
     type: 'testSuite',
     name: 'critical_metrics_suite',
     fullyQualifiedName: 'critical_metrics_suite',
-    description:
-      'This is a critical test suite running tests important for the business',
+    description: THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST,
     deleted: false,
     href: '',
   },
@@ -390,17 +397,17 @@ export const MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX = {
 export const MOCK_CHART_COLLECTION_DATA = {
   data: [
     {
-      name: '21/Feb 11:42',
+      name: _21_FEB_11_42,
       timestamp: 1676959933,
       rowCount: 10256,
     },
     {
-      name: '21/Feb 11:42',
+      name: _21_FEB_11_42,
       timestamp: 1676959935,
       rowCount: 13256,
     },
     {
-      name: '21/Feb 11:42',
+      name: _21_FEB_11_42,
       timestamp: 1676959944,
       rowCount: 14567,
     },
@@ -481,7 +488,7 @@ export const MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN = {
   parameterDefinition: [
     {
       name: 'columnName',
-      displayName: 'Column Name',
+      displayName: COLUMN_NAME,
       dataType: 'STRING',
       description:
         'Name of the Column. It should be a timestamp, date or datetime field.',
@@ -555,7 +562,7 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   parameterDefinition: [
     {
       name: 'columnName',
-      displayName: 'Column Name',
+      displayName: COLUMN_NAME,
       dataType: 'STRING',
       description: 'Expected column of the table to exist',
       required: true,
@@ -628,7 +635,7 @@ export const MOCK_TABLE_TEST_WITH_COLUMN = {
   parameterDefinition: [
     {
       name: 'column',
-      displayName: 'Column Name',
+      displayName: COLUMN_NAME,
       dataType: 'STRING',
       description: 'Expected column of the table to exist',
       required: true,
@@ -697,14 +704,13 @@ export const MOCK_TEST_CASE_WITH_BOOLEAN_PARAM = {
     '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::status>',
   entityFQN: 'sample_data.ecommerce_db.shopify.dim_address.status',
   testSuite: {
-    id: '9842a678-5d48-4942-b25a-c07511fcedbb',
+    id: _9842A678_5D48_4942_B25A_C07511FCEDBB,
     type: 'testSuite',
     name: 'critical_metrics_suite',
     fullyQualifiedName: 'critical_metrics_suite',
-    description:
-      'This is a critical test suite running tests important for the business',
+    description: THIS_IS_A_CRITICAL_TEST_SUITE_RUNNING_TEST,
     deleted: false,
-    href: 'http://localhost:8585/api/v1/dataQuality/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
+    href: HTTP_LOCALHOST_8585_API_V1_DATAQUALITY_TES,
   },
   parameterValues: [
     {

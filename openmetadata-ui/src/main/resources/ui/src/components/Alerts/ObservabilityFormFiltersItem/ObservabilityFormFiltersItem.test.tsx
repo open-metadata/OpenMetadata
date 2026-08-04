@@ -16,6 +16,8 @@ import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem';
 
+const ADD_FILTERS = 'add-filters' as const;
+
 jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getConditionalField: jest
     .fn()
@@ -57,7 +59,7 @@ describe('ObservabilityFormFiltersItem', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('filters-list')).toBeInTheDocument();
-    expect(screen.getByTestId('add-filters')).toBeInTheDocument();
+    expect(screen.getByTestId(ADD_FILTERS)).toBeInTheDocument();
   });
 
   it('add filter button should be disabled if there is no selected trigger', () => {
@@ -78,7 +80,7 @@ describe('ObservabilityFormFiltersItem', () => {
       <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
     );
 
-    const addButton = screen.getByTestId('add-filters');
+    const addButton = screen.getByTestId(ADD_FILTERS);
 
     expect(addButton).toBeDisabled();
   });
@@ -101,7 +103,7 @@ describe('ObservabilityFormFiltersItem', () => {
       <ObservabilityFormFiltersItem supportedFilters={mockSupportedFilters} />
     );
 
-    const addButton = screen.getByTestId('add-filters');
+    const addButton = screen.getByTestId(ADD_FILTERS);
 
     expect(addButton).not.toBeDisabled();
   });

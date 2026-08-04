@@ -32,6 +32,8 @@ import {
   toUiAgentStatus,
 } from './agentsDataMapper';
 
+const METADATA_LOGS = 'metadata logs' as const;
+
 describe('agentsDataMapper', () => {
   describe('getAgentTypeFromPipelineType', () => {
     it('should map Metadata pipeline type to Metadata agent type', () => {
@@ -603,12 +605,12 @@ describe('agentsDataMapper', () => {
   describe('getLogTaskFieldForType', () => {
     it('should pick the ingestion_task field for Metadata', () => {
       const log: IngestionPipelineLogByIdInterface = {
-        ingestion_task: 'metadata logs',
+        ingestion_task: METADATA_LOGS,
         profiler_task: 'profiler logs',
       };
 
       expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(
-        'metadata logs'
+        METADATA_LOGS
       );
     });
 
@@ -648,7 +650,7 @@ describe('agentsDataMapper', () => {
     it('should prefer the generic logs key over the type-specific field', () => {
       const log: IngestionPipelineLogByIdInterface = {
         logs: 'fqn logs',
-        ingestion_task: 'metadata logs',
+        ingestion_task: METADATA_LOGS,
       };
 
       expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(

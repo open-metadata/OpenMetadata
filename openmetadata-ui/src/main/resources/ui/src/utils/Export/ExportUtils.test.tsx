@@ -20,6 +20,11 @@ import {
   exportPNGImageFromElement,
 } from './ExportUtils';
 
+const BLOB_MOCK_PNG_URL = 'blob:mock-png-url';
+const TEST_IMAGE = 'test-image';
+const MESSAGE_ERROR_GENERATING_EXPORT_TYPE =
+  'message.error-generating-export-type';
+
 jest.mock('html-to-image', () => ({
   toCanvas: jest.fn(),
 }));
@@ -142,7 +147,7 @@ describe('ExportUtils', () => {
     it('creates an anchor element and triggers a click', () => {
       const blob = new Blob(['png-bytes'], { type: 'image/png' });
 
-      downloadBlob(blob, 'test-image', ExportTypes.PNG);
+      downloadBlob(blob, TEST_IMAGE, ExportTypes.PNG);
 
       expect(document.createElement).toHaveBeenCalledWith('a');
       expect(mockLink.click).toHaveBeenCalledTimes(1);
@@ -159,7 +164,7 @@ describe('ExportUtils', () => {
     it('hides the link element', () => {
       const blob = new Blob(['png-bytes'], { type: 'image/png' });
 
-      downloadBlob(blob, 'test-image', ExportTypes.PNG);
+      downloadBlob(blob, TEST_IMAGE, ExportTypes.PNG);
 
       expect(mockLink.style.visibility).toBe('hidden');
     });
@@ -167,7 +172,7 @@ describe('ExportUtils', () => {
     it('appends and removes the link from the DOM', () => {
       const blob = new Blob(['png-bytes'], { type: 'image/png' });
 
-      downloadBlob(blob, 'test-image', ExportTypes.PNG);
+      downloadBlob(blob, TEST_IMAGE, ExportTypes.PNG);
 
       expect(document.body.appendChild).toHaveBeenCalledWith(mockLink);
       expect(document.body.removeChild).toHaveBeenCalledWith(mockLink);
@@ -176,18 +181,18 @@ describe('ExportUtils', () => {
     it('creates a blob URL from the provided Blob', () => {
       const blob = new Blob(['png-bytes'], { type: 'image/png' });
 
-      downloadBlob(blob, 'test-image', ExportTypes.PNG);
+      downloadBlob(blob, TEST_IMAGE, ExportTypes.PNG);
 
       expect(mockCreateObjectURL).toHaveBeenCalledWith(blob);
-      expect(mockLink.href).toBe('blob:mock-png-url');
+      expect(mockLink.href).toBe(BLOB_MOCK_PNG_URL);
     });
 
     it('revokes the object URL after download', () => {
       const blob = new Blob(['png-bytes'], { type: 'image/png' });
 
-      downloadBlob(blob, 'test-image', ExportTypes.PNG);
+      downloadBlob(blob, TEST_IMAGE, ExportTypes.PNG);
 
-      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:mock-png-url');
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith(BLOB_MOCK_PNG_URL);
     });
   });
 
@@ -362,7 +367,7 @@ describe('ExportUtils', () => {
       document.querySelector = jest.fn().mockReturnValue(null);
 
       await expect(exportPNGImageFromElement(mockExportData)).rejects.toThrow(
-        'message.error-generating-export-type'
+        MESSAGE_ERROR_GENERATING_EXPORT_TYPE
       );
     });
 
@@ -408,7 +413,7 @@ describe('ExportUtils', () => {
 
       expect(showErrorToast).toHaveBeenCalledWith(
         error,
-        'message.error-generating-export-type'
+        MESSAGE_ERROR_GENERATING_EXPORT_TYPE
       );
     });
 
@@ -508,7 +513,7 @@ describe('ExportUtils', () => {
 
         expect(showErrorToast).toHaveBeenCalledWith(
           expect.any(Error),
-          'message.error-generating-export-type'
+          MESSAGE_ERROR_GENERATING_EXPORT_TYPE
         );
       });
     });

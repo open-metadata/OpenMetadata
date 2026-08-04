@@ -26,6 +26,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractQualityCard from './ContractQualityCard.component';
 
+const TEST_CASE_1 = 'Test Case 1' as const;
+
 jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
   getListTestCaseBySearch: jest.fn(),
@@ -101,7 +103,7 @@ const commonCaseMock = {
 const mockTestCases: TestCase[] = [
   {
     id: 'test-case-1',
-    name: 'Test Case 1',
+    name: TEST_CASE_1,
     fullyQualifiedName: 'table.test_case_1',
     testCaseResult: {
       testCaseStatus: TestCaseStatus.Success,
@@ -175,7 +177,7 @@ describe('ContractQualityCard', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Test Case 1')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_1)).toBeInTheDocument();
       expect(screen.getByText('Test Case 2')).toBeInTheDocument();
       expect(screen.getByText('Test Case 3')).toBeInTheDocument();
     });
@@ -254,7 +256,7 @@ describe('ContractQualityCard', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Test Case 1')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_1)).toBeInTheDocument();
     });
 
     expect(showErrorToast).not.toHaveBeenCalled();

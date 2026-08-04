@@ -17,6 +17,8 @@ import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ProfileEditModal } from './ProfileEditModal';
 
+const DISPLAYNAME_INPUT = 'displayName-input';
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -43,7 +45,7 @@ describe('ProfileEditModal', () => {
 
     expect(screen.getByTestId('profile-edit-modal')).toBeInTheDocument();
     expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
-    expect(screen.getByTestId('displayName-input')).toBeInTheDocument();
+    expect(screen.getByTestId(DISPLAYNAME_INPUT)).toBeInTheDocument();
   });
 
   it('should initialize form with user display name', async () => {
@@ -55,7 +57,7 @@ describe('ProfileEditModal', () => {
       />
     );
 
-    const displayNameInput = screen.getByTestId('displayName-input');
+    const displayNameInput = screen.getByTestId(DISPLAYNAME_INPUT);
 
     expect(displayNameInput).toHaveValue(mockUserData.displayName);
   });
@@ -85,7 +87,7 @@ describe('ProfileEditModal', () => {
     );
 
     const saveButton = screen.getByText('label.save');
-    const displayNameInput = screen.getByTestId('displayName-input');
+    const displayNameInput = screen.getByTestId(DISPLAYNAME_INPUT);
 
     await act(async () => {
       fireEvent.change(displayNameInput, { target: { value: 'New Name' } });
@@ -112,7 +114,7 @@ describe('ProfileEditModal', () => {
     );
 
     const saveButton = screen.getByText('label.save');
-    const displayNameInput = screen.getByTestId('displayName-input');
+    const displayNameInput = screen.getByTestId(DISPLAYNAME_INPUT);
 
     await act(async () => {
       fireEvent.change(displayNameInput, { target: { value: 'New Name' } });

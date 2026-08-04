@@ -30,6 +30,8 @@ import AddDomainForm, {
 import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../../Domain/DomainPage.interface';
 
+const LABEL_DOMAIN = 'label.domain';
+
 /**
  * Encapsulates the "create domain" drawer — form, submit (with cover-image
  * upload), and the drawer chrome — so any surface (the domains list page, the
@@ -54,7 +56,7 @@ export const useDomainCreateDrawer = (onCreated?: () => void) => {
         await createEntityWithCoverImage({
           formData,
           entityType: EntityType.DOMAIN,
-          entityLabel: t('label.domain'),
+          entityLabel: t(LABEL_DOMAIN),
           entityPluralLabel: 'domains',
           createEntity: addDomains,
           patchEntity: patchDomains,
@@ -70,10 +72,10 @@ export const useDomainCreateDrawer = (onCreated?: () => void) => {
           form,
           'name',
           t('message.entity-with-name-already-exists', {
-            entity: t('label.domain'),
+            entity: t(LABEL_DOMAIN),
           }),
           t('server.add-entity-error', {
-            entity: t('label.domain').toLowerCase(),
+            entity: t(LABEL_DOMAIN).toLowerCase(),
           })
         );
 
@@ -87,7 +89,7 @@ export const useDomainCreateDrawer = (onCreated?: () => void) => {
 
   const { formDrawer, openDrawer, closeDrawer } =
     useFormDrawerWithHook<DomainFormValues>({
-      title: t('label.add-entity', { entity: t('label.domain') }),
+      title: t('label.add-entity', { entity: t(LABEL_DOMAIN) }),
       width: 670,
       closeOnEscape: false,
       className: 'tw:z-[20]',

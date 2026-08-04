@@ -23,6 +23,10 @@ import { EntityReference } from '../../../generated/entity/type';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import DataProductsSection from './DataProductsSection';
 
+const DPS_SUBMIT = 'dps-submit' as const;
+const DOMAIN_DP1 = 'domain.dp1' as const;
+const EDIT_DATA_PRODUCTS = 'edit-data-products' as const;
+
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -158,6 +162,7 @@ jest.mock(
 );
 
 // Mock ToastUtils
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -191,6 +196,7 @@ jest.mock('../../../rest/dataProductAPI', () => ({
   fetchDataProductsElasticSearch: jest.fn().mockResolvedValue({ hits: [] }),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../rest/tableAPI', () => ({ patchTableDetails: jest.fn() }));
 jest.mock('../../../rest/dashboardAPI', () => ({
   patchDashboardDetails: jest.fn(),
@@ -214,7 +220,7 @@ const validUUID = '123e4567-e89b-12d3-a456-426614174000';
 const defaultDataProducts: EntityReference[] = [
   {
     id: 'dp-1',
-    fullyQualifiedName: 'domain.dp1',
+    fullyQualifiedName: DOMAIN_DP1,
     name: 'dp1',
     displayName: 'DP 1',
     type: 'dataProduct',
@@ -280,7 +286,7 @@ describe('DataProductsSection', () => {
     it('enters edit mode and shows select list', () => {
       render(<DataProductsSection {...defaultProps} />);
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -290,14 +296,14 @@ describe('DataProductsSection', () => {
       ).toBeInTheDocument();
       // defaultValue from current data products is passed
       expect(screen.getByTestId('dps-default-values')).toHaveTextContent(
-        'domain.dp1'
+        DOMAIN_DP1
       );
     });
 
     it('exits edit mode on cancel', () => {
       render(<DataProductsSection {...defaultProps} />);
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
@@ -328,11 +334,11 @@ describe('DataProductsSection', () => {
         />
       );
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
-      fireEvent.click(screen.getByTestId('dps-submit'));
+      fireEvent.click(screen.getByTestId(DPS_SUBMIT));
 
       await waitFor(() => {
         expect(patchTableDetails).toHaveBeenCalledWith(
@@ -355,11 +361,11 @@ describe('DataProductsSection', () => {
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
-      fireEvent.click(screen.getByTestId('dps-submit'));
+      fireEvent.click(screen.getByTestId(DPS_SUBMIT));
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(
@@ -385,12 +391,12 @@ describe('DataProductsSection', () => {
         }) => (
           <div data-testid="data-products-select-list" {...props}>
             <button
-              data-testid="dps-submit"
+              data-testid={DPS_SUBMIT}
               onClick={() =>
                 onUpdate?.([
                   {
                     id: 'dp-1',
-                    fullyQualifiedName: 'domain.dp1',
+                    fullyQualifiedName: DOMAIN_DP1,
                     name: 'dp1',
                     displayName: 'DP 1',
                     type: 'dataProduct',
@@ -407,11 +413,11 @@ describe('DataProductsSection', () => {
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
-      fireEvent.click(screen.getByTestId('dps-submit'));
+      fireEvent.click(screen.getByTestId(DPS_SUBMIT));
 
       await waitFor(() => {
         expect(patchTableDetails).not.toHaveBeenCalled();
@@ -431,17 +437,17 @@ describe('DataProductsSection', () => {
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
 
       // Wait for edit mode to be active
       await waitFor(() => {
-        expect(screen.getByTestId('dps-submit')).toBeInTheDocument();
+        expect(screen.getByTestId(DPS_SUBMIT)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTestId('dps-submit'));
+      fireEvent.click(screen.getByTestId(DPS_SUBMIT));
 
       // Wait for loading state to appear
       await waitFor(
@@ -469,11 +475,11 @@ describe('DataProductsSection', () => {
         <DataProductsSection {...defaultProps} entityType={EntityType.TABLE} />
       );
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
-      fireEvent.click(screen.getByTestId('dps-submit'));
+      fireEvent.click(screen.getByTestId(DPS_SUBMIT));
 
       await waitFor(() => {
         expect(patchTableDetails).toHaveBeenCalledWith(
@@ -496,11 +502,11 @@ describe('DataProductsSection', () => {
         />
       );
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
-      fireEvent.click(screen.getByTestId('dps-submit'));
+      fireEvent.click(screen.getByTestId(DPS_SUBMIT));
 
       await waitFor(() => {
         expect(patchDashboardDetails).toHaveBeenCalledWith(
@@ -517,11 +523,11 @@ describe('DataProductsSection', () => {
 
       render(<DataProductsSection {...defaultProps} entityId={undefined} />);
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }
-      fireEvent.click(screen.getByTestId('dps-submit'));
+      fireEvent.click(screen.getByTestId(DPS_SUBMIT));
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(
@@ -539,7 +545,7 @@ describe('DataProductsSection', () => {
 
       render(<DataProductsSection {...defaultProps} />);
 
-      const editIcon = screen.getByTestId('edit-data-products');
+      const editIcon = screen.getByTestId(EDIT_DATA_PRODUCTS);
       if (editIcon) {
         fireEvent.click(editIcon);
       }

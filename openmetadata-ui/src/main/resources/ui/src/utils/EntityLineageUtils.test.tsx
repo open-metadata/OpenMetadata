@@ -59,6 +59,16 @@ import {
   ZOOM_TRANSITION_DURATION,
 } from '../constants/Lineage.constants';
 
+const LABEL_COLUMN_PLURAL = 'label.column-plural' as const;
+const LABEL_FIELD_PLURAL = 'label.field-plural' as const;
+const TEST_DATABASE_TABLE1 = 'test.database.table1' as const;
+const TEST_PIPELINE = 'Test Pipeline' as const;
+const TEST_PIPELINE_1 = 'test.pipeline' as const;
+const TEST_FQN_1 = 'test.fqn.1' as const;
+const TEST_FQN_2 = 'test.fqn.2' as const;
+const TEST_FQN_3 = 'test.fqn.3' as const;
+const TEST_FQN_4 = 'test.fqn.4' as const;
+
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
   uniqWith: jest.fn(),
@@ -693,7 +703,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
-        childrenHeading: 'label.column-plural',
+        childrenHeading: LABEL_COLUMN_PLURAL,
         childrenCount: 2,
       });
     });
@@ -709,7 +719,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
-        childrenHeading: 'label.column-plural',
+        childrenHeading: LABEL_COLUMN_PLURAL,
         childrenCount: 0,
       });
     });
@@ -728,7 +738,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: flattenChildren,
-        childrenHeading: 'label.column-plural',
+        childrenHeading: LABEL_COLUMN_PLURAL,
         childrenCount: 1,
       });
     });
@@ -821,7 +831,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
-        childrenHeading: 'label.column-plural',
+        childrenHeading: LABEL_COLUMN_PLURAL,
         childrenCount: 2,
       });
     });
@@ -843,7 +853,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: columns,
-        childrenHeading: 'label.column-plural',
+        childrenHeading: LABEL_COLUMN_PLURAL,
         childrenCount: 2,
       });
     });
@@ -858,7 +868,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
-        childrenHeading: 'label.column-plural',
+        childrenHeading: LABEL_COLUMN_PLURAL,
         childrenCount: 0,
       });
     });
@@ -880,7 +890,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 2,
       });
     });
@@ -895,7 +905,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 0,
       });
     });
@@ -917,7 +927,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 2,
       });
     });
@@ -939,7 +949,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: schemaFields,
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 2,
       });
     });
@@ -962,7 +972,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: responseFields,
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 1,
       });
     });
@@ -977,7 +987,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 0,
       });
     });
@@ -997,7 +1007,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: fields,
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 2,
       });
     });
@@ -1013,7 +1023,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result).toEqual({
         children: [],
-        childrenHeading: 'label.field-plural',
+        childrenHeading: LABEL_FIELD_PLURAL,
         childrenCount: 0,
       });
     });
@@ -1359,15 +1369,15 @@ describe('Test EntityLineageUtils utility', () => {
 
 describe('parseLineageData', () => {
   // Mock data setup
-  const mockEntityFqn = 'test.database.table1';
-  const mockRootFqn = 'test.database.table1';
+  const mockEntityFqn = TEST_DATABASE_TABLE1;
+  const mockRootFqn = TEST_DATABASE_TABLE1;
 
   const mockNodeData = {
     node1: {
       entity: {
         id: 'node1',
         name: 'Table1',
-        fullyQualifiedName: 'test.database.table1',
+        fullyQualifiedName: TEST_DATABASE_TABLE1,
         entityType: EntityType.TABLE,
         type: EntityType.TABLE,
         columns: [
@@ -1406,7 +1416,7 @@ describe('parseLineageData', () => {
       fromEntity: {
         id: 'node1',
         type: EntityType.TABLE,
-        fullyQualifiedName: 'test.database.table1',
+        fullyQualifiedName: TEST_DATABASE_TABLE1,
       },
       toEntity: {
         id: 'node2',
@@ -1426,7 +1436,7 @@ describe('parseLineageData', () => {
       toEntity: {
         id: 'node1',
         type: EntityType.TABLE,
-        fullyQualifiedName: 'test.database.table1',
+        fullyQualifiedName: TEST_DATABASE_TABLE1,
       },
     },
   };
@@ -1604,8 +1614,8 @@ describe('parseLineageData', () => {
         },
         pipeline: {
           id: 'pipeline1',
-          name: 'Test Pipeline',
-          fullyQualifiedName: 'test.pipeline',
+          name: TEST_PIPELINE,
+          fullyQualifiedName: TEST_PIPELINE_1,
           type: EntityType.PIPELINE,
         },
       };
@@ -1641,8 +1651,8 @@ describe('parseLineageData', () => {
           pipeline1: {
             entity: {
               id: 'pipeline1',
-              name: 'Test Pipeline',
-              fullyQualifiedName: 'test.pipeline',
+              name: TEST_PIPELINE,
+              fullyQualifiedName: TEST_PIPELINE_1,
               entityType: EntityType.PIPELINE,
               type: EntityType.PIPELINE,
             },
@@ -1702,7 +1712,7 @@ describe('parseLineageData', () => {
           entity: {
             id: 'pipeline1',
             name: 'Pipeline',
-            fullyQualifiedName: 'test.pipeline',
+            fullyQualifiedName: TEST_PIPELINE_1,
             entityType: EntityType.PIPELINE,
             type: EntityType.PIPELINE,
           },
@@ -1885,8 +1895,8 @@ describe('getLineageTableConfig', () => {
   it('should process valid CSV data correctly', () => {
     const csvData = [
       ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
-      ['test.fqn.1', 'test.fqn.2', 'Test Pipeline'],
-      ['test.fqn.3', 'test.fqn.4', 'Another Pipeline'],
+      [TEST_FQN_1, TEST_FQN_2, TEST_PIPELINE],
+      [TEST_FQN_3, TEST_FQN_4, 'Another Pipeline'],
     ];
 
     const result = getLineageTableConfig(csvData);
@@ -1921,15 +1931,15 @@ describe('getLineageTableConfig', () => {
 
     // Check data source
     expect(result.dataSource[0]).toEqual({
-      fromEntityFQN: 'test.fqn.1',
-      toEntityFQN: 'test.fqn.2',
-      pipelineName: 'Test Pipeline',
+      fromEntityFQN: TEST_FQN_1,
+      toEntityFQN: TEST_FQN_2,
+      pipelineName: TEST_PIPELINE,
       key: '0',
     });
 
     expect(result.dataSource[1]).toEqual({
-      fromEntityFQN: 'test.fqn.3',
-      toEntityFQN: 'test.fqn.4',
+      fromEntityFQN: TEST_FQN_3,
+      toEntityFQN: TEST_FQN_4,
       pipelineName: 'Another Pipeline',
       key: '1',
     });
@@ -1938,8 +1948,8 @@ describe('getLineageTableConfig', () => {
   it('should handle CSV data with different column counts', () => {
     const csvData = [
       ['fromEntityFQN', 'toEntityFQN'],
-      ['test.fqn.1', 'test.fqn.2', 'extra-column'],
-      ['test.fqn.3'],
+      [TEST_FQN_1, TEST_FQN_2, 'extra-column'],
+      [TEST_FQN_3],
     ];
 
     const result = getLineageTableConfig(csvData);
@@ -1948,13 +1958,13 @@ describe('getLineageTableConfig', () => {
     expect(result.dataSource).toHaveLength(2);
 
     expect(result.dataSource[0]).toEqual({
-      fromEntityFQN: 'test.fqn.1',
-      toEntityFQN: 'test.fqn.2',
+      fromEntityFQN: TEST_FQN_1,
+      toEntityFQN: TEST_FQN_2,
       key: '0',
     });
 
     expect(result.dataSource[1]).toEqual({
-      fromEntityFQN: 'test.fqn.3',
+      fromEntityFQN: TEST_FQN_3,
       toEntityFQN: '',
       key: '1',
     });
@@ -1963,7 +1973,7 @@ describe('getLineageTableConfig', () => {
   it('should handle single row of data', () => {
     const csvData = [
       ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
-      ['test.fqn.1', 'test.fqn.2', 'Test Pipeline'],
+      [TEST_FQN_1, TEST_FQN_2, TEST_PIPELINE],
     ];
 
     const result = getLineageTableConfig(csvData);
@@ -1972,9 +1982,9 @@ describe('getLineageTableConfig', () => {
     expect(result.dataSource).toHaveLength(1);
 
     expect(result.dataSource[0]).toEqual({
-      fromEntityFQN: 'test.fqn.1',
-      toEntityFQN: 'test.fqn.2',
-      pipelineName: 'Test Pipeline',
+      fromEntityFQN: TEST_FQN_1,
+      toEntityFQN: TEST_FQN_2,
+      pipelineName: TEST_PIPELINE,
       key: '0',
     });
   });
@@ -1982,9 +1992,9 @@ describe('getLineageTableConfig', () => {
   it('should handle empty rows in CSV data', () => {
     const csvData = [
       ['fromEntityFQN', 'toEntityFQN'],
-      ['test.fqn.1', 'test.fqn.2'],
+      [TEST_FQN_1, TEST_FQN_2],
       ['', ''],
-      ['test.fqn.3', 'test.fqn.4'],
+      [TEST_FQN_3, TEST_FQN_4],
     ];
 
     const result = getLineageTableConfig(csvData);

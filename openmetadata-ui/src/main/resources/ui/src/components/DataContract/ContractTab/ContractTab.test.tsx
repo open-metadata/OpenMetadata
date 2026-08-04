@@ -30,6 +30,14 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractTab } from './ContractTab';
 
+const MOCK_DELETE_MODAL = 'delete-modal';
+const MOCK_CONTRACT_DETAIL = 'contract-detail';
+const MOCK_HAS_EDIT_PERMISSION = 'has-edit-permission';
+const MOCK_EDIT_CONTRACT = 'edit-contract';
+const MOCK_DELETE_CONTRACT = 'delete-contract';
+const CONTRACT_TEST_CONTRACT = 'Contract: Test Contract';
+
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(() => ({
     getEntityPermission: jest.fn().mockResolvedValue({}),
@@ -47,6 +55,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => ({
     data: {
@@ -86,7 +95,7 @@ jest.mock('../../common/DeleteModal/DeleteModal', () => ({
     }
 
     return (
-      <div data-testid="delete-modal">
+      <div data-testid={MOCK_DELETE_MODAL}>
         <div data-testid="modal-header">{entityTitle}</div>
         <button data-testid="cancel-delete" onClick={onCancel}>
           Cancel
@@ -135,15 +144,15 @@ jest.mock('../ContractDetailTab/ContractDetail', () => ({
     onEdit: () => void;
     onDelete: () => void;
   }) => (
-    <div data-testid="contract-detail">
+    <div data-testid={MOCK_CONTRACT_DETAIL}>
       <div>Contract: {contract?.name || 'No Contract'}</div>
-      <div data-testid="has-edit-permission">
+      <div data-testid={MOCK_HAS_EDIT_PERMISSION}>
         {hasEditPermission ? 'true' : 'false'}
       </div>
-      <button data-testid="edit-contract" onClick={onEdit}>
+      <button data-testid={MOCK_EDIT_CONTRACT} onClick={onEdit}>
         Edit
       </button>
-      <button data-testid="delete-contract" onClick={onDelete}>
+      <button data-testid={MOCK_DELETE_CONTRACT} onClick={onDelete}>
         Delete
       </button>
     </div>
@@ -192,10 +201,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Contract: Test Contract')).toBeInTheDocument();
+      expect(screen.getByText(CONTRACT_TEST_CONTRACT)).toBeInTheDocument();
     });
 
     it('should render no contract state when contract not found', async () => {
@@ -206,7 +215,7 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
       expect(screen.getByText('Contract: No Contract')).toBeInTheDocument();
@@ -224,7 +233,7 @@ describe('ContractTab', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
     });
 
@@ -235,7 +244,7 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
       // Should render empty state without crashing
@@ -248,10 +257,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const editButton = screen.getByTestId('edit-contract');
+      const editButton = screen.getByTestId(MOCK_EDIT_CONTRACT);
 
       await act(async () => {
         fireEvent.click(editButton);
@@ -264,10 +273,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const editButton = screen.getByTestId('edit-contract');
+      const editButton = screen.getByTestId(MOCK_EDIT_CONTRACT);
 
       await act(async () => {
         fireEvent.click(editButton);
@@ -281,17 +290,17 @@ describe('ContractTab', () => {
         fireEvent.click(cancelButton);
       });
 
-      expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
     });
 
     it('should refetch contract and switch to view mode after save', async () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const editButton = screen.getByTestId('edit-contract');
+      const editButton = screen.getByTestId(MOCK_EDIT_CONTRACT);
 
       await act(async () => {
         fireEvent.click(editButton);
@@ -304,7 +313,7 @@ describe('ContractTab', () => {
       });
 
       expect(getContractByEntityId).toHaveBeenCalledTimes(2); // Initial + refetch
-      expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
     });
   });
 
@@ -313,16 +322,16 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const deleteButton = screen.getByTestId('delete-contract');
+      const deleteButton = screen.getByTestId(MOCK_DELETE_CONTRACT);
 
       await act(async () => {
         fireEvent.click(deleteButton);
       });
 
-      expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DELETE_MODAL)).toBeInTheDocument();
       expect(screen.getByTestId('modal-header')).toHaveTextContent(
         'Test Contract'
       );
@@ -332,10 +341,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const deleteButton = screen.getByTestId('delete-contract');
+      const deleteButton = screen.getByTestId(MOCK_DELETE_CONTRACT);
 
       await act(async () => {
         fireEvent.click(deleteButton);
@@ -347,7 +356,7 @@ describe('ContractTab', () => {
         fireEvent.click(cancelButton);
       });
 
-      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(MOCK_DELETE_MODAL)).not.toBeInTheDocument();
     });
 
     it('should delete contract successfully', async () => {
@@ -356,10 +365,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const deleteButton = screen.getByTestId('delete-contract');
+      const deleteButton = screen.getByTestId(MOCK_DELETE_CONTRACT);
 
       await act(async () => {
         fireEvent.click(deleteButton);
@@ -385,10 +394,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const deleteButton = screen.getByTestId('delete-contract');
+      const deleteButton = screen.getByTestId(MOCK_DELETE_CONTRACT);
 
       await act(async () => {
         fireEvent.click(deleteButton);
@@ -410,16 +419,16 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const deleteButton = screen.getByTestId('delete-contract');
+      const deleteButton = screen.getByTestId(MOCK_DELETE_CONTRACT);
 
       await act(async () => {
         fireEvent.click(deleteButton);
       });
 
-      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(MOCK_DELETE_MODAL)).not.toBeInTheDocument();
     });
   });
 
@@ -488,7 +497,7 @@ describe('ContractTab', () => {
         expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
     });
   });
 
@@ -497,7 +506,7 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByText('Contract: Test Contract')).toBeInTheDocument();
+        expect(screen.getByText(CONTRACT_TEST_CONTRACT)).toBeInTheDocument();
       });
     });
 
@@ -505,16 +514,16 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      const editButton = screen.getByTestId('edit-contract');
+      const editButton = screen.getByTestId(MOCK_EDIT_CONTRACT);
 
       await act(async () => {
         fireEvent.click(editButton);
       });
 
-      expect(screen.getByText('Contract: Test Contract')).toBeInTheDocument();
+      expect(screen.getByText(CONTRACT_TEST_CONTRACT)).toBeInTheDocument();
     });
   });
 
@@ -533,10 +542,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('has-edit-permission')).toHaveTextContent(
+      expect(screen.getByTestId(MOCK_HAS_EDIT_PERMISSION)).toHaveTextContent(
         'false'
       );
     });
@@ -555,10 +564,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('has-edit-permission')).toHaveTextContent(
+      expect(screen.getByTestId(MOCK_HAS_EDIT_PERMISSION)).toHaveTextContent(
         'true'
       );
     });
@@ -577,10 +586,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('has-edit-permission')).toHaveTextContent(
+      expect(screen.getByTestId(MOCK_HAS_EDIT_PERMISSION)).toHaveTextContent(
         'true'
       );
     });
@@ -599,10 +608,10 @@ describe('ContractTab', () => {
       render(<ContractTab />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('contract-detail')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_CONTRACT_DETAIL)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('has-edit-permission')).toHaveTextContent(
+      expect(screen.getByTestId(MOCK_HAS_EDIT_PERMISSION)).toHaveTextContent(
         'false'
       );
     });

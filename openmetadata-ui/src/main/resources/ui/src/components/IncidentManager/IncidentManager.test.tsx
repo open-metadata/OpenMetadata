@@ -19,6 +19,12 @@ import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentMana
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
+const DATE_FIELD_DROPDOWN_TRIGGER = 'date-field-dropdown-trigger';
+const DATE_FIELD_DROPDOWN_MENU = 'date-field-dropdown-menu';
+const LABEL_LAST_7_DAYS = 'label.last-7-days';
+const DATE_PICKER_MENU = 'date-picker-menu';
+const NON_DELETED = 'non-deleted';
+
 jest.mock('../common/NextPrevious/NextPrevious', () => {
   return jest
     .fn()
@@ -91,7 +97,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => (
     <div data-testid="date-field-dropdown-root">
       <div
-        data-testid="date-field-dropdown-trigger"
+        data-testid={DATE_FIELD_DROPDOWN_TRIGGER}
         role="button"
         tabIndex={0}
         onClick={() => onOpenChange(!isOpen)}
@@ -121,11 +127,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onAction?: (key: string) => void;
   }) => {
     if (!items) {
-      return <div data-testid="date-field-dropdown-menu" />;
+      return <div data-testid={DATE_FIELD_DROPDOWN_MENU} />;
     }
 
     return (
-      <div data-testid="date-field-dropdown-menu">
+      <div data-testid={DATE_FIELD_DROPDOWN_MENU}>
         {items.map((item) => (
           <button
             data-testid={`date-field-option-${item.value}`}
@@ -268,7 +274,7 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
   }) {
     const [isOpen, setIsOpen] = React.useState(false);
     const selectedLabel = defaultDateRange?.key
-      ? defaultDateRange.title ?? 'label.last-7-days'
+      ? defaultDateRange.title ?? LABEL_LAST_7_DAYS
       : placeholder;
 
     return (
@@ -277,7 +283,7 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
         data-testid="date-picker-container">
         <button
           className="tw:h-8 tw:max-w-72 tw:overflow-hidden"
-          data-testid="date-picker-menu"
+          data-testid={DATE_PICKER_MENU}
           type="button"
           onClick={() => setIsOpen((open) => !open)}>
           <span className={defaultDateRange?.key ? '' : 'tw:text-disabled'}>
@@ -304,7 +310,7 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
                   startTs: 1709556624254,
                   endTs: 1710161424255,
                   key: 'last7days',
-                  title: 'label.last-7-days',
+                  title: LABEL_LAST_7_DAYS,
                 })
               }>
               Last 7 days
@@ -534,7 +540,7 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByText('AsyncSelect.component')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('date-picker-menu')).toBeInTheDocument();
+    expect(await screen.findByTestId(DATE_PICKER_MENU)).toBeInTheDocument();
     expect(
       screen.queryByText('CustomDateRangePicker.component')
     ).not.toBeInTheDocument();
@@ -552,7 +558,7 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       offset: 0,
       latest: true,
-      include: 'non-deleted',
+      include: NON_DELETED,
       originEntityFQN: undefined,
       domain: undefined,
     });
@@ -698,7 +704,7 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       offset: 0,
       startTs: 1709556624254,
-      include: 'non-deleted',
+      include: NON_DELETED,
       domain: undefined,
       originEntityFQN: undefined,
     });
@@ -758,7 +764,7 @@ describe('IncidentManagerPage', () => {
 
     // Dropdown menu should NOT be visible by default (closed)
     expect(
-      screen.queryByTestId('date-field-dropdown-menu')
+      screen.queryByTestId(DATE_FIELD_DROPDOWN_MENU)
     ).not.toBeInTheDocument();
   });
 
@@ -771,13 +777,13 @@ describe('IncidentManagerPage', () => {
       render(<IncidentManager />);
     });
 
-    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    const triggerDiv = await screen.findByTestId(DATE_FIELD_DROPDOWN_TRIGGER);
     await act(async () => {
       fireEvent.click(triggerDiv);
     });
 
     // Now the dropdown menu should be visible since isOpen = true
-    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
+    const dropdownMenu = await screen.findByTestId(DATE_FIELD_DROPDOWN_MENU);
 
     expect(dropdownMenu).toBeInTheDocument();
   });
@@ -791,7 +797,7 @@ describe('IncidentManagerPage', () => {
       'tw:text-disabled'
     );
 
-    const triggerDiv = await screen.findByTestId('date-picker-menu');
+    const triggerDiv = await screen.findByTestId(DATE_PICKER_MENU);
     await act(async () => {
       fireEvent.click(triggerDiv);
     });
@@ -822,7 +828,7 @@ describe('IncidentManagerPage', () => {
       render(<IncidentManager />);
     });
 
-    const dateRangeTrigger = await screen.findByTestId('date-picker-menu');
+    const dateRangeTrigger = await screen.findByTestId(DATE_PICKER_MENU);
     const datePickerContainer = await screen.findByTestId(
       'date-picker-container'
     );
@@ -830,7 +836,7 @@ describe('IncidentManagerPage', () => {
 
     expect(dateRangeTrigger).toHaveClass('tw:h-8');
     expect(dateRangeTrigger).toHaveClass('tw:max-w-72');
-    expect(dateRangeTrigger).toHaveTextContent('label.last-7-days');
+    expect(dateRangeTrigger).toHaveTextContent(LABEL_LAST_7_DAYS);
     expect(datePickerContainer).toHaveClass('tw:max-w-80');
     expect(datePickerContainer).toHaveClass('tw:relative');
     expect(clearButton).toHaveClass('tw:absolute');
@@ -878,7 +884,7 @@ describe('IncidentManagerPage', () => {
       render(<IncidentManager />);
     });
 
-    const triggerDiv = await screen.findByTestId('date-picker-menu');
+    const triggerDiv = await screen.findByTestId(DATE_PICKER_MENU);
     await act(async () => {
       fireEvent.click(triggerDiv);
     });
@@ -911,7 +917,7 @@ describe('IncidentManagerPage', () => {
       render(<IncidentManager />);
     });
 
-    const triggerDiv = await screen.findByTestId('date-picker-menu');
+    const triggerDiv = await screen.findByTestId(DATE_PICKER_MENU);
     await act(async () => {
       fireEvent.click(triggerDiv);
     });
@@ -939,7 +945,7 @@ describe('IncidentManagerPage', () => {
     });
 
     // Open the dropdown
-    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    const triggerDiv = await screen.findByTestId(DATE_FIELD_DROPDOWN_TRIGGER);
     await act(async () => {
       fireEvent.click(triggerDiv);
     });
@@ -969,12 +975,12 @@ describe('IncidentManagerPage', () => {
     });
 
     // Open the dropdown
-    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    const triggerDiv = await screen.findByTestId(DATE_FIELD_DROPDOWN_TRIGGER);
     await act(async () => {
       fireEvent.click(triggerDiv);
     });
 
-    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
+    const dropdownMenu = await screen.findByTestId(DATE_FIELD_DROPDOWN_MENU);
 
     expect(dropdownMenu).toBeInTheDocument();
 
@@ -988,7 +994,7 @@ describe('IncidentManagerPage', () => {
 
     // Menu should be gone after selection
     expect(
-      screen.queryByTestId('date-field-dropdown-menu')
+      screen.queryByTestId(DATE_FIELD_DROPDOWN_MENU)
     ).not.toBeInTheDocument();
   });
 
@@ -1015,7 +1021,7 @@ describe('IncidentManagerPage', () => {
       offset: 0,
       startTs: 1709556624254,
       dateField: 'updatedAt',
-      include: 'non-deleted',
+      include: NON_DELETED,
       domain: undefined,
       originEntityFQN: undefined,
     });

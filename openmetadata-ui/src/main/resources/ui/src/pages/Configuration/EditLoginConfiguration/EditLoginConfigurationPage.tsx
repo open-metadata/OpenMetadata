@@ -41,6 +41,8 @@ import { generateFormFields } from '../../../utils/formUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+const LABEL_LOGIN_CONFIGURATION = 'label.login-configuration';
+
 const EditLoginConfiguration = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -70,7 +72,7 @@ const EditLoginConfiguration = () => {
         url: getSettingPath(),
       },
       {
-        name: t('label.login-configuration'),
+        name: t(LABEL_LOGIN_CONFIGURATION),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
@@ -78,7 +80,7 @@ const EditLoginConfiguration = () => {
       },
       {
         name: t('label.edit-entity', {
-          entity: t('label.login-configuration'),
+          entity: t(LABEL_LOGIN_CONFIGURATION),
         }),
         url: '',
       },
@@ -141,7 +143,7 @@ const EditLoginConfiguration = () => {
       await updateSettingsConfig(configData as Settings);
       showSuccessToast(
         t('server.update-entity-success', {
-          entity: t('label.login-configuration'),
+          entity: t(LABEL_LOGIN_CONFIGURATION),
         })
       );
       handleGoBack();
@@ -223,7 +225,7 @@ const EditLoginConfiguration = () => {
         allowScroll: true,
       }}
       pageTitle={t('label.edit-entity', {
-        entity: t('label.login-configuration'),
+        entity: t(LABEL_LOGIN_CONFIGURATION),
       })}
       secondPanel={{
         children: secondPanelChildren,

@@ -15,6 +15,81 @@ import { SearchIndex } from '../enums/search.enum';
 
 /* eslint-disable max-len */
 
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE =
+  'sample_data.ecommerce_db.shopify.dim_address';
+const THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED =
+  'This **mock** database contains schema related to shopify sales and orders with related dimension tables.';
+const _5CD86FAD_873C_4E59_B9FF_A38967AAC79D =
+  '5cd86fad-873c-4e59-b9ff-a38967aac79d';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY = 'sample_data.ecommerce_db.shopify';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU =
+  'sample_data.ecommerce_db.shopify."dim.product"';
+const F65A4402_3E82_4238_B864_BC7C89BB2E2E =
+  'f65a4402-3e82-4238-b864-bc7c89bb2e2e';
+const DIM_PRODUCT_ETL = 'dim_product etl';
+const DIIM_PRODUCT_ETL_PIPELINE = 'diim_product ETL pipeline';
+const _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7 =
+  '7b42caac-154c-4d1e-9da2-2a560979a8d7';
+const SAMPLE_AIRFLOW_DIM_PRODUCT_ETL = 'sample_airflow.dim_product_etl';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER =
+  'sample_data.ecommerce_db.shopify.raw_order';
+const D26498FA_05CD_4E36_B7BA_F38A7A5FD372 =
+  'd26498fa-05cd-4e36-b7ba-f38a7a5fd372';
+const SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI =
+  'select * from sample_data.ecommerce_db.shopify.raw_order';
+const D26498FA_05CD_4E36_B7BA_F38A7A5FD372_F65A4 =
+  'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e';
+const THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE =
+  'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.';
+const _722B65A4_9205_4F11_A62D_6A8902CDAB39 =
+  '722b65a4-9205-4f11-a62d-6a8902cdab39';
+const SAMPLE_DATA_ECOMMERCE_DB = 'sample_data.ecommerce_db';
+const _2024_02_02 = '2024-02-02';
+const _1E7F57B6_A165_410D_9962_1CCF54599CC7 =
+  '1e7f57b6-a165-410d-9962-1ccf54599cc7';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU_2 =
+  'sample_data.ecommerce_db.shopify."dim.product.variant"';
+const D3E43AC3_8D05_45ED_9A30_94765DBFA7A3 =
+  'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3';
+const D26498FA_05CD_4E36_B7BA_F38A7A5FD372_D3E43 =
+  'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3';
+const THE_ID_OF_THE_STORE_THIS_COLUMN_IS_A_FOREI =
+  'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_ORDE =
+  'sample_data.ecommerce_db.shopify.fact_order';
+const _6364831B_6860_4B8A_B4A1_5DE1840CF4F9 =
+  '6364831b-6860-4b8a-b4a1-5de1840cf4f9';
+const PROCEDURE_TO_UPDATE_FACT_ORDER_FROM_RAW_OR =
+  'Procedure to update fact order from raw order table';
+const A9A403BD_B74D_47CC_893D_B1DE99658748 =
+  'a9a403bd-b74d-47cc-893d-b1de99658748';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_UPDATE_FA =
+  'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order';
+const D26498FA_05CD_4E36_B7BA_F38A7A5FD372_63648 =
+  'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9';
+const _9D664BBD_8C9E_4068_9112_9AB0457D4C52 =
+  '9d664bbd-8c9e-4068-9112-9ab0457d4c52';
+const UNIQUE_IDENTIFIER_FOR_THE_ADDRESS = 'Unique identifier for the address.';
+const FIRST_NAME_OF_THE_CUSTOMER = 'First name of the customer.';
+const LAST_NAME_OF_THE_CUSTOMER = 'Last name of the customer.';
+const THE_NAME_OF_THE_CUSTOMER_S_BUSINESS_IF_ONE =
+  "The name of the customer's business, if one exists.";
+const THE_NAME_OF_THE_CITY_FOR_EXAMPLE_PALO_ALTO =
+  'The name of the city. For example, Palo Alto.';
+const THE_ZIP_OR_POSTAL_CODE_FOR_EXAMPLE_90210 =
+  'The ZIP or postal code. For example, 90210.';
+const THE_FULL_NAME_OF_THE_COUNTRY_FOR_EXAMPLE_C =
+  'The full name of the country. For example, Canada.';
+const THE_PHONE_NUMBER_OF_THE_CUSTOMER = 'The phone number of the customer.';
+const BE37A61E_FB10_4748_86AB_0714613A42EA =
+  'be37a61e-fb10-4748-86ab-0714613a42ea';
+const _0DAC7CAF_8419_4A0B_A96E_345730B2C0F5 =
+  '0dac7caf-8419-4a0b-a96e-345730b2c0f5';
+const F24CD129_F864_45D9_8CCE_46A9AECD6846 =
+  'f24cd129-f864-45d9-8cce-46a9aecd6846';
+const THIS_COLUMN_IS_A_FOREIGN_KEY_REFERENCE_TO =
+  'This column is a foreign key reference to the shop_id column in the <span class="text-highlighter">dim</span>_shop table.';
+
 export const mockFeedData = [
   {
     id: '52d52eb1-b990-497f-bf80-47e52c106f85',
@@ -57,7 +132,7 @@ export const mockTablePermission = {
 };
 
 export const mockDatasetData = {
-  datasetFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+  datasetFQN: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE,
   tableProfile: {
     timestamp: '1682049950',
     columnCount: 12,
@@ -383,28 +458,27 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'shopify',
           name: 'shopify',
-          description:
-            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
-          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
+          id: _5CD86FAD_873C_4E59_B9FF_A38967AAC79D,
           type: 'databaseSchema',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
         },
         serviceType: 'BigQuery',
         lineage: [
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
-              id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU,
+              id: F65A4402_3E82_4238_B864_BC7C89BB2E2E,
               type: 'table',
             },
             pipeline: {
               deleted: false,
-              displayName: 'dim_product etl',
+              displayName: DIM_PRODUCT_ETL,
               name: 'dim_product_etl',
-              description: 'diim_product ETL pipeline',
-              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              description: DIIM_PRODUCT_ETL_PIPELINE,
+              id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
               type: 'pipeline',
-              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+              fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
             },
             fromEntity: {
               fqn: 'sample_data.ecommerce_db.shopify.raw_customer',
@@ -420,30 +494,28 @@ export const mockDatasetData = {
           },
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
-              id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU,
+              id: F65A4402_3E82_4238_B864_BC7C89BB2E2E,
               type: 'table',
             },
             pipeline: {
               deleted: false,
-              displayName: 'dim_product etl',
+              displayName: DIM_PRODUCT_ETL,
               name: 'dim_product_etl',
-              description: 'diim_product ETL pipeline',
-              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              description: DIIM_PRODUCT_ETL_PIPELINE,
+              id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
               type: 'pipeline',
-              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+              fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
             },
             fromEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+              id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
               type: 'table',
             },
-            sqlQuery:
-              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
             description: null,
             source: 'Manual',
-            docId:
-              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+            docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_F65A4,
           },
         ],
         columns: [
@@ -525,11 +597,10 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'ecommerce_db',
           name: 'ecommerce_db',
-          description:
-            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
-          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
+          id: _722B65A4_9205_4F11_A62D_6A8902CDAB39,
           type: 'database',
-          fullyQualifiedName: 'sample_data.ecommerce_db',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
         },
         columnNames: [
           'product_id',
@@ -542,7 +613,7 @@ export const mockDatasetData = {
         tier: null,
         totalVotes: 0,
         usageSummary: {
-          date: '2024-02-02',
+          date: _2024_02_02,
           weeklyStats: {
             percentileRank: 0,
             count: 0,
@@ -556,13 +627,13 @@ export const mockDatasetData = {
             count: 0,
           },
         },
-        id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+        id: F65A4402_3E82_4238_B864_BC7C89BB2E2E,
         updatedAt: 1706855211762,
         owner: null,
         updatedBy: 'admin',
         entityType: 'table',
         dataProducts: [],
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.product"',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU,
         version: 0.2,
         tags: [],
         followers: [],
@@ -571,7 +642,7 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'sample_data',
           name: 'sample_data',
-          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          id: _1E7F57B6_A165_410D_9962_1CCF54599CC7,
           type: 'databaseService',
           fullyQualifiedName: 'sample_data',
         },
@@ -589,28 +660,27 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'shopify',
           name: 'shopify',
-          description:
-            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
-          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
+          id: _5CD86FAD_873C_4E59_B9FF_A38967AAC79D,
           type: 'databaseSchema',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
         },
         serviceType: 'BigQuery',
         lineage: [
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
-              id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU_2,
+              id: D3E43AC3_8D05_45ED_9A30_94765DBFA7A3,
               type: 'table',
             },
             pipeline: {
               deleted: false,
-              displayName: 'dim_product etl',
+              displayName: DIM_PRODUCT_ETL,
               name: 'dim_product_etl',
-              description: 'diim_product ETL pipeline',
-              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              description: DIIM_PRODUCT_ETL_PIPELINE,
+              id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
               type: 'pipeline',
-              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+              fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
             },
             fromEntity: {
               fqn: 'sample_data.ecommerce_db.shopify.raw_customer',
@@ -626,30 +696,28 @@ export const mockDatasetData = {
           },
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
-              id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU_2,
+              id: D3E43AC3_8D05_45ED_9A30_94765DBFA7A3,
               type: 'table',
             },
             pipeline: {
               deleted: false,
-              displayName: 'dim_product etl',
+              displayName: DIM_PRODUCT_ETL,
               name: 'dim_product_etl',
-              description: 'diim_product ETL pipeline',
-              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              description: DIIM_PRODUCT_ETL_PIPELINE,
+              id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
               type: 'pipeline',
-              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+              fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
             },
             fromEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+              id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
               type: 'table',
             },
-            sqlQuery:
-              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
             description: null,
             source: 'Manual',
-            docId:
-              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+            docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_D3E43,
           },
         ],
         columns: [
@@ -679,8 +747,7 @@ export const mockDatasetData = {
           {
             dataType: 'NUMERIC',
             name: 'shop_id',
-            description:
-              'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+            description: THE_ID_OF_THE_STORE_THIS_COLUMN_IS_A_FOREI,
             fullyQualifiedName:
               'sample_data.ecommerce_db.shopify."dim.product.variant".shop_id',
             ordinalPosition: 3,
@@ -774,11 +841,10 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'ecommerce_db',
           name: 'ecommerce_db',
-          description:
-            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
-          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
+          id: _722B65A4_9205_4F11_A62D_6A8902CDAB39,
           type: 'database',
-          fullyQualifiedName: 'sample_data.ecommerce_db',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
         },
         columnNames: [
           'product_variant_id',
@@ -795,7 +861,7 @@ export const mockDatasetData = {
         tier: null,
         totalVotes: 0,
         usageSummary: {
-          date: '2024-02-02',
+          date: _2024_02_02,
           weeklyStats: {
             percentileRank: 0,
             count: 0,
@@ -809,14 +875,13 @@ export const mockDatasetData = {
             count: 0,
           },
         },
-        id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+        id: D3E43AC3_8D05_45ED_9A30_94765DBFA7A3,
         updatedAt: 1706855210105,
         owner: null,
         updatedBy: 'admin',
         entityType: 'table',
         dataProducts: [],
-        fullyQualifiedName:
-          'sample_data.ecommerce_db.shopify."dim.product.variant"',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU_2,
         version: 0.2,
         tags: [],
         followers: [],
@@ -825,7 +890,7 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'sample_data',
           name: 'sample_data',
-          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          id: _1E7F57B6_A165_410D_9962_1CCF54599CC7,
           type: 'databaseService',
           fullyQualifiedName: 'sample_data',
         },
@@ -843,94 +908,86 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'shopify',
           name: 'shopify',
-          description:
-            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
-          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
+          id: _5CD86FAD_873C_4E59_B9FF_A38967AAC79D,
           type: 'databaseSchema',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
         },
         serviceType: 'BigQuery',
         lineage: [
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.fact_order',
-              id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_ORDE,
+              id: _6364831B_6860_4B8A_B4A1_5DE1840CF4F9,
               type: 'table',
             },
             pipeline: {
               deleted: false,
               name: 'update_fact_order_from_raw_order',
-              description:
-                'Procedure to update fact order from raw order table',
-              id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+              description: PROCEDURE_TO_UPDATE_FACT_ORDER_FROM_RAW_OR,
+              id: A9A403BD_B74D_47CC_893D_B1DE99658748,
               type: 'storedProcedure',
-              fullyQualifiedName:
-                'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+              fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_UPDATE_FA,
             },
             fromEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+              id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
               type: 'table',
             },
             sqlQuery: null,
             description: null,
             source: 'Manual',
-            docId:
-              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+            docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_63648,
           },
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
-              id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU_2,
+              id: D3E43AC3_8D05_45ED_9A30_94765DBFA7A3,
               type: 'table',
             },
             pipeline: {
               deleted: false,
-              displayName: 'dim_product etl',
+              displayName: DIM_PRODUCT_ETL,
               name: 'dim_product_etl',
-              description: 'diim_product ETL pipeline',
-              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              description: DIIM_PRODUCT_ETL_PIPELINE,
+              id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
               type: 'pipeline',
-              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+              fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
             },
             fromEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+              id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
               type: 'table',
             },
-            sqlQuery:
-              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
             description: null,
             source: 'Manual',
-            docId:
-              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+            docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_D3E43,
           },
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
-              id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU,
+              id: F65A4402_3E82_4238_B864_BC7C89BB2E2E,
               type: 'table',
             },
             pipeline: {
               deleted: false,
-              displayName: 'dim_product etl',
+              displayName: DIM_PRODUCT_ETL,
               name: 'dim_product_etl',
-              description: 'diim_product ETL pipeline',
-              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              description: DIIM_PRODUCT_ETL_PIPELINE,
+              id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
               type: 'pipeline',
-              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+              fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
             },
             fromEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+              id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
               type: 'table',
             },
-            sqlQuery:
-              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
             description: null,
             source: 'Manual',
-            docId:
-              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+            docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_F65A4,
           },
         ],
         columns: [
@@ -1091,11 +1148,10 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'ecommerce_db',
           name: 'ecommerce_db',
-          description:
-            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
-          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
+          id: _722B65A4_9205_4F11_A62D_6A8902CDAB39,
           type: 'database',
-          fullyQualifiedName: 'sample_data.ecommerce_db',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
         },
         columnNames: [
           'comments',
@@ -1115,7 +1171,7 @@ export const mockDatasetData = {
         tier: null,
         totalVotes: 0,
         usageSummary: {
-          date: '2024-02-02',
+          date: _2024_02_02,
           weeklyStats: {
             percentileRank: 0,
             count: 0,
@@ -1129,13 +1185,13 @@ export const mockDatasetData = {
             count: 0,
           },
         },
-        id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+        id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
         updatedAt: 1706855211252,
         owner: null,
         updatedBy: 'admin',
         entityType: 'table',
         dataProducts: [],
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
         version: 0.2,
         tags: [],
         followers: [],
@@ -1144,7 +1200,7 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'sample_data',
           name: 'sample_data',
-          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          id: _1E7F57B6_A165_410D_9962_1CCF54599CC7,
           type: 'databaseService',
           fullyQualifiedName: 'sample_data',
         },
@@ -1162,40 +1218,36 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'shopify',
           name: 'shopify',
-          description:
-            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
-          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
+          id: _5CD86FAD_873C_4E59_B9FF_A38967AAC79D,
           type: 'databaseSchema',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
         },
         serviceType: 'BigQuery',
         lineage: [
           {
             toEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.fact_order',
-              id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_ORDE,
+              id: _6364831B_6860_4B8A_B4A1_5DE1840CF4F9,
               type: 'table',
             },
             pipeline: {
               deleted: false,
               name: 'update_fact_order_from_raw_order',
-              description:
-                'Procedure to update fact order from raw order table',
-              id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+              description: PROCEDURE_TO_UPDATE_FACT_ORDER_FROM_RAW_OR,
+              id: A9A403BD_B74D_47CC_893D_B1DE99658748,
               type: 'storedProcedure',
-              fullyQualifiedName:
-                'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+              fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_UPDATE_FA,
             },
             fromEntity: {
-              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+              id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
               type: 'table',
             },
             sqlQuery: null,
             description: null,
             source: 'Manual',
-            docId:
-              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+            docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_63648,
           },
         ],
         columns: [
@@ -1370,11 +1422,10 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'ecommerce_db',
           name: 'ecommerce_db',
-          description:
-            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
-          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
+          id: _722B65A4_9205_4F11_A62D_6A8902CDAB39,
           type: 'database',
-          fullyQualifiedName: 'sample_data.ecommerce_db',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
         },
         columnNames: [
           'order_id',
@@ -1396,7 +1447,7 @@ export const mockDatasetData = {
         tier: null,
         totalVotes: 0,
         usageSummary: {
-          date: '2024-02-02',
+          date: _2024_02_02,
           weeklyStats: {
             percentileRank: 0,
             count: 0,
@@ -1410,13 +1461,13 @@ export const mockDatasetData = {
             count: 0,
           },
         },
-        id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+        id: _6364831B_6860_4B8A_B4A1_5DE1840CF4F9,
         updatedAt: 1706855210286,
         owner: null,
         updatedBy: 'admin',
         entityType: 'table',
         dataProducts: [],
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_order',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_ORDE,
         version: 0.2,
         tags: [],
         followers: [],
@@ -1425,7 +1476,7 @@ export const mockDatasetData = {
           deleted: false,
           displayName: 'sample_data',
           name: 'sample_data',
-          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          id: _1E7F57B6_A165_410D_9962_1CCF54599CC7,
           type: 'databaseService',
           fullyQualifiedName: 'sample_data',
         },
@@ -1442,81 +1493,77 @@ export const mockDatasetData = {
     edges: [
       {
         toEntity: {
-          fqn: 'sample_data.ecommerce_db.shopify.fact_order',
-          id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_ORDE,
+          id: _6364831B_6860_4B8A_B4A1_5DE1840CF4F9,
           type: 'table',
         },
         pipeline: {
           deleted: false,
           name: 'update_fact_order_from_raw_order',
-          description: 'Procedure to update fact order from raw order table',
-          id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+          description: PROCEDURE_TO_UPDATE_FACT_ORDER_FROM_RAW_OR,
+          id: A9A403BD_B74D_47CC_893D_B1DE99658748,
           type: 'storedProcedure',
-          fullyQualifiedName:
-            'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_UPDATE_FA,
         },
         fromEntity: {
-          fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-          id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+          id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
           type: 'table',
         },
         sqlQuery: null,
         description: null,
         source: 'Manual',
-        docId:
-          'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+        docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_63648,
       },
       {
         toEntity: {
-          fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
-          id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU_2,
+          id: D3E43AC3_8D05_45ED_9A30_94765DBFA7A3,
           type: 'table',
         },
         pipeline: {
           deleted: false,
-          displayName: 'dim_product etl',
+          displayName: DIM_PRODUCT_ETL,
           name: 'dim_product_etl',
-          description: 'diim_product ETL pipeline',
-          id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+          description: DIIM_PRODUCT_ETL_PIPELINE,
+          id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
           type: 'pipeline',
-          fullyQualifiedName: 'sample_airflow.dim_product_etl',
+          fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
         },
         fromEntity: {
-          fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-          id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+          id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
           type: 'table',
         },
-        sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+        sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
         description: null,
         source: 'Manual',
-        docId:
-          'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+        docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_D3E43,
       },
       {
         toEntity: {
-          fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
-          id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU,
+          id: F65A4402_3E82_4238_B864_BC7C89BB2E2E,
           type: 'table',
         },
         pipeline: {
           deleted: false,
-          displayName: 'dim_product etl',
+          displayName: DIM_PRODUCT_ETL,
           name: 'dim_product_etl',
-          description: 'diim_product ETL pipeline',
-          id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+          description: DIIM_PRODUCT_ETL_PIPELINE,
+          id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
           type: 'pipeline',
-          fullyQualifiedName: 'sample_airflow.dim_product_etl',
+          fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
         },
         fromEntity: {
-          fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-          id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+          fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+          id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
           type: 'table',
         },
-        sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+        sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
         description: null,
         source: 'Manual',
-        docId:
-          'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+        docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_F65A4,
       },
     ],
     entity: {
@@ -1524,91 +1571,86 @@ export const mockDatasetData = {
         deleted: false,
         displayName: 'shopify',
         name: 'shopify',
-        description:
-          'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
-        id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+        description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
+        id: _5CD86FAD_873C_4E59_B9FF_A38967AAC79D,
         type: 'databaseSchema',
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
       },
       serviceType: 'BigQuery',
       lineage: [
         {
           toEntity: {
-            fqn: 'sample_data.ecommerce_db.shopify.fact_order',
-            id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+            fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_ORDE,
+            id: _6364831B_6860_4B8A_B4A1_5DE1840CF4F9,
             type: 'table',
           },
           pipeline: {
             deleted: false,
             name: 'update_fact_order_from_raw_order',
-            description: 'Procedure to update fact order from raw order table',
-            id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+            description: PROCEDURE_TO_UPDATE_FACT_ORDER_FROM_RAW_OR,
+            id: A9A403BD_B74D_47CC_893D_B1DE99658748,
             type: 'storedProcedure',
-            fullyQualifiedName:
-              'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_UPDATE_FA,
           },
           fromEntity: {
-            fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-            id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+            fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+            id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
             type: 'table',
           },
           sqlQuery: null,
           description: null,
           source: 'Manual',
-          docId:
-            'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+          docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_63648,
         },
         {
           toEntity: {
-            fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
-            id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+            fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU_2,
+            id: D3E43AC3_8D05_45ED_9A30_94765DBFA7A3,
             type: 'table',
           },
           pipeline: {
             deleted: false,
-            displayName: 'dim_product etl',
+            displayName: DIM_PRODUCT_ETL,
             name: 'dim_product_etl',
-            description: 'diim_product ETL pipeline',
-            id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+            description: DIIM_PRODUCT_ETL_PIPELINE,
+            id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
             type: 'pipeline',
-            fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
           },
           fromEntity: {
-            fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-            id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+            fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+            id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
             type: 'table',
           },
-          sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+          sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
           description: null,
           source: 'Manual',
-          docId:
-            'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+          docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_D3E43,
         },
         {
           toEntity: {
-            fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
-            id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+            fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_PRODU,
+            id: F65A4402_3E82_4238_B864_BC7C89BB2E2E,
             type: 'table',
           },
           pipeline: {
             deleted: false,
-            displayName: 'dim_product etl',
+            displayName: DIM_PRODUCT_ETL,
             name: 'dim_product_etl',
-            description: 'diim_product ETL pipeline',
-            id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+            description: DIIM_PRODUCT_ETL_PIPELINE,
+            id: _7B42CAAC_154C_4D1E_9DA2_2A560979A8D7,
             type: 'pipeline',
-            fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            fullyQualifiedName: SAMPLE_AIRFLOW_DIM_PRODUCT_ETL,
           },
           fromEntity: {
-            fqn: 'sample_data.ecommerce_db.shopify.raw_order',
-            id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+            fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
+            id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
             type: 'table',
           },
-          sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+          sqlQuery: SELECT_FROM_SAMPLE_DATA_ECOMMERCE_DB_SHOPI,
           description: null,
           source: 'Manual',
-          docId:
-            'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+          docId: D26498FA_05CD_4E36_B7BA_F38A7A5FD372_F65A4,
         },
       ],
       columns: [
@@ -1769,11 +1811,10 @@ export const mockDatasetData = {
         deleted: false,
         displayName: 'ecommerce_db',
         name: 'ecommerce_db',
-        description:
-          'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
-        id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+        description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
+        id: _722B65A4_9205_4F11_A62D_6A8902CDAB39,
         type: 'database',
-        fullyQualifiedName: 'sample_data.ecommerce_db',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
       },
       columnNames: [
         'comments',
@@ -1793,7 +1834,7 @@ export const mockDatasetData = {
       tier: null,
       totalVotes: 0,
       usageSummary: {
-        date: '2024-02-02',
+        date: _2024_02_02,
         weeklyStats: {
           percentileRank: 0,
           count: 0,
@@ -1807,13 +1848,13 @@ export const mockDatasetData = {
           count: 0,
         },
       },
-      id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+      id: D26498FA_05CD_4E36_B7BA_F38A7A5FD372,
       updatedAt: 1706855211252,
       owner: null,
       updatedBy: 'admin',
       entityType: 'table',
       dataProducts: [],
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW_ORDER,
       version: 0.2,
       tags: [],
       followers: [],
@@ -1822,7 +1863,7 @@ export const mockDatasetData = {
         deleted: false,
         displayName: 'sample_data',
         name: 'sample_data',
-        id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+        id: _1E7F57B6_A165_410D_9962_1CCF54599CC7,
         type: 'databaseService',
         fullyQualifiedName: 'sample_data',
       },
@@ -1853,9 +1894,9 @@ export const mockDatasetData = {
     },
   ],
   tableDetails: {
-    id: '9d664bbd-8c9e-4068-9112-9ab0457d4c52',
+    id: _9D664BBD_8C9E_4068_9112_9AB0457D4C52,
     name: 'dim_address',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE,
     description:
       'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
     version: 0.1,
@@ -1868,7 +1909,7 @@ export const mockDatasetData = {
         name: 'address_id',
         dataType: 'NUMERIC',
         dataTypeDisplay: 'numeric',
-        description: 'Unique identifier for the address.',
+        description: UNIQUE_IDENTIFIER_FOR_THE_ADDRESS,
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.address_id',
         tags: [],
@@ -1878,8 +1919,7 @@ export const mockDatasetData = {
         name: 'shop_id',
         dataType: 'NUMERIC',
         dataTypeDisplay: 'numeric',
-        description:
-          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+        description: THE_ID_OF_THE_STORE_THIS_COLUMN_IS_A_FOREI,
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.shop_id',
         tags: [],
@@ -1890,7 +1930,7 @@ export const mockDatasetData = {
         dataType: 'VARCHAR',
         dataLength: 100,
         dataTypeDisplay: 'varchar',
-        description: 'First name of the customer.',
+        description: FIRST_NAME_OF_THE_CUSTOMER,
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.first_name',
         tags: [],
@@ -1901,7 +1941,7 @@ export const mockDatasetData = {
         dataType: 'VARCHAR',
         dataLength: 100,
         dataTypeDisplay: 'varchar',
-        description: 'Last name of the customer.',
+        description: LAST_NAME_OF_THE_CUSTOMER,
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.last_name',
         tags: [],
@@ -1934,7 +1974,7 @@ export const mockDatasetData = {
         dataType: 'VARCHAR',
         dataLength: 100,
         dataTypeDisplay: 'varchar',
-        description: "The name of the customer's business, if one exists.",
+        description: THE_NAME_OF_THE_CUSTOMER_S_BUSINESS_IF_ONE,
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.company',
         tags: [],
@@ -1945,7 +1985,7 @@ export const mockDatasetData = {
         dataType: 'VARCHAR',
         dataLength: 100,
         dataTypeDisplay: 'varchar',
-        description: 'The name of the city. For example, Palo Alto.',
+        description: THE_NAME_OF_THE_CITY_FOR_EXAMPLE_PALO_ALTO,
         fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address.city',
         tags: [],
         ordinalPosition: 8,
@@ -1956,6 +1996,7 @@ export const mockDatasetData = {
         dataLength: 512,
         dataTypeDisplay: 'varchar',
         description:
+          // eslint-disable-next-line sonarjs/no-duplicate-string -- literal exceeds max line length as a constant
           'The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.',
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.region',
@@ -1967,7 +2008,7 @@ export const mockDatasetData = {
         dataType: 'VARCHAR',
         dataLength: 10,
         dataTypeDisplay: 'varchar',
-        description: 'The ZIP or postal code. For example, 90210.',
+        description: THE_ZIP_OR_POSTAL_CODE_FOR_EXAMPLE_90210,
         fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address.zip',
         tags: [],
         ordinalPosition: 10,
@@ -1977,7 +2018,7 @@ export const mockDatasetData = {
         dataType: 'VARCHAR',
         dataLength: 50,
         dataTypeDisplay: 'varchar',
-        description: 'The full name of the country. For example, Canada.',
+        description: THE_FULL_NAME_OF_THE_COUNTRY_FOR_EXAMPLE_C,
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.country',
         tags: [],
@@ -1988,7 +2029,7 @@ export const mockDatasetData = {
         dataType: 'VARCHAR',
         dataLength: 15,
         dataTypeDisplay: 'varchar',
-        description: 'The phone number of the customer.',
+        description: THE_PHONE_NUMBER_OF_THE_CUSTOMER,
         fullyQualifiedName:
           'sample_data.ecommerce_db.shopify.dim_address.phone',
         tags: [],
@@ -1999,27 +2040,25 @@ export const mockDatasetData = {
       { constraintType: 'PRIMARY_KEY', columns: ['address_id', 'shop_id'] },
     ],
     databaseSchema: {
-      id: 'be37a61e-fb10-4748-86ab-0714613a42ea',
+      id: BE37A61E_FB10_4748_86AB_0714613A42EA,
       type: 'databaseSchema',
       name: 'shopify',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-      description:
-        'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
       deleted: false,
       href: 'http://localhost:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
     },
     database: {
-      id: '0dac7caf-8419-4a0b-a96e-345730b2c0f5',
+      id: _0DAC7CAF_8419_4A0B_A96E_345730B2C0F5,
       type: 'database',
       name: 'ecommerce_db',
-      fullyQualifiedName: 'sample_data.ecommerce_db',
-      description:
-        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+      description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
       deleted: false,
       href: 'http://localhost:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
     },
     service: {
-      id: 'f24cd129-f864-45d9-8cce-46a9aecd6846',
+      id: F24CD129_F864_45D9_8CCE_46A9AECD6846,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -2056,12 +2095,12 @@ export const mockSearchData = {
       {
         _index: SearchIndex.TABLE,
         _type: '_doc',
-        _id: '9d664bbd-8c9e-4068-9112-9ab0457d4c52',
+        _id: _9D664BBD_8C9E_4068_9112_9AB0457D4C52,
         _score: 12.495619,
         _source: {
-          id: '9d664bbd-8c9e-4068-9112-9ab0457d4c52',
+          id: _9D664BBD_8C9E_4068_9112_9AB0457D4C52,
           name: 'dim_address',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+          fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE,
           description:
             'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
           version: 0.1,
@@ -2075,7 +2114,7 @@ export const mockSearchData = {
               name: 'address_id',
               dataType: 'NUMERIC',
               dataTypeDisplay: 'numeric',
-              description: 'Unique identifier for the address.',
+              description: UNIQUE_IDENTIFIER_FOR_THE_ADDRESS,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.address_id',
               tags: [],
@@ -2085,8 +2124,7 @@ export const mockSearchData = {
               name: 'shop_id',
               dataType: 'NUMERIC',
               dataTypeDisplay: 'numeric',
-              description:
-                'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+              description: THE_ID_OF_THE_STORE_THIS_COLUMN_IS_A_FOREI,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.shop_id',
               tags: [],
@@ -2097,7 +2135,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description: 'First name of the customer.',
+              description: FIRST_NAME_OF_THE_CUSTOMER,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.first_name',
               tags: [],
@@ -2108,7 +2146,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description: 'Last name of the customer.',
+              description: LAST_NAME_OF_THE_CUSTOMER,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.last_name',
               tags: [],
@@ -2141,8 +2179,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description:
-                "The name of the customer's business, if one exists.",
+              description: THE_NAME_OF_THE_CUSTOMER_S_BUSINESS_IF_ONE,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.company',
               tags: [],
@@ -2153,7 +2190,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description: 'The name of the city. For example, Palo Alto.',
+              description: THE_NAME_OF_THE_CITY_FOR_EXAMPLE_PALO_ALTO,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.city',
               tags: [],
@@ -2176,7 +2213,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 10,
               dataTypeDisplay: 'varchar',
-              description: 'The ZIP or postal code. For example, 90210.',
+              description: THE_ZIP_OR_POSTAL_CODE_FOR_EXAMPLE_90210,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.zip',
               tags: [],
@@ -2187,7 +2224,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 50,
               dataTypeDisplay: 'varchar',
-              description: 'The full name of the country. For example, Canada.',
+              description: THE_FULL_NAME_OF_THE_COUNTRY_FOR_EXAMPLE_C,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.country',
               tags: [],
@@ -2198,7 +2235,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 15,
               dataTypeDisplay: 'varchar',
-              description: 'The phone number of the customer.',
+              description: THE_PHONE_NUMBER_OF_THE_CUSTOMER,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address.phone',
               tags: [],
@@ -2212,34 +2249,32 @@ export const mockSearchData = {
             },
           ],
           databaseSchema: {
-            id: 'be37a61e-fb10-4748-86ab-0714613a42ea',
+            id: BE37A61E_FB10_4748_86AB_0714613A42EA,
             type: 'databaseSchema',
             name: 'shopify',
-            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-            description:
-              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
             deleted: false,
-            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols, sonarjs/no-duplicate-string -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
-            id: '0dac7caf-8419-4a0b-a96e-345730b2c0f5',
+            id: _0DAC7CAF_8419_4A0B_A96E_345730B2C0F5,
             type: 'database',
             name: 'ecommerce_db',
-            fullyQualifiedName: 'sample_data.ecommerce_db',
-            description:
-              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
             deleted: false,
-            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols, sonarjs/no-duplicate-string -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
-            id: 'f24cd129-f864-45d9-8cce-46a9aecd6846',
+            id: F24CD129_F864_45D9_8CCE_46A9AECD6846,
             type: 'databaseService',
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
             deleted: false,
-            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols, sonarjs/no-duplicate-string -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/services/databaseServices/f24cd129-f864-45d9-8cce-46a9aecd6846',
           },
           serviceType: 'BigQuery',
@@ -2250,7 +2285,7 @@ export const mockSearchData = {
           followers: [],
           suggest: [
             {
-              input: 'sample_data.ecommerce_db.shopify.dim_address',
+              input: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRE,
               weight: 5,
             },
             { input: 'dim_address', weight: 10 },
@@ -2277,9 +2312,7 @@ export const mockSearchData = {
           entityType: 'table',
         },
         highlight: {
-          'columns.description': [
-            'This column is a foreign key reference to the shop_id column in the <span class="text-highlighter">dim</span>_shop table.',
-          ],
+          'columns.description': [THIS_COLUMN_IS_A_FOREIGN_KEY_REFERENCE_TO],
           displayName: ['<span class="text-highlighter">dim</span>_address'],
         },
       },
@@ -2305,7 +2338,7 @@ export const mockSearchData = {
               name: 'address_id',
               dataType: 'NUMERIC',
               dataTypeDisplay: 'numeric',
-              description: 'Unique identifier for the address.',
+              description: UNIQUE_IDENTIFIER_FOR_THE_ADDRESS,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.address_id',
               tags: [],
@@ -2315,8 +2348,7 @@ export const mockSearchData = {
               name: 'shop_id',
               dataType: 'NUMERIC',
               dataTypeDisplay: 'numeric',
-              description:
-                'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+              description: THE_ID_OF_THE_STORE_THIS_COLUMN_IS_A_FOREI,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.shop_id',
               tags: [],
@@ -2327,7 +2359,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description: 'First name of the customer.',
+              description: FIRST_NAME_OF_THE_CUSTOMER,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.first_name',
               tags: [],
@@ -2338,7 +2370,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description: 'Last name of the customer.',
+              description: LAST_NAME_OF_THE_CUSTOMER,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.last_name',
               tags: [],
@@ -2360,8 +2392,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description:
-                "The name of the customer's business, if one exists.",
+              description: THE_NAME_OF_THE_CUSTOMER_S_BUSINESS_IF_ONE,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.company',
               tags: [],
@@ -2372,7 +2403,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 100,
               dataTypeDisplay: 'varchar',
-              description: 'The name of the city. For example, Palo Alto.',
+              description: THE_NAME_OF_THE_CITY_FOR_EXAMPLE_PALO_ALTO,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.city',
               tags: [],
@@ -2395,7 +2426,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 10,
               dataTypeDisplay: 'varchar',
-              description: 'The ZIP or postal code. For example, 90210.',
+              description: THE_ZIP_OR_POSTAL_CODE_FOR_EXAMPLE_90210,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.zip',
               tags: [],
@@ -2406,7 +2437,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 50,
               dataTypeDisplay: 'varchar',
-              description: 'The full name of the country. For example, Canada.',
+              description: THE_FULL_NAME_OF_THE_COUNTRY_FOR_EXAMPLE_C,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.country',
               tags: [],
@@ -2417,7 +2448,7 @@ export const mockSearchData = {
               dataType: 'VARCHAR',
               dataLength: 15,
               dataTypeDisplay: 'varchar',
-              description: 'The phone number of the customer.',
+              description: THE_PHONE_NUMBER_OF_THE_CUSTOMER,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.dim_address_clean.phone',
               tags: [],
@@ -2431,29 +2462,27 @@ export const mockSearchData = {
             },
           ],
           databaseSchema: {
-            id: 'be37a61e-fb10-4748-86ab-0714613a42ea',
+            id: BE37A61E_FB10_4748_86AB_0714613A42EA,
             type: 'databaseSchema',
             name: 'shopify',
-            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-            description:
-              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
             deleted: false,
             // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
-            id: '0dac7caf-8419-4a0b-a96e-345730b2c0f5',
+            id: _0DAC7CAF_8419_4A0B_A96E_345730B2C0F5,
             type: 'database',
             name: 'ecommerce_db',
-            fullyQualifiedName: 'sample_data.ecommerce_db',
-            description:
-              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
             deleted: false,
             // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
-            id: 'f24cd129-f864-45d9-8cce-46a9aecd6846',
+            id: F24CD129_F864_45D9_8CCE_46A9AECD6846,
             type: 'databaseService',
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
@@ -2495,9 +2524,7 @@ export const mockSearchData = {
           entityType: 'table',
         },
         highlight: {
-          'columns.description': [
-            'This column is a foreign key reference to the shop_id column in the <span class="text-highlighter">dim</span>_shop table.',
-          ],
+          'columns.description': [THIS_COLUMN_IS_A_FOREIGN_KEY_REFERENCE_TO],
           displayName: [
             '<span class="text-highlighter">dim</span>_address_clean',
           ],
@@ -2712,29 +2739,27 @@ export const mockSearchData = {
             },
           ],
           databaseSchema: {
-            id: 'be37a61e-fb10-4748-86ab-0714613a42ea',
+            id: BE37A61E_FB10_4748_86AB_0714613A42EA,
             type: 'databaseSchema',
             name: 'shopify',
-            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-            description:
-              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
             deleted: false,
             // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
-            id: '0dac7caf-8419-4a0b-a96e-345730b2c0f5',
+            id: _0DAC7CAF_8419_4A0B_A96E_345730B2C0F5,
             type: 'database',
             name: 'ecommerce_db',
-            fullyQualifiedName: 'sample_data.ecommerce_db',
-            description:
-              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
             deleted: false,
             // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
-            id: 'f24cd129-f864-45d9-8cce-46a9aecd6846',
+            id: F24CD129_F864_45D9_8CCE_46A9AECD6846,
             type: 'databaseService',
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
@@ -2785,7 +2810,7 @@ export const mockSearchData = {
           'columns.description': [
             'ID of the product ordered, unless the line item is for shipping costs (you can <span class="text-highlighter">add</span> custom items using',
             'This column is a foreign key reference to the product_id column in the <span class="text-highlighter">dim</span>.product table.',
-            'This column is a foreign key reference to the shop_id column in the <span class="text-highlighter">dim</span>_shop table.',
+            THIS_COLUMN_IS_A_FOREIGN_KEY_REFERENCE_TO,
           ],
         },
       },
@@ -2824,8 +2849,7 @@ export const mockSearchData = {
               name: 'shop_id',
               dataType: 'NUMERIC',
               dataTypeDisplay: 'numeric',
-              description:
-                'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+              description: THE_ID_OF_THE_STORE_THIS_COLUMN_IS_A_FOREI,
               fullyQualifiedName:
                 'sample_data.ecommerce_db.shopify.fact_session.shop_id',
               tags: [],
@@ -3164,29 +3188,27 @@ export const mockSearchData = {
             },
           ],
           databaseSchema: {
-            id: 'be37a61e-fb10-4748-86ab-0714613a42ea',
+            id: BE37A61E_FB10_4748_86AB_0714613A42EA,
             type: 'databaseSchema',
             name: 'shopify',
-            fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
-            description:
-              'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMA_RELATED,
             deleted: false,
             // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
-            id: '0dac7caf-8419-4a0b-a96e-345730b2c0f5',
+            id: _0DAC7CAF_8419_4A0B_A96E_345730B2C0F5,
             type: 'database',
             name: 'ecommerce_db',
-            fullyQualifiedName: 'sample_data.ecommerce_db',
-            description:
-              'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB,
+            description: THIS_MOCK_DATABASE_CONTAINS_SCHEMAS_RELATE,
             deleted: false,
             // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
-            id: 'f24cd129-f864-45d9-8cce-46a9aecd6846',
+            id: F24CD129_F864_45D9_8CCE_46A9AECD6846,
             type: 'databaseService',
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
@@ -3244,7 +3266,7 @@ export const mockSearchData = {
         },
         highlight: {
           'columns.description': [
-            'This column is a foreign key reference to the shop_id column in the <span class="text-highlighter">dim</span>_shop table.',
+            THIS_COLUMN_IS_A_FOREIGN_KEY_REFERENCE_TO,
             'For example, if a customer <span class="text-highlighter">adds</span> 5 t-shirts and 1 lipstick to their cart, and then removes one of the',
             'For example, if a customer <span class="text-highlighter">adds</span> 5 t-shirts and 1 lipstick are added to the cart, then the value in this',
             'For example, if a customer <span class="text-highlighter">adds</span> 2 small and 3 large t-shirts and 1 lipstick to the cart, then the value',

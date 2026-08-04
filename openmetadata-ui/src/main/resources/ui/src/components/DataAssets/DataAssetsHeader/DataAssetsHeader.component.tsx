@@ -120,6 +120,8 @@ import {
 import { FollowStarIcon } from './FollowStarIcon.component';
 import { StatItem } from './StatItem.component';
 
+const LABEL_EDIT_ENTITY = 'label.edit-entity';
+
 export const DataAssetsHeader = ({
   allowSoftDelete = true,
   allowRename = false,
@@ -795,7 +797,7 @@ export const DataAssetsHeader = ({
                     className="tw:size-6 tw:p-0"
                     data-testid="edit-service-style"
                     size="small"
-                    title={t('label.edit-entity', {
+                    title={t(LABEL_EDIT_ENTITY, {
                       entity: t('label.style'),
                     })}
                     onClick={() => setIsStyleEditing(true)}
@@ -960,7 +962,7 @@ export const DataAssetsHeader = ({
                       newLook
                       data-testid="edit-tier"
                       size="small"
-                      title={t('label.edit-entity', {
+                      title={t(LABEL_EDIT_ENTITY, {
                         entity: t('label.tier'),
                       })}
                     />
@@ -1031,7 +1033,7 @@ export const DataAssetsHeader = ({
                         newLook
                         data-testid="edit-certification"
                         size="small"
-                        title={t('label.edit-entity', {
+                        title={t(LABEL_EDIT_ENTITY, {
                           entity: t('label.certification'),
                         })}
                       />

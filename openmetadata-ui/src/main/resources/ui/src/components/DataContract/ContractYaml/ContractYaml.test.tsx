@@ -23,6 +23,8 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import ContractYaml from './ContractYaml.component';
 
+const SCHEMA_EDITOR = 'schema-editor';
+
 jest.mock('js-yaml', () => ({
   dump: jest.fn(),
 }));
@@ -96,7 +98,7 @@ describe('ContractYaml', () => {
     it('should render the component with schema editor', async () => {
       render(<ContractYaml contract={mockContract} />);
 
-      expect(await screen.findByTestId('schema-editor')).toBeInTheDocument();
+      expect(await screen.findByTestId(SCHEMA_EDITOR)).toBeInTheDocument();
     });
 
     it('should render with correct container class', () => {
@@ -110,7 +112,7 @@ describe('ContractYaml', () => {
     it('should pass correct props to SchemaEditor', () => {
       render(<ContractYaml contract={mockContract} />);
 
-      expect(screen.getByTestId('schema-editor')).toHaveClass(
+      expect(screen.getByTestId(SCHEMA_EDITOR)).toHaveClass(
         'contract-yaml-schema-editor'
       );
       expect(screen.getByTestId('editor-class')).toHaveTextContent(
@@ -183,7 +185,7 @@ describe('ContractYaml', () => {
     it('should apply correct CSS classes to schema editor', () => {
       render(<ContractYaml contract={mockContract} />);
 
-      const editor = screen.getByTestId('schema-editor');
+      const editor = screen.getByTestId(SCHEMA_EDITOR);
 
       expect(editor).toHaveClass('contract-yaml-schema-editor');
     });
@@ -353,7 +355,7 @@ describe('ContractYaml', () => {
     it('should integrate properly with SchemaEditor component', () => {
       render(<ContractYaml contract={mockContract} />);
 
-      const editor = screen.getByTestId('schema-editor');
+      const editor = screen.getByTestId(SCHEMA_EDITOR);
 
       expect(editor).toBeInTheDocument();
 

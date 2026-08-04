@@ -15,6 +15,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { ArticleViewer } from './ArticleViewer.component';
 
+const HTTPS_EXAMPLE_COM_ARTICLE_MD = 'https://example.com/article.md';
+const RICH_TEXT_PREVIEWER = 'rich-text-previewer';
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -23,7 +26,7 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ markdown }) => (
-      <div data-testid="rich-text-previewer">{markdown}</div>
+      <div data-testid={RICH_TEXT_PREVIEWER}>{markdown}</div>
     ));
 });
 
@@ -53,7 +56,7 @@ describe('ArticleViewer', () => {
   });
 
   it('should render loading state initially', () => {
-    const resource = createMockResource('https://example.com/article.md');
+    const resource = createMockResource(HTTPS_EXAMPLE_COM_ARTICLE_MD);
     (global.fetch as jest.Mock).mockImplementation(() => new Promise(() => {}));
 
     render(<ArticleViewer resource={resource} />);
@@ -68,14 +71,14 @@ describe('ArticleViewer', () => {
     render(<ArticleViewer resource={resource} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('rich-text-previewer')).toBeInTheDocument();
+      expect(screen.getByTestId(RICH_TEXT_PREVIEWER)).toBeInTheDocument();
     });
 
     expect(screen.getByText(embeddedContent)).toBeInTheDocument();
   });
 
   it('should fetch and render content from URL', async () => {
-    const resource = createMockResource('https://example.com/article.md');
+    const resource = createMockResource(HTTPS_EXAMPLE_COM_ARTICLE_MD);
     const fetchedContent = '# Fetched Article';
 
     (global.fetch as jest.Mock).mockResolvedValue({
@@ -86,14 +89,14 @@ describe('ArticleViewer', () => {
     render(<ArticleViewer resource={resource} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('rich-text-previewer')).toBeInTheDocument();
+      expect(screen.getByTestId(RICH_TEXT_PREVIEWER)).toBeInTheDocument();
     });
 
     expect(screen.getByText(fetchedContent)).toBeInTheDocument();
   });
 
   it('should render error state when fetch fails', async () => {
-    const resource = createMockResource('https://example.com/article.md');
+    const resource = createMockResource(HTTPS_EXAMPLE_COM_ARTICLE_MD);
 
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
@@ -110,7 +113,7 @@ describe('ArticleViewer', () => {
   });
 
   it('should render error state when fetch throws', async () => {
-    const resource = createMockResource('https://example.com/article.md');
+    const resource = createMockResource(HTTPS_EXAMPLE_COM_ARTICLE_MD);
 
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
@@ -129,7 +132,7 @@ describe('ArticleViewer', () => {
     render(<ArticleViewer resource={resource} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('rich-text-previewer')).toBeInTheDocument();
+      expect(screen.getByTestId(RICH_TEXT_PREVIEWER)).toBeInTheDocument();
     });
 
     expect(
@@ -138,7 +141,7 @@ describe('ArticleViewer', () => {
   });
 
   it('should show open original link button on error', async () => {
-    const resource = createMockResource('https://example.com/article.md');
+    const resource = createMockResource(HTTPS_EXAMPLE_COM_ARTICLE_MD);
 
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
@@ -155,14 +158,14 @@ describe('ArticleViewer', () => {
   it('should prioritize embedConfig over URL fetch', async () => {
     const embeddedContent = '# Embedded Content';
     const resource = createMockResource(
-      'https://example.com/article.md',
+      HTTPS_EXAMPLE_COM_ARTICLE_MD,
       embeddedContent
     );
 
     render(<ArticleViewer resource={resource} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('rich-text-previewer')).toBeInTheDocument();
+      expect(screen.getByTestId(RICH_TEXT_PREVIEWER)).toBeInTheDocument();
     });
 
     expect(global.fetch).not.toHaveBeenCalled();

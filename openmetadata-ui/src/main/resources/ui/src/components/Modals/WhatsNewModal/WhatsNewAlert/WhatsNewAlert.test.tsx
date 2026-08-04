@@ -16,6 +16,9 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import WhatsNewAlert from './WhatsNewAlert.component';
 
+const WHATS_NEW_ALERT_CLOSE = '.whats-new-alert-close';
+const WHATS_NEW_ALERT_CARD = 'whats-new-alert-card';
+const WHATS_NEW_1_2_0 = 'whats-new-1.2.0';
 // Mock cookie storage
 const mockGetItem = jest.fn();
 const mockSetItem = jest.fn();
@@ -103,14 +106,14 @@ describe('WhatsNewAlert', () => {
   it('should render Whats New Alert Card when conditions are met', async () => {
     const { findByTestId } = render(<WhatsNewAlert />);
 
-    expect(await findByTestId('whats-new-alert-card')).toBeInTheDocument();
+    expect(await findByTestId(WHATS_NEW_ALERT_CARD)).toBeInTheDocument();
   });
 
   it('should close the alert when the close button is clicked', async () => {
     const { getByTestId } = render(<WhatsNewAlert />);
 
-    const closeButton = getByTestId('whats-new-alert-card').querySelector(
-      '.whats-new-alert-close'
+    const closeButton = getByTestId(WHATS_NEW_ALERT_CARD).querySelector(
+      WHATS_NEW_ALERT_CLOSE
     );
 
     expect(closeButton).toBeInTheDocument();
@@ -121,7 +124,7 @@ describe('WhatsNewAlert', () => {
 
     // Verify cookie was set
     expect(mockSetItem).toHaveBeenCalledWith(
-      'whats-new-1.2.0',
+      WHATS_NEW_1_2_0,
       'true',
       expect.objectContaining({
         expires: expect.any(Date),
@@ -134,7 +137,7 @@ describe('WhatsNewAlert', () => {
 
     const { queryByTestId } = render(<WhatsNewAlert />);
 
-    expect(queryByTestId('whats-new-alert-card')).not.toBeInTheDocument();
+    expect(queryByTestId(WHATS_NEW_ALERT_CARD)).not.toBeInTheDocument();
   });
 
   it('should not render the alert when the user is not on the home page', () => {
@@ -144,7 +147,7 @@ describe('WhatsNewAlert', () => {
 
     const { queryByTestId } = render(<WhatsNewAlert />);
 
-    expect(queryByTestId('whats-new-alert-card')).not.toBeInTheDocument();
+    expect(queryByTestId(WHATS_NEW_ALERT_CARD)).not.toBeInTheDocument();
   });
 
   it('should display correct version number', () => {
@@ -212,7 +215,7 @@ describe('WhatsNewAlert', () => {
     const { queryByTestId } = render(<WhatsNewAlert />);
 
     // Should not render the alert when appVersion is undefined
-    expect(queryByTestId('whats-new-alert-card')).not.toBeInTheDocument();
+    expect(queryByTestId(WHATS_NEW_ALERT_CARD)).not.toBeInTheDocument();
   });
 
   it('should call brandClassBase methods with correct version', () => {
@@ -229,14 +232,14 @@ describe('WhatsNewAlert', () => {
   it('should use correct cookie key for version', () => {
     const { getByTestId } = render(<WhatsNewAlert />);
 
-    const closeButton = getByTestId('whats-new-alert-card').querySelector(
-      '.whats-new-alert-close'
+    const closeButton = getByTestId(WHATS_NEW_ALERT_CARD).querySelector(
+      WHATS_NEW_ALERT_CLOSE
     );
 
     closeButton && fireEvent.click(closeButton);
 
     expect(mockSetItem).toHaveBeenCalledWith(
-      'whats-new-1.2.0',
+      WHATS_NEW_1_2_0,
       'true',
       expect.any(Object)
     );
@@ -245,9 +248,9 @@ describe('WhatsNewAlert', () => {
   it('should have correct CSS classes and structure', () => {
     const { getByTestId } = render(<WhatsNewAlert />);
 
-    const alertCard = getByTestId('whats-new-alert-card');
+    const alertCard = getByTestId(WHATS_NEW_ALERT_CARD);
 
-    expect(alertCard).toHaveClass('whats-new-alert-card');
+    expect(alertCard).toHaveClass(WHATS_NEW_ALERT_CARD);
 
     // Check for the three columns structure
     const columns = alertCard.querySelectorAll('.ant-col');
@@ -273,7 +276,7 @@ describe('WhatsNewAlert', () => {
     const closeColumn = columns[2];
 
     expect(
-      closeColumn.querySelector('.whats-new-alert-close')
+      closeColumn.querySelector(WHATS_NEW_ALERT_CLOSE)
     ).toBeInTheDocument();
   });
 });

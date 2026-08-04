@@ -18,6 +18,9 @@ import { AuthProvider } from '../../generated/settings/settings';
 import * as securityConfigAPI from '../../rest/securityConfigAPI';
 import SettingsSso from './SettingsSso';
 
+const PROVIDER_SELECTOR = 'provider-selector';
+const SSO_CONFIGURATION_FORM = 'sso-configuration-form';
+
 const mockSecurityConfig: securityConfigAPI.SecurityConfiguration = {
   authenticationConfiguration: {
     provider: AuthProvider.Google,
@@ -68,7 +71,7 @@ jest.mock('./ProviderSelector/ProviderSelector', () => {
     onProviderSelect: (provider: AuthProvider) => void;
   }) {
     return (
-      <div data-testid="provider-selector">
+      <div data-testid={PROVIDER_SELECTOR}>
         <button
           data-testid="provider-google"
           onClick={() => onProviderSelect(AuthProvider.Google)}>
@@ -89,7 +92,7 @@ jest.mock('./SSOConfigurationForm/SSOConfigurationForm', () => {
     onChangeProvider?: () => void;
   }) {
     return (
-      <div data-testid="sso-configuration-form">
+      <div data-testid={SSO_CONFIGURATION_FORM}>
         <button
           data-testid="change-provider-button"
           onClick={props.onChangeProvider}>
@@ -263,7 +266,7 @@ describe('SettingsSso', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
     });
 
@@ -282,9 +285,7 @@ describe('SettingsSso', () => {
       fireEvent.click(configureTab);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('sso-configuration-form')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SSO_CONFIGURATION_FORM)).toBeInTheDocument();
       });
     });
 
@@ -362,7 +363,7 @@ describe('SettingsSso', () => {
         fireEvent.click(googleProvider);
       });
 
-      expect(screen.getByTestId('sso-configuration-form')).toBeInTheDocument();
+      expect(screen.getByTestId(SSO_CONFIGURATION_FORM)).toBeInTheDocument();
     });
 
     it('should show change provider button when provider is configured', async () => {
@@ -408,7 +409,7 @@ describe('SettingsSso', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+        expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
       });
     });
   });
@@ -428,9 +429,7 @@ describe('SettingsSso', () => {
       fireEvent.click(googleProvider);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('sso-configuration-form')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(SSO_CONFIGURATION_FORM)).toBeInTheDocument();
       });
     });
 
@@ -444,7 +443,7 @@ describe('SettingsSso', () => {
         expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('sso-configuration-form')).toBeInTheDocument();
+      expect(screen.getByTestId(SSO_CONFIGURATION_FORM)).toBeInTheDocument();
     });
   });
 
@@ -460,7 +459,7 @@ describe('SettingsSso', () => {
       });
 
       // Should show provider selector on error
-      expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      expect(screen.getByTestId(PROVIDER_SELECTOR)).toBeInTheDocument();
     });
 
     it('should handle SSO toggle error gracefully', async () => {

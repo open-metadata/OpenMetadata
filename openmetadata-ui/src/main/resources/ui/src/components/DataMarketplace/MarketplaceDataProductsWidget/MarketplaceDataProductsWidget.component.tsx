@@ -47,6 +47,9 @@ import { DomainFormType } from '../../Domain/DomainPage.interface';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';
 
+const LABEL_DATA_PRODUCT = 'label.data-product' as const;
+const LABEL_DATA_PRODUCT_PLURAL = 'label.data-product-plural' as const;
+
 const DISPLAY_COUNT = 3;
 
 const MarketplaceDataProductsWidget = ({
@@ -110,7 +113,7 @@ const MarketplaceDataProductsWidget = ({
         await createEntityWithCoverImage({
           formData,
           entityType: EntityType.DATA_PRODUCT,
-          entityLabel: t('label.data-product'),
+          entityLabel: t(LABEL_DATA_PRODUCT),
           entityPluralLabel: 'data-products',
           createEntity: addDataProducts,
           patchEntity: patchDataProduct,
@@ -128,7 +131,7 @@ const MarketplaceDataProductsWidget = ({
 
   const { formDrawer, openDrawer, closeDrawer } =
     useFormDrawerWithHook<DomainFormValues>({
-      title: t('label.add-entity', { entity: t('label.data-product') }),
+      title: t('label.add-entity', { entity: t(LABEL_DATA_PRODUCT) }),
       width: 670,
       className: 'tw:z-[20]',
       closeOnEscape: false,
@@ -221,13 +224,13 @@ const MarketplaceDataProductsWidget = ({
             className="marketplace-widget-title tw:text-text-primary tw:m-0"
             size="text-md"
             weight="semibold">
-            {t('label.new')} {t('label.data-product-plural')}
+            {t('label.new')} {t(LABEL_DATA_PRODUCT_PLURAL)}
           </Typography>
           <Typography
             as="span"
             className="tw:text-sm tw:font-medium tw:text-text-primary">
             {t('label.recently-created-entity', {
-              entity: t('label.data-product-plural'),
+              entity: t(LABEL_DATA_PRODUCT_PLURAL),
             })}
           </Typography>
         </div>
@@ -239,7 +242,7 @@ const MarketplaceDataProductsWidget = ({
                 color="secondary"
                 data-testid="add-data-product-btn"
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.data-product') })}
+                + {t('label.add-entity', { entity: t(LABEL_DATA_PRODUCT) })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (
@@ -257,7 +260,7 @@ const MarketplaceDataProductsWidget = ({
         <div className="tw:flex tw:items-center tw:justify-center tw:min-h-16">
           <Typography as="span" className="tw:text-sm tw:text-text-tertiary">
             {t('label.no-entity', {
-              entity: t('label.data-product-plural'),
+              entity: t(LABEL_DATA_PRODUCT_PLURAL),
             })}
           </Typography>
         </div>

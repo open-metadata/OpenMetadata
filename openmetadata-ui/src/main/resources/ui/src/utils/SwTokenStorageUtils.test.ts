@@ -20,6 +20,14 @@ import {
 } from './SwTokenStorageUtils';
 
 // Mock SwTokenStorage
+const SHOULD_FALLBACK_TO_LOCALSTORAGE_WHEN_SERVI =
+  'should fallback to localStorage when service worker is not available';
+const SERVICE_WORKER_ERROR = 'Service worker error';
+const NEW_OIDC_TOKEN = 'new-oidc-token';
+const REFRESH_TOKEN = 'refresh-token';
+const OIDC_TOKEN = 'oidc-token';
+const NEW_REFRESH_TOKEN = 'new-refresh-token';
+
 const mockSetItem = jest.fn();
 const mockGetItem = jest.fn();
 
@@ -143,7 +151,7 @@ describe('SwTokenStorageUtils', () => {
       expect(result).toBe('');
     });
 
-    it('should fallback to localStorage when service worker is not available', async () => {
+    it(SHOULD_FALLBACK_TO_LOCALSTORAGE_WHEN_SERVI, async () => {
       delete mockNavigator.serviceWorker;
       const mockToken = 'test-oidc-token';
       const mockAppState = JSON.stringify({ primary: mockToken });
@@ -156,7 +164,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should return empty string when service worker throws error', async () => {
-      mockGetItem.mockRejectedValue(new Error('Service worker error'));
+      mockGetItem.mockRejectedValue(new Error(SERVICE_WORKER_ERROR));
 
       const result = await getOidcToken();
 
@@ -179,10 +187,10 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should set token in service worker when available', async () => {
-      const mockToken = 'new-oidc-token';
-      const existingState = JSON.stringify({ secondary: 'refresh-token' });
+      const mockToken = NEW_OIDC_TOKEN;
+      const existingState = JSON.stringify({ secondary: REFRESH_TOKEN });
       const expectedState = JSON.stringify({
-        secondary: 'refresh-token',
+        secondary: REFRESH_TOKEN,
         primary: mockToken,
       });
 
@@ -196,7 +204,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should create new state when no existing state exists', async () => {
-      const mockToken = 'new-oidc-token';
+      const mockToken = NEW_OIDC_TOKEN;
       const expectedState = JSON.stringify({ primary: mockToken });
 
       mockGetItem.mockResolvedValue(null);
@@ -207,9 +215,9 @@ describe('SwTokenStorageUtils', () => {
       expect(mockSetItem).toHaveBeenCalledWith('app_state', expectedState);
     });
 
-    it('should fallback to localStorage when service worker is not available', async () => {
+    it(SHOULD_FALLBACK_TO_LOCALSTORAGE_WHEN_SERVI, async () => {
       delete mockNavigator.serviceWorker;
-      const mockToken = 'new-oidc-token';
+      const mockToken = NEW_OIDC_TOKEN;
       const expectedState = JSON.stringify({ primary: mockToken });
 
       mockLocalStorage.getItem.mockReturnValue(null);
@@ -223,7 +231,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should handle errors gracefully without throwing', async () => {
-      mockGetItem.mockRejectedValue(new Error('Service worker error'));
+      mockGetItem.mockRejectedValue(new Error(SERVICE_WORKER_ERROR));
 
       await expect(setOidcToken('test-token')).resolves.toBeUndefined();
     });
@@ -247,7 +255,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should return empty string when no refresh token exists', async () => {
-      const mockAppState = JSON.stringify({ primary: 'oidc-token' });
+      const mockAppState = JSON.stringify({ primary: OIDC_TOKEN });
       mockGetItem.mockResolvedValue(mockAppState);
 
       const result = await getRefreshToken();
@@ -255,7 +263,7 @@ describe('SwTokenStorageUtils', () => {
       expect(result).toBe('');
     });
 
-    it('should fallback to localStorage when service worker is not available', async () => {
+    it(SHOULD_FALLBACK_TO_LOCALSTORAGE_WHEN_SERVI, async () => {
       delete mockNavigator.serviceWorker;
       const mockToken = 'test-refresh-token';
       const mockAppState = JSON.stringify({ secondary: mockToken });
@@ -268,7 +276,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should return empty string on error', async () => {
-      mockGetItem.mockRejectedValue(new Error('Service worker error'));
+      mockGetItem.mockRejectedValue(new Error(SERVICE_WORKER_ERROR));
 
       const result = await getRefreshToken();
 
@@ -283,10 +291,10 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should set refresh token in service worker when available', async () => {
-      const mockToken = 'new-refresh-token';
-      const existingState = JSON.stringify({ primary: 'oidc-token' });
+      const mockToken = NEW_REFRESH_TOKEN;
+      const existingState = JSON.stringify({ primary: OIDC_TOKEN });
       const expectedState = JSON.stringify({
-        primary: 'oidc-token',
+        primary: OIDC_TOKEN,
         secondary: mockToken,
       });
 
@@ -300,7 +308,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should create new state when no existing state exists', async () => {
-      const mockToken = 'new-refresh-token';
+      const mockToken = NEW_REFRESH_TOKEN;
       const expectedState = JSON.stringify({ secondary: mockToken });
 
       mockGetItem.mockResolvedValue(null);
@@ -311,9 +319,9 @@ describe('SwTokenStorageUtils', () => {
       expect(mockSetItem).toHaveBeenCalledWith('app_state', expectedState);
     });
 
-    it('should fallback to localStorage when service worker is not available', async () => {
+    it(SHOULD_FALLBACK_TO_LOCALSTORAGE_WHEN_SERVI, async () => {
       delete mockNavigator.serviceWorker;
-      const mockToken = 'new-refresh-token';
+      const mockToken = NEW_REFRESH_TOKEN;
       const expectedState = JSON.stringify({ secondary: mockToken });
 
       mockLocalStorage.getItem.mockReturnValue(null);
@@ -327,7 +335,7 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should handle errors gracefully without throwing', async () => {
-      mockGetItem.mockRejectedValue(new Error('Service worker error'));
+      mockGetItem.mockRejectedValue(new Error(SERVICE_WORKER_ERROR));
 
       await expect(setRefreshToken('test-token')).resolves.toBeUndefined();
     });
@@ -340,8 +348,8 @@ describe('SwTokenStorageUtils', () => {
     });
 
     it('should maintain both tokens when updating one', async () => {
-      const oidcToken = 'oidc-token';
-      const refreshToken = 'refresh-token';
+      const oidcToken = OIDC_TOKEN;
+      const refreshToken = REFRESH_TOKEN;
 
       // Start with empty state
       mockGetItem.mockResolvedValue(null);

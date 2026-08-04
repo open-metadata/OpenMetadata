@@ -15,6 +15,8 @@ import { Form, FormInstance } from 'antd';
 import { useTranslation } from 'react-i18next';
 import CuratedAssetsModal from './CuratedAssetsModal';
 
+const TEST_WIDGET = 'Test Widget';
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
 }));
@@ -81,7 +83,7 @@ describe('CuratedAssetsModal', () => {
   it('renders modal with edit widget title when data is provided', () => {
     const propsWithData = {
       ...defaultProps,
-      curatedAssetsConfig: { title: 'Test Widget' },
+      curatedAssetsConfig: { title: TEST_WIDGET },
     };
 
     render(<CuratedAssetsModal {...propsWithData} />);
@@ -135,7 +137,7 @@ describe('CuratedAssetsModal', () => {
       <CuratedAssetsModal
         {...defaultProps}
         curatedAssetsConfig={{
-          title: 'Test Widget',
+          title: TEST_WIDGET,
           resources: ['table'],
           queryFilter: '{"query":{"bool":{"must":[]}}}',
         }}
@@ -168,7 +170,7 @@ describe('CuratedAssetsModal', () => {
       <CuratedAssetsModal
         {...defaultProps}
         curatedAssetsConfig={{
-          title: 'Test Widget',
+          title: TEST_WIDGET,
           resources: ['table'],
           queryFilter: '{"query":{"bool":{"must":[]}}}',
         }}

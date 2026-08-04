@@ -16,6 +16,10 @@ import {
 } from '../generated/configuration/searchSettings';
 import { getEffectiveRankingConfiguration } from './SearchSettingsUtils';
 
+const NAME_NGRAM = 'name.ngram';
+const DISPLAYNAME_NGRAM = 'displayName.ngram';
+const NAME_KEYWORD = 'name.keyword';
+
 describe('SearchSettingsUtils', () => {
   it('Should handle runtime ranking stages without a name', () => {
     const searchConfig = {
@@ -46,7 +50,7 @@ describe('SearchSettingsUtils', () => {
           stages: [
             {
               name: 'partialName',
-              fields: ['name.ngram'],
+              fields: [NAME_NGRAM],
             },
           ],
         },
@@ -56,9 +60,9 @@ describe('SearchSettingsUtils', () => {
       assetType: 'table',
       searchFields: [
         { field: 'displayName', boost: 10 },
-        { field: 'displayName.ngram', boost: 8 },
+        { field: DISPLAYNAME_NGRAM, boost: 8 },
         { field: 'name', boost: 10 },
-        { field: 'name.ngram', boost: 8 },
+        { field: NAME_NGRAM, boost: 8 },
         { field: 'description', boost: 1 },
       ],
     } as AssetTypeConfiguration;
@@ -66,8 +70,8 @@ describe('SearchSettingsUtils', () => {
     const ranking = getEffectiveRankingConfiguration(searchConfig, assetConfig);
 
     expect(ranking?.stages?.[0].fields).toEqual([
-      'displayName.ngram',
-      'name.ngram',
+      DISPLAYNAME_NGRAM,
+      NAME_NGRAM,
     ]);
   });
 
@@ -78,7 +82,7 @@ describe('SearchSettingsUtils', () => {
           stages: [
             {
               name: 'exactName',
-              fields: ['name.keyword'],
+              fields: [NAME_KEYWORD],
             },
             {
               name: 'phraseName',
@@ -94,7 +98,7 @@ describe('SearchSettingsUtils', () => {
             },
             {
               name: 'partialName',
-              fields: ['name.ngram'],
+              fields: [NAME_NGRAM],
             },
             {
               name: 'structuralContext',
@@ -113,10 +117,10 @@ describe('SearchSettingsUtils', () => {
       searchFields: [
         { field: 'displayName', boost: 10 },
         { field: 'displayName.keyword', boost: 10 },
-        { field: 'displayName.ngram', boost: 8 },
+        { field: DISPLAYNAME_NGRAM, boost: 8 },
         { field: 'name', boost: 10 },
-        { field: 'name.keyword', boost: 10 },
-        { field: 'name.ngram', boost: 8 },
+        { field: NAME_KEYWORD, boost: 10 },
+        { field: NAME_NGRAM, boost: 8 },
         { field: 'fullyQualifiedName', boost: 5 },
         { field: 'columns.name', boost: 3 },
         { field: 'description', boost: 1 },
@@ -128,11 +132,11 @@ describe('SearchSettingsUtils', () => {
     const ranking = getEffectiveRankingConfiguration(searchConfig, assetConfig);
 
     expect(ranking?.stages?.map((stage) => stage.fields)).toEqual([
-      ['displayName.keyword', 'name.keyword', 'fullyQualifiedName'],
+      ['displayName.keyword', NAME_KEYWORD, 'fullyQualifiedName'],
       ['displayName', 'name', 'fullyQualifiedName'],
       ['displayName', 'name', 'fullyQualifiedName'],
       ['displayName', 'name', 'fullyQualifiedName'],
-      ['displayName.ngram', 'name.ngram'],
+      [DISPLAYNAME_NGRAM, NAME_NGRAM],
       ['columns.name'],
       ['description', 'columns.description'],
     ]);

@@ -29,6 +29,11 @@ import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DirectoryDetails from './DirectoryDetails';
 import { DirectoryDetailsProps } from './DirectoryDetails.interface';
 
+const MOCK_GENERIC_PROVIDER = 'generic-provider';
+const MOCK_DATA_ASSETS_HEADER = 'data-assets-header';
+const TEST_SERVICE_TEST_DIRECTORY = 'test-service.test-directory';
+const CURRENT_USER = 'current-user';
+
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
@@ -96,7 +101,7 @@ jest.mock('../../common/Loader/Loader', () => ({
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest.fn(({ children }) => (
-    <div data-testid="generic-provider">{children}</div>
+    <div data-testid={MOCK_GENERIC_PROVIDER}>{children}</div>
   )),
 }));
 
@@ -104,7 +109,7 @@ jest.mock(
   '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
     DataAssetsHeader: jest.fn(() => (
-      <div data-testid="data-assets-header">Data Assets Header</div>
+      <div data-testid={MOCK_DATA_ASSETS_HEADER}>Data Assets Header</div>
     )),
   })
 );
@@ -147,7 +152,7 @@ const mockDirectoryDetails: Directory = {
   id: 'directory-id-1',
   name: 'test-directory',
   displayName: 'Test Directory',
-  fullyQualifiedName: 'test-service.test-directory',
+  fullyQualifiedName: TEST_SERVICE_TEST_DIRECTORY,
   description: 'Test directory description',
   owners: [
     {
@@ -235,7 +240,7 @@ describe('DirectoryDetails', () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: {
         id: 'current-user-id',
-        name: 'current-user',
+        name: CURRENT_USER,
       },
     });
 
@@ -250,8 +255,8 @@ describe('DirectoryDetails', () => {
     });
 
     mockUseFqn.mockReturnValue({
-      fqn: 'test-service.test-directory',
-      entityFqn: 'test-service.test-directory',
+      fqn: TEST_SERVICE_TEST_DIRECTORY,
+      entityFqn: TEST_SERVICE_TEST_DIRECTORY,
       columnPart: undefined,
     });
 
@@ -276,9 +281,9 @@ describe('DirectoryDetails', () => {
     renderDirectoryDetails();
 
     expect(screen.getByTestId('page-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_GENERIC_PROVIDER)).toBeInTheDocument();
   });
 
   it('should show loader when customization is loading', () => {
@@ -296,7 +301,7 @@ describe('DirectoryDetails', () => {
     renderDirectoryDetails();
 
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle directory restoration successfully', async () => {
@@ -313,7 +318,7 @@ describe('DirectoryDetails', () => {
       directoryDetails: deletedDirectoryDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle directory restoration error', async () => {
@@ -329,7 +334,7 @@ describe('DirectoryDetails', () => {
       directoryDetails: deletedDirectoryDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should fetch feed counts on component mount', async () => {
@@ -337,12 +342,12 @@ describe('DirectoryDetails', () => {
 
     await waitFor(() => {
       expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
-        'test-service.test-directory',
+        TEST_SERVICE_TEST_DIRECTORY,
         expect.any(Function)
       );
       expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
         EntityType.DIRECTORY,
-        'test-service.test-directory',
+        TEST_SERVICE_TEST_DIRECTORY,
         expect.any(Function)
       );
     });
@@ -355,7 +360,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -366,8 +371,8 @@ describe('DirectoryDetails', () => {
         {
           id: 'current-user-id',
           type: 'user',
-          name: 'current-user',
-          fullyQualifiedName: 'current-user',
+          name: CURRENT_USER,
+          fullyQualifiedName: CURRENT_USER,
           displayName: 'Current User',
           deleted: false,
         },
@@ -381,7 +386,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -392,7 +397,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -403,7 +408,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -414,7 +419,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -428,7 +433,7 @@ describe('DirectoryDetails', () => {
       directoryDetails: deletedDirectoryDetails,
     });
 
-    expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_GENERIC_PROVIDER)).toBeInTheDocument();
   });
 
   it('should handle display name update', async () => {
@@ -438,7 +443,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -451,7 +456,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -464,7 +469,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -475,7 +480,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -486,7 +491,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -497,7 +502,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -508,7 +513,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -519,7 +524,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -527,7 +532,7 @@ describe('DirectoryDetails', () => {
     renderDirectoryDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -535,7 +540,7 @@ describe('DirectoryDetails', () => {
     renderDirectoryDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -562,7 +567,7 @@ describe('DirectoryDetails', () => {
       directoryDetails: directoryWithoutChildren,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should render with undefined children', () => {
@@ -575,7 +580,7 @@ describe('DirectoryDetails', () => {
       directoryDetails: directoryWithUndefinedChildren,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle feed count updates', async () => {
@@ -592,7 +597,7 @@ describe('DirectoryDetails', () => {
     renderDirectoryDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -604,7 +609,7 @@ describe('DirectoryDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -620,8 +625,8 @@ describe('DirectoryDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -636,8 +641,8 @@ describe('DirectoryDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -653,8 +658,8 @@ describe('DirectoryDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
   });

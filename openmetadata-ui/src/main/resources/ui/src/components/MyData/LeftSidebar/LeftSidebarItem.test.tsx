@@ -18,6 +18,8 @@ import {
 } from '../../../constants/LeftSidebar.constants';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
+const APP_BAR_ITEM_SETTINGS = 'app-bar-item-settings';
+
 jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthProvider: jest.fn().mockImplementation(() => ({
     onLogoutHandler: jest.fn(),
@@ -32,7 +34,7 @@ describe('LeftSidebar Items', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
+    expect(screen.getByTestId(APP_BAR_ITEM_SETTINGS)).toBeInTheDocument();
 
     expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
   });
@@ -44,7 +46,7 @@ describe('LeftSidebar Items', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
+    expect(screen.getByTestId(APP_BAR_ITEM_SETTINGS)).toBeInTheDocument();
 
     expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
 
@@ -74,7 +76,7 @@ describe('LeftSidebar Items', () => {
       </BrowserRouter>
     );
 
-    fireEvent.click(screen.getByTestId('app-bar-item-settings'));
+    fireEvent.click(screen.getByTestId(APP_BAR_ITEM_SETTINGS));
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });
@@ -87,7 +89,7 @@ describe('LeftSidebar Items', () => {
     );
 
     expect(() =>
-      fireEvent.click(screen.getByTestId('app-bar-item-settings'))
+      fireEvent.click(screen.getByTestId(APP_BAR_ITEM_SETTINGS))
     ).not.toThrow();
   });
 

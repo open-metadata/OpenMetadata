@@ -60,6 +60,8 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
+
+const LABEL_USER = 'label.user';
 const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useRequiredParams<{ tab: GlobalSettingOptions }>();
@@ -127,7 +129,7 @@ const UserListPageV1 = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
-          entity: t('label.user'),
+          entity: t(LABEL_USER),
         })
       );
     }
@@ -173,7 +175,7 @@ const UserListPageV1 = () => {
             showErrorToast(
               err,
               t('server.entity-fetch-error', {
-                entity: t('label.user'),
+                entity: t(LABEL_USER),
               })
             );
           }
@@ -287,16 +289,16 @@ const UserListPageV1 = () => {
       if (data) {
         handleSearch('');
         showSuccessToast(
-          t('message.entity-restored-success', { entity: t('label.user') })
+          t('message.entity-restored-success', { entity: t(LABEL_USER) })
         );
         setShowReactiveModal(false);
       } else {
-        throw t('server.entity-updating-error', { entity: t('label.user') });
+        throw t('server.entity-updating-error', { entity: t(LABEL_USER) });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-updating-error', { entity: t('label.user') })
+        t('server.entity-updating-error', { entity: t(LABEL_USER) })
       );
     } finally {
       setIsLoading(false);
@@ -327,7 +329,7 @@ const UserListPageV1 = () => {
                 title={
                   isAdminUser
                     ? t('label.restore-entity', {
-                        entity: t('label.user'),
+                        entity: t(LABEL_USER),
                       })
                     : t(ADMIN_ONLY_ACTION)
                 }>
@@ -348,7 +350,7 @@ const UserListPageV1 = () => {
               title={
                 isAdminUser
                   ? t('label.delete-entity', {
-                      entity: t('label.user'),
+                      entity: t(LABEL_USER),
                     })
                   : t(ADMIN_ONLY_ACTION)
               }>
@@ -379,10 +381,10 @@ const UserListPageV1 = () => {
     () => (
       <ErrorPlaceHolder
         className="border-none m-y-md"
-        heading={t('label.user')}
+        heading={t(LABEL_USER)}
         permission={isAdminUser}
         permissionValue={t('label.create-entity', {
-          entity: t('label.user'),
+          entity: t(LABEL_USER),
         })}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddNewUser}
@@ -456,7 +458,7 @@ const UserListPageV1 = () => {
   const searchProps = useMemo(
     () => ({
       placeholder: `${t('label.search-for-type', {
-        type: t('label.user'),
+        type: t(LABEL_USER),
       })}...`,
       searchValue: searchValue,
       typingInterval: 350,
@@ -495,7 +497,7 @@ const UserListPageV1 = () => {
                   }
             }
             learningPageId={LEARNING_PAGE_IDS.USERS}
-            title={t('label.user')}
+            title={t(LABEL_USER)}
           />
         </Col>
         <Col span={12}>
@@ -563,7 +565,7 @@ const UserListPageV1 = () => {
           okText={t('label.restore')}
           open={showReactiveModal}
           title={t('label.restore-entity', {
-            entity: t('label.user'),
+            entity: t(LABEL_USER),
           })}
           onCancel={() => {
             setShowReactiveModal(false);

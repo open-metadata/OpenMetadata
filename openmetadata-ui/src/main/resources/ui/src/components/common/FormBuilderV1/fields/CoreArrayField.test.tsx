@@ -15,6 +15,7 @@ import { FieldProps } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoreArrayField from './CoreArrayField';
 
+const REQUIRED_FIELD = 'Required field';
 jest.mock('@untitledui/icons', () => ({
   Copy01: () => <span>copy-icon</span>,
   XClose: () => <span>x-icon</span>,
@@ -157,12 +158,10 @@ describe('CoreArrayField', () => {
   });
 
   it('shows hint text when there are errors', () => {
-    render(
-      <CoreArrayField {...baseFieldProps} rawErrors={['Required field']} />
-    );
+    render(<CoreArrayField {...baseFieldProps} rawErrors={[REQUIRED_FIELD]} />);
 
-    expect(screen.getByText('Required field')).toBeInTheDocument();
-    expect(screen.getByText('Required field')).toHaveAttribute(
+    expect(screen.getByText(REQUIRED_FIELD)).toBeInTheDocument();
+    expect(screen.getByText(REQUIRED_FIELD)).toHaveAttribute(
       'data-invalid',
       'true'
     );

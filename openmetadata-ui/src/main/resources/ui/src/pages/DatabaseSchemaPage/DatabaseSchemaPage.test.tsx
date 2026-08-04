@@ -26,6 +26,9 @@ import {
   mockPatchDatabaseSchemaDetailsData,
   mockPostThreadData,
 } from './mocks/DatabaseSchemaPage.mock';
+
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY = 'sample_data.ecommerce_db.shopify';
+const GLUE_DEFAULT_INFORMATION_SCHEMA = 'Glue.default.information_schema';
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
@@ -214,7 +217,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => {
 });
 
 const mockParams = {
-  fqn: 'sample_data.ecommerce_db.shopify',
+  fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
   tab: 'table',
 };
 
@@ -410,7 +413,7 @@ describe('Tests for DatabaseSchemaPage', () => {
   it('should refetch data when decodedDatabaseSchemaFQN changes', async () => {
     const mockUseParams = jest.requireMock('react-router-dom').useParams;
     mockUseParams.mockReturnValue({
-      fqn: 'sample_data.ecommerce_db.shopify',
+      fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
       tab: 'table',
     });
 
@@ -425,15 +428,15 @@ describe('Tests for DatabaseSchemaPage', () => {
     // Wait for initial API calls
     await waitFor(() => {
       expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-        'sample_data.ecommerce_db.shopify',
+        SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
         expect.any(Object)
       );
       expect(getStoredProceduresList).toHaveBeenCalledWith({
-        databaseSchema: 'sample_data.ecommerce_db.shopify',
+        databaseSchema: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
         limit: 0,
       });
       expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
-        'sample_data.ecommerce_db.shopify',
+        SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
         expect.any(Function)
       );
     });
@@ -441,7 +444,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     jest.clearAllMocks();
 
     mockUseParams.mockReturnValue({
-      fqn: 'Glue.default.information_schema',
+      fqn: GLUE_DEFAULT_INFORMATION_SCHEMA,
       tab: 'table',
     });
 
@@ -451,15 +454,15 @@ describe('Tests for DatabaseSchemaPage', () => {
     // API calls should be made again with new FQN
     await waitFor(() => {
       expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-        'Glue.default.information_schema',
+        GLUE_DEFAULT_INFORMATION_SCHEMA,
         expect.any(Object)
       );
       expect(getStoredProceduresList).toHaveBeenCalledWith({
-        databaseSchema: 'Glue.default.information_schema',
+        databaseSchema: GLUE_DEFAULT_INFORMATION_SCHEMA,
         limit: 0,
       });
       expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
-        'Glue.default.information_schema',
+        GLUE_DEFAULT_INFORMATION_SCHEMA,
         expect.any(Function)
       );
     });

@@ -32,6 +32,8 @@ import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataA
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
 
+const LABEL_RELATED_METRIC_PLURAL = 'label.related-metric-plural' as const;
+
 const RelatedMetrics: FC = () => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -153,7 +155,7 @@ const RelatedMetrics: FC = () => {
       <WidgetPlusButton
         data-testid="add-related-metrics-container"
         title={t('label.add-entity', {
-          entity: t('label.related-metric-plural'),
+          entity: t(LABEL_RELATED_METRIC_PLURAL),
         })}
         onClick={() => setIsEdit(true)}
       />
@@ -161,7 +163,7 @@ const RelatedMetrics: FC = () => {
       <WidgetEditButton
         data-testid="edit-related-metrics"
         title={t('label.edit-entity', {
-          entity: t('label.related-metric-plural'),
+          entity: t(LABEL_RELATED_METRIC_PLURAL),
         })}
         onClick={() => setIsEdit(true)}
       />
@@ -192,7 +194,7 @@ const RelatedMetrics: FC = () => {
       forceExpand={isEdit}
       headerExtra={headerExtra}
       isExpandDisabled={isEmpty(relatedMetrics) && !isEdit}
-      title={t('label.related-metric-plural')}>
+      title={t(LABEL_RELATED_METRIC_PLURAL)}>
       {content}
     </WidgetCard>
   );

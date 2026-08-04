@@ -28,6 +28,10 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilderWidgetV1 from './QueryBuilderWidgetV1';
 
+const QUERY_BUILDER_FORM_FIELD = 'query-builder-form-field';
+const AWESOME_QUERY_BUILDER = 'awesome-query-builder';
+const MOCK_QUERY_CHANGE = 'mock-query-change';
+
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -161,18 +165,14 @@ describe('QueryBuilderWidgetV1', () => {
     it('should render the component with default props', () => {
       render(<QueryBuilderWidgetV1 />);
 
-      expect(
-        screen.getByTestId('query-builder-form-field')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('awesome-query-builder')).toBeInTheDocument();
+      expect(screen.getByTestId(QUERY_BUILDER_FORM_FIELD)).toBeInTheDocument();
+      expect(screen.getByTestId(AWESOME_QUERY_BUILDER)).toBeInTheDocument();
     });
 
     it('should render with custom entity type', () => {
       render(<QueryBuilderWidgetV1 entityType={EntityType.TABLE} />);
 
-      expect(
-        screen.getByTestId('query-builder-form-field')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(QUERY_BUILDER_FORM_FIELD)).toBeInTheDocument();
       expect(getTreeConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           searchIndex: 'table',
@@ -197,7 +197,7 @@ describe('QueryBuilderWidgetV1', () => {
     it('should apply readonly settings when readonly prop is true', () => {
       render(<QueryBuilderWidgetV1 readonly />);
 
-      expect(screen.getByTestId('awesome-query-builder')).toBeInTheDocument();
+      expect(screen.getByTestId(AWESOME_QUERY_BUILDER)).toBeInTheDocument();
     });
   });
 
@@ -216,7 +216,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       fireEvent.click(changeButton);
 
@@ -244,7 +244,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -268,7 +268,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -293,7 +293,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('mock-query-change'));
+      fireEvent.click(screen.getByTestId(MOCK_QUERY_CHANGE));
       const loadCountAfterChange = (Utils.loadTree as jest.Mock).mock.calls
         .length;
 
@@ -341,7 +341,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       fireEvent.click(changeButton);
 
@@ -396,7 +396,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       fireEvent.click(changeButton);
 
@@ -421,7 +421,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -441,7 +441,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -462,7 +462,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -486,7 +486,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -510,7 +510,7 @@ describe('QueryBuilderWidgetV1', () => {
       };
       render(<QueryBuilderWidgetV1 fields={customFields} />);
 
-      expect(screen.getByTestId('awesome-query-builder')).toBeInTheDocument();
+      expect(screen.getByTestId(AWESOME_QUERY_BUILDER)).toBeInTheDocument();
     });
 
     it('should initialize with custom tree when provided', () => {
@@ -547,17 +547,13 @@ describe('QueryBuilderWidgetV1', () => {
     it('should handle undefined value prop', () => {
       render(<QueryBuilderWidgetV1 value={undefined} />);
 
-      expect(
-        screen.getByTestId('query-builder-form-field')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(QUERY_BUILDER_FORM_FIELD)).toBeInTheDocument();
     });
 
     it('should handle empty value prop', () => {
       render(<QueryBuilderWidgetV1 value="" />);
 
-      expect(
-        screen.getByTestId('query-builder-form-field')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(QUERY_BUILDER_FORM_FIELD)).toBeInTheDocument();
     });
   });
 
@@ -574,7 +570,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -617,7 +613,7 @@ describe('QueryBuilderWidgetV1', () => {
       );
 
       const card = screen
-        .getByTestId('query-builder-form-field')
+        .getByTestId(QUERY_BUILDER_FORM_FIELD)
         .querySelector('.query-builder-card');
 
       expect(card).toHaveClass('elasticsearch');
@@ -627,7 +623,7 @@ describe('QueryBuilderWidgetV1', () => {
       render(<QueryBuilderWidgetV1 outputType={SearchOutputType.JSONLogic} />);
 
       const card = screen
-        .getByTestId('query-builder-form-field')
+        .getByTestId(QUERY_BUILDER_FORM_FIELD)
         .querySelector('.query-builder-card');
 
       expect(card).toHaveClass('jsonlogic');
@@ -639,7 +635,7 @@ describe('QueryBuilderWidgetV1', () => {
       );
 
       const col = screen
-        .getByTestId('query-builder-form-field')
+        .getByTestId(QUERY_BUILDER_FORM_FIELD)
         .querySelector('.ant-col');
 
       expect(col).toHaveClass('p-t-sm');
@@ -650,7 +646,7 @@ describe('QueryBuilderWidgetV1', () => {
     it('should update config when tree changes', async () => {
       render(<QueryBuilderWidgetV1 />);
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -674,7 +670,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);
@@ -710,7 +706,7 @@ describe('QueryBuilderWidgetV1', () => {
         />
       );
 
-      const changeButton = screen.getByTestId('mock-query-change');
+      const changeButton = screen.getByTestId(MOCK_QUERY_CHANGE);
 
       await act(async () => {
         fireEvent.click(changeButton);

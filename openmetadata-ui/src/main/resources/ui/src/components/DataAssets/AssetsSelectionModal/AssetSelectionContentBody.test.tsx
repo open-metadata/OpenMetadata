@@ -15,6 +15,8 @@ import AssetSelectionContentBody, {
   AssetSelectionContentBodyProps,
 } from './AssetSelectionContentBody';
 
+const TABLEDATACARD_1 = 'tabledatacard-1';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({
     children,
@@ -291,7 +293,7 @@ describe('AssetSelectionContentBody', () => {
       <AssetSelectionContentBody {...defaultProps} items={items as never} />
     );
 
-    expect(screen.getByTestId('tabledatacard-1')).toBeInTheDocument();
+    expect(screen.getByTestId(TABLEDATACARD_1)).toBeInTheDocument();
     expect(screen.getByTestId('tabledatacard-2')).toBeInTheDocument();
     expect(screen.getByText('label.select-field')).toBeInTheDocument();
   });
@@ -308,7 +310,7 @@ describe('AssetSelectionContentBody', () => {
       />
     );
 
-    expect(screen.getByTestId('tabledatacard-1')).toHaveAttribute(
+    expect(screen.getByTestId(TABLEDATACARD_1)).toHaveAttribute(
       'data-checked',
       'true'
     );
@@ -426,7 +428,7 @@ describe('AssetSelectionContentBody', () => {
     );
 
     const scrollableContainer = screen
-      .getByTestId('tabledatacard-1')
+      .getByTestId(TABLEDATACARD_1)
       .closest('.asset-list-wrapper')?.parentElement;
 
     fireEvent.scroll(scrollableContainer ?? container, {

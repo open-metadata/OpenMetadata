@@ -16,6 +16,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import FQNListSelect, { resolveWildcardFqns } from './FQNListSelect.component';
 
+const SVC_DB_SCHEMA_TBL = 'svc.db.schema.tbl';
+
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
@@ -50,7 +52,7 @@ describe('resolveWildcardFqns', () => {
           },
           {
             _source: {
-              fullyQualifiedName: 'svc.db.schema.tbl',
+              fullyQualifiedName: SVC_DB_SCHEMA_TBL,
               entityType: 'table',
             },
           },
@@ -59,7 +61,7 @@ describe('resolveWildcardFqns', () => {
     });
 
     const result = await resolveWildcardFqns(
-      ['svc', 'svc.db.schema.tbl'],
+      ['svc', SVC_DB_SCHEMA_TBL],
       SearchIndex.TABLE,
       ['databaseService', 'database', 'databaseSchema']
     );
@@ -123,7 +125,7 @@ describe('FQNListSelect', () => {
         containerEntities={['databaseService']}
         mode="multiple"
         searchIndex={SearchIndex.TABLE}
-        value={['svc', 'svc.db.schema.tbl']}
+        value={['svc', SVC_DB_SCHEMA_TBL]}
       />
     );
 
@@ -146,13 +148,13 @@ describe('FQNListSelect', () => {
 
     const leafTag = render(
       capturedProps.tagRender({
-        value: 'svc.db.schema.tbl',
+        value: SVC_DB_SCHEMA_TBL,
         closable: true,
         onClose: jest.fn(),
       })
     );
 
-    expect(leafTag.getByText('svc.db.schema.tbl')).toBeInTheDocument();
+    expect(leafTag.getByText(SVC_DB_SCHEMA_TBL)).toBeInTheDocument();
   });
 
   it('renders all tags plain when there are no container entities', async () => {

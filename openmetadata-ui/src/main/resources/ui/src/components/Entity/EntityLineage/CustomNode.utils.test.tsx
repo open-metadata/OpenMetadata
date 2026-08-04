@@ -22,6 +22,8 @@ import {
   getExpandHandle,
 } from './CustomNode.utils';
 
+const COLUMN_TEST_COLUMN = 'column-test.column';
+
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Skeleton: {
@@ -164,7 +166,7 @@ describe('Custom Node Utils', () => {
         </ReactFlowProvider>
       );
 
-      expect(getByTestId('column-test.column')).toBeInTheDocument();
+      expect(getByTestId(COLUMN_TEST_COLUMN)).toBeInTheDocument();
       expect(getByText('test column')).toBeInTheDocument();
       expect(getByText('NOT NULL')).toBeInTheDocument();
     });
@@ -181,7 +183,7 @@ describe('Custom Node Utils', () => {
         </ReactFlowProvider>
       );
 
-      expect(getByTestId('column-test.column')).toHaveClass(
+      expect(getByTestId(COLUMN_TEST_COLUMN)).toHaveClass(
         'custom-node-column-container'
       );
     });
@@ -244,7 +246,7 @@ describe('Custom Node Utils', () => {
         </ReactFlowProvider>
       );
 
-      fireEvent.click(getByTestId('column-test.column'));
+      fireEvent.click(getByTestId(COLUMN_TEST_COLUMN));
 
       expect(mockSetSelectedColumn).toHaveBeenCalledWith('test.column');
     });

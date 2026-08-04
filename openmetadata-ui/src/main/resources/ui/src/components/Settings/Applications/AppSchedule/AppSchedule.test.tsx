@@ -25,6 +25,10 @@ import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import AppSchedule from './AppSchedule.component';
 
+const MODAL_IS_OPEN = 'Modal is open' as const;
+const MODAL_IS_CLOSE = 'Modal is close' as const;
+const LABEL_RUN_NOW = 'label.run-now' as const;
+
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
   deployed: false,
 });
@@ -132,13 +136,13 @@ describe('AppSchedule component', () => {
       await screen.findByText('label.schedule-interval')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('cron-string')).toBeInTheDocument();
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
+    expect(screen.getByText(MODAL_IS_CLOSE)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
-    expect(screen.getByText('Modal is open')).toBeInTheDocument();
+    expect(screen.getByText(MODAL_IS_OPEN)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
+    fireEvent.click(screen.getByRole('button', { name: LABEL_RUN_NOW }));
 
     expect(mockOnDemandTrigger).toHaveBeenCalled();
   });
@@ -148,7 +152,7 @@ describe('AppSchedule component', () => {
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
 
-    expect(screen.queryByText('label.run-now')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_RUN_NOW)).not.toBeInTheDocument();
 
     expect(screen.queryByText('label.schedule-type')).not.toBeInTheDocument();
     expect(
@@ -168,11 +172,11 @@ describe('AppSchedule component', () => {
   it('check methods in AppSchedule component', () => {
     render(<AppSchedule {...mockProps1} />);
 
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
+    expect(screen.getByText(MODAL_IS_CLOSE)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
-    expect(screen.getByText('Modal is open')).toBeInTheDocument();
+    expect(screen.getByText(MODAL_IS_OPEN)).toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Submit ScheduleInterval' })
@@ -184,7 +188,7 @@ describe('AppSchedule component', () => {
       screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
     );
 
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
+    expect(screen.getByText(MODAL_IS_CLOSE)).toBeInTheDocument();
   });
 
   it('should show application disable message if appData.deleted is true', () => {
@@ -207,7 +211,7 @@ describe('AppSchedule component', () => {
     expect(
       screen.getByText('message.cache-service-not-configured-message')
     ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'label.run-now' })).toBeNull();
+    expect(screen.queryByRole('button', { name: LABEL_RUN_NOW })).toBeNull();
   });
 
   it('if failed in fetch pipelineDetails, should not show AppRunsHistory', () => {

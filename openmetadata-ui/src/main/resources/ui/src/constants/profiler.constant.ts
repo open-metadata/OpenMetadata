@@ -39,6 +39,11 @@ import {
 import { t } from '../utils/i18next/LocalUtil';
 import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
 
+const LABEL_LAST_NUMBER_OF_DAYS = 'label.last-number-of-days';
+const LABEL_ENTITY_COUNT = 'label.entity-count';
+const LABEL_ENTITY_PROPORTION = 'label.entity-proportion';
+const OPERATION_METRICS = 'operation-metrics';
+
 export const PROFILER_METRIC = [
   'valuesCount',
   'valuesPercentage',
@@ -73,35 +78,35 @@ export const PROFILER_FILTER_RANGE: DateFilterType = {
   },
   last3days: {
     days: 3,
-    title: 'label.last-number-of-days',
+    title: LABEL_LAST_NUMBER_OF_DAYS,
     titleData: {
       numberOfDays: 3,
     },
   },
   last7days: {
     days: 7,
-    title: 'label.last-number-of-days',
+    title: LABEL_LAST_NUMBER_OF_DAYS,
     titleData: {
       numberOfDays: 7,
     },
   },
   last14days: {
     days: 14,
-    title: 'label.last-number-of-days',
+    title: LABEL_LAST_NUMBER_OF_DAYS,
     titleData: {
       numberOfDays: 14,
     },
   },
   last30days: {
     days: 30,
-    title: 'label.last-number-of-days',
+    title: LABEL_LAST_NUMBER_OF_DAYS,
     titleData: {
       numberOfDays: 30,
     },
   },
   last60days: {
     days: 60,
-    title: 'label.last-number-of-days',
+    title: LABEL_LAST_NUMBER_OF_DAYS,
     titleData: {
       numberOfDays: 60,
     },
@@ -110,7 +115,7 @@ export const PROFILER_FILTER_RANGE: DateFilterType = {
 
 export const DEFAULT_SELECTED_RANGE = {
   key: 'last7days',
-  title: 'label.last-number-of-days',
+  title: LABEL_LAST_NUMBER_OF_DAYS,
   titleData: {
     numberOfDays: 7,
   },
@@ -129,28 +134,28 @@ export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
 export const INITIAL_COUNT_METRIC_VALUE = {
   information: [
     {
-      title: t('label.entity-count', {
+      title: t(LABEL_ENTITY_COUNT, {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctCount',
       color: '#467DDC',
     },
     {
-      title: t('label.entity-count', {
+      title: t(LABEL_ENTITY_COUNT, {
         entity: t('label.null'),
       }),
       dataKey: 'nullCount',
       color: '#3488B5',
     },
     {
-      title: t('label.entity-count', {
+      title: t(LABEL_ENTITY_COUNT, {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueCount',
       color: '#685997',
     },
     {
-      title: t('label.entity-count', {
+      title: t(LABEL_ENTITY_COUNT, {
         entity: t('label.value-plural'),
       }),
       dataKey: 'valuesCount',
@@ -163,21 +168,21 @@ export const INITIAL_COUNT_METRIC_VALUE = {
 export const INITIAL_PROPORTION_METRIC_VALUE = {
   information: [
     {
-      title: t('label.entity-proportion', {
+      title: t(LABEL_ENTITY_PROPORTION, {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctProportion',
       color: '#6B97E3',
     },
     {
-      title: t('label.entity-proportion', {
+      title: t(LABEL_ENTITY_PROPORTION, {
         entity: t('label.null'),
       }),
       dataKey: 'nullProportion',
       color: '#867AAC',
     },
     {
-      title: t('label.entity-proportion', {
+      title: t(LABEL_ENTITY_PROPORTION, {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueProportion',
@@ -248,7 +253,7 @@ export const INITIAL_QUARTILE_METRIC_VALUE = {
 export const INITIAL_ROW_METRIC_VALUE = {
   information: [
     {
-      title: t('label.entity-count', {
+      title: t(LABEL_ENTITY_COUNT, {
         entity: t('label.row'),
       }),
       dataKey: 'rowCount',
@@ -265,19 +270,19 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
       color: BLUE_800,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
       color: BLUE_500,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
       color: YELLOW_3,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
   ],
   data: [],
@@ -337,7 +342,7 @@ export const PROFILE_SAMPLE_OPTIONS = [
     value: ProfileSampleType.Percentage,
   },
   {
-    label: t('label.entity-count', {
+    label: t(LABEL_ENTITY_COUNT, {
       entity: t('label.row'),
     }),
     key: ProfileSampleType.Rows,

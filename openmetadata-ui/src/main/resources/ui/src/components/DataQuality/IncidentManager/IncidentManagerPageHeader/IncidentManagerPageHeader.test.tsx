@@ -29,6 +29,8 @@ import {
 import IncidentManagerPageHeader from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
+const MOCK_OWNER_COMPONENT = 'owner-component';
+
 const mockEntityPermissions = {
   Create: true,
   Delete: true,
@@ -138,7 +140,7 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
       <div
         {...rest}
         aria-label="Owner"
-        data-testid="owner-component"
+        data-testid={MOCK_OWNER_COMPONENT}
         role="button"
         tabIndex={0}
         onClick={onUpdate}
@@ -228,7 +230,7 @@ describe('Incident Manager Page Header component', () => {
   it('should trigger onOwnerUpdate', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('owner-component'));
+    fireEvent.click(screen.getByTestId(MOCK_OWNER_COMPONENT));
 
     expect(mockOnOwnerUpdate).toHaveBeenCalled();
   });
@@ -276,7 +278,7 @@ describe('Incident Manager Page Header component', () => {
   it('Component should render without status details', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    expect(screen.getByTestId('owner-component')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_OWNER_COMPONENT)).toBeInTheDocument();
     // If Table FQN is present
     expect(screen.getByText('label.table')).toBeInTheDocument();
     expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
@@ -298,7 +300,7 @@ describe('Incident Manager Page Header component', () => {
       );
     });
 
-    expect(screen.getAllByTestId('owner-component')).toHaveLength(2);
+    expect(screen.getAllByTestId(MOCK_OWNER_COMPONENT)).toHaveLength(2);
     // Incident
     expect(screen.getByText('label.incident')).toBeInTheDocument();
     expect(screen.getByText('#9')).toBeInTheDocument();

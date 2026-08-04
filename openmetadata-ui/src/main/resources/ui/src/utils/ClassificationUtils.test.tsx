@@ -27,6 +27,14 @@ const mockGetEntityVersionByField =
     typeof getEntityVersionByField
   >;
 
+// eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+const HTTP_TEST_COM = 'http://test.com';
+const VERSIONED_CLASSIFICATION = 'Versioned Classification';
+const VERSIONED_CLASSIFICATION_DESCRIPTION =
+  'Versioned classification description';
+const VERSIONED_DISPLAY_NAME = 'Versioned Display Name';
+const VERSIONED_DESCRIPTION = 'Versioned description';
+
 describe('ClassificationUtils', () => {
   describe('getClassificationInfo', () => {
     beforeEach(() => {
@@ -59,8 +67,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.User,
         fullyQualifiedName: 'test.classification',
         deleted: false,
-        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
-        href: 'http://test.com',
+        href: HTTP_TEST_COM,
         updatedAt: 1234567890,
         updatedBy: 'test-user',
       };
@@ -90,8 +97,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.System,
         fullyQualifiedName: 'tier.classification',
         deleted: false,
-        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
-        href: 'http://test.com',
+        href: HTTP_TEST_COM,
         updatedAt: 1234567890,
         updatedBy: 'system',
       };
@@ -121,8 +127,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.System,
         fullyQualifiedName: 'system.classification',
         deleted: false,
-        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
-        href: 'http://test.com',
+        href: HTTP_TEST_COM,
         updatedAt: 1234567890,
         updatedBy: 'system',
       };
@@ -152,8 +157,7 @@ describe('ClassificationUtils', () => {
         provider: ProviderType.User,
         fullyQualifiedName: 'disabled.classification',
         deleted: false,
-        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
-        href: 'http://test.com',
+        href: HTTP_TEST_COM,
         updatedAt: 1234567890,
         updatedBy: 'test-user',
       };
@@ -179,8 +183,7 @@ describe('ClassificationUtils', () => {
         description: 'Minimal description',
         fullyQualifiedName: 'minimal.classification',
         deleted: false,
-        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
-        href: 'http://test.com',
+        href: HTTP_TEST_COM,
         updatedAt: 1234567890,
         updatedBy: 'test-user',
       };
@@ -210,15 +213,14 @@ describe('ClassificationUtils', () => {
       const mockClassificationWithChangeDescription: Classification = {
         id: 'versioned-id',
         name: 'VersionedClassification',
-        displayName: 'Versioned Classification',
-        description: 'Versioned classification description',
+        displayName: VERSIONED_CLASSIFICATION,
+        description: VERSIONED_CLASSIFICATION_DESCRIPTION,
         version: 2,
         disabled: false,
         provider: ProviderType.User,
         fullyQualifiedName: 'versioned.classification',
         deleted: false,
-        // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
-        href: 'http://test.com',
+        href: HTTP_TEST_COM,
         updatedAt: 1234567890,
         updatedBy: 'test-user',
         changeDescription: mockChangeDescription,
@@ -230,9 +232,9 @@ describe('ClassificationUtils', () => {
             case EntityField.NAME:
               return 'VersionedName';
             case EntityField.DISPLAYNAME:
-              return 'Versioned Display Name';
+              return VERSIONED_DISPLAY_NAME;
             case EntityField.DESCRIPTION:
-              return 'Versioned description';
+              return VERSIONED_DESCRIPTION;
             default:
               return fallback || '';
           }
@@ -252,8 +254,8 @@ describe('ClassificationUtils', () => {
           isTier: false,
           isSystemClassification: false,
           name: 'VersionedName',
-          displayName: 'Versioned Display Name',
-          description: 'Versioned description',
+          displayName: VERSIONED_DISPLAY_NAME,
+          description: VERSIONED_DESCRIPTION,
         });
 
         expect(mockGetEntityVersionByField).toHaveBeenCalledTimes(3);
@@ -265,12 +267,12 @@ describe('ClassificationUtils', () => {
         expect(mockGetEntityVersionByField).toHaveBeenCalledWith(
           mockChangeDescription,
           EntityField.DISPLAYNAME,
-          'Versioned Classification'
+          VERSIONED_CLASSIFICATION
         );
         expect(mockGetEntityVersionByField).toHaveBeenCalledWith(
           mockChangeDescription,
           EntityField.DESCRIPTION,
-          'Versioned classification description'
+          VERSIONED_CLASSIFICATION_DESCRIPTION
         );
       });
 
@@ -292,8 +294,8 @@ describe('ClassificationUtils', () => {
           isTier: false,
           isSystemClassification: false,
           name: 'VersionedName',
-          displayName: 'Versioned Display Name',
-          description: 'Versioned description',
+          displayName: VERSIONED_DISPLAY_NAME,
+          description: VERSIONED_DESCRIPTION,
         });
 
         // Should pass empty object as changeDescription
@@ -317,8 +319,8 @@ describe('ClassificationUtils', () => {
           isTier: false,
           isSystemClassification: false,
           name: 'VersionedClassification',
-          displayName: 'Versioned Classification',
-          description: 'Versioned classification description',
+          displayName: VERSIONED_CLASSIFICATION,
+          description: VERSIONED_CLASSIFICATION_DESCRIPTION,
         });
 
         expect(mockGetEntityVersionByField).not.toHaveBeenCalled();
@@ -364,8 +366,7 @@ describe('ClassificationUtils', () => {
           description: 'Test description',
           fullyQualifiedName: 'test.classification',
           deleted: false,
-          // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
-          href: 'http://test.com',
+          href: HTTP_TEST_COM,
           updatedAt: 1234567890,
           updatedBy: 'test-user',
         };

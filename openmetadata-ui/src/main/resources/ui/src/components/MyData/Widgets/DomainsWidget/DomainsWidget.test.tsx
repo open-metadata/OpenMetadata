@@ -28,14 +28,16 @@ import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import DomainsWidget from './DomainsWidget';
 
+const DOMAINS_WIDGET = 'domains-widget';
+
 const mockProps = {
   isEditView: false,
   handleRemoveWidget: jest.fn(),
-  widgetKey: 'domains-widget',
+  widgetKey: DOMAINS_WIDGET,
   handleLayoutUpdate: jest.fn(),
   currentLayout: [
     {
-      i: 'domains-widget',
+      i: DOMAINS_WIDGET,
       x: 0,
       y: 0,
       w: 2,
@@ -246,7 +248,7 @@ describe('DomainsWidget', () => {
   it('renders domains in full size layout', async () => {
     const fullSizeLayout = [
       {
-        i: 'domains-widget',
+        i: DOMAINS_WIDGET,
         x: 0,
         y: 0,
         w: 2, // Full width
@@ -272,7 +274,7 @@ describe('DomainsWidget', () => {
   it('renders domains in compact layout', async () => {
     const compactLayout = [
       {
-        i: 'domains-widget',
+        i: DOMAINS_WIDGET,
         x: 0,
         y: 0,
         w: 1, // Compact width

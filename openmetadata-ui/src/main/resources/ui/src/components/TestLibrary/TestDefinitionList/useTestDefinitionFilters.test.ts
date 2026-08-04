@@ -14,6 +14,8 @@ import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import { useTestDefinitionFilters } from './useTestDefinitionFilters';
 
+const TABLE_COLUMN = 'table,column';
+
 const mockHandlePageChange = jest.fn();
 const mockUpdateUrlParams = jest.fn();
 
@@ -60,12 +62,12 @@ describe('useTestDefinitionFilters', () => {
     });
 
     it('should surface the raw useTableFilters params through urlParams untouched', () => {
-      mockUrlFilters = { entityType: 'table,column', testPlatforms: '' };
+      mockUrlFilters = { entityType: TABLE_COLUMN, testPlatforms: '' };
 
       const { result } = renderFilters();
 
       expect(result.current.urlParams).toEqual({
-        entityType: 'table,column',
+        entityType: TABLE_COLUMN,
         testPlatforms: '',
       });
     });
@@ -82,7 +84,7 @@ describe('useTestDefinitionFilters', () => {
     });
 
     it('should keep only the first value of a comma separated url filter', () => {
-      mockUrlFilters = { entityType: 'table,column' };
+      mockUrlFilters = { entityType: TABLE_COLUMN };
 
       const { result } = renderFilters();
 
@@ -185,7 +187,7 @@ describe('useTestDefinitionFilters', () => {
       });
 
       expect(mockUpdateUrlParams).toHaveBeenCalledWith({
-        entityType: 'table,column',
+        entityType: TABLE_COLUMN,
         testPlatforms: null,
       });
     });

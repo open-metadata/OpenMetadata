@@ -20,6 +20,9 @@ import {
 } from '../../../utils/CanvasButtonUtils';
 import { CanvasButtonPopover } from './CanvasButtonPopover.component';
 
+const ENTITY_POPOVER_CARD = 'entity-popover-card';
+const TEST_PIPELINE = 'test.pipeline';
+const EXTRA_INFO = 'extra-info';
 jest.mock('../../common/PopOverCard/EntityPopOverCard', () => ({
   __esModule: true,
   default: ({
@@ -74,7 +77,7 @@ describe('CanvasButtonPopover', () => {
     data: {
       edge: {
         pipeline: {
-          fullyQualifiedName: 'test.pipeline',
+          fullyQualifiedName: TEST_PIPELINE,
           pipelineStatus: {
             executionStatus: StatusType.Successful,
           },
@@ -106,7 +109,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId(ENTITY_POPOVER_CARD).parentElement;
 
     expect(popover).toHaveStyle({
       position: 'absolute',
@@ -127,7 +130,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    expect(screen.getByTestId('entity-fqn')).toHaveTextContent('test.pipeline');
+    expect(screen.getByTestId('entity-fqn')).toHaveTextContent(TEST_PIPELINE);
     expect(screen.getByTestId('entity-type')).toHaveTextContent('pipeline');
   });
 
@@ -143,7 +146,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const extraInfo = screen.getByTestId('extra-info');
+    const extraInfo = screen.getByTestId(EXTRA_INFO);
     const tag = extraInfo.querySelector('.green');
 
     expect(tag).toBeInTheDocument();
@@ -156,7 +159,7 @@ describe('CanvasButtonPopover', () => {
       data: {
         edge: {
           pipeline: {
-            fullyQualifiedName: 'test.pipeline',
+            fullyQualifiedName: TEST_PIPELINE,
           },
           pipelineEntityType: 'pipeline',
         },
@@ -174,7 +177,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const extraInfo = screen.getByTestId('extra-info');
+    const extraInfo = screen.getByTestId(EXTRA_INFO);
 
     expect(extraInfo).toBeEmptyDOMElement();
   });
@@ -194,7 +197,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId(ENTITY_POPOVER_CARD).parentElement;
 
     fireEvent.mouseEnter(popover as HTMLElement);
 
@@ -214,7 +217,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId(ENTITY_POPOVER_CARD).parentElement;
 
     fireEvent.mouseLeave(popover as HTMLElement);
 
@@ -227,7 +230,7 @@ describe('CanvasButtonPopover', () => {
       data: {
         edge: {
           pipeline: {
-            fullyQualifiedName: 'test.pipeline',
+            fullyQualifiedName: TEST_PIPELINE,
             pipelineStatus: {
               executionStatus: StatusType.Failed,
             },
@@ -248,7 +251,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const extraInfo = screen.getByTestId('extra-info');
+    const extraInfo = screen.getByTestId(EXTRA_INFO);
     const tag = extraInfo.querySelector('.red');
 
     expect(tag).toBeInTheDocument();
@@ -261,7 +264,7 @@ describe('CanvasButtonPopover', () => {
       data: {
         edge: {
           pipeline: {
-            fullyQualifiedName: 'test.pipeline',
+            fullyQualifiedName: TEST_PIPELINE,
             pipelineStatus: {
               executionStatus: StatusType.Pending,
             },
@@ -282,7 +285,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const extraInfo = screen.getByTestId('extra-info');
+    const extraInfo = screen.getByTestId(EXTRA_INFO);
     const tag = extraInfo.querySelector('.amber');
 
     expect(tag).toBeInTheDocument();
@@ -301,7 +304,7 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId(ENTITY_POPOVER_CARD).parentElement;
 
     expect(popover).toHaveStyle({
       pointerEvents: 'all',

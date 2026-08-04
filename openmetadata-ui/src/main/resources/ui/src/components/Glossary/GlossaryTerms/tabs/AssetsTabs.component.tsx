@@ -109,6 +109,8 @@ import {
 import './assets-tabs.less';
 import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
 
+const LABEL_DELETE = 'label.delete';
+
 export interface AssetsTabRef {
   refreshAssets: () => void;
   closeSummaryPanel: () => void;
@@ -485,7 +487,7 @@ const AssetsTabs = forwardRef(
             })}
             icon={DeleteIcon}
             id="delete-button"
-            name={t('label.delete')}
+            name={t(LABEL_DELETE)}
           />
         ),
         key: 'delete-button',
@@ -1105,7 +1107,7 @@ const AssetsTabs = forwardRef(
           <ConfirmationModal
             bodyText={confirmationBodyText}
             cancelText={t('label.cancel')}
-            confirmText={t('label.delete')}
+            confirmText={t(LABEL_DELETE)}
             header={t('label.remove-entity', {
               entity: getEntityName(assetToDelete) + '?',
             })}
@@ -1120,7 +1122,7 @@ const AssetsTabs = forwardRef(
           <ConfirmationModal
             bodyText={confirmationBodyText}
             cancelText={t('label.cancel')}
-            confirmText={t('label.delete')}
+            confirmText={t(LABEL_DELETE)}
             header={t('label.remove-entity', {
               entity: `${selectedItems.size} ${t(
                 'label.asset-plural-lowercase'
@@ -1158,7 +1160,7 @@ const AssetsTabs = forwardRef(
                 loading={assetRemoving}
                 type="primary"
                 onClick={handleBulkDeleteClick}>
-                {t('label.delete')}
+                {t(LABEL_DELETE)}
               </Button>
             </div>
           </div>

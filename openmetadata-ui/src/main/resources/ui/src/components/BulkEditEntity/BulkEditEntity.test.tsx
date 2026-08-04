@@ -19,6 +19,17 @@ import { CSVImportResult, Status } from '../../generated/type/csvImportResult';
 import BulkEditEntity from './BulkEditEntity.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
+const TEST_ENTITY_FQN = 'test.entity.fqn' as const;
+const COL1_COL2_VAL1_VAL2 = 'col1,col2\nval1,val2' as const;
+const COLUMN_COUNT = 'column-count' as const;
+const BANNER_MESSAGE = 'banner-message' as const;
+const IMPORT_STATUS = 'import-status' as const;
+const LABEL_CANCEL = 'label.cancel' as const;
+const LABEL_NEXT = 'label.next' as const;
+const TEST_JOB_123 = 'test-job-123' as const;
+const PROCESSING = 'Processing...' as const;
+const DATA_FROZEN = 'data-frozen' as const;
+
 const mockNavigate = jest.fn();
 const mockTriggerExportForBulkEdit = jest.fn();
 const mockClearCSVExportData = jest.fn();
@@ -47,7 +58,7 @@ jest.mock('../../utils/useRequiredParams', () => ({
   })),
 }));
 
-let mockCsvExportData: string | undefined = 'col1,col2\nval1,val2';
+let mockCsvExportData: string | undefined = COL1_COL2_VAL1_VAL2;
 jest.mock(
   '../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
   () => ({
@@ -198,7 +209,7 @@ describe('BulkEditEntity', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockEntityType = EntityType.TABLE;
-    mockCsvExportData = 'col1,col2\nval1,val2';
+    mockCsvExportData = COL1_COL2_VAL1_VAL2;
     useEntityExportModalProvider.mockReturnValue({
       triggerExportForBulkEdit: mockTriggerExportForBulkEdit,
       csvExportData: mockCsvExportData,
@@ -257,7 +268,7 @@ describe('BulkEditEntity', () => {
       renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
 
       expect(
-        screen.getByRole('button', { name: 'label.cancel' })
+        screen.getByRole('button', { name: LABEL_CANCEL })
       ).toBeInTheDocument();
     });
 
@@ -276,14 +287,14 @@ describe('BulkEditEntity', () => {
       renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
 
       expect(
-        screen.getByRole('button', { name: 'label.next' })
+        screen.getByRole('button', { name: LABEL_NEXT })
       ).toBeInTheDocument();
     });
 
     it('should disable next button when there are no bulk edit changes', () => {
       renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
 
-      expect(screen.getByRole('button', { name: 'label.next' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: LABEL_NEXT })).toBeDisabled();
     });
 
     it('should allow metric import preview validation without additional edits', () => {
@@ -295,7 +306,7 @@ describe('BulkEditEntity', () => {
       });
 
       expect(
-        screen.getByRole('button', { name: 'label.next' })
+        screen.getByRole('button', { name: LABEL_NEXT })
       ).not.toBeDisabled();
     });
 
@@ -314,10 +325,10 @@ describe('BulkEditEntity', () => {
       renderComponent({ activeStep: VALIDATION_STEP.UPLOAD });
 
       expect(
-        screen.queryByRole('button', { name: 'label.cancel' })
+        screen.queryByRole('button', { name: LABEL_CANCEL })
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'label.next' })
+        screen.queryByRole('button', { name: LABEL_NEXT })
       ).not.toBeInTheDocument();
     });
   });
@@ -333,7 +344,7 @@ describe('BulkEditEntity', () => {
         handleValidate,
       });
 
-      const nextButton = screen.getByRole('button', { name: 'label.next' });
+      const nextButton = screen.getByRole('button', { name: LABEL_NEXT });
 
       await act(async () => {
         fireEvent.click(nextButton);
@@ -361,7 +372,7 @@ describe('BulkEditEntity', () => {
     it('should navigate away and clear data when cancel button is clicked', () => {
       renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
 
-      const cancelButton = screen.getByRole('button', { name: 'label.cancel' });
+      const cancelButton = screen.getByRole('button', { name: LABEL_CANCEL });
       fireEvent.click(cancelButton);
 
       expect(mockClearCSVExportData).toHaveBeenCalledTimes(1);
@@ -374,8 +385,8 @@ describe('BulkEditEntity', () => {
         isValidating: true,
       });
 
-      const cancelButton = screen.getByRole('button', { name: 'label.cancel' });
-      const nextButton = screen.getByRole('button', { name: 'label.next' });
+      const cancelButton = screen.getByRole('button', { name: LABEL_CANCEL });
+      const nextButton = screen.getByRole('button', { name: LABEL_NEXT });
 
       expect(cancelButton).toBeDisabled();
       expect(nextButton).toBeDisabled();
@@ -386,28 +397,26 @@ describe('BulkEditEntity', () => {
     it('should render banner when activeAsyncImportJob has jobId', () => {
       renderComponent({
         activeAsyncImportJob: {
-          jobId: 'test-job-123',
-          message: 'Processing...',
+          jobId: TEST_JOB_123,
+          message: PROCESSING,
           type: 'onValidate',
         },
       });
 
       expect(screen.getByTestId('banner')).toBeInTheDocument();
-      expect(screen.getByTestId('banner-message')).toHaveTextContent(
-        'Processing...'
-      );
+      expect(screen.getByTestId(BANNER_MESSAGE)).toHaveTextContent(PROCESSING);
     });
 
     it('should show error type banner when activeAsyncImportJob has error', () => {
       renderComponent({
         activeAsyncImportJob: {
-          jobId: 'test-job-123',
+          jobId: TEST_JOB_123,
           error: 'Something went wrong',
           type: 'onValidate',
         },
       });
 
-      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+      expect(screen.getByTestId(BANNER_MESSAGE)).toHaveTextContent(
         'Something went wrong'
       );
       expect(screen.getByTestId('banner-type')).toHaveTextContent('error');
@@ -416,8 +425,8 @@ describe('BulkEditEntity', () => {
     it('should show success type banner when no error', () => {
       renderComponent({
         activeAsyncImportJob: {
-          jobId: 'test-job-123',
-          message: 'Processing...',
+          jobId: TEST_JOB_123,
+          message: PROCESSING,
           type: 'onValidate',
         },
       });
@@ -443,7 +452,7 @@ describe('BulkEditEntity', () => {
         validationData: mockValidationData,
       });
 
-      expect(screen.getByTestId('import-status')).toBeInTheDocument();
+      expect(screen.getByTestId(IMPORT_STATUS)).toBeInTheDocument();
       expect(screen.getByTestId('import-status-value')).toHaveTextContent(
         'success'
       );
@@ -467,7 +476,7 @@ describe('BulkEditEntity', () => {
         validationData: mockValidationData,
       });
 
-      expect(screen.queryByTestId('import-status')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(IMPORT_STATUS)).not.toBeInTheDocument();
     });
   });
 
@@ -478,7 +487,7 @@ describe('BulkEditEntity', () => {
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalledTimes(1);
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'test.entity.fqn',
+          name: TEST_ENTITY_FQN,
           exportTypes: ['CSV'],
         })
       );
@@ -495,7 +504,7 @@ describe('BulkEditEntity', () => {
       const secondTrigger = jest.fn();
       useEntityExportModalProvider.mockReturnValue({
         triggerExportForBulkEdit: firstTrigger,
-        csvExportData: 'col1,col2\nval1,val2',
+        csvExportData: COL1_COL2_VAL1_VAL2,
         clearCSVExportData: mockClearCSVExportData,
       });
 
@@ -550,7 +559,7 @@ describe('BulkEditEntity', () => {
       renderComponent({ columns: [] });
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
-      expect(screen.getByTestId('column-count')).toHaveTextContent('1');
+      expect(screen.getByTestId(COLUMN_COUNT)).toHaveTextContent('1');
     });
 
     it('should handle empty breadcrumbList', () => {
@@ -566,7 +575,7 @@ describe('BulkEditEntity', () => {
         validationData: undefined,
       });
 
-      expect(screen.queryByTestId('import-status')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(IMPORT_STATUS)).not.toBeInTheDocument();
     });
 
     it('should handle undefined validateCSVData at UPDATE step', () => {
@@ -576,7 +585,7 @@ describe('BulkEditEntity', () => {
         validateCSVData: undefined,
       });
 
-      expect(screen.getByTestId('import-status')).toBeInTheDocument();
+      expect(screen.getByTestId(IMPORT_STATUS)).toBeInTheDocument();
     });
   });
 
@@ -591,12 +600,12 @@ describe('BulkEditEntity', () => {
         sourceEntityType: EntityType.TEST_SUITE,
       });
 
-      const cancelButton = screen.getByRole('button', { name: 'label.cancel' });
+      const cancelButton = screen.getByRole('button', { name: LABEL_CANCEL });
       fireEvent.click(cancelButton);
 
       expect(getBulkEntityNavigationPath).toHaveBeenCalledWith(
         EntityType.TABLE,
-        'test.entity.fqn',
+        TEST_ENTITY_FQN,
         EntityType.TEST_SUITE
       );
     });
@@ -648,7 +657,7 @@ describe('BulkEditEntity', () => {
         },
       });
 
-      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+      expect(screen.getByTestId(BANNER_MESSAGE)).toHaveTextContent(
         'Error occurred'
       );
     });
@@ -661,7 +670,7 @@ describe('BulkEditEntity', () => {
         },
       });
 
-      expect(screen.getByTestId('banner-message')).toHaveTextContent('');
+      expect(screen.getByTestId(BANNER_MESSAGE)).toHaveTextContent('');
     });
 
     it('should handle step 3 (no next/update button shown)', () => {
@@ -671,7 +680,7 @@ describe('BulkEditEntity', () => {
       });
 
       expect(
-        screen.queryByRole('button', { name: 'label.next' })
+        screen.queryByRole('button', { name: LABEL_NEXT })
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: 'label.update' })
@@ -705,7 +714,7 @@ describe('BulkEditEntity', () => {
       });
 
       expect(screen.getByTestId('row-count')).toHaveTextContent('2');
-      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(COLUMN_COUNT)).toHaveTextContent('3');
     });
 
     it('should add an operation column to the edit grid', () => {
@@ -719,7 +728,7 @@ describe('BulkEditEntity', () => {
       expect(
         screen.getByTestId('bulk-edit-operation-summary')
       ).toBeInTheDocument();
-      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+      expect(screen.getByTestId(COLUMN_COUNT)).toHaveTextContent('3');
     });
 
     it('should freeze operation and metric name columns in the edit grid', () => {
@@ -733,11 +742,11 @@ describe('BulkEditEntity', () => {
       });
 
       expect(screen.getByTestId('column-__bulkEditOperation')).toHaveAttribute(
-        'data-frozen',
+        DATA_FROZEN,
         'true'
       );
       expect(screen.getByTestId('column-name*')).toHaveAttribute(
-        'data-frozen',
+        DATA_FROZEN,
         'true'
       );
       expect(screen.getByTestId('column-name*')).toHaveAttribute(
@@ -745,7 +754,7 @@ describe('BulkEditEntity', () => {
         '200'
       );
       expect(screen.getByTestId('column-displayName')).toHaveAttribute(
-        'data-frozen',
+        DATA_FROZEN,
         'false'
       );
     });
@@ -827,7 +836,7 @@ describe('BulkEditEntity', () => {
       renderComponent({
         activeAsyncImportJob: {
           jobId: 'test-job',
-          message: 'Processing...',
+          message: PROCESSING,
           type: 'onValidate',
         },
       });
@@ -862,7 +871,7 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+      expect(screen.getByTestId(BANNER_MESSAGE)).toHaveTextContent(
         'Entity not found: databaseService BigQuery'
       );
 

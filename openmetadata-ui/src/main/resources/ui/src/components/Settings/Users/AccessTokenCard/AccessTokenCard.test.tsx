@@ -25,16 +25,23 @@ import {
 import { mockAccessData } from '../mocks/User.mocks';
 import AccessTokenCard from './AccessTokenCard.component';
 
+const OPEN_MODAL_BUTTON = 'open-modal-button';
+const EDIT_AUTH_BUTTON = 'edit-auth-button';
+const CLOSED_CONFIRMATION_MODAL = 'closed-confirmation-modal';
+const TEST_BOT_EMAIL_COM = 'test-bot@email.com';
+const BOT_USER_ID_123 = 'bot-user-id-123';
+const TEST_BOT_USER = 'test-bot-user';
+
 const mockOnSave = jest.fn();
 
 jest.mock('../../Bot/BotDetails/AuthMechanism', () => {
   return jest.fn().mockImplementation(({ onTokenRevoke, onEdit }) => (
     <p>
       AuthMechanism{' '}
-      <button data-testid="open-modal-button" onClick={onTokenRevoke}>
+      <button data-testid={OPEN_MODAL_BUTTON} onClick={onTokenRevoke}>
         open
       </button>
-      <button data-testid="edit-auth-button" onClick={onEdit}>
+      <button data-testid={EDIT_AUTH_BUTTON} onClick={onEdit}>
         edit
       </button>
     </p>
@@ -89,7 +96,7 @@ jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () => {
         </button>
       </div>
     ) : (
-      <div data-testid="closed-confirmation-modal" />
+      <div data-testid={CLOSED_CONFIRMATION_MODAL} />
     )
   );
 });
@@ -117,7 +124,7 @@ jest.mock('../../../../rest/userAPI', () => {
       Promise.resolve({
         id: 'bot-user-id',
         name: 'test-bot',
-        email: 'test-bot@email.com',
+        email: TEST_BOT_EMAIL_COM,
       })
     ),
     getAuthMechanismForBotUser: jest.fn().mockImplementation(() =>
@@ -133,10 +140,10 @@ jest.mock('../../../../rest/userAPI', () => {
 });
 
 const mockBotUserData = {
-  id: 'bot-user-id-123',
-  name: 'test-bot-user',
+  id: BOT_USER_ID_123,
+  name: TEST_BOT_USER,
   displayName: 'Test Bot User',
-  email: 'test-bot@email.com',
+  email: TEST_BOT_EMAIL_COM,
   isBot: true,
   isAdmin: false,
   timezone: 'UTC',
@@ -155,7 +162,7 @@ const mockBotData = {
   id: 'bot-id-123',
   name: 'test-bot',
   displayName: 'Test Bot',
-  botUser: { id: 'bot-user-id-123', type: 'user', name: 'test-bot-user' },
+  botUser: { id: BOT_USER_ID_123, type: 'user', name: TEST_BOT_USER },
 };
 
 describe('AccessTokenCard Component', () => {
@@ -180,11 +187,11 @@ describe('AccessTokenCard Component', () => {
   it('should call onConfirm when Confirm button is clicked', async () => {
     const mockRevokeAccessToken = revokeAccessToken as jest.Mock;
     render(<AccessTokenCard isBot={false} />);
-    const isModalClose = await screen.findByTestId('closed-confirmation-modal');
+    const isModalClose = await screen.findByTestId(CLOSED_CONFIRMATION_MODAL);
 
     expect(isModalClose).toBeInTheDocument();
 
-    const openModalButton = await screen.findByTestId('open-modal-button');
+    const openModalButton = await screen.findByTestId(OPEN_MODAL_BUTTON);
     await act(async () => {
       fireEvent.click(openModalButton);
     });
@@ -197,17 +204,17 @@ describe('AccessTokenCard Component', () => {
 
   it('should call onCancel when Cancel button is clicked', async () => {
     await render(<AccessTokenCard isBot={false} />);
-    const isModalClose = await screen.findByTestId('closed-confirmation-modal');
+    const isModalClose = await screen.findByTestId(CLOSED_CONFIRMATION_MODAL);
 
     expect(isModalClose).toBeInTheDocument();
 
-    const openModalButton = await screen.findByTestId('open-modal-button');
+    const openModalButton = await screen.findByTestId(OPEN_MODAL_BUTTON);
     await act(async () => {
       fireEvent.click(openModalButton);
     });
     const cancelButton = await screen.findByTestId('cancel-button');
     fireEvent.click(cancelButton);
-    const closedModal = await screen.findByTestId('closed-confirmation-modal');
+    const closedModal = await screen.findByTestId(CLOSED_CONFIRMATION_MODAL);
 
     expect(closedModal).toBeInTheDocument();
   });
@@ -231,7 +238,7 @@ describe('AccessTokenCard Bot Token Generation', () => {
       );
     });
 
-    expect(mockGetAuthMechanism).toHaveBeenCalledWith('bot-user-id-123');
+    expect(mockGetAuthMechanism).toHaveBeenCalledWith(BOT_USER_ID_123);
   });
 
   it('should call generateUserToken for JWT auth type when saving bot token', async () => {
@@ -248,7 +255,7 @@ describe('AccessTokenCard Bot Token Generation', () => {
     });
 
     // Click edit to show the AuthMechanismForm
-    const editButton = await screen.findByTestId('edit-auth-button');
+    const editButton = await screen.findByTestId(EDIT_AUTH_BUTTON);
     await act(async () => {
       fireEvent.click(editButton);
     });
@@ -260,7 +267,7 @@ describe('AccessTokenCard Bot Token Generation', () => {
     });
 
     expect(mockGenerateUserToken).toHaveBeenCalledWith({
-      id: 'bot-user-id-123',
+      id: BOT_USER_ID_123,
       JWTTokenExpiry: 'Seven',
     });
   });
@@ -280,7 +287,7 @@ describe('AccessTokenCard Bot Token Generation', () => {
     });
 
     // Click edit to show the AuthMechanismForm
-    const editButton = await screen.findByTestId('edit-auth-button');
+    const editButton = await screen.findByTestId(EDIT_AUTH_BUTTON);
     await act(async () => {
       fireEvent.click(editButton);
     });
@@ -294,8 +301,8 @@ describe('AccessTokenCard Bot Token Generation', () => {
     expect(mockGenerateUserToken).not.toHaveBeenCalled();
     expect(mockCreateUserWithPut).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'test-bot-user',
-        email: 'test-bot@email.com',
+        name: TEST_BOT_USER,
+        email: TEST_BOT_EMAIL_COM,
         isBot: true,
         botName: 'test-bot',
         authenticationMechanism: expect.objectContaining({
@@ -323,7 +330,7 @@ describe('AccessTokenCard Bot Token Generation', () => {
     });
 
     // Click edit to show the AuthMechanismForm
-    const editButton = await screen.findByTestId('edit-auth-button');
+    const editButton = await screen.findByTestId(EDIT_AUTH_BUTTON);
     await act(async () => {
       fireEvent.click(editButton);
     });
@@ -353,7 +360,7 @@ describe('AccessTokenCard Bot Token Generation', () => {
     });
 
     // Open the confirmation modal
-    const openModalButton = await screen.findByTestId('open-modal-button');
+    const openModalButton = await screen.findByTestId(OPEN_MODAL_BUTTON);
     await act(async () => {
       fireEvent.click(openModalButton);
     });

@@ -16,6 +16,8 @@ import { act } from 'react-test-renderer';
 import { PAGE_SIZE } from '../../../constants/constants';
 import NextPrevious from './NextPrevious';
 
+const PAGE_INDICATOR = 'page-indicator';
+
 const mockCallback = jest.fn();
 
 const computeTotalPages = jest
@@ -61,7 +63,7 @@ describe('Test Pagination Component', () => {
     );
     const previous = getByTestId('previous');
     const next = getByTestId('next');
-    const pageIndicator = getByTestId('page-indicator');
+    const pageIndicator = getByTestId(PAGE_INDICATOR);
 
     expect(previous).toBeDisabled();
 
@@ -86,7 +88,7 @@ describe('Test Pagination Component', () => {
       />
     );
     const previous = getByTestId('previous');
-    const pageIndicator = getByTestId('page-indicator');
+    const pageIndicator = getByTestId(PAGE_INDICATOR);
 
     expect(previous).toBeDisabled();
     expect(pageIndicator).toBeInTheDocument();
@@ -108,7 +110,7 @@ describe('Test Pagination Component', () => {
       />
     );
     const next = getByTestId('next');
-    const pageIndicator = getByTestId('page-indicator');
+    const pageIndicator = getByTestId(PAGE_INDICATOR);
 
     expect(next).toBeDisabled();
 
@@ -206,7 +208,7 @@ describe('Test Pagination Component', () => {
     );
     const next = getByTestId('next');
     const previous = getByTestId('previous');
-    const pageIndicator = getByTestId('page-indicator');
+    const pageIndicator = getByTestId(PAGE_INDICATOR);
 
     expect(next).toBeDisabled();
     expect(previous).not.toBeDisabled();
@@ -233,7 +235,7 @@ describe('Test Pagination Component', () => {
         pagingHandler={mockCallback}
       />
     );
-    const pageIndicator = getByTestId('page-indicator');
+    const pageIndicator = getByTestId(PAGE_INDICATOR);
 
     expect(pageIndicator).toHaveTextContent('label.page 1 label.of 2');
   });

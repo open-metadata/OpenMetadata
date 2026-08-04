@@ -14,6 +14,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import TermBoostList from './TermBoostList';
 
+const NEW_TERM_BOOST = 'new-term-boost';
+
 const mockTermBoosts: TermBoost[] = [
   {
     field: 'tags.tagFQN',
@@ -37,9 +39,7 @@ jest.mock('../TermBoost/TermBoost', () => {
       ({ termBoost, showNewTermBoost, onDeleteBoost, onTermBoostChange }) => (
         <div
           data-testid={
-            showNewTermBoost
-              ? 'new-term-boost'
-              : `term-boost-${termBoost.value}`
+            showNewTermBoost ? NEW_TERM_BOOST : `term-boost-${termBoost.value}`
           }>
           {termBoost.value || 'New Term Boost'}
           <button
@@ -81,7 +81,7 @@ describe('TermBoostList', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('term-boost-PII.Sensitive')).toBeInTheDocument();
 
-    expect(screen.queryByTestId('new-term-boost')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(NEW_TERM_BOOST)).not.toBeInTheDocument();
   });
 
   it('should render new term boost component when showNewTermBoost is true', () => {
@@ -94,7 +94,7 @@ describe('TermBoostList', () => {
       />
     );
 
-    expect(screen.getByTestId('new-term-boost')).toBeInTheDocument();
+    expect(screen.getByTestId(NEW_TERM_BOOST)).toBeInTheDocument();
   });
 
   it('should render empty container when no term boosts provided', () => {

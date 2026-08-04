@@ -33,6 +33,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn().mockImplementation(() => ({
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     topicFQN: 'sample_kafka.sales',
     tab: 'schema',
   })),

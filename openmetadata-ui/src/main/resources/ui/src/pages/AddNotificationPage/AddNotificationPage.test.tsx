@@ -14,6 +14,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AddNotificationPage from './AddNotificationPage';
 
+const LABEL_NOTIFICATION_PLURAL = 'label.notification-plural';
+
 const mockNavigate = jest.fn();
 const mockHandleAlertSave = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
@@ -118,7 +120,7 @@ describe('AddNotificationPage', () => {
     });
 
     expect(
-      await screen.findByText('label.notification-plural')
+      await screen.findByText(LABEL_NOTIFICATION_PLURAL)
     ).toBeInTheDocument();
   });
 
@@ -131,7 +133,7 @@ describe('AddNotificationPage', () => {
     const breadcrumbLinks = screen.getAllByTestId('breadcrumb-link');
 
     expect(breadcrumbLinks[0]).toHaveTextContent('label.setting-plural');
-    expect(breadcrumbLinks[1]).toHaveTextContent('label.notification-plural');
+    expect(breadcrumbLinks[1]).toHaveTextContent(LABEL_NOTIFICATION_PLURAL);
     expect(breadcrumbLinks[2]).toHaveTextContent('label.alert-plural');
     expect(breadcrumbLinks[3]).toHaveTextContent('label.create-entity');
   });
@@ -181,7 +183,7 @@ describe('AddNotificationPage', () => {
       });
     });
 
-    await screen.findByText('label.notification-plural');
+    await screen.findByText(LABEL_NOTIFICATION_PLURAL);
 
     expect(screen.getByPlaceholderText('label.name')).toBeInTheDocument();
   });
@@ -193,7 +195,7 @@ describe('AddNotificationPage', () => {
       });
     });
 
-    await screen.findByText('label.notification-plural');
+    await screen.findByText(LABEL_NOTIFICATION_PLURAL);
 
     const saveButton = screen.getByTestId('save-button');
 
@@ -208,7 +210,7 @@ describe('AddNotificationPage', () => {
       });
     });
 
-    await screen.findByText('label.notification-plural');
+    await screen.findByText(LABEL_NOTIFICATION_PLURAL);
 
     expect(screen.getByTestId('source-select')).toBeInTheDocument();
   });
@@ -220,7 +222,7 @@ describe('AddNotificationPage', () => {
       });
     });
 
-    await screen.findByText('label.notification-plural');
+    await screen.findByText(LABEL_NOTIFICATION_PLURAL);
 
     expect(
       screen.getByTestId('destination-category-select')
@@ -238,7 +240,7 @@ describe('AddNotificationPage', () => {
       });
     });
 
-    await screen.findByText('label.notification-plural');
+    await screen.findByText(LABEL_NOTIFICATION_PLURAL);
 
     expect(alertsClassBase.getAddAlertFormExtraWidgets).toHaveBeenCalled();
   });
@@ -254,7 +256,7 @@ describe('AddNotificationPage', () => {
       });
     });
 
-    await screen.findByText('label.notification-plural');
+    await screen.findByText(LABEL_NOTIFICATION_PLURAL);
 
     expect(alertsClassBase.getAddAlertFormExtraButtons).toHaveBeenCalled();
   });

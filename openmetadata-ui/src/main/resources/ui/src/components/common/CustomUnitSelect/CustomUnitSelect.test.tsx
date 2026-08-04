@@ -16,6 +16,9 @@ import { getCustomUnitsOfMeasurement } from '../../../rest/metricsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CustomUnitSelect from './CustomUnitSelect';
 
+const CUSTOM_UNIT_1 = 'Custom Unit 1';
+const UNIT_OF_MEASUREMENT_SELECT = 'unit-of-measurement-select';
+
 // Mock dependencies
 jest.mock('../../../rest/metricsAPI', () => ({
   getCustomUnitsOfMeasurement: jest.fn(),
@@ -39,7 +42,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockCustomUnits = ['Custom Unit 1', 'Custom Unit 2', 'Custom Unit 3'];
+const mockCustomUnits = [CUSTOM_UNIT_1, 'Custom Unit 2', 'Custom Unit 3'];
 
 describe('CustomUnitSelect Component', () => {
   const mockOnChange = jest.fn();
@@ -56,7 +59,7 @@ describe('CustomUnitSelect Component', () => {
       render(<CustomUnitSelect />);
 
       expect(
-        screen.getByTestId('unit-of-measurement-select')
+        screen.getByTestId(UNIT_OF_MEASUREMENT_SELECT)
       ).toBeInTheDocument();
     });
 
@@ -146,7 +149,7 @@ describe('CustomUnitSelect Component', () => {
       fireEvent.mouseDown(screen.getByRole('combobox'));
 
       await waitFor(() => {
-        expect(screen.getByText('Custom Unit 1')).toBeInTheDocument();
+        expect(screen.getByText(CUSTOM_UNIT_1)).toBeInTheDocument();
         expect(screen.getByText('Custom Unit 2')).toBeInTheDocument();
       });
     });
@@ -191,14 +194,14 @@ describe('CustomUnitSelect Component', () => {
       fireEvent.mouseDown(screen.getByRole('combobox'));
 
       await waitFor(() => {
-        expect(screen.getByText('Custom Unit 1')).toBeInTheDocument();
+        expect(screen.getByText(CUSTOM_UNIT_1)).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText('Custom Unit 1'));
+      fireEvent.click(screen.getByText(CUSTOM_UNIT_1));
 
       expect(mockOnChange).toHaveBeenCalledWith(
         UnitOfMeasurement.Other,
-        'Custom Unit 1'
+        CUSTOM_UNIT_1
       );
     });
 
@@ -267,7 +270,7 @@ describe('CustomUnitSelect Component', () => {
       await waitFor(() => {
         // The test passes if component renders without error
         expect(
-          screen.getByTestId('unit-of-measurement-select')
+          screen.getByTestId(UNIT_OF_MEASUREMENT_SELECT)
         ).toBeInTheDocument();
       });
 
@@ -339,7 +342,7 @@ describe('CustomUnitSelect Component', () => {
     it('should disable search when showSearch is false', () => {
       render(<CustomUnitSelect showSearch={false} />);
 
-      const select = screen.getByTestId('unit-of-measurement-select');
+      const select = screen.getByTestId(UNIT_OF_MEASUREMENT_SELECT);
 
       expect(select).toBeInTheDocument();
     });

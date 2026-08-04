@@ -17,6 +17,13 @@ import { Paging } from '../../../../generated/type/paging';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { TestSuitesTable } from './TestSuitesTable.component';
 
+const EMPTY_PLACEHOLDER_ACTION_NEW_BUNDLE_SUITE =
+  'empty-placeholder-action-new-bundle-suite';
+const EMPTY_PLACEHOLDER = 'empty-placeholder';
+const LABEL_TEST_PLURAL = 'label.test-plural';
+const NEW_BUNDLE_SUITE = 'new-bundle-suite';
+const LABEL_NEW_ENTITY = 'label.new-entity';
+const LABEL_NAME = 'label.name';
 jest.mock('@openmetadata/ui-core-components', () => {
   const React = require('react') as typeof import('react');
   const SortContext = React.createContext<{
@@ -209,8 +216,8 @@ jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
 }));
 
 const columnList = [
-  { id: 'name', name: 'label.name', allowsSorting: true },
-  { id: 'tests', name: 'label.test-plural' },
+  { id: 'name', name: LABEL_NAME, allowsSorting: true },
+  { id: 'tests', name: LABEL_TEST_PLURAL },
   { id: 'success', name: 'label.success %', allowsSorting: true },
   { id: 'owners', name: 'label.owner-plural' },
 ];
@@ -263,8 +270,8 @@ describe('TestSuitesTable component', () => {
 
     expect(screen.getByTestId('test-suite-table')).toBeInTheDocument();
     expect(headers.map((h) => h.textContent)).toStrictEqual([
-      'label.name',
-      'label.test-plural',
+      LABEL_NAME,
+      LABEL_TEST_PLURAL,
       'label.success %',
       'label.owner-plural',
     ]);
@@ -273,11 +280,11 @@ describe('TestSuitesTable component', () => {
   it('should mark the name column as the row header', () => {
     renderTable();
 
-    const nameHeader = screen.getByText('label.name');
+    const nameHeader = screen.getByText(LABEL_NAME);
 
     expect(nameHeader.getAttribute('data-row-header')).toBe('true');
 
-    const testsHeader = screen.getByText('label.test-plural');
+    const testsHeader = screen.getByText(LABEL_TEST_PLURAL);
 
     expect(testsHeader.getAttribute('data-row-header')).toBe('false');
   });
@@ -302,7 +309,7 @@ describe('TestSuitesTable component', () => {
   it('should call onSortChange when a sortable header is clicked', () => {
     renderTable();
 
-    fireEvent.click(screen.getByText('label.name'));
+    fireEvent.click(screen.getByText(LABEL_NAME));
 
     expect(mockOnSortChange).toHaveBeenCalledWith({
       column: 'name',
@@ -313,7 +320,7 @@ describe('TestSuitesTable component', () => {
   it('should not call onSortChange for a non-sortable header', () => {
     renderTable();
 
-    fireEvent.click(screen.getByText('label.test-plural'));
+    fireEvent.click(screen.getByText(LABEL_TEST_PLURAL));
 
     expect(mockOnSortChange).not.toHaveBeenCalled();
   });
@@ -330,7 +337,7 @@ describe('TestSuitesTable component', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
     expect(screen.getByText('message.no-table-suites-yet')).toBeInTheDocument();
   });
 
@@ -341,7 +348,7 @@ describe('TestSuitesTable component', () => {
       hasActiveFilters: false,
     });
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
     expect(
       screen.getByText('message.no-bundle-suites-yet')
     ).toBeInTheDocument();
@@ -354,7 +361,7 @@ describe('TestSuitesTable component', () => {
       hasActiveFilters: true,
     });
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_PLACEHOLDER)).toBeInTheDocument();
     expect(
       screen.getByText('message.no-matching-test-suites')
     ).toBeInTheDocument();
@@ -363,8 +370,8 @@ describe('TestSuitesTable component', () => {
   it('should render the empty-state CTA when emptyStateAction is provided and no active filters', () => {
     const mockOnPress = jest.fn();
     const emptyStateAction = {
-      key: 'new-bundle-suite',
-      label: 'label.new-entity',
+      key: NEW_BUNDLE_SUITE,
+      label: LABEL_NEW_ENTITY,
       onPress: mockOnPress,
     };
 
@@ -376,11 +383,11 @@ describe('TestSuitesTable component', () => {
     });
 
     const actionButton = screen.getByTestId(
-      'empty-placeholder-action-new-bundle-suite'
+      EMPTY_PLACEHOLDER_ACTION_NEW_BUNDLE_SUITE
     );
 
     expect(actionButton).toBeInTheDocument();
-    expect(actionButton).toHaveTextContent('label.new-entity');
+    expect(actionButton).toHaveTextContent(LABEL_NEW_ENTITY);
 
     fireEvent.click(actionButton);
 
@@ -389,8 +396,8 @@ describe('TestSuitesTable component', () => {
 
   it('should NOT render the empty-state CTA on the Table Suites sub-tab', () => {
     const emptyStateAction = {
-      key: 'new-bundle-suite',
-      label: 'label.new-entity',
+      key: NEW_BUNDLE_SUITE,
+      label: LABEL_NEW_ENTITY,
       onPress: jest.fn(),
     };
 
@@ -402,14 +409,14 @@ describe('TestSuitesTable component', () => {
     });
 
     expect(
-      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+      screen.queryByTestId(EMPTY_PLACEHOLDER_ACTION_NEW_BUNDLE_SUITE)
     ).not.toBeInTheDocument();
   });
 
   it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
     const emptyStateAction = {
-      key: 'new-bundle-suite',
-      label: 'label.new-entity',
+      key: NEW_BUNDLE_SUITE,
+      label: LABEL_NEW_ENTITY,
       onPress: jest.fn(),
     };
 
@@ -421,7 +428,7 @@ describe('TestSuitesTable component', () => {
     });
 
     expect(
-      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+      screen.queryByTestId(EMPTY_PLACEHOLDER_ACTION_NEW_BUNDLE_SUITE)
     ).not.toBeInTheDocument();
   });
 
@@ -435,7 +442,7 @@ describe('TestSuitesTable component', () => {
     renderTable({ isLoading: true });
 
     expect(screen.getAllByTestId('test-suite-loading-row')).toHaveLength(5);
-    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EMPTY_PLACEHOLDER)).not.toBeInTheDocument();
   });
 
   it('should render pagination when showPagination is true', () => {

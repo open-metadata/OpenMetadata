@@ -22,6 +22,9 @@ import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewer
 import { DescriptionSectionProps } from './DescriptionSection.interface';
 import './DescriptionSection.less';
 
+const LABEL_DESCRIPTION = 'label.description';
+const LABEL_EDIT_ENTITY = 'label.edit-entity';
+
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
@@ -166,9 +169,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <div className="description-section">
           <div className="description-header">
             <div className="description-title-row">
-              <span className="description-title">
-                {t('label.description')}
-              </span>
+              <span className="description-title">{t(LABEL_DESCRIPTION)}</span>
               {headerBadge}
             </div>
             {canShowEditButton && (
@@ -178,8 +179,8 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
                 disabled={false}
                 icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
                 size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.description'),
+                title={t(LABEL_EDIT_ENTITY, {
+                  entity: t(LABEL_DESCRIPTION),
                 })}
                 onClick={handleEditDescription}
               />
@@ -195,11 +196,11 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               <div className="description-metadata">{metadataRow}</div>
             ) : null}
             <ModalWithMarkdownEditor
-              header={t('label.edit-entity', {
-                entity: t('label.description'),
+              header={t(LABEL_EDIT_ENTITY, {
+                entity: t(LABEL_DESCRIPTION),
               })}
               placeholder={t('label.enter-entity', {
-                entity: t('label.description'),
+                entity: t(LABEL_DESCRIPTION),
               })}
               value={description || ''}
               visible={Boolean(isEditDescription)}
@@ -217,7 +218,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       <div className="description-section">
         <div className="description-header">
           <div className="description-title-row">
-            <span className="description-title">{t('label.description')}</span>
+            <span className="description-title">{t(LABEL_DESCRIPTION)}</span>
             {headerBadge}
           </div>
           {canShowEditButton && (
@@ -227,8 +228,8 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               disabled={false}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.description'),
+              title={t(LABEL_EDIT_ENTITY, {
+                entity: t(LABEL_DESCRIPTION),
               })}
               onClick={handleEditDescription}
             />
@@ -259,11 +260,11 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               <div className="description-metadata">{metadataRow}</div>
             ) : null}
             <ModalWithMarkdownEditor
-              header={t('label.edit-entity', {
-                entity: t('label.description'),
+              header={t(LABEL_EDIT_ENTITY, {
+                entity: t(LABEL_DESCRIPTION),
               })}
               placeholder={t('label.enter-entity', {
-                entity: t('label.description'),
+                entity: t(LABEL_DESCRIPTION),
               })}
               value={description || ''}
               visible={Boolean(isEditDescription)}

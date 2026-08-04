@@ -24,6 +24,20 @@ import {
 } from './TableProfilerUtils';
 import { CalculateColumnProfilerMetricsInterface } from './TableProfilerUtils.interface';
 
+const DEC_05_11_54 = 'Dec 05, 11:54' as const;
+const LABEL_UNIQUENESS = 'label.uniqueness' as const;
+const MESSAGE_UNIQUENESS_PROFILE_METRIC_DESCRIPTION =
+  'message.uniqueness-profile-metric-description' as const;
+const LABEL_NULLNESS = 'label.nullness' as const;
+const MESSAGE_NULLNESS_PROFILE_METRIC_DESCRIPTION =
+  'message.nullness-profile-metric-description' as const;
+const LABEL_DISTINCT = 'label.distinct' as const;
+const MESSAGE_DISTINCT_PROFILE_METRIC_DESCRIPTION =
+  'message.distinct-profile-metric-description' as const;
+const LABEL_VALUE_COUNT = 'label.value-count' as const;
+const MESSAGE_VALUE_COUNT_PROFILE_METRIC_DESCRIPTION =
+  'message.value-count-profile-metric-description' as const;
+
 jest.mock('./date-time/DateTimeUtils', () => {
   return {
     customFormatDateTime: jest.fn().mockReturnValue('Dec 05, 11:54'),
@@ -145,14 +159,14 @@ describe('TableProfilerUtils', () => {
       CountOfFRAddress: [
         {
           CountOfFRAddress: 1467,
-          formattedTimestamp: 'Dec 05, 11:54',
+          formattedTimestamp: DEC_05_11_54,
           timestamp: 1701757494892,
         },
       ],
       CountOfUSAddress: [
         {
           CountOfUSAddress: 15467,
-          formattedTimestamp: 'Dec 05, 11:54',
+          formattedTimestamp: DEC_05_11_54,
           timestamp: 1701757494892,
         },
       ],
@@ -214,7 +228,7 @@ describe('TableProfilerUtils', () => {
 
     expect(result.countMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         distinctCount: 100,
         nullCount: 10,
@@ -225,7 +239,7 @@ describe('TableProfilerUtils', () => {
 
     expect(result.proportionMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         distinctProportion: 50,
         nullProportion: 5,
@@ -235,7 +249,7 @@ describe('TableProfilerUtils', () => {
 
     expect(result.mathMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         max: 100,
         min: 0,
@@ -245,7 +259,7 @@ describe('TableProfilerUtils', () => {
 
     expect(result.sumMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         sum: 500,
       },
@@ -253,7 +267,7 @@ describe('TableProfilerUtils', () => {
 
     expect(result.quartileMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         firstQuartile: 25,
         thirdQuartile: 75,
@@ -290,7 +304,7 @@ describe('TableProfilerUtils', () => {
 
     expect(result.countMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         distinctCount: 100,
         nullCount: 10,
@@ -300,7 +314,7 @@ describe('TableProfilerUtils', () => {
     ]);
     expect(result.proportionMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         distinctProportion: 50,
         nullProportion: 5,
@@ -309,7 +323,7 @@ describe('TableProfilerUtils', () => {
     ]);
     expect(result.mathMetrics.data).toEqual([
       {
-        name: 'Dec 05, 11:54',
+        name: DEC_05_11_54,
         timestamp: 1701757494892,
         max: 100,
         min: 0,
@@ -361,24 +375,24 @@ describe('TableProfilerUtils', () => {
 
       expect(result).toEqual([
         {
-          label: 'label.uniqueness',
+          label: LABEL_UNIQUENESS,
           value: '--',
-          tooltip: 'message.uniqueness-profile-metric-description',
+          tooltip: MESSAGE_UNIQUENESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.nullness',
+          label: LABEL_NULLNESS,
           value: '--',
-          tooltip: 'message.nullness-profile-metric-description',
+          tooltip: MESSAGE_NULLNESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.distinct',
+          label: LABEL_DISTINCT,
           value: '--',
-          tooltip: 'message.distinct-profile-metric-description',
+          tooltip: MESSAGE_DISTINCT_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.value-count',
+          label: LABEL_VALUE_COUNT,
           value: '--',
-          tooltip: 'message.value-count-profile-metric-description',
+          tooltip: MESSAGE_VALUE_COUNT_PROFILE_METRIC_DESCRIPTION,
         },
       ]);
     });
@@ -397,24 +411,24 @@ describe('TableProfilerUtils', () => {
 
       expect(result).toEqual([
         {
-          label: 'label.uniqueness',
+          label: LABEL_UNIQUENESS,
           value: '75%',
-          tooltip: 'message.uniqueness-profile-metric-description',
+          tooltip: MESSAGE_UNIQUENESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.nullness',
+          label: LABEL_NULLNESS,
           value: '10%',
-          tooltip: 'message.nullness-profile-metric-description',
+          tooltip: MESSAGE_NULLNESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.distinct',
+          label: LABEL_DISTINCT,
           value: '60%',
-          tooltip: 'message.distinct-profile-metric-description',
+          tooltip: MESSAGE_DISTINCT_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.value-count',
+          label: LABEL_VALUE_COUNT,
           value: '1,000',
-          tooltip: 'message.value-count-profile-metric-description',
+          tooltip: MESSAGE_VALUE_COUNT_PROFILE_METRIC_DESCRIPTION,
         },
       ]);
     });
@@ -433,24 +447,24 @@ describe('TableProfilerUtils', () => {
 
       expect(result).toEqual([
         {
-          label: 'label.uniqueness',
+          label: LABEL_UNIQUENESS,
           value: '--',
-          tooltip: 'message.uniqueness-profile-metric-description',
+          tooltip: MESSAGE_UNIQUENESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.nullness',
+          label: LABEL_NULLNESS,
           value: '--',
-          tooltip: 'message.nullness-profile-metric-description',
+          tooltip: MESSAGE_NULLNESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.distinct',
+          label: LABEL_DISTINCT,
           value: '--',
-          tooltip: 'message.distinct-profile-metric-description',
+          tooltip: MESSAGE_DISTINCT_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.value-count',
+          label: LABEL_VALUE_COUNT,
           value: '--',
-          tooltip: 'message.value-count-profile-metric-description',
+          tooltip: MESSAGE_VALUE_COUNT_PROFILE_METRIC_DESCRIPTION,
         },
       ]);
     });
@@ -469,24 +483,24 @@ describe('TableProfilerUtils', () => {
 
       expect(result).toEqual([
         {
-          label: 'label.uniqueness',
+          label: LABEL_UNIQUENESS,
           value: '50%',
-          tooltip: 'message.uniqueness-profile-metric-description',
+          tooltip: MESSAGE_UNIQUENESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.nullness',
+          label: LABEL_NULLNESS,
           value: '--',
-          tooltip: 'message.nullness-profile-metric-description',
+          tooltip: MESSAGE_NULLNESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.distinct',
+          label: LABEL_DISTINCT,
           value: '--',
-          tooltip: 'message.distinct-profile-metric-description',
+          tooltip: MESSAGE_DISTINCT_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.value-count',
+          label: LABEL_VALUE_COUNT,
           value: '500',
-          tooltip: 'message.value-count-profile-metric-description',
+          tooltip: MESSAGE_VALUE_COUNT_PROFILE_METRIC_DESCRIPTION,
         },
       ]);
     });
@@ -505,24 +519,24 @@ describe('TableProfilerUtils', () => {
 
       expect(result).toEqual([
         {
-          label: 'label.uniqueness',
+          label: LABEL_UNIQUENESS,
           value: '0%',
-          tooltip: 'message.uniqueness-profile-metric-description',
+          tooltip: MESSAGE_UNIQUENESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.nullness',
+          label: LABEL_NULLNESS,
           value: '0%',
-          tooltip: 'message.nullness-profile-metric-description',
+          tooltip: MESSAGE_NULLNESS_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.distinct',
+          label: LABEL_DISTINCT,
           value: '0%',
-          tooltip: 'message.distinct-profile-metric-description',
+          tooltip: MESSAGE_DISTINCT_PROFILE_METRIC_DESCRIPTION,
         },
         {
-          label: 'label.value-count',
+          label: LABEL_VALUE_COUNT,
           value: '0',
-          tooltip: 'message.value-count-profile-metric-description',
+          tooltip: MESSAGE_VALUE_COUNT_PROFILE_METRIC_DESCRIPTION,
         },
       ]);
     });

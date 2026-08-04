@@ -27,6 +27,10 @@ import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
+const LABEL_EDIT_ENTITY = 'label.edit-entity' as const;
+const LABEL_ADD_ENTITY = 'label.add-entity' as const;
+const LABEL_DATA_QUALITY = 'label.data-quality' as const;
+
 // Previously statically imported — lazify so they stay out of the main chunk
 const AddCustomMetricPage = withPageSuspenseFallback(
   React.lazy(
@@ -402,7 +406,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <EditConnectionFormPage
-            pageTitle={t('label.edit-entity', {
+            pageTitle={t(LABEL_EDIT_ENTITY, {
               entity: t('label.connection'),
             })}
           />
@@ -412,7 +416,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <AddServicePage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.service'),
             })}
           />
@@ -423,7 +427,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <AddQueryPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.query'),
             })}
           />
@@ -439,7 +443,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               permissions
             )}>
             <AddIngestionPage
-              pageTitle={t('label.add-entity', {
+              pageTitle={t(LABEL_ADD_ENTITY, {
                 entity: t('label.ingestion'),
               })}
             />
@@ -456,7 +460,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               permissions
             )}>
             <EditIngestionPage
-              pageTitle={t('label.edit-entity', {
+              pageTitle={t(LABEL_EDIT_ENTITY, {
                 entity: t('label.ingestion'),
               })}
             />
@@ -508,7 +512,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               permissions
             )}>
             <AddCustomMetricPage
-              pageTitle={t('label.add-entity', {
+              pageTitle={t(LABEL_ADD_ENTITY, {
                 entity: t('label.custom-metric'),
               })}
             />
@@ -577,7 +581,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <TestSuiteIngestionPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.test-suite'),
             })}
           />
@@ -587,7 +591,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <TestSuiteIngestionPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.test-suite'),
             })}
           />
@@ -602,8 +606,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               permissions
             )}>
             <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
+              pageTitle={t(LABEL_ADD_ENTITY, {
+                entity: t(LABEL_DATA_QUALITY),
               })}
             />
           </AdminProtectedRoute>
@@ -618,8 +622,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               permissions
             )}>
             <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
+              pageTitle={t(LABEL_ADD_ENTITY, {
+                entity: t(LABEL_DATA_QUALITY),
               })}
             />
           </AdminProtectedRoute>
@@ -634,8 +638,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
               permissions
             )}>
             <DataQualityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.data-quality'),
+              pageTitle={t(LABEL_ADD_ENTITY, {
+                entity: t(LABEL_DATA_QUALITY),
               })}
             />
           </AdminProtectedRoute>
@@ -740,7 +744,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <AddObservabilityPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.observability'),
             })}
           />
@@ -750,7 +754,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <AddObservabilityPage
-            pageTitle={t('label.add-entity', {
+            pageTitle={t(LABEL_ADD_ENTITY, {
               entity: t('label.observability'),
             })}
           />
@@ -778,7 +782,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route
         element={
           <EditKPIPage
-            pageTitle={t('label.edit-entity', {
+            pageTitle={t(LABEL_EDIT_ENTITY, {
               entity: t('label.kpi-uppercase'),
             })}
           />

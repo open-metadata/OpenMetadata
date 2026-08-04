@@ -22,6 +22,11 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import GlossaryHeader from './GlossaryHeader.component';
 
+const MANAGE_BUTTON = 'manage-button';
+const LABEL_IMPORT = 'label.import';
+const LABEL_EXPORT = 'label.export';
+const LABEL_CHANGE_PARENT_ENTITY = 'label.change-parent-entity';
+
 const mockGlossaryTermPermission = {
   All: true,
   Create: true,
@@ -196,15 +201,15 @@ describe('GlossaryHeader component', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('manage-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_BUTTON));
     });
 
-    expect(screen.queryByText('label.import')).toBeInTheDocument();
-    expect(screen.queryByText('label.export')).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_IMPORT)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_EXPORT)).toBeInTheDocument();
     expect(screen.queryByText('label.import-ontology')).toBeInTheDocument();
 
     expect(
-      screen.queryByText('label.change-parent-entity')
+      screen.queryByText(LABEL_CHANGE_PARENT_ENTITY)
     ).not.toBeInTheDocument();
     expect(screen.queryByText('label.style')).not.toBeInTheDocument();
   });
@@ -220,7 +225,7 @@ describe('GlossaryHeader component', () => {
       />
     );
 
-    expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(MANAGE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should hide the import ontology action when the user lacks import/export permission', async () => {
@@ -244,12 +249,12 @@ describe('GlossaryHeader component', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('manage-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_BUTTON));
     });
 
     expect(screen.queryByText('label.import-ontology')).not.toBeInTheDocument();
-    expect(screen.queryByText('label.import')).not.toBeInTheDocument();
-    expect(screen.queryByText('label.export')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_IMPORT)).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_EXPORT)).not.toBeInTheDocument();
 
     mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
     mockGlossaryTermPermission.All = true;
@@ -270,14 +275,14 @@ describe('GlossaryHeader component', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('manage-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_BUTTON));
     });
 
     expect(screen.getByText('label.style')).toBeInTheDocument();
-    expect(screen.getByText('label.change-parent-entity')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_CHANGE_PARENT_ENTITY)).toBeInTheDocument();
 
-    expect(screen.queryByText('label.import')).not.toBeInTheDocument();
-    expect(screen.queryByText('label.export')).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_IMPORT)).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_EXPORT)).not.toBeInTheDocument();
   });
 
   it('should not render ChangeParentHierarchy component when it is close', () => {
@@ -308,11 +313,11 @@ describe('GlossaryHeader component', () => {
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('manage-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_BUTTON));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.change-parent-entity'));
+      fireEvent.click(screen.getByText(LABEL_CHANGE_PARENT_ENTITY));
     });
 
     expect(
@@ -334,11 +339,11 @@ describe('GlossaryHeader component', () => {
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('manage-button'));
+      fireEvent.click(screen.getByTestId(MANAGE_BUTTON));
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.change-parent-entity'));
+      fireEvent.click(screen.getByText(LABEL_CHANGE_PARENT_ENTITY));
     });
 
     await act(async () => {
@@ -371,11 +376,11 @@ describe('GlossaryHeader component', () => {
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('manage-button'));
+        fireEvent.click(screen.getByTestId(MANAGE_BUTTON));
       });
 
-      expect(screen.queryByText('label.import')).toBeInTheDocument();
-      expect(screen.queryByText('label.export')).toBeInTheDocument();
+      expect(screen.queryByText(LABEL_IMPORT)).toBeInTheDocument();
+      expect(screen.queryByText(LABEL_EXPORT)).toBeInTheDocument();
     });
 
     it('should hide import/export when both globalPermissions and entity-level permissions deny', async () => {
@@ -399,7 +404,7 @@ describe('GlossaryHeader component', () => {
         />
       );
 
-      expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(MANAGE_BUTTON)).not.toBeInTheDocument();
     });
   });
 });

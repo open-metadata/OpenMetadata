@@ -36,6 +36,7 @@ import {
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
+const LABEL_REFERENCE_PLURAL = 'label.reference-plural';
 const GlossaryTermReferences = () => {
   const [references, setReferences] = useState<TermReference[]>([]);
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
@@ -128,9 +129,9 @@ const GlossaryTermReferences = () => {
   const header = (
     <Space
       className="w-full"
-      data-testid={`section-${t('label.reference-plural')}`}>
+      data-testid={`section-${t(LABEL_REFERENCE_PLURAL)}`}>
       <Typography.Text className="text-sm font-medium">
-        {t('label.reference-plural')}
+        {t(LABEL_REFERENCE_PLURAL)}
       </Typography.Text>
       {permissions.EditAll &&
         (isEmpty(references) ? (
@@ -138,7 +139,7 @@ const GlossaryTermReferences = () => {
             data-testid="term-references-add-button"
             size="small"
             title={t('label.add-entity', {
-              entity: t('label.reference-plural'),
+              entity: t(LABEL_REFERENCE_PLURAL),
             })}
             onClick={() => {
               setIsViewMode(false);

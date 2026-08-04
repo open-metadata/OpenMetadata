@@ -29,6 +29,8 @@ import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { ContractSchemaFormTab } from './ContractScehmaFormTab';
 
+const SELECT_ROW_ID = 'select-row-id';
+
 jest.mock('../../../rest/tableAPI', () => ({
   getTableColumnsByFQN: jest.fn(),
 }));
@@ -231,9 +233,9 @@ describe('ContractSchemaFormTab', () => {
 
       expect(getTableColumnsByFQN).toHaveBeenCalled();
 
-      expect(await screen.findByTestId('select-row-id')).toBeInTheDocument();
+      expect(await screen.findByTestId(SELECT_ROW_ID)).toBeInTheDocument();
 
-      const selectButton = screen.getByTestId('select-row-id');
+      const selectButton = screen.getByTestId(SELECT_ROW_ID);
 
       await act(async () => {
         fireEvent.click(selectButton);
@@ -263,10 +265,10 @@ describe('ContractSchemaFormTab', () => {
       render(<ContractSchemaFormTab selectedSchema={[]} {...commonProps} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('select-row-id')).toBeInTheDocument();
+        expect(screen.getByTestId(SELECT_ROW_ID)).toBeInTheDocument();
       });
 
-      const selectIdButton = screen.getByTestId('select-row-id');
+      const selectIdButton = screen.getByTestId(SELECT_ROW_ID);
       const selectNameButton = screen.getByTestId('select-row-name');
 
       await act(async () => {

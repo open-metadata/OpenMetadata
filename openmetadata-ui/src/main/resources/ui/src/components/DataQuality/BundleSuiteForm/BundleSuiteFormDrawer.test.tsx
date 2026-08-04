@@ -30,6 +30,8 @@ import {
 import * as ToastUtils from '../../../utils/ToastUtils';
 import BundleSuiteFormDrawer from './BundleSuiteFormDrawer';
 
+const SUITE_ALREADY_EXISTS = 'Suite already exists';
+
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
@@ -421,7 +423,7 @@ describe('BundleSuiteFormDrawer', () => {
 
   it('keeps drawer open and shows error message when createTestSuites rejects', async () => {
     mockCreateTestSuites.mockRejectedValue({
-      response: { data: { message: 'Suite already exists' } },
+      response: { data: { message: SUITE_ALREADY_EXISTS } },
     });
     const onClose = jest.fn();
     const onSuccess = jest.fn();
@@ -450,7 +452,7 @@ describe('BundleSuiteFormDrawer', () => {
       expect(onClose).not.toHaveBeenCalled();
       expect(onSuccess).not.toHaveBeenCalled();
       expect(screen.getByTestId('error-message')).toHaveTextContent(
-        'Suite already exists'
+        SUITE_ALREADY_EXISTS
       );
     });
   });
@@ -598,7 +600,7 @@ describe('BundleSuiteFormDrawer', () => {
 
     it('keeps the modal open and shows the inline error when createTestSuites rejects', async () => {
       mockCreateTestSuites.mockRejectedValue({
-        response: { data: { message: 'Suite already exists' } },
+        response: { data: { message: SUITE_ALREADY_EXISTS } },
       });
       const onClose = jest.fn();
       await act(async () => {
@@ -613,7 +615,7 @@ describe('BundleSuiteFormDrawer', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('error-message')).toHaveTextContent(
-          'Suite already exists'
+          SUITE_ALREADY_EXISTS
         );
       });
 

@@ -14,6 +14,9 @@
 import { AuditLogActiveFilter } from '../types/auditLogs.interface';
 import { buildParamsFromFilters } from './AuditLogUtils';
 
+const INGESTION_BOT = 'ingestion-bot';
+const ENTITY_TYPE = 'Entity Type';
+
 describe('AuditLogUtils', () => {
   describe('buildParamsFromFilters', () => {
     it('should return empty params for empty filters', () => {
@@ -81,15 +84,15 @@ describe('AuditLogUtils', () => {
           category: 'bot',
           categoryLabel: 'Bot',
           value: {
-            key: 'ingestion-bot',
+            key: INGESTION_BOT,
             label: 'Ingestion Bot',
-            value: 'ingestion-bot',
+            value: INGESTION_BOT,
           },
         },
       ];
 
       expect(buildParamsFromFilters(filters)).toEqual({
-        userName: 'ingestion-bot',
+        userName: INGESTION_BOT,
         actorType: 'BOT',
       });
     });
@@ -98,7 +101,7 @@ describe('AuditLogUtils', () => {
       const filters: AuditLogActiveFilter[] = [
         {
           category: 'entityType',
-          categoryLabel: 'Entity Type',
+          categoryLabel: ENTITY_TYPE,
           value: {
             key: 'table',
             label: 'Table',
@@ -127,7 +130,7 @@ describe('AuditLogUtils', () => {
         },
         {
           category: 'entityType',
-          categoryLabel: 'Entity Type',
+          categoryLabel: ENTITY_TYPE,
           value: {
             key: 'dashboard',
             label: 'Dashboard',
@@ -158,12 +161,12 @@ describe('AuditLogUtils', () => {
       const filters: AuditLogActiveFilter[] = [
         {
           category: 'entityType',
-          categoryLabel: 'Entity Type',
+          categoryLabel: ENTITY_TYPE,
           value: { key: 'table', label: 'Table', value: 'table' },
         },
         {
           category: 'entityType',
-          categoryLabel: 'Entity Type',
+          categoryLabel: ENTITY_TYPE,
           value: { key: 'topic', label: 'Topic', value: 'topic' },
         },
       ];

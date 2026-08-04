@@ -25,9 +25,15 @@
 
 import { TestCaseStatus } from '../generated/tests/testCase';
 
+const TEST_CASE_ID = 'test-case-id';
+const TEST_CASE_FQN = 'test.case.fqn';
+const TEST_SUITE_NAME = 'test.suite.name';
+const DATAQUALITY_TESTDEFINITIONS = '/dataQuality/testDefinitions';
+const NETWORK_ERROR = 'Network Error';
+
 // Mock response data
 const mockTestCase = {
-  id: 'test-case-id',
+  id: TEST_CASE_ID,
   name: 'test_case_name',
   fullyQualifiedName: 'test.suite.test_case',
   testDefinition: { id: 'def-id', name: 'definition' },
@@ -144,7 +150,7 @@ describe('testAPI tests', () => {
 
         const { getListTestCaseResults } = require('./testAPI');
 
-        await getListTestCaseResults('test.case.fqn', { limit: 10 });
+        await getListTestCaseResults(TEST_CASE_FQN, { limit: 10 });
 
         expect(mockGet).toHaveBeenCalledWith(
           expect.stringContaining('/dataQuality/testCases/testCaseResults/'),
@@ -183,7 +189,7 @@ describe('testAPI tests', () => {
 
         const { getTestCaseByFqn } = require('./testAPI');
 
-        const result = await getTestCaseByFqn('test.case.fqn', {
+        const result = await getTestCaseByFqn(TEST_CASE_FQN, {
           fields: ['owner', 'tags'],
         });
 
@@ -205,7 +211,7 @@ describe('testAPI tests', () => {
 
         const { getTestCaseByFqn } = require('./testAPI');
 
-        await getTestCaseByFqn('test.case.fqn');
+        await getTestCaseByFqn(TEST_CASE_FQN);
 
         expect(mockGet).toHaveBeenCalledWith(expect.any(String), {
           params: undefined,
@@ -272,7 +278,7 @@ describe('testAPI tests', () => {
           { op: 'replace', path: '/description', value: 'new description' },
         ];
 
-        const result = await updateTestCaseById('test-case-id', patch);
+        const result = await updateTestCaseById(TEST_CASE_ID, patch);
 
         expect(mockPatch).toHaveBeenCalledWith(
           '/dataQuality/testCases/test-case-id',
@@ -448,7 +454,7 @@ describe('testAPI tests', () => {
 
         const { getTestCaseVersionList } = require('./testAPI');
 
-        const result = await getTestCaseVersionList('test-case-id');
+        const result = await getTestCaseVersionList(TEST_CASE_ID);
 
         expect(mockGet).toHaveBeenCalledWith(
           '/dataQuality/testCases/test-case-id/versions'
@@ -470,7 +476,7 @@ describe('testAPI tests', () => {
 
         const { getTestCaseVersionDetails } = require('./testAPI');
 
-        const result = await getTestCaseVersionDetails('test-case-id', '1.0');
+        const result = await getTestCaseVersionDetails(TEST_CASE_ID, '1.0');
 
         expect(mockGet).toHaveBeenCalledWith(
           '/dataQuality/testCases/test-case-id/versions/1.0'
@@ -499,7 +505,7 @@ describe('testAPI tests', () => {
         };
 
         const result = await getTestCaseDimensionResultsByFqn(
-          'test.case.fqn',
+          TEST_CASE_FQN,
           params
         );
 
@@ -554,7 +560,7 @@ describe('testAPI tests', () => {
 
         const { exportTestCasesInCSV } = require('./testAPI');
 
-        const result = await exportTestCasesInCSV('test.suite.name', {
+        const result = await exportTestCasesInCSV(TEST_SUITE_NAME, {
           recursive: true,
         });
 
@@ -577,7 +583,7 @@ describe('testAPI tests', () => {
 
         const { exportTestCasesInCSV } = require('./testAPI');
 
-        await exportTestCasesInCSV('test.suite.name');
+        await exportTestCasesInCSV(TEST_SUITE_NAME);
 
         expect(mockGet).toHaveBeenCalledWith(expect.any(String), {
           params: undefined,
@@ -608,7 +614,7 @@ describe('testAPI tests', () => {
 
         const result = await getListTestDefinitions(params);
 
-        expect(mockGet).toHaveBeenCalledWith('/dataQuality/testDefinitions', {
+        expect(mockGet).toHaveBeenCalledWith(DATAQUALITY_TESTDEFINITIONS, {
           params,
         });
         expect(result).toEqual(mockResponse);
@@ -663,7 +669,7 @@ describe('testAPI tests', () => {
         const result = await createTestDefinition(createData);
 
         expect(mockPost).toHaveBeenCalledWith(
-          '/dataQuality/testDefinitions',
+          DATAQUALITY_TESTDEFINITIONS,
           createData
         );
         expect(result).toEqual(mockTestDefinition);
@@ -687,7 +693,7 @@ describe('testAPI tests', () => {
         const result = await updateTestDefinition(mockTestDefinition);
 
         expect(mockPut).toHaveBeenCalledWith(
-          '/dataQuality/testDefinitions',
+          DATAQUALITY_TESTDEFINITIONS,
           mockTestDefinition
         );
         expect(result).toEqual(mockTestDefinition);
@@ -894,7 +900,7 @@ describe('testAPI tests', () => {
 
         const { getTestSuiteByName } = require('./testAPI');
 
-        const result = await getTestSuiteByName('test.suite.name', {
+        const result = await getTestSuiteByName(TEST_SUITE_NAME, {
           fields: ['owners', 'tests'],
         });
 
@@ -921,7 +927,7 @@ describe('testAPI tests', () => {
 
         const { getTestSuiteByName } = require('./testAPI');
 
-        await getTestSuiteByName('test.suite.name', {
+        await getTestSuiteByName(TEST_SUITE_NAME, {
           includeRelations: 'owners:all',
         });
 
@@ -1005,7 +1011,7 @@ describe('testAPI tests', () => {
 
   describe('Error Handling', () => {
     it('should handle network errors across all functions', async () => {
-      const networkError = new Error('Network Error');
+      const networkError = new Error(NETWORK_ERROR);
       const mockGet = jest.fn().mockRejectedValue(networkError);
       const mockPost = jest.fn().mockRejectedValue(networkError);
       const mockPut = jest.fn().mockRejectedValue(networkError);
@@ -1031,16 +1037,14 @@ describe('testAPI tests', () => {
         removeTestCaseFromTestSuite,
       } = require('./testAPI');
 
-      await expect(getListTestCaseBySearch()).rejects.toThrow('Network Error');
-      await expect(createTestCase({})).rejects.toThrow('Network Error');
+      await expect(getListTestCaseBySearch()).rejects.toThrow(NETWORK_ERROR);
+      await expect(createTestCase({})).rejects.toThrow(NETWORK_ERROR);
       await expect(
         addTestCaseToLogicalTestSuite({ testCaseIds: [], testSuiteId: '' })
-      ).rejects.toThrow('Network Error');
-      await expect(updateTestCaseById('id', [])).rejects.toThrow(
-        'Network Error'
-      );
+      ).rejects.toThrow(NETWORK_ERROR);
+      await expect(updateTestCaseById('id', [])).rejects.toThrow(NETWORK_ERROR);
       await expect(removeTestCaseFromTestSuite('c', 's')).rejects.toThrow(
-        'Network Error'
+        NETWORK_ERROR
       );
     });
 

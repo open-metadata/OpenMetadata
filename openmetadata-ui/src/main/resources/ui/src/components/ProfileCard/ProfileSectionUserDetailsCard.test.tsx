@@ -15,6 +15,9 @@ import { render, screen } from '@testing-library/react';
 import { User } from '../../generated/entity/teams/user';
 import ProfileSectionUserDetailsCard from './ProfileSectionUserDetailsCard.component';
 
+const USER_ONLINE_STATUS = 'user-online-status';
+const STR_2025_01_01T11_59_00Z = '2025-01-01T11:59:00Z';
+
 // Mock dependencies
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -101,7 +104,7 @@ describe('ProfileSectionUserDetailsCard', () => {
         />
       );
 
-      expect(screen.getByTestId('user-online-status')).toBeInTheDocument();
+      expect(screen.getByTestId(USER_ONLINE_STATUS)).toBeInTheDocument();
       expect(screen.getByText('label.online-now')).toBeInTheDocument();
     });
 
@@ -119,7 +122,7 @@ describe('ProfileSectionUserDetailsCard', () => {
         />
       );
 
-      expect(screen.getByTestId('user-online-status')).toBeInTheDocument();
+      expect(screen.getByTestId(USER_ONLINE_STATUS)).toBeInTheDocument();
       expect(screen.getByText('label.active-recently')).toBeInTheDocument();
     });
 
@@ -137,9 +140,7 @@ describe('ProfileSectionUserDetailsCard', () => {
         />
       );
 
-      expect(
-        screen.queryByTestId('user-online-status')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(USER_ONLINE_STATUS)).not.toBeInTheDocument();
     });
 
     it('should fall back to lastLoginTime when lastActivityTime is not available', () => {
@@ -157,7 +158,7 @@ describe('ProfileSectionUserDetailsCard', () => {
         />
       );
 
-      expect(screen.getByTestId('user-online-status')).toBeInTheDocument();
+      expect(screen.getByTestId(USER_ONLINE_STATUS)).toBeInTheDocument();
       expect(screen.getByText('label.online-now')).toBeInTheDocument();
     });
 
@@ -165,16 +166,14 @@ describe('ProfileSectionUserDetailsCard', () => {
       const botUser = {
         ...mockUser,
         isBot: true,
-        lastActivityTime: new Date('2025-01-01T11:59:00Z').getTime(), // 1 minute ago
+        lastActivityTime: new Date(STR_2025_01_01T11_59_00Z).getTime(), // 1 minute ago
       };
 
       render(
         <ProfileSectionUserDetailsCard {...defaultProps} userData={botUser} />
       );
 
-      expect(
-        screen.queryByTestId('user-online-status')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(USER_ONLINE_STATUS)).not.toBeInTheDocument();
     });
 
     it('should not show online status when both lastActivityTime and lastLoginTime are not available', () => {
@@ -191,9 +190,7 @@ describe('ProfileSectionUserDetailsCard', () => {
         />
       );
 
-      expect(
-        screen.queryByTestId('user-online-status')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(USER_ONLINE_STATUS)).not.toBeInTheDocument();
     });
   });
 
@@ -221,7 +218,7 @@ describe('ProfileSectionUserDetailsCard', () => {
 
   describe('Online Status Badge Styling', () => {
     it('should have success status badge for online users', () => {
-      const recentActivityTime = new Date('2025-01-01T11:59:00Z').getTime(); // 1 minute ago
+      const recentActivityTime = new Date(STR_2025_01_01T11_59_00Z).getTime(); // 1 minute ago
       const userWithRecentActivity = {
         ...mockUser,
         lastActivityTime: recentActivityTime,
@@ -244,7 +241,7 @@ describe('ProfileSectionUserDetailsCard', () => {
     });
 
     it('should be positioned below the email', () => {
-      const recentActivityTime = new Date('2025-01-01T11:59:00Z').getTime();
+      const recentActivityTime = new Date(STR_2025_01_01T11_59_00Z).getTime();
       const userWithRecentActivity = {
         ...mockUser,
         lastActivityTime: recentActivityTime,

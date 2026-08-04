@@ -21,6 +21,9 @@ import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBread
 import { HeaderProps } from '../../../PageHeader/PageHeader.interface';
 import { AlertDetailsComponent } from './AlertDetails.component';
 
+const LABEL_EDIT = 'label.edit';
+const LABEL_DELETE = 'label.delete';
+
 jest.mock('../../../../utils/Alerts/AlertsUtil', () => ({
   EDIT_LINK_PATH: 'Edit Alert Link',
 }));
@@ -80,8 +83,8 @@ describe('AlertDetailsComponent', () => {
     expect(screen.queryByText('TitleBreadcrumb')).not.toBeInTheDocument();
     expect(screen.queryByText('PageHeader')).not.toBeInTheDocument();
 
-    const editButton = screen.getByRole('button', { name: 'label.edit' });
-    const deleteButton = screen.getByRole('button', { name: 'label.delete' });
+    const editButton = screen.getByRole('button', { name: LABEL_EDIT });
+    const deleteButton = screen.getByRole('button', { name: LABEL_DELETE });
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
@@ -106,8 +109,8 @@ describe('AlertDetailsComponent', () => {
     expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('PageHeader')).toBeInTheDocument();
 
-    const editButton = screen.queryByRole('button', { name: 'label.edit' });
-    const deleteButton = screen.queryByRole('button', { name: 'label.delete' });
+    const editButton = screen.queryByRole('button', { name: LABEL_EDIT });
+    const deleteButton = screen.queryByRole('button', { name: LABEL_DELETE });
 
     expect(editButton).not.toBeInTheDocument();
     expect(deleteButton).not.toBeInTheDocument();
@@ -118,8 +121,8 @@ describe('AlertDetailsComponent', () => {
       wrapper: MemoryRouter,
     });
 
-    const editButton = screen.getByRole('button', { name: 'label.edit' });
-    const deleteButton = screen.getByRole('button', { name: 'label.delete' });
+    const editButton = screen.getByRole('button', { name: LABEL_EDIT });
+    const deleteButton = screen.getByRole('button', { name: LABEL_DELETE });
 
     fireEvent.click(deleteButton);
 

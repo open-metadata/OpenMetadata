@@ -18,6 +18,8 @@ import {
   DISABLE_ETAG_CONDITIONAL_READS_KEY,
 } from './etagInterceptor';
 
+const TABLES_ENTITY_ID = '/tables/entity-id';
+
 const ETAG = '"entity-version-1"';
 
 const createClient = () => {
@@ -49,8 +51,8 @@ describe('etagInterceptor', () => {
   it('attaches If-None-Match to a cached entity read', async () => {
     const { client, requests } = createClient();
 
-    await client.get('/tables/entity-id');
-    await client.get('/tables/entity-id');
+    await client.get(TABLES_ENTITY_ID);
+    await client.get(TABLES_ENTITY_ID);
 
     expect(AxiosHeaders.from(requests[1].headers).get('If-None-Match')).toBe(
       ETAG
@@ -60,9 +62,9 @@ describe('etagInterceptor', () => {
   it('honors the E2E conditional-read opt-out without network routing', async () => {
     const { client, requests } = createClient();
 
-    await client.get('/tables/entity-id');
+    await client.get(TABLES_ENTITY_ID);
     localStorage.setItem(DISABLE_ETAG_CONDITIONAL_READS_KEY, 'true');
-    await client.get('/tables/entity-id');
+    await client.get(TABLES_ENTITY_ID);
 
     expect(AxiosHeaders.from(requests[1].headers).has('If-None-Match')).toBe(
       false

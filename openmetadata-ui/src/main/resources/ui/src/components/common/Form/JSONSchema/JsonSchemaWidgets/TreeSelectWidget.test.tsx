@@ -24,6 +24,8 @@ import userEvent from '@testing-library/user-event';
 import { MOCK_TREE_SELECT_WIDGET } from '../../../../../mocks/SelectWidget.mock';
 import TreeSelectWidget from './TreeSelectWidget';
 
+const TREE_SELECT_WIDGET = 'tree-select-widget' as const;
+
 const mockOnFocus = jest.fn();
 const mockOnBlur = jest.fn();
 const mockOnChange = jest.fn();
@@ -44,7 +46,7 @@ describe('Test TreeSelectWidget Component', () => {
   it('Should render tree select component', async () => {
     render(<TreeSelectWidget {...mockProps} />);
 
-    const treeSelectWidget = screen.getByTestId('tree-select-widget');
+    const treeSelectWidget = screen.getByTestId(TREE_SELECT_WIDGET);
 
     expect(treeSelectWidget).toBeInTheDocument();
   });
@@ -53,7 +55,7 @@ describe('Test TreeSelectWidget Component', () => {
     render(<TreeSelectWidget {...mockProps} disabled />);
 
     const treeSelectInput = await findByRole(
-      screen.getByTestId('tree-select-widget'),
+      screen.getByTestId(TREE_SELECT_WIDGET),
       'combobox'
     );
 
@@ -63,7 +65,7 @@ describe('Test TreeSelectWidget Component', () => {
   it('Should call onFocus', async () => {
     render(<TreeSelectWidget {...mockProps} />);
 
-    const treeSelectInput = screen.getByTestId('tree-select-widget');
+    const treeSelectInput = screen.getByTestId(TREE_SELECT_WIDGET);
 
     fireEvent.focus(treeSelectInput);
 
@@ -73,7 +75,7 @@ describe('Test TreeSelectWidget Component', () => {
   it('Should call onBlur', async () => {
     render(<TreeSelectWidget {...mockProps} />);
 
-    const treeSelectInput = screen.getByTestId('tree-select-widget');
+    const treeSelectInput = screen.getByTestId(TREE_SELECT_WIDGET);
 
     fireEvent.blur(treeSelectInput);
 
@@ -84,7 +86,7 @@ describe('Test TreeSelectWidget Component', () => {
     render(<TreeSelectWidget {...mockProps} />);
 
     const treeSelectInput = await findByRole(
-      screen.getByTestId('tree-select-widget'),
+      screen.getByTestId(TREE_SELECT_WIDGET),
       'combobox'
     );
 
@@ -110,7 +112,7 @@ describe('Test TreeSelectWidget Component', () => {
     render(<TreeSelectWidget {...passThroughProps} />);
 
     const treeSelectInput = await findByRole(
-      screen.getByTestId('tree-select-widget'),
+      screen.getByTestId(TREE_SELECT_WIDGET),
       'combobox'
     );
 
@@ -142,7 +144,7 @@ describe('Test TreeSelectWidget Component', () => {
     render(<TreeSelectWidget {...propsWithAllEnum} />);
 
     const treeSelectInput = await findByRole(
-      screen.getByTestId('tree-select-widget'),
+      screen.getByTestId(TREE_SELECT_WIDGET),
       'combobox'
     );
 
@@ -175,7 +177,7 @@ describe('Test TreeSelectWidget Component', () => {
     render(<TreeSelectWidget {...expandAllProps} />);
 
     const treeSelectInput = await findByRole(
-      screen.getByTestId('tree-select-widget'),
+      screen.getByTestId(TREE_SELECT_WIDGET),
       'combobox'
     );
 

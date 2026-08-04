@@ -24,6 +24,8 @@ import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { TeamHierarchyProps } from './team.interface';
 import TeamHierarchy from './TeamHierarchy';
 
+const TEAM_HIERARCHY_TABLE = 'team-hierarchy-table';
+
 const teamHierarchyPropsData: TeamHierarchyProps = {
   data: MOCK_TABLE_DATA,
   currentTeam: MOCK_CURRENT_TEAM,
@@ -112,7 +114,7 @@ describe('Team Hierarchy page', () => {
   it('Initially, Table should load', async () => {
     renderComponent();
 
-    const table = await screen.findByTestId('team-hierarchy-table');
+    const table = await screen.findByTestId(TEAM_HIERARCHY_TABLE);
 
     expect(table).toBeInTheDocument();
   });
@@ -120,7 +122,7 @@ describe('Team Hierarchy page', () => {
   it('Should render all table columns', async () => {
     renderComponent();
 
-    const table = await screen.findByTestId('team-hierarchy-table');
+    const table = await screen.findByTestId(TEAM_HIERARCHY_TABLE);
     const teamsColumn = await screen.findByText('label.team-plural');
     const typeColumn = await screen.findByText('label.type');
     const subTeamsColumn = await screen.findByText('label.sub-team-plural');
@@ -142,7 +144,7 @@ describe('Team Hierarchy page', () => {
   it('Should render child row in table', async () => {
     renderComponent();
 
-    const table = await screen.findByTestId('team-hierarchy-table');
+    const table = await screen.findByTestId(TEAM_HIERARCHY_TABLE);
 
     expect(table).toBeInTheDocument();
 

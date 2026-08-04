@@ -13,6 +13,11 @@
 
 import { swTokenStorage } from './SwTokenStorage';
 
+const TEST_VALUE = 'test-value';
+const SHOULD_HANDLE_SERVICE_WORKER_ERRORS =
+  'should handle service worker errors';
+const SERVICE_WORKER_UNAVAILABLE = 'Service worker unavailable';
+
 // Mock SwMessenger
 const mockSendMessageToServiceWorker = jest.fn();
 
@@ -38,7 +43,7 @@ describe('SwTokenStorage', () => {
   describe('setItem', () => {
     it('should call sendMessageToServiceWorker with correct parameters', async () => {
       const key = 'test-key';
-      const value = 'test-value';
+      const value = TEST_VALUE;
       mockSendMessageToServiceWorker.mockResolvedValue(undefined);
 
       await swTokenStorage.setItem(key, value);
@@ -50,14 +55,14 @@ describe('SwTokenStorage', () => {
       });
     });
 
-    it('should handle service worker errors', async () => {
+    it(SHOULD_HANDLE_SERVICE_WORKER_ERRORS, async () => {
       const key = 'test-key';
-      const value = 'test-value';
-      const error = new Error('Service worker unavailable');
+      const value = TEST_VALUE;
+      const error = new Error(SERVICE_WORKER_UNAVAILABLE);
       mockSendMessageToServiceWorker.mockRejectedValue(error);
 
       await expect(swTokenStorage.setItem(key, value)).rejects.toThrow(
-        'Service worker unavailable'
+        SERVICE_WORKER_UNAVAILABLE
       );
     });
 
@@ -77,7 +82,7 @@ describe('SwTokenStorage', () => {
   describe('getItem', () => {
     it('should call sendMessageToServiceWorker with correct parameters and return value', async () => {
       const key = 'test-key';
-      const expectedValue = 'test-value';
+      const expectedValue = TEST_VALUE;
       mockSendMessageToServiceWorker.mockResolvedValue(expectedValue);
 
       const result = await swTokenStorage.getItem(key);
@@ -98,13 +103,13 @@ describe('SwTokenStorage', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle service worker errors', async () => {
+    it(SHOULD_HANDLE_SERVICE_WORKER_ERRORS, async () => {
       const key = 'test-key';
-      const error = new Error('Service worker unavailable');
+      const error = new Error(SERVICE_WORKER_UNAVAILABLE);
       mockSendMessageToServiceWorker.mockRejectedValue(error);
 
       await expect(swTokenStorage.getItem(key)).rejects.toThrow(
-        'Service worker unavailable'
+        SERVICE_WORKER_UNAVAILABLE
       );
     });
 
@@ -142,13 +147,13 @@ describe('SwTokenStorage', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle service worker errors', async () => {
+    it(SHOULD_HANDLE_SERVICE_WORKER_ERRORS, async () => {
       const key = 'test-key';
-      const error = new Error('Service worker unavailable');
+      const error = new Error(SERVICE_WORKER_UNAVAILABLE);
       mockSendMessageToServiceWorker.mockRejectedValue(error);
 
       await expect(swTokenStorage.removeItem(key)).rejects.toThrow(
-        'Service worker unavailable'
+        SERVICE_WORKER_UNAVAILABLE
       );
     });
   });
@@ -174,12 +179,12 @@ describe('SwTokenStorage', () => {
       expect(result).toEqual([]);
     });
 
-    it('should handle service worker errors', async () => {
-      const error = new Error('Service worker unavailable');
+    it(SHOULD_HANDLE_SERVICE_WORKER_ERRORS, async () => {
+      const error = new Error(SERVICE_WORKER_UNAVAILABLE);
       mockSendMessageToServiceWorker.mockRejectedValue(error);
 
       await expect(swTokenStorage.getAllKeys()).rejects.toThrow(
-        'Service worker unavailable'
+        SERVICE_WORKER_UNAVAILABLE
       );
     });
   });

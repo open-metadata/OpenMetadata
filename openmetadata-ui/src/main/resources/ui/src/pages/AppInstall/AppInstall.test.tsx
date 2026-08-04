@@ -22,6 +22,8 @@ import { ScheduleType } from '../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import AppInstall from './AppInstall.component';
 
+const SAVE_APPINSTALLVERIFYCARD = 'Save AppInstallVerifyCard';
+
 const mockNavigate = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
@@ -184,7 +186,7 @@ describe('AppInstall component', () => {
 
     // change ActiveServiceStep to 3
     fireEvent.click(
-      screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
+      screen.getByRole('button', { name: SAVE_APPINSTALLVERIFYCARD })
     );
 
     expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
@@ -226,7 +228,7 @@ describe('AppInstall component', () => {
     // change ActiveServiceStep to 2
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Save AppInstallVerifyCard' })
+      await screen.findByRole('button', { name: SAVE_APPINSTALLVERIFYCARD })
     );
 
     expect(screen.getByText('FormBuilder')).toBeInTheDocument();
@@ -257,7 +259,7 @@ describe('AppInstall component', () => {
     // change ActiveServiceStep to 2
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
+      screen.getByRole('button', { name: SAVE_APPINSTALLVERIFYCARD })
     );
 
     expect(await screen.findByText('FormBuilder')).toBeInTheDocument();
@@ -292,7 +294,7 @@ describe('AppInstall component', () => {
     // change ActiveServiceStep to 3
     act(() => {
       userEvent.click(
-        screen.getByRole('button', { name: 'Save AppInstallVerifyCard' })
+        screen.getByRole('button', { name: SAVE_APPINSTALLVERIFYCARD })
       );
     });
 

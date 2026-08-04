@@ -41,6 +41,7 @@ jest.mock('../constants/Directory.constant', () => ({
   } as Directory,
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string -- module specifier cannot be a constant
 jest.mock('./DirectoryDetailsUtils', () => ({
   getDirectoryDetailsPageTabs: jest.fn((): TabProps[] => [
     {

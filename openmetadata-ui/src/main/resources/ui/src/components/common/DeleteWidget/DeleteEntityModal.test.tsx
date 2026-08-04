@@ -19,6 +19,9 @@ import { deleteEntity } from '../../../rest/miscAPI';
 import DeleteEntityModal from './DeleteEntityModal';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
 
+const HARD_DELETE = 'hard-delete';
+const CONFIRM_BUTTON = 'confirm-button';
+
 const mockProps: DeleteWidgetModalProps = {
   visible: true,
   onCancel: jest.fn(),
@@ -79,9 +82,9 @@ describe('DeleteEntityModal', () => {
     expect(await screen.findByTestId('delete-modal')).toBeInTheDocument();
     expect(await screen.findByTestId('modal-header')).toBeInTheDocument();
     expect(await screen.findByTestId('soft-delete')).toBeInTheDocument();
-    expect(await screen.findByTestId('hard-delete')).toBeInTheDocument();
+    expect(await screen.findByTestId(HARD_DELETE)).toBeInTheDocument();
     expect(await screen.findByTestId('discard-button')).toBeInTheDocument();
-    expect(await screen.findByTestId('confirm-button')).toBeInTheDocument();
+    expect(await screen.findByTestId(CONFIRM_BUTTON)).toBeInTheDocument();
     expect(
       screen.queryByTestId('confirmation-text-input')
     ).not.toBeInTheDocument();
@@ -90,7 +93,7 @@ describe('DeleteEntityModal', () => {
   it('should confirm without requiring typed confirmation', async () => {
     render(<DeleteEntityModal {...mockProps} />);
 
-    const confirmButton = await screen.findByTestId('confirm-button');
+    const confirmButton = await screen.findByTestId(CONFIRM_BUTTON);
 
     expect(confirmButton).not.toBeDisabled();
 
@@ -112,10 +115,10 @@ describe('DeleteEntityModal', () => {
   it('should not logout when deleting a different user', async () => {
     render(<DeleteEntityModal {...mockPropsUser} entityId="456" />);
 
-    fireEvent.click(await screen.findByTestId('hard-delete'));
+    fireEvent.click(await screen.findByTestId(HARD_DELETE));
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-button'));
+      fireEvent.click(screen.getByTestId(CONFIRM_BUTTON));
     });
 
     expect(mockOnLogoutHandler).not.toHaveBeenCalled();
@@ -124,10 +127,10 @@ describe('DeleteEntityModal', () => {
   it('should logout when deleting the current user', async () => {
     render(<DeleteEntityModal {...mockPropsUser} />);
 
-    fireEvent.click(await screen.findByTestId('hard-delete'));
+    fireEvent.click(await screen.findByTestId(HARD_DELETE));
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-button'));
+      fireEvent.click(screen.getByTestId(CONFIRM_BUTTON));
     });
 
     expect(mockOnLogoutHandler).toHaveBeenCalled();

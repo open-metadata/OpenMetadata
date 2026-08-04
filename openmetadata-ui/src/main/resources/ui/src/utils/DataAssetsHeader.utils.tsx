@@ -75,6 +75,9 @@ import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringUtils';
 import { getUsagePercentile } from './TablePureUtils';
 
+const LABEL_USAGE = 'label.usage';
+const LABEL_TYPE = 'label.type';
+
 const { t } = i18n;
 
 export const HeaderDotSeparator = () => (
@@ -255,7 +258,7 @@ export const getDataAssetsHeaderInfo = (
             <>
               <HeaderDotSeparator />
               <ExtraInfoLabel
-                label={t('label.usage')}
+                label={t(LABEL_USAGE)}
                 value={getUsagePercentile(
                   dashboardDetails.usageSummary?.weeklyStats?.percentileRank ??
                     0,
@@ -289,7 +292,7 @@ export const getDataAssetsHeaderInfo = (
             <>
               <HeaderDotSeparator />
               <ExtraInfoLabel
-                label={t('label.usage')}
+                label={t(LABEL_USAGE)}
                 value={getUsagePercentile(
                   pipelineDetails.usageSummary?.weeklyStats?.percentileRank ??
                     0,
@@ -355,7 +358,7 @@ export const getDataAssetsHeaderInfo = (
             <>
               <HeaderDotSeparator />
               <ExtraInfoLabel
-                label={t('label.usage')}
+                label={t(LABEL_USAGE)}
                 value={getUsagePercentile(
                   mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
                   false
@@ -672,7 +675,7 @@ export const getDataAssetsHeaderInfo = (
             <>
               <HeaderDotSeparator />
               <ExtraInfoLabel
-                label={t('label.type')}
+                label={t(LABEL_TYPE)}
                 value={directory.directoryType}
               />
             </>
@@ -710,7 +713,7 @@ export const getDataAssetsHeaderInfo = (
           {file.fileType && (
             <>
               <HeaderDotSeparator />
-              <ExtraInfoLabel label={t('label.type')} value={file.fileType} />
+              <ExtraInfoLabel label={t(LABEL_TYPE)} value={file.fileType} />
             </>
           )}
           {file.fileExtension !== undefined && (
@@ -823,7 +826,7 @@ export const getDataAssetsHeaderInfo = (
             <>
               <HeaderDotSeparator />
               <ExtraInfoLabel
-                label={t('label.type')}
+                label={t(LABEL_TYPE)}
                 value={tableDetails.tableType}
               />
             </>
@@ -832,7 +835,7 @@ export const getDataAssetsHeaderInfo = (
             <>
               <HeaderDotSeparator />
               <ExtraInfoLabel
-                label={t('label.usage')}
+                label={t(LABEL_USAGE)}
                 value={getUsagePercentile(
                   tableDetails.usageSummary?.weeklyStats?.percentileRank || 0,
                   false

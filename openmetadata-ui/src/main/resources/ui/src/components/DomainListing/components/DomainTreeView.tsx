@@ -59,6 +59,8 @@ import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanel
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
 import '../../ExploreV1/exploreV1.less';
 
+const SERVER_ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural';
 interface DomainTreeViewProps {
   searchQuery?: string;
   filters?: Record<string, string[]>;
@@ -228,8 +230,8 @@ const DomainTreeView = ({
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.domain-plural'),
+          t(SERVER_ENTITY_FETCH_ERROR, {
+            entity: t(LABEL_DOMAIN_PLURAL),
           })
         );
       } finally {
@@ -264,7 +266,7 @@ const DomainTreeView = ({
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.entity-fetch-error', {
+          t(SERVER_ENTITY_FETCH_ERROR, {
             entity: t('label.domain-lowercase'),
           })
         );
@@ -279,8 +281,8 @@ const DomainTreeView = ({
     (error: unknown) => {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.domain-plural'),
+        t(SERVER_ENTITY_FETCH_ERROR, {
+          entity: t(LABEL_DOMAIN_PLURAL),
         })
       );
     },
@@ -913,7 +915,7 @@ const DomainTreeView = ({
       return (
         <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
           {t('label.no-entity-available', {
-            entity: t('label.domain-plural'),
+            entity: t(LABEL_DOMAIN_PLURAL),
           })}
         </Typography>
       );
@@ -922,7 +924,7 @@ const DomainTreeView = ({
     return (
       <>
         <Tree
-          aria-label={t('label.domain-plural')}
+          aria-label={t(LABEL_DOMAIN_PLURAL)}
           className="domain-tree-view"
           expandedKeys={new Set(expandedItems)}
           selectedKeys={
@@ -978,7 +980,7 @@ const DomainTreeView = ({
         className: 'domain-tree-panel border-right border-gray-200',
         minWidth: 280,
         flex: 0.25,
-        title: t('label.domain-plural'),
+        title: t(LABEL_DOMAIN_PLURAL),
         children: (
           <div
             className="tw:pt-4.5 tw:pr-3 tw:overflow-y-auto tw:max-h-[calc(80vh-220px)]"
@@ -989,7 +991,7 @@ const DomainTreeView = ({
         ),
       }}
       learningPageId={LEARNING_PAGE_IDS.DOMAIN}
-      learningTitle={t('label.domain-plural')}
+      learningTitle={t(LABEL_DOMAIN_PLURAL)}
       secondPanel={{
         className: 'domain-details-panel',
         minWidth: 600,

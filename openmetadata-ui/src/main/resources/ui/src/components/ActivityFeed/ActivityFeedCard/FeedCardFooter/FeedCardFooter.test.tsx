@@ -20,6 +20,10 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardFooter from './FeedCardFooter';
 
+const REPLIED_USER = 'replied-user';
+const REPLY_COUNT = 'reply-count';
+const LAST_REPLY = 'last-reply';
+
 jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getReplyText: jest.fn(),
 }));
@@ -27,7 +31,7 @@ jest.mock('../../../../utils/FeedUtilsPure', () => ({
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest
     .fn()
-    .mockReturnValue(<p data-testid="replied-user">ProfilePicture</p>);
+    .mockReturnValue(<p data-testid={REPLIED_USER}>ProfilePicture</p>);
 });
 
 const mockFeedCardFooterPorps = {
@@ -48,7 +52,7 @@ describe('Test FeedCardFooter component', () => {
       }
     );
 
-    const replyCount = await findByTestId(container, 'reply-count');
+    const replyCount = await findByTestId(container, REPLY_COUNT);
 
     expect(replyCount).toBeInTheDocument();
   });
@@ -61,9 +65,9 @@ describe('Test FeedCardFooter component', () => {
       }
     );
 
-    const repliedUsers = queryAllByTestId(container, 'replied-user');
-    const replyCount = queryByTestId(container, 'reply-count');
-    const lastReply = queryByTestId(container, 'last-reply');
+    const repliedUsers = queryAllByTestId(container, REPLIED_USER);
+    const replyCount = queryByTestId(container, REPLY_COUNT);
+    const lastReply = queryByTestId(container, LAST_REPLY);
 
     expect(repliedUsers).toHaveLength(0);
     expect(replyCount).not.toBeInTheDocument();
@@ -78,9 +82,9 @@ describe('Test FeedCardFooter component', () => {
       }
     );
 
-    const repliedUsers = queryAllByTestId(container, 'replied-user');
-    const replyCount = queryByTestId(container, 'reply-count');
-    const lastReply = queryByTestId(container, 'last-reply');
+    const repliedUsers = queryAllByTestId(container, REPLIED_USER);
+    const replyCount = queryByTestId(container, REPLY_COUNT);
+    const lastReply = queryByTestId(container, LAST_REPLY);
 
     expect(repliedUsers).toHaveLength(0);
     expect(replyCount).not.toBeInTheDocument();
@@ -95,9 +99,9 @@ describe('Test FeedCardFooter component', () => {
       }
     );
 
-    const repliedUsers = queryAllByTestId(container, 'replied-user');
-    const replyCount = queryByTestId(container, 'reply-count');
-    const lastReply = queryByTestId(container, 'last-reply');
+    const repliedUsers = queryAllByTestId(container, REPLIED_USER);
+    const replyCount = queryByTestId(container, REPLY_COUNT);
+    const lastReply = queryByTestId(container, LAST_REPLY);
 
     expect(repliedUsers).toHaveLength(0);
     expect(replyCount).not.toBeInTheDocument();
@@ -116,8 +120,8 @@ describe('Test FeedCardFooter component', () => {
       }
     );
 
-    const replyCount = queryByTestId(container, 'reply-count');
-    const lastReply = queryByTestId(container, 'last-reply');
+    const replyCount = queryByTestId(container, REPLY_COUNT);
+    const lastReply = queryByTestId(container, LAST_REPLY);
 
     expect(replyCount).toBeInTheDocument();
     expect(lastReply).not.toBeInTheDocument();

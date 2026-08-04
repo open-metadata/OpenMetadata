@@ -16,6 +16,9 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MOCK_WORKFLOW_ARRAY_FIELD_TEMPLATE } from '../../../../../mocks/Templates.mock';
 import WorkflowArrayFieldTemplate from './WorkflowArrayFieldTemplate';
 
+const WORKFLOW_ARRAY_FIELD_ROOT_WORKFLOW_ARRAY_F =
+  'workflow-array-field-root/workflow-array-field-template';
+
 const mockOnFocus = jest.fn();
 const mockOnBlur = jest.fn();
 const mockOnChange = jest.fn();
@@ -39,7 +42,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
     );
 
     const arrayField = screen.getByTestId(
-      'workflow-array-field-root/workflow-array-field-template'
+      WORKFLOW_ARRAY_FIELD_ROOT_WORKFLOW_ARRAY_F
     );
 
     expect(arrayField).toBeInTheDocument();
@@ -80,9 +83,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
     );
 
     fireEvent.focus(
-      screen.getByTestId(
-        'workflow-array-field-root/workflow-array-field-template'
-      )
+      screen.getByTestId(WORKFLOW_ARRAY_FIELD_ROOT_WORKFLOW_ARRAY_F)
     );
 
     expect(mockOnFocus).toHaveBeenCalledWith(
@@ -99,9 +100,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
     );
 
     fireEvent.blur(
-      screen.getByTestId(
-        'workflow-array-field-root/workflow-array-field-template'
-      )
+      screen.getByTestId(WORKFLOW_ARRAY_FIELD_ROOT_WORKFLOW_ARRAY_F)
     );
 
     expect(mockOnBlur).toHaveBeenCalledWith(
@@ -119,7 +118,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
     );
 
     const selectElement = screen.getByTestId(
-      'workflow-array-field-root/workflow-array-field-template'
+      WORKFLOW_ARRAY_FIELD_ROOT_WORKFLOW_ARRAY_F
     );
 
     expect(selectElement).toHaveClass('ant-select-disabled');
@@ -166,7 +165,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
     );
 
     const select = screen.getByTestId(
-      'workflow-array-field-root/workflow-array-field-template'
+      WORKFLOW_ARRAY_FIELD_ROOT_WORKFLOW_ARRAY_F
     );
     const input = within(select).getByRole('combobox');
 

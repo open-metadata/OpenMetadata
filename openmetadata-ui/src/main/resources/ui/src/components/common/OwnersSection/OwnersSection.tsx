@@ -26,6 +26,8 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 import { OwnersSectionProps } from './OwnersSection.interface';
 import './OwnersSection.less';
 
+const LABEL_OWNER_PLURAL = 'label.owner-plural';
+
 const OwnersSection: React.FC<OwnersSectionProps> = ({
   owners = [],
   showEditButton = true,
@@ -65,7 +67,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         fieldName: 'owners',
         currentValue: displayOwners,
         newValue: ownersToSave,
-        entityLabel: t('label.owner-plural'),
+        entityLabel: t(LABEL_OWNER_PLURAL),
         onSuccess: (owners) => {
           setDisplayOwners(owners);
           onOwnerUpdate?.(owners);
@@ -140,7 +142,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           ) : (
             <span className="no-data-placeholder">
               {t('label.no-entity-assigned', {
-                entity: t('label.owner-plural'),
+                entity: t(LABEL_OWNER_PLURAL),
               })}
             </span>
           )}
@@ -167,7 +169,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     return (
       <span className="no-data-placeholder">
         {t('label.no-entity-assigned', {
-          entity: t('label.owner-plural'),
+          entity: t(LABEL_OWNER_PLURAL),
         })}
       </span>
     );
@@ -208,7 +210,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
       <div className="owners-section">
         <div className="owners-header">
           <Typography.Text className="owners-title">
-            {t('label.owner-plural')}
+            {t(LABEL_OWNER_PLURAL)}
           </Typography.Text>
           {canShowEditButton && (
             <EditIconButton
@@ -218,7 +220,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
-                entity: t('label.owner-plural'),
+                entity: t(LABEL_OWNER_PLURAL),
               })}
               onClick={handleEditClick}
             />
@@ -233,7 +235,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     <div className="owners-section">
       <div className="owners-header">
         <Typography.Text className="owners-title">
-          {t('label.owner-plural')}
+          {t(LABEL_OWNER_PLURAL)}
         </Typography.Text>
         {canShowEditButton && (
           <EditIconButton
@@ -243,7 +245,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
             size="small"
             title={t('label.edit-entity', {
-              entity: t('label.owner-plural'),
+              entity: t(LABEL_OWNER_PLURAL),
             })}
             onClick={handleEditClick}
           />
