@@ -4315,6 +4315,7 @@
     "validation-error-assets": "Bitte überprüfen Sie alle Assets, die hinzugefügt werden.",
     "value-count-profile-metric-description": "Gesamtzahl der Werte in der Spalte",
     "value-must-be-greater-than": "{{field}} muss größer als {{minimum}} sein",
+    "value-must-be-less-than-or-equal": "{{field}} muss kleiner oder gleich {{maximum}} sein",
     "value-should-equal-to-value": "Der Wert sollte gleich {{value}} sein.",
     "value-should-not-equal-to-value": "Der Wert sollte nicht gleich {{value}} sein.",
     "version-released-try-now": "{{version}} Veröffentlicht <0>Sehen Sie, was es Neues gibt!</0>",
