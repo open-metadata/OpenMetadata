@@ -19,10 +19,10 @@ import {
 } from './withSuspenseFallback';
 
 describe('withSuspenseFallback', () => {
-  const getLazyComponent = () =>
+  const getLazyComponent = <T extends object = Record<string, never>>() =>
     lazy(
       () =>
-        new Promise<{ default: () => JSX.Element }>((resolve) => {
+        new Promise<{ default: React.ComponentType<T> }>((resolve) => {
           setTimeout(() => {
             resolve({
               default: () => <div>Loaded component</div>,
@@ -57,6 +57,17 @@ describe('withSuspenseFallback', () => {
 
     expect(screen.getByText('Loading active route')).toBeInTheDocument();
     expect(await screen.findByText('Loaded component')).toBeInTheDocument();
+  });
+
+  it('renders a fallback derived from the wrapped component props', () => {
+    const WrappedComponent = withSuspenseFallback(
+      getLazyComponent<{ widgetKey: string }>(),
+      ({ widgetKey }) => <div>Loading {widgetKey}</div>
+    );
+
+    render(<WrappedComponent widgetKey="Description" />);
+
+    expect(screen.getByText('Loading Description')).toBeInTheDocument();
   });
 
   it('renders the page loading indicator for route-level chunks', () => {

@@ -58,6 +58,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
@@ -65,9 +66,13 @@ type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
+const LIST_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton variant="list" />;
+const TABLE_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton variant="table" />;
+const TEXT_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton variant="text" />;
+
 const CertificationWidget = withSuspenseFallback(
   lazy(() => import('../../common/CertificationWidget/CertificationWidget')),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -78,16 +83,17 @@ const CustomPropertyTable = withSuspenseFallback(
       })
     )
   ),
-  TAB_CONTENT_FALLBACK
+  TABLE_WIDGET_FALLBACK
 ) as CustomPropertyTableComponent;
 
 const Description = withSuspenseFallback(
-  lazy(() => import('../../common/EntityDescription/Description'))
+  lazy(() => import('../../common/EntityDescription/Description')),
+  TEXT_WIDGET_FALLBACK
 );
 
 const TierWidget = withSuspenseFallback(
   lazy(() => import('../../common/TierWidget/TierWidget')),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const LeftPanelContainer = withSuspenseFallback(
@@ -96,7 +102,7 @@ const LeftPanelContainer = withSuspenseFallback(
       default: m.LeftPanelContainer,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const DataProductsContainer = withSuspenseFallback(
@@ -106,7 +112,7 @@ const DataProductsContainer = withSuspenseFallback(
         '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
       )
   ),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const DomainExpertWidget = withSuspenseFallback(
@@ -115,12 +121,12 @@ const DomainExpertWidget = withSuspenseFallback(
       default: m.DomainExpertWidget,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const TagsContainerV2 = withSuspenseFallback(
   lazy(() => import('../../Tag/TagsContainerV2/TagsContainerV2')),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const DomainLabelV2 = withSuspenseFallback(
@@ -129,7 +135,7 @@ const DomainLabelV2 = withSuspenseFallback(
       default: m.DomainLabelV2,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const OwnerLabelV2 = withSuspenseFallback(
@@ -138,7 +144,7 @@ const OwnerLabelV2 = withSuspenseFallback(
       default: m.OwnerLabelV2,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const ReviewerLabelV2 = withSuspenseFallback(
@@ -147,7 +153,7 @@ const ReviewerLabelV2 = withSuspenseFallback(
       default: m.ReviewerLabelV2,
     }))
   ),
-  TAB_CONTENT_FALLBACK
+  LIST_WIDGET_FALLBACK
 );
 
 const GlossaryUpdateConfirmationModal = withSuspenseFallback(
