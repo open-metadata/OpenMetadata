@@ -26,7 +26,10 @@ import org.jdbi.v3.sqlobject.customizer.SqlStatementCustomizingAnnotation;
 import org.jdbi.v3.sqlobject.customizer.SqlStatementParameterCustomizer;
 import org.openmetadata.service.util.JsonStorageUtils;
 
-/** Binds serialized JSON after removing characters unsupported by database JSON storage. */
+/**
+ * Binds serialized JSON after removing characters unsupported by database JSON storage. Use only
+ * for parameters persisted as JSON.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
 @SqlStatementCustomizingAnnotation(BindJson.Factory.class)

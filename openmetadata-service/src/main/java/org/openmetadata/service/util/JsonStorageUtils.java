@@ -16,6 +16,7 @@ package org.openmetadata.service.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /** Normalizes JSON documents to the character set supported by database JSON columns. */
@@ -25,12 +26,20 @@ public final class JsonStorageUtils {
 
   private JsonStorageUtils() {}
 
-  /** PostgreSQL JSONB cannot store U+0000, even though escaped NUL is valid JSON. */
+  /**
+   * PostgreSQL JSONB cannot store U+0000, even though escaped NUL is valid JSON. Non-JSON values
+   * fall back to raw NUL removal.
+   */
   public static String sanitizeNulCharacters(String json) {
     String sanitizedJson = json;
     if (containsNulCandidate(json)) {
       String parseableJson = removeNulCharacters(json);
-      sanitizedJson = sanitizeNode(JsonUtils.readTree(parseableJson)).toString();
+      try {
+        JsonNode jsonNode = JsonUtils.readTree(parseableJson);
+        sanitizedJson = jsonNode == null ? parseableJson : sanitizeNode(jsonNode).toString();
+      } catch (JsonParsingException ignored) {
+        sanitizedJson = parseableJson;
+      }
     }
     return sanitizedJson;
   }

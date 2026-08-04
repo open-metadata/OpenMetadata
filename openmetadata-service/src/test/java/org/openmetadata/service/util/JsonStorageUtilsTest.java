@@ -60,6 +60,16 @@ class JsonStorageUtilsTest {
   }
 
   @Test
+  void sanitizeNulCharactersFallsBackForNonJsonInput() {
+    String rawNul = "before" + '\u0000' + "after";
+    String literalEscapeText = "not JSON \\u0000";
+
+    assertEquals("beforeafter", JsonStorageUtils.sanitizeNulCharacters(rawNul));
+    assertEquals(literalEscapeText, JsonStorageUtils.sanitizeNulCharacters(literalEscapeText));
+    assertEquals("", JsonStorageUtils.sanitizeNulCharacters(String.valueOf('\u0000')));
+  }
+
+  @Test
   void sanitizeNulCharactersLeavesOrdinaryJsonUnchanged() {
     String json = "{\"value\":\"ordinary\"}";
 
