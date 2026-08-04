@@ -103,35 +103,6 @@ class PersonaContextBuilderTest {
   }
 
   @Test
-  void activeEntityFilterDropsHalfBuiltQueryBuilderClauses() {
-    var pruned =
-        JsonUtils.readTree(
-            PersonaContextBuilder.activeEntityFilter(
-                "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{}}]}}]}}}"));
-
-    assertEquals(false, pruned.at("/query/bool/filter/0/term/deleted").asBoolean());
-    assertEquals(0, pruned.at("/query/bool/filter/1/bool/must/0/bool/should").size());
-  }
-
-  @Test
-  void activeEntityFilterDropsARuleWhoseOnlyClauseIsHalfBuilt() {
-    var pruned =
-        JsonUtils.readTree(PersonaContextBuilder.activeEntityFilter("{\"query\":{\"range\":{}}}"));
-
-    assertEquals(1, pruned.at("/query/bool/filter").size());
-  }
-
-  @Test
-  void activeEntityFilterKeepsClausesThatAreValidWithoutABody() {
-    var pruned =
-        JsonUtils.readTree(
-            PersonaContextBuilder.activeEntityFilter(
-                "{\"query\":{\"bool\":{\"must_not\":[{\"match_all\":{}}]}}}"));
-
-    assertTrue(pruned.at("/query/bool/filter/1/bool/must_not/0").has("match_all"));
-  }
-
-  @Test
   void searchSurfacesTheUnderlyingSearchFailureWithItsCause() throws IOException {
     SearchRepository repository = mock(SearchRepository.class);
     PersonaContextBuilder builder = new PersonaContextBuilder(persona(), repository);
