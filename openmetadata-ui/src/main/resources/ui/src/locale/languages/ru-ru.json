@@ -4315,6 +4315,7 @@
     "validation-error-assets": "Пожалуйста, проверьте добавляемые объекты",
     "value-count-profile-metric-description": "Общее количество значений в столбце",
     "value-must-be-greater-than": "Значение «{{field}}» должно быть больше чем {{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} должно быть меньше или равно {{maximum}}",
     "value-should-equal-to-value": "Значение должно быть равно {{value}}.",
     "value-should-not-equal-to-value": "Значение не должно быть равно {{value}}.",
     "version-released-try-now": "Выпущена версия {{version}} <0>Посмотрите, что нового!</0>",
