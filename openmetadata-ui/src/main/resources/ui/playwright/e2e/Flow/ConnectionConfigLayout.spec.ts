@@ -599,6 +599,8 @@ test.describe('Connection config layout', () => {
     await tableSection
       .getByRole('button', { name: 'Show equivalent regex' })
       .click();
-    await expect(tableSection.getByText('includes += orders')).toBeVisible();
+    await expect(
+      tableSection.getByText('includes += .*orders.*')
+    ).toBeVisible();
   });
 });

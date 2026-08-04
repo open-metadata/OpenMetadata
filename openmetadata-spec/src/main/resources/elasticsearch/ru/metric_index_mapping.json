@@ -273,6 +273,9 @@
       "unitOfMeasurement": {
         "type": "keyword"
       },
+      "customUnitOfMeasurement": {
+        "type": "keyword"
+      },
       "granularity": {
         "type": "keyword"
       },

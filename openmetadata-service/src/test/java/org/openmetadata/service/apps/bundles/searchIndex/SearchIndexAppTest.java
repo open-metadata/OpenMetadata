@@ -286,7 +286,7 @@ class SearchIndexAppTest {
             null,
             System.currentTimeMillis(),
             1);
-    when(jobDAO.findByStatuses(List.of("RUNNING", "READY", "INITIALIZING")))
+    when(jobDAO.findByStatuses(List.of("RUNNING", "PROMOTING", "READY", "INITIALIZING")))
         .thenReturn(List.of(activeJob));
 
     App appEntity = new App();
@@ -367,7 +367,7 @@ class SearchIndexAppTest {
             null,
             System.currentTimeMillis(),
             1);
-    when(jobDAO.findByStatuses(List.of("RUNNING", "READY", "INITIALIZING")))
+    when(jobDAO.findByStatuses(List.of("RUNNING", "PROMOTING", "READY", "INITIALIZING")))
         .thenReturn(List.of(activeJob));
     doThrow(new RuntimeException("DB error"))
         .when(jobDAO)
