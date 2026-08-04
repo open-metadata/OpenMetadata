@@ -297,28 +297,31 @@ describe('ExportUtils', () => {
       );
     });
 
-    it('uses the desired pixelRatio of 3 for small graphs', async () => {
+    it('uses the desired pixelRatio of 2 for small graphs', async () => {
+      // 2 (not 3) so a ~200-node lineage graph fits inside Playwright's 120s
+      // download-event budget on slower CI runners — see ExportUtils.ts
+      // comment on DESIRED_PIXEL_RATIO.
       await exportPNGImageFromElement(mockExportData);
 
       expect(toCanvas).toHaveBeenCalledWith(
         mockElement,
-        expect.objectContaining({ pixelRatio: 3 })
+        expect.objectContaining({ pixelRatio: 2 })
       );
     });
 
     it('caps pixelRatio for very large graphs to keep canvas under 16K px', async () => {
-      // A 6000x4000 logical graph at pixelRatio=3 would be 18000x12000 — over
-      // Chrome's 16K canvas-dim cap. Adaptive cap must drop pixelRatio below 3.
+      // A 10000x8000 logical graph at pixelRatio=2 would be 20000x16000 — over
+      // Chrome's 16K canvas-dim cap. Adaptive cap must drop pixelRatio below 2.
       document.querySelector = jest.fn().mockReturnValue({
-        scrollWidth: 6000,
-        scrollHeight: 4000,
+        scrollWidth: 10000,
+        scrollHeight: 8000,
       });
 
       await exportPNGImageFromElement(mockExportData);
 
       const callArgs = (toCanvas as jest.Mock).mock.calls[0][1];
 
-      expect(callArgs.pixelRatio).toBeLessThan(3);
+      expect(callArgs.pixelRatio).toBeLessThan(2);
       expect(callArgs.pixelRatio).toBeGreaterThan(0);
 
       // Resulting physical dims must respect both the area and side-length
@@ -445,7 +448,7 @@ describe('ExportUtils', () => {
           1200, // imageWidth
           900, // imageHeight
           20, // padding
-          3 // pixelRatio — small graph so no cap
+          2 // pixelRatio — small graph so no cap, uses DESIRED_PIXEL_RATIO
         );
       });
 
@@ -456,8 +459,8 @@ describe('ExportUtils', () => {
         expect(mockCompositeCtx.fillRect).toHaveBeenCalledWith(
           0,
           0,
-          (1200 + 40) * 3,
-          (900 + 40) * 3
+          (1200 + 40) * 2,
+          (900 + 40) * 2
         );
       });
 

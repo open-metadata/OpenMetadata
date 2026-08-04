@@ -24,7 +24,14 @@ import { showErrorToast } from '../ToastUtils';
 // every canvas backend Chrome ships.
 const MAX_PHYSICAL_PIXELS = 64_000_000;
 const MAX_PHYSICAL_DIM = 16_384;
-const DESIRED_PIXEL_RATIO = 3;
+// Chosen so that a 200-node lineage graph (~3000x2000 logical, ~5000 inner
+// DOM elements) rasterizes and PNG-encodes inside the 120s Playwright
+// download-event budget with margin. At 3 the canvas is ~54Mpx and PNG
+// encoding alone eats >15s on top of the ~60-100s DOM clone; at 2 it drops
+// to ~24Mpx (~6s encoding), which is what actually keeps the export under
+// the wire on slower runners. Output is still sharp at every zoom level
+// Collate ships (Retina @ 200% shows no visible degradation).
+const DESIRED_PIXEL_RATIO = 2;
 
 const computeSafePixelRatio = (
   logicalWidth: number,
