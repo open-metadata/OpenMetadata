@@ -18,7 +18,7 @@ from mlflow.exceptions import MlflowException
 from mlflow.store.entities import PagedList
 from mlflow.utils.search_utils import SearchModelUtils
 
-from metadata.ingestion.source.mlmodel.mlflow.metadata import MlflowSource
+from metadata.ingestion.source.mlmodel.mlflow.metadata import MAX_VERSION_PAGES, MlflowSource
 
 MODEL_NAME = "catalog.schema.wine_model"
 
@@ -94,6 +94,36 @@ def test_search_follows_pagination():
 
     assert results[0][1].version == "9"
     assert source.client.search_model_versions.call_count == 2
+
+
+def test_partial_pagination_failure_does_not_ingest_stale_version():
+    """
+    A failure on page 2 must not leave page 1's newest standing in as "latest" --
+    that is the stale-version bug pagination exists to prevent.
+    """
+    source = make_source()
+    source.client.search_model_versions.side_effect = [
+        PagedList([make_version("1")], "token-1"),
+        MlflowException("backend blew up mid-scan"),
+    ]
+
+    results = list(source.get_mlmodels())
+
+    assert results == []
+    source.status.failed.assert_called_once()
+
+
+def test_exhausting_the_page_budget_does_not_ingest_stale_version():
+    """Running out of page budget is also a partial read, so skip rather than guess."""
+    source = make_source()
+    # Never stops handing back a token, so the loop burns its full budget.
+    source.client.search_model_versions.side_effect = lambda **_: PagedList([make_version("1")], "more")
+
+    results = list(source.get_mlmodels())
+
+    assert results == []
+    assert source.client.search_model_versions.call_count == MAX_VERSION_PAGES
+    source.status.failed.assert_called_once()
 
 
 def test_search_never_passes_order_by():

@@ -131,6 +131,10 @@ class MlflowSource(MlModelServiceSource):
         """
         List every version of a model, following pagination.
 
+        Returns the complete list or nothing at all. A partial list is worse
+        than none here: `_pick_newest` would resolve an arbitrary version as
+        the latest, which is precisely what paginating is meant to prevent.
+
         Note the ordering is deliberately left to `_pick_newest`: Unity Catalog
         rejects `order_by` on this call outright.
         """
@@ -150,17 +154,17 @@ class MlflowSource(MlModelServiceSource):
 
                 page_token = getattr(page, "token", None)
                 if not page_token:
-                    break
-            else:
-                logger.warning(
-                    f"Stopped paginating versions of {model_name} after {MAX_VERSION_PAGES} pages; "
-                    "the newest version may be missing."
-                )
+                    return versions
+
+            logger.warning(
+                f"Gave up paginating versions of {model_name} after {MAX_VERSION_PAGES} pages "
+                "with more still pending; skipping the model rather than risking a stale version."
+            )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error searching for versions of model {model_name} - {err}")
 
-        return versions
+        return []
 
     @staticmethod
     def _pick_newest(versions: Iterable[ModelVersion]) -> ModelVersion | None:
