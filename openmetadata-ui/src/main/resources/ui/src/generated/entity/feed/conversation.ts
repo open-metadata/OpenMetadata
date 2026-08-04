@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * A bounded conversation root whose replies and reactions are stored separately.
+ * A bounded conversation root whose replies are stored separately.
  */
 export interface Conversation {
     /**
