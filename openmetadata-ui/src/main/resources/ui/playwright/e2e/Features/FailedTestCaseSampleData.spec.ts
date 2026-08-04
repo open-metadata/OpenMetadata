@@ -100,9 +100,9 @@ test(
         .locator('[data-testid="test-case-result-tab-container"]')
         .waitFor({ state: 'visible' });
 
-      await expect(
-        page.locator('.failed-sample-data-column')
-      ).not.toHaveCount(0);
+      await expect(page.locator('.failed-sample-data-column')).not.toHaveCount(
+        0
+      );
 
       const sampleDataTable = page.getByTestId('sample-data-table');
 

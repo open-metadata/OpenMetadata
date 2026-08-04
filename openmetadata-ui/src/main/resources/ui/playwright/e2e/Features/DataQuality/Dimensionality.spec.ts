@@ -107,10 +107,7 @@ test(
       ).not.toBeVisible();
 
       for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-        await page
-          .getByRole('option')
-          .filter({ hasText: dimension })
-          .click();
+        await page.getByRole('option').filter({ hasText: dimension }).click();
       }
 
       await page.keyboard.press('Escape');

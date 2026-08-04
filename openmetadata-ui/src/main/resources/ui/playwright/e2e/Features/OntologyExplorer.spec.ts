@@ -563,9 +563,9 @@ test.describe('Ontology Explorer', () => {
       await expect(
         page.getByTestId('ontology-graph-search-empty')
       ).toBeVisible();
-      await expect(
-        page.locator('.ontology-g6-container canvas')
-      ).toHaveCount(0);
+      await expect(page.locator('.ontology-g6-container canvas')).toHaveCount(
+        0
+      );
     });
 
     test('should recover from a no-match state when the search is cleared', async ({

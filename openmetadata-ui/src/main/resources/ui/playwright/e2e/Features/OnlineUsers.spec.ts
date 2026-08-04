@@ -261,9 +261,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByRole('cell', { name: displayName })
-      ).toBeVisible();
+      await expect(page.getByRole('cell', { name: displayName })).toBeVisible();
 
       // Search by email should surface the same user
       const emailSearchResponse = page.waitForResponse(
@@ -274,9 +272,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByRole('cell', { name: displayName })
-      ).toBeVisible();
+      await expect(page.getByRole('cell', { name: displayName })).toBeVisible();
     });
   });
 });

@@ -129,9 +129,7 @@ async function waitForGlossaryTermInSearch(
 }
 
 function getColumnRowCheckbox(page: Page, rowId: string) {
-  return page
-    .locator(`[data-row-id="${rowId}"]`)
-    .locator('[slot="selection"]');
+  return page.locator(`[data-row-id="${rowId}"]`).locator('[slot="selection"]');
 }
 
 test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () => {

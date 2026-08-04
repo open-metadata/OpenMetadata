@@ -324,7 +324,9 @@ test.describe('Large Glossary Performance Tests', () => {
     await page.getByTestId('glossary-status-option-all').waitFor();
 
     // Check if status options are available
-    const approvedCheckbox = page.getByTestId('glossary-status-option-Approved');
+    const approvedCheckbox = page.getByTestId(
+      'glossary-status-option-Approved'
+    );
     const draftCheckbox = page.getByTestId('glossary-status-option-Draft');
 
     await expect(approvedCheckbox).toBeVisible();

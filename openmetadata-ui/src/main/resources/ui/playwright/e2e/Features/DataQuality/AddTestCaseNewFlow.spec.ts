@@ -122,10 +122,7 @@ test.describe(
 
       await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await page
-        .getByRole('option')
-        .filter({ hasText: testType })
-        .click();
+      await page.getByRole('option').filter({ hasText: testType }).click();
 
       await page.locator(`[data-id="${testTypeId}"]`).waitFor({
         state: 'visible',
