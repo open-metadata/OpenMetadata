@@ -169,9 +169,9 @@ class BurstIQSampler(DatalakeSampler):
         unparseable values to NaN instead of raising, so the profiler degrades
         gracefully rather than hard-failing.
         """
-        if df.empty or not self.entity.columns:
+        if df.empty or not self.entity.columns:  # pyright: ignore[reportAttributeAccessIssue]
             return df
-        for col in self.entity.columns:
+        for col in self.entity.columns:  # pyright: ignore[reportAttributeAccessIssue]
             col_name = col.name.root
             if col_name not in df.columns:
                 continue

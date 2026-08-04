@@ -22,16 +22,16 @@
   }
 
   .ant-drawer-body {
-    padding: 16px;
+    padding: var(--om-space-16);
   }
 
   .ant-drawer-header {
-    padding: 16px;
-    padding-bottom: 0px;
+    padding: var(--om-space-16);
+    padding-bottom: 0;
   }
 
   .ant-drawer-title {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
   }
 }
 
@@ -44,9 +44,9 @@
   right: 0;
   width: 330px;
   overflow-y: auto;
-  padding: 16px;
+  padding: var(--om-space-16);
   border-left: @global-border;
-  transition: display 0.3s ease-out;
+  transition: display var(--om-duration-300) ease-out;
 }
 .timeline-drawer.open {
   display: block;
@@ -62,7 +62,7 @@
   }
 }
 .timeline-wrapper {
-  padding-right: 1rem;
+  padding-right: var(--om-space-16);
 }
 .timeline-rounder {
   position: relative;
@@ -72,11 +72,11 @@
   border: 3px solid @primary-1;
   background: transparent;
   border-radius: 50%;
-  margin-top: 0.15rem;
+  margin-top: var(--om-space-2_4);
 }
 .timeline-rounder.major,
 .timeline-rounder.major.selected {
-  border-color: #f9816c;
+  border-color: var(--om-legacy-color-f9816c);
 }
 .timeline-rounder.selected {
   border: 3px solid @primary-color;
@@ -85,7 +85,7 @@
 .timeline-rounder.selected::after {
   content: '';
   display: block;
-  margin: 2px;
+  margin: var(--om-space-2);
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -93,8 +93,8 @@
   background-color: @primary-color;
 }
 .timeline-rounder.major.selected::after {
-  border-color: #f9816c;
-  background-color: #f9816c;
+  border-color: var(--om-legacy-color-f9816c);
+  background-color: var(--om-legacy-color-f9816c);
 }
 
 .timeline-line {
@@ -117,6 +117,6 @@
 
 .version-timestamp::before {
   content: '\2022';
-  margin-right: 6px;
-  margin-left: 4px;
+  margin-right: var(--om-space-6);
+  margin-left: var(--om-space-4);
 }

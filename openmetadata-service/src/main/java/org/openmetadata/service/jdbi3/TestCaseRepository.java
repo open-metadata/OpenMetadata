@@ -31,6 +31,7 @@ import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.Lists;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -95,6 +97,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -106,8 +109,10 @@ import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -119,6 +124,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static final String TEST_SUITE_FIELD = "testSuite";
   public static final String TEST_DEFINITION_FIELD = "testDefinition";
   public static final String INCIDENTS_FIELD = "incidentId";
+  public static final String INCIDENT_STATUS_FIELD = "incidentStatus";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
@@ -162,6 +168,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(TEST_CASE_RESULT) ? getTestCaseResult(test) : test.getTestCaseResult());
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
+    test.setIncidentStatus(
+        fields.contains(INCIDENT_STATUS_FIELD)
+            ? getIncidentStatus(test)
+            : test.getIncidentStatus());
   }
 
   private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
@@ -186,6 +196,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           testCases, fields.contains(TEST_CASE_RESULT), fields.contains(INCIDENTS_FIELD));
     }
 
+    if (fields.contains(INCIDENT_STATUS_FIELD)) {
+      fetchAndSetIncidentStatuses(testCases);
+    }
+
     Set<String> linkedTableFields = resolveLinkedTableFields(testCases, fields);
     if (!linkedTableFields.isEmpty()) {
       Map<String, Table> tableCache = batchLoadLinkedTables(testCases, linkedTableFields);
@@ -200,6 +214,35 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     } finally {
       linkedTablesCache.remove();
     }
+  }
+
+  @Override
+  public ResultList<TestCase> listFromSearchWithOffset(
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SecurityContext securityContext)
+      throws IOException {
+    ResultList<TestCase> resultList =
+        super.listFromSearchWithOffset(
+            uriInfo,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            queryString,
+            securityContext);
+    if (fields.contains(INCIDENT_STATUS_FIELD) && !nullOrEmpty(resultList.getData())) {
+      fetchAndSetIncidentStatuses(resultList.getData());
+    }
+    return resultList;
   }
 
   private Map<String, Table> batchLoadLinkedTables(
@@ -417,28 +460,74 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       fqnHashToFqn.put(FullyQualifiedName.buildHash(fqn), fqn);
     }
 
-    List<CollectionDAO.LatestRecordWithFQNHash> records =
-        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
-
     Map<String, TestCaseResult> fqnToResult = new HashMap<>();
-    for (CollectionDAO.LatestRecordWithFQNHash record : records) {
-      String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
-      if (fqn != null && record.getJson() != null) {
-        TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
-        if (result != null) {
-          fqnToResult.put(fqn, result);
+    if (setResults) {
+      List<CollectionDAO.LatestRecordWithFQNHash> records =
+          daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : records) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
+          if (result != null) {
+            fqnToResult.put(fqn, result);
+          }
+        }
+      }
+    }
+
+    // Ongoing incident = latest unresolved resolution-status record, not the result's stamped id.
+    Map<String, UUID> fqnToOngoingIncident = new HashMap<>();
+    if (setIncidents) {
+      List<CollectionDAO.LatestRecordWithFQNHash> incidentRecords =
+          daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : incidentRecords) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResolutionStatus latest =
+              JsonUtils.readValue(record.getJson(), TestCaseResolutionStatus.class);
+          if (latest != null
+              && latest.getStateId() != null
+              && !TestCaseResolutionStatusTypes.Resolved.equals(
+                  latest.getTestCaseResolutionStatusType())) {
+            fqnToOngoingIncident.put(fqn, latest.getStateId());
+          }
         }
       }
     }
 
     for (TestCase testCase : testCases) {
-      TestCaseResult result = fqnToResult.get(testCase.getFullyQualifiedName());
       if (setResults) {
-        testCase.setTestCaseResult(result);
+        testCase.setTestCaseResult(fqnToResult.get(testCase.getFullyQualifiedName()));
       }
       if (setIncidents) {
-        testCase.setIncidentId(result != null ? result.getIncidentId() : null);
+        testCase.setIncidentId(fqnToOngoingIncident.get(testCase.getFullyQualifiedName()));
       }
+    }
+  }
+
+  private void fetchAndSetIncidentStatuses(List<TestCase> testCases) {
+    List<String> fqns =
+        testCases.stream()
+            .map(TestCase::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+    List<CollectionDAO.LatestRecordWithFQNHash> records =
+        daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecordBatch(fqns);
+
+    Map<String, TestCaseResolutionStatus> hashToStatus = new HashMap<>();
+    for (CollectionDAO.LatestRecordWithFQNHash record : records) {
+      if (record.getJson() != null) {
+        hashToStatus.put(
+            record.getEntityFQNHash(),
+            JsonUtils.readValue(record.getJson(), TestCaseResolutionStatus.class));
+      }
+    }
+
+    for (TestCase testCase : testCases) {
+      testCase.setIncidentStatus(
+          hashToStatus.get(FullyQualifiedName.buildHash(testCase.getFullyQualifiedName())));
     }
   }
 
@@ -922,7 +1011,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult");
+    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult", INCIDENTS_FIELD);
   }
 
   @Override
@@ -1018,24 +1107,26 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     RdfUpdater.updateEntity(testSuite);
   }
 
-  @Transaction
   @Override
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     if (hardDelete) {
-      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
-        LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        for (CollectionDAO.EntityRelationshipRecord child : children) {
-          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-        }
-      }
+      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+          (TestCaseResolutionStatusRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+      AsyncService.getInstance()
+          .execute(
+              () -> {
+                for (CollectionDAO.EntityRelationshipRecord child : children) {
+                  try {
+                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
+                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
+                  } catch (Exception e) {
+                    LOG.error(
+                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
+                  }
+                }
+              });
     }
   }
 
@@ -1086,21 +1177,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCaseResult;
   }
 
-  /**
-   * Check all the test case results that have an ongoing incident and get the stateId of the
-   * incident
-   */
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
   private UUID getIncidentId(TestCase test) {
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-    TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
+    return tcrsRepo.getOngoingIncidentStateId(test.getFullyQualifiedName());
+  }
 
-    if (latest != null && latest.getStateId() != null) {
-      return latest.getStateId();
-    }
-
-    return null;
+  private TestCaseResolutionStatus getIncidentStatus(TestCase test) {
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    return tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
@@ -1681,9 +1770,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult()));
-      compareAndUpdate(
-          INCIDENTS_FIELD,
-          () -> recordChange(INCIDENTS_FIELD, original.getIncidentId(), updated.getIncidentId()));
     }
   }
 

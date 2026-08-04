@@ -50,7 +50,7 @@ class NoSQLSampler(SamplerInterface):
         Get random sample from user query
         """
         limit = self._get_limit()
-        return self.client.query(self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit)
+        return self.client.query(self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit)  # pyright: ignore[reportAttributeAccessIssue]
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """
@@ -58,7 +58,7 @@ class NoSQLSampler(SamplerInterface):
         If the engine does not support a custom query, an error will be raised.
         """
         records = self._rdn_sample_from_user_query()
-        columns = [SQALikeColumn(name=column.name.root, type=column.dataType) for column in self.raw_dataset.columns]
+        columns = [SQALikeColumn(name=column.name.root, type=column.dataType) for column in self.raw_dataset.columns]  # pyright: ignore[reportAttributeAccessIssue]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
@@ -78,7 +78,7 @@ class NoSQLSampler(SamplerInterface):
         returns sampled ometa dataframes
         """
         limit = self._get_limit()
-        records = self.client.scan(self.raw_dataset, self.raw_dataset.columns, int(limit))
+        records = self.client.scan(self.raw_dataset, self.raw_dataset.columns, int(limit))  # pyright: ignore[reportAttributeAccessIssue]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
@@ -122,4 +122,4 @@ class NoSQLSampler(SamplerInterface):
         return rows, columns
 
     def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
-        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]
+        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]  # pyright: ignore[reportAttributeAccessIssue]

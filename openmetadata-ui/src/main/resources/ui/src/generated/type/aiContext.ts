@@ -69,6 +69,10 @@ export interface AIContext {
      */
     metrics?: KnowledgeItem[];
     /**
+     * Name of the asset this context describes.
+     */
+    name?: string;
+    /**
      * Runtime signals (profiled shape + data-quality standing) for query construction and
      * answer qualification.
      */
@@ -81,6 +85,10 @@ export interface AIContext {
      * Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).
      */
     resource?: string;
+    /**
+     * Reference (id, name, type) to the service the asset belongs to, when applicable.
+     */
+    service?: EntityReference;
     /**
      * Service type of the asset's service (e.g. Snowflake, BigQuery).
      */
@@ -200,10 +208,16 @@ export interface FieldContext {
     /**
      * Field-level constraint (e.g. PRIMARY_KEY, NOT_NULL), when applicable.
      */
-    constraint?:  string;
-    dataType?:    string;
-    description?: string;
-    name?:        string;
+    constraint?: string;
+    dataType?:   string;
+    /**
+     * Raw data-type enum name of the field (e.g. VARCHAR, BIGINT — a ColumnDataType value for
+     * table columns), for programmatic type branching. `dataType` may carry the source display
+     * form (e.g. varchar(255)).
+     */
+    dataTypeEnum?: string;
+    description?:  string;
+    name?:         string;
 }
 
 /**
@@ -227,7 +241,11 @@ export interface PipelineContext {
  * generation.
  */
 export interface TableContext {
-    columns?:       FieldContext[];
+    columns?: FieldContext[];
+    /**
+     * The dbt/DDL model that produces this table (type, path, and defining SQL), when available.
+     */
+    dataModel?:     TableDataModel;
     foreignKeys?:   ForeignKey[];
     frequentJoins?: JoinHint[];
     /**
@@ -242,6 +260,34 @@ export interface TableContext {
      * DDL for tables and views, when available.
      */
     schemaDefinition?: string;
+}
+
+/**
+ * The dbt/DDL model that produces this table (type, path, and defining SQL), when
+ * available.
+ *
+ * The data model that produces a table — the dbt (or DDL) model behind it: its type, where
+ * the model file lives, and the SQL that defines the table. A strong signal for how the
+ * table is built and what logic it encodes.
+ */
+export interface TableDataModel {
+    /**
+     * Model type that produced the table (e.g. DBT or DDL).
+     */
+    modelType?: string;
+    /**
+     * Path to the model definition file (e.g. the dbt `.sql` model path).
+     */
+    path?: string;
+    /**
+     * The dbt project the model belongs to, when applicable.
+     */
+    sourceProject?: string;
+    /**
+     * SQL that defines the table: the compiled dbt/DDL model SQL when available, otherwise the
+     * raw templated model SQL. May be bounded server-side.
+     */
+    sql?: string;
 }
 
 /**
@@ -349,6 +395,15 @@ export interface Observability {
      */
     profiledAt?: number;
     /**
+     * Sample size the profile ran on — a percentage when profileSampleType is PERCENTAGE,
+     * otherwise an absolute row count. Absent when the profile ran on the full dataset.
+     */
+    profileSample?: number;
+    /**
+     * Interpretation of profileSample: PERCENTAGE or ROWS.
+     */
+    profileSampleType?: string;
+    /**
      * Latest profiled row count.
      */
     rowCount?: number;
@@ -360,6 +415,11 @@ export interface Observability {
  */
 export interface ColumnProfileSummary {
     /**
+     * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+     * profiler computed it — lets an agent write exact filter predicates.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
      * Number of distinct values observed.
      */
     distinctCount?: number;
@@ -367,6 +427,16 @@ export interface ColumnProfileSummary {
      * Observed maximum value (numeric/date columns).
      */
     max?: string;
+    /**
+     * Mean value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    mean?: number;
+    /**
+     * Median value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    median?: number;
     /**
      * Observed minimum value (numeric/date columns).
      */
@@ -376,6 +446,37 @@ export interface ColumnProfileSummary {
      * Fraction of rows where this column is null (0..1).
      */
     nullProportion?: number;
+    /**
+     * Fraction of rows whose value occurs exactly once (0..1) — near 1 suggests a
+     * key/identifier column.
+     */
+    uniqueProportion?: number;
+}
+
+/**
+ * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+ * profiler computed it — lets an agent write exact filter predicates.
+ *
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
 }
 
 /**
@@ -398,6 +499,8 @@ export interface DataQuality {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Reference (id, name, type) to the service the asset belongs to, when applicable.
  */
 export interface EntityReference {
     /**

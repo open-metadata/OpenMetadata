@@ -71,9 +71,11 @@ const test = base.extend<{
   suiteEditOnlyPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   createPage: async ({ browser }, use) => {
     const page = await browser.newPage();

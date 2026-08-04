@@ -14,18 +14,18 @@
 @import (reference) '../../../styles/variables.less';
 
 .task-feed-card-v1 {
-  padding: 18px 12px;
+  padding: var(--om-space-18) var(--om-space-12);
 
   &.active {
     border-left: 4px solid @info-color;
   }
 
   .task-feed-body {
-    padding-left: 1.5rem;
+    padding-left: var(--om-space-24);
   }
   .assignee-item {
     margin: 0;
-    margin-right: 4px;
+    margin-right: var(--om-space-4);
   }
 }
 
@@ -37,11 +37,11 @@
   white-space: nowrap;
 }
 .task-feed-card-v1-new {
-  padding: 20px;
+  padding: var(--om-space-20);
   background: @grey-9;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  border: 0.5px solid #eaecf5;
+  border-radius: var(--om-radius-xl);
+  margin-bottom: var(--om-space-20);
+  border: 0.5px solid var(--om-color-gray-blue-100);
 
   &.active {
     border-left: 4px solid @primary-color;
@@ -49,71 +49,71 @@
   }
   .task-created-by-text {
     color: @primary-heading-color;
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     font-style: normal;
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
     line-height: 20px;
   }
   .task-timestamp-text {
     color: @grey-500;
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     font-style: normal;
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
     line-height: 16px;
   }
   .tags-card-container {
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
     border: none;
   }
   .task-feed-card-footer {
-    margin-top: 2px;
+    margin-top: var(--om-space-2);
     .posts-length {
       color: @grey-13;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       font-style: normal;
-      font-weight: 400;
+      font-weight: var(--om-font-weight-regular);
       line-height: normal;
     }
     .action-buttons {
       display: flex;
-      gap: 8px;
+      gap: var(--om-space-8);
     }
 
     .task-card-approve-btn {
       background-color: transparent;
       color: @primary-heading-color;
-      border-radius: 8px;
-      font-size: 12px;
+      border-radius: var(--om-radius-lg);
+      font-size: var(--om-font-size-xs);
       font-style: normal;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
       letter-spacing: 0.1px;
-      padding: 8px;
+      padding: var(--om-space-8);
       border: none;
     }
 
     .task-card-reject-btn {
       background-color: transparent;
-      color: #e31b54;
-      border-radius: 8px;
-      font-size: 12px;
+      color: var(--om-color-rose-600);
+      border-radius: var(--om-radius-lg);
+      font-size: var(--om-font-size-xs);
       font-style: normal;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
       letter-spacing: 0.1px;
-      padding: 8px 16px 8px 8px;
+      padding: var(--om-space-8) var(--om-space-16) var(--om-space-8) var(--om-space-8);
       border: none;
     }
 
     .approve-btn .anticon,
     .reject-btn .anticon {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
     }
   }
 
   .assignee-item {
     margin: 0;
-    margin-right: 4px;
+    margin-right: var(--om-space-4);
   }
   .task-body {
     padding: 0 @size-sm;
@@ -124,7 +124,7 @@
 .no-bg-border {
   background: var(--tw-color-bg-primary);
   border: none;
-  padding: 10px;
+  padding: var(--om-space-10);
 }
 .text-wrap {
   word-wrap: break-word;
@@ -132,8 +132,8 @@
 }
 .task-feed-desc-diff {
   background-color: var(--tw-color-bg-primary);
-  margin-top: 14px;
+  margin-top: var(--om-space-14);
 }
 .task-card-assignee {
-  margin-left: 18px;
+  margin-left: var(--om-space-18);
 }

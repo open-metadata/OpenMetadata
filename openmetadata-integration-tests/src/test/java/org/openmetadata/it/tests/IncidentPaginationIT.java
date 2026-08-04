@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -37,10 +39,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.SAME_THREAD)
 public class IncidentPaginationIT {
   private static final Logger LOG = LoggerFactory.getLogger(IncidentPaginationIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -50,6 +54,7 @@ public class IncidentPaginationIT {
   private OpenMetadataClient client;
   private List<TestCase> testCases;
   private String databaseSchemaFqn;
+  private String tableFqn;
 
   @BeforeAll
   public void setup() throws Exception {
@@ -74,6 +79,7 @@ public class IncidentPaginationIT {
             .getFullyQualifiedName();
 
     Table table = createTestTable();
+    tableFqn = table.getFullyQualifiedName();
     String testDefFqn =
         client
             .testDefinitions()
@@ -153,7 +159,12 @@ public class IncidentPaginationIT {
 
   @Test
   public void testPaginationFirstPage() throws Exception {
-    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
 
     ListResponse<TestCaseResolutionStatus> response =
         client.testCaseResolutionStatuses().searchList(params);
@@ -161,20 +172,29 @@ public class IncidentPaginationIT {
     assertNotNull(response);
     assertEquals(
         PAGE_SIZE, response.getData().size(), "First page should return " + PAGE_SIZE + " results");
-    assertTrue(
-        response.getPaging().getTotal() >= TEST_DATA_SIZE,
-        "Total should be at least " + TEST_DATA_SIZE);
+    assertEquals(
+        TEST_DATA_SIZE,
+        response.getPaging().getTotal(),
+        "Scoped total must be exactly the fixture size");
   }
 
   @Test
   public void testPaginationSecondPage() throws Exception {
     ListParams firstPageParams =
-        new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
     ListResponse<TestCaseResolutionStatus> firstPage =
         client.testCaseResolutionStatuses().searchList(firstPageParams);
 
     ListParams secondPageParams =
-        new ListParams().withLimit(PAGE_SIZE).withOffset(PAGE_SIZE).withLatest(true);
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(PAGE_SIZE)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
     ListResponse<TestCaseResolutionStatus> secondPage =
         client.testCaseResolutionStatuses().searchList(secondPageParams);
 
@@ -197,21 +217,31 @@ public class IncidentPaginationIT {
 
   @Test
   public void testPaginationLastPage() throws Exception {
-    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(0).withLatest(true);
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
     ListResponse<TestCaseResolutionStatus> firstPage =
         client.testCaseResolutionStatuses().searchList(params);
     int total = firstPage.getPaging().getTotal();
     int lastPageOffset = ((total - 1) / PAGE_SIZE) * PAGE_SIZE;
 
     ListParams lastPageParams =
-        new ListParams().withLimit(PAGE_SIZE).withOffset(lastPageOffset).withLatest(true);
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(lastPageOffset)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
     ListResponse<TestCaseResolutionStatus> lastPage =
         client.testCaseResolutionStatuses().searchList(lastPageParams);
 
     assertNotNull(lastPage);
-    assertTrue(
-        lastPage.getData().size() > 0 && lastPage.getData().size() <= PAGE_SIZE,
-        "Last page should have between 1 and " + PAGE_SIZE + " results");
+    assertEquals(
+        total - lastPageOffset,
+        lastPage.getData().size(),
+        "Scoped last page must hold exactly the remainder of the fixture");
   }
 
   @Test
@@ -229,7 +259,12 @@ public class IncidentPaginationIT {
 
   @Test
   public void testOffsetBeyondResults() throws Exception {
-    ListParams params = new ListParams().withLimit(PAGE_SIZE).withOffset(10000).withLatest(true);
+    ListParams params =
+        new ListParams()
+            .withLimit(PAGE_SIZE)
+            .withOffset(10000)
+            .withLatest(true)
+            .addFilter("originEntityFQN", tableFqn);
 
     ListResponse<TestCaseResolutionStatus> response =
         client.testCaseResolutionStatuses().searchList(params);
@@ -286,23 +321,32 @@ public class IncidentPaginationIT {
 
     TestCaseResolutionStatus incident =
         JsonUtils.convertValue(initialResponse.getData().get(0), TestCaseResolutionStatus.class);
-    Entity.getCollectionDAO()
-        .relationshipDAO()
-        .delete(
-            target.getId(),
-            Entity.TEST_CASE,
-            incident.getId(),
-            Entity.TEST_CASE_RESOLUTION_STATUS,
-            Relationship.PARENT_OF.ordinal());
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        Entity.getCollectionDAO().relationshipDAO();
+    relationshipDAO.delete(
+        target.getId(),
+        Entity.TEST_CASE,
+        incident.getId(),
+        Entity.TEST_CASE_RESOLUTION_STATUS,
+        Relationship.PARENT_OF.ordinal());
 
-    ListResponse<TestCaseResolutionStatus> orphanedResponse =
-        client.testCaseResolutionStatuses().searchList(initialParams);
+    try {
+      ListResponse<TestCaseResolutionStatus> orphanedResponse =
+          client.testCaseResolutionStatuses().searchList(initialParams);
 
-    assertNotNull(orphanedResponse);
-    assertEquals(
-        0,
-        orphanedResponse.getData().size(),
-        "Orphaned incident records should be skipped instead of failing the search listing");
+      assertNotNull(orphanedResponse);
+      assertEquals(
+          0,
+          orphanedResponse.getData().size(),
+          "Orphaned incident records should be skipped instead of failing the search listing");
+    } finally {
+      relationshipDAO.insert(
+          target.getId(),
+          incident.getId(),
+          Entity.TEST_CASE,
+          Entity.TEST_CASE_RESOLUTION_STATUS,
+          Relationship.PARENT_OF.ordinal());
+    }
   }
 
   @Test

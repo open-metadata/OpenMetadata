@@ -23,6 +23,7 @@ import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.Result;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
@@ -73,6 +74,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
@@ -223,11 +225,16 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
     DeleteResponse response =
         client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.True));
-    LOG.info(
-        "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
-        indexName,
-        docId,
-        response.result());
+    if (response.result() == Result.NotFound) {
+      LOG.debug(
+          "No ElasticSearch entity found to delete for index: {}, docId: {}", indexName, docId);
+    } else {
+      LOG.info(
+          "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
+          indexName,
+          docId,
+          response.result());
+    }
   }
 
   @Override
@@ -531,7 +538,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
               Map.class);
 
-      if (response != null && response.found()) {
+      // This path runs no query and has no SubjectContext, so it cannot tell whose restricted
+      // memory a document is: a non-org-wide memory reads as not found rather than leaking.
+      if (response != null
+          && response.found()
+          && ContextMemorySearchVisibility.isOrgWideReadable(response.source())) {
         return Response.status(Response.Status.OK).entity(response.source()).build();
       }
     } catch (ElasticsearchException e) {

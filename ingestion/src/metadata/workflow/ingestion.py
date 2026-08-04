@@ -77,7 +77,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
     # All workflows require a source as a first step
     source: Source
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step]  # noqa: UP006
+    steps: Tuple[Step, ...]  # noqa: UP006
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
         self.config = config

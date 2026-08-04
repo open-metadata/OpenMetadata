@@ -460,7 +460,7 @@ const ColumnProfileTable = () => {
       </div>
 
       {isEmpty(activeColumnFqn) ? (
-        <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:ring-1 tw:ring-secondary tw:overflow-hidden">
+        <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:outline-1 tw:outline-secondary tw:overflow-hidden">
           <div className="p-x-md p-y-md">
             <Searchbar
               removeMargin
@@ -483,6 +483,7 @@ const ColumnProfileTable = () => {
                   <Table.Head
                     allowsSorting={col.allowsSorting}
                     id={col.id}
+                    isRowHeader={col.id === 'name'}
                     key={col.id}
                     label={col.name}
                   />

@@ -491,7 +491,14 @@ const TagsContainerV2 = ({
         title={
           isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')
         }>
-        {suggestionDataRender ?? tagBody}
+        {/* Since WidgetCard is another component without onClick, wrapping the content in a
+            div to stop propagation */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+          }}>
+          {suggestionDataRender ?? tagBody}
+        </div>
       </WidgetCard>
     );
   }
@@ -499,7 +506,8 @@ const TagsContainerV2 = ({
   return (
     <div
       className="w-full tags-container"
-      data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
+      data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
+      onClick={(e) => e.stopPropagation()}>
       {suggestionDataRender ?? (
         <>
           {tagBody}

@@ -56,7 +56,7 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
@@ -230,7 +230,12 @@ function EditConnectionFormPage() {
           )
         );
       } else if (id === 'service-name') {
-        navigate(getPathByServiceFQN(serviceCategory, serviceFQN));
+        navigate(
+          connectionsRouterClassBase.getPathByServiceFQN(
+            serviceCategory,
+            serviceFQN
+          )
+        );
       }
     },
     [navigate, serviceCategory, serviceFQN]
@@ -381,7 +386,7 @@ function EditConnectionFormPage() {
       )}>
       <>
         <ResizablePanels
-          className="edit-connection-page content-height-with-resizable-panel"
+          className="edit-connection-page content-height-with-resizable-panel tw:bg-transparent"
           firstPanel={{
             children: firstPanelChildren,
             minWidth: 700,

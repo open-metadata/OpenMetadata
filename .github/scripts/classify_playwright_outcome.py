@@ -61,6 +61,10 @@ def _normalize_file(file_name: object) -> str:
     return normalized[marker_index:] if marker_index >= 0 else normalized
 
 
+def _is_lifecycle_file(file_name: str) -> bool:
+    return file_name.endswith((".setup.ts", ".teardown.ts"))
+
+
 def _normalize_error(error: object) -> str:
     if isinstance(error, dict):
         value = error.get("message") or error.get("value") or ""
@@ -86,6 +90,7 @@ def _test_record(
     file_name: str,
     report_file: Path,
     shard: str,
+    lifecycle: bool,
 ) -> dict[str, object]:
     results = test.get("results")
     attempts = results if isinstance(results, list) else []
@@ -111,6 +116,7 @@ def _test_record(
             if first_error
             else ""
         ),
+        "lifecycle": lifecycle,
         "shard": shard,
         "report": str(report_file),
     }
@@ -143,7 +149,16 @@ def _collect_suite_tests(
         tests = spec.get("tests")
         for test in tests if isinstance(tests, list) else []:
             if isinstance(test, dict):
-                records.append(_test_record(test, title, spec_file, report_file, shard))
+                records.append(
+                    _test_record(
+                        test,
+                        title,
+                        spec_file,
+                        report_file,
+                        shard,
+                        _is_lifecycle_file(spec_file),
+                    )
+                )
 
     child_suites = suite.get("suites")
     for child in child_suites if isinstance(child_suites, list) else []:
@@ -217,10 +232,19 @@ def _expected_shards(explicit: list[str], matrix_json: str) -> tuple[list[str], 
         matrix = json.loads(matrix_json)
         if not isinstance(matrix, dict):
             raise ValueError("matrix root is not an object")
-        shard_indexes = matrix.get("shardIndex", [])
-        if not isinstance(shard_indexes, list):
-            raise ValueError("shardIndex is not an array")
-        shards.update(str(shard) for shard in shard_indexes)
+        if "include" in matrix:
+            includes = matrix["include"]
+            if not isinstance(includes, list):
+                raise ValueError("include is not an array")
+            for entry in includes:
+                if not isinstance(entry, dict) or not entry.get("shardId"):
+                    raise ValueError("each include entry must contain shardId")
+                shards.add(str(entry["shardId"]))
+        else:
+            shard_indexes = matrix.get("shardIndex", [])
+            if not isinstance(shard_indexes, list):
+                raise ValueError("shardIndex is not an array")
+            shards.update(str(shard) for shard in shard_indexes)
     except (ValueError, json.JSONDecodeError) as error:
         return sorted(shards), str(error)
     return sorted(shards), ""
@@ -285,16 +309,46 @@ def classify_playwright_outcome(
             f"{len(unknown_records)} test(s) reported an unknown status."
         )
 
+    product_records = [record for record in records if not record["lifecycle"]]
+    lifecycle_records = [record for record in records if record["lifecycle"]]
+    product_unknown_records = [
+        record for record in product_records if record["status"] not in KNOWN_STATUSES
+    ]
+    lifecycle_unknown_records = [
+        record for record in lifecycle_records if record["status"] not in KNOWN_STATUSES
+    ]
     report_shards = {str(record["shard"]) for record in records if record["shard"]}
     status_by_shard = {
         str(status["shard"]): status for status in statuses if status.get("shard")
     }
-    failures = [record for record in records if record["status"] == "unexpected"]
-    retry_passes = [record for record in records if record["status"] == "flaky"]
-    passed = [record for record in records if record["status"] == "expected"]
-    skipped = [record for record in records if record["status"] == "skipped"]
+    failures = [
+        record for record in product_records if record["status"] == "unexpected"
+    ]
+    lifecycle_failures = [
+        record for record in lifecycle_records if record["status"] == "unexpected"
+    ]
+    product_retry_passes = [
+        record for record in product_records if record["status"] == "flaky"
+    ]
+    lifecycle_retry_passes = [
+        record for record in lifecycle_records if record["status"] == "flaky"
+    ]
+    retry_passes = product_retry_passes + lifecycle_retry_passes
+    passed = [record for record in product_records if record["status"] == "expected"]
+    skipped = [record for record in product_records if record["status"] == "skipped"]
+    lifecycle_passed = [
+        record for record in lifecycle_records if record["status"] == "expected"
+    ]
+    lifecycle_skipped = [
+        record for record in lifecycle_records if record["status"] == "skipped"
+    ]
+    for failure in lifecycle_failures:
+        infrastructure_issues.append(
+            f"Shard {failure['shard']} failed in Playwright lifecycle test "
+            f"{failure['file']} › {failure['title']}."
+        )
     failure_count_by_shard: dict[str, int] = {}
-    for failure in failures:
+    for failure in failures + lifecycle_failures:
         shard = str(failure["shard"])
         failure_count_by_shard[shard] = failure_count_by_shard.get(shard, 0) + 1
 
@@ -361,7 +415,7 @@ def classify_playwright_outcome(
         classification = "test_failure"
     elif infrastructure_issues:
         classification = "infrastructure_failure"
-    elif not records:
+    elif not product_records:
         classification = "missing_results"
     elif retry_passes:
         classification = "passed_with_retries"
@@ -370,6 +424,9 @@ def classify_playwright_outcome(
 
     records.sort(key=lambda record: str(record["stableId"]))
     failure_ids = sorted({str(record["stableId"]) for record in failures})
+    lifecycle_failure_ids = sorted(
+        {str(record["stableId"]) for record in lifecycle_failures}
+    )
     retry_ids = sorted({str(record["stableId"]) for record in retry_passes})
     skipped_ids = sorted({str(record["stableId"]) for record in skipped})
     new_retry_ids = sorted(set(retry_ids) - baseline_ids) if baseline_configured else []
@@ -382,12 +439,18 @@ def classify_playwright_outcome(
         "classification": classification,
         "matrixOutcome": matrix_outcome,
         "counts": {
-            "tests": len(records),
+            "tests": len(product_records),
             "passed": len(passed),
             "failed": len(failures),
-            "retryPassed": len(retry_passes),
+            "retryPassed": len(product_retry_passes),
             "skipped": len(skipped),
-            "unknown": len(unknown_records),
+            "unknown": len(product_unknown_records),
+            "lifecycleTests": len(lifecycle_records),
+            "lifecyclePassed": len(lifecycle_passed),
+            "lifecycleFailed": len(lifecycle_failures),
+            "lifecycleRetryPassed": len(lifecycle_retry_passes),
+            "lifecycleSkipped": len(lifecycle_skipped),
+            "lifecycleUnknown": len(lifecycle_unknown_records),
         },
         "expectedShards": expected,
         "observedReportShards": sorted(report_shards),
@@ -395,12 +458,15 @@ def classify_playwright_outcome(
         "hungShards": sorted(set(hung_shards)),
         "infrastructureIssues": infrastructure_issues,
         "failureStableIds": failure_ids,
+        "lifecycleFailureStableIds": lifecycle_failure_ids,
         "retryPassStableIds": retry_ids,
         "newRetryPassStableIds": new_retry_ids,
         "unbaselinedRetryPassStableIds": unbaselined_retry_ids,
         "skippedStableIds": skipped_ids,
         "failures": failures,
         "retryPasses": retry_passes,
+        "lifecycleFailures": lifecycle_failures,
+        "lifecycleRetryPasses": lifecycle_retry_passes,
         "skipped": skipped,
         "currentGate": {"wouldFail": current_gate_would_fail},
         "retryBaseline": {
@@ -446,6 +512,10 @@ def _summary(result: dict[str, object]) -> str:
         f"- Profile: `{context['profile']}`",
         f"- Tests: {counts['tests']} total, {counts['failed']} failed, "
         f"{counts['retryPassed']} passed on retry, {counts['skipped']} skipped",
+        f"- Lifecycle: {counts['lifecycleTests']} total, "
+        f"{counts['lifecycleFailed']} failed, "
+        f"{counts['lifecycleRetryPassed']} passed on retry, "
+        f"{counts['lifecycleSkipped']} skipped",
         f"- Current gate would fail: `{str(result['currentGate']['wouldFail']).lower()}`",
         f"- Shadow zero-retry gate would fail: `{str(shadow_gate['wouldFail']).lower()}`",
         f"- Retry-pass signatures: {shadow_gate['retryPassSignatureCount']}",

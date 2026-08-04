@@ -256,3 +256,34 @@ SET json = jsonb_set(
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'DataInsightsApplication'
   AND jsonb_exists(json::jsonb #> '{appConfiguration,moduleConfiguration}', 'dataQuality');
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (json->'rules') || jsonb_build_object(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', jsonb_build_array('Topic'),
+        'operations', jsonb_build_array('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE json->>'name' = 'AutoClassificationBotPolicy'
+  AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'AutoClassificationBotRule-Allow-Topic'));
+
+-- MCP configuration lives solely in the mcpConfiguration setting. Drop the app-level copy, which
+-- no code reads, and hide the now empty configure step.
+UPDATE installed_apps
+SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', 'false'::jsonb)
+WHERE name = 'McpApplication';
+
+UPDATE apps_marketplace
+SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', 'false'::jsonb)
+WHERE name = 'McpApplication';
+
+UPDATE entity_extension
+SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', 'false'::jsonb)
+WHERE extension LIKE 'app.version.%'
+  AND json::jsonb ->> 'name' = 'McpApplication';
