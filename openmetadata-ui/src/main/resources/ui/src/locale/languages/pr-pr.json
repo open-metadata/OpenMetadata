@@ -4315,6 +4315,7 @@
     "validation-error-assets": "لطفاً تمام دارایی‌هایی که در حال اضافه کردن آن‌ها هستید را بررسی کنید.",
     "value-count-profile-metric-description": "تعداد کل مقادیر در ستون",
     "value-must-be-greater-than": "{{field}} {{minimum}} से अधिक होना चाहिए",
+    "value-must-be-less-than-or-equal": "{{field}} باید کمتر یا برابر {{maximum}} باشد",
     "value-should-equal-to-value": "مقدار باید برابر با {{value}} باشد.",
     "value-should-not-equal-to-value": "مقدار نباید برابر با {{value}} باشد.",
     "version-released-try-now": "{{version}} منتشر شد <0>مشاهده کنید چه خبر است!</0>",

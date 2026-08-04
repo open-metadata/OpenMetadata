@@ -4315,6 +4315,7 @@
     "validation-error-assets": "Please examine all your assets that are being added",
     "value-count-profile-metric-description": "Total number of values in the column",
     "value-must-be-greater-than": "{{field}} must be greater than {{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} must be less than or equal to {{maximum}}",
     "value-should-equal-to-value": "The value should be equal to {{value}}.",
     "value-should-not-equal-to-value": "The value should not be equal to {{value}}.",
     "version-released-try-now": "{{version}} Released <0>See What's New!</0>",

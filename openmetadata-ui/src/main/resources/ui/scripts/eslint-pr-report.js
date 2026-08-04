@@ -35,13 +35,36 @@ const LIMIT = (() => {
 })();
 
 function read(file) {
+  let raw;
   try {
-    const raw = fs.readFileSync(file, 'utf8').trim();
-
-    return raw ? JSON.parse(raw) : [];
+    raw = fs.readFileSync(file, 'utf8').trim();
   } catch {
-    // A missing or unparseable report means the lint step itself broke. Say so
-    // rather than rendering "no findings", which would read as success.
+    // A missing report means the lint step itself broke. Say so rather than
+    // rendering "no findings", which would read as success.
+    return null;
+  }
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // The file is written via `yarn ... -f json > report.json`, and yarn classic
+    // prints its wrapper lines ("yarn run v...", "$ ...", "Done in Xs.") to
+    // stdout, which lands in the file around the eslint JSON. The formatter emits
+    // a single array, so recover it by slicing from the first bracket to the last.
+    const start = raw.indexOf('[');
+    const end = raw.lastIndexOf(']');
+    if (start !== -1 && end > start) {
+      try {
+        return JSON.parse(raw.slice(start, end + 1));
+      } catch {
+        return null;
+      }
+    }
+
     return null;
   }
 }

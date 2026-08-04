@@ -4315,6 +4315,7 @@
     "validation-error-assets": "Onderzoek al je assets die worden toegevoegd",
     "value-count-profile-metric-description": "Totaal aantal waarden in de kolom",
     "value-must-be-greater-than": "{{field}} moet groter zijn dan {{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} moet kleiner dan of gelijk zijn aan {{maximum}}",
     "value-should-equal-to-value": "De waarde moet gelijk zijn aan {{value}}.",
     "value-should-not-equal-to-value": "De waarde mag niet gelijk zijn aan {{value}}.",
     "version-released-try-now": "{{version}} vrijgegeven <0>Zie wat er veranderd is!</0>",
