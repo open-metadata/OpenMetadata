@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { escapeESReservedCharacters, getEncodedFqn } from './entity';
+import { getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
@@ -305,10 +305,12 @@ export const fillRule = async (
         '.widget--widget input[role="combobox"]'
       );
 
+      // Use encodeURIComponent directly — escapeESReservedCharacters would add
+      // backslashes before '-' and '/' that are then percent-encoded to %5C,
+      // but the aggregate URL contains raw (unescaped) dashes. The mismatch
+      // means the waitForResponse never fires for any FQN with hyphens.
       const aggregateRes2 = page.waitForResponse(
-        `/api/v1/search/aggregate?*${getEncodedFqn(
-          escapeESReservedCharacters(searchData)
-        )}*`
+        `/api/v1/search/aggregate?*${encodeURIComponent(searchData)}*`
       );
 
       await dropdownInput.fill(searchData);
@@ -345,9 +347,12 @@ export const fillRule = async (
         } else if (await partialMatch.count()) {
           await partialMatch.click();
         } else {
-          // Re-fill to re-trigger the API fetch on retry (e.g. if the popup
-          // closed between the aggregate response and the option click).
-          await dropdownInput.fill(searchData);
+          // Do NOT re-fill here. The Autocomplete asyncFetch runs behind a
+          // 300 ms debounce; re-filling on every ~100 ms retry resets that
+          // debounce each time, so the API call never fires and options never
+          // appear. The popup stays open while the input is focused
+          // (menuTrigger="focus"), so just retry and let React render the
+          // items once the debounce completes.
           throw new Error(
             `No option matching "${searchData}" in the listbox yet`
           );

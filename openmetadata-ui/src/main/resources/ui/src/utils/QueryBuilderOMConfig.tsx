@@ -26,6 +26,8 @@ export const OMConfig: BasicConfig = {
   settings: {
     ...QbBasicConfig.settings,
     renderField: (props) => <OMFieldSelect {...props} />,
+    // RAQB passes the same FieldProps shape (including setField) to both
+    // field and operator renderers, so the same select component works for both.
     renderOperator: (props) => <OMFieldSelect {...props} />,
     renderConjs: (props) => <OMConjs {...props} />,
   },

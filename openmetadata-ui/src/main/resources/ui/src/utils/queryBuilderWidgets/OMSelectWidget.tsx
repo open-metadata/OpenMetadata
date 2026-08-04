@@ -48,7 +48,19 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   field,
 }) => {
   const staticItems = toSelectItems(listValues);
-  const [items, setItems] = useState<SelectItemType[]>(staticItems);
+  // Seed with the current value as a placeholder so the widget shows
+  // something while the async fetch is in-flight. The real items replace
+  // this when loadAsync completes.
+  const [items, setItems] = useState<SelectItemType[]>(() => {
+    if (staticItems.length > 0) {
+      return staticItems;
+    }
+    if (value !== null && value !== undefined) {
+      return [{ id: String(value), label: String(value) }];
+    }
+
+    return [];
+  });
   const requestIdRef = useRef(0);
   const fieldKey = typeof field === 'string' ? field : JSON.stringify(field);
 
