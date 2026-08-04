@@ -298,9 +298,8 @@ describe('ExportUtils', () => {
     });
 
     it('uses the desired pixelRatio of 2 for small graphs', async () => {
-      // 2 (not 3) so a ~200-node lineage graph fits inside Playwright's 120s
-      // download-event budget on slower CI runners — see ExportUtils.ts
-      // comment on DESIRED_PIXEL_RATIO.
+      // 2 (not 3) so the encode step stays fast on large graphs — see
+      // ExportUtils.ts comment on DESIRED_PIXEL_RATIO.
       await exportPNGImageFromElement(mockExportData);
 
       expect(toCanvas).toHaveBeenCalledWith(
@@ -310,8 +309,9 @@ describe('ExportUtils', () => {
     });
 
     it('caps pixelRatio for very large graphs to keep canvas under 16K px', async () => {
-      // A 10000x8000 logical graph at pixelRatio=2 would be 20000x16000 — over
-      // Chrome's 16K canvas-dim cap. Adaptive cap must drop pixelRatio below 2.
+      // A 10000x8000 logical graph at pixelRatio=2 would be 20000x16000 —
+      // over Chrome's 16K per-side cap. Adaptive cap must drop pixelRatio
+      // below 2.
       document.querySelector = jest.fn().mockReturnValue({
         scrollWidth: 10000,
         scrollHeight: 8000,
