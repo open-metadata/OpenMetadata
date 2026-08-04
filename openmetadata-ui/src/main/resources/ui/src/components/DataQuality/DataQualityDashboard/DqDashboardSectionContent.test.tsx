@@ -14,6 +14,8 @@ import { render, screen } from '@testing-library/react';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import { DqDashboardSectionContent } from './DqDashboardSectionContent.component';
 
+const mockTestCaseStatusAreaChartWidget = jest.fn();
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const Grid = ({ children }: React.PropsWithChildren) => (
     <div data-testid="grid">{children}</div>
@@ -105,9 +107,15 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(({ name }: { name: string }) => (
-        <div data-testid={`test-case-status-area-widget-${name}`} />
-      ))
+      .mockImplementation(
+        (props: { name: string; redirectPath?: { search?: string } }) => {
+          mockTestCaseStatusAreaChartWidget(props);
+
+          return (
+            <div data-testid={`test-case-status-area-widget-${props.name}`} />
+          );
+        }
+      )
 );
 
 jest.mock(
@@ -171,6 +179,14 @@ describe('DqDashboardSectionContent component', () => {
     expect(
       screen.getByTestId('test-case-status-area-widget-failed')
     ).toBeInTheDocument();
+    expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'success',
+        redirectPath: expect.objectContaining({
+          search: expect.stringContaining('lastRunRange%5BstartTs%5D=1000'),
+        }),
+      })
+    );
   });
 
   it('should render the incident-metrics section with incident type and time widgets', () => {

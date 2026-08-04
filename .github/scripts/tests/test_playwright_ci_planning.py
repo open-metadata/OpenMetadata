@@ -268,6 +268,397 @@ def test_emit_unweighted_warnings_ignores_tests_with_history(capsys):
     assert capsys.readouterr().err == ""
 
 
+def test_stale_baseline_files_flag_all_fallback_files_over_threshold():
+    # The exact chromium-12 pattern (#30812): every planned test in a file
+    # has no timing evidence (test_weights miss + identity_weights miss)
+    # AND the file has >= STALE_BASELINE_MIN_TESTS planned tests.
+    planner = load_script("build_playwright_shards")
+    stale_file = "Pages/Reactivated.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            stale_file,
+            f"unit-{index}",
+            test_ids={f"reactivated-{index}"},
+            test_names={f"reactivated-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS)
+    ]
+
+    result = planner.stale_baseline_files_in_plan(units, {}, {})
+
+    assert result == [(stale_file, planner.STALE_BASELINE_MIN_TESTS)]
+
+
+def test_stale_baseline_files_ignore_files_below_threshold():
+    # A file with fewer than STALE_BASELINE_MIN_TESTS on the fallback path
+    # is a legitimate "wrote a couple of tests" case, not a re-enable.
+    planner = load_script("build_playwright_shards")
+    file = "Pages/JustTwoNewTests.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"new-{index}"},
+            test_names={f"new-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS - 1)
+    ]
+
+    assert planner.stale_baseline_files_in_plan(units, {}, {}) == []
+
+
+def test_stale_baseline_files_ignore_files_with_any_history():
+    # If even one test in the file has real history, it's not the stale
+    # pattern — it's just "someone added some new tests to a covered file",
+    # which the softer emit_unweighted_warnings covers.
+    planner = load_script("build_playwright_shards")
+    file = "Pages/Existing.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"test-{index}"},
+            test_names={f"test-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS + 3)
+    ]
+    weights = {"test-0": 5_000}  # a single existing test carries the file
+
+    assert planner.stale_baseline_files_in_plan(units, weights, {}) == []
+
+
+def test_stale_baseline_files_ignore_files_covered_by_identity_match():
+    # Identity fallback (file + leaf title) is treated as real history —
+    # the planner uses those weights, so the file is not "stale".
+    planner = load_script("build_playwright_shards")
+    file = "Pages/RenamedIds.spec.ts"
+    units = [
+        planner.Unit(
+            "chromium",
+            file,
+            f"unit-{index}",
+            test_ids={f"drifted-id-{index}"},
+            test_names={f"drifted-id-{index}": f"case {index}"},
+        )
+        for index in range(planner.STALE_BASELINE_MIN_TESTS + 2)
+    ]
+    identity_weights = {
+        (file, f"case {index}"): 4_000
+        for index in range(len(units))
+    }
+
+    assert planner.stale_baseline_files_in_plan(units, {}, identity_weights) == []
+
+
+def test_misrouted_lane_hint_violations_flags_bulk_import_on_chromium():
+    # Reproduces PR #30834's bug — BulkImport.spec.ts landed on chromium
+    # because the `@import-export` tag was dropped when un-`fixme`ing the
+    # describe. The hint check names the file and the expected tag.
+    planner = load_script("build_playwright_shards")
+    unit = planner.Unit(
+        "chromium",  # actual project — wrong
+        "Features/BulkImport.spec.ts",
+        "Bulk Import Export",
+    )
+
+    violations = planner.misrouted_lane_hint_violations([unit])
+
+    assert violations == [
+        (
+            "Features/BulkImport.spec.ts",
+            "chromium",
+            "ImportExport",
+            "@import-export",
+        )
+    ]
+
+
+def test_misrouted_lane_hint_violations_stays_quiet_when_route_matches():
+    planner = load_script("build_playwright_shards")
+    unit = planner.Unit(
+        "ImportExport",
+        "Features/BulkImport.spec.ts",
+        "Bulk Import Export",
+    )
+
+    assert planner.misrouted_lane_hint_violations([unit]) == []
+
+
+def test_misrouted_lane_hint_violations_matches_import_export_filename_family():
+    planner = load_script("build_playwright_shards")
+    matching_files = [
+        "Features/BulkImport.spec.ts",
+        "Features/BulkImportWithDotInName.spec.ts",
+        "Features/MetricBulkImportExportEdit.spec.ts",
+        "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
+        "Pages/GlossaryImportExport.spec.ts",
+    ]
+    units = [
+        planner.Unit("chromium", file, "describe title")
+        for file in matching_files
+    ]
+
+    violations = planner.misrouted_lane_hint_violations(units)
+
+    assert {v[0] for v in violations} == set(matching_files)
+
+
+def test_misrouted_lane_hint_violations_ignores_unmatched_filenames():
+    # Files without Import/Export or matching patterns must not trip the
+    # hint even when they land on chromium — chromium is the correct
+    # destination for the vast majority of specs.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit("chromium", "Pages/Users.spec.ts", "user tests"),
+        planner.Unit("chromium", "Features/AdvancedSearch.spec.ts", "Advanced Search"),
+        planner.Unit("chromium", "Pages/Entity.spec.ts", "entity tests"),
+    ]
+
+    assert planner.misrouted_lane_hint_violations(units) == []
+
+
+def test_misrouted_lane_hint_violations_dedupes_across_units():
+    # After AUDITED_PARALLEL_SUITES splits a file into per-spec units,
+    # each unit shares the same file — the violation should collapse to
+    # a single entry, not fire once per test.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium",
+            "Features/BulkImport.spec.ts",
+            f"Bulk Import Export › case {index}",
+        )
+        for index in range(4)
+    ]
+
+    violations = planner.misrouted_lane_hint_violations(units)
+
+    assert len(violations) == 1
+    assert violations[0][0] == "Features/BulkImport.spec.ts"
+
+
+def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
+    # End-to-end: the planner exits non-zero at PR (targeted) plan time
+    # when a file's every planned test is on the fallback path. This is
+    # the gate that catches the pattern on PRs instead of on the merge
+    # queue (#30812 trigger scenario). Full-mode planning is exempt so
+    # nightly/merge_group runs can still generate the timing-history
+    # artifact that unblocks the "wait for the next full run" fix.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    # A spec file with 5 tests (== STALE_BASELINE_MIN_TESTS default), all
+    # newly discovered — no baseline entries.
+    file = "Pages/Reactivated.spec.ts"
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": file,
+                        "suites": [
+                            {
+                                "title": "Reactivated tests",
+                                "specs": [
+                                    {
+                                        "id": f"synthetic-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(5)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    # Targeted selection matching the stale file — mirrors what the PR
+    # selection artifact carries when the PR touches this spec.
+    selection.write_text(
+        json.dumps(
+            {
+                "mode": "targeted",
+                "selectors": [
+                    {"spec": f"playwright/e2e/{file}", "projects": ["auto"]}
+                ],
+            }
+        )
+    )
+    # History file exists but does not cover any of the discovered specs —
+    # every test in the file falls through to FALLBACK_TEST_MS.
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "Stale timing-baseline.json entries detected" in combined
+    assert file in combined
+    assert "5 planned test(s)" in combined
+    # The `::error file=...::` annotation must carry the full repo-relative
+    # spec path so GitHub Actions attaches it inline in the PR checks UI.
+    assert (
+        f"::error file=openmetadata-ui/src/main/resources/ui/playwright/e2e/{file}::"
+        in combined
+    )
+    # The gate must fire BEFORE the plan is written — matrix.json must not
+    # exist, so a downstream `jq` step will visibly fail on the plan step.
+    assert not (output_dir / "matrix.json").exists()
+
+
+def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
+    # Full-mode (nightly / merge_group) planning must not trip the
+    # stale-baseline gate — otherwise the very run that captures the
+    # missing timing evidence would fail before it could execute.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    file = "Pages/Reactivated.spec.ts"
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": file,
+                        "suites": [
+                            {
+                                "title": "Reactivated tests",
+                                "specs": [
+                                    {
+                                        "id": f"synthetic-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(5)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    selection.write_text(json.dumps({"mode": "full"}))
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    combined = result.stdout + result.stderr
+    # The stale-baseline gate must NOT fire in full mode — a plan should
+    # still be written so the run can execute and refresh the baseline.
+    assert "Stale timing-baseline.json entries detected" not in combined
+    assert (output_dir / "matrix.json").exists()
+
+
+def test_main_fails_on_misrouted_lane_hint(tmp_path):
+    # End-to-end: the planner exits non-zero at plan time when a hint-file
+    # is on the wrong project. This is the guardrail that would have caught
+    # PR #30834 at PR review instead of on the merge queue.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": "Features/BulkImport.spec.ts",
+                        "suites": [
+                            {
+                                "title": "Bulk Import Export",
+                                "specs": [
+                                    {
+                                        "id": f"bulk-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(3)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    selection.write_text(json.dumps({"mode": "full"}))
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "routed to the wrong project" in combined
+    assert "Features/BulkImport.spec.ts" in combined
+    assert "@import-export" in combined
+    assert not (output_dir / "matrix.json").exists()
+
+
+def test_oversized_units_error_names_both_common_fixes():
+    # The improved error message must point the reader at BOTH the tag
+    # option and the AUDITED_PARALLEL_SUITES escape hatch — the old
+    # message just said "refactor or audit" and left developers guessing.
+    planner = load_script("build_playwright_shards")
+    src = (SCRIPTS / "build_playwright_shards.py").read_text()
+
+    assert "FILE_LANE_HINTS" in src
+    # The oversized branch mentions both remediation paths:
+    oversized_index = src.index("Atomic Playwright units exceed")
+    following = src[oversized_index:oversized_index + 2000]
+    assert "tag:" in following or "tag option" in following.lower() or "'{ tag:" in following
+    assert "AUDITED_PARALLEL_SUITES" in following
+
+
 def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):
     # Was previously "only_preserves_explicit_skips" — the planner used to pin
     # weight_ms=0 for tests whose only recorded outcome was 'skipped'. That was
@@ -359,15 +750,27 @@ def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_p
 
 def test_versioned_baseline_omits_all_zero_ids_from_weights():
     # Was previously "only_uses_zero_weight_for_skipped_ids". See the sibling
-    # test above for the rationale for the behavior change.
+    # test above for the rationale for the behavior change. The behavior we
+    # care about is that every zero-duration entry in the checked-in baseline
+    # is filtered out of `weights` — regardless of whether its recorded
+    # outcome was `skipped` (normal) or `expected` (rare 0-ms observation).
     planner = load_script("build_playwright_shards")
     baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
     payload = json.loads(baseline.read_text())
     zero_tests = [test for test in payload["tests"] if test["durationMs"] == 0]
 
+    # Ensure there's something to check — if a future baseline refresh
+    # produces a run with zero skipped/0-ms entries, the `all(...)` below
+    # would pass vacuously without exercising the filter. Fail loudly
+    # instead so whoever refreshed the baseline knows to either construct
+    # a synthetic fixture or convert this to a synthetic test.
+    assert zero_tests, (
+        "checked-in baseline has no zero-duration entries; this test can "
+        "no longer exercise the load_history filter path against real data"
+    )
+
     weights, _ = planner.load_history([baseline])
 
-    assert any(test["outcome"] == "expected" for test in zero_tests)
     assert all(test["id"] not in weights for test in zero_tests)
 
 
@@ -794,6 +1197,47 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
         if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
     )
     assert "Ingestion" in schema_search["projects"]
+
+
+def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
+    """The Explore mapping's ``Flow/*Search*.spec.ts`` glob also matches
+    SearchRBAC.spec.ts, which ``chromium`` testIgnores and only the dedicated
+    ``SearchRBAC`` project runs. Without that project in the mapping the selector
+    resolves to zero units and build_playwright_shards.py aborts the whole plan.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
+        "QuickFilterDropdown.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    search_rbac = next(
+        entry
+        for entry in selection["selectors"]
+        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
+    )
+    assert "SearchRBAC" in search_rbac["projects"]
 
 
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):

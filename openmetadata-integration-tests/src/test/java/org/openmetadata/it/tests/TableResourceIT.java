@@ -6452,4 +6452,26 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         idTagsProfile.getTags().isEmpty(), "Tags must be present even when profile requested");
     assertNotNull(idTagsProfile.getProfile(), "Profile must be present when profile requested");
   }
+
+  @Test
+  void test_listTablesFilteredByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    for (int i = 0; i < 3; i++) {
+      CreateTable request = new CreateTable();
+      request.setName(ns.prefix("service_filter_table_" + i));
+      request.setDatabaseSchema(schema.getFullyQualifiedName());
+      request.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+      client.tables().create(request);
+    }
+
+    ListResponse<Table> response =
+        client.tables().list(new ListParams().setService(service.getName()).setLimit(50));
+
+    assertEquals(3, response.getData().size());
+    assertTrue(
+        response.getData().stream()
+            .allMatch(table -> table.getFullyQualifiedName().startsWith(service.getName() + ".")));
+  }
 }

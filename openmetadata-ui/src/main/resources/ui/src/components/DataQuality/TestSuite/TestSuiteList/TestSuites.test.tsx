@@ -266,6 +266,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
+    Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
+      <div data-testid={testId} />
+    ),
     Tabs: MockTabs,
     Table: MockTable,
   };
