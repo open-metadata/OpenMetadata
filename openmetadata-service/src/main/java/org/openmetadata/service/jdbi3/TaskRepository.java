@@ -1776,19 +1776,18 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     private void updatePayload() {
-      // Report M7: create-time validation rejects a past expirationDate but the update path used
-      // to accept it, so a client could PATCH an Open DAR's payload to a past date. If the field
-      // actually changed and the new value is not in the future, reject. Same failure text as the
-      // create-time check so callers see one consistent message.
+      // Report M7 (past date on PATCH) + Copilot follow-up (10-year horizon cap on PATCH):
+      // create-time validation rejects both a past expirationDate and one beyond the ten-year
+      // horizon, but the update path used to accept either. If the field actually changes,
+      // re-run the same create-time check so the same 400 fires whether the caller lands the
+      // bad value on POST or on PATCH. Skip when expirationDate is untouched so unrelated
+      // payload edits (columns, reason) on an already-expired-but-still-Open task remain
+      // possible.
       if (updated.getType() == TaskEntityType.DataAccessRequest) {
         Long previousExpiry = readExpirationDate(original.getPayload());
         Long nextExpiry = readExpirationDate(updated.getPayload());
-        if (!Objects.equals(previousExpiry, nextExpiry)
-            && nextExpiry != null
-            && nextExpiry <= System.currentTimeMillis()) {
-          throw new IllegalArgumentException(
-              "Data Access Request expirationDate must be a future timestamp: '%s'."
-                  .formatted(nextExpiry));
+        if (!Objects.equals(previousExpiry, nextExpiry)) {
+          TaskFieldValidator.validateDataAccessRequestExpiry(updated);
         }
       }
       recordChange(
