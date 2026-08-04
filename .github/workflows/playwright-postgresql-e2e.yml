@@ -1249,6 +1249,19 @@ jobs:
               }
             }' > "$STATUS_DIR/ci-status.json"
 
+      - name: Aggregate flake report
+        if: always()
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn flake:report || true
+
+      - name: Upload flake report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: flake-report-${{ matrix.shardId }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/flake-report.json
+          retention-days: 30
+
       - name: Upload Playwright blob report
         uses: actions/upload-artifact@v6
         if: always()
