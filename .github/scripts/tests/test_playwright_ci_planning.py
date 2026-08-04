@@ -1585,6 +1585,75 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     )
 
 
+def test_impact_mapping_excludes_delegated_specs(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    source_path = (
+        tmp_path / selector.UI_ROOT / "src/components/OntologyExplorer/view.ts"
+    )
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text("export const view = {};\n")
+    spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "OntologyExplorer.spec.ts").write_text(
+        "test('ontology', () => undefined);\n"
+    )
+    (spec_dir / "OntologyExplorerRdf.spec.ts").write_text(
+        "test('rdf', () => undefined);\n"
+    )
+    impact_map = tmp_path / "impact-map.json"
+    impact_map.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "delegatedSpecs": [
+                    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+                ],
+                "sharedInfrastructure": [],
+                "mappings": [
+                    {
+                        "sources": [
+                            f"{selector.UI_ROOT}src/components/OntologyExplorer/**"
+                        ],
+                        "projects": ["chromium"],
+                        "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"],
+                    }
+                ],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text(f"{source_path.relative_to(tmp_path)}\n")
+    output = tmp_path / "selection.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(impact_map),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["selectors"] == [
+        {
+            "projects": ["chromium"],
+            "spec": "playwright/e2e/Features/OntologyExplorer.spec.ts",
+        }
+    ]
+
+
 def test_visual_regression_specs_are_not_selected_by_the_main_workflow():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
