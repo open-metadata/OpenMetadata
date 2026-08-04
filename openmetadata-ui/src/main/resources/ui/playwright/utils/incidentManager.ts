@@ -106,6 +106,32 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await expect(page.getByRole('tab', { name: 'Data Quality' })).toBeVisible();
 };
 
+/**
+ * Asserts a failed test case's incident sits at `status`, then opens the test
+ * case details page. Drives no transition, but leaves the page where
+ * {@link acknowledgeTask} does so callers can go on to the Incident tab.
+ */
+export const verifyIncidentStatus = async (data: {
+  testCase: string;
+  page: Page;
+  table: TableClass;
+  status: string;
+}) => {
+  const { testCase, page, table, status } = data;
+  await visitProfilerTab(page, table);
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+
+  await expect(
+    page.locator(`[data-testid="status-badge-${testCase}"]`)
+  ).toContainText('Failed');
+
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText(status);
+  await page.getByTestId(testCase).getByText(testCase).click();
+  await waitForAllLoadersToDisappear(page);
+};
+
 export const acknowledgeTask = async (data: {
   testCase: string;
   page: Page;
