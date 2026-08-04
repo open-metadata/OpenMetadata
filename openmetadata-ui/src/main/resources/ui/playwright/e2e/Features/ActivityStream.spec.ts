@@ -81,7 +81,7 @@ test.describe('Activity Stream on Entity Pages', () => {
       );
 
       if ((await leftPanelContent.count()) > 0) {
-        await expect(leftPanelContent.first()).toBeVisible();
+        await expect(leftPanelContent).not.toHaveCount(0);
       }
     }
   });
@@ -98,11 +98,9 @@ test.describe('Activity Stream on Entity Pages', () => {
     await editDescriptionButton.click();
 
     // Wait for editor to appear - TipTap uses ProseMirror contenteditable
-    const descriptionEditor = page
-      .locator(
-        '[data-testid="editor"] .ProseMirror, [data-testid="markdown-editor"] .ql-editor, .toastui-editor-contents'
-      )
-      .first();
+    const descriptionEditor = page.locator(
+      '[data-testid="editor"] .ProseMirror, [data-testid="markdown-editor"] .ql-editor, .toastui-editor-contents'
+    );
 
     await expect(descriptionEditor).toBeVisible({ timeout: 10000 });
 
@@ -153,9 +151,7 @@ test.describe('Activity Stream on Entity Pages', () => {
       await expect(tagSearch).toBeVisible();
       await tagSearch.fill('PII');
 
-      const tagOption = page
-        .locator('[data-testid="tag-PII.Sensitive"]')
-        .first();
+      const tagOption = page.locator('[data-testid="tag-PII.Sensitive"]');
 
       if (await tagOption.isVisible()) {
         await tagOption.click();

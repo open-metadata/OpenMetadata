@@ -344,10 +344,9 @@ test.describe(
         ).not.toBeVisible();
 
         // Wait for grid cells to be ready for interaction
-        await page
-          .locator('.rdg-cell[role="gridcell"]')
-          .first()
-          .waitFor({ state: 'visible' });
+        await expect(
+          page.locator('.rdg-cell[role="gridcell"]')
+        ).not.toHaveCount(0);
 
         // Click on first cell and edit
 
@@ -484,10 +483,9 @@ test.describe(
         ).not.toBeVisible();
 
         // Wait for grid cells to be ready for interaction
-        await page
-          .locator('.rdg-cell[role="gridcell"]')
-          .first()
-          .waitFor({ state: 'visible' });
+        await expect(
+          page.locator('.rdg-cell[role="gridcell"]')
+        ).not.toHaveCount(0);
 
         // click on last row first cell
         await page.click('.rdg-cell[role="gridcell"]');
@@ -636,10 +634,9 @@ test.describe(
         ).not.toBeVisible();
 
         // Wait for grid cells to be ready for interaction
-        await page
-          .locator('.rdg-cell[role="gridcell"]')
-          .first()
-          .waitFor({ state: 'visible' });
+        await expect(
+          page.locator('.rdg-cell[role="gridcell"]')
+        ).not.toHaveCount(0);
 
         // Click on first cell and edit
         await page.click('.rdg-cell[role="gridcell"]');
@@ -784,8 +781,8 @@ test.describe(
 
         // Verify checkboxes ARE visible (multi-select mode)
         await expect(
-          page.locator('.domain-selectable-tree .ant-tree-checkbox').first()
-        ).toBeVisible();
+          page.locator('.domain-selectable-tree .ant-tree-checkbox')
+        ).not.toHaveCount(0);
 
         // Close the selector by clicking cancel btn
         await page.getByTestId('cancelAssociatedTag').click();

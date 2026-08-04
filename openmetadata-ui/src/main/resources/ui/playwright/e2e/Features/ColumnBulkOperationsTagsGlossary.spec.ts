@@ -131,7 +131,6 @@ async function waitForGlossaryTermInSearch(
 function getColumnRowCheckbox(page: Page, rowId: string) {
   return page
     .locator(`[data-row-id="${rowId}"]`)
-    .first()
     .locator('[slot="selection"]');
 }
 
@@ -194,10 +193,7 @@ test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () =>
     const tagsField = drawer.getByTestId('tags-field');
 
     await test.step('Open the tags dropdown and search', async () => {
-      const tagInput = tagsField
-        .getByTestId('tag-selector')
-        .locator('input')
-        .first();
+      const tagInput = tagsField.getByTestId('tag-selector').locator('input');
       await tagInput.click();
 
       const searchRes = page.waitForResponse(
@@ -240,8 +236,7 @@ test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () =>
     await test.step('Open the glossary tree dropdown and search', async () => {
       const glossaryInput = glossaryField
         .getByTestId('tag-selector')
-        .locator('input')
-        .first();
+        .locator('input');
       await glossaryInput.click();
 
       const searchRes = page.waitForResponse(

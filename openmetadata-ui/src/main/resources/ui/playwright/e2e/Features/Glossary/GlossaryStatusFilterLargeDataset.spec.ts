@@ -125,6 +125,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const checkCount = maxRows ? Math.min(rowCount, maxRows) : rowCount;
 
     for (let i = 0; i < checkCount; i++) {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- iterating every loaded row by index; there is no per-row identifier to scope by
       const statusCell = rows.nth(i).locator('td:nth-child(3)');
       const statusText = await statusCell.textContent();
       if (statusText?.trim()) {
@@ -361,6 +362,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       expect(rowCount).toBeGreaterThan(0);
 
+      // eslint-disable-next-line om-playwright/no-positional-locator -- checking an arbitrary representative match is sufficient here: every row returned by this search is expected to contain the query text
       const firstRow = rows.first();
       const nameCell = firstRow.locator('td:first-child');
       await expect(nameCell).toContainText('Term_');
@@ -562,10 +564,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await page.getByTestId('glossary-status-save-btn').click();
 
-      await page
-        .locator('tbody > tr:not([aria-hidden="true"])')
-        .first()
-        .waitFor({ timeout: 10000 });
+      await expect(
+        page.locator('tbody > tr:not([aria-hidden="true"])')
+      ).not.toHaveCount(0, { timeout: 10000 });
 
       const endTime = Date.now();
       const elapsed = endTime - startTime;

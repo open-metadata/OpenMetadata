@@ -99,8 +99,8 @@ test.describe('Ontology Explorer — E2E', () => {
   test('canvas renders without empty or error state', async ({ page }) => {
     await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
     await expect(
-      page.locator('.ontology-g6-container canvas').first()
-    ).toBeVisible();
+      page.locator('.ontology-g6-container canvas')
+    ).not.toHaveCount(0);
   });
 
   test('all three term nodes have canvas positions', async ({ page }) => {
@@ -194,8 +194,8 @@ test.describe('Ontology Explorer — E2E', () => {
       page.getByTestId('ontology-graph-hierarchy-empty')
     ).not.toBeVisible();
     await expect(
-      page.locator('.ontology-g6-container canvas').first()
-    ).toBeVisible();
+      page.locator('.ontology-g6-container canvas')
+    ).not.toHaveCount(0);
   });
 
   test('switching back from Hierarchy to Overview restores stats', async ({

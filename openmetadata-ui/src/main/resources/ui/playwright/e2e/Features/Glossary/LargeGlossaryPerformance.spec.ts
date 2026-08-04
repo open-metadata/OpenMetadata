@@ -272,6 +272,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
   test('should expand individual terms', async ({ page }) => {
     // Find a term with children (Term_5)
+    // eslint-disable-next-line om-playwright/no-positional-locator -- "Term_1" substring-matches many rows (Term_1, Term_10, Term_11, ...); .first() preserves the existing (pre-existing, imprecise) selection of "a term with children" rather than changing test behavior
     const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();
     const expandIcon = term5Row.getByTestId('expand-icon');
 
@@ -316,15 +317,15 @@ test.describe('Large Glossary Performance Tests', () => {
 
   test('should handle status filtering', async ({ page }) => {
     // Click status dropdown
-    const statusDropdown = page.getByText('Status').first();
+    const statusDropdown = page.getByTestId('glossary-status-dropdown');
     await statusDropdown.click();
 
     // Wait for dropdown menu
     await page.getByTestId('glossary-status-option-all').waitFor();
 
     // Check if status options are available
-    const approvedCheckbox = page.locator('text=Approved').first();
-    const draftCheckbox = page.locator('text=Draft').first();
+    const approvedCheckbox = page.getByTestId('glossary-status-option-Approved');
+    const draftCheckbox = page.getByTestId('glossary-status-option-Draft');
 
     await expect(approvedCheckbox).toBeVisible();
     await expect(draftCheckbox).toBeVisible();
@@ -415,6 +416,7 @@ test.describe('Large Glossary Child Term Performace', () => {
     page,
   }) => {
     // Find a term with children (Term_5)
+    // eslint-disable-next-line om-playwright/no-positional-locator -- "Term_1" substring-matches many rows (Term_1, Term_10, Term_11, ...); .first() preserves the existing (pre-existing, imprecise) selection of "a term with children" rather than changing test behavior
     const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();
     const expandIcon = term5Row.locator('[data-testid="expand-icon"]');
 

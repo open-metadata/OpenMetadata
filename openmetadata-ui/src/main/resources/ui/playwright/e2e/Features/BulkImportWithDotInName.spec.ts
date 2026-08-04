@@ -686,7 +686,9 @@ test.describe(
 
         // Click on a cell to edit - find the first row's description cell
         // Navigate to description column (3rd column) and edit
+        // eslint-disable-next-line om-playwright/no-positional-locator -- CSV grid rows have no test-owned name; "first row" is the top of the export's hierarchy and is inherently ordinal
         await page.locator('.rdg-row').nth(0).click();
+        // eslint-disable-next-line om-playwright/no-positional-locator -- same ordinal row as above; the grid has no other identifier for it
         const descriptionCell1 = page
           .locator('.rdg-row')
           .nth(0)

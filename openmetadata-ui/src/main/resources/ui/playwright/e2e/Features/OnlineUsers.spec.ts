@@ -121,7 +121,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await searchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const userCell = page.getByRole('cell', { name: displayName }).first();
+    const userCell = page.getByRole('cell', { name: displayName });
     await expect(userCell).toBeVisible();
 
     const userRow = page.locator('tr').filter({ has: userCell });
@@ -141,6 +141,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Check each row doesn't contain bot users
     for (let i = 0; i < rowCount; i++) {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- checking every row for a bot user; the loop index is the only way to address each one
       const rowText = await tableRows.nth(i).textContent();
 
       expect(rowText).not.toContain('ingestion-bot');
@@ -220,6 +221,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Check first few activity times
     for (let i = 0; i < Math.min(count, 3); i++) {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- sampling the first few activity cells by index; the loop index is the only way to address each one
       const text = await activityCells.nth(i).textContent();
 
       // Should contain either "Online now" or time format like "51 minutes ago"
@@ -260,7 +262,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByRole('cell', { name: displayName }).first()
+        page.getByRole('cell', { name: displayName })
       ).toBeVisible();
 
       // Search by email should surface the same user
@@ -273,7 +275,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByRole('cell', { name: displayName }).first()
+        page.getByRole('cell', { name: displayName })
       ).toBeVisible();
     });
   });

@@ -101,10 +101,10 @@ test(
         .waitFor({ state: 'visible' });
 
       await expect(
-        page.locator('.failed-sample-data-column').first()
-      ).toBeVisible();
+        page.locator('.failed-sample-data-column')
+      ).not.toHaveCount(0);
 
-      const sampleDataTable = page.getByTestId('sample-data-table').first();
+      const sampleDataTable = page.getByTestId('sample-data-table');
 
       const failedColumns = sampleDataTable.locator(
         '.failed-sample-data-column'

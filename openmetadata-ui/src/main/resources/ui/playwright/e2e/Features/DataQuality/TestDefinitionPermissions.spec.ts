@@ -26,14 +26,17 @@ const actionNotAllowed = async (page: Page) => {
   await expect(addButton).not.toBeVisible();
 
   // Verify edit buttons are NOT visible for user test definitions
+  // eslint-disable-next-line om-playwright/no-positional-locator -- permission gate applies uniformly to every row; no test-owned row identifier exists in this shared helper, so an arbitrary representative row is checked
   const editButtons = page.getByTestId(/edit-test-definition-/).first();
   await expect(editButtons).toBeDisabled();
 
   // Verify delete buttons are NOT visible
+  // eslint-disable-next-line om-playwright/no-positional-locator -- same as above: representative row, permission gate is row-independent
   const deleteButtons = page.getByTestId(/delete-test-definition-/).first();
   await expect(deleteButtons).toBeDisabled();
 
   // Verify enabled/disabled switches are NOT interactive (no EditAll permission)
+  // eslint-disable-next-line om-playwright/no-positional-locator -- same as above: representative row, permission gate is row-independent
   const firstSwitch = page.getByRole('switch').first();
   await expect(firstSwitch).toBeDisabled();
 };
@@ -306,6 +309,7 @@ test.describe(
       await expect(addButton).not.toBeVisible();
 
       // Data Steward should be able to toggle enabled/disabled switches (EditAll permission)
+      // eslint-disable-next-line om-playwright/no-positional-locator -- EditAll permission is row-independent; no test-owned row identifier exists, so an arbitrary representative row's switch is toggled and its state verified
       const firstSwitch = dataStewardPage.getByRole('switch').first();
 
       await expect(firstSwitch).toBeEnabled();
@@ -342,6 +346,7 @@ test.describe(
       const deleteButtons = dataStewardPage.getByTestId(
         /delete-test-definition-/
       );
+      // eslint-disable-next-line om-playwright/no-positional-locator -- Delete permission is row-independent; no test-owned row identifier exists, so an arbitrary representative row is checked
       await expect(deleteButtons.first()).toBeDisabled();
     });
 

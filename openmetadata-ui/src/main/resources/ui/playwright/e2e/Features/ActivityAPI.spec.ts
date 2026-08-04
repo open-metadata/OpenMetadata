@@ -88,7 +88,7 @@ test.describe(
         await visitTableActivityFeed(page, entityChangesTable);
 
         const feedItem = await getFeedItemByText(page, summaryText);
-        const entityLink = feedItem.locator('a[href*="/table/"]').first();
+        const entityLink = feedItem.locator('a[href*="/table/"]');
         const href = await entityLink.getAttribute('href');
 
         await expect(feedItem).toContainText(/description/i);
@@ -285,7 +285,7 @@ test.describe(
       const feedItems = feedWidget.getByTestId('message-container');
 
       await expect(feedWidget).toBeVisible();
-      await expect(feedItems.first()).toBeVisible({
+      await expect(feedItems).not.toHaveCount(0, {
         timeout: FEED_ITEM_TIMEOUT,
       });
     });

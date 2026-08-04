@@ -182,9 +182,9 @@ test.describe(
         });
 
         // Find and click edit button on first row
-        const firstEditButton = page
-          .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
-          .first();
+        const firstEditButton = page.getByTestId(
+          `edit-test-definition-${TEST_DEFINITION_NAME}`
+        );
         await firstEditButton.click();
 
         // Wait for drawer to open (form body confirms the edit drawer opened).
@@ -358,10 +358,9 @@ test.describe(
           // then assert it is gone so a mis-matched selector can't silently no-op.
           await page
             .getByTestId('test-platforms')
-            .locator('div')
+            .locator('span')
             .filter({ hasText: 'OpenMetadata' })
             .getByRole('button')
-            .first()
             .click();
           await expect(
             page
@@ -955,10 +954,9 @@ test.describe(
 
         await page
           .getByTestId('supported-services')
-          .locator('div')
+          .locator('span')
           .filter({ hasText: 'Mysql' })
           .getByRole('button')
-          .first()
           .click();
 
         await expect(
@@ -1049,10 +1047,9 @@ test.describe(
 
         await page
           .getByTestId('supported-services')
-          .locator('div')
+          .locator('span')
           .filter({ hasText: 'Postgres' })
           .getByRole('button')
-          .first()
           .click();
 
         await expect(
@@ -1063,10 +1060,9 @@ test.describe(
 
         await page
           .getByTestId('supported-services')
-          .locator('div')
+          .locator('span')
           .filter({ hasText: 'BigQuery' })
           .getByRole('button')
-          .first()
           .click();
 
         await expect(

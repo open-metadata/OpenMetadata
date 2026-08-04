@@ -108,9 +108,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.getByTestId('edit-description').click();
 
     const descriptionBox = '.om-block-editor[contenteditable="true"]';
-    await page.locator(descriptionBox).first().click();
-    await page.locator(descriptionBox).first().clear();
-    await page.locator(descriptionBox).first().fill(description);
+    await page.locator(descriptionBox).click();
+    await page.locator(descriptionBox).clear();
+    await page.locator(descriptionBox).fill(description);
 
     const patchResponse = page.waitForResponse(
       (response) =>
