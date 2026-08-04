@@ -737,7 +737,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
             <Box data-testid="failed-fields-list" direction="col" gap={2}>
               {serverValidation.schemaValidation?.failedFields?.map(
                 (field, index) => (
-                  <Box align="center" gap={2} key={`notfound-${index}`}>
+                  <Box align="center" gap={2} key={`notfound-${field}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
                       data-testid={`failed-field-${index}`}
@@ -749,7 +749,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               )}
               {serverValidation.schemaValidation?.duplicateFields?.map(
                 (field, index) => (
-                  <Box align="center" gap={2} key={`duplicate-${index}`}>
+                  <Box align="center" gap={2} key={`duplicate-${field}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
                       data-testid={`duplicate-field-${index}`}
@@ -761,7 +761,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
               )}
               {serverValidation.schemaValidation?.typeMismatchFields?.map(
                 (field, index) => (
-                  <Box align="center" gap={2} key={`typemismatch-${index}`}>
+                  <Box align="center" gap={2} key={`typemismatch-${field}`}>
                     <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0" />
                     <Typography
                       data-testid={`type-mismatch-field-${index}`}
@@ -829,6 +829,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           </Box>
           <div className="tw:flex-1 tw:min-h-50 tw:mb-4">
             <Box data-testid="entity-errors-list" direction="col" gap={2}>
+              {/* eslint-disable react/no-array-index-key -- errors may repeat */}
               {allErrors.map((error, index) => (
                 <Box
                   align="start"
@@ -843,6 +844,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   </Typography>
                 </Box>
               ))}
+              {/* eslint-enable react/no-array-index-key */}
             </Box>
           </div>
           <div className="tw:mt-auto tw:pt-4 tw:border-t tw:border-secondary">
@@ -920,7 +922,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                     <Box
                       align="center"
                       gap={2}
-                      key={`typemismatch-warning-${index}`}>
+                      key={`typemismatch-warning-${field}`}>
                       <AlertTriangle
                         className="tw:text-utility-warning-600"
                         size={14}

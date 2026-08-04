@@ -303,7 +303,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               {run.steps.map((s, idx) => (
                 <RunStepRow
                   isLast={idx === run.steps.length - 1}
-                  key={idx}
+                  key={s.name}
                   step={s}
                 />
               ))}

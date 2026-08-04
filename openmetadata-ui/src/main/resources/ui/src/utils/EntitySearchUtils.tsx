@@ -129,6 +129,7 @@ export const highlightSearchArrayElement = (
 
   return stringParts.map((part, index) =>
     part.toLowerCase() === (searchText ?? '').toLowerCase() ? (
+      // eslint-disable-next-line react/no-array-index-key -- repeated text fragments, fixed order
       <span className="text-highlighter" key={`${part}-${index}`}>
         {part}
       </span>

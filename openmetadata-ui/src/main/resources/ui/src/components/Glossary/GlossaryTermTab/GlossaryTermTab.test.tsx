@@ -273,6 +273,7 @@ jest.mock('../../common/Table/TableV2', () =>
         {dataSource.length === 0
           ? !loading && locale?.emptyText
           : dataSource.map((record, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- mock rows; Record has no typed id
               <div data-testid={`glossary-row-${index}`} key={index}>
                 {expandable?.expandIcon?.({
                   expanded: false,

@@ -37,8 +37,10 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
           </div>
         ) : (
           <div className="d-flex justify-between flex-col">
-            {userData.inheritedRoles?.map((inheritedRole, i) => (
-              <div className="mb-2 d-flex items-center gap-2" key={i}>
+            {userData.inheritedRoles?.map((inheritedRole) => (
+              <div
+                className="mb-2 d-flex items-center gap-2"
+                key={inheritedRole.id}>
                 <Icon component={IconUser} style={{ fontSize: '16px' }} />
                 <Typography.Text
                   className="ant-typography-ellipsis-custom w-48"

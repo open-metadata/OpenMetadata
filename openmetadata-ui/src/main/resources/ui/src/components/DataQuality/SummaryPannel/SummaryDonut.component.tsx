@@ -61,8 +61,8 @@ export const SummaryDonut = ({
         outerRadius={outerRadius}
         paddingAngle={paddingAngle}
         startAngle={90}>
-        {chartData.map((entry, index) => (
-          <Cell fill={entry.color} key={`cell-${index}`} />
+        {chartData.map((entry) => (
+          <Cell fill={entry.color} key={`cell-${entry.name}`} />
         ))}
       </Pie>
       <Tooltip />

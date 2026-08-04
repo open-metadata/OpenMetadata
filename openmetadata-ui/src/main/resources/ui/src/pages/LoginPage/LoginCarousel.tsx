@@ -12,7 +12,6 @@
  */
 
 import { Carousel, Typography } from 'antd';
-import { uniqueId } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import loginClassBase from '../../constants/LoginClassBase';
@@ -32,11 +31,11 @@ const LoginCarousel = () => {
       data-testid="carousel-container"
       easing="ease-in-out"
       effect="fade">
-      {carouselContent.map((data, idx) => (
+      {carouselContent.map((data) => (
         <div
           className="slider-container"
           data-testid="slider-container"
-          key={uniqueId() + '-' + currentIndex + '-' + idx}>
+          key={`${data.title}-${currentIndex}`}>
           <div className="text-container d-flex flex-col gap-4">
             <Typography.Title className="carousel-header display-md" level={1}>
               {t(`label.${data.title}`)}

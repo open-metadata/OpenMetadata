@@ -91,6 +91,8 @@ const FormBuilder = forwardRef<Form, Props>(
       queryBuilder: QueryBuilderWidget,
       code: CodeWidget,
       ...(useSelectWidget && {
+        // RJSF widget wrapper closes over the capitalizeOptionLabel prop.
+        // eslint-disable-next-line react/no-unstable-nested-components
         SelectWidget: (props: WidgetProps) => (
           <SelectWidget
             {...props}

@@ -52,12 +52,12 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
       {isEmpty(properties) ? (
         <Typography>{t('message.no-config-plural')}</Typography>
       ) : (
-        properties.map((element, index) => (
+        properties.map((element) => (
           <div
             className={classNames('property-wrapper', {
               'additional-fields': schema.additionalProperties,
             })}
-            key={`${element.content.key}-${index}`}>
+            key={element.content.key}>
             {element.content}
           </div>
         ))
