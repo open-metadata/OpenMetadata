@@ -50,7 +50,10 @@ import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.int
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEmptyJsonTreeForQueryBuilder } from '../../../utils/AdvancedSearchPureUtils';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
-import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
+import {
+  elasticSearchFormat,
+  hasUnfinishedRule,
+} from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
@@ -73,6 +76,7 @@ const QueryBuilderWidgetV1: FC<{
   label?: string;
   showCountPreview?: boolean;
   tree?: JsonTree;
+  onValidityChange?: (isValid: boolean) => void;
 }> = ({
   onChange,
   entityType = EntityType.ALL,
@@ -215,6 +219,9 @@ const QueryBuilderWidgetV1: FC<{
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === SearchOutputType.ElasticSearch) {
+      // Same tree and config the emitted filter is built from, so the caller can block a save that
+      // would otherwise drop an unfinished condition and silently widen the filter.
+      props.onValidityChange?.(!hasUnfinishedRule(nTree, config));
       const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {
         query: data,

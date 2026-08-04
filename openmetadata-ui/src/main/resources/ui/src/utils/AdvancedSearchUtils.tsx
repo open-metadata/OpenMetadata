@@ -126,6 +126,11 @@ export const generateSearchDropdownLabel = (
             width="18"
           />
         )}
+        {option.icon && (
+          <span className="tw:flex tw:items-center flex-none">
+            {option.icon}
+          </span>
+        )}
         <div>
           <span
             className="dropdown-option-label tw:truncate tw:block"
