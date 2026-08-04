@@ -4315,6 +4315,7 @@
     "validation-error-assets": "โปรดตรวจสอบสินทรัพย์ทั้งหมดที่กำลังถูกเพิ่ม",
     "value-count-profile-metric-description": "จำนวนค่าทั้งหมดในคอลัมน์",
     "value-must-be-greater-than": "{{field}} ต้องมากกว่า {{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} ต้องน้อยกว่าหรือเท่ากับ {{maximum}}",
     "value-should-equal-to-value": "ค่าต้องเท่ากับ {{value}}",
     "value-should-not-equal-to-value": "ค่าต้องไม่เท่ากับ {{value}}",
     "version-released-try-now": "{{version}} ได้ออกแล้ว <0>ดูสิ่งใหม่!</0>",

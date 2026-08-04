@@ -4315,6 +4315,7 @@
     "validation-error-assets": "追加されるすべてのアセットを確認してください",
     "value-count-profile-metric-description": "列内の値の合計数",
     "value-must-be-greater-than": "{{field}} は {{minimum}} より大きくなければなりません",
+    "value-must-be-less-than-or-equal": "{{field}} は {{maximum}} 以下である必要があります",
     "value-should-equal-to-value": "値は{{value}}と等しくなければなりません。",
     "value-should-not-equal-to-value": "値は{{value}}と等しくあってはいけません。",
     "version-released-try-now": "{{version}} がリリースされました <0>新機能を見る</0>",
