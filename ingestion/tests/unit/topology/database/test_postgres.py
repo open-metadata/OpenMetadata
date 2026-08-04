@@ -943,5 +943,7 @@ class TestPostgresCommonMappings(TestCase):
         )
 
         citext_type = pg_ischema_names["citext"]
-        data_type = ColumnTypeParser.get_column_type(citext_type.__name__)
+        # Resolve an instantiated type, matching how the dialect passes column
+        # types into the parser during reflection.
+        data_type = ColumnTypeParser.get_column_type(citext_type())
         self.assertEqual(data_type, "STRING")
