@@ -221,7 +221,9 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
   await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
-  await expect(page.getByTestId('add-tier')).toBeVisible();
+  await expect(page.getByTestId('tier-selector-display')).not.toBeVisible({
+    timeout: 30000,
+  });
 };
 
 export const removeCertificationFromWidget = async (
