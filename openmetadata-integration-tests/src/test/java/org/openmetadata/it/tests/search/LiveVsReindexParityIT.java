@@ -209,10 +209,18 @@ class LiveVsReindexParityIT {
     assertParity(parityCase.index(), parityCase.id(), parityCase.liveDoc(), parityCase.label());
   }
 
+  /**
+   * Snapshots what live indexing wrote, for comparison against the rebuild.
+   *
+   * <p>{@link #awaitIndexed} only waits for the document to <i>exist</i>. Presence is not a settled
+   * state: where a fixture writes more than once, the first write can satisfy it and the snapshot
+   * then describes an entity state the rebuild will never reproduce, which surfaces as a divergence
+   * in whichever field moved. Each {@code seed*} helper is therefore responsible for waiting on a
+   * value that only its final write produces before its id reaches this method — see {@link
+   * #seedTable}, which pins the column documents to the version its update produced.
+   */
   private static void capture(final String label, final String entityType, final String id) {
     final String index = inspector.indexNameFor(entityType);
-    // Column documents are written by a separate sync pass from the parent table's own document,
-    // so presence has to be awaited rather than assumed.
     final JsonNode liveDoc = awaitIndexed(index, id).deepCopy();
     CASES.add(new ParityCase(label, index, id, liveDoc));
   }
@@ -337,6 +345,19 @@ class LiveVsReindexParityIT {
     final Table updated = SdkClients.adminClient().tables().update(id, table);
     tableColumnFqn = updated.getColumns().getFirst().getFullyQualifiedName();
     awaitField(inspector.indexNameFor(Entity.TABLE), id, "description", DESCRIPTION);
+    // The column documents are written by a separate sync pass from the table's own document, and
+    // each carries the *parent table's* version (ColumnSearchIndex). This table is created and then
+    // updated, so awaiting presence alone lets capture() snapshot a column built from the
+    // pre-update table: the captured document reads version 0.1 while the rebuild reads 0.2, and
+    // the
+    // diff reports a divergence that has nothing to do with the two paths disagreeing. Waiting for
+    // the version the update produced pins the column documents to the same entity state the
+    // rebuild will read.
+    awaitField(
+        inspector.indexNameFor(Entity.TABLE_COLUMN),
+        ColumnSearchIndex.generateColumnId(tableColumnFqn),
+        "version",
+        String.valueOf(updated.getVersion()));
     return id;
   }
 
@@ -365,6 +386,14 @@ class LiveVsReindexParityIT {
 
     // The table itself is reachable from the schema's childAliases, so its own document flips.
     awaitField(inspector.indexNameFor(Entity.TABLE), table.getId().toString(), "deleted", "true");
+    // The column documents are flagged by a separate cascade
+    // (SearchRepository.softDeleteOrRestoreDescendantColumns) that lands after the table's own
+    // flip,
+    // so the table's flag is not a settled signal for them. Awaiting only that let capture()
+    // snapshot
+    // a column still reading deleted=false, which fails both this case's parity and the value
+    // assertion in softDeletedAncestorFlagsColumnDocument.
+    awaitField(inspector.indexNameFor(Entity.TABLE_COLUMN), columnId, "deleted", "true");
     return columnId;
   }
 
