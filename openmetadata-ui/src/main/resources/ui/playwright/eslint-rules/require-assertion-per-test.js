@@ -63,7 +63,7 @@ module.exports = {
     type: 'problem',
     docs: {
       description:
-        'Require every test to do more than page interactions with no verification',
+        'Flag tests that only perform page interactions and verify nothing',
     },
     schema: [],
     messages: {
@@ -133,11 +133,27 @@ module.exports = {
               call.range[0] >= body.range[0] &&
               call.range[1] <= body.range[1]
           );
-          const isPageInteractionOnly = nestedCalls.every((call) => {
+          // `test.slow()`, `test.setTimeout()`, `test.step()`, and their
+          // siblings are transparent, not exempting: they can't assert, so
+          // they don't count toward "does something other than interact
+          // with the page." A `test.step` callback is inline and fully
+          // visible in the same body — unlike a delegated helper there's no
+          // interprocedural barrier — so its own calls are already
+          // collected above and checked on their own merits; treating the
+          // `test.step(...)` call itself as transparent doesn't lose that
+          // coverage.
+          const isTestNamespaceCall = (call) => {
             const root = unwindToRoot(call.callee);
 
-            return root?.type === 'Identifier' && fixtureNames.has(root.name);
-          });
+            return root?.type === 'Identifier' && root.name === 'test';
+          };
+          const isPageInteractionOnly = nestedCalls
+            .filter((call) => !isTestNamespaceCall(call))
+            .every((call) => {
+              const root = unwindToRoot(call.callee);
+
+              return root?.type === 'Identifier' && fixtureNames.has(root.name);
+            });
 
           if (isPageInteractionOnly) {
             context.report({ node, messageId: 'pageInteractionsOnly' });

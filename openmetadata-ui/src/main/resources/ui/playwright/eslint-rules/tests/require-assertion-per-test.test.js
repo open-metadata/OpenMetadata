@@ -45,6 +45,18 @@ ruleTester.run('require-assertion-per-test', rule, {
        await page.getByTestId('x').click();
        await addUser(page);
      });`,
+    // test.step's callback is inline and fully visible, so an assertion
+    // inside it still counts — same as the 'nested' case above, restated
+    // with an explicit name per the test.* transparency fix.
+    `test('step with assertion', async ({ page }) => {
+       await test.step('s', async () => { await expect(page.getByTestId('x')).toBeVisible(); });
+     });`,
+    // test.slow() is transparent, not exempting: it can't assert, but a
+    // real delegated assertion elsewhere in the body still exempts the test.
+    `test('slow but delegates', async ({ page }) => {
+       test.slow(true);
+       await entity.descriptionUpdate(page);
+     });`,
   ],
   invalid: [
     {
@@ -65,6 +77,31 @@ ruleTester.run('require-assertion-per-test', rule, {
       code: `test('multi interaction', async ({ page }) => {
                await page.goto('/x');
                await page.getByTestId('y').click();
+             });`,
+      errors: [{ messageId: 'pageInteractionsOnly' }],
+    },
+    // test.slow() can't assert, so it must not shield a purely-interacting
+    // test from being flagged.
+    {
+      code: `test('slow but empty', async ({ page }) => {
+               test.slow(true);
+               await page.getByTestId('x').click();
+             });`,
+      errors: [{ messageId: 'pageInteractionsOnly' }],
+    },
+    {
+      code: `test('timeout then click', async ({ page }) => {
+               test.setTimeout(60000);
+               await page.goto('/x');
+               await page.getByTestId('y').click();
+             });`,
+      errors: [{ messageId: 'pageInteractionsOnly' }],
+    },
+    // test.step's callback is inline and fully visible; calls inside it are
+    // checked on their own merits, same as calls anywhere else in the body.
+    {
+      code: `test('step of clicks', async ({ page }) => {
+               await test.step('s', async () => { await page.getByTestId('x').click(); });
              });`,
       errors: [{ messageId: 'pageInteractionsOnly' }],
     },
