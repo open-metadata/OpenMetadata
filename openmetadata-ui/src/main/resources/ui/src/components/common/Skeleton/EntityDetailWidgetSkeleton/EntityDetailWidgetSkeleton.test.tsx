@@ -85,7 +85,7 @@ describe('EntityDetailWidgetSkeleton', () => {
     expect(container.querySelector('.tw\\:animate-pulse')).toBeInTheDocument();
   });
 
-  it('disables animation when reduced motion is preferred', () => {
+  it('animates skeletons when reduced motion is preferred', () => {
     matchMediaMock.mockImplementation((query) =>
       getMatchMediaResult(true, query)
     );
@@ -94,8 +94,6 @@ describe('EntityDetailWidgetSkeleton', () => {
       <EntityDetailWidgetSkeleton widgetKey={DetailPageWidgetKeys.DOMAIN} />
     );
 
-    expect(
-      container.querySelector('.tw\\:animate-pulse')
-    ).not.toBeInTheDocument();
+    expect(container.querySelector('.tw\\:animate-pulse')).toBeInTheDocument();
   });
 });
