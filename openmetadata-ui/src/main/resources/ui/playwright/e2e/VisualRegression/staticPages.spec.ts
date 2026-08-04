@@ -36,6 +36,7 @@ const PAGES: {
   name: string;
   route: string;
   mask?: string[];
+  maskColor?: string;
   maxDiffPixelRatio?: number;
 }[] = [
   {
@@ -61,12 +62,14 @@ const PAGES: {
   { name: 'glossary', route: '/glossary' },
   { name: 'settings', route: '/settings' },
   { name: 'database-services', route: '/settings/services/databases' },
-  // Seeded test-result rows and server-side timestamps vary between CI runs.
-  { name: 'data-quality', route: '/data-quality', maxDiffPixelRatio: 0.03 },
+  { name: 'data-quality', route: '/data-quality' },
   {
     name: 'incident-manager',
     route: '/incident-manager',
-    maxDiffPixelRatio: 0.03,
+    // Sample-data incidents carry run-specific timestamps and can change
+    // ordering as indexing completes. Keep the surrounding page under test.
+    mask: ['[data-testid="test-case-incident-manager-table"]'],
+    maskColor: '#ffffff',
   },
   { name: 'users', route: '/settings/members/users' },
   { name: 'teams', route: '/settings/members/teams' },
@@ -78,13 +81,14 @@ const PAGES: {
   { name: 'applications', route: '/marketplace' },
 ];
 
-for (const { name, route, mask, maxDiffPixelRatio } of PAGES) {
+for (const { name, route, mask, maskColor, maxDiffPixelRatio } of PAGES) {
   test(`${name} matches baseline`, async ({ page }) => {
     await gotoForScreenshot(page, route);
     await expect(page).toHaveScreenshot(`${name}.png`, {
       ...SCREENSHOT_OPTS,
       ...(maxDiffPixelRatio !== undefined && { maxDiffPixelRatio }),
       mask: (mask ?? []).map((selector) => page.locator(selector)),
+      ...(maskColor !== undefined && { maskColor }),
     });
   });
 }

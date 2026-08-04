@@ -17,12 +17,6 @@
           "$ref": "../../../configuration/slackAppConfiguration.json"
         },
         {
-          "$ref": "external/collateAIQualityAgentAppConfig.json"
-        },
-        {
-          "$ref": "external/collateAITierAgentAppConfig.json"
-        },
-        {
           "$ref": "internal/dataInsightsAppConfig.json"
         },
         {
