@@ -276,14 +276,8 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
         properties: visibleProperties,
         showDivider: false,
       });
-    } else if (isLDAPConfig) {
-      // LDAP configuration - all fields in a single group without extra grouping
-      groups.push({
-        properties: visibleProperties,
-        showDivider: false,
-      });
-    } else if (isSAMLConfig) {
-      // SAML configuration - all fields in a single group without extra grouping
+    } else if (isLDAPConfig || isSAMLConfig) {
+      // LDAP/SAML configuration - all fields in a single group without extra grouping
       groups.push({
         properties: visibleProperties,
         showDivider: false,

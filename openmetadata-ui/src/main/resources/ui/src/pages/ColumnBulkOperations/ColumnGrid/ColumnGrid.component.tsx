@@ -442,6 +442,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
             {t('label.tag-plural')}
           </Typography>
           <AsyncSelectList
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabling select autofocus
             autoFocus={false}
             fetchOptions={tagClassBase.getTags}
             getPopupContainer={(triggerNode) => triggerNode.parentElement}
@@ -1281,6 +1282,26 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         );
       }
 
+      const structExpandHandler = () => {
+        const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
+        if (isExpanded) {
+          scrollToRowIdRef.current = entity.id;
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.delete(entity.id);
+
+            return newSet;
+          });
+        } else {
+          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
+            const newSet = new Set(prev);
+            newSet.add(entity.id);
+
+            return newSet;
+          });
+        }
+      };
+
       if (entity.isStructChild) {
         const hasChildren = entity.children && entity.children.length > 0;
         const nestedCount = entity.children?.length ?? 0;
@@ -1288,28 +1309,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           nestedCount > 0
             ? `${entity.columnName} (${nestedCount})`
             : entity.columnName;
-
-        const structExpandHandler = () => {
-          const isExpanded = columnGridListing.expandedStructRows.has(
-            entity.id
-          );
-          if (isExpanded) {
-            scrollToRowIdRef.current = entity.id;
-            columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-              const newSet = new Set(prev);
-              newSet.delete(entity.id);
-
-              return newSet;
-            });
-          } else {
-            columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-              const newSet = new Set(prev);
-              newSet.add(entity.id);
-
-              return newSet;
-            });
-          }
-        };
 
         const isStructExpanded = columnGridListing.expandedStructRows.has(
           entity.id
@@ -1354,26 +1353,6 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           ? `${entity.columnName} (${nestedCount})`
           : entity.columnName;
 
-      const occurrenceExpandHandler = () => {
-        const isExpanded = columnGridListing.expandedStructRows.has(entity.id);
-        if (isExpanded) {
-          scrollToRowIdRef.current = entity.id;
-          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-            const newSet = new Set(prev);
-            newSet.delete(entity.id);
-
-            return newSet;
-          });
-        } else {
-          columnGridListing.setExpandedStructRows((prev: Set<string>) => {
-            const newSet = new Set(prev);
-            newSet.add(entity.id);
-
-            return newSet;
-          });
-        }
-      };
-
       const isOccurrenceExpanded = columnGridListing.expandedStructRows.has(
         entity.id
       );
@@ -1393,7 +1372,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                   />
                 }
                 size="sm"
-                onClick={occurrenceExpandHandler}
+                onClick={structExpandHandler}
               />
             ) : null}
           </div>

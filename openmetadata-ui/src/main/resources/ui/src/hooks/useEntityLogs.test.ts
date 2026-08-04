@@ -178,7 +178,8 @@ describe('useEntityLogs', () => {
   });
 
   it('ignores a stale app-log response after runId changes', async () => {
-    let resolveFirstApp: (value: { name: string }) => void = () => undefined;
+    let resolveFirstApp: (value: { name: string }) => void = (_value) =>
+      undefined;
     (getApplicationByName as jest.Mock)
       .mockImplementationOnce(
         () =>

@@ -50,7 +50,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.broker-plural') + ':'}</label>
+          <span className="m-b-0">{t('label.broker-plural') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="brokers">
@@ -64,7 +64,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="dashboard-url">
@@ -78,7 +78,7 @@ export const getOptionalFields = (
 
       return (
         <div className="m-b-xss truncate" data-testid="additional-field">
-          <label className="m-b-0">{t('label.url-uppercase') + ':'}</label>
+          <span className="m-b-0">{t('label.url-uppercase') + ':'}</span>
           <span
             className="m-l-xss font-normal text-grey-body"
             data-testid="pipeline-url">
@@ -94,7 +94,7 @@ export const getOptionalFields = (
       return (
         <>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.registry')}:</label>
+            <span className="m-b-0">{t('label.registry')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">
@@ -102,7 +102,7 @@ export const getOptionalFields = (
             </span>
           </div>
           <div className="m-b-xss truncate" data-testid="additional-field">
-            <label className="m-b-0">{t('label.tracking')}:</label>
+            <span className="m-b-0">{t('label.tracking')}:</span>
             <span
               className="m-l-xss font-normal text-grey-body"
               data-testid="pipeline-url">

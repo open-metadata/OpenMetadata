@@ -167,8 +167,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
       return (
         <div key={fieldProp.id}>
-          <label>{fieldProp.label}</label>
-          <input readOnly data-testid={testId} value="" />
+          <label htmlFor={testId}>
+            {fieldProp.label}
+            <input readOnly data-testid={testId} id={testId} value="" />
+          </label>
         </div>
       );
     },

@@ -121,7 +121,12 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         data-testid="markdown-parser"
         ref={contentRef}
         style={clampStyle}>
-        <BlockEditor autoFocus={false} content={content} editable={false} />
+        <BlockEditor
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabling editor autofocus
+          autoFocus={false}
+          content={content}
+          editable={false}
+        />
       </div>
       {isContentLoaded && isOverflowing && enableSeeMoreVariant && (
         <Button

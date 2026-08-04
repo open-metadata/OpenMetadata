@@ -134,6 +134,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
       <div
         className="form-card-section scheduler-card"
         id="root/cron"
+        role="presentation"
         onClick={() => onActiveFieldChange?.('root/cron')}>
         <div className="card-title-container">
           <p className="card-title-text">

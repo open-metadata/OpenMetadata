@@ -203,8 +203,15 @@ jest.mock('../../../../utils/formUtils', () => ({
 
       return (
         <div key={field.name}>
-          <label>{field.label}</label>
-          <input data-testid={testId} name={field.name} />
+          <label htmlFor={field.name}>
+            {field.label}
+            <input
+              aria-label={field.label}
+              data-testid={testId}
+              id={field.name}
+              name={field.name}
+            />
+          </label>
         </div>
       );
     })

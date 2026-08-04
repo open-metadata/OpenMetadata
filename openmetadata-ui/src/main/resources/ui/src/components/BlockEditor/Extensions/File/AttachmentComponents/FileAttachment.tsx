@@ -39,7 +39,10 @@ const FileAttachment = ({
   } = node.attrs;
 
   return (
-    <div className="file-link-container" onClick={(e) => e.preventDefault()}>
+    <div
+      className="file-link-container"
+      role="presentation"
+      onClick={(e) => e.preventDefault()}>
       <div className="file-content-wrapper">
         <FileOutlined className="file-icon" />
         <div className="file-details">
@@ -50,7 +53,7 @@ const FileAttachment = ({
             data-mimetype={mimeType || tempFile?.type}
             data-type="file-attachment"
             data-url={url}
-            href="#"
+            href={url || '#'}
             onClick={onFileClick}>
             <span className="file-name">{fileName || tempFile?.name}</span>
           </a>

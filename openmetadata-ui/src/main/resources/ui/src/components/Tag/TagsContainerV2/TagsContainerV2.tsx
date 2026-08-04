@@ -34,6 +34,7 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -379,7 +380,11 @@ const TagsContainerV2 = ({
     return (
       <Space>
         {showAddTagButton ? (
-          <div onClick={handleAddClick}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={handleKeyboardActivation(handleAddClick)}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -494,6 +499,7 @@ const TagsContainerV2 = ({
         {/* Since WidgetCard is another component without onClick, wrapping the content in a
             div to stop propagation */}
         <div
+          role="presentation"
           onClick={(e) => {
             e.stopPropagation();
           }}>
@@ -507,6 +513,7 @@ const TagsContainerV2 = ({
     <div
       className="w-full tags-container"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
+      role="presentation"
       onClick={(e) => e.stopPropagation()}>
       {suggestionDataRender ?? (
         <>

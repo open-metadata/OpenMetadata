@@ -57,6 +57,7 @@ const ServiceNameCard = ({
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
 
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- primary input, focus on mount
         autoFocus
         isRequired
         hint={nameError ?? t('message.service-name-rule')}

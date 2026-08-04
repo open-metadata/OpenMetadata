@@ -130,6 +130,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         <div>
           {label && <label htmlFor={id}>{label}</label>}
           <input
+            aria-label={label}
             id={id}
             placeholder={placeholder}
             value={value}
@@ -440,17 +441,32 @@ describe('FormBuilderV1 templates', () => {
               name: 'enabled',
             },
             {
-              content: <input data-testid="field-awsSecretAccessKey" />,
+              content: (
+                <input
+                  aria-label="awsSecretAccessKey"
+                  data-testid="field-awsSecretAccessKey"
+                />
+              ),
               hidden: false,
               name: 'awsSecretAccessKey',
             },
             {
-              content: <input data-testid="field-awsAccessKeyId" />,
+              content: (
+                <input
+                  aria-label="awsAccessKeyId"
+                  data-testid="field-awsAccessKeyId"
+                />
+              ),
               hidden: false,
               name: 'awsAccessKeyId',
             },
             {
-              content: <input data-testid="field-awsSessionToken" />,
+              content: (
+                <input
+                  aria-label="awsSessionToken"
+                  data-testid="field-awsSessionToken"
+                />
+              ),
               hidden: false,
               name: 'awsSessionToken',
             },
@@ -620,12 +636,22 @@ describe('FormBuilderV1 templates', () => {
               name: 'enabled',
             },
             {
-              content: <input data-testid="generic-awsAccessKeyId" />,
+              content: (
+                <input
+                  aria-label="awsAccessKeyId"
+                  data-testid="generic-awsAccessKeyId"
+                />
+              ),
               hidden: false,
               name: 'awsAccessKeyId',
             },
             {
-              content: <input data-testid="generic-awsSecretAccessKey" />,
+              content: (
+                <input
+                  aria-label="awsSecretAccessKey"
+                  data-testid="generic-awsSecretAccessKey"
+                />
+              ),
               hidden: false,
               name: 'awsSecretAccessKey',
             },
