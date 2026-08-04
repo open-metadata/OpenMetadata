@@ -46,8 +46,27 @@ CREATE TABLE IF NOT EXISTS task_entity (
     aboutFqnHash varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.aboutFqnHash'))) STORED,
     createdById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.createdById'))) STORED,
     approvedById varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.approvedById'))) STORED,
+    -- Enforce "one active Data Access Request per (creator, target entity)" at the DB layer to
+    -- close the SELECT-then-INSERT TOCTOU that lets concurrent creates both succeed. MySQL has
+    -- no partial indexes, so we compute a virtual generated column that is non-null only for
+    -- active DARs and unique-index that; MySQL treats multiple NULLs as distinct, so terminal
+    -- rows do not collide.
+    activeDarCreatorTargetKey varchar(512) GENERATED ALWAYS AS (
+        CASE
+            WHEN json_unquote(json_extract(`json`, _utf8mb4'$.type')) = 'DataAccessRequest'
+             AND json_unquote(json_extract(`json`, _utf8mb4'$.status'))
+                 IN ('Open', 'Approved', 'Granted', 'InProgress', 'ManualRevoke', 'Pending')
+            THEN CONCAT(
+                COALESCE(json_unquote(json_extract(`json`, _utf8mb4'$.createdById')), ''),
+                ':',
+                COALESCE(json_unquote(json_extract(`json`, _utf8mb4'$.aboutFqnHash')), '')
+            )
+            ELSE NULL
+        END
+    ) STORED,
     PRIMARY KEY (id),
     UNIQUE KEY uk_fqn_hash (fqnHash),
+    UNIQUE KEY uk_task_active_dar_creator_target (activeDarCreatorTargetKey),
     KEY idx_task_id (taskId),
     KEY idx_status (status),
     KEY idx_category (category),

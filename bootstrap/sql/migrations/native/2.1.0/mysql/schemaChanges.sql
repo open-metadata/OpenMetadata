@@ -35,29 +35,3 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
     INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
     INDEX idx_tci_updated (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- DAR duplicate protection: enforce "one active Data Access Request per (creator, target
--- entity)" at the DB layer. The application already runs a SELECT-then-INSERT check
--- (validateNoDuplicateActiveDataAccessRequest), but concurrent creates read null from the
--- SELECT and both INSERT succeed — a classic TOCTOU (report H8).
---
--- MySQL has no partial indexes, so we compute a virtual generated column that is non-null
--- only for active DARs and unique-index that. MySQL treats multiple NULLs as distinct, so
--- terminal rows do not collide. No pre-cleanup step needed: DAR ships in 2.0.0 unreleased,
--- so no live databases carry pre-existing duplicate active-DAR rows.
-ALTER TABLE task_entity
-    ADD COLUMN activeDarCreatorTargetKey VARCHAR(512)
-        GENERATED ALWAYS AS (
-            CASE
-                WHEN JSON_UNQUOTE(JSON_EXTRACT(json, '$.type')) = 'DataAccessRequest'
-                 AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status'))
-                     IN ('Open', 'Approved', 'Granted', 'InProgress', 'ManualRevoke', 'Pending')
-                THEN CONCAT(
-                    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.createdById')), ''),
-                    ':',
-                    COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')), '')
-                )
-                ELSE NULL
-            END
-        ) STORED,
-    ADD UNIQUE INDEX uk_task_active_dar_creator_target (activeDarCreatorTargetKey);
