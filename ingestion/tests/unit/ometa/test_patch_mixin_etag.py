@@ -25,6 +25,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import Markdown
@@ -70,6 +71,16 @@ def _column_tag() -> ColumnTag:
     )
 
 
+class _UnvalidatedVersion(BaseModel):
+    """Carries a raw version past EntityVersion's `multipleOf: 0.1` validation.
+
+    `_entity_etag` only reads `.version`, so this exercises the renderer on values the schema
+    forbids today — the format must not silently rely on that constraint holding.
+    """
+
+    version: float
+
+
 def _precondition_failed() -> APIError:
     return APIError({"code": 412, "message": "The entity has been modified."})
 
@@ -107,12 +118,30 @@ class TestEntityEtag:
             (1.0, 'W/"1.0"'),
             (2.3, 'W/"2.3"'),
             (10.0, 'W/"10.0"'),
+            (1, 'W/"1.0"'),
         ],
     )
     def test_weak_validator_matches_server_rendering(self, version, expected):
-        # Must render exactly as Java's `WEAK_PREFIX + '"' + Double.toString(version) + '"'`;
-        # EntityUtil.nextVersion keeps versions at one decimal place, so `.1f` reproduces it.
+        # Must render exactly as Java's `WEAK_PREFIX + '"' + Double.toString(version) + '"'`.
+        # The int case pins that an integral version renders "1.0", not "1".
         assert _entity_etag(_table(version)) == expected
+
+    @pytest.mark.parametrize(
+        "version,expected",
+        [
+            (1.25, 'W/"1.25"'),
+            (0.05, 'W/"0.05"'),
+            (0.15, 'W/"0.15"'),
+        ],
+    )
+    def test_rendering_does_not_depend_on_the_one_decimal_invariant(self, version, expected):
+        # `entityVersion` declares `multipleOf: 0.1`, so these values cannot reach us today —
+        # EntityVersion rejects them at parse time. Pinned anyway, against the same literals
+        # Double.toString produces, so relaxing that schema constraint can never silently
+        # degrade conditional writes to last-write-wins. A fixed-precision format would fail
+        # here (`:.1f` renders 1.25 as "1.2"), which is exactly the trap being guarded.
+        # Built off-model deliberately: the point is the renderer, not the schema.
+        assert _entity_etag(_UnvalidatedVersion(version=version)) == expected
 
     def test_is_not_a_strong_etag(self):
         # Guards against reverting to a locally computed hash of version/updatedAt: the server

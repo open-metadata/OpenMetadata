@@ -165,13 +165,21 @@ class EntityETagTest {
   void weakETagIsTheContractForNonJavaClients() {
     // The ingestion patch helpers (metadata.ingestion.ometa.mixins.patch_mixin._entity_etag) build
     // this string locally, so its exact rendering is a cross-language contract, not an internal
-    // detail. EntityUtil.nextVersion keeps versions at one decimal place, which is what lets a
-    // non-Java client reproduce the Double rendering. Reformatting this breaks conditional writes
-    // from every such client — and breaks them silently, into a last-write-wins fallback.
+    // detail. Reformatting it breaks conditional writes from every such client — and breaks them
+    // silently, into a last-write-wins fallback. The literals below are asserted verbatim in
+    // ingestion/tests/unit/ometa/test_patch_mixin_etag.py; keep the two lists in step.
     assertEquals("W/\"0.1\"", EntityETag.generateWeakETag(entity(0.1, 1L)));
     assertEquals("W/\"1.0\"", EntityETag.generateWeakETag(entity(1.0, 1L)));
     assertEquals("W/\"2.3\"", EntityETag.generateWeakETag(entity(2.3, 1L)));
     assertEquals("W/\"10.0\"", EntityETag.generateWeakETag(entity(10.0, 1L)));
+
+    // `entityVersion` declares `multipleOf: 0.1`, so these are unreachable today. Pinned anyway:
+    // both sides render the shortest round-tripping representation (Java since JDK 19, Python
+    // since 3.1), so agreement does not depend on that schema constraint holding — and a client
+    // must not "simplify" its side to a fixed precision, which would render 1.25 as 1.2.
+    assertEquals("W/\"1.25\"", EntityETag.generateWeakETag(entity(1.25, 1L)));
+    assertEquals("W/\"0.05\"", EntityETag.generateWeakETag(entity(0.05, 1L)));
+    assertEquals("W/\"0.15\"", EntityETag.generateWeakETag(entity(0.15, 1L)));
   }
 
   @Test

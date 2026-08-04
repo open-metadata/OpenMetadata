@@ -88,10 +88,18 @@ def _entity_etag(entity: BaseModel) -> Optional[str]:  # noqa: UP045
 
     The version is projection-independent, is bumped on every update, and is what the server's own
     row-level compare-and-swap keys on — exactly the optimistic-lock semantics wanted here: reject
-    the write if the entity moved between our read and our write. ``EntityUtil.nextVersion`` rounds
-    to one decimal place, so ``:.1f`` reproduces the Java ``Double`` rendering being compared
-    against. Weak-match support predates every server release that honours ``If-Match`` at all, so
-    older servers either accept this or ignore the header entirely.
+    the write if the entity moved between our read and our write. Weak-match support predates every
+    server release that honours ``If-Match`` at all, so older servers either accept this or ignore
+    the header entirely.
+
+    The rendering must byte-match Java's ``Double.toString``, and does so *without* depending on
+    the ``multipleOf: 0.1`` invariant on ``entityVersion``: both sides emit the shortest string that
+    round-trips to the same double (Python since 3.1, Java since JDK 19), so they agree for any
+    number of decimal places. Do not reformat this with a fixed precision — ``:.1f`` would render a
+    hypothetical ``1.25`` as ``1.2`` and silently degrade every conditional write to the
+    non-conditional fallback. The one divergence left is unreachable: Java switches to scientific
+    notation at ``1e7`` (``1.0E7``) where Python does not, which an entity would need ~10^8 updates
+    to reach.
 
     Returns ``None`` when ``version`` is absent so the caller falls back to a non-conditional
     write. (Jetty strips any inbound ``--gzip`` suffix from ``If-Match``, so the bare value
@@ -100,7 +108,7 @@ def _entity_etag(entity: BaseModel) -> Optional[str]:  # noqa: UP045
     version = getattr(entity, "version", None)
     if version is None:
         return None
-    return f'W/"{float(model_str(version)):.1f}"'
+    return f'W/"{model_str(version)}"'
 
 
 def _summarize_patch(patch: Any) -> str:
