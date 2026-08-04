@@ -921,22 +921,33 @@ public class SystemResource {
       return response;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
-      throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
+      throw new RuntimeException("Failed to update security configuration", e);
     }
   }
 
   private void persistAndReloadSecurityConfig(SecurityConfiguration securityConfig) {
     AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
     systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
-    systemRepository.createOrUpdate(
-        new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig));
-    systemRepository.createOrUpdate(
-        new Settings()
-            .withConfigType(AUTHORIZER_CONFIGURATION)
-            .withConfigValue(securityConfig.getAuthorizerConfiguration()));
+    failIfNotPersisted(
+        systemRepository.createOrUpdate(
+            new Settings()
+                .withConfigType(AUTHENTICATION_CONFIGURATION)
+                .withConfigValue(authConfig)));
+    failIfNotPersisted(
+        systemRepository.createOrUpdate(
+            new Settings()
+                .withConfigType(AUTHORIZER_CONFIGURATION)
+                .withConfigValue(securityConfig.getAuthorizerConfiguration())));
     SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
     SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
     SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+  }
+
+  private void failIfNotPersisted(Response response) {
+    if (response.getStatus() >= Response.Status.BAD_REQUEST.getStatusCode()) {
+      throw new IllegalStateException(
+          "Failed to persist security configuration (HTTP " + response.getStatus() + ")");
+    }
   }
 
   private void logValidationErrors(SecurityValidationResponse validationResponse) {
@@ -985,10 +996,13 @@ public class SystemResource {
     } else {
       try {
         persistAndReloadSecurityConfig(previous);
+        // One-shot undo: the reload above set the previous pointer to the config we just reverted
+        // away from, so clear it — a repeated revert must not re-apply the broken configuration.
+        SecurityConfigurationManager.getInstance().clearPreviousSecurityConfig();
         response = Response.ok(previous).build();
       } catch (Exception e) {
         LOG.error("Failed to revert security configuration", e);
-        throw new RuntimeException("Failed to revert security configuration: " + e.getMessage());
+        throw new RuntimeException("Failed to revert security configuration", e);
       }
     }
     return response;

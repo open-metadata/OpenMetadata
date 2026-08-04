@@ -15,7 +15,6 @@ package org.openmetadata.service.security.auth.validator;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -66,7 +65,10 @@ public final class OidcPromptPolicy {
   public static FieldError validate(AuthProvider provider, String prompt) {
     FieldError result = null;
     if (!nullOrEmpty(prompt) && SUPPORTED.containsKey(provider)) {
-      String[] tokens = prompt.trim().toLowerCase(Locale.ROOT).split("\\s+");
+      // OIDC prompt tokens are case-sensitive and the login flow sends the value verbatim, so
+      // validate the exact casing here — accepting 'Select_Account' would pass but break at the
+      // IdP.
+      String[] tokens = prompt.trim().split("\\s+");
       result = validateTokens(provider, tokens);
     }
     return result;
@@ -111,7 +113,7 @@ public final class OidcPromptPolicy {
               + "live session with the identity provider; users with an expired or missing session "
               + "are locked out with no login screen. Use '"
               + RECOMMENDED
-              + "' or 'login' instead.";
+              + "' instead.";
     }
     return error(message);
   }

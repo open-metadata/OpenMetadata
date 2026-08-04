@@ -56,7 +56,7 @@ class OidcPromptPolicyTest {
       FieldError error = OidcPromptPolicy.validate(provider, "none");
       assertNotNull(error, provider + " should reject prompt=none");
       assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_PROMPT, error.getField());
-      assertTrue(error.getError().toLowerCase().contains("silent"));
+      assertTrue(error.getError().contains("silent"));
     }
   }
 
@@ -87,8 +87,11 @@ class OidcPromptPolicyTest {
   }
 
   @Test
-  void validationIsCaseAndWhitespaceInsensitive() {
-    assertNull(OidcPromptPolicy.validate(AuthProvider.AZURE, "  Select_Account  "));
+  void validationIsWhitespaceTolerantButCaseSensitive() {
+    // Extra whitespace is fine, but casing is not: OIDC prompt tokens are case-sensitive and the
+    // login flow forwards the value verbatim, so a mixed-case value must not pass validation.
+    assertNull(OidcPromptPolicy.validate(AuthProvider.AZURE, "  select_account   login  "));
+    assertNotNull(OidcPromptPolicy.validate(AuthProvider.AZURE, "Select_Account"));
     assertNotNull(OidcPromptPolicy.validate(AuthProvider.AZURE, "NONE"));
   }
 

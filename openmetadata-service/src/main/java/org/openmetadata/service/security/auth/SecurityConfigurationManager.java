@@ -215,6 +215,10 @@ public class SecurityConfigurationManager {
     }
   }
 
+  public void clearPreviousSecurityConfig() {
+    previousSecurityConfig = null;
+  }
+
   private void rollbackConfiguration() {
     if (previousSecurityConfig != null) {
       currentState =
