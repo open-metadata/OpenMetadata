@@ -1250,7 +1250,9 @@ export const getSourceOptionsFromResourceList = (
             <Checkbox checked={selectedResource?.includes(resource)} />
           )}
           {sourceIcon && showIcon && (
-            <div className="d-flex h-4 w-4">{sourceIcon}</div>
+            <div className="d-flex items-center justify-center h-4 w-4">
+              {sourceIcon}
+            </div>
           )}
           <span>{getEntityNameLabel(resource ?? '')}</span>
         </div>

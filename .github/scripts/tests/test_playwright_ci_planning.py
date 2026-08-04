@@ -353,6 +353,93 @@ def test_stale_baseline_files_ignore_files_covered_by_identity_match():
     assert planner.stale_baseline_files_in_plan(units, {}, identity_weights) == []
 
 
+def test_misrouted_lane_hint_violations_flags_bulk_import_on_chromium():
+    # Reproduces PR #30834's bug — BulkImport.spec.ts landed on chromium
+    # because the `@import-export` tag was dropped when un-`fixme`ing the
+    # describe. The hint check names the file and the expected tag.
+    planner = load_script("build_playwright_shards")
+    unit = planner.Unit(
+        "chromium",  # actual project — wrong
+        "Features/BulkImport.spec.ts",
+        "Bulk Import Export",
+    )
+
+    violations = planner.misrouted_lane_hint_violations([unit])
+
+    assert violations == [
+        (
+            "Features/BulkImport.spec.ts",
+            "chromium",
+            "ImportExport",
+            "@import-export",
+        )
+    ]
+
+
+def test_misrouted_lane_hint_violations_stays_quiet_when_route_matches():
+    planner = load_script("build_playwright_shards")
+    unit = planner.Unit(
+        "ImportExport",
+        "Features/BulkImport.spec.ts",
+        "Bulk Import Export",
+    )
+
+    assert planner.misrouted_lane_hint_violations([unit]) == []
+
+
+def test_misrouted_lane_hint_violations_matches_import_export_filename_family():
+    planner = load_script("build_playwright_shards")
+    matching_files = [
+        "Features/BulkImport.spec.ts",
+        "Features/BulkImportWithDotInName.spec.ts",
+        "Features/MetricBulkImportExportEdit.spec.ts",
+        "Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
+        "Pages/GlossaryImportExport.spec.ts",
+    ]
+    units = [
+        planner.Unit("chromium", file, "describe title")
+        for file in matching_files
+    ]
+
+    violations = planner.misrouted_lane_hint_violations(units)
+
+    assert {v[0] for v in violations} == set(matching_files)
+
+
+def test_misrouted_lane_hint_violations_ignores_unmatched_filenames():
+    # Files without Import/Export or matching patterns must not trip the
+    # hint even when they land on chromium — chromium is the correct
+    # destination for the vast majority of specs.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit("chromium", "Pages/Users.spec.ts", "user tests"),
+        planner.Unit("chromium", "Features/AdvancedSearch.spec.ts", "Advanced Search"),
+        planner.Unit("chromium", "Pages/Entity.spec.ts", "entity tests"),
+    ]
+
+    assert planner.misrouted_lane_hint_violations(units) == []
+
+
+def test_misrouted_lane_hint_violations_dedupes_across_units():
+    # After AUDITED_PARALLEL_SUITES splits a file into per-spec units,
+    # each unit shares the same file — the violation should collapse to
+    # a single entry, not fire once per test.
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium",
+            "Features/BulkImport.spec.ts",
+            f"Bulk Import Export › case {index}",
+        )
+        for index in range(4)
+    ]
+
+    violations = planner.misrouted_lane_hint_violations(units)
+
+    assert len(violations) == 1
+    assert violations[0][0] == "Features/BulkImport.spec.ts"
+
+
 def test_main_fails_when_a_targeted_plan_has_a_stale_baseline_file(tmp_path):
     # End-to-end: the planner exits non-zero at PR (targeted) plan time
     # when a file's every planned test is on the fallback path. This is
@@ -498,6 +585,80 @@ def test_main_skips_stale_baseline_gate_in_full_mode(tmp_path):
     assert (output_dir / "matrix.json").exists()
 
 
+def test_main_fails_on_misrouted_lane_hint(tmp_path):
+    # End-to-end: the planner exits non-zero at plan time when a hint-file
+    # is on the wrong project. This is the guardrail that would have caught
+    # PR #30834 at PR review instead of on the merge queue.
+    import subprocess
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": "Features/BulkImport.spec.ts",
+                        "suites": [
+                            {
+                                "title": "Bulk Import Export",
+                                "specs": [
+                                    {
+                                        "id": f"bulk-{index}",
+                                        "title": f"case {index}",
+                                        "tests": [{"projectName": "chromium"}],
+                                    }
+                                    for index in range(3)
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    selection.write_text(json.dumps({"mode": "full"}))
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "routed to the wrong project" in combined
+    assert "Features/BulkImport.spec.ts" in combined
+    assert "@import-export" in combined
+    assert not (output_dir / "matrix.json").exists()
+
+
+def test_oversized_units_error_names_both_common_fixes():
+    # The improved error message must point the reader at BOTH the tag
+    # option and the AUDITED_PARALLEL_SUITES escape hatch — the old
+    # message just said "refactor or audit" and left developers guessing.
+    planner = load_script("build_playwright_shards")
+    src = (SCRIPTS / "build_playwright_shards.py").read_text()
+
+    assert "FILE_LANE_HINTS" in src
+    # The oversized branch mentions both remediation paths:
+    oversized_index = src.index("Atomic Playwright units exceed")
+    following = src[oversized_index:oversized_index + 2000]
+    assert "tag:" in following or "tag option" in following.lower() or "'{ tag:" in following
+    assert "AUDITED_PARALLEL_SUITES" in following
+
+
 def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_path):
     # Was previously "only_preserves_explicit_skips" — the planner used to pin
     # weight_ms=0 for tests whose only recorded outcome was 'skipped'. That was
@@ -589,15 +750,27 @@ def test_history_includes_retry_time_and_skipped_only_ids_fall_to_fallback(tmp_p
 
 def test_versioned_baseline_omits_all_zero_ids_from_weights():
     # Was previously "only_uses_zero_weight_for_skipped_ids". See the sibling
-    # test above for the rationale for the behavior change.
+    # test above for the rationale for the behavior change. The behavior we
+    # care about is that every zero-duration entry in the checked-in baseline
+    # is filtered out of `weights` — regardless of whether its recorded
+    # outcome was `skipped` (normal) or `expected` (rare 0-ms observation).
     planner = load_script("build_playwright_shards")
     baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
     payload = json.loads(baseline.read_text())
     zero_tests = [test for test in payload["tests"] if test["durationMs"] == 0]
 
+    # Ensure there's something to check — if a future baseline refresh
+    # produces a run with zero skipped/0-ms entries, the `all(...)` below
+    # would pass vacuously without exercising the filter. Fail loudly
+    # instead so whoever refreshed the baseline knows to either construct
+    # a synthetic fixture or convert this to a synthetic test.
+    assert zero_tests, (
+        "checked-in baseline has no zero-duration entries; this test can "
+        "no longer exercise the load_history filter path against real data"
+    )
+
     weights, _ = planner.load_history([baseline])
 
-    assert any(test["outcome"] == "expected" for test in zero_tests)
     assert all(test["id"] not in weights for test in zero_tests)
 
 
@@ -1024,6 +1197,47 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
         if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
     )
     assert "Ingestion" in schema_search["projects"]
+
+
+def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
+    """The Explore mapping's ``Flow/*Search*.spec.ts`` glob also matches
+    SearchRBAC.spec.ts, which ``chromium`` testIgnores and only the dedicated
+    ``SearchRBAC`` project runs. Without that project in the mapping the selector
+    resolves to zero units and build_playwright_shards.py aborts the whole plan.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
+        "QuickFilterDropdown.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    search_rbac = next(
+        entry
+        for entry in selection["selectors"]
+        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
+    )
+    assert "SearchRBAC" in search_rbac["projects"]
 
 
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
@@ -2118,3 +2332,123 @@ def test_normal_vite_build_keeps_hashed_entry_assets():
     assert "sessionStorage.getItem(scenarioKey)" in app_entry
     assert "'playwright-app-boot': '1'" in app_entry
     assert "diagnostics.set('playwright-ui-scenario', '1')" in app_entry
+
+
+def test_spec_file_exists_distinguishes_real_and_missing_specs(tmp_path, monkeypatch):
+    planner = load_script("build_playwright_shards")
+    spec = "playwright/e2e/Features/Fake.spec.ts"
+    spec_dir = tmp_path / planner.SPEC_ROOT_CANDIDATES[1] / "playwright/e2e/Features"
+    spec_dir.mkdir(parents=True)
+    (spec_dir / "Fake.spec.ts").write_text("// fake", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    assert planner.spec_file_exists(spec) is True
+    # A glob that resolves to the created file also counts as present.
+    assert planner.spec_file_exists("playwright/e2e/Features/*.spec.ts") is True
+    # A path with no file behind it does not.
+    assert planner.spec_file_exists("playwright/e2e/Features/Missing.spec.ts") is False
+
+
+def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
+    # A selected spec whose file exists but has zero runnable tests in this lane
+    # (e.g. an @ontology-rdf spec, tag-filtered out of the postgres projects) is
+    # warned and skipped. A selected spec whose file does not exist anywhere is a
+    # stale/typo'd path and must still fail the plan.
+    planner_path = SCRIPTS / "build_playwright_shards.py"
+    selection = tmp_path / "selection.json"
+    output_dir = tmp_path / "plans"
+
+    # The test-list resolves against the current lane only; neither selected spec
+    # is runnable here, so both are unmatched. The existing one is created on disk
+    # under the UI root the planner probes.
+    existing_spec = "playwright/e2e/Features/GatedElsewhere.spec.ts"
+    existing_path = (
+        tmp_path
+        / "openmetadata-ui/src/main/resources/ui"
+        / existing_spec
+    )
+    existing_path.parent.mkdir(parents=True)
+    existing_path.write_text("// runs only in another lane", encoding="utf-8")
+
+    test_list = tmp_path / "test-list.json"
+    test_list.write_text(json.dumps({"suites": []}))
+    selection.write_text(
+        json.dumps(
+            {
+                "mode": "targeted",
+                "selectors": [
+                    {"spec": existing_spec, "projects": ["auto"]},
+                    {
+                        "spec": "playwright/e2e/Features/DoesNotExist.spec.ts",
+                        "projects": ["auto"],
+                    },
+                ],
+            }
+        )
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(planner_path),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--output-dir", str(output_dir),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+
+    combined = result.stdout + result.stderr
+    assert result.returncode != 0, combined
+    # The missing spec is named as the reason for failure...
+    assert "do not exist" in combined
+    assert "DoesNotExist.spec.ts" in combined
+    # ...while the tag-filtered-but-present spec is warned and skipped, not failed.
+    assert (
+        f"::warning file={existing_spec}::" in combined
+    )
+
+
+def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated_rdf_one(
+    tmp_path, monkeypatch
+):
+    # Editing an OntologyExplorer source file fans out via the source->spec
+    # mapping glob (OntologyExplorer*.spec.ts), which matches both the regular
+    # postgres specs and the delegated @ontology-rdf spec. The regular ones must
+    # be selected; the delegated RDF spec must be dropped so the postgres plan
+    # does not get a shard with zero runnable tests.
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        f"{selector.UI_ROOT}"
+        "src/components/OntologyExplorer/OntologyExplorer.constants.ts\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+    # The delegated RDF spec is excluded from the postgres selection...
+    assert "playwright/e2e/Features/OntologyExplorerRdf.spec.ts" not in selected_specs
+    # ...while the non-delegated OntologyExplorer specs from the same glob remain,
+    # proving the mapping fired and only the delegated spec was dropped.
+    assert "playwright/e2e/Features/OntologyExplorer.spec.ts" in selected_specs

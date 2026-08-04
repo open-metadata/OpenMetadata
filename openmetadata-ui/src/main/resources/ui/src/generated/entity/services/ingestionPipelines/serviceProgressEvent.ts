@@ -1779,8 +1779,6 @@ export interface Pipeline {
  *
  * This schema defines the Slack App Information
  *
- * Configuration for the Collate AI Quality Agent.
- *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
@@ -1799,8 +1797,6 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
-     *
-     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -1836,13 +1832,7 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?: string;
-    /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?:                boolean;
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -1994,6 +1984,10 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?: boolean;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -2902,8 +2896,6 @@ export enum CollateAIAppConfigType {
     Automator = "Automator",
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",

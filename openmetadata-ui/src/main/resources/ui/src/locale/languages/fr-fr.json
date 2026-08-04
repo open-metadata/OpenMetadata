@@ -4315,6 +4315,7 @@
     "validation-error-assets": "Veuillez exmanier tous les actifs qui sont ajoutés",
     "value-count-profile-metric-description": "Nombre total de valeurs dans la colonne",
     "value-must-be-greater-than": "{{field}} doit être supérieur à {{minimum}}",
+    "value-must-be-less-than-or-equal": "{{field}} doit être inférieur ou égal à {{maximum}}",
     "value-should-equal-to-value": "La valeur devrait être égale à {{value}}.",
     "value-should-not-equal-to-value": "La valeur ne devrait pas être égale à {{value}}.",
     "version-released-try-now": "{{version}} publié essayez maintenant !",
