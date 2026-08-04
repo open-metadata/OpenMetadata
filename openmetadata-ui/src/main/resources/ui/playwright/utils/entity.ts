@@ -1499,9 +1499,7 @@ const announcementForm = async (
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/announcements') &&
-      response.request().method() === 'POST'
+    '/api/v1/feed?entityLink=*type=Announcement*'
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
@@ -1615,11 +1613,7 @@ export const deleteAnnouncement = async (page: Page) => {
     'Are you sure you want to permanently delete this message?'
   );
 
-  const deleteAnnouncementResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/announcements/') &&
-      response.request().method() === 'DELETE'
-  );
+  const deleteAnnouncementResponse = page.waitForResponse('/api/v1/feed/*');
   await page.click('[data-testid="save-button"]');
   await deleteAnnouncementResponse;
 
@@ -1674,11 +1668,7 @@ export const editAnnouncement = async (
     .fill(data.description);
 
   // Save the changes and wait for the API response
-  const updateResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/announcements/') &&
-      response.request().method() === 'PATCH'
-  );
+  const updateResponse = page.waitForResponse('/api/v1/feed/*');
   await page
     .locator(
       '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
@@ -2428,7 +2418,7 @@ export const checkExploreSearchFilter = async (
     )
   ).toBeVisible();
 
-  await page.click('[data-testid="clear-all-chips"]');
+  await page.click('[data-testid="clear-filters"]');
 
   await entity?.visitEntityPage(page);
 };
