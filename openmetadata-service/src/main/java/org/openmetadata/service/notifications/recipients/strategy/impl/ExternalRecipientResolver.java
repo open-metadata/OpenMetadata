@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.net.URI;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -55,30 +57,54 @@ public class ExternalRecipientResolver implements RecipientResolutionStrategy {
 
   private Set<Recipient> resolveExternalRecipients(
       SubscriptionAction action, SubscriptionDestination destination) {
+    Set<Recipient> recipients;
     try {
-      SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-
-      // For EMAIL notifications, receivers are email addresses
-      if (notificationType == SubscriptionDestination.SubscriptionType.EMAIL) {
-        if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
-          return Collections.emptySet();
-        }
-        return action.getReceivers().stream()
-            .map(EmailRecipient::new)
-            .collect(Collectors.toUnmodifiableSet());
-      }
-
-      // For webhook types, extract custom webhook config and create webhook recipients
-      Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
-      if (webhook == null || webhook.getEndpoint() == null) {
-        return Collections.emptySet();
-      }
-      return Set.of(new WebhookRecipient(webhook));
-
-    } catch (Exception e) {
+      recipients =
+          destination.getType() == SubscriptionDestination.SubscriptionType.EMAIL
+              ? resolveEmailRecipients(action)
+              : resolveWebhookRecipients(action, destination);
+    } catch (IllegalArgumentException e) {
       LOG.error("Failed to resolve external recipients", e);
-      return Collections.emptySet();
+      recipients = Set.of();
     }
+    return recipients;
+  }
+
+  private Set<Recipient> resolveEmailRecipients(SubscriptionAction action) {
+    Set<Recipient> recipients = Set.of();
+    if (action != null && !nullOrEmpty(action.getReceivers())) {
+      recipients =
+          action.getReceivers().stream()
+              .map(EmailRecipient::new)
+              .collect(Collectors.toUnmodifiableSet());
+    }
+    return recipients;
+  }
+
+  private Set<Recipient> resolveWebhookRecipients(
+      SubscriptionAction action, SubscriptionDestination destination) {
+    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
+    Set<Recipient> recipients = configuredEndpoint(webhook);
+    if (action != null && !nullOrEmpty(action.getReceivers())) {
+      recipients =
+          action.getReceivers().stream()
+              .map(receiver -> webhookForReceiver(webhook, receiver))
+              .map(WebhookRecipient::new)
+              .collect(Collectors.toUnmodifiableSet());
+    }
+    return recipients;
+  }
+
+  private Set<Recipient> configuredEndpoint(Webhook webhook) {
+    return webhook == null || webhook.getEndpoint() == null
+        ? Set.of()
+        : Set.of(new WebhookRecipient(webhook));
+  }
+
+  private Webhook webhookForReceiver(Webhook webhook, String receiver) {
+    Webhook configured =
+        webhook == null ? new Webhook() : JsonUtils.convertValue(webhook, Webhook.class);
+    return configured.withEndpoint(URI.create(receiver));
   }
 
   @Override

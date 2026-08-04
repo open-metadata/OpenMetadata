@@ -175,6 +175,10 @@ public class RecipientResolver {
       return null;
     }
 
+    if (config instanceof SubscriptionAction action) {
+      return action;
+    }
+
     return switch (destination.getType()) {
       case EMAIL -> JsonUtils.convertValue(config, EmailAlertConfig.class);
       case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> JsonUtils.convertValue(config, Webhook.class);
