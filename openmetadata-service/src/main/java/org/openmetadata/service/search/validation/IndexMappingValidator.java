@@ -13,8 +13,10 @@
 package org.openmetadata.service.search.validation;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
@@ -64,8 +66,46 @@ public final class IndexMappingValidator {
                   .formatted(parentType, childAlias, childCapability.isTimeSeries()));
         }
       }
+      collectTransitiveGaps(parentType, children, indexMappings, warnings);
     }
     warnings.forEach(LOG::warn);
     return warnings;
+  }
+
+  /**
+   * Flags a parent whose {@code childAliases} omit a descendant its own children declare.
+   *
+   * <p>Cascades resolve targets from this one hand-written list, so an omission means the cascade
+   * simply never reaches those documents — hard-deleting a directory leaves the worksheets under
+   * its spreadsheets behind, and soft-deleting a database leaves its tables' column documents
+   * unflagged. Nothing derives the list from the entity hierarchy, so the only defence is noticing
+   * that it has stopped being transitively closed.
+   *
+   * <p>A warning is not automatically a missing alias: some descendants do not carry the ancestor's
+   * id at all (column documents key on {@code service.id}, not {@code databaseService.id}), so the
+   * fix may be a dedicated cascade rather than an added alias. It does always mean the generic
+   * cascade cannot reach them.
+   */
+  private static void collectTransitiveGaps(
+      String parentType,
+      List<String> declaredChildren,
+      Map<String, IndexMapping> indexMappings,
+      List<String> warnings) {
+    Set<String> declared = new HashSet<>(declaredChildren);
+    for (String childAlias : declaredChildren) {
+      IndexMapping childMapping = indexMappings.get(childAlias);
+      if (childMapping == null || childMapping.getChildAliases() == null) {
+        continue;
+      }
+      for (String descendant : childMapping.getChildAliases()) {
+        if (!declared.contains(descendant) && !descendant.equals(parentType)) {
+          warnings.add(
+              ("Parent '%s' declares child '%s' but not '%s', which '%s' declares as its own child;"
+                      + " a cascade over '%s' childAliases will not reach '%s' documents")
+                  .formatted(
+                      parentType, childAlias, descendant, childAlias, parentType, descendant));
+        }
+      }
+    }
   }
 }

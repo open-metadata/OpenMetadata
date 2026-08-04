@@ -1788,7 +1788,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // displayName change
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      updateAssetIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      updateAssetIndexes(original.getFullyQualifiedName(), updated);
     }
   }
 
@@ -2431,7 +2431,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
-  private void updateAssetIndexes(String oldFqn, String newFqn) {
+  private void updateAssetIndexes(String oldFqn, GlossaryTerm updated) {
+    String newFqn = updated.getFullyQualifiedName();
+    // Only an FQN move invalidates a descendant's own document. This method also runs for a
+    // displayName-only change, where descendants are untouched and re-reading the whole subtree
+    // would be pure cost.
+    if (!Objects.equals(oldFqn, newFqn)) {
+      reindexNestedTerms(updated, newFqn);
+    }
+
+    // Rewrite tags.tagFQN on every asset tagged with this term or any of its descendants.
     searchRepository.deferIfFlushScopeActive(
         () ->
             searchRepository
@@ -2439,6 +2448,30 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
         "updateGlossaryTermByFqnPrefix",
         null,
+        newFqn,
+        Entity.GLOSSARY_TERM);
+  }
+
+  /**
+   * Rebuilds each descendant term's own search document from its renamed row.
+   *
+   * <p>The moved term itself is reindexed by the normal entity-update lifecycle, but its nested
+   * terms are renamed by a bulk {@code glossaryTermDAO.updateFqn} that dispatches no per-entity
+   * event. Without this pass their documents keep the pre-rename {@code fullyQualifiedName} until
+   * the next full reindex — the tag-prefix rewrite above only fixes assets that reference them, not
+   * the term documents themselves. {@code GlossaryRepository.updateAssetIndexes} already does this
+   * for a glossary rename; the same gap existed one level down.
+   */
+  private void reindexNestedTerms(GlossaryTerm updated, String newFqn) {
+    List<EntityReference> descendants =
+        getNestedTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList();
+    if (descendants.isEmpty()) {
+      return;
+    }
+    searchRepository.deferIfFlushScopeActive(
+        () -> searchRepository.updateEntitiesByReference(descendants),
+        "updateEntitiesByReference",
+        updated.getId().toString(),
         newFqn,
         Entity.GLOSSARY_TERM);
   }
@@ -3074,7 +3107,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       if (parentChanged || glossaryChanged || nameChanged) {
         invalidateTerm(updated.getId());
-        updateAssetIndexes(oldFqn, newFqn);
+        updateAssetIndexes(oldFqn, updated);
       }
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
@@ -3141,7 +3174,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTerm(updated.getId());
       }
-      updateAssetIndexes(oldFqn, newFqn);
+      updateAssetIndexes(oldFqn, updated);
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }

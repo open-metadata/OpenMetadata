@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 
@@ -45,10 +46,38 @@ public interface TaggableIndex extends SearchIndex {
       return;
     }
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(getEntityTypeName(), ei));
-    doc.put("tags", parseTags.getTags());
-    doc.put("tier", parseTags.getTierTag());
+    doc.put("tags", withoutAppliedAt(parseTags.getTags()));
+    doc.put("tier", withoutAppliedAt(parseTags.getTierTag()));
     doc.put("classificationTags", parseTags.getClassificationTags());
     doc.put("glossaryTags", parseTags.getGlossaryTags());
+  }
+
+  /**
+   * Drops {@code appliedAt} from a label destined for the search document.
+   *
+   * <p>The column is assigned by the database — the {@code tag_usage} insert does not supply it —
+   * so a live write, whose labels come from the request payload, structurally cannot know the
+   * value while a reindex, whose labels are read back from {@code tag_usage}, always has it. Since
+   * {@code tier} and {@code tags} are replaced wholesale on every write, the two paths were
+   * overwriting each other's shape on every reindex and every subsequent tag edit.
+   *
+   * <p>Dropping it rather than reproducing it is safe because nothing consumes it: {@code appliedAt}
+   * appears in no index mapping and in no query or sort. The authoritative value remains in
+   * {@code tag_usage}.
+   */
+  private static TagLabel withoutAppliedAt(TagLabel label) {
+    if (label == null || label.getAppliedAt() == null) {
+      return label;
+    }
+    // Copy first — the label belongs to the entity, which is still in use by the caller.
+    return JsonUtils.deepCopy(label, TagLabel.class).withAppliedAt(null);
+  }
+
+  private static List<TagLabel> withoutAppliedAt(List<TagLabel> labels) {
+    if (labels == null || labels.stream().noneMatch(label -> label.getAppliedAt() != null)) {
+      return labels;
+    }
+    return labels.stream().map(TaggableIndex::withoutAppliedAt).toList();
   }
 
   /**

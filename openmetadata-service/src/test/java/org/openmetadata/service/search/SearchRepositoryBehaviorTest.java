@@ -179,6 +179,40 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/page_index_mapping.json")
           .build();
 
+  // Mirrors indexMapping.json: directory lists file and spreadsheet but not worksheet, which is
+  // spreadsheet's child. The gap is the point of the drive-subtree test below.
+  private static final IndexMapping DIRECTORY_MAPPING =
+      IndexMapping.builder()
+          .indexName("directory_search_index")
+          .alias("directory")
+          .childAliases(List.of(Entity.FILE, Entity.SPREADSHEET))
+          .indexMappingFile("/elasticsearch/%s/directory_index_mapping.json")
+          .build();
+
+  private static final IndexMapping FILE_MAPPING =
+      IndexMapping.builder()
+          .indexName("file_search_index")
+          .alias("file")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/file_index_mapping.json")
+          .build();
+
+  private static final IndexMapping SPREADSHEET_MAPPING =
+      IndexMapping.builder()
+          .indexName("spreadsheet_search_index")
+          .alias("spreadsheet")
+          .childAliases(List.of(Entity.WORKSHEET))
+          .indexMappingFile("/elasticsearch/%s/spreadsheet_index_mapping.json")
+          .build();
+
+  private static final IndexMapping WORKSHEET_MAPPING =
+      IndexMapping.builder()
+          .indexName("worksheet_search_index")
+          .alias("worksheet")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/worksheet_index_mapping.json")
+          .build();
+
   private static final IndexMapping TEST_SUITE_MAPPING =
       IndexMapping.builder()
           .indexName("test_suite_search_index")
@@ -1070,8 +1104,41 @@ class SearchRepositoryBehaviorTest {
 
     repository.deleteEntityByFQNPrefix(entity);
 
+    // The prefix is terminated with the FQN separator. The underlying query is a raw prefix match,
+    // so an unterminated "svc.db.schema.orders" also matches a sibling "svc.db.schema.orders_v2"
+    // and would delete an unrelated subtree. The entity's own document is deleted by id in
+    // deleteEntityIndex, so excluding it from the prefix loses nothing.
     verify(searchClient)
-        .deleteEntityByFQNPrefix("cluster_table_search_index", "svc.db.schema.orders");
+        .deleteEntityByFQNPrefix("cluster_table_search_index", "svc.db.schema.orders.");
+  }
+
+  @Test
+  void deleteOrUpdateChildrenSweepsTheWholeDriveSubtreeForADirectory() throws IOException {
+    SearchRepository driveRepository =
+        newRepository(
+            Map.ofEntries(
+                Map.entry(Entity.DIRECTORY, DIRECTORY_MAPPING),
+                Map.entry(Entity.FILE, FILE_MAPPING),
+                Map.entry(Entity.SPREADSHEET, SPREADSHEET_MAPPING),
+                Map.entry(Entity.WORKSHEET, WORKSHEET_MAPPING)),
+            "cluster");
+    EntityInterface directory = mockEntity(Entity.DIRECTORY, UUID.randomUUID(), "reports");
+
+    driveRepository.deleteOrUpdateChildren(directory, DIRECTORY_MAPPING);
+
+    // Every level of the drive subtree, including directory itself so nested sub-directories go
+    // too.
+    for (String index :
+        List.of(
+            "cluster_directory_search_index",
+            "cluster_file_search_index",
+            "cluster_spreadsheet_search_index",
+            "cluster_worksheet_search_index")) {
+      verify(searchClient).deleteEntityByFQNPrefix(index, "svc.db.schema.reports.");
+    }
+    // Not the id-keyed cascade: a worksheet document carries only "spreadsheet" and a nested
+    // directory document only "parent", so matching "directory.id" reaches neither at any depth.
+    verify(searchClient, never()).deleteEntityByFields(any(), any());
   }
 
   @Test

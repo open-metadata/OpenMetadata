@@ -53,6 +53,40 @@ public interface SearchClient
         }
       }
       """;
+
+  /**
+   * {@link #DEFAULT_UPDATE_SCRIPT} fenced by the entity's own {@code updatedAt}, so a write built
+   * from an older read of the entity cannot overwrite a newer one already in the index.
+   *
+   * <p>Needed by writers that rebuild a document some time after the change that triggered them —
+   * the retry worker re-reads the entity when it claims a queued failure, and a live update
+   * committed in between will already have been indexed. Without the guard, whichever write reaches
+   * the cluster last wins, and that is not necessarily the newest.
+   *
+   * <p>The comparison is {@code >=} so replaying an identical write stays idempotent instead of
+   * being dropped, matching the relationship-revision fencing in {@code SearchRepository}. A
+   * document with no {@code updatedAt}, or a payload without one, is always applied — absence of an
+   * ordering signal must not silently discard the write.
+   */
+  String STALE_GUARDED_UPDATE_SCRIPT =
+      """
+      if (ctx._source.updatedAt == null || params.updatedAt == null
+          || params.updatedAt >= ctx._source.updatedAt) {
+        for (k in params.keySet()) {
+          if (k != 'fieldsToRemove') {
+            ctx._source.put(k, params.get(k))
+          }
+        }
+        if (params.containsKey('fieldsToRemove')) {
+          for (field in params.fieldsToRemove) {
+            ctx._source.remove(field)
+          }
+        }
+      } else {
+        ctx.op = 'noop';
+      }
+      """;
+
   String REMOVE_DOMAINS_CHILDREN_SCRIPT =
       "ctx._source.domains.removeIf(domain -> domain.id == params.id)";
 

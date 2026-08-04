@@ -73,6 +73,57 @@ class IndexMappingValidatorTest {
     assertEquals(0, IndexMappingValidator.validate(Map.of("table", tableMapping)).size());
   }
 
+  /**
+   * The real shape of the gap in {@code indexMapping.json}: {@code directory} lists {@code
+   * spreadsheet} but not {@code worksheet}, so hard-deleting a directory leaves the worksheets under
+   * its spreadsheets orphaned in search.
+   */
+  @Test
+  void flagsChildAliasesThatAreNotTransitivelyClosed() {
+    registerEntities("directory", "spreadsheet", "worksheet");
+
+    Map<String, IndexMapping> mappings =
+        Map.of(
+            "directory", mappingWithChildren("directory", List.of("spreadsheet")),
+            "spreadsheet", mappingWithChildren("spreadsheet", List.of("worksheet")),
+            "worksheet", mappingWithChildren("worksheet", List.of()));
+
+    List<String> warnings = IndexMappingValidator.validate(mappings);
+
+    assertEquals(1, warnings.size());
+    assertTrue(
+        warnings.get(0).contains("directory") && warnings.get(0).contains("worksheet"),
+        () -> "warning should name the parent and the unreachable descendant; got: " + warnings);
+  }
+
+  @Test
+  void silentWhenChildAliasesAreTransitivelyClosed() {
+    registerEntities("directory", "spreadsheet", "worksheet");
+
+    Map<String, IndexMapping> mappings =
+        Map.of(
+            "directory", mappingWithChildren("directory", List.of("spreadsheet", "worksheet")),
+            "spreadsheet", mappingWithChildren("spreadsheet", List.of("worksheet")),
+            "worksheet", mappingWithChildren("worksheet", List.of()));
+
+    assertEquals(0, IndexMappingValidator.validate(mappings).size());
+  }
+
+  private static void registerEntities(String... entityTypes) {
+    for (String entityType : entityTypes) {
+      EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity(entityType));
+    }
+  }
+
+  private static IndexMapping mappingWithChildren(String alias, List<String> children) {
+    return IndexMapping.builder()
+        .indexName(alias + "_search_index")
+        .alias(alias)
+        .childAliases(children)
+        .indexMappingFile("/elasticsearch/%s/" + alias + "_index_mapping.json")
+        .build();
+  }
+
   @Test
   void flagsUnregisteredChildAlias() {
     EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity("table"));

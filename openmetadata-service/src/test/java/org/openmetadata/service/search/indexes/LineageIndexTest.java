@@ -3,7 +3,7 @@ package org.openmetadata.service.search.indexes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -118,8 +118,60 @@ class LineageIndexTest {
 
     index.applyLineageFields(doc, DocBuildContext.withUpstreamLineage(prefetched));
 
-    assertSame(prefetched, doc.get("upstreamLineage"));
+    // Content, not identity: the prefetched edges are copied before SQL deduplication rewrites
+    // them in place, so the batch context is never mutated. What this test guards is that the
+    // prefetched context was used and no DB lookup happened.
+    assertEquals(prefetched, doc.get("upstreamLineage"));
     verify(relDao, never()).findFrom(any(UUID.class), anyString(), anyInt());
+  }
+
+  /**
+   * The live {@code ADD_UPDATE_LINEAGE} script stores each distinct edge SQL once and points edges
+   * at it via {@code sqlQueryKey}. A rebuild used to inline the full text on every edge, so each
+   * reindex silently reverted the deduplication — caught by {@code LiveVsReindexParityIT}.
+   */
+  @Test
+  void testApplyLineageFieldsDeduplicatesSqlAcrossEdges() {
+    Metric metric =
+        new Metric().withId(UUID.randomUUID()).withName("m").withFullyQualifiedName("svc.m");
+    String sharedSql = "SELECT 1";
+    List<EsLineageData> prefetched =
+        List.of(
+            new EsLineageData().withSqlQuery(sharedSql),
+            new EsLineageData().withSqlQuery(sharedSql),
+            new EsLineageData().withSqlQuery("SELECT 2"));
+    Map<String, Object> doc = new HashMap<>();
+
+    new MetricIndex(metric)
+        .applyLineageFields(doc, DocBuildContext.withUpstreamLineage(prefetched));
+
+    @SuppressWarnings("unchecked")
+    Map<String, String> sqlQueries = (Map<String, String>) doc.get("lineageSqlQueries");
+    assertNotNull(sqlQueries, "rebuilt document must carry the deduplicated SQL map");
+    assertEquals(2, sqlQueries.size(), "two distinct queries across three edges");
+    assertTrue(sqlQueries.containsValue(sharedSql));
+
+    @SuppressWarnings("unchecked")
+    List<EsLineageData> edges = (List<EsLineageData>) doc.get("upstreamLineage");
+    assertEquals(
+        edges.get(0).getSqlQueryKey(),
+        edges.get(1).getSqlQueryKey(),
+        "edges sharing SQL must share the key");
+    assertNull(edges.get(0).getSqlQuery(), "inline SQL is replaced by the key");
+  }
+
+  /** The prefetched list belongs to the batch context and must survive a doc build unchanged. */
+  @Test
+  void testApplyLineageFieldsDoesNotMutatePrefetchedEdges() {
+    Metric metric =
+        new Metric().withId(UUID.randomUUID()).withName("m").withFullyQualifiedName("svc.m");
+    List<EsLineageData> prefetched = List.of(new EsLineageData().withSqlQuery("SELECT 1"));
+
+    new MetricIndex(metric)
+        .applyLineageFields(new HashMap<>(), DocBuildContext.withUpstreamLineage(prefetched));
+
+    assertEquals("SELECT 1", prefetched.get(0).getSqlQuery(), "source edge must be untouched");
+    assertNull(prefetched.get(0).getSqlQueryKey());
   }
 
   @Test
