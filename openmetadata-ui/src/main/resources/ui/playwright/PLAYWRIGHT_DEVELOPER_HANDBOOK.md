@@ -790,7 +790,7 @@ Playwright tests are linted with `eslint-plugin-playwright` to automatically cat
 
 ```bash
 cd openmetadata-ui/src/main/resources/ui
-yarn lint:playwright
+yarn lint:playwright:suppressions
 ```
 
 ### Rule Levels
@@ -859,7 +859,7 @@ Before finalizing tests, verify:
 - [ ] Assertions use `.toBeVisible()` instead of `.waitForSelector()`
 
 ### ESLint
-- [ ] `yarn lint:playwright` passes with zero errors
+- [ ] `yarn lint:playwright:suppressions` passes with zero errors
 - [ ] No new warnings introduced (fix existing ones when touching a file)
 
 ### Coverage & Roles
