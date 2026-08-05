@@ -161,6 +161,10 @@ export const getExploreTreeAggregationResponse = async ({
         fetchSource: false,
       });
 
+const renderTreeTitle = (node: DataNode) => (
+  <ExploreTreeTitle node={node as ExploreTreeNode} />
+);
+
 const ExploreTree = ({
   additionalQueryFilter,
   onFieldValueSelect,
@@ -743,9 +747,7 @@ const ExploreTree = ({
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
-      titleRender={(node) => (
-        <ExploreTreeTitle node={node as ExploreTreeNode} />
-      )}
+      titleRender={renderTreeTitle}
       treeData={displayTreeData as DataNode[]}
       onExpand={(keys) => setExpandedKeys(keys)}
       onSelect={onNodeSelect}

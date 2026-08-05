@@ -99,6 +99,7 @@ const renderStatWithBoldNumbers = (stat: string): ReactNode =>
     STAT_NUMBER_TEST.test(part) ? (
       <strong
         className="tw:font-semibold tw:text-primary"
+        // eslint-disable-next-line react/no-array-index-key -- repeated text fragments, fixed order
         key={`${part}-${index}`}>
         {part}
       </strong>
@@ -457,6 +458,7 @@ export const ContextPreviewModal = ({
                 activeHeading === index,
                 heading.level > 1
               )}
+              // eslint-disable-next-line react/no-array-index-key -- no stable id, positional identity
               key={`${heading.label}-${index}`}
               onClick={() => scrollToHeading(index)}>
               {heading.label}

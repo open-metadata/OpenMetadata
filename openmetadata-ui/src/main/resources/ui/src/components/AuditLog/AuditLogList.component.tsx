@@ -13,7 +13,7 @@
 
 import { Skeleton, Space, Typography } from 'antd';
 import { compact, startCase } from 'lodash';
-import { FC, ReactNode, useCallback, useMemo } from 'react';
+import { FC, isValidElement, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
@@ -180,7 +180,7 @@ const renderEntityLinks = (
     return plainValue ? [plainValue] : [];
   }
 
-  return entities.map((entity, idx) => {
+  return entities.map((entity) => {
     const link = getEntityLinkForField(fieldName, entity);
     const label = entity.displayName ?? entity.name;
 
@@ -188,14 +188,14 @@ const renderEntityLinks = (
       return (
         <Link
           className="change-entity-link"
-          key={`${keyPrefix}-${idx}`}
+          key={`${keyPrefix}-${entity.fqn}`}
           to={link}>
           {label}
         </Link>
       );
     }
 
-    return <span key={`${keyPrefix}-${idx}`}>{label}</span>;
+    return <span key={`${keyPrefix}-${entity.fqn}`}>{label}</span>;
   });
 };
 
@@ -275,11 +275,12 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
               {links.map((link, idx) => {
                 const entities = extractEntityInfo(value);
                 const entity = entities[idx];
+                const itemKey = entity?.fqn
+                  ? `${keyPrefix}-wrap-${entity.fqn}`
+                  : `${keyPrefix}-wrap-plain`;
 
                 return (
-                  <span
-                    className="change-value-item"
-                    key={`${keyPrefix}-wrap-${idx}`}>
+                  <span className="change-value-item" key={itemKey}>
                     {showProfilePic && entity && (
                       <ProfilePicture
                         displayName={entity.displayName ?? entity.name}
@@ -324,7 +325,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         );
 
         details.push(
-          <span className="change-detail" key={`added-${idx}`}>
+          <span className="change-detail" key={`added-${change.name}`}>
             <span className="change-action">{addedLabel}</span>{' '}
             <span className="change-field">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
@@ -348,7 +349,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           );
 
           details.push(
-            <span className="change-detail" key={`updated-${idx}`}>
+            <span className="change-detail" key={`updated-${change.name}`}>
               <span className="change-action">{updatedLabel}</span>{' '}
               <span className="change-field">{label || fallbackField}</span>
               {(oldValueNode || newValueNode) && (
@@ -371,7 +372,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         );
 
         details.push(
-          <span className="change-detail" key={`deleted-${idx}`}>
+          <span className="change-detail" key={`deleted-${change.name}`}>
             <span className="change-action">{removedLabel}</span>{' '}
             <span className="change-field">{label || fallbackField}</span>
             {valueNode && <>: {valueNode}</>}
@@ -479,7 +480,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           {descriptionNodes.length > 0 ? (
             <div className="description-content">
               {descriptionNodes.map((node, idx) => (
-                <span className="description-item" key={idx}>
+                <span
+                  className="description-item"
+                  key={isValidElement(node) ? node.key : null}>
                   {node}
                   {idx < descriptionNodes.length - 1 && (
                     <span className="description-separator">; </span>

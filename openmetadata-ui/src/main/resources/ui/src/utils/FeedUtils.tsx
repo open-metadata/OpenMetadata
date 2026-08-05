@@ -182,6 +182,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
 
     return entityFields.map((field, i) => {
       return (
+        // eslint-disable-next-line react/no-array-index-key -- path segments may repeat; static split
         <span key={`field-${i}`}>
           {t(`label.${field}`, { defaultValue: field })}
           {i < entityFields.length - 1 ? separator : null}

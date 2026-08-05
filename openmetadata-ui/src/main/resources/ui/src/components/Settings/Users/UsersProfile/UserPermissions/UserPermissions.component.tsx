@@ -96,8 +96,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     fetchPermissions();
   }, [username, isLoggedInUser]);
 
-  const renderRule = (rule: RuleInfo, index: number) => (
-    <div className="rule-item m-b-sm" key={index}>
+  const renderRule = (rule: RuleInfo) => (
+    <div className="rule-item m-b-sm" key={rule.name}>
       <Space className="w-full" direction="vertical">
         <Space>
           <Text strong>{rule.name}</Text>
@@ -108,8 +108,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         {!isEmpty(rule.operations) && (
           <div>
             <Text type="secondary">{t('label.operation-plural')}: </Text>
-            {rule.operations.map((op, idx) => (
-              <Tag className="m-r-xs" key={idx}>
+            {rule.operations.map((op) => (
+              <Tag className="m-r-xs" key={op}>
                 {op}
               </Tag>
             ))}
@@ -118,8 +118,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         {!isEmpty(rule.resources) && (
           <div>
             <Text type="secondary">{t('label.resource-plural')}: </Text>
-            {rule.resources.map((res, idx) => (
-              <Tag className="m-r-xs" key={idx}>
+            {rule.resources.map((res) => (
+              <Tag className="m-r-xs" key={res}>
                 {res}
               </Tag>
             ))}
@@ -135,8 +135,11 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     </div>
   );
 
-  const renderPolicy = (policy: PolicyInfo, index: number) => (
-    <Collapse ghost className="policy-collapse" key={index}>
+  const renderPolicy = (policy: PolicyInfo) => (
+    <Collapse
+      ghost
+      className="policy-collapse"
+      key={policy.policy.fullyQualifiedName}>
       <Panel
         header={
           <Space>
@@ -163,9 +166,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             </Text>
           </Space>
         }
-        key={index}>
+        key={policy.policy.fullyQualifiedName ?? ''}>
         <div className="rules-container">
-          {policy.rules.map((rule, ruleIndex) => renderRule(rule, ruleIndex))}
+          {policy.rules.map((rule) => renderRule(rule))}
         </div>
       </Panel>
     </Collapse>
@@ -179,8 +182,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     return (
       <Card className="m-b-md" title={t('label.direct-role-plural')}>
         {permissionInfo?.directRoles.map(
-          (rolePermission: DirectRolePermission, index: number) => (
-            <div className="m-b-md" key={index}>
+          (rolePermission: DirectRolePermission) => (
+            <div
+              className="m-b-md"
+              key={rolePermission.role.fullyQualifiedName}>
               <Space className="m-b-sm">
                 <Text strong>{t('label.role')}: </Text>
                 <Link
@@ -191,9 +196,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                   {getEntityName(rolePermission.role)}
                 </Link>
               </Space>
-              {rolePermission.policies.map((policy, policyIndex) =>
-                renderPolicy(policy, policyIndex)
-              )}
+              {rolePermission.policies.map((policy) => renderPolicy(policy))}
             </div>
           )
         )}
@@ -201,11 +204,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     );
   };
 
-  const renderRolePermission = (
-    rolePermission: RolePermission,
-    index: number
-  ) => (
-    <div className="m-b-md" key={index}>
+  const renderRolePermission = (rolePermission: RolePermission) => (
+    <div className="m-b-md" key={rolePermission.role.fullyQualifiedName}>
       <Space className="w-full" direction="vertical">
         <Space>
           <Text strong>{t('label.role') + ': '}</Text>
@@ -224,9 +224,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
           {t('label.inherited-from')}:{' '}
           <span>{rolePermission.inheritedFrom}</span>
         </Text>
-        {rolePermission.policies.map((policy, policyIndex) =>
-          renderPolicy(policy, policyIndex)
-        )}
+        {rolePermission.policies.map((policy) => renderPolicy(policy))}
       </Space>
     </div>
   );
@@ -239,8 +237,10 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     return (
       <Card className="m-b-md" title={t('label.team-permission-plural')}>
         {permissionInfo?.teamPermissions.map(
-          (teamPermission: TeamPermission, index: number) => (
-            <div className="team-permission m-b-lg" key={index}>
+          (teamPermission: TeamPermission) => (
+            <div
+              className="team-permission m-b-lg"
+              key={teamPermission.team.fullyQualifiedName}>
               <Space className="w-full" direction="vertical">
                 <Space>
                   <Text strong>{t('label.team')}: </Text>
@@ -270,7 +270,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                         {t('label.hierarchy') + ': '}
                       </Text>
                       {teamPermission.teamHierarchy.map((team, idx) => (
-                        <React.Fragment key={idx}>
+                        <React.Fragment key={team.fullyQualifiedName}>
                           <Link
                             to={getEntityLink(
                               'team',
@@ -290,9 +290,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                     <Text strong className="m-b-sm">
                       {t('label.team-role-plural')}:{' '}
                     </Text>
-                    {teamPermission.rolePermissions.map(
-                      (rolePermission, roleIndex) =>
-                        renderRolePermission(rolePermission, roleIndex)
+                    {teamPermission.rolePermissions.map((rolePermission) =>
+                      renderRolePermission(rolePermission)
                     )}
                   </div>
                 )}
@@ -302,8 +301,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                     <Text strong className="m-b-sm">
                       {t('label.direct-team-policy-plural')}:{' '}
                     </Text>
-                    {teamPermission.directPolicies.map((policy, policyIndex) =>
-                      renderPolicy(policy, policyIndex)
+                    {teamPermission.directPolicies.map((policy) =>
+                      renderPolicy(policy)
                     )}
                   </div>
                 )}
@@ -327,6 +326,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         title={t('label.other-inherited-permission-plural')}>
         {permissionInfo?.inheritedPermissions.map(
           (inherited: InheritedPermission, index: number) => (
+            // eslint-disable-next-line react/no-array-index-key -- no unique id; static list
             <div className="m-b-md" key={index}>
               <Space className="w-full" direction="vertical">
                 <Space>
@@ -349,9 +349,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
                     </Link>
                   </div>
                 )}
-                {inherited.policies.map((policy, policyIndex) =>
-                  renderPolicy(policy, policyIndex)
-                )}
+                {inherited.policies.map((policy) => renderPolicy(policy))}
               </Space>
             </div>
           )
@@ -406,8 +404,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
           <div className="m-t-md">
             <Text strong>{t('label.allowed-operation-plural') + ': '}</Text>
             <div className="m-t-xs">
-              {summary.effectiveOperations.map((op, idx) => (
-                <Tag className="m-r-xs m-b-xs" color="success" key={idx}>
+              {summary.effectiveOperations.map((op) => (
+                <Tag className="m-r-xs m-b-xs" color="success" key={op}>
                   {op}
                 </Tag>
               ))}
@@ -419,8 +417,8 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
           <div className="m-t-md">
             <Text strong>{t('label.denied-operation-plural') + ': '}</Text>
             <div className="m-t-xs">
-              {summary.deniedOperations.map((op, idx) => (
-                <Tag className="m-r-xs m-b-xs" color="error" key={idx}>
+              {summary.deniedOperations.map((op) => (
+                <Tag className="m-r-xs m-b-xs" color="error" key={op}>
                   {op}
                 </Tag>
               ))}

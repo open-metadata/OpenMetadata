@@ -32,6 +32,16 @@ interface DataInsightProgressBarProps {
   showProgress?: boolean;
 }
 
+const renderProgressFormat = (target?: number, suffix?: string) => () =>
+  target ? (
+    <span className="data-insight-kpi-target" style={{ width: `${target}%` }}>
+      <span className="target-text">
+        {round(target, 2)}
+        {suffix}
+      </span>
+    </span>
+  ) : null;
+
 const DataInsightProgressBar = ({
   width,
   progress,
@@ -60,20 +70,7 @@ const DataInsightProgressBar = ({
         <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
           <Progress
             className="data-insight-progress-bar"
-            format={() => (
-              <>
-                {target ? (
-                  <span
-                    className="data-insight-kpi-target"
-                    style={{ width: `${target}%` }}>
-                    <span className="target-text">
-                      {round(target, 2)}
-                      {suffix}
-                    </span>
-                  </span>
-                ) : null}
-              </>
-            )}
+            format={renderProgressFormat(target, suffix)}
             percent={progress}
             strokeColor="#B3D4F4"
           />

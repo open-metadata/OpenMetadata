@@ -59,6 +59,7 @@ function PlatformInsightsWidget({
     <Collapse
       className="service-insights-collapse-widget platform-insights-card"
       defaultActiveKey={['1']}
+      // eslint-disable-next-line react/no-unstable-nested-components -- Collapse expandIcon render prop closing over t
       expandIcon={() => (
         <div className="expand-icon-container">
           <Typography.Text className="text-primary">

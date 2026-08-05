@@ -42,13 +42,13 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
         </p>
         <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
         <div className="tw:flex tw:flex-col tw:gap-1">
-          {payloadValue.map((entry, index) => {
+          {payloadValue.map((entry) => {
             const value = entry.value;
 
             return (
               <div
                 className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
-                key={`item-${index}`}>
+                key={`item-${String(entry.dataKey ?? entry.name)}`}>
                 <span className="tw:flex tw:items-center">
                   <Surface
                     className="tw:mr-2"
@@ -59,14 +59,22 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
                   </Surface>
                   <span className="tw:text-tertiary tw:text-[11px]">
                     {transformLabel
-                      ? startCase(entry.name ?? (entry.dataKey as string))
+                      ? startCase(
+                          (entry.name ?? entry.dataKey) as string | undefined
+                        )
                       : entry.name ?? (entry.dataKey as string)}
                   </span>
                 </span>
                 <span className="tw:font-medium tw:text-primary tw:text-[11px]">
                   {valueFormatter
-                    ? valueFormatter(value, entry.name ?? entry.dataKey)
-                    : getEntryFormattedValue(value, isPercentage)}
+                    ? valueFormatter(
+                        value as string | number,
+                        (entry.name ?? entry.dataKey) as string | undefined
+                      )
+                    : getEntryFormattedValue(
+                        value as string | number | undefined,
+                        isPercentage
+                      )}
                 </span>
               </div>
             );

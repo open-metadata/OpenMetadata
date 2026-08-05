@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Alert, RefSelectProps, TreeSelect } from 'antd';
+import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
+import { TFunction } from 'i18next';
 
 import { isEmpty } from 'lodash';
-import { forwardRef, useEffect, useMemo, useState } from 'react';
+import { ComponentRef, forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
@@ -26,7 +27,21 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
-const TeamsSelectableNew = forwardRef<RefSelectProps, TeamsSelectableProps>(
+const getMaxTagPlaceholder = (t: TFunction) => (omittedValues: unknown[]) =>
+  (
+    <span className="max-tag-text">
+      {
+        t('label.plus-count-more', {
+          count: omittedValues.length,
+        }) as string
+      }
+    </span>
+  );
+
+const TeamsSelectableNew = forwardRef<
+  ComponentRef<typeof TreeSelect>,
+  TeamsSelectableProps
+>(
   (
     {
       showTeamsAlert,
@@ -118,13 +133,7 @@ const TeamsSelectableNew = forwardRef<RefSelectProps, TeamsSelectableProps>(
           getPopupContainer={(trigger) => trigger.parentElement}
           loading={isLoading}
           maxTagCount={maxValueCount}
-          maxTagPlaceholder={(omittedValues) => (
-            <span className="max-tag-text">
-              {t('label.plus-count-more', {
-                count: omittedValues.length,
-              })}
-            </span>
-          )}
+          maxTagPlaceholder={getMaxTagPlaceholder(t)}
           open={open}
           placeholder={placeholder}
           placement="bottomLeft"
