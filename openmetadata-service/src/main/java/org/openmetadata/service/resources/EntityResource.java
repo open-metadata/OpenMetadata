@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -119,6 +120,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 @LatencyPhase
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
+  private static final String INCLUDE_PERMISSIONS_PARAM = "includePermissions";
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final Set<String> allowedFields;
@@ -179,6 +181,47 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
   }
 
+  /**
+   * When a list request opts in with {@code ?includePermissions=true}, attach each listed entity's
+   * permissions for the current user so the UI can render row-level actions without firing one
+   * permission call per entity. No-op (and zero cost) for the default listing.
+   */
+  public final ResultList<T> addPermissions(
+      UriInfo uriInfo, SecurityContext securityContext, ResultList<T> list) {
+    if (isPermissionsRequested(uriInfo) && !nullOrEmpty(list.getData())) {
+      list.setEntityPermissions(computeEntityPermissions(securityContext, list.getData()));
+    }
+    return list;
+  }
+
+  private boolean isPermissionsRequested(UriInfo uriInfo) {
+    return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst(INCLUDE_PERMISSIONS_PARAM));
+  }
+
+  private Map<String, ResourcePermission> computeEntityPermissions(
+      SecurityContext securityContext, List<T> entities) {
+    String user = securityContext.getUserPrincipal().getName();
+    Map<String, ResourcePermission> permissions = new LinkedHashMap<>();
+    for (T entity : entities) {
+      if (entity.getId() != null) {
+        permissions.put(
+            entity.getId().toString(), getEntityPermission(securityContext, user, entity.getId()));
+      }
+    }
+    return permissions;
+  }
+
+  private ResourcePermission getEntityPermission(
+      SecurityContext securityContext, String user, UUID id) {
+    // ponytail: reuse the single-entity path (lazy get-by-id, repository-cached) so results match
+    // /permissions/{resource}/{id} exactly. If profiling flags the per-entity re-fetch, pass the
+    // already-loaded list entity via ResourceContext(resource, entity, repository) once its
+    // owners/tags/domains are guaranteed loaded — otherwise conditional (isOwner/matchTag) rules
+    // would evaluate against missing fields and hand back the wrong permission.
+    ResourceContext<T> resourceContext = new ResourceContext<>(entityType, id, null);
+    return authorizer.getPermission(securityContext, user, resourceContext);
+  }
+
   public ResultList<T> listInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -226,7 +269,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     } else { // Forward paging or first page
       resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
-    return addHref(uriInfo, resultList);
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
   public ResultList<T> listInternal(
@@ -251,7 +294,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     } else { // Forward paging or first page
       resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
-    return addHref(uriInfo, resultList);
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
   protected ResultList<T> searchInternal(
@@ -275,7 +318,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
     ResultList<T> resultList =
         repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
-    return addHref(uriInfo, resultList);
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
   public ResultList<T> listInternalFromSearch(
@@ -291,16 +334,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<AuthRequest> authRequests)
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-    return repository.listFromSearchWithOffset(
-        uriInfo,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        q,
-        queryString,
-        securityContext);
+    ResultList<T> resultList =
+        repository.listFromSearchWithOffset(
+            uriInfo,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            queryString,
+            securityContext);
+    return addPermissions(uriInfo, securityContext, resultList);
   }
 
   public T getInternal(

@@ -92,6 +92,7 @@ export const useTestCaseListPage = () => {
   const {
     testCase,
     setTestCase,
+    entityPermissions,
     isLoading,
     fetchTestCases,
     sortTestCase,
@@ -174,6 +175,7 @@ export const useTestCaseListPage = () => {
     debounceFetchDataProductOptions,
     // table + paging
     testCase,
+    entityPermissions,
     isLoading,
     pagingData,
     showPagination,

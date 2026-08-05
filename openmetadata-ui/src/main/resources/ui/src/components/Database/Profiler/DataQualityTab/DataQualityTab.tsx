@@ -52,6 +52,10 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getOperationPermissions,
+} from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -126,6 +130,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   editVariant = getDefaultTestCaseFormVariant(),
   hasActiveFilters = false,
   emptyStateAction,
+  entityPermissions,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -402,14 +407,37 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
+  const applyInlinePermissions = () => {
+    const data = testCases.map((testCase) => {
+      const resourcePermission = testCase.id
+        ? entityPermissions?.[testCase.id]
+        : undefined;
+
+      return {
+        ...(resourcePermission
+          ? getOperationPermissions(resourcePermission)
+          : DEFAULT_ENTITY_PERMISSION),
+        fullyQualifiedName: testCase.fullyQualifiedName,
+      };
+    });
+    setTestCasePermissions(data);
+    setIsPermissionLoading(false);
+  };
+
   useEffect(() => {
     if (testCases.length) {
       collectInlineIncidentStatuses();
-      fetchTestCasePermissions();
+      // When the list API already returned permissions inline, use them instead
+      // of firing one permission call per listed test case.
+      if (entityPermissions) {
+        applyInlinePermissions();
+      } else {
+        fetchTestCasePermissions();
+      }
     } else {
       setIsStatusLoading(false);
     }
-  }, [testCases]);
+  }, [testCases, entityPermissions]);
 
   const handleOpenBundleSuiteForm = (cases: TestCase[]) => {
     setBundleSuiteFormInitialCases(cases);

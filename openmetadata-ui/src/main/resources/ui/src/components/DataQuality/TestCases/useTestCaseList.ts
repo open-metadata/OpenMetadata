@@ -25,6 +25,7 @@ import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { ResourcePermission } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
@@ -82,6 +83,10 @@ export const useTestCaseList = ({
   showPagination,
 }: UseTestCaseListProps) => {
   const [testCase, setTestCase] = useState<TestCase[]>([]);
+  // Left undefined when the list API doesn't return inline permissions so the
+  // DataQualityTab falls back to its own per-row permission fetch.
+  const [entityPermissions, setEntityPermissions] =
+    useState<Record<string, ResourcePermission>>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
@@ -99,7 +104,11 @@ export const useTestCaseList = ({
 
       setIsLoading(true);
       try {
-        const { data, paging: pagingResponse } = await getListTestCaseBySearch({
+        const {
+          data,
+          paging: pagingResponse,
+          entityPermissions: listPermissions,
+        } = await getListTestCaseBySearch({
           ...updatedParams,
           ...sortOptions,
           ...apiParams,
@@ -108,6 +117,7 @@ export const useTestCaseList = ({
             : params?.testCaseStatus,
           limit: pageSize,
           includeAllTests: true,
+          includePermissions: true,
           fields: [
             TabSpecificField.TEST_CASE_RESULT,
             TabSpecificField.TESTSUITE,
@@ -118,6 +128,7 @@ export const useTestCaseList = ({
           offset: (page - 1) * pageSize,
         });
         setTestCase(data);
+        setEntityPermissions(listPermissions);
         handlePagingChange(pagingResponse);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -193,6 +204,7 @@ export const useTestCaseList = ({
   return {
     testCase,
     setTestCase,
+    entityPermissions,
     isLoading,
     fetchTestCases,
     sortTestCase,

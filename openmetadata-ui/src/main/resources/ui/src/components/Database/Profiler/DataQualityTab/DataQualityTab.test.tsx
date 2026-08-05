@@ -19,6 +19,11 @@ import {
   screen,
 } from '@testing-library/react';
 import React, { act } from 'react';
+import {
+  Access,
+  ResourcePermission,
+} from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
@@ -340,11 +345,13 @@ jest.mock('../../../../hooks/authHooks', () => ({
   }),
 }));
 
+const mockGetEntityPermissionByFqn = jest
+  .fn()
+  .mockImplementation(() => mockPermissionsData);
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => mockPermissionsData),
+    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   }),
 }));
 
@@ -412,6 +419,43 @@ describe('DataQualityTab test', () => {
 
     expect(tableRows).toHaveLength(6);
     expect(await screen.findByTestId('test-case-table')).toBeVisible();
+  });
+
+  it('should consume inline entityPermissions and skip per-row permission calls', async () => {
+    const entityPermissions = (mockProps.testCases as TestCase[]).reduce(
+      (acc, testCase) => {
+        acc[testCase.id ?? ''] = {
+          resource: 'testCase',
+          permissions: [
+            { operation: Operation.EditAll, access: Access.Allow },
+            { operation: Operation.Delete, access: Access.Allow },
+          ],
+        };
+
+        return acc;
+      },
+      {} as Record<string, ResourcePermission>
+    );
+
+    await act(async () => {
+      render(
+        <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
+      );
+    });
+
+    expect(await screen.findByTestId('test-case-table')).toBeVisible();
+    // The list API already returned permissions, so the N per-test-case
+    // permission calls must not fire.
+    expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
+  });
+
+  it('should fall back to per-row permission calls without inline permissions', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('test-case-table')).toBeVisible();
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
   });
 
   it('Table header should be visible', async () => {

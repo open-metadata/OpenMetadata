@@ -63,6 +63,7 @@ export const TestCases = () => {
     debounceFetchServiceOptions,
     debounceFetchDataProductOptions,
     testCase,
+    entityPermissions,
     isLoading,
     pagingData,
     showPagination,
@@ -301,6 +302,7 @@ export const TestCases = () => {
           ]}
           emptyStateAction={emptyStateAction}
           enableBulkActions={Boolean(testSuitePermission?.Create)}
+          entityPermissions={entityPermissions}
           fetchTestCases={sortTestCase}
           hasActiveFilters={Boolean(searchValue) || hasActiveFilters}
           isLoading={isLoading}

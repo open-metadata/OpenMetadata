@@ -16,6 +16,7 @@ import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
@@ -79,6 +80,9 @@ export interface DataQualityTabProps {
   editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
   emptyStateAction?: EmptyPlaceholderAction;
+  // Per-entity permissions keyed by test-case id, supplied by the list API when
+  // includePermissions=true. When present, the tab skips per-row permission calls.
+  entityPermissions?: Record<string, ResourcePermission>;
 }
 
 export interface TestSummaryProps {
