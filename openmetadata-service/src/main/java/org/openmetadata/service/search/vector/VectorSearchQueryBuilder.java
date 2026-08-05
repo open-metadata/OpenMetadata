@@ -94,6 +94,10 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "domains.name", values);
           }
+          case "dataProducts" -> {
+            sb.append(',');
+            appendFlat(sb, "dataProducts.name", values);
+          }
           case "tier" -> {
             sb.append(',');
             appendFlat(sb, "tier.tagFQN", values);
