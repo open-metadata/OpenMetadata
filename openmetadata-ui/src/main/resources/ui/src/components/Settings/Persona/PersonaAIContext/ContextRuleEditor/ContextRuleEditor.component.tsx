@@ -225,6 +225,7 @@ export const ContextRuleEditor = ({
     return () => {
       window.clearTimeout(timeout);
       if (requestId === previewRequestRef.current) {
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
         previewRequestRef.current++;
       }
     };

@@ -245,6 +245,7 @@ const TestSuitePipelineTab = ({
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleTriggerIngestion = useCallback(
@@ -263,6 +264,7 @@ const TestSuitePipelineTab = ({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -287,6 +289,7 @@ const TestSuitePipelineTab = ({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -316,6 +319,7 @@ const TestSuitePipelineTab = ({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handlePagingChange]
   );
 
@@ -388,6 +392,7 @@ const TestSuitePipelineTab = ({
           type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
         />
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testSuite, createPermission, t]
   );
 
@@ -408,6 +413,7 @@ const TestSuitePipelineTab = ({
 
   useEffect(() => {
     getAllIngestionWorkflows(undefined, pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize]);
 
   useEffect(() => {

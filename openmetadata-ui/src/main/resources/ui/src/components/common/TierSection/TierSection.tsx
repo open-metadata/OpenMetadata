@@ -161,6 +161,7 @@ const TierSection: React.FC<TierSectionProps> = ({
         </div>
       </TierCard>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [displayTier, popoverOpen, handleTierSelection, handleCancel]
   );
 

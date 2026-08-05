@@ -469,6 +469,7 @@ test.describe('Dashboard Task UI Flow', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Wait for the activity feed content to load
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page
         .waitForSelector('[data-testid="activity-feed-tab"]', {
           state: 'visible',

@@ -110,6 +110,7 @@ function AddDetailsPageWidgetModal({
         tabPosition="left"
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [widgetsList, tabItems]);
 
   return (

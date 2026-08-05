@@ -66,6 +66,7 @@ const KnowledgePages: FC = () => {
     } else {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityId, entityType]);
 
   // only show view all if length is greater than PAGE_SIZE i.e 10
@@ -141,6 +142,7 @@ const KnowledgePages: FC = () => {
     if (!isLoading && isEmpty(knowledgePages)) {
       filterWidgets?.([DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isLoading, knowledgePages]);
 
   if (isLoading) {

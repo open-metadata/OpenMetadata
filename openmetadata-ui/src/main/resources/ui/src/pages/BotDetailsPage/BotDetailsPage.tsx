@@ -140,10 +140,12 @@ const BotDetailsPage = () => {
     if (botPermission.ViewAll || botPermission.ViewBasic) {
       fetchBotsData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [botPermission, botsName]);
 
   useEffect(() => {
     fetchBotPermission(botsName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [botsName]);
 
   if (isLoading) {

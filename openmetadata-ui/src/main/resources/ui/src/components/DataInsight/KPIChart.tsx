@@ -219,6 +219,7 @@ const KPIChart: FC<Props> = ({
       fetchKpiResults();
       fetchKpiLatestResults();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [kpiList, chartFilter]);
 
   const hasAtLeastOneData = useMemo(() => {

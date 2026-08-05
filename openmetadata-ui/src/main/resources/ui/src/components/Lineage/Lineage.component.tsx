@@ -85,14 +85,17 @@ const Lineage = ({
 
   const onConnectStart = useCallback(() => {
     setIsCreatingEdge(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const onConnectEnd = useCallback(() => {
     setIsCreatingEdge(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     updateEntityData(entityType, entity as SourceType, isPlatformLineage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entity, entityType, isPlatformLineage]);
 
   // Memoize callback for onNodeClick to prevent unnecessary re-renders

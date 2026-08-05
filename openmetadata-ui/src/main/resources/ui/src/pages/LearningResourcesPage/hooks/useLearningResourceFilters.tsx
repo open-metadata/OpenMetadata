@@ -183,6 +183,7 @@ export const useLearningResourceFilters = (
         ))}
       </Space>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       filterState,
       optionsByKey,

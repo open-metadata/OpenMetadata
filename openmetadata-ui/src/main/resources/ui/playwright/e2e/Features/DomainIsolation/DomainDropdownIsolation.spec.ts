@@ -28,6 +28,7 @@ const foreignDomain = new Domain();
 
 const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
   adminPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await adminUser.login(page);
@@ -37,6 +38,7 @@ const test = base.extend<{ adminPage: Page; restrictedUserPage: Page }>({
     }
   },
   restrictedUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await restrictedUser.login(page);

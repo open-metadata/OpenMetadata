@@ -70,6 +70,7 @@ const TagsTask: FC<TagsTaskProps> = ({
         />
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [oldValue, newValue]);
 
   /**
@@ -95,6 +96,7 @@ const TagsTask: FC<TagsTaskProps> = ({
         />
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [suggestion, oldValue]);
 
   return (

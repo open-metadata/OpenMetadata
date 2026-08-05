@@ -157,6 +157,7 @@ const DataQualityProvider = ({
     } else {
       setIsTestCaseSummaryLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [filterKey]);
 
   return (

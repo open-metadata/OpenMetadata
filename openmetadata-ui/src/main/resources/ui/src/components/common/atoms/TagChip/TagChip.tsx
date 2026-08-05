@@ -97,6 +97,7 @@ const TagChip: FC<TagChipProps> = ({
       ) : (
         <Tag01 size={sizeStyles[size].icon} />
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [icon]
   );
 

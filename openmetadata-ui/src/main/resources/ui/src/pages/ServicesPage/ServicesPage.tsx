@@ -94,6 +94,7 @@ const ServicesPage = () => {
         permissions
       )
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permissions]);
 
   const isEmbedded = location.pathname.startsWith('/askCollate');

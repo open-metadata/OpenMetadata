@@ -66,24 +66,28 @@ const test = base.extend<{
   pipelineEditPage: Page;
 }>({
   serviceOwnerPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await serviceOwnerUser.login(page);
     await use(page);
     await page.close();
   },
   anotherUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await anotherUser.login(page);
     await use(page);
     await page.close();
   },
   pipelineTriggerPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await pipelineTriggerUser.login(page);
     await use(page);
     await page.close();
   },
   pipelineEditPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await pipelineEditUser.login(page);
     await use(page);

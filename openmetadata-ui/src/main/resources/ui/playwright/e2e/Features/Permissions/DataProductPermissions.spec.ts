@@ -39,6 +39,7 @@ const test = base.extend<{
   testUserPage: Page;
 }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
@@ -48,6 +49,7 @@ const test = base.extend<{
     }
   },
   testUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const userPage = await browser.newPage();
     try {
       await testUser.login(userPage);
@@ -226,6 +228,7 @@ test.describe('Data Product Permissions', () => {
         }
       );
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const expertPage = await browser.newPage();
       await expertUser.login(expertPage);
       await redirectToHomePage(expertPage);

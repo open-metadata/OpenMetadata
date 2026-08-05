@@ -161,12 +161,14 @@ PersonaSelectableListProps) => {
 
   useEffect(() => {
     loadOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [personaList]);
 
   useEffect(() => {
     if (popupVisible) {
       loadOptions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [popupVisible]);
 
   const handlePersonaUpdate = () => {

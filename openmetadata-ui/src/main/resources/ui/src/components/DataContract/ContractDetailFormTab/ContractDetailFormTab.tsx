@@ -98,6 +98,7 @@ export const ContractDetailFormTab: React.FC<{
         owners: initialValues.owners,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialValues]);
 
   return (

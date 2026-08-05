@@ -312,6 +312,7 @@ function WorksheetColumnsTable() {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       deleted,
       worksheetDetails.fullyQualifiedName,

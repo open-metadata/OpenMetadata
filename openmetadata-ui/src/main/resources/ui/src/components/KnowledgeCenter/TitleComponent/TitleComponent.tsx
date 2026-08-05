@@ -56,6 +56,7 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
         setTitleValue(value);
       }
       prevValueRef.current = value;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [value]);
 
     useAutoSizeTextArea('title-input', textAreaRef.current, titleValue);

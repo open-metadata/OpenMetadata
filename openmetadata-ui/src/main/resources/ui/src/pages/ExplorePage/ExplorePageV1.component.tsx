@@ -220,6 +220,7 @@ const ExplorePageV1: FC<unknown> = () => {
           })
         );
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [commonQuickFilters, searchQueryParam]
     );
 
@@ -232,6 +233,7 @@ const ExplorePageV1: FC<unknown> = () => {
         }),
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [parsedSearch]
   );
 
@@ -257,6 +259,7 @@ const ExplorePageV1: FC<unknown> = () => {
         }),
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [parsedSearch]
   );
 
@@ -295,6 +298,7 @@ const ExplorePageV1: FC<unknown> = () => {
     return !isNil(tabInfo)
       ? (tabInfo[0] as ExploreSearchIndex)
       : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [autoSelectedSearchIndex, tab, searchHitCounts, searchQueryParam]);
 
   // Use the utility function to generate tab items
@@ -585,6 +589,7 @@ const ExplorePageV1: FC<unknown> = () => {
     if (!isTourOpen) {
       performFetch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isTourOpen, fetchDependencies]);
 
   const handleAdvanceSearchQuickFiltersChange = useCallback(

@@ -213,6 +213,7 @@ const CuratedAssetsWidgetContent = ({
         setIsLoading(false);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     curatedAssetsConfig,
     selectedResource,
@@ -451,6 +452,7 @@ const CuratedAssetsWidgetContent = ({
         onTitleClick={handleTitleClick}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentLayout,
       curatedAssetsConfig,

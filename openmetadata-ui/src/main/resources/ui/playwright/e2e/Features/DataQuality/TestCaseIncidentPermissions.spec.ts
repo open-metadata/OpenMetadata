@@ -69,30 +69,35 @@ const test = base.extend<{
     await afterAction();
   },
   viewIncidentsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await viewIncidentsUser.login(page);
     await use(page);
     await page.close();
   },
   editIncidentsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await editIncidentsUser.login(page);
     await use(page);
     await page.close();
   },
   tableEditIncidentsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await tableEditIncidentsUser.login(page);
     await use(page);
     await page.close();
   },
   tableViewIncidentsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await tableViewIncidentsUser.login(page);
     await use(page);
     await page.close();
   },
   consumerLikePage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await consumerLikeUser.login(page);
     await use(page);

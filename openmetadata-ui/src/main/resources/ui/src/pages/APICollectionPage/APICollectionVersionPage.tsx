@@ -202,6 +202,7 @@ const APICollectionVersionPage = () => {
         setAPIEndpointsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [collection]
   );
 
@@ -249,6 +250,7 @@ const APICollectionVersionPage = () => {
       }
       handlePageChange(currentPage);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging, getAPICollectionEndpoints]
   );
 
@@ -270,6 +272,7 @@ const APICollectionVersionPage = () => {
         );
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedEntityFQN, decodedEntityFQN, tab]
   );
 
@@ -351,6 +354,7 @@ const APICollectionVersionPage = () => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       tags,
       domains,
@@ -433,6 +437,7 @@ const APICollectionVersionPage = () => {
         />
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isLoading,
     viewVersionPermission,
@@ -456,12 +461,14 @@ const APICollectionVersionPage = () => {
     if (!isEmpty(decodedEntityFQN)) {
       init();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (!isUndefined(collection)) {
       fetchCurrentVersionData(collection);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, collection, pageSize]);
 
   return (

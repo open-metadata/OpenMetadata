@@ -109,6 +109,7 @@ const ListEntities = ({
     return tabColumns.filter((column) =>
       column.key === 'actions' ? !isTeamDeleted : true
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isTeamDeleted]);
 
   return (

@@ -144,6 +144,7 @@ const EdgeInfoDrawer = ({
         await onEdgeDetailsUpdate?.(updatedEdgeDetails);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [edgeEntity, edge]
   );
 
@@ -190,6 +191,7 @@ const EdgeInfoDrawer = ({
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [edgeEntity, edge]
   );
 
@@ -253,6 +255,7 @@ const EdgeInfoDrawer = ({
         </SectionWithEdit>
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isColumnLineage,
     edgeEntity?.description,
@@ -379,6 +382,7 @@ const EdgeInfoDrawer = ({
       }
       setShowSqlQueryModal(false);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [edgeEntity, edge, mysqlQuery]
   );
 
@@ -386,6 +390,7 @@ const EdgeInfoDrawer = ({
     setIsLoading(true);
     getEdgeInfo();
     setMysqlQuery(resolvedSqlQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [edge, visible, nodes, resolvedSqlQuery]);
 
   return (

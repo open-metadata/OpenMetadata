@@ -328,6 +328,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     } else if (!isEditMode && savedStateOnEdit) {
       setSavedStateOnEdit(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEditMode, savedStateOnEdit, loading]);
 
   const navBlockEnabled = isEditMode && hasNodeConfigSaved;
@@ -392,6 +393,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       workflowDefinition,
       workflowMetadata?.description,
@@ -417,6 +419,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         url: getWorkflowDefinitionsListPath(),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [workflowDisplayName, t]);
 
   if (loading) {

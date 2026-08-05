@@ -130,24 +130,28 @@ const test = base.extend<{
   scopedUserPage: Page;
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await editOnlyUser.login(page);
     await use(page);
     await page.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
   ownerUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await ownerUser.login(page);
     await use(page);
     await page.close();
   },
   scopedUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await user.login(page);
     await use(page);

@@ -59,6 +59,7 @@ const BasicAuthenticator = forwardRef(
         await setOidcToken(response.accessToken);
 
         return Promise.resolve(response);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       }, [authConfig, setOidcToken, setRefreshToken, t]);
 
     useImperativeHandle(ref, () => ({

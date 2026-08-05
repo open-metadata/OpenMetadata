@@ -187,6 +187,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   useEffect(() => {
     form.reset(initialValues);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialValues]);
 
   useEffect(() => {

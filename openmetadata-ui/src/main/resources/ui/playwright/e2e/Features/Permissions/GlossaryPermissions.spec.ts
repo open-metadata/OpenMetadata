@@ -33,6 +33,7 @@ const test = base.extend<{
   testUserPage: Page;
 }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
@@ -42,6 +43,7 @@ const test = base.extend<{
     }
   },
   testUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await testUser.login(page);
@@ -412,6 +414,7 @@ test.describe('Glossary Permissions', () => {
       },
     });
 
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const teamUserPage = await browser.newPage();
     try {
       await teamUser.login(teamUserPage);

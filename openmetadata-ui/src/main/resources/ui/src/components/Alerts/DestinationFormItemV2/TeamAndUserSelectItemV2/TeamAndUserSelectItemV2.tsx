@@ -40,6 +40,7 @@ function TeamAndUserSelectItemV2({
   const [options, setOptions] = useState<SelectOption[]>([]);
 
   const fieldPath = `destinations.${fieldName.join('.')}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const selectedOptions: string[] =
     useWatch({ name: fieldPath, control }) ?? [];
 

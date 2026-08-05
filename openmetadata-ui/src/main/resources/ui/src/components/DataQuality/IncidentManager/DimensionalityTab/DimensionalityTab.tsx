@@ -128,6 +128,7 @@ const DimensionalityTab = () => {
     if (selectedDimension) {
       fetchDimensionColumnData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedDimension, dateRange]);
 
   const getLatestResultPerDimension = useMemo(() => {

@@ -143,6 +143,7 @@ export const ContractTab = () => {
 
   useEffect(() => {
     fetchContract();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [id]);
 
   // Check if the contract is inherited from a Data Product
@@ -194,6 +195,7 @@ export const ContractTab = () => {
           />
         );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tabMode, contract, entityName, isInheritedContract, hasEditPermission]);
 
   return isLoading ? (

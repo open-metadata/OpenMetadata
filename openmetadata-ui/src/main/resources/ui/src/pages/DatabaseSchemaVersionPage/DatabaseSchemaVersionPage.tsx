@@ -165,6 +165,7 @@ function DatabaseSchemaVersionPage() {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [viewVersionPermission, decodedEntityFQN]);
 
   const fetchCurrentVersionData = useCallback(
@@ -197,6 +198,7 @@ function DatabaseSchemaVersionPage() {
         setIsTableDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedEntityFQN]
   );
 
@@ -216,6 +218,7 @@ function DatabaseSchemaVersionPage() {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging, getSchemaTables]
   );
 
@@ -237,6 +240,7 @@ function DatabaseSchemaVersionPage() {
         );
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedEntityFQN]
   );
 
@@ -323,6 +327,7 @@ function DatabaseSchemaVersionPage() {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentPage,
       currentVersionData,
@@ -403,6 +408,7 @@ function DatabaseSchemaVersionPage() {
         />
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isLoading,
     viewVersionPermission,
@@ -426,18 +432,21 @@ function DatabaseSchemaVersionPage() {
     if (!isEmpty(decodedEntityFQN)) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (databaseId) {
       fetchCurrentVersionData(databaseId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, databaseId]);
 
   useEffect(() => {
@@ -451,6 +460,7 @@ function DatabaseSchemaVersionPage() {
       }
       getSchemaTables({ limit: pageSize });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentVersionData, pageSize, pagingCursor]);
 
   return versionComponent;

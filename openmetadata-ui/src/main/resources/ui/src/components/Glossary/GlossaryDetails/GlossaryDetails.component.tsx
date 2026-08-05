@@ -205,6 +205,7 @@ const GlossaryDetails = ({
       customizedPage?.tabs,
       EntityTabs.TERMS
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,
@@ -217,10 +218,12 @@ const GlossaryDetails = ({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [glossary.fullyQualifiedName]);
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Glossary),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 

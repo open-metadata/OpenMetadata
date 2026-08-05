@@ -106,6 +106,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         )
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentVersionData, version]
   );
 
@@ -337,6 +338,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       description,
       mlFeaturesData,

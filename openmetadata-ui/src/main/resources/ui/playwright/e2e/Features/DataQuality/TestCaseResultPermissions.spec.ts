@@ -56,36 +56,42 @@ const test = base.extend<{
     await afterAction();
   },
   viewResultsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await viewResultsUser.login(page);
     await use(page);
     await page.close();
   },
   editResultsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await editResultsUser.login(page);
     await use(page);
     await page.close();
   },
   tableEditResultsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await tableEditResultsUser.login(page);
     await use(page);
     await page.close();
   },
   deleteResultsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await deleteResultsUser.login(page);
     await use(page);
     await page.close();
   },
   partialDeleteTcPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await partialDeleteTcUser.login(page);
     await use(page);
     await page.close();
   },
   partialDeleteTablePage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await partialDeleteTableUser.login(page);
     await use(page);

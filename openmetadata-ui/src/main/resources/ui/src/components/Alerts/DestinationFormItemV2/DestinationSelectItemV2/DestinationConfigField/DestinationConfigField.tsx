@@ -74,6 +74,7 @@ function EmailTagInput({ fieldName }: { fieldName: number }) {
   const { setValue, control } = useFormContext();
   const [inputValue, setInputValue] = useState('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const receivers: string[] =
     useWatch({
       name: `destinations.${fieldName}.config.receivers`,

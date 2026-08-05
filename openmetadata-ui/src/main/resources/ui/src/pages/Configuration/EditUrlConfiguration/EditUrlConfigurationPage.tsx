@@ -91,6 +91,7 @@ const EditUrlConfigurationPage = () => {
         url: '',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -123,6 +124,7 @@ const EditUrlConfigurationPage = () => {
 
   useEffect(() => {
     fetchCustomLogoConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const firstPanelChildren = (

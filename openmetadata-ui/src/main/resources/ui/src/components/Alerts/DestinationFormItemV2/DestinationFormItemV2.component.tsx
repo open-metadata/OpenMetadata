@@ -64,6 +64,7 @@ function DestinationFormItemV2({
 
   const selectedResources: string[] =
     useWatch({ name: 'resources', control }) ?? [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const destinations: ModifiedDestination[] =
     (useWatch({ name: 'destinations', control }) as ModifiedDestination[]) ??
     [];

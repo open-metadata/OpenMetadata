@@ -321,6 +321,7 @@ const WorksheetDetailsPage = () => {
     }
 
     fetchResourcePermission(decodedWorksheetFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedWorksheetFQN, resolvedEntityFqn]);
 
   if (isLoading) {

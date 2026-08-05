@@ -323,6 +323,7 @@ test.describe('Glossary Advanced Operations', () => {
   });
 
   // G-U12: Remove domain from glossary
+  // eslint-disable-next-line playwright/no-skipped-test -- intentionally skipped
   test.skip('should remove domain from glossary', async ({ page }) => {
     test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);

@@ -99,6 +99,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
           sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [node]);
 
   const handleSave = () => {

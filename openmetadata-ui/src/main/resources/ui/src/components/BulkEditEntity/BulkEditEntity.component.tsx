@@ -225,6 +225,7 @@ BulkEditEntityProps) => {
       () => setHighlightedRowId((id) => (id === newRowId ? undefined : id)),
       2000
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [columns, dataSource, handleOnRowsChange]);
 
   const handleRemoveRow = useCallback(

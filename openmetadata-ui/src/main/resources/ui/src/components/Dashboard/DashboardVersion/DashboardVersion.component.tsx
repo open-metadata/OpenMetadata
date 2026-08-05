@@ -140,6 +140,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         key: 'tags',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -244,6 +245,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       description,
       tableColumn,

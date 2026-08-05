@@ -100,6 +100,7 @@ const CustomUnitSelect: FC<CustomUnitSelectProps> = ({
   // Fetch custom units from backend on component mount
   useEffect(() => {
     fetchCustomUnits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   // Initialize with current custom value if it exists

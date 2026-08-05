@@ -61,6 +61,7 @@ const AddGlossaryPage: FunctionComponent = () => {
 
   const handleCancel = useCallback(() => {
     goToGlossary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleSaveFailure = (
@@ -91,6 +92,7 @@ const AddGlossaryPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const fetchTags = () => {
@@ -135,6 +137,7 @@ const AddGlossaryPage: FunctionComponent = () => {
         activeTitle: true,
       },
     ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

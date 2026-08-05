@@ -161,6 +161,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
     active && fetchPostsFeed(active);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const setActiveTask = useCallback((active?: Task) => {
@@ -182,6 +183,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         fetchTestCaseResolution(stateId);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const fetchUpdatedThread = useCallback(
@@ -335,6 +337,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentUser, activeDomain]
   );
 
@@ -383,6 +386,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentUser, user, getTaskData]
   );
 
@@ -428,6 +432,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentUser]
   );
 
@@ -491,6 +496,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [activityThread]
   );
 
@@ -575,9 +581,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const updateReactions = async (
     post: Post,
     feedId: string,
@@ -655,6 +663,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [activityEvents, currentUser?.id]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const updateEditorFocus = (isFocused: boolean) => {
     setFocusReplyEditor(isFocused);
   };
@@ -663,6 +672,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setIsDrawerOpen(true);
     setActiveThread(thread);
     setSelectedTask(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const showTaskDrawer = useCallback((task: Task) => {
@@ -670,6 +680,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setActiveTask(task);
     setSelectedThread(undefined);
     setSelectedActivity(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const setActiveActivity = useCallback(async (activity?: ActivityEvent) => {
@@ -731,6 +742,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         showErrorToast(err as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentUser?.name, activityThread]
   );
 

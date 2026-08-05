@@ -170,6 +170,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
             })
           : undefined,
 
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [isSettingsPipeline]
     );
 

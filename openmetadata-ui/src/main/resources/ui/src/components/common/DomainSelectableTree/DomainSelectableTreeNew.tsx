@@ -298,6 +298,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       );
       setTreeData(treeDataWithLoadMore);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [domains, searchTerm, isMultiple, addLoadMoreNodes, loadChildDomains]);
 
   const handleMultiDomainSave = async () => {
@@ -390,9 +391,11 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
         setLoadingState(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [domains, isMultiple, initialDomains]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
       if (selectedKeys.length === 0 && !isClearable) {
@@ -411,6 +414,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onCheck = (
     checked: Key[] | { checked: Key[]; halfChecked: Key[] }
   ): void => {
@@ -445,6 +449,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     [selectedDomains]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onSearch = useCallback(
     debounce(async (value: string) => {
       setSearchTerm(value);
@@ -586,6 +591,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       fetchAPI();
       searchInputRef.current?.focus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [visible]);
 
   const handleRemoveDomains = useCallback(

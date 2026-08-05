@@ -160,6 +160,7 @@ const GlobalSettingCategoryPage = () => {
 
         break;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

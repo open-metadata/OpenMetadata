@@ -84,6 +84,7 @@ const DataAssetsCoveragePieChartWidget = ({
         dataAssetsCoverageStates.total
       ),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [dataAssetsCoverageStates]
   );
 
@@ -121,6 +122,7 @@ const DataAssetsCoveragePieChartWidget = ({
 
   useEffect(() => {
     fetchDataAssetsCoverage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter]);
 
   if (isLoading) {

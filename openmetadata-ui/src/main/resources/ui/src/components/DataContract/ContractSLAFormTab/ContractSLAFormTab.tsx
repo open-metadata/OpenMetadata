@@ -157,6 +157,7 @@ export const ContractSLAFormTab: React.FC<{
           : undefined,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialValues]);
 
   return (

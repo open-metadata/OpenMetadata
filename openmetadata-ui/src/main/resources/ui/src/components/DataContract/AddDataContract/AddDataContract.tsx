@@ -276,6 +276,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     contract,
     filteredContract,
@@ -491,6 +492,7 @@ const AddDataContract: React.FC<{
     ];
 
     return tabs.filter((tab) => entityContractTabs.includes(Number(tab.key)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     entityContractTabs,
     filteredContract,
@@ -534,6 +536,7 @@ const AddDataContract: React.FC<{
         </div>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     mode,
     isSubmitting,

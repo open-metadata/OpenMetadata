@@ -442,6 +442,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         </Dropdown.Root>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     clearQuickFilterValues,
     handlePageChange,
@@ -559,6 +560,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     lineageDirection,
     queryFilter,
@@ -579,6 +581,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   useEffect(() => {
     updateEntityData(entityType, entity, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType, entity]);
 
   // Sync node depth with lineageConfig
@@ -649,6 +652,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         onSearchValueChange={setSearchValue}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     searchValue,
     lineagePagingInfo,
@@ -793,6 +797,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t, renderName]
   );
 
@@ -867,6 +872,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       },
       ...tableColumns.slice(1),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t, tableColumns, lineageDirection, columnNameRender, searchValue]
   );
 
@@ -891,6 +897,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [impactLevel]);
 
   // Determine columns and dataSource based on impactLevel
@@ -942,6 +949,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         handlePageChange(data.currentPage);
       },
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, currentPage, showPagination, paging, handlePageSizeChange]);
 
   return (

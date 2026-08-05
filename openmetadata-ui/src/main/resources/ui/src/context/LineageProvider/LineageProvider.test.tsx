@@ -191,6 +191,7 @@ const DummyChildrenComponent = () => {
       type: 'table',
       fullyQualifiedName: 'table1',
     } as SourceType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (
@@ -553,6 +554,7 @@ describe('LineageProvider', () => {
           entityType: EntityType.TABLE,
           fullyQualifiedName: 'table1',
         } as SourceType);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       }, []);
 
       return <div data-testid="entity-data-component" />;
@@ -591,6 +593,7 @@ describe('LineageProvider', () => {
       upstreamEdges: {},
     });
 
+    // eslint-disable-next-line sonarjs/no-identical-functions -- test harness component
     const EntityDataComponent = () => {
       const { updateEntityData } = useLineageProvider();
 
@@ -602,6 +605,7 @@ describe('LineageProvider', () => {
           entityType: EntityType.TABLE,
           fullyQualifiedName: 'table1',
         } as SourceType);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       }, []);
 
       return <div data-testid="entity-data-component" />;

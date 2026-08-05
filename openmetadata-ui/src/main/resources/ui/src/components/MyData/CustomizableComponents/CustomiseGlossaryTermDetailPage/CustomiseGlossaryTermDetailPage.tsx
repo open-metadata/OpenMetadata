@@ -60,6 +60,7 @@ function CustomizeGlossaryTermDetailPage({
 
   const handleReset = useCallback(async () => {
     await onSaveLayout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleSave = async () => {

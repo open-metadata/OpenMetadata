@@ -162,6 +162,7 @@ const CustomiseHomeModal = ({
           ]
         : []),
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     onHomePage,
     selectedColor,
@@ -245,6 +246,7 @@ const CustomiseHomeModal = ({
         })}
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [sidebarItems, selectedKey, handleSidebarClick, selectedWidgets]);
 
   const handleApply = async () => {

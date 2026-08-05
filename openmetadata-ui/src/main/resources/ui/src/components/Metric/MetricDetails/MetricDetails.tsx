@@ -174,6 +174,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       };
       await onMetricUpdate(updatedMetricDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -212,6 +213,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate(ROUTES.METRICS),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -252,6 +254,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [metricPermissions, decodedMetricFqn]);
 
   const tabs = useMemo(() => {
@@ -275,6 +278,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       customizedPage?.tabs,
       EntityTabs.OVERVIEW
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     feedCount.totalCount,
@@ -297,6 +301,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Metric),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 

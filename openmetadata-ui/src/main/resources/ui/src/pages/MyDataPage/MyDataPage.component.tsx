@@ -171,12 +171,14 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchDocument();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedPersona]);
 
   useEffect(() => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const widgets = useMemo(

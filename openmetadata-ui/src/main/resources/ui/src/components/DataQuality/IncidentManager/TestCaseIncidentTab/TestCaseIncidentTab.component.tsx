@@ -109,6 +109,7 @@ const TestCaseIncidentTab = () => {
     if (decodedFqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityPaging, loading, isInView, decodedFqn]);
 
   const handleTaskClick = useCallback(

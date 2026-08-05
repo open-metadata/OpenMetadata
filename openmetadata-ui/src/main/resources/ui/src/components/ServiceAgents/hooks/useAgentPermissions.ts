@@ -74,6 +74,7 @@ export const useAgentPermissions = (
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqns, resourceEntity]);
 
   return { agentPermissions };

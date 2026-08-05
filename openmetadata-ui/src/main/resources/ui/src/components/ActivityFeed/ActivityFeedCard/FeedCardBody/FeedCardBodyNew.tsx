@@ -186,6 +186,7 @@ const FeedCardBodyNew = ({
         markdown={getFrontEndFormat(feed?.message ?? message)}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isPost,
     message,
@@ -235,6 +236,7 @@ const FeedCardBodyNew = ({
     }
 
     return feedBodyStyleCardsRender;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
   return (

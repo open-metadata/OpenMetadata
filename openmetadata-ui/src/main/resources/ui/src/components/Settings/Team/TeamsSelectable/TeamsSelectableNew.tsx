@@ -88,6 +88,7 @@ const TeamsSelectableNew = forwardRef<
 
     useEffect(() => {
       loadOptions();
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, []);
 
     const showLeafIcon = false;
@@ -110,6 +111,7 @@ const TeamsSelectableNew = forwardRef<
 
     const teamsTree = useMemo(() => {
       return teams.map((team) => getTreeNodeData(team));
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [teams]);
 
     const selectedTeamsInternal = useMemo(() => {

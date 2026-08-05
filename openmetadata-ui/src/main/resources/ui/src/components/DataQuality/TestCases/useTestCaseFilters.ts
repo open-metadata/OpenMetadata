@@ -209,6 +209,7 @@ export const useTestCaseFilters = ({
           ),
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedFilter, params, isOptionsLoading, asyncOptionsByKey]);
 
   // True when any filter (table/type/status/tags/…) currently has a value; the

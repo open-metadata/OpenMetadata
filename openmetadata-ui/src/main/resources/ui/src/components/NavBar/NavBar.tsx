@@ -216,6 +216,7 @@ const NavBar = () => {
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [hasTaskNotification]
   );
 
@@ -366,6 +367,7 @@ const NavBar = () => {
     return () => {
       removeEventListener('focus', handleDocumentVisibilityChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isTourRoute, version]);
 
   useEffect(() => {
@@ -456,10 +458,12 @@ const NavBar = () => {
         );
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [socket, onUpdateCSVExportJob]);
 
   useEffect(() => {
     fetchOMVersion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -475,11 +479,13 @@ const NavBar = () => {
       setIsDomainDropdownOpen(false);
       navigate(0);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
   const domainDisplayName = useMemo(
     () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [activeDomainEntityRef, activeDomain, t]
   );
 
@@ -490,6 +496,7 @@ const NavBar = () => {
     await localUtilClassBase.loadLocales(key);
     await i18n.changeLanguage(key);
     navigate(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const currentLanguage = i18n.language

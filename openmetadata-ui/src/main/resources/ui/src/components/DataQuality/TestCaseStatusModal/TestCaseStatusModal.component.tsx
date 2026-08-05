@@ -252,6 +252,7 @@ export const TestCaseStatusModal = ({
           ),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [data?.testCaseResolutionStatusDetails?.testCaseFailureComment]
   );
   const fetchInitialAssign = useCallback(async () => {
@@ -274,6 +275,7 @@ export const TestCaseStatusModal = ({
   useEffect(() => {
     // fetch users once and store in state
     fetchInitialAssign();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -289,6 +291,7 @@ export const TestCaseStatusModal = ({
       );
     }
     setOptions(assigneeOptions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [data, assigneeOptions]);
 
   return (

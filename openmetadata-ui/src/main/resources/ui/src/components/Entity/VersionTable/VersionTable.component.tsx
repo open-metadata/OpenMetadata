@@ -91,6 +91,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     // internalHandlePageChange is excluded intentionally: usePaging() rebuilds
     // it on every render (it wraps useTableFilters' unmemoized setFilters), so
     // including it here would re-fire this effect on every render and loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     data.length,
     paginationProps,
@@ -315,6 +316,7 @@ function VersionTable<T extends Column | SearchIndexField>({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [columnName, joins, renderColumnName]
   );
 
@@ -330,6 +332,7 @@ function VersionTable<T extends Column | SearchIndexField>({
       typingInterval: 500,
       onSearch: handleSearchAction,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchText, handleSearchAction]
   );
 

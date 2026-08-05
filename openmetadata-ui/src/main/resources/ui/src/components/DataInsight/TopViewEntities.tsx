@@ -63,6 +63,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
 
   useEffect(() => {
     fetchMostViewedEntities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter]);
 
   const columns: ColumnsType<MostViewedEntities> = useMemo(
@@ -112,6 +113,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

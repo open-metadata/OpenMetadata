@@ -110,6 +110,7 @@ const AddPolicyPage = () => {
         onTextChange: (value: string) => setDescription(value),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -119,6 +120,7 @@ const AddPolicyPage = () => {
         ...option,
         name: translateWithNestedKeys(option.name, option.nameData),
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t]
   );
 

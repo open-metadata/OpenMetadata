@@ -196,6 +196,7 @@ export function useCanvasEdgeRenderer({
 
       return path;
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       nodes,
       tracedNodes,
@@ -337,6 +338,7 @@ export function useCanvasEdgeRenderer({
       isCanvasReadyRef.current = true;
       setIsCanvasReady(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     canvasRef,
     edges,
@@ -444,6 +446,7 @@ export function useCanvasEdgeRenderer({
         cancelAnimationFrame(rafIdRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     edges,
     nodes,

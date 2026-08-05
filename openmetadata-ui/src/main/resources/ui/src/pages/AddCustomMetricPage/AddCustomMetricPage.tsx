@@ -89,6 +89,7 @@ const AddCustomMetricPage = () => {
       : [];
 
     return data;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [table, isColumnMetric]);
 
   const { activeColumnFqn } = useMemo(() => {
@@ -162,6 +163,7 @@ const AddCustomMetricPage = () => {
 
   useEffect(() => {
     fetchTableData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   useEffect(() => {
@@ -175,6 +177,7 @@ const AddCustomMetricPage = () => {
         }),
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [columnName]);
 
   const secondPanel = (

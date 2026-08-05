@@ -85,6 +85,7 @@ const EditLoginConfiguration = () => {
         url: '',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -156,6 +157,7 @@ const EditLoginConfiguration = () => {
 
   useEffect(() => {
     fetchCustomLogoConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const firstPanelChildren = (
@@ -207,6 +209,7 @@ const EditLoginConfiguration = () => {
 
   useEffect(() => {
     fetchCustomLogoConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   if (loading) {

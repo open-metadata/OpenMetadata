@@ -373,6 +373,7 @@ const AppDetails = () => {
     const plugin = plugins.find((p) => p.name === appData.name);
 
     return plugin?.getAppDetails?.(appData) || null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [appData?.name, plugins]);
 
   // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
@@ -526,6 +527,7 @@ const AppDetails = () => {
 
   useEffect(() => {
     fetchAppDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   if (loadingState.isFetchLoading) {

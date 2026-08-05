@@ -69,6 +69,7 @@ const WhatsNewAlert = () => {
       });
     }
     onModalCancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
 
   useEffect(() => {

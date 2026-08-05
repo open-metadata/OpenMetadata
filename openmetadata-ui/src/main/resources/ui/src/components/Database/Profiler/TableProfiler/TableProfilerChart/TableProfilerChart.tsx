@@ -124,6 +124,7 @@ const TableProfilerChart = ({
         }
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isProfilingEnabled]);
 
   const tableCustomMetricsProfiling = useMemo(
@@ -145,6 +146,7 @@ const TableProfilerChart = ({
         setIsTableProfilerLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [rowCountMetrics, profileMetrics]
   );
   const fetchSystemProfiler = useCallback(
@@ -183,6 +185,7 @@ const TableProfilerChart = ({
       setIsTableProfilerLoading(false);
       setIsSystemProfilerLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [datasetFQN, dateRangeObject, entityFqn]);
 
   if (permissions && !permissions?.ViewDataProfile) {

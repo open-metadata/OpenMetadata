@@ -256,8 +256,10 @@ export const addTeamHierarchy = async (
 
   // Fetching the add button and clicking on it
   if (index && index > 0) {
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await page.click('[data-testid="add-placeholder-button"]', { force: true });
   } else {
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await page.click('[data-testid="add-team"]', { force: true });
   }
 

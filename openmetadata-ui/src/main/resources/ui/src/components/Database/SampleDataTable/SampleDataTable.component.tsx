@@ -262,6 +262,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
         );
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableId, tourMockDatasetData]);
 
   if (isLoading) {

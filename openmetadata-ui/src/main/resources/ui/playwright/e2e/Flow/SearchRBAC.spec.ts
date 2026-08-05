@@ -28,6 +28,7 @@ import {
 } from '../../utils/searchRBAC';
 
 const newStrippedPage = async (browser: Browser) => {
+  // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
   const page = await browser.newPage();
   await disableEtagConditionalReads(page);
 

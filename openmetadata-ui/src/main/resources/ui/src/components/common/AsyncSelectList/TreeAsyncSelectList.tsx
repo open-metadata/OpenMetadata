@@ -162,6 +162,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
 
   useEffect(() => {
     fetchGlossaryListInternal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const treeData = useMemo(() => {

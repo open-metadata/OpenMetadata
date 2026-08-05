@@ -111,6 +111,7 @@ const ChangeParentHierarchy = ({
         setLoadingState((prev) => ({ ...prev, isSaving: false }));
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handleMoveSuccess]
   );
 

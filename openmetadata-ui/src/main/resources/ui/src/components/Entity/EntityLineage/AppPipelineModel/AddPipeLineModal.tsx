@@ -107,6 +107,7 @@ const AddPipeLineModal = ({
     }
   }, [selectedEdge, edgeSearchValue]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
 
   const handleChange = (value: string): void => {
@@ -116,6 +117,7 @@ const AddPipeLineModal = ({
 
   useEffect(() => {
     getSearchResults(edgeSearchValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

@@ -128,6 +128,7 @@ const AddQueryPage = () => {
     if (datasetFQN) {
       fetchEntityDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [datasetFQN]);
 
   const getInitialOptions = async () => {
@@ -143,6 +144,7 @@ const AddQueryPage = () => {
     if (table) {
       getInitialOptions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [table]);
 
   const handleCancelClick = () => {
@@ -221,6 +223,7 @@ const AddQueryPage = () => {
         onTextChange: (value: string) => setDescription(value),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

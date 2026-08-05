@@ -123,6 +123,7 @@ const DataModelDetails = ({
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
@@ -220,6 +221,7 @@ const DataModelDetails = ({
       customizedPage?.tabs,
       EntityTabs.MODEL
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     feedCount.conversationCount,
     feedCount.totalTasksCount,
@@ -241,6 +243,7 @@ const DataModelDetails = ({
         activeTab ?? EntityTabs.MODEL,
         PageType.DashboardDataModel
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   const onCertificationUpdate = useCallback(

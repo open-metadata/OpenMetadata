@@ -741,6 +741,7 @@ const BulkEntityImportPage = () => {
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityType,
       handleActiveStepChange,
@@ -1100,6 +1101,7 @@ const BulkEntityImportPage = () => {
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       isBulkActionProcessingRef,
       activeAsyncImportJobRef,
@@ -1180,6 +1182,7 @@ const BulkEntityImportPage = () => {
       socket?.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
       handleResetImportJob();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [socket]);
 
   /*
@@ -1254,6 +1257,7 @@ const BulkEntityImportPage = () => {
         />
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     columns,
     editableDataSource,

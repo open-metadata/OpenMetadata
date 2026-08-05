@@ -133,6 +133,7 @@ TaskFeedCardProps) => {
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [feed]);
 
   const handleTaskLinkClick = () => {
@@ -178,6 +179,7 @@ TaskFeedCardProps) => {
         </Button>
       </EntityPopOverCard>
     ) : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEntityDetailsAvailable, entityFQN, entityType, taskDetails, t]);
 
   const isTaskTestCaseResult =

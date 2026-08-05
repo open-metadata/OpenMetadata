@@ -176,6 +176,7 @@ describeTagTaskWorkflowsInParallel(
       });
       createdTaskIds.push(task.id);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const reviewerPage = await browser.newPage();
       try {
         await reviewerUser.login(reviewerPage);
@@ -235,6 +236,7 @@ describeTagTaskWorkflowsInParallel(
       });
       createdTaskIds.push(task.id);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const reviewerPage = await browser.newPage();
       try {
         await reviewerUser.login(reviewerPage);
@@ -300,6 +302,7 @@ describeTagTaskWorkflowsInParallel(
       });
       createdTaskIds.push(task.id);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const reviewerPage = await browser.newPage();
       try {
         await reviewerUser.login(reviewerPage);
@@ -361,6 +364,7 @@ describeTagTaskWorkflowsInParallel(
       });
       createdTaskIds.push(task.id);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const reviewerPage = await browser.newPage();
       try {
         await reviewerUser.login(reviewerPage);
@@ -424,6 +428,7 @@ describeTagTaskWorkflowsInParallel(
       });
       createdTaskIds.push(task.id);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const reviewerPage = await browser.newPage();
       try {
         await reviewerUser.login(reviewerPage);
@@ -485,6 +490,7 @@ describeTagTaskWorkflowsInParallel(
       });
       createdTaskIds.push(task.id);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const reviewerPage = await browser.newPage();
       try {
         await reviewerUser.login(reviewerPage);
@@ -560,6 +566,7 @@ describeTagTaskWorkflowsInParallel(
       });
       createdTaskIds.push(task.id);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const reviewerPage = await browser.newPage();
       try {
         await reviewerUser.login(reviewerPage);

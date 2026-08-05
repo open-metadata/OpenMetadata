@@ -37,6 +37,7 @@ const AppLogo = ({
 
   useEffect(() => {
     fetchLogo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [appName]);
 
   return <Avatar className="flex-center bg-grey-1" icon={appLogo} size={100} />;

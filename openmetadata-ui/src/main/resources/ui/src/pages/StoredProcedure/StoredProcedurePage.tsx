@@ -295,6 +295,7 @@ const StoredProcedurePage = () => {
           version + ''
         )
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedStoredProcedureFQN, version]);
 
   const saveUpdatedStoredProceduresData = useCallback(
@@ -309,6 +310,7 @@ const StoredProcedurePage = () => {
     [storedProcedure, storedProcedureId]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleStoreProcedureUpdate = async (
     updatedData: StoredProcedure,
     key?: keyof StoredProcedure
@@ -425,6 +427,7 @@ const StoredProcedurePage = () => {
       };
       await handleStoreProcedureUpdate(updatedEntityDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners, storedProcedure]
   );
 
@@ -475,6 +478,7 @@ const StoredProcedurePage = () => {
         await handleStoreProcedureUpdate(updatedDetails, 'tags');
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [storedProcedure, tags]
   );
 
@@ -559,6 +563,7 @@ const StoredProcedurePage = () => {
     );
 
     return updatedTabs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     code,
     deleted,
@@ -585,6 +590,7 @@ const StoredProcedurePage = () => {
   const isExpandViewSupported = useMemo(
     () =>
       checkIfExpandViewSupported(tabs[0], activeTab, PageType.StoredProcedure),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 
@@ -622,6 +628,7 @@ const StoredProcedurePage = () => {
     if (decodedStoredProcedureFQN) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedStoredProcedureFQN]);
 
   useEffect(() => {
@@ -629,6 +636,7 @@ const StoredProcedurePage = () => {
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedStoredProcedureFQN, viewBasicPermission]);
 
   if (permissionsLoading || loading || storedProcedureLoading) {

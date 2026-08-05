@@ -280,6 +280,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       };
       await onTopicUpdate(updatedTopicDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -341,6 +342,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -394,6 +396,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [topicPermissions, decodedTopicFQN]);
 
   const tabs = useMemo(() => {
@@ -462,6 +465,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       customizedPage?.tabs,
       EntityTabs.SCHEMA
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     feedCount.totalCount,
@@ -509,6 +513,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Topic),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading) {

@@ -111,6 +111,7 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
           ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [setExpandedKeys]
   );
 

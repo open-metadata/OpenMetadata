@@ -48,6 +48,7 @@ export const verifyActivityFeedFilters = async (
           response.url().includes('/api/v1/activities')) &&
         response.url().includes('filterType=OWNER')
     ),
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
     page.waitForTimeout(5000),
   ]);
   await page.getByRole('menuitem', { name: 'My Data' }).click();
@@ -65,6 +66,7 @@ export const verifyActivityFeedFilters = async (
           response.url().includes('/api/v1/activities')) &&
         response.url().includes('filterType=FOLLOWS')
     ),
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
     page.waitForTimeout(5000),
   ]);
   await page.getByRole('menuitem', { name: 'Following' }).click();
@@ -81,6 +83,7 @@ export const verifyActivityFeedFilters = async (
         response.url().includes('/api/v1/feed') ||
         response.url().includes('/api/v1/activities')
     ),
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
     page.waitForTimeout(5000),
   ]);
   await page.getByRole('menuitem', { name: 'All Activity' }).click();

@@ -125,6 +125,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
         />
       </div>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isAdminUser]
   );
 
@@ -135,6 +136,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const handlePersonaAddEditSave = useCallback(() => {
     handlePersonalAddEditCancel();
     fetchPersonas({ [CursorType.AFTER]: paging[CursorType.AFTER] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fetchPersonas, paging]);
 
   const handlePersonaPageChange = useCallback(

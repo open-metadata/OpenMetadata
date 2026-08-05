@@ -50,6 +50,7 @@ export const ModalWithFunctionEditor = ({
       form.setFieldsValue({ functionValue: value });
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [form, visible]);
 
   return (

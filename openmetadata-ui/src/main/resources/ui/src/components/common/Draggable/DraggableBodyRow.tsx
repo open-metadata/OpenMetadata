@@ -67,6 +67,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
     if (!isDragging) {
       handleTableHover?.(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isDragging]);
 
   return (

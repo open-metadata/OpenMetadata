@@ -89,6 +89,7 @@ export const DomainLabelNew = ({
         showErrorToast(err as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, entityId, entityFqn, afterDomainUpdateAction, onUpdate]
   );
 
@@ -164,6 +165,7 @@ export const DomainLabelNew = ({
         </Typography.Text>
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeDomain,
     domainDisplayName,
@@ -193,6 +195,7 @@ export const DomainLabelNew = ({
         />
       )
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [hasPermission, activeDomain, handleDomainSave]);
 
   return (

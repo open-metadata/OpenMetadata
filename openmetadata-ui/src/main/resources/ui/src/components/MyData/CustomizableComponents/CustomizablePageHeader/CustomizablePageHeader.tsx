@@ -97,6 +97,7 @@ export const CustomizablePageHeader = ({
         ? t('label.home-page')
         : t(`label.${kebabCase(currentPageType as string)}`),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [personaName, isLandingPage]
   );
 

@@ -269,6 +269,7 @@ export const ThemeProvider = ({
     if (brandColors && Object.values(brandColors).some(Boolean)) {
       applyBrandCssVars(brandColors, root);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     brandColors?.primaryColor,
     brandColors?.hoverColor,

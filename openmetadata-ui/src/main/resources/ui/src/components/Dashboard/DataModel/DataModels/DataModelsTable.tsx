@@ -125,6 +125,7 @@ const DataModelTable = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn, showDeleted, handlePagingChange]
   );
 
@@ -192,6 +193,7 @@ const DataModelTable = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn, pageSize, showDeleted]
   );
 
@@ -236,6 +238,7 @@ const DataModelTable = ({
     if (searchValue) {
       searchDataModels(searchValue, currentPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchValue, currentPage, showDeleted]);
 
   useEffect(() => {
@@ -249,6 +252,7 @@ const DataModelTable = ({
     } else {
       fetchDashboardsDataModel();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, showDeleted, pagingCursor, searchValue]);
 
   const searchProps = useMemo(

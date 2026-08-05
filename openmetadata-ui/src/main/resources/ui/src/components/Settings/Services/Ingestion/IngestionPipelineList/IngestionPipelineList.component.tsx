@@ -93,6 +93,7 @@ export const IngestionPipelineList = ({
         filteredValue: pipelineTypeFilter,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [pipelineTypeFilter]
   );
 
@@ -130,6 +131,7 @@ export const IngestionPipelineList = ({
       setSelectedRowKeys([]);
       setDeploying(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pipelines, selectedRowKeys]);
 
   const fetchPipelines = useCallback(
@@ -166,6 +168,7 @@ export const IngestionPipelineList = ({
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [serviceName]
   );
 
@@ -183,6 +186,7 @@ export const IngestionPipelineList = ({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fetchPipelines, paging, handlePageChange]
   );
 
@@ -199,6 +203,7 @@ export const IngestionPipelineList = ({
         fetchPipelines({ limit: pageSize });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceName, isAirflowAvailable, pageSize, pagingCursor]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
@@ -214,6 +219,7 @@ export const IngestionPipelineList = ({
           limit: pageSize,
         });
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [fetchPipelines]
     );
 

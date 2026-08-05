@@ -116,6 +116,7 @@ function AddWidgetModal({
 
   useEffect(() => {
     fetchKnowledgePanels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const widgetsInfo = useMemo(() => {
@@ -141,6 +142,7 @@ function AddWidgetModal({
         tabPosition="left"
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [loading, widgetsList, tabItems]);
 
   return (

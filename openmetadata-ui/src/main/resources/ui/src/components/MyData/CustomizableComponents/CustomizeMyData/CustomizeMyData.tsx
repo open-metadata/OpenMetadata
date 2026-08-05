@@ -194,6 +194,7 @@ function CustomizeMyData({
             })}
           </div>
         )),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       layout,
       handleOpenCustomiseHomeModal,
@@ -204,6 +205,7 @@ function CustomizeMyData({
     ]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleBackgroundColorUpdate = async (color?: string) => {
     await onBackgroundColorUpdate?.(color);
   };

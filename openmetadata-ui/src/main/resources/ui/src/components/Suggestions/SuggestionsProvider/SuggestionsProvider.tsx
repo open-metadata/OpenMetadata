@@ -110,6 +110,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityFqn, suggestionLimit, suggestions]
   );
 
@@ -136,6 +137,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityFqn, suggestionLimit, suggestions]
   );
 
@@ -245,6 +247,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     if (!isEmpty(permissions) && !isEmpty(entityFqn)) {
       fetchSuggestions(PAGE_SIZE);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityFqn, permissions]);
 
   const suggestionsContextObj = useMemo(() => {

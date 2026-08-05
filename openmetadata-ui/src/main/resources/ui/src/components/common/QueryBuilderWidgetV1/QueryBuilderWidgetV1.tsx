@@ -195,6 +195,7 @@ const QueryBuilderWidgetV1: FC<{
         setIsCountLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType]
   );
 
@@ -212,6 +213,7 @@ const QueryBuilderWidgetV1: FC<{
     return (
       isElasticSearchWithValue && searchResults !== undefined && !isCountLoading
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isCountLoading, outputType, showCountPreview, value]);
 
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
@@ -254,6 +256,7 @@ const QueryBuilderWidgetV1: FC<{
     if (props.getQueryActions && queryActionsRef.current) {
       props.getQueryActions(queryActionsRef.current);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [treeInternal, props.getQueryActions]);
 
   const hasOnlyOneRule = useMemo(

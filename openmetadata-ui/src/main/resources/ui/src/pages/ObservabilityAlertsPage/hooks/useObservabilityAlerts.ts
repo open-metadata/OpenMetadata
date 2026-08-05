@@ -162,6 +162,7 @@ export function useObservabilityAlerts({
 
   useEffect(() => {
     fetchAlertResourcePermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -172,6 +173,7 @@ export function useObservabilityAlerts({
     } else {
       fetchAlerts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {

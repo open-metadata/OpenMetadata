@@ -37,6 +37,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
     if (!isMounting.current) {
       setIsOpen(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchText]);
 
   // Always Keep this useEffect at the end...

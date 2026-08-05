@@ -173,6 +173,7 @@ function FollowingWidget({
         title={t('message.not-following-any-assets-yet')}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -245,6 +246,7 @@ function FollowingWidget({
         </div>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [followedData, emptyState, isExpanded]);
 
   const translatedSortOptions = useMemo(
@@ -274,6 +276,7 @@ function FollowingWidget({
         }
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentLayout,
       handleLayoutUpdate,

@@ -65,6 +65,7 @@ const Searchbar = ({
     onSearch(searchTextRef.current);
   }, [onSearch]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceOnSearch = useCallback(
     debounce(debouncedOnSearch, typingInterval),
     [debouncedOnSearch, typingInterval]

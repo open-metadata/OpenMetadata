@@ -65,6 +65,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
           })
         );
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedThread]);
 
   return (

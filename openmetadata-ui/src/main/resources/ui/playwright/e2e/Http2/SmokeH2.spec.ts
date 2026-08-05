@@ -34,6 +34,7 @@ type ResponseRecord = {
   contentEncoding: string | undefined;
 };
 
+// eslint-disable-next-line playwright/no-skipped-test -- intentionally skipped
 test.skip(
   process.env.PW_PROTOCOL !== 'h2',
   'Opt-in: requires PW_PROTOCOL=h2 and the h2 server config.'

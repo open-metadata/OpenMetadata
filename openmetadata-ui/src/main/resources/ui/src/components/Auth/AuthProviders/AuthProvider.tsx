@@ -181,6 +181,7 @@ export const AuthProvider = ({
 
   const clientType = authConfig?.clientType ?? ClientType.Public;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onLoginHandler = () => {
     setApplicationLoading(true);
 
@@ -253,6 +254,7 @@ export const AuthProvider = ({
 
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [timeoutId]);
 
   const handledVerifiedUser = () => {
@@ -311,6 +313,7 @@ export const AuthProvider = ({
     });
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
     clearOidcToken();
@@ -392,6 +395,7 @@ export const AuthProvider = ({
       // After every refresh success, start timer again
       tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [authenticatorRef.current?.renewIdToken]);
 
   // When the tab becomes visible after being backgrounded, browsers may have
@@ -435,6 +439,7 @@ export const AuthProvider = ({
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   /**
@@ -445,6 +450,7 @@ export const AuthProvider = ({
     clearTimeout(timeoutId);
   }, [timeoutId]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleFailedLogin = () => {
     setIsSigningUp(false);
     setIsAuthenticated(false);
@@ -502,6 +508,7 @@ export const AuthProvider = ({
         setApplicationLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       authConfig?.enableSelfSignup,
       clientType,
@@ -547,6 +554,7 @@ export const AuthProvider = ({
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const initializeAxiosInterceptors = async () => {
     // Axios Request interceptor to add Bearer tokens in Header
     if (requestInterceptor != null) {
@@ -811,6 +819,7 @@ export const AuthProvider = ({
     initializeAxiosInterceptors();
 
     return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const contextValues = useMemo(() => {

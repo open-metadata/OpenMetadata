@@ -182,6 +182,7 @@ const FiltersConfigForm = forwardRef<
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleSubmit = async () => {
     const filterData = Object.fromEntries(
       Object.entries(filterDataRef.current).filter(([, v]) => v !== undefined)

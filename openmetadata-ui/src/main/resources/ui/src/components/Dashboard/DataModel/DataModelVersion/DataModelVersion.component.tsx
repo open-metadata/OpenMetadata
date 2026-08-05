@@ -212,6 +212,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [description, columns, currentVersionData, viewCustomPropertiesPermission]
   );
 

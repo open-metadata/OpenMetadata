@@ -80,6 +80,7 @@ const selectTagSuggestion = async ({
 
   logTaskDebug('selectTagSuggestion:start', searchText, tagTestId);
   if (!(await tagsInput.isVisible().catch(() => false))) {
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await tagSelector.click({ force: true }).catch(() => undefined);
   }
 
@@ -142,11 +143,13 @@ const clickDropdownMenuItem = async ({
 
   if (await isMenuItemVisible()) {
     if (await roleMenuItem.isVisible().catch(() => false)) {
+      // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
       await roleMenuItem.click({ force: true });
 
       return;
     }
 
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await cssMenuItem.click({ force: true });
 
     return;
@@ -172,6 +175,7 @@ const clickDropdownMenuItem = async ({
 
   for (let attempt = 0; attempt < 3; attempt++) {
     logTaskDebug('clickDropdownMenuItem:openAttempt', attempt + 1);
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await resolvedTrigger.click({ force: true }).catch(() => undefined);
 
     if (await waitForMenuItem()) {
@@ -191,6 +195,7 @@ const clickDropdownMenuItem = async ({
       break;
     }
 
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await fallbackTrigger.click({ force: true }).catch(() => undefined);
 
     if (await waitForMenuItem()) {
@@ -199,12 +204,14 @@ const clickDropdownMenuItem = async ({
   }
 
   if (await roleMenuItem.isVisible().catch(() => false)) {
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await roleMenuItem.click({ force: true });
 
     return;
   }
 
   await expect(cssMenuItem).toBeVisible();
+  // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
   await cssMenuItem.click({ force: true });
 };
 
@@ -251,6 +258,7 @@ export const buildTaskRoute = ({
 
 export const openTaskForm = async (page: Page, route: string) => {
   await page.goto(route);
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('[data-testid="form-container"]', {
     state: 'visible',
   });
@@ -613,6 +621,7 @@ export const addCommentToTask = async (page: Page, comment: string) => {
     await expect(commentInput).toBeVisible({ timeout: 5000 });
     await commentInput.scrollIntoViewIfNeeded().catch(() => undefined);
     logTaskDebug('addCommentToTask:openingEditor');
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await commentInput.click({ force: true }).catch(() => undefined);
 
     const editorAppearedAfterClick = await editor
@@ -627,6 +636,7 @@ export const addCommentToTask = async (page: Page, comment: string) => {
 
   await expect(editor).toBeVisible({ timeout: 15000 });
   logTaskDebug('addCommentToTask:editorVisible');
+  // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
   await editor.click({ force: true });
   await editor.type(comment);
   logTaskDebug('addCommentToTask:commentEntered');
@@ -685,6 +695,7 @@ export const closeTaskFromDetails = async (page: Page) => {
 
     if (primaryLabel?.match(/reject|decline|close/i)) {
       const taskActionResponse = waitForTaskActionResponse(page);
+      // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
       await workflowPrimaryButton.click({ force: true });
       await taskActionResponse;
       await waitForPageLoaded(page);
@@ -755,6 +766,7 @@ export const approveTaskFromDetails = async (page: Page) => {
   const clickAndWait = async (button: Locator) => {
     const taskActionResponse = waitForTaskActionResponse(page);
     await button.scrollIntoViewIfNeeded().catch(() => undefined);
+    // eslint-disable-next-line playwright/no-force-option -- overlay/animation workaround
     await button.click({ force: true });
 
     await visibleTaskModal

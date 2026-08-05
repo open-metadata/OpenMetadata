@@ -110,6 +110,7 @@ export const GlobalSearchBar = () => {
         ))}
       </Select>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchCriteria, i18n.language, renderSearchDropdown]
   );
 
@@ -122,6 +123,7 @@ export const GlobalSearchBar = () => {
         replace: true,
       }
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const debouncedOnChange = useCallback(
@@ -131,6 +133,7 @@ export const GlobalSearchBar = () => {
     [setSuggestionSearch]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
     debouncedOnChange,
   ]);
@@ -192,6 +195,7 @@ export const GlobalSearchBar = () => {
     if (!isEmpty(currentUser)) {
       initNLP();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser]);
 
   return (

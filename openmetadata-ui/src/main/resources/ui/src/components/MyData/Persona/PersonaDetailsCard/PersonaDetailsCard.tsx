@@ -38,6 +38,7 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
         hash: '#customize-ui',
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [persona]);
 
   return (

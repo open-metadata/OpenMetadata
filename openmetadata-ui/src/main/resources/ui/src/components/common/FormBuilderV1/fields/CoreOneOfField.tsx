@@ -149,6 +149,7 @@ const CoreOneOfField = (props: FieldProps) => {
     resolvedOptions.length
   );
   const hasMultipleOptions = resolvedOptions.length > 1;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const selectedSchema =
     safeSelectedOption >= 0 ? resolvedOptions[safeSelectedOption] ?? {} : {};
   const shouldRenderAsTabs = shouldRenderSegmentedOptions(

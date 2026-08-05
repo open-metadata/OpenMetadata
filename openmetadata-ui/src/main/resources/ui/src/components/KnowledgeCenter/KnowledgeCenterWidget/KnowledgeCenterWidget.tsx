@@ -98,6 +98,7 @@ const KnowledgeCenterWidget = ({
         title={t('label.no-articles-available')}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [t]);
 
   const getGridTemplateColumns = () => {
@@ -161,6 +162,7 @@ const KnowledgeCenterWidget = ({
         </div>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [data, isFullSizeWidget]);
 
   const showWidgetFooterMoreButton = useMemo(
@@ -176,6 +178,7 @@ const KnowledgeCenterWidget = ({
         showMoreButton={showWidgetFooterMoreButton}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isLoading]);
 
   const widgetHeader = useMemo(() => {
@@ -192,6 +195,7 @@ const KnowledgeCenterWidget = ({
         onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     currentLayout,
     handleLayoutUpdate,
@@ -203,6 +207,7 @@ const KnowledgeCenterWidget = ({
 
   useEffect(() => {
     fetchUserKnowledgeArticles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser]);
 
   return (

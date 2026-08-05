@@ -114,6 +114,7 @@ const Certification = ({
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
     const { currentTarget } = e;
     const isAtBottom =
@@ -248,6 +249,7 @@ const Certification = ({
       setCertifications([]);
       setSelectedCertification('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [popoverProps?.open]);
 
   return (

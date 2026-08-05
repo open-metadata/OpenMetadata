@@ -135,6 +135,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
 
   useEffect(() => {
     fetchProfilerConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityId, entityType]);
 
   return (

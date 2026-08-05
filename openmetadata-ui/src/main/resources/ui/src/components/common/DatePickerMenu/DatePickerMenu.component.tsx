@@ -75,6 +75,7 @@ const DatePickerMenu = ({
         },
       ])
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [t]);
 
   const translatedDefaultRange = useMemo(() => {
@@ -85,6 +86,7 @@ const DatePickerMenu = ({
         DEFAULT_SELECTED_RANGE.titleData
       ),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
     const defaultOptions = placeholder

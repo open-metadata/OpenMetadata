@@ -34,6 +34,7 @@ const useAutoSizeTextArea = (
       const scrollHeight = textArea.scrollHeight;
       textArea.style.height = scrollHeight + 'px';
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 };
 

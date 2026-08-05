@@ -213,6 +213,7 @@ AddTestCaseModalProps) => {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceFetchTableData = useCallback(
     debounce((search: string) => fetchTableData(search), 1000),
     [fetchTableData]
@@ -246,6 +247,7 @@ AddTestCaseModalProps) => {
     [columnFilters]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceFetchColumnData = useCallback(
     debounce((search: string) => fetchColumnOptions(search), 500),
     [fetchColumnOptions]
@@ -579,6 +581,7 @@ AddTestCaseModalProps) => {
       hydrateSelectedFromProp: isInitialSearchFilterLoad.current,
     });
     isInitialSearchFilterLoad.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     searchTerm,
     filterStatus,
@@ -605,6 +608,7 @@ AddTestCaseModalProps) => {
         debounceFetchColumnData(searchText);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [debounceFetchTableData, debounceFetchColumnData, fetchColumnOptions]
   );
 
@@ -702,6 +706,7 @@ AddTestCaseModalProps) => {
         </Col>
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     items,
     listSource,

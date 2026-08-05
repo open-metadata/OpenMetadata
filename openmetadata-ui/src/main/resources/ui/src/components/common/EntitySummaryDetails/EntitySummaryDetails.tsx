@@ -74,6 +74,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
           ? data.value.includes('teams/')
           : false,
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [data]);
 
   /* eslint-disable sonarjs/no-nested-conditional, sonarjs/expression-complexity -- dense JSX ternaries */

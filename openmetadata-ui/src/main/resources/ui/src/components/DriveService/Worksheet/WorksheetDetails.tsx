@@ -207,6 +207,7 @@ function WorksheetDetails({
       };
       await onWorksheetUpdate(updatedWorksheetDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -270,6 +271,7 @@ function WorksheetDetails({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -324,6 +326,7 @@ function WorksheetDetails({
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
 
   const tabs = useMemo(() => {
@@ -369,6 +372,7 @@ function WorksheetDetails({
       customizedPage?.tabs,
       EntityTabs.CHILDREN
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     feedCount.totalCount,
@@ -413,6 +417,7 @@ function WorksheetDetails({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Worksheet),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading) {

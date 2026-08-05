@@ -30,6 +30,7 @@ const SearchIndexFieldsTable = withSuspenseFallback(
 function SearchIndexFieldsTab() {
   const { fqn: entityFqn } = useFqn();
   const { data, permissions, onUpdate } = useGenericContext<SearchIndex>();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const { fields, deleted } = useMemo(() => data, [data.fields, data.deleted]);
 
   const {

@@ -122,6 +122,7 @@ const TeamsInfo = ({
         await updateTeamHandler(updatedData);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentTeam]
   );
 
@@ -170,6 +171,7 @@ const TeamsInfo = ({
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentTeam, updateTeamHandler]
   );
 
@@ -268,6 +270,7 @@ const TeamsInfo = ({
         )}
       </Space>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [email, isEmailEdit, hasEditPermission, isLoading]
   );
 
@@ -332,6 +335,7 @@ const TeamsInfo = ({
         </Space>
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     teamType,
     parentTeams,

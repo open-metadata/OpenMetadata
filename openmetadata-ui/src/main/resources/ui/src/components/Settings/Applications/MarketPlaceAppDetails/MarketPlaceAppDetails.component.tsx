@@ -121,6 +121,7 @@ const MarketPlaceAppDetails = () => {
 
   const installApp = useCallback(() => {
     navigate(getAppInstallPath(fqn));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const onBrowseAppsClick = () => {
@@ -250,11 +251,13 @@ const MarketPlaceAppDetails = () => {
         </Space>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [appData, isInstalled, isCacheWarmupDisabled, tooltipTitle]);
 
   useEffect(() => {
     fetchAppDetails();
     fetchInstalledAppDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   if (isLoading) {

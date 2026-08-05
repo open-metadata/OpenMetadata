@@ -63,6 +63,7 @@ const KPIList = () => {
   const [selectedKpi, setSelectedKpi] = useState<Kpi>();
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fetchKpiList = async (param?: Record<string, string>) => {
     try {
       setIsLoading(true);
@@ -183,6 +184,7 @@ const KPIList = () => {
     ];
 
     return col;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [kpiList]);
 
   const kpiPagingHandler = ({
@@ -232,6 +234,7 @@ const KPIList = () => {
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [viewKPIPermission]
   );
 

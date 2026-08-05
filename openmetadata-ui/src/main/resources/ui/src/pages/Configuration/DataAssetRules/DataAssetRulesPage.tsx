@@ -39,6 +39,7 @@ const DataAssetRulesPage: React.FC = () => {
     async (updatedSemanticsRules: SemanticsRule[]) => {
       await updateSemanticsRules(updatedSemanticsRules);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -68,6 +69,7 @@ const DataAssetRulesPage: React.FC = () => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

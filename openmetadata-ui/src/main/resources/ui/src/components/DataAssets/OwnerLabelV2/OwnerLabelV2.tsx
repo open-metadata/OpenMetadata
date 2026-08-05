@@ -98,6 +98,7 @@ export const OwnerLabelV2 = <
           )}
         </UserTeamSelectableList>
       ) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [data, hasPermission, handleUpdatedOwner, isVersionView, entityRules]
   );
 

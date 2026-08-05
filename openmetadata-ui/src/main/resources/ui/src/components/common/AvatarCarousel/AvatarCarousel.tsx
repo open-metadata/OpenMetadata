@@ -50,11 +50,13 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
       onUpdateActiveUser(activeUser);
       handleMouseOut();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [avatarList]
   );
 
   useEffect(() => {
     onProfileClick(currentSlide);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentSlide]);
 
   useEffect(() => {

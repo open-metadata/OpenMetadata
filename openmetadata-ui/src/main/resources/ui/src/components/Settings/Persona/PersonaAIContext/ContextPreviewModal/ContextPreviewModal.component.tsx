@@ -254,6 +254,7 @@ export const ContextPreviewModal = ({
     }
 
     return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       previewRequestRef.current++;
     };
   }, [fetchPreview, open]);

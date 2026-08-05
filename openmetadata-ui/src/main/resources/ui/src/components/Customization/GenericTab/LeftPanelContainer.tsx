@@ -114,6 +114,7 @@ export const LeftPanelContainer = ({
         </Col>
       );
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [layout, type, isEditView]);
 
   // call the hook to set the direction of the grid layout

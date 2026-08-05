@@ -171,6 +171,7 @@ const RequestTag = () => {
       title: taskMessage.trimEnd(),
       assignees: defaultAssignee,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityData]);
 
   useEffect(() => {
@@ -181,6 +182,7 @@ const RequestTag = () => {
       tagsToRemove: [],
       operation: 'Add',
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [field, value]);
 
   useEffect(() => {

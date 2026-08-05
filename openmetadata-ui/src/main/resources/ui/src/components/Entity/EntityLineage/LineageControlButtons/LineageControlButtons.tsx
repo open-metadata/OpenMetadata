@@ -56,6 +56,7 @@ const LineageControlButtons: FC<{
         ? ''
         : Qs.stringify({ [FULLSCREEN_QUERY_PARAM_KEY]: !isFullscreen }),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isFullscreen]);
 
   const handleZoomIn = useCallback(() => {

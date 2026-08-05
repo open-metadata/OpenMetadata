@@ -41,6 +41,7 @@ const test = base.extend<{
   userBPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await adminUser.login(page);
@@ -50,6 +51,7 @@ const test = base.extend<{
     }
   },
   userAPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await userA.login(page);
@@ -59,6 +61,7 @@ const test = base.extend<{
     }
   },
   userBPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await userB.login(page);

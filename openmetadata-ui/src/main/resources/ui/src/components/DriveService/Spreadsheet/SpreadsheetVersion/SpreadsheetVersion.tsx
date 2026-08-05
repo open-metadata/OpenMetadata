@@ -82,6 +82,7 @@ const SpreadsheetVersion = ({
 
   const entityFqn = useMemo(
     () => currentVersionData.fullyQualifiedName ?? '',
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
@@ -148,6 +149,7 @@ const SpreadsheetVersion = ({
       },
       ...descriptionTableObject(),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -231,6 +233,7 @@ const SpreadsheetVersion = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       description,
       entityFqn,
@@ -268,6 +271,7 @@ const SpreadsheetVersion = ({
 
   useEffect(() => {
     fetchSpreadsheetDetails(spreadsheetFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {

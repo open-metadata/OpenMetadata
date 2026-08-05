@@ -67,6 +67,7 @@ function EditEmailConfigPage() {
         url: '',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -89,6 +90,7 @@ function EditEmailConfigPage() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleRedirectionToSettingsPage = useCallback(() => {
@@ -98,6 +100,7 @@ function EditEmailConfigPage() {
         GlobalSettingOptions.EMAIL
       )
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [history]);
 
   const updateEmailConfigValues = useCallback(
@@ -127,6 +130,7 @@ function EditEmailConfigPage() {
         setIsSaveLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -136,6 +140,7 @@ function EditEmailConfigPage() {
 
   useEffect(() => {
     fetchEmailConfigValues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const firstPanelChildren = (

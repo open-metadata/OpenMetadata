@@ -182,6 +182,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
               Operation.EditGlossaryTerms
             ),
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
@@ -285,6 +286,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testCaseData, updateTestCaseById, setTestCase, refetchChangeSummary]
   );
 
@@ -369,6 +371,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     }
 
     return items.length > 0 ? items : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     withoutSqlParams,
     testCaseData?.useDynamicAssertion,

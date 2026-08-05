@@ -32,12 +32,14 @@ const admin = new AdminClass();
 // Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{ adminPage: Page; userPage: Page }>({
   adminPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await admin.login(page);
     await use(page);
     await page.close();
   },
   userPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await user.login(page);
     await use(page);

@@ -133,6 +133,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
       handleOnAsyncEntityDeleteConfirm,
       handleDeleteEntityWebsocketResponse,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [handleOnAsyncEntityDeleteConfirm, handleDeleteEntityWebsocketResponse]);
 
   return (

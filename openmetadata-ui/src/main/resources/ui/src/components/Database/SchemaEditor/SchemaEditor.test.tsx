@@ -49,6 +49,7 @@ jest.mock('react-codemirror2', () => ({
     .mockImplementation(({ value, onChange, editorDidMount }) => {
       React.useEffect(() => {
         editorDidMount?.(mockEditor);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       }, []);
 
       return (

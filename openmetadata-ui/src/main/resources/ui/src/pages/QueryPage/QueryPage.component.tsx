@@ -99,6 +99,7 @@ const QueryPage = () => {
     } else {
       setIsLoading((pre) => ({ ...pre, permission: false }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [queryId]);
 
   const fetchEntityDetails = async () => {
@@ -129,6 +130,7 @@ const QueryPage = () => {
     if (datasetFQN) {
       fetchEntityDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [datasetFQN]);
 
   const fetchQueryById = async () => {
@@ -151,6 +153,7 @@ const QueryPage = () => {
     } else {
       setIsLoading((pre) => ({ ...pre, query: false }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [queryId, queryPermissions]);
 
   const handleQueryUpdate = async (updatedQuery: Query, key: keyof Query) => {

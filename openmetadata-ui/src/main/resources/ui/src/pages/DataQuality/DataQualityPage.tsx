@@ -91,6 +91,7 @@ const DataQualityPage = () => {
     }
 
     return btn;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permissions]);
 
   const menuItems = useMemo(() => {

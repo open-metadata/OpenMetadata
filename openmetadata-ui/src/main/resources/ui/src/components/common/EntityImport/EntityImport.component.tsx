@@ -197,6 +197,7 @@ export const EntityImport = ({
     return () => {
       socket && socket.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [socket]);
 
   const importStartedBanner = useMemo(() => {

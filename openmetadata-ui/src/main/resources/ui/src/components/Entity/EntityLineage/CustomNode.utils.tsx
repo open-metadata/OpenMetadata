@@ -101,6 +101,7 @@ const ExpandHandle = ({
   }, [onClickHandler]);
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className={classNames(
         'absolute lineage-node-handle-expand-all flex-center',
@@ -109,7 +110,9 @@ const ExpandHandle = ({
           : 'react-flow__handle-left'
       )}
       onClick={handleLineageNodeHandleClick}
+      // eslint-disable-next-line jsx-a11y/mouse-events-have-key-events -- hover-only affordance
       onMouseOut={handleLineageNodeHandleMouseOut}
+      // eslint-disable-next-line jsx-a11y/mouse-events-have-key-events -- hover-only affordance
       onMouseOver={handleLineageNodeHandleMouseOver}>
       <Plus
         aria-hidden="false"
@@ -271,6 +274,7 @@ const ColumnContentInner = ({
   );
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className={classNames(`custom-node-column-container ${className}`, {
         'custom-node-header-column-tracing': isColumnTraced,

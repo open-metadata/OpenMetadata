@@ -255,6 +255,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         showDeletedTables: databaseSchema.deleted,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [databaseSchema?.deleted]);
 
   const isFollowing = useMemo(
@@ -272,6 +273,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         databaseSchema ?? ({} as DatabaseSchema),
         navigate
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       databaseSchemaPermission,
       decodedDatabaseSchemaFQN,
@@ -297,6 +299,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } finally {
       setIsPermissionsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedDatabaseSchemaFQN]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -354,6 +357,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [activeTab, decodedDatabaseSchemaFQN]
   );
 
@@ -465,6 +469,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [databaseSchemaId, handleToggleDelete]);
 
   const versionHandler = useCallback(() => {
@@ -477,10 +482,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           EntityTabs.TABLE
         )
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentVersion, decodedDatabaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -526,6 +533,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
@@ -543,6 +551,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchTableCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [filters.showDeletedTables]);
 
   const {
@@ -585,6 +594,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     });
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleUpdateDatabaseSchema = async (data: DatabaseSchema) => {
     try {
       const response = await saveUpdatedDatabaseSchemaData(data);
@@ -622,6 +632,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       customizedPage?.tabs,
       EntityTabs.TABLE
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     feedCount,
     activeTab,
@@ -666,6 +677,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const isExpandViewSupported = useMemo(
     () =>
       checkIfExpandViewSupported(tabs[0], activeTab, PageType.DatabaseSchema),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 

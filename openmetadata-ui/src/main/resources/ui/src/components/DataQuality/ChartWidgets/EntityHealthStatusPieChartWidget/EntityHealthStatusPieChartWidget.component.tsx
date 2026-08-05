@@ -78,6 +78,7 @@ const EntityHealthStatusPieChartWidget = ({
         entityHealthStates.total
       ),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityHealthStates]
   );
 
@@ -106,6 +107,7 @@ const EntityHealthStatusPieChartWidget = ({
 
   useEffect(() => {
     fetchEntityHealthSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter]);
 
   if (isLoading) {

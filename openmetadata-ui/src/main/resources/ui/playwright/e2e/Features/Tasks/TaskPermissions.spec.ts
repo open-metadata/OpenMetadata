@@ -42,6 +42,7 @@ const createTaskAsAdmin = async (
 };
 
 const getUserApiContext = async (browser: Browser, user: UserClass) => {
+  // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
   const page = await browser.newPage();
   await user.login(page);
   const { apiContext, afterAction } = await getApiContext(page);
@@ -619,6 +620,7 @@ test.describe('Task Permissions - Task Creator', () => {
     await afterAction();
 
     // Try to close as creator user (who did NOT create this task)
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await creatorUser.login(page);
 

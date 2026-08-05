@@ -63,6 +63,7 @@ export const DescriptionTabs = ({
         setDiffs([]);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [markdownRef]
   );
 

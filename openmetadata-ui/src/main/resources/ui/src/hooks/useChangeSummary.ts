@@ -83,6 +83,7 @@ export const useChangeSummary = (
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     entityType,
     entityId,

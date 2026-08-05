@@ -336,12 +336,14 @@ const TotalDataAssetsWidget = ({
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedSortBy]);
 
   useEffect(() => {
     if (!selectedDate && graphData.length > 0) {
       setSelectedDate(graphData[graphData.length - 1].day); // select last available date
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [graphData]);
 
   const translatedSortOptions = useMemo(
@@ -370,6 +372,7 @@ const TotalDataAssetsWidget = ({
         onTitleClick={() => navigate(getDataInsightPathWithFqn())}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentLayout,
       handleLayoutUpdate,

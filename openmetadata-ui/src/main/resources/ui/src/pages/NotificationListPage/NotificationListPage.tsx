@@ -148,6 +148,7 @@ const NotificationListPage = () => {
         GlobalSettingsMenuCategory.NOTIFICATIONS,
         t(LABEL_ALERT_PLURAL)
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -182,11 +183,13 @@ const NotificationListPage = () => {
         setLoadingCount((count) => count - 1);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [pageSize]
   );
 
   useEffect(() => {
     fetchAlertResourcePermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -197,6 +200,7 @@ const NotificationListPage = () => {
     } else {
       fetchAlerts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, pagingCursor]);
 
   const handleAlertDelete = useCallback(async () => {
@@ -207,6 +211,7 @@ const NotificationListPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fetchAlerts]);
 
   const handleAlertHardDelete = useCallback(async () => {
@@ -238,6 +243,7 @@ const NotificationListPage = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging]
   );
 
@@ -326,6 +332,7 @@ const NotificationListPage = () => {
         },
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [alertPermissions, loadingCount]
   );
 

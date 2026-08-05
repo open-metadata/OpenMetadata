@@ -232,6 +232,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
 
   const handleFocus = useCallback(() => {
     loadOptions('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const internalValue = useMemo(() => {
@@ -241,6 +242,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     const selectedOption = selectedValue as DataAssetOption;
 
     return selectedOption?.value as string;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mode, selectedValue]);
 
   return (

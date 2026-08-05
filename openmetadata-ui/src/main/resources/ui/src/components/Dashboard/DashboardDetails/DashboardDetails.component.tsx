@@ -101,6 +101,7 @@ const DashboardDetails = ({
     deleted,
   } = useMemo(() => {
     return dashboardDetails;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     dashboardDetails.owners,
     dashboardDetails.followers,
@@ -129,12 +130,14 @@ const DashboardDetails = ({
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dashboardDetails.id, getEntityPermission, setDashboardPermissions]);
 
   useEffect(() => {
     if (dashboardDetails.id) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dashboardDetails.id]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -163,6 +166,7 @@ const DashboardDetails = ({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedDashboardFQN]);
 
   const handleTabChange = (activeKey: string) => {
@@ -188,6 +192,7 @@ const DashboardDetails = ({
       };
       await onDashboardUpdate(updatedDashboard);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -297,6 +302,7 @@ const DashboardDetails = ({
       customizedPage?.tabs,
       EntityTabs.DETAILS
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     feedCount.totalCount,
     activeTab,
@@ -331,6 +337,7 @@ const DashboardDetails = ({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Dashboard),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 

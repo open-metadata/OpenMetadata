@@ -102,6 +102,7 @@ export const useQuickFiltersWithComponent = (
     (data: ExploreQuickFilterField[]) => {
       config.onFilterChange(data);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [config.onFilterChange]
   );
 

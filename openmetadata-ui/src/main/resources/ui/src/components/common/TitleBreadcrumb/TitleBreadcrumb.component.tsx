@@ -102,6 +102,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
     return () => {
       window.removeEventListener('resize', changeWidth);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

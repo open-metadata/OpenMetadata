@@ -86,6 +86,7 @@ function PipelineActionsDropdown({
         setIsOpen(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -99,6 +100,7 @@ function PipelineActionsDropdown({
         setIsOpen(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -132,6 +134,7 @@ function PipelineActionsDropdown({
         handleEditClick(fullyQualifiedName);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [ingestion, serviceCategory, serviceName, handleEditClick]
   );
 
@@ -201,6 +204,7 @@ function PipelineActionsDropdown({
               'data-testid': 'deploy-button',
             },
           ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [ingestion, currTrigger, id, currDeploy, triggerPermission, editPermission]
   );
 
@@ -244,6 +248,7 @@ function PipelineActionsDropdown({
     ];
 
     return items.filter((item) => !item.hidden);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     ingestion,
     deployItems,

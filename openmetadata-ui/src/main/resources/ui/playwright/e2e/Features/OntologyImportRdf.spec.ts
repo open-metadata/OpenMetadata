@@ -149,6 +149,7 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   test('hides Import Ontology from a user without glossary edit permission', async ({
     browser,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const userPage = await browser.newPage();
     await consumerUser.login(userPage);
     await redirectToHomePage(userPage);

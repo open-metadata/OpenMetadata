@@ -343,6 +343,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       ];
 
       return _otherDetails;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [source]);
 
     const breadcrumbs = useMemo(
@@ -505,6 +506,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           </Col>
         </Row>
       );
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [
       breadcrumbs,
       breadcrumbItems,

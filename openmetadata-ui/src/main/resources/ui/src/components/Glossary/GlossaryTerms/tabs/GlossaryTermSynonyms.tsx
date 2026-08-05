@@ -47,6 +47,7 @@ const GlossaryTermSynonyms = () => {
   } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const getSynonyms = () =>
     !permissions.EditAll || !isEmpty(synonyms) ? (
       <div className="d-flex flex-wrap">

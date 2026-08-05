@@ -281,6 +281,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
       entitiesSummary: entitiesChartsSummary,
       updateEntitySummary: setEntitiesChartsSummary,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       handleTeamSearch,
       chartFilter,
@@ -304,6 +305,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     fetchDefaultTeamOptions();
     fetchKpiList();
     setChartFilter(INITIAL_CHART_FILTER);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

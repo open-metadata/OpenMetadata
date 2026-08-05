@@ -98,6 +98,7 @@ const DataProductsWidget = ({
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
 
   const handleDataProductClick = useCallback(

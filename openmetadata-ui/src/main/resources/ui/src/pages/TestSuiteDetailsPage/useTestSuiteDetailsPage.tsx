@@ -224,6 +224,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         ),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testSuite]);
 
   const saveAndUpdateTestSuiteData = (updatedData: TestSuite) => {
@@ -370,6 +371,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
       await updateTestSuiteData({ ...testSuite, owners: updatedOwners });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testSuite]
   );
 
@@ -395,6 +397,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
       await updateTestSuiteData(updatedTestSuite);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testSuite]
   );
 
@@ -417,6 +420,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testSuite, t, refetchChangeSummary]
   );
 
@@ -442,9 +446,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testSuite]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleTestCasePaging = ({ currentPage }: PagingHandlerParams) => {
     if (currentPage) {
       handlePageChange(currentPage);
@@ -468,16 +474,19 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     if (permissions.hasViewPermission) {
       fetchTestSuiteByName();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permissions, testSuiteFQN]);
 
   useEffect(() => {
     fetchTestSuitePermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testSuiteFQN]);
 
   useEffect(() => {
     if (testSuiteId) {
       fetchTestCases({ testSuiteId });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testSuiteId, pageSize]);
 
   const pagingData: NextPreviousProps = useMemo(

@@ -62,6 +62,7 @@ const MyFeedWidgetInternal = ({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [widgetKey]);
 
   const handleUpdateEntityDetails = useCallback(() => {
@@ -104,6 +105,7 @@ const MyFeedWidgetInternal = ({
         title={t('label.no-recent-activity')}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const widgetBody = useMemo(() => {
@@ -129,6 +131,7 @@ const MyFeedWidgetInternal = ({
         )}
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     emptyState,
     activityEvents,
@@ -164,6 +167,7 @@ const MyFeedWidgetInternal = ({
         onTitleClick={() => navigate(userActivityFeedLink)}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentLayout,
       handleLayoutUpdate,

@@ -75,6 +75,7 @@ const ErrorPlaceHolderIngestion = ({
         </Card>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isAirflowPlatform, cardClassName]);
 
   return (

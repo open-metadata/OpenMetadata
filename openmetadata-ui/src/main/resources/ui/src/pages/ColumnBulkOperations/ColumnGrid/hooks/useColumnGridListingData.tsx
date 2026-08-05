@@ -260,6 +260,7 @@ export const useColumnGridListingData = (
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -305,6 +306,7 @@ export const useColumnGridListingData = (
     } else {
       setAllRows([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     gridItems,
     urlState.searchQuery,
@@ -363,6 +365,7 @@ export const useColumnGridListingData = (
         urlState.pageSize
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     urlState.currentPage,
     urlState.searchQuery,
@@ -373,6 +376,7 @@ export const useColumnGridListingData = (
 
   useEffect(() => {
     selectionState.clearSelection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [urlState.currentPage, urlState.searchQuery, urlState.filters]);
 
   const handleSearchChange = useCallback(

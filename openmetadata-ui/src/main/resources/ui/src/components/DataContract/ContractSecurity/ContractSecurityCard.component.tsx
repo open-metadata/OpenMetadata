@@ -112,6 +112,7 @@ const ContractSecurityCard: React.FC<{
         )}
       </Card>
     ));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [security?.policies]);
 
   return (

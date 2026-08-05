@@ -170,6 +170,7 @@ const IncidentManagerPageHeader = ({
         />
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCaseStatusData, isLoading, taskLinkInfo, hasEditStatusPermission]);
 
   const testDefinitionName = getEntityName(testCaseData?.testDefinition);

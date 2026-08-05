@@ -409,6 +409,7 @@ DataQualityTabProps) => {
     } else {
       setIsStatusLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCases]);
 
   const handleOpenBundleSuiteForm = (cases: TestCase[]) => {

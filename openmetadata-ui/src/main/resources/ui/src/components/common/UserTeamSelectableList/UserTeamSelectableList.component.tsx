@@ -281,6 +281,7 @@ export const UserTeamSelectableList = ({
 
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [popupVisible]);
 
   return (

@@ -118,6 +118,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     }
 
     return { extensionObject: entityDetails?.extension };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isVersionView, entityDetails?.extension]);
 
   const viewAllBtn = useMemo(() => {
@@ -142,6 +143,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     entityTypeDetail.customProperties,
     entityType,
@@ -174,6 +176,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     ) {
       filterWidgets?.([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isRenderedInRightPanel,
     entityTypeDetail.customProperties,
@@ -194,6 +197,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   useEffect(() => {
     initCustomPropertyTable();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType]);
 
   if (entityTypeDetailLoading) {

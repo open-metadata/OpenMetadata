@@ -187,6 +187,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     };
   }, [messageSchema?.schemaFields]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
     editColumnTag: Field
@@ -424,6 +425,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       t,
       renderSchemaName,

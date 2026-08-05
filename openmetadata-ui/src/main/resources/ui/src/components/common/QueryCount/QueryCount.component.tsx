@@ -51,6 +51,7 @@ const QueryCount = ({ tableId }: { tableId: string }) => {
     if (tableId && !isTourPage) {
       fetchQueryCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableId]);
 
   if (queryCount.isLoading) {

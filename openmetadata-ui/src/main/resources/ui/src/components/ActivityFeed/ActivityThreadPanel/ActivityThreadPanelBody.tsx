@@ -266,16 +266,19 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return () => {
       document.removeEventListener('keydown', escapeKeyHandler);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (isConversationType) {
       onThreadSelect(selectedThread?.id as string);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [threads]);
 
   useEffect(() => {
     getThreads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     getTaskData,
     isConversationType,
@@ -291,6 +294,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       isTaskType ? entityPaging : paging,
       isTaskType ? loading : isThreadLoading
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityPaging, isInView, isTaskType, isThreadLoading, loading, paging]);
 
   return (

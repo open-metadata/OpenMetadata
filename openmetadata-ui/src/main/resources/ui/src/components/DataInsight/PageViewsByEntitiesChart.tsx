@@ -97,6 +97,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   useEffect(() => {
     fetchPageViewsByEntities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter]);
 
   if (isLoading || data.length === 0) {

@@ -169,6 +169,7 @@ export const useTestSuitesData = ({
     } else {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testSuitePermission, pageSize, searchValue, owner, subTab, currentPage]);
 
   return {

@@ -80,6 +80,7 @@ const TabFilters = () => {
       formType: TestLevel | ProfilerDashboardType;
       dateRangeObject: DateRangeObject;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [location.search, activeTab, isTourOpen]);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);

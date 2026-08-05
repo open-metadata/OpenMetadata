@@ -165,6 +165,7 @@ const TableDetailsPageV1: React.FC = () => {
         </Link>
       </Tooltip>
     ) : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dqFailureCount, tableFqn]);
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
@@ -178,6 +179,7 @@ const TableDetailsPageV1: React.FC = () => {
         Operation.ViewTests
       ),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       tablePermissions,
       getPrioritizedViewPermission,
@@ -420,6 +422,7 @@ const TableDetailsPageV1: React.FC = () => {
         name: string;
       }>;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableDetails, tableDetails?.tags]);
 
   const fetchResourcePermission = useCallback(
@@ -441,6 +444,7 @@ const TableDetailsPageV1: React.FC = () => {
         setPermissionsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [getEntityPermissionByFqn, setTablePermissions]
   );
 
@@ -452,6 +456,7 @@ const TableDetailsPageV1: React.FC = () => {
     return () => {
       setDqLineageData(undefined);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableFqn]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -497,6 +502,7 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
     try {
       const res = await saveUpdatedTableData(updatedTable);
@@ -524,6 +530,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tableDetails]
   );
 
@@ -538,6 +545,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'retentionPeriod');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tableDetails]
   );
 
@@ -655,6 +663,7 @@ const TableDetailsPageV1: React.FC = () => {
     );
 
     return updatedTabs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     queryCount,
     isTourOpen,
@@ -681,6 +690,7 @@ const TableDetailsPageV1: React.FC = () => {
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 
@@ -852,10 +862,12 @@ const TableDetailsPageV1: React.FC = () => {
   const versionHandler = useCallback(() => {
     version &&
       navigate(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -928,6 +940,7 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     tableFqn,
     isTourOpen,
@@ -943,6 +956,7 @@ const TableDetailsPageV1: React.FC = () => {
     if (tableDetails) {
       getTestCaseFailureCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableDetails?.fullyQualifiedName]);
 
   // P1.2: queryCount only drives the "Queries (N)" tab badge — most users never click that

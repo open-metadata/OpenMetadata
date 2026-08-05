@@ -37,6 +37,7 @@ let adminUser: AdminClass;
 // toast notifications for search settings update in tests.
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     await adminUser.login(adminPage);
     await use(adminPage);

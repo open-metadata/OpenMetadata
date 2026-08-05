@@ -90,6 +90,7 @@ const SearchSettingsPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.search')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -322,6 +323,7 @@ const SearchSettingsPage = () => {
 
   useEffect(() => {
     fetchSearchConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const onHybridWeightSave = async () => {

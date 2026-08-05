@@ -204,6 +204,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchIndex, serviceName, deleted, pageSize]
   );
 
@@ -227,6 +228,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [getServiceDetails, serviceQueryFilter, paging, pageSize]
   );
 
@@ -331,6 +333,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     addServicePermission,
     servicesDisplayName,
@@ -509,6 +512,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       });
       setSearchTerm(search);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [getServiceDetails]
   );
 
@@ -528,6 +532,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       limit: pageSize,
       queryFilter: serviceQueryFilter,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     searchIndex,
     pageSize,

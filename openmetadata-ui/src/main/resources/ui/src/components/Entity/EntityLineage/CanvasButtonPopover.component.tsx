@@ -47,6 +47,7 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const pipelineData = hoveredEdge.data?.edge?.pipeline;

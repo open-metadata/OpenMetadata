@@ -126,6 +126,7 @@ export const SelectableList = ({
         ...listOptions.filter((option) => !checkActiveSelectedItem(option)),
       ];
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedItemsInternal]
   );
 
@@ -142,16 +143,19 @@ export const SelectableList = ({
     } finally {
       setFetching(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedItemsInternal, sortUniqueListFromSelectedList]);
 
   useEffect(() => {
     fetchListOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     setUniqueOptions(
       sortUniqueListFromSelectedList(selectedItemsInternal, listOptions)
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [listOptions]);
 
   const handleSearch = useCallback(
@@ -167,6 +171,7 @@ export const SelectableList = ({
       setPagingInfo(paging);
       setSearchText(search);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedItemsInternal]
   );
 
@@ -189,6 +194,7 @@ export const SelectableList = ({
         setPagingInfo(paging);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [pagingInfo, uniqueOptions, searchText]
   );
 

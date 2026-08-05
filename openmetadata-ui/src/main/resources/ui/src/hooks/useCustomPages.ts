@@ -47,6 +47,7 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     } else {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedPersona, pageType]);
 
   return {

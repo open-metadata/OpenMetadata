@@ -252,6 +252,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         </Card>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [timestamp, formatDateTimeWithTimezone, status]
   );
 
@@ -387,6 +388,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               ]
             : []),
         ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [successContext, failureContext]);
 
   const entityStatsRenderer = useCallback(
@@ -404,6 +406,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         />
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tableColumn]
   );
 
@@ -520,6 +523,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         render: (text: string) => <Typography.Text>{text}</Typography.Text>,
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serverStatsData]);
 
   const serverStatsRenderer = useCallback(() => {
@@ -556,6 +560,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         />
       </Card>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serverStatsData, serverStatsColumns, successContext?.serverCount]);
 
   return (

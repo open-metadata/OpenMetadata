@@ -49,6 +49,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
     }
 
     return glossaries[0].fullyQualifiedName;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [glossaryFqn]);
 
   const menuItems: ItemType[] = useMemo(() => {
@@ -106,6 +107,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [glossaryFqn]);
 
   return (

@@ -158,6 +158,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       };
       await onApiEndpointUpdate(updatedApiEndpointDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -175,6 +176,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     setFeedCount(data);
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const getEntityFeedCount = () =>
     getFeedCounts(
       EntityType.API_ENDPOINT,
@@ -230,6 +232,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
 
   const tabs = useMemo(() => {
@@ -287,6 +290,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.APIEndpoint),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 

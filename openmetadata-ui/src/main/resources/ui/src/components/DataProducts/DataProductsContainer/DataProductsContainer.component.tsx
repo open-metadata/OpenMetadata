@@ -117,6 +117,7 @@ const DataProductsContainer = ({
         onSubmit={handleSave}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [handleCancel, handleSave, dataProducts, fetchAPI]);
 
   const showAddTagButton = useMemo(
@@ -163,6 +164,7 @@ const DataProductsContainer = ({
         </Tag>
       );
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataProducts, activeDomains]);
 
   const headerExtra = useMemo(() => {
@@ -197,6 +199,7 @@ const DataProductsContainer = ({
         )}
       </Space>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [showHeader, dataProducts, hasPermission, activeDomains]);
 
   const addTagButton = useMemo(

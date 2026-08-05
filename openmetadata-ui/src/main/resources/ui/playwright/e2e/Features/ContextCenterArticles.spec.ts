@@ -636,6 +636,7 @@ test.describe('Context Center Articles', () => {
       url.pathname.includes('/context-center/articles/')
     );
     await waitForAllLoadersToDisappear(page);
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
     await page.waitForTimeout(500);
 
     await navigateToArticles(page);
@@ -1190,6 +1191,7 @@ test.describe('Context Center Articles', () => {
         .click();
       await page.getByTestId('save').click();
 
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page.waitForSelector(
         '[role="dialog"].description-markdown-editor',
         { state: 'hidden' }
@@ -1437,6 +1439,7 @@ test.describe('Context Center Articles', () => {
           .getByTestId('entity-header-display-name')
           .fill(newDisplayName);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
         await page.waitForTimeout(400);
         await page.getByRole('link', { name: 'Articles' }).click();
       });
@@ -1494,6 +1497,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', reloadDescription);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
         await page.waitForTimeout(400);
       });
 
@@ -1573,6 +1577,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
         await page.fill('.om-block-editor', 'This draft should be deleted');
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
         await page.waitForTimeout(400);
       });
 
@@ -1621,6 +1626,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', contentA);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
         await page.waitForTimeout(400);
       });
 
@@ -1628,6 +1634,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleB.fullyQualifiedName);
         await page.fill('.om-block-editor', contentB);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
         await page.waitForTimeout(400);
       });
 

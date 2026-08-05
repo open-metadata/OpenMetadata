@@ -337,6 +337,7 @@ test.describe(
       browser,
     }) => {
       // Admin: Customize Table detail page for persona
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const adminPage = await browser.newPage();
       await adminUser.login(adminPage);
       await redirectToHomePage(adminPage);
@@ -403,6 +404,7 @@ test.describe(
       await adminPage.close();
 
       // User: Validate long description in custom tab
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const userPage = await browser.newPage();
       await regularUser.login(userPage);
       await redirectToHomePage(userPage);

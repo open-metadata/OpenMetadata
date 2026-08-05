@@ -94,6 +94,7 @@ UserTabProps) => {
     );
   }, [users]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleRemoveClick = (id: string) => {
     const user = usersList?.find((u) => u.id === id);
     setDeletingUser(user);
@@ -200,6 +201,7 @@ UserTabProps) => {
     } else {
       getCurrentTeamUsers(currentTeam.name);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentTeam, pageSize, pagingCursor]);
 
   const isTeamDeleted = useMemo(
@@ -258,6 +260,7 @@ UserTabProps) => {
         exportTypes: [ExportTypes.CSV],
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentTeam, exportUserOfTeam]);
 
   const handleImportClick = useCallback(async () => {
@@ -270,6 +273,7 @@ UserTabProps) => {
       ),
       search: QueryString.stringify({ type: ImportType.USERS }),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const IMPORT_EXPORT_MENU_ITEM = useMemo(() => {

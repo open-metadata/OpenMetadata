@@ -70,6 +70,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       typingInterval: 500,
       onSearch: handleTeamSearch,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchTerm, handleTeamSearch]
   );
 
@@ -174,6 +175,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       });
       setIsModalOpen(true);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

@@ -598,6 +598,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
   useEffect(() => {
     fetchRequirement();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceName, serviceType]);
 
   const activeFieldName = useMemo(

@@ -91,6 +91,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const glossary = new Glossary();
     await glossary.create(apiContext);
 
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     let currentName = glossary.data.name;
 
@@ -152,6 +153,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const glossaryTerm = new GlossaryTerm(glossary);
     await glossaryTerm.create(apiContext);
 
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
 
     try {
@@ -203,6 +205,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const classification = new ClassificationClass();
     await classification.create(apiContext);
 
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     let currentName = classification.data.name;
 
@@ -275,6 +278,7 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const tag = new TagClass({ classification: classification.data.name });
     await tag.create(apiContext);
 
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
 
     try {

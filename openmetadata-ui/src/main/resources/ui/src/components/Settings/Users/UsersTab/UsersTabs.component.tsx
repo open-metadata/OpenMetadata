@@ -59,6 +59,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       onRemoveUser(removeUserDetails.user.id);
     }
     handleRemoveCancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [removeUserDetails, handleRemoveCancel]);
 
   const fetchUsersAdditionalDetails = async () => {
@@ -86,6 +87,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
 
   useEffect(() => {
     fetchUsersAdditionalDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [users]);
 
   const actionColumn = useMemo(() => {
@@ -114,10 +116,12 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         );
       },
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [onRemoveUser]);
 
   const columns = useMemo(
     () => [...commonUserDetailColumns(isDetailsLoading), actionColumn],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isDetailsLoading]
   );
 

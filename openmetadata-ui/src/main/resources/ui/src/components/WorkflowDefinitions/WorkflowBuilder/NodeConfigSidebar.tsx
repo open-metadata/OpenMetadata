@@ -154,6 +154,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       setLocalName(null);
       setLocalDescription(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     node?.id,
     workflowDefinition?.id,
@@ -283,6 +284,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   useEffect(() => {
     setBackendConfig(getBackendConfig(node));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [node?.id]);
 
   const updateWorkflowMetadata = useCallback(() => {

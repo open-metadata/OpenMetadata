@@ -147,6 +147,7 @@ const AddServicePage = () => {
         config: {},
       },
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [resetNameValidation]);
 
   const slashedBreadcrumb = useMemo(
@@ -170,6 +171,7 @@ const AddServicePage = () => {
             },
           ]
         : slashedBreadcrumb,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       handleConnectorChangeClick,
       serviceCategory,
@@ -309,6 +311,7 @@ const AddServicePage = () => {
 
   useEffect(() => {
     resetActiveField(activeServiceStep === 2 ? 'serviceName' : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [activeServiceStep]);
 
   const hideSecondPanel = useMemo(

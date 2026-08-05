@@ -326,6 +326,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     if (topicFQN) {
       fetchResourcePermission(topicFQN);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [topicFQN]);
 
   if (permissionsLoading || topicLoading) {

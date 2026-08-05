@@ -273,6 +273,7 @@ const SpreadsheetDetailsPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(spreadsheetFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [spreadsheetFQN]);
 
   useEffect(() => {
@@ -284,6 +285,7 @@ const SpreadsheetDetailsPage = () => {
     ) {
       fetchSpreadsheetDetails(spreadsheetFQN);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [spreadsheetPermissions, spreadsheetFQN]);
 
   if (isLoading) {

@@ -108,6 +108,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       setUrlPathnameExpiryAfterRoute(urlPathname);
       navigate(urlPathname);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [history]);
 
   /**
@@ -250,6 +251,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     if (isEmpty(currentUser)) {
       resetPermissions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser?.teams, currentUser?.roles]);
 
   const contextValues = useMemo(

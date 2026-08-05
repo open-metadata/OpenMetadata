@@ -188,6 +188,7 @@ const ContextCenterDashboardPage: FC = () => {
     } finally {
       setIsArticlesLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [t]);
 
   const fetchDocuments = useCallback(async () => {

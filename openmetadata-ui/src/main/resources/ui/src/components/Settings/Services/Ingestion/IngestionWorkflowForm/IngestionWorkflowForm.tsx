@@ -217,6 +217,7 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     return commonSchema;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pipeLineType, operationType, hideFooter]);
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {

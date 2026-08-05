@@ -96,6 +96,7 @@ test.describe('Team Activity - Membership Changes', () => {
     await afterAction();
 
     // Login as existing team member
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await teamMember.login(page);
     await redirectToHomePage(page);
@@ -143,6 +144,7 @@ test.describe('Team Activity - Membership Changes', () => {
     await afterAction();
 
     // Login as existing team member and check feed
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await teamMember.login(page);
     await redirectToHomePage(page);
@@ -239,6 +241,7 @@ test.describe('Team Activity - Team Owned Entities', () => {
     await afterAction();
 
     // Login as team member and check they can see the change
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await teamMember1.login(page);
     await redirectToHomePage(page);

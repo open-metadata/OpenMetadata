@@ -135,6 +135,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         )}
       </div>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [sizeCap, isOpen, hasMoreElement, sortedTagsBySource]
   );
 
@@ -164,6 +165,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         </div>
       ),
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [sizeCap, sortedTagsBySource]
   );
 

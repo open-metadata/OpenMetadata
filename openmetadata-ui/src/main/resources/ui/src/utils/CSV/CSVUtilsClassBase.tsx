@@ -1299,6 +1299,7 @@ const getInlineBulkEditReferencePickerEditor =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
+    // eslint-disable-next-line sonarjs/no-identical-functions -- duplicate cell handler
     const handleComplete = (nextValue: string) => {
       if (nextValue === value) {
         onClose(false);
@@ -1366,6 +1367,7 @@ const InlineCustomPropertiesEditor = ({
   }, [entityType, value]);
 
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/no-identical-functions -- duplicate cell handler
     const updatePosition = () => {
       if (!triggerRef.current) {
         return;
@@ -1385,6 +1387,7 @@ const InlineCustomPropertiesEditor = ({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line sonarjs/no-identical-functions -- duplicate cell handler
     const handleMouseDown = (event: globalThis.MouseEvent) => {
       const target = event.target as Node;
 
@@ -1747,6 +1750,7 @@ const getInlineCustomPropertiesEditor =
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const value = String(row[column.key] ?? '');
+    // eslint-disable-next-line sonarjs/no-identical-functions -- duplicate cell handler
     const handleComplete = (nextValue: string) => {
       if (nextValue === value) {
         onClose(false);
@@ -2321,6 +2325,7 @@ class CSVUtilsClassBase {
           column,
         }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
           const value = row[column.key];
+          // eslint-disable-next-line sonarjs/no-identical-functions -- duplicate cell handler
           const handleChange = async (tag?: Tag) => {
             onRowChange(
               {
