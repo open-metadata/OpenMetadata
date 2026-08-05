@@ -41,7 +41,7 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.utils import sanitize_user_agent
-from metadata.profiler.api.models import ProfilerProcessorConfig, processor_config_payload
+from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.utils.class_helper import (
     get_pipeline_type_from_source_config,
     get_service_class_from_service_type,
@@ -231,7 +231,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             if not self.config.source.serviceConnection.root.config.supportsProfiler:  # pyright: ignore[reportAttributeAccessIssue]
                 raise AttributeError()  # noqa: TRY301
         except AttributeError:
-            if profiler_config_class.model_validate(processor_config_payload(self.config.processor)).ignoreValidation:
+            if profiler_config_class.model_validate(self.config.processor.model_dump().get("config")).ignoreValidation:
                 logger.debug(
                     f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
                 )
