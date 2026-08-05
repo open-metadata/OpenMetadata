@@ -67,6 +67,7 @@ public class OpenSearchSourceBuilderFactory
   // shard (a 500 on the search). Elasticsearch tolerates it, so this guard is OpenSearch-only.
   private static final String FLATTENED_EXTENSION_FIELD = "extension";
   private static final String MINIMUM_SHOULD_MATCH = "2<70%";
+  private static final String FUZZINESS_DISABLED = "0";
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
   private static final float FUNCTION_BOOST_FACTOR = 0.3f;
@@ -1103,12 +1104,25 @@ public class OpenSearchSourceBuilderFactory
     return switch (matchType) {
       case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
-      case FUZZY -> buildTextRankingStageQueryV2(
-          significantQuery, stage, assetConfig, getFuzziness(significantQuery));
+      case FUZZY -> buildFuzzyRankingStageQueryV2(significantQuery, stage, assetConfig);
       case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
           significantQuery, stage, assetConfig);
-      case STANDARD -> buildTextRankingStageQueryV2(significantQuery, stage, assetConfig, "0");
+      case STANDARD -> buildTextRankingStageQueryV2(
+          significantQuery, stage, assetConfig, FUZZINESS_DISABLED);
     };
+  }
+
+  private Query buildFuzzyRankingStageQueryV2(
+      String significantQuery, RankingStage stage, AssetTypeConfiguration assetConfig) {
+    String fuzziness = getFuzziness(significantQuery);
+    Query fuzzyQuery = null;
+    // With fuzziness disabled (multi-token / FQN queries) this stage degenerates into a permissive
+    // OR match, letting an ancestor whose name is a substring of a longer FQN outrank the exact
+    // entity. Non-fuzzy matching is already covered by the other stages, so skip it here.
+    if (!FUZZINESS_DISABLED.equals(fuzziness)) {
+      fuzzyQuery = buildTextRankingStageQueryV2(significantQuery, stage, assetConfig, fuzziness);
+    }
+    return fuzzyQuery;
   }
 
   private Query buildExactRankingStageQueryV2(
