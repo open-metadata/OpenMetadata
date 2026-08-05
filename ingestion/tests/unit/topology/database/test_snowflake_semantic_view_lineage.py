@@ -286,6 +286,14 @@ class _RecordingEngine:
 
         return self
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.close()
+
+        return False
+
     def execute(self, clause):
         query = str(clause)
         self.queries.append(query)
