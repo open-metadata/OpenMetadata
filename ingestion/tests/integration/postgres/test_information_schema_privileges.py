@@ -96,7 +96,8 @@ def test_pg_policy_tags_resolve_for_least_privilege_role(lowpriv_engine, postgre
     database = make_url(postgres_container.get_connection_url()).database
     with lowpriv_engine.connect() as conn:
         rows = conn.execute(
-            text(POSTGRES_GET_ALL_TABLE_PG_POLICY.format(database_name=database, schema_name=SCHEMA))
+            text(POSTGRES_GET_ALL_TABLE_PG_POLICY),
+            {"schema_name": SCHEMA, "database_name": database},
         ).all()
 
     # yield_tag reads row[1] as the policy name and row[2:] as FQN elements

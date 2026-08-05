@@ -84,8 +84,8 @@ SELECT pc.oid              AS object_id,
 FROM      pg_policy    AS pp
 JOIN      pg_class     AS pc ON pp.polrelid    = pc.oid
 JOIN      pg_namespace AS pn ON pc.relnamespace = pn.oid
-WHERE pn.nspname = '{schema_name}'
-  AND current_database() = '{database_name}';
+WHERE pn.nspname = :schema_name
+  AND current_database() = :database_name
 """
 
 POSTGRES_SCHEMA_COMMENTS = """
