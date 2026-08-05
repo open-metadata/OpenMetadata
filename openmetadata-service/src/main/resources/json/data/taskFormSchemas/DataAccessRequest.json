@@ -33,7 +33,7 @@
         "default": "Read"
       },
       "expirationDate": {
-        "type": "integer",
+        "type": "number",
         "minimum": 1,
         "maximum": 7258118400000,
         "title": "Expiration Date"
