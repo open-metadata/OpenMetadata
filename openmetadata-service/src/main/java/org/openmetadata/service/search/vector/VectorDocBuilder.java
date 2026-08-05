@@ -383,7 +383,6 @@ public class VectorDocBuilder {
       // Reuses the entity-doc definition so both documents stamp identical values; see
       // ContextMemoryIndex#shareConfigFields.
       fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
-      fields.put("shareConfigFingerprint", computeShareConfigFingerprint(memory));
     }
     return fields;
   }
@@ -601,36 +600,24 @@ public class VectorDocBuilder {
     String entityType = entity.getEntityReference().getType();
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
-    return TextChunkManager.computeFingerprint(metaLight + "|" + body);
+    return TextChunkManager.computeFingerprint(metaLight + "|" + body + shareConfigPart(entity));
   }
 
   /**
-   * Fingerprint of the share-config fields the search-time privacy filter matches on. The content
-   * fingerprint covers text only, so flipping a memory's visibility without editing it would skip the
-   * chunk rewrite and leave stale visibility stamps on the chunk docs — reachable by the wrong
-   * callers. Sorted, so reordering {@code sharedWith} is not mistaken for a change and does not
-   * trigger a pointless rewrite.
-   *
-   * <p>Returns {@code null} for entity types that carry no share config; callers must treat null as
-   * "this type has no share config to go stale", never as "unchanged".
+   * Share config folded into the content fingerprint, so a visibility change restamps the chunk docs
+   * that the search-time privacy filter reads {@code visibility} from. Sorted, so reordering {@code
+   * sharedWith} is not mistaken for a change. Empty for types without a share config.
    */
-  public static String computeShareConfigFingerprint(EntityInterface entity) {
-    String fingerprint = null;
+  @SuppressWarnings("unchecked")
+  private static String shareConfigPart(EntityInterface entity) {
+    String part = "";
     if (entity instanceof ContextMemory memory) {
       Map<String, Object> shareConfig = ContextMemoryIndex.shareConfigFields(memory);
-      List<String> sharedWithIds =
-          new ArrayList<>(castToStringList(shareConfig.get("sharedWithIds")));
+      List<String> sharedWithIds = new ArrayList<>((List<String>) shareConfig.get("sharedWithIds"));
       Collections.sort(sharedWithIds);
-      fingerprint =
-          TextChunkManager.computeFingerprint(
-              shareConfig.get("visibility") + "|" + String.join(",", sharedWithIds));
+      part = "|" + shareConfig.get("visibility") + "|" + String.join(",", sharedWithIds);
     }
-    return fingerprint;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static List<String> castToStringList(Object value) {
-    return value == null ? Collections.emptyList() : (List<String>) value;
+    return part;
   }
 
   static String buildMetaLightText(EntityInterface entity, String entityType) {

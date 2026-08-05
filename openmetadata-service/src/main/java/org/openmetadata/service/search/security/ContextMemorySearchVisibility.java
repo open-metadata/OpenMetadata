@@ -52,9 +52,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * clauses; {@link org.openmetadata.service.search.vector.VectorSearchQueryBuilder} renders it as raw
  * JSON (it serves both engines from a {@code StringBuilder}); {@link
  * org.openmetadata.service.resources.context.ContextMemoryVisibility#isVisibleToUser} decides it
- * in-memory for the REST read paths. {@code
- * ContextMemorySearchVisibilityTest#rawJsonVectorClauseKeysOffTheSameFieldsAsThisRule} compares the
- * first two, and only by the set of fields keyed on.
+ * in-memory for the REST read paths. Nothing compares them automatically.
  */
 public class ContextMemorySearchVisibility {
 

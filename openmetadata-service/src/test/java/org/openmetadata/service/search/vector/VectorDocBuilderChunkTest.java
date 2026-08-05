@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -347,50 +346,30 @@ class VectorDocBuilderChunkTest {
     for (Map<String, Object> doc : docs) {
       assertEquals(MemoryVisibility.SHARED.value(), doc.get("visibility"));
       assertEquals(List.of(sharedPrincipal.toString()), doc.get("sharedWithIds"));
-      assertNotNull(doc.get("shareConfigFingerprint"));
       List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
       assertEquals(ownerId.toString(), owners.get(0).get("id"), "the filter matches on owners.id");
       assertEquals("alice", owners.get(0).get("name"));
     }
   }
 
-  @Test
-  void shareConfigFingerprint_changesWithVisibilityButLeavesContentFingerprintAlone() {
-    ContextMemory memory = memory(MemoryVisibility.PRIVATE);
-    String contentBefore = VectorDocBuilder.computeFingerprintForEntity(memory);
-    String shareBefore = VectorDocBuilder.computeShareConfigFingerprint(memory);
-
-    memory.getShareConfig().setVisibility(MemoryVisibility.ENTITY);
-
-    assertEquals(
-        contentBefore,
-        VectorDocBuilder.computeFingerprintForEntity(memory),
-        "a visibility flip must not re-embed the body");
-    assertNotEquals(shareBefore, VectorDocBuilder.computeShareConfigFingerprint(memory));
-  }
-
-  @Test
-  void shareConfigFingerprint_isStableAcrossSharedWithOrdering() {
-    UUID first = UUID.randomUUID();
-    UUID second = UUID.randomUUID();
-
-    assertEquals(
-        VectorDocBuilder.computeShareConfigFingerprint(
-            memory(MemoryVisibility.SHARED, first, second)),
-        VectorDocBuilder.computeShareConfigFingerprint(
-            memory(MemoryVisibility.SHARED, second, first)),
-        "reordering sharedWith is not a change and must not trigger a rewrite");
-  }
-
   /**
-   * Guards a silent cost regression rather than a functional one: {@code shareConfigStale} treats a
-   * non-null current fingerprint against a header that has none as stale, so a non-null value here
-   * would rewrite every table's chunks on every update, forever, with no visible symptom.
+   * Share config is folded into the content fingerprint, so a visibility flip restamps the chunk docs
+   * the privacy filter reads; the sort keeps a reordered sharedWith from looking like a change.
    */
   @Test
-  void shareConfigFingerprint_isNullForNonMemoryEntitiesSoTheirChunksAreNotRewritten() {
-    Table table = new Table().withId(UUID.randomUUID()).withName("orders");
+  void contentFingerprint_tracksShareConfigButNotSharedWithOrdering() {
+    ContextMemory memory = memory(MemoryVisibility.PRIVATE);
+    String before = VectorDocBuilder.computeFingerprintForEntity(memory);
 
-    assertNull(VectorDocBuilder.computeShareConfigFingerprint(table));
+    memory.getShareConfig().setVisibility(MemoryVisibility.ENTITY);
+    assertNotEquals(before, VectorDocBuilder.computeFingerprintForEntity(memory));
+
+    UUID first = UUID.randomUUID();
+    UUID second = UUID.randomUUID();
+    assertEquals(
+        VectorDocBuilder.computeFingerprintForEntity(
+            memory(MemoryVisibility.SHARED, first, second)),
+        VectorDocBuilder.computeFingerprintForEntity(
+            memory(MemoryVisibility.SHARED, second, first)));
   }
 }

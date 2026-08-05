@@ -265,19 +265,21 @@ public class AIContextBuilder {
     return result;
   }
 
-  /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
   /**
-   * The caller for memory visibility, null when this builder was given no security context. A
-   * knowledge item may be a context memory, whose excerpt is only retrievable with a subject.
+   * The caller for memory visibility, null when this builder was given no usable security context. A
+   * knowledge item may be a context memory, whose excerpt is only retrievable with a subject. The
+   * principal check mirrors {@link ContextMemoryVisibility#enforceVisibility}: {@link
+   * DefaultAuthorizer#getSubjectContext} throws without one.
    */
   private SubjectContext subjectContextOrNull() {
     SubjectContext subject = null;
-    if (securityContext != null) {
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
       subject = DefaultAuthorizer.getSubjectContext(securityContext);
     }
     return subject;
   }
 
+  /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
     try {

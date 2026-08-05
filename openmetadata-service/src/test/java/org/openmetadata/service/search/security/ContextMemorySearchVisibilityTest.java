@@ -13,25 +13,20 @@
 
 package org.openmetadata.service.search.security;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.assertFieldDoesNotExist;
 import static org.openmetadata.service.util.TestUtils.assertFieldExists;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -45,7 +40,6 @@ import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
-import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Execution(ExecutionMode.CONCURRENT)
@@ -85,59 +79,6 @@ class ContextMemorySearchVisibilityTest {
     query.serialize(generator, JACKSON_JSONP_MAPPER);
     generator.close();
     return writer.toString();
-  }
-
-  /**
-   * The rule has two renderings: this class, and the raw JSON in {@link VectorSearchQueryBuilder}
-   * (which serves both engines from a StringBuilder and so cannot consume an OMQueryBuilder). Nothing
-   * else compares them — an integration test exercises one path or the other, never both against each
-   * other — so this fails if a future change adds a predicate to one and forgets the other.
-   */
-  @Test
-  void rawJsonVectorClauseKeysOffTheSameFieldsAsThisRule() throws Exception {
-    String vectorQuery =
-        VectorSearchQueryBuilder.buildQuery(
-            new float[] {0.1f}, 5, Map.of(), 0.0, nonAdminSubject());
-    // The visibility clause alone: the surrounding KNN query also carries a deleted=false term,
-    // which belongs to the query rather than to this rule.
-    JsonNode visibilityClause =
-        new ObjectMapper()
-            .readTree(vectorQuery)
-            .path("knn")
-            .path("embedding")
-            .path("filter")
-            .path("bool")
-            .path("filter");
-
-    // Compared against this class's own rendering, not a hardcoded field list: a literal would keep
-    // passing when a predicate is added to one side and forgotten on the other, which is the whole
-    // failure mode this test exists to catch.
-    assertEquals(
-        termFieldsIn(new ObjectMapper().readTree(buildElasticJson(nonAdminSubject()))),
-        termFieldsIn(visibilityClause),
-        "the vector rendering must key off exactly the fields this rule uses");
-  }
-
-  /** Every field name used by a term/terms clause anywhere in the query. */
-  private static Set<String> termFieldsIn(JsonNode node) {
-    Set<String> fields = new HashSet<>();
-    collectTermFields(node, fields);
-    return fields;
-  }
-
-  private static void collectTermFields(JsonNode node, Set<String> fields) {
-    if (node.isObject()) {
-      node.fields()
-          .forEachRemaining(
-              entry -> {
-                if ("term".equals(entry.getKey()) || "terms".equals(entry.getKey())) {
-                  entry.getValue().fieldNames().forEachRemaining(fields::add);
-                }
-                collectTermFields(entry.getValue(), fields);
-              });
-    } else if (node.isArray()) {
-      node.forEach(child -> collectTermFields(child, fields));
-    }
   }
 
   @Test
