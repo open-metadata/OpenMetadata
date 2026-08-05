@@ -234,13 +234,9 @@ test.describe('Tag Page with Admin Roles', () => {
           classification.responseData.name
       )}`
     );
-    await adminPage
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await expect(
+      adminPage.getByTestId('tags-container').getByTestId('loader')
+    ).toHaveCount(0);
 
     await expect(adminPage.getByTestId('add-new-tag-button')).toBeVisible();
 
@@ -269,13 +265,9 @@ test.describe('Tag Page with Admin Roles', () => {
         createdTagData.fullyQualifiedName ?? NEW_TAG.name
       )}`
     );
-    await adminPage
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await expect(
+      adminPage.getByTestId('tags-container').getByTestId('loader')
+    ).toHaveCount(0);
 
     await expect(adminPage.getByTestId('domain-link')).toContainText(
       domain.data.displayName
@@ -378,8 +370,7 @@ test.describe('Tag Page with Admin Roles', () => {
         .locator('[data-testid="side-panel-classification"]')
         .getByText(classification1.responseData.displayName, {
           exact: true,
-        })
-        .first();
+        });
       await expect(classificationEntry).toBeVisible({ timeout: 30000 });
       await classificationEntry.click();
       await expect(adminPage.locator('.activeCategory')).toContainText(

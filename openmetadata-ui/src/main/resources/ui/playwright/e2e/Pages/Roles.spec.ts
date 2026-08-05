@@ -506,8 +506,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const policies = ['ApplicationBotPolicy'];
     const roleLocator = page
       .getByTestId('role-name')
-      .filter({ hasText: role.data.displayName })
-      .first();
+      .filter({ hasText: role.data.displayName });
 
     await role.create(apiContext, policies);
 
@@ -524,11 +523,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(manageButton).toBeVisible();
     await manageButton.click();
 
-    const deleteButton = page
-      .locator(
-        '[data-testid="delete-button"], [data-testid="delete-button-title"]'
-      )
-      .first();
+    const deleteButton = page.getByTestId('delete-button-title');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 

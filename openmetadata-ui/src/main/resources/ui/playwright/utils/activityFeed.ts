@@ -30,6 +30,7 @@ export const FEED_REACTIONS = [
 ];
 // Returns the nth feed message container (0-based) regardless of page context (widget, drawer, or full page)
 const getNthFeedMessage = (page: Page, indexZeroBased: number) =>
+  // eslint-disable-next-line om-playwright/no-positional-locator -- callers explicitly request the Nth feed message by index; that is this helper's contract
   page.locator('[data-testid="message-container"]').nth(indexZeroBased);
 
 export const checkDescriptionInEditModal = async (
@@ -66,7 +67,6 @@ export const checkDescriptionInEditModal = async (
     taskDescriptionTabs
       .locator('.ant-tabs-content-holder')
       .getByTestId('markdown-parser')
-      .first()
   ).toContainText(taskValue.oldDescription ?? '');
 };
 
@@ -141,7 +141,7 @@ export const addMentionCommentInFeed = async (
       { timeout: 5000 }
     )
     .catch(() => null);
-  const userSuggestionOption = page.locator(`[data-value="@${user}"]`).first();
+  const userSuggestionOption = page.locator(`[data-value="@${user}"]`);
 
   await page
     .locator(
@@ -247,7 +247,7 @@ export const waitForActivityFeedLoad = async (page: Page, timeout = 10000) => {
 
   // Wait for either feed messages or empty state
   await Promise.race([
-    feedContainer.first().waitFor({ state: 'visible', timeout }),
+    expect(feedContainer).not.toHaveCount(0, { timeout }),
     emptyState.waitFor({ state: 'visible', timeout }),
   ]).catch(() => {
     // Neither appeared within timeout, which may be acceptable

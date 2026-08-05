@@ -1914,11 +1914,11 @@ version: "1.0.0"`;
       );
 
       // Verify description section is visible and contains markdown content
-      const descriptionSection = page.locator('.contract-card-items').first();
+      const descriptionSection = page.locator('.contract-card-items');
       await expect(descriptionSection).toBeVisible();
 
       // Get the markdown parser element where description is rendered
-      const markdownParser = page.getByTestId('markdown-parser').first();
+      const markdownParser = page.getByTestId('markdown-parser');
       await expect(markdownParser).toBeVisible();
 
       // Click "more" button to expand the full description if it exists
@@ -2099,7 +2099,7 @@ version: "1.0.0"`;
           timeout: 10000,
         });
 
-        const descriptionSection = page.getByTestId('markdown-parser').first();
+        const descriptionSection = page.getByTestId('markdown-parser');
         await expect(descriptionSection).toContainText(
           'Description updated via OM merge import'
         );

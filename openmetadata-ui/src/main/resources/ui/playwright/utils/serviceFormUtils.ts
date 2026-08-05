@@ -53,9 +53,8 @@ export const selectOneOfOption = async (
 
     const popoverOption = page
       .locator('.core-one-of-field-select-popover:visible')
-      .getByRole('option', { name: optionName })
-      .first();
-    const anyOption = page.getByRole('option', { name: optionName }).first();
+      .getByRole('option', { name: optionName });
+    const anyOption = page.getByRole('option', { name: optionName });
 
     for (const option of [popoverOption, anyOption]) {
       if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
@@ -164,9 +163,7 @@ export const fillSupersetFormDetails = async ({
   if (await runnerSelector.isVisible()) {
     await runnerSelector.click();
 
-    const runnerOption = page
-      .getByRole('option', { name: /Collate SaaS/i })
-      .first();
+    const runnerOption = page.getByRole('option', { name: /Collate SaaS/i });
     await runnerOption.waitFor({ state: 'visible' });
     await runnerOption.click();
 

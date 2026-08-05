@@ -375,10 +375,11 @@ test.describe.serial(
       );
 
       // Latest run dot opens the run history drawer with the full run list
+      // eslint-disable-next-line om-playwright/no-positional-locator -- run dots render newest-first, so .first() is the latest run by design
       await runDots.first().click();
 
       await expect(page.getByTestId('run-history-drawer')).toBeVisible();
-      await expect(page.getByTestId('run-history-item').first()).toBeVisible();
+      await expect(page.getByTestId('run-history-item')).not.toHaveCount(0);
 
       expect(
         await page.getByTestId('run-history-item').count()
@@ -667,7 +668,7 @@ test.describe.serial(
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
-      await page.getByTestId('more-actions').first().click();
+      await page.getByTestId('more-actions').click();
       await page.getByTestId('edit-button').click();
 
       await waitForIngestionWorkflowForm(page);

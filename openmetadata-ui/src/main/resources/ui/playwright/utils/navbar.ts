@@ -112,7 +112,7 @@ export const selectOption = async (
   await page.mouse.move(1280, 0);
 
   await dropdownLocator.click();
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
+  await page.locator('.ant-select-dropdown:visible').waitFor({
     state: 'visible',
   });
 
@@ -130,13 +130,10 @@ export const selectOption = async (
       `global-search-select-option-${optionTitle}`
     );
 
-    const isOptionVisible = await optionLocator
-      .first()
-      .isVisible()
-      .catch(() => false);
+    const isOptionVisible = await optionLocator.isVisible().catch(() => false);
 
     if (isOptionVisible) {
-      await optionLocator.first().click();
+      await optionLocator.click();
 
       return;
     }

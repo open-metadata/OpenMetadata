@@ -97,8 +97,8 @@ test.describe(
             r.url().includes('/api/v1/services/ingestionPipelines') &&
             r.status() === 200
         );
-        await expect(page.getByTestId('logs-button').first()).toBeVisible();
-        await page.getByTestId('logs-button').first().click();
+        await expect(page.getByTestId('logs-button')).toBeVisible();
+        await page.getByTestId('logs-button').click();
         await pipelinesResponse;
       });
 

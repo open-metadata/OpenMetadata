@@ -607,10 +607,14 @@ test.describe(
 
       await page.getByTestId('ranking-details-switch').click();
       await rankingDetailsResponse;
-      await expect(page.getByTestId('ranking-details').first()).toBeVisible();
-      await expect(page.getByTestId('ranking-details').first()).toContainText(
-        /Exact name|Close name|Structural context|Score/i
-      );
+
+      const rankingDetails = page.getByTestId('ranking-details');
+      await expect(rankingDetails).not.toHaveCount(0);
+      await expect(
+        rankingDetails.filter({
+          hasText: /Exact name|Close name|Structural context|Score/i,
+        })
+      ).not.toHaveCount(0);
     });
 
     test('returns ranking stage matched queries without explain', async ({

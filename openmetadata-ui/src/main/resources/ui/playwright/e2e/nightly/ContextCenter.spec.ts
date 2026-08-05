@@ -193,14 +193,13 @@ test.describe('Context Center - Article Attachments', () => {
       await page.keyboard.press(SHORTCUTS.enter);
       await insertImageViaUpload(page, uploadedFileName);
 
-      await expect(
-        page.getByTestId('uploaded-image-node').first()
-      ).toBeVisible();
+      await expect(page.getByTestId('uploaded-image-node')).not.toHaveCount(0);
     });
 
     await test.step('insert image via URL embed', async () => {
       const editor = await getEditor(page, true);
       await editor.click();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- positions the cursor at the end of the document before inserting the next image
       await page.getByRole('paragraph').last().click();
       await page.keyboard.press('Enter');
       await insertImageViaUrl(
@@ -220,9 +219,7 @@ test.describe('Context Center - Article Attachments', () => {
       await waitForAllLoadersToDisappear(page);
       await getEditor(page, true);
 
-      await expect(
-        page.getByTestId('uploaded-image-node').first()
-      ).toBeVisible();
+      await expect(page.getByTestId('uploaded-image-node')).not.toHaveCount(0);
 
       const attachmentWidget = page.getByTestId('attachment-widget');
       await expect(attachmentWidget).toBeVisible();
