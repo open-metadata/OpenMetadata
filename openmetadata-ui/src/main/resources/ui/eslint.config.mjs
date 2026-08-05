@@ -454,16 +454,20 @@ export default [
     },
   },
 
-  // Test setup files
+  // Test, spec, and mock files: these contain no user-facing strings, so the
+  // i18n literal-string rule does not apply to them.
   {
     files: [
       'src/setupTests.js',
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{js,jsx,ts,tsx}',
+      'src/mocks/**/*.{js,jsx,ts,tsx}',
       'playwright/**/*.spec.{js,jsx,ts,tsx}',
     ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
+      'i18next/no-literal-string': 'off',
     },
   },
 ];
