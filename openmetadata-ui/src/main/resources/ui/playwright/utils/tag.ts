@@ -60,7 +60,9 @@ export const visitClassificationPage = async (
     '/api/v1/classifications?**'
   );
   const fetchTags = page.waitForResponse(
-    `/api/v1/tags?*parent=${classificationName}**`
+    (url) =>
+      url.url().includes('/api/v1/tags') &&
+      url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
   );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
