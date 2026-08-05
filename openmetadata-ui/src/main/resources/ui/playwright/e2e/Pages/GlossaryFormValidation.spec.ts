@@ -64,9 +64,7 @@ test.describe('Glossary Form Validation', () => {
     await page.click('[data-testid="save-glossary"]');
 
     // Verify error message appears for description
-    await expect(
-      page.locator('.ant-form-item-explain-error').first()
-    ).toBeVisible();
+    await expect(page.locator('.ant-form-item-explain-error')).toBeVisible();
   });
 
   test('should show error when creating glossary with duplicate name', async ({
@@ -92,7 +90,9 @@ test.describe('Glossary Form Validation', () => {
 
       // Verify error toast or inline error appears
       await expect(
-        page.getByText(/already exists|duplicate/i).first()
+        page
+          .getByTestId('alert-message')
+          .filter({ hasText: /already exists|duplicate/i })
       ).toBeVisible({ timeout: 10000 });
     } finally {
       await glossary.delete(apiContext);
@@ -145,9 +145,7 @@ test.describe('Glossary Form Validation', () => {
       await page.click('[data-testid="save-glossary-term"]');
 
       // Verify error message appears
-      await expect(
-        page.locator('.ant-form-item-explain-error').first()
-      ).toBeVisible();
+      await expect(page.locator('.ant-form-item-explain-error')).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

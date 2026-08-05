@@ -95,9 +95,10 @@ test('Query Entity', async ({ page }) => {
     await tableSearchResponse;
 
     await page
-      .locator('div')
-      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
-      .first()
+      .getByRole('option', {
+        name: queryData.queryUsedIn.table1,
+        exact: true,
+      })
       .click();
 
     await clickOutside(page);
@@ -169,7 +170,7 @@ test('Query Entity', async ({ page }) => {
     await page.getByTestId('add-tag').click();
     await page.locator('#tagsForm_tags').click();
     await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
-    await page.getByTestId(`tag-${queryData.tagFqn}`).first().click();
+    await page.getByTestId(`tag-${queryData.tagFqn}`).click();
     const updateTagResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -192,9 +193,10 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
     await page
-      .locator('div')
-      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table2}$`) })
-      .first()
+      .getByRole('option', {
+        name: queryData.queryUsedIn.table2,
+        exact: true,
+      })
       .click();
     await clickOutside(page);
     const updateQueryResponse = page.waitForResponse(
@@ -227,9 +229,7 @@ test('Query Entity', async ({ page }) => {
       key: 'Owner',
       page,
     });
-    await expect(
-      page.locator('[data-testid="query-card"]').first()
-    ).toBeVisible();
+    await expect(page.locator('[data-testid="query-card"]')).not.toHaveCount(0);
 
     await queryFilters({
       filter: 'None',
@@ -249,9 +249,7 @@ test('Query Entity', async ({ page }) => {
       page,
     });
 
-    await expect(
-      page.locator('[data-testid="query-card"]').first()
-    ).toBeVisible();
+    await expect(page.locator('[data-testid="query-card"]')).not.toHaveCount(0);
   });
 
   await test.step('Verify vote for query', async () => {

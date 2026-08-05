@@ -81,7 +81,9 @@ test.describe('Topic entity specific tests ', () => {
 
     await expect(page.getByTestId('topic-schema-fields-table')).toBeVisible();
 
-    const copyButton = page.getByTestId('copy-field-link-button').first();
+    const copyButton = page
+      .getByRole('row', { name: topic.children[0].name })
+      .getByTestId('copy-field-link-button');
     await expect(copyButton).toBeVisible();
 
     const clipboardText = await copyAndGetClipboardText(page, copyButton);
@@ -126,7 +128,7 @@ test.describe('Topic entity specific tests ', () => {
 
     if (expandButtonCount > 0) {
       // Expand the first nested field
-      await expandButtons.first().click();
+      await expandButtons.click();
 
       // Find copy button in the nested row
       const nestedCopyButtons = page.getByTestId('copy-field-link-button');
@@ -134,7 +136,9 @@ test.describe('Topic entity specific tests ', () => {
 
       // If we have more than one copy button, the second one is likely nested
       if (nestedButtonCount > 1) {
-        const nestedCopyButton = nestedCopyButtons.nth(1);
+        const nestedCopyButton = page
+          .getByRole('row', { name: topic.children[0].children?.[0]?.name })
+          .getByTestId('copy-field-link-button');
         await expect(nestedCopyButton).toBeVisible();
 
         const clipboardText = await copyAndGetClipboardText(

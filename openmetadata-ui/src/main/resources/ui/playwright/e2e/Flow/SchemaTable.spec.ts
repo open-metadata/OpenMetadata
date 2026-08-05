@@ -181,7 +181,9 @@ test('Copy column link should have valid URL format', async ({ page }) => {
 
   await expect(page.getByTestId('entity-table')).toBeVisible();
 
-  const copyButton = page.getByTestId('copy-column-link-button').first();
+  const copyButton = page
+    .getByRole('row', { name: table.columnsName[0] })
+    .getByTestId('copy-column-link-button');
   await expect(copyButton).toBeVisible();
 
   const clipboardText = await copyAndGetClipboardText(page, copyButton);
@@ -248,12 +250,18 @@ test('Copy nested column link should include full hierarchical path', async ({
   const expandButtonCount = await expandButtons.count();
 
   if (expandButtonCount > 0) {
-    await expandButtons.first().click();
+    await expandButtons.click();
 
     const nestedCopyButtons = page.getByTestId('copy-column-link-button');
     const nestedButtonCount = await nestedCopyButtons.count();
 
     if (nestedButtonCount > 1) {
+      // Columns are fetched sorted by name (SchemaTable default sortBy is
+      // 'name'), so which named column lands at index 1 after the single
+      // expand above isn't determinable without querying the live sorted
+      // order; the position exists only to grab the row exposed by that
+      // expand action, not a specific column.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- index depends on server-side alphabetical sort combined with the single expand above; no stable non-positional identifier is available for "whichever column lands second"
       const nestedCopyButton = nestedCopyButtons.nth(1);
       await expect(nestedCopyButton).toBeVisible();
 

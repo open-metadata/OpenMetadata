@@ -208,6 +208,9 @@ test.describe('Task Workflow Tests', () => {
 
         // Find the task in activity feed widget
         const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
+        // Feed is sorted by createdAt desc (ActivityFeedProvider), so the
+        // first card is the task this test just created.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- most-recent task in a newest-first feed
         const taskItem = feedWidget
           .locator('[data-testid="task-feed-card"]')
           .first();
@@ -235,7 +238,9 @@ test.describe('Task Workflow Tests', () => {
       await page.getByTestId('activity_feed').click();
       await waitForPageLoaded(page);
 
-      // Click on a task if visible
+      // Click on a task if visible. Feed is sorted by createdAt desc
+      // (ActivityFeedProvider), so the first card is the most recent task.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- most-recent task in a newest-first feed
       const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
       if (await taskCard.isVisible()) {
@@ -277,7 +282,9 @@ test.describe('Task Workflow Tests', () => {
         await page.getByTestId('activity_feed').click();
         await waitForPageLoaded(page);
 
-        // Find the task card
+        // Find the task card. Feed is sorted by createdAt desc
+        // (ActivityFeedProvider), so the first card is the task just created.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- most-recent task in a newest-first feed
         const taskCard = page.locator('[data-testid="task-feed-card"]').first();
         if (await taskCard.isVisible()) {
           // Click on card to open drawer
@@ -314,7 +321,9 @@ test.describe('Task Workflow Tests', () => {
         await page.getByTestId('activity_feed').click();
         await waitForPageLoaded(page);
 
-        // Find the task card
+        // Find the task card. Feed is sorted by createdAt desc
+        // (ActivityFeedProvider), so the first card is the task just created.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- most-recent task in a newest-first feed
         const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
         if (await taskCard.isVisible()) {

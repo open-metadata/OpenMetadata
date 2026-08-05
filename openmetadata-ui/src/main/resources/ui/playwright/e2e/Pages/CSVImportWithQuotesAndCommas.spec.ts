@@ -39,9 +39,9 @@ const cleanupTempFile = (filePath: string | undefined): void => {
 const selectGlossaryManageItem = async (page: Page, itemTestId: string) => {
   await page.getByTestId('manage-button').click();
 
-  const manageDropdown = page
-    .locator('.glossary-manage-dropdown-list-container')
-    .last();
+  const manageDropdown = page.locator(
+    '.glossary-manage-dropdown-list-container'
+  );
 
   await expect(manageDropdown).toBeVisible();
   await manageDropdown.getByTestId(itemTestId).click();
@@ -132,12 +132,10 @@ test.describe(
           tempFilePath = tempFile;
 
           await expect(
-            page.getByRole('gridcell', { name: 'Term1' }).first()
+            page.getByRole('gridcell', { name: 'Term1' })
           ).toBeVisible();
           await expect(
-            page
-              .getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
-              .first()
+            page.getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
           ).toBeVisible();
 
           const validationResponse = page.waitForResponse(
@@ -232,12 +230,10 @@ test.describe(
           });
 
           await expect(
-            page.getByRole('gridcell', { name: 'Term1' }).first()
+            page.getByRole('gridcell', { name: 'Term1' })
           ).toBeVisible();
           await expect(
-            page
-              .getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
-              .first()
+            page.getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
           ).toBeVisible();
 
           const validationResponse = page.waitForResponse(

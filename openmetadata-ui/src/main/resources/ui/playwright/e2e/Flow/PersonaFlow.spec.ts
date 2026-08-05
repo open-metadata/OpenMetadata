@@ -818,7 +818,7 @@ test.describe('Curated Assets – Description filter', () => {
 
       await selectAssetTypes(adminPage, ['Table']);
 
-      const rule0 = adminPage.locator('.rule').nth(0);
+      const rule0 = adminPage.locator('.rule');
 
       await selectOption(
         adminPage,
@@ -858,7 +858,6 @@ test.describe('Curated Assets – Description filter', () => {
           .getByTestId('KnowledgePanel.CuratedAssets')
           .locator('.entity-list-item-title')
           .filter({ hasText: tableName })
-          .first()
       ).toBeVisible();
     });
   });

@@ -364,9 +364,9 @@ test.describe('Connection config layout', () => {
     const samplePanel = page.locator(
       '[data-field-id$="/sampleDataStorageConfig/config"]'
     );
-    const sampleBody = samplePanel
-      .locator('.core-object-field-template-body-grid')
-      .first();
+    const sampleBody = samplePanel.locator(
+      '.core-object-field-template-body-grid'
+    );
     const sampleField = (name: string) =>
       sampleBody.locator(`:scope > [data-field-name="${name}"]`);
 
@@ -421,9 +421,9 @@ test.describe('Connection config layout', () => {
     const storagePanel = page.locator(
       '[data-field-id$="/sampleDataStorageConfig/config/storageConfig"]'
     );
-    const storageBody = storagePanel
-      .locator('.core-object-field-template-credential-field-grid')
-      .first();
+    const storageBody = storagePanel.locator(
+      '.core-object-field-template-credential-field-grid'
+    );
     const storageField = (name: string) =>
       storagePanel.locator(`[data-field-name="${name}"]`);
 
@@ -589,7 +589,7 @@ test.describe('Connection config layout', () => {
       .getByRole('button', { name: 'Only specific tables' })
       .click();
     await tableSection.getByPlaceholder('e.g. a table name').fill('orders');
-    await tableSection.getByRole('button', { name: 'Add' }).first().click();
+    await tableSection.getByTestId('include-add-button').click();
 
     await expect(
       tableSection.getByText(

@@ -109,7 +109,7 @@ test.describe('Glossary Permissions', () => {
           .getByTestId('tags-container')
           .getByTestId('add-tag');
       } else {
-        element = testUserPage.getByTestId(testId).first();
+        element = testUserPage.getByTestId(testId);
       }
 
       await expect(element).toBeVisible();
@@ -170,7 +170,7 @@ test.describe('Glossary Permissions', () => {
           .getByTestId('tags-container')
           .getByTestId('add-tag');
       } else {
-        element = testUserPage.getByTestId(testId).first();
+        element = testUserPage.getByTestId(testId);
       }
 
       await expect(element).not.toBeVisible();

@@ -568,6 +568,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await expect(editButton).toBeEnabled();
           await editButton.click();
 
+          // eslint-disable-next-line om-playwright/no-positional-locator -- CodeMirror renders one `pre[role="presentation"]` per line; clicking the last one positions the cursor at the end of the existing content before appending text
           await page.locator("pre[role='presentation']").last().click();
           const value =
             "SELECT id, name, email\nFROM users\nWHERE active = true\nAND department = 'engineering'\nORDER BY created_at DESC\nLIMIT 100";
@@ -939,7 +940,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await sidebarClick(page, SidebarItem.EXPLORE);
           await showAdvancedSearchDialog(page);
 
-          const ruleLocator = page.locator('.rule').nth(0);
+          const ruleLocator = page.locator('.rule');
 
           await selectOption(
             page,
@@ -1233,7 +1234,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await showAdvancedSearchDialog(page);
 
-            const ruleLocator = page.locator('.rule').nth(0);
+            const ruleLocator = page.locator('.rule');
 
             await selectOption(
               page,

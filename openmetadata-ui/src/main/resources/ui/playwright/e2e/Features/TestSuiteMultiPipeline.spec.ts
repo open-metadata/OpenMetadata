@@ -73,7 +73,6 @@ test(
       await page
         .getByRole('option')
         .filter({ hasText: 'Table Column Count To Equal' })
-        .first()
         .click();
       await page.getByPlaceholder('Enter a Count').fill('13');
       await submitTestCaseForm(page);
@@ -140,7 +139,7 @@ test(
         .getByTestId('ingestion-list-table')
         .getByTestId(new RegExp('test-case-count-'))
         .filter({ hasNotText: '1' });
-      await expect(defaultPipelineTestCaseCount.first()).toContainText('All');
+      await expect(defaultPipelineTestCaseCount).toContainText('All');
     });
 
     await test.step('Update the pipeline', async () => {
@@ -209,7 +208,6 @@ test(
       await page
         .getByTestId('ingestion-list-table')
         .getByTestId('more-actions')
-        .first()
         .click();
 
       await page

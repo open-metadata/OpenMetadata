@@ -86,8 +86,8 @@ test.describe('App Runs History logs viewer (mocked external app)', () => {
       await expect(recentRunsTab).toBeVisible({ timeout: 30000 });
       await recentRunsTab.click();
 
-      await expect(page.getByTestId('logs').first()).toBeVisible();
-      await page.getByTestId('logs').first().click();
+      await expect(page.getByTestId('logs')).toBeVisible();
+      await page.getByTestId('logs').click();
     });
 
     await test.step('The modal shows the application logs', async () => {

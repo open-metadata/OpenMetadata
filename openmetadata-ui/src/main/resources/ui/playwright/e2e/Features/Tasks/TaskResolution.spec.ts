@@ -100,6 +100,11 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
+    // Suite runs with fullyParallel: true, so a task created by another test in
+    // this describe (e.g. "admin should be able to approve task") may already be
+    // open on this shared table by the time this assertion runs. Any open card
+    // works equally well here since every open task is assigned to assigneeUser.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- multiple open task cards can legitimately coexist on this shared entity under parallel execution; this check only needs one, not a specific one
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
     if (await taskCard.isVisible()) {
@@ -127,6 +132,9 @@ test.describe('Task Resolution - Approve/Reject', () => {
       await waitForPageLoaded(page);
     }
 
+    // See the parallel-execution note on the assignee visibility test above:
+    // more than one open task card can exist for this shared table by now.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- multiple open task cards can legitimately coexist on this shared entity under parallel execution; this check only needs one, not a specific one
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
     if (await taskCard.isVisible()) {
@@ -172,6 +180,11 @@ test.describe('Task Resolution - Approve/Reject', () => {
       await waitForPageLoaded(page);
     }
 
+    // This test itself just created a second open task on the same table
+    // (the original from beforeAll may still be open too), so more than one
+    // task card can legitimately be present; any one with an approve button
+    // is sufficient to verify the approve flow.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- multiple open task cards can legitimately coexist on this shared entity under parallel execution; this check only needs one, not a specific one
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
     if (await taskCard.isVisible()) {
@@ -354,7 +367,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -379,7 +392,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');

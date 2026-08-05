@@ -70,9 +70,11 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Verify sample data rows are visible', async () => {
-      await expect(
-        page.getByTestId('sample-data-table').getByRole('row').nth(1)
-      ).toBeVisible();
+      await expect
+        .poll(() =>
+          page.getByTestId('sample-data-table').getByRole('row').count()
+        )
+        .toBeGreaterThan(1);
     });
   });
 
@@ -286,9 +288,11 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     await test.step('Verify sample data is still visible after cancellation', async () => {
       await expect(page.getByTestId('sample-data')).toBeVisible();
 
-      await expect(
-        page.getByTestId('sample-data-table').getByRole('row').nth(1)
-      ).toBeVisible();
+      await expect
+        .poll(() =>
+          page.getByTestId('sample-data-table').getByRole('row').count()
+        )
+        .toBeGreaterThan(1);
     });
   });
 

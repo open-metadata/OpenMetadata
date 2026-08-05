@@ -102,10 +102,10 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ).toContainText('Governance');
 
       await page
-        .locator('div')
-        .filter({ hasText: /^Governance$/ })
-        .locator('svg')
-        .first()
+        .locator('.ant-tree-treenode', {
+          has: page.getByTestId('explore-tree-title-Governance'),
+        })
+        .locator('.ant-tree-switcher')
         .click();
 
       await expect(
@@ -207,6 +207,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // The result-card breadcrumb migrated to the core Breadcrumbs component,
       // which renders plain anchors (no breadcrumb-link testid). The parent
       // classification link is the plural /tags/ path (a tag entity is /tag/).
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the Tags quick filter returns every tag in the environment with no test-owned identifier to scope by; which tag is picked is irrelevant since this only exercises generic breadcrumb navigation.
       const classificationBreadcrumb = page
         .getByTestId('search-container')
         .locator('a[href*="/tags/"]')
@@ -362,10 +363,10 @@ test.describe('Explore page', () => {
 
   test('Check the listing of tags', async ({ page }) => {
     await page
-      .locator('div')
-      .filter({ hasText: /^Governance$/ })
-      .locator('svg')
-      .first()
+      .locator('.ant-tree-treenode', {
+        has: page.getByTestId('explore-tree-title-Governance'),
+      })
+      .locator('.ant-tree-switcher')
       .click();
 
     await expect(page.getByRole('tree')).toContainText('Glossaries');
@@ -511,7 +512,11 @@ test.describe('Explore page', () => {
 
     await expect(page.getByTestId('search-index-fields-table')).toBeVisible();
 
-    const copyButton = page.getByTestId('copy-field-link-button').first();
+    const copyButton = page
+      .getByTestId('search-index-fields-table')
+      .getByTestId('column-name-cell')
+      .filter({ hasText: searchIndex.children[0].name })
+      .getByTestId('copy-field-link-button');
     await expect(copyButton).toBeVisible();
 
     const clipboardText = await copyAndGetClipboardText(page, copyButton);
@@ -553,7 +558,11 @@ test.describe('Explore page', () => {
 
     await expect(page.getByTestId('schema-fields-table')).toBeVisible();
 
-    const copyButton = page.getByTestId('copy-field-link-button').first();
+    const copyButton = page
+      .getByTestId('schema-fields-table')
+      .getByTestId('column-name-cell')
+      .filter({ hasText: 'default' })
+      .getByTestId('copy-field-link-button');
     await expect(copyButton).toBeVisible();
 
     const clipboardText = await copyAndGetClipboardText(page, copyButton);

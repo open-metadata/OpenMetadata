@@ -89,18 +89,16 @@ test.describe('Task Assignee Management', () => {
     await tasksMenuItem.click();
     await waitForAllLoadersToDisappear(page);
 
-    await page.locator('[data-testid="task-feed-card"]').first().click();
+    await page.locator('[data-testid="task-feed-card"]').click();
 
     await expect(page.getByTestId('task-tab')).toBeVisible();
 
     await page.getByTestId('edit-assignees').click();
     await expect(page.getByTestId('select-assignee')).toBeVisible();
 
-    const existingAssigneeRemoveButton = page
-      .locator(
-        '[data-testid="select-assignee"] .ant-select-selection-item-remove'
-      )
-      .first();
+    const existingAssigneeRemoveButton = page.locator(
+      '[data-testid="select-assignee"] .ant-select-selection-item-remove'
+    );
 
     await existingAssigneeRemoveButton.click();
     await selectAssignee(page, nextAssignee.responseData.name);

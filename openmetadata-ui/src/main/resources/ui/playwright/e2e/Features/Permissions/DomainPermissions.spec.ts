@@ -104,23 +104,25 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
 
   // Test direct elements first
   for (const testId of directElements) {
-    let element;
     if (testId === 'add-tag') {
       // For add-tag, target the button within tags-container
-      element = testUserPage
+      const element = testUserPage
         .getByTestId('tags-container')
         .getByTestId('add-tag');
-    } else {
-      element = testUserPage.getByTestId(testId).first();
-    }
 
-    await expect(element).toBeVisible();
+      await expect(element).toBeVisible();
+    } else if (testId === 'edit-icon-right-panel') {
+      // Rendered once per custom property, so assert at least one exists
+      // rather than selecting a specific one.
+      await expect(testUserPage.getByTestId(testId)).not.toHaveCount(0);
+    } else {
+      await expect(testUserPage.getByTestId(testId)).toBeVisible();
+    }
   }
 
   const ownerButton = testUserPage
     .getByTestId('add-owner')
-    .or(testUserPage.getByTestId('edit-owner'))
-    .first();
+    .or(testUserPage.getByTestId('edit-owner'));
 
   await expect(ownerButton).toBeVisible();
 
@@ -174,22 +176,24 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
   const manageButtonElements = ['delete-button', 'rename-button'];
 
   for (const testId of directElements) {
-    let element;
     if (testId === 'add-tag') {
       // For add-tag, target the button within tags-container
-      element = testUserPage
+      const element = testUserPage
         .getByTestId('tags-container')
         .getByTestId('add-tag');
-    } else {
-      element = testUserPage.getByTestId(testId).first();
-    }
 
-    await expect(element).not.toBeVisible();
+      await expect(element).not.toBeVisible();
+    } else if (testId === 'edit-icon-right-panel') {
+      // Rendered once per custom property, so assert none are shown
+      // rather than selecting a specific one.
+      await expect(testUserPage.getByTestId(testId)).toHaveCount(0);
+    } else {
+      await expect(testUserPage.getByTestId(testId)).not.toBeVisible();
+    }
   }
   const ownerButton = testUserPage
     .getByTestId('add-owner')
-    .or(testUserPage.getByTestId('edit-owner'))
-    .first();
+    .or(testUserPage.getByTestId('edit-owner'));
 
   await expect(ownerButton).not.toBeVisible();
 

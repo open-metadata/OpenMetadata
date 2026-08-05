@@ -2775,7 +2775,9 @@ test.describe('Domains Rbac', () => {
     await initialRolesResponse;
 
     await page.locator('[data-testid="user-profile-edit-popover"]').isVisible();
-    const rolesCombobox = page.locator('input[role="combobox"]').nth(1);
+    const rolesCombobox = page
+      .getByTestId('profile-edit-roles-select')
+      .locator('input[role="combobox"]');
     await expect(rolesCombobox).toBeVisible();
     await rolesCombobox.click();
 
@@ -3173,25 +3175,15 @@ test.describe('Domain Tree View Functionality', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page
-        .getByRole('row', {
-          name: domainDisplayName,
-        })
-        .locator('div')
-        .nth(2)
+      page.getByRole('row', {
+        name: domainDisplayName,
+      })
     ).toBeVisible();
 
-    await page
-      .getByRole('row', { name: domainDisplayName })
-      .locator('div')
-      .nth(2)
-      .click();
+    await page.getByRole('row', { name: domainDisplayName }).click();
 
     await expect(
-      page
-        .getByRole('row', { name: subDomain.data.displayName })
-        .locator('div')
-        .nth(2)
+      page.getByRole('row', { name: subDomain.data.displayName })
     ).toBeVisible();
     await expect(
       page
@@ -3768,11 +3760,7 @@ test.describe('Domain description editor popups', () => {
 
     await test.step('Mention popup inserts a user mention', async () => {
       await description.pressSequentially(' @admin');
-      await page
-        .locator('.mention-item')
-        .filter({ hasText: 'admin' })
-        .first()
-        .click();
+      await page.locator('.mention-item').filter({ hasText: 'admin' }).click();
 
       await expect(description.locator('a[data-type="mention"]')).toBeVisible();
     });

@@ -183,6 +183,7 @@ test.describe(
 
       await test.step('Click data product card and verify navigation', async () => {
         const dpWidget = page.getByTestId('marketplace-dp-widget');
+        // eslint-disable-next-line om-playwright/no-positional-locator -- the widget shows recently created data products in a non-deterministic order; the test only verifies that clicking *a* card navigates, not a specific product's identity
         const dpCard = dpWidget
           .locator('[data-testid^="marketplace-dp-card-"]')
           .first();
@@ -194,6 +195,7 @@ test.describe(
       await test.step('Navigate back and click domain card', async () => {
         await navigateToMarketplace(page);
         const domainsWidget = page.getByTestId('marketplace-domains-widget');
+        // eslint-disable-next-line om-playwright/no-positional-locator -- the widget shows recently created domains in a non-deterministic order; the test only verifies that clicking *a* card navigates, not a specific domain's identity
         const domainCard = domainsWidget
           .locator('[data-testid^="marketplace-domain-card-"]')
           .first();

@@ -237,8 +237,7 @@ test.describe(
         await test.step('Read the count from the first left panel result tab', async () => {
           const firstTabCountText = await page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
-            .first()
+            .locator('.ant-menu-item-selected')
             .getByTestId('filter-count')
             .textContent();
 
@@ -306,8 +305,7 @@ test.describe(
         await test.step('Read filtered count from the first left panel tab', async () => {
           const filteredCountText = await page
             .getByTestId('explore-left-panel')
-            .locator('[role="menuitem"]')
-            .first()
+            .locator('.ant-menu-item-selected')
             .getByTestId('filter-count')
             .textContent();
 
@@ -360,8 +358,8 @@ test.describe(
       await browseQueryPromise;
       await waitForAllLoadersToDisappear(page);
       await expect(
-        page.locator('[data-testid^="table-data-card_"]').first()
-      ).toBeVisible();
+        page.locator('[data-testid^="table-data-card_"]')
+      ).not.toHaveCount(0);
 
       await openExportScopeModal(page);
 
@@ -452,9 +450,7 @@ test.describe(
           .getByRole('button', { name: /Background jobs|jobs running/ })
           .click();
 
-        await expect(
-          page.getByText(/Exporting|Exported/).first()
-        ).toBeVisible();
+        await expect(page.getByText(/Exporting|Exported/)).toBeVisible();
       });
 
       await test.step('Download from the tray serves the job result CSV', async () => {
@@ -472,9 +468,7 @@ test.describe(
         await waitForExportJobCompleted(apiContext, jobId);
         await afterAction();
 
-        const downloadButton = page
-          .getByRole('button', { name: 'Download' })
-          .first();
+        const downloadButton = page.getByRole('button', { name: 'Download' });
 
         await expect(downloadButton).toBeVisible();
 

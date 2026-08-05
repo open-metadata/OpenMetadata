@@ -112,7 +112,7 @@ test.describe('Data Product Permissions', () => {
           .getByTestId('tags-container')
           .getByTestId('add-tag');
       } else {
-        element = testUserPage.getByTestId(testId).first();
+        element = testUserPage.getByTestId(testId);
       }
 
       await expect(element).toBeVisible();
@@ -120,8 +120,7 @@ test.describe('Data Product Permissions', () => {
 
     const ownerButton = testUserPage
       .getByTestId('add-owner')
-      .or(testUserPage.getByTestId('edit-owner'))
-      .first();
+      .or(testUserPage.getByTestId('edit-owner'));
 
     await expect(ownerButton).toBeVisible();
 
@@ -166,7 +165,7 @@ test.describe('Data Product Permissions', () => {
           .getByTestId('tags-container')
           .getByTestId('add-tag');
       } else {
-        element = testUserPage.getByTestId(testId).first();
+        element = testUserPage.getByTestId(testId);
       }
 
       await expect(element).not.toBeVisible();
@@ -174,8 +173,7 @@ test.describe('Data Product Permissions', () => {
 
     const ownerButton = testUserPage
       .getByTestId('add-owner')
-      .or(testUserPage.getByTestId('edit-owner'))
-      .first();
+      .or(testUserPage.getByTestId('edit-owner'));
 
     await expect(ownerButton).not.toBeVisible();
 

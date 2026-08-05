@@ -59,7 +59,11 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ).not.toBeEnabled();
     await expect(page.locator('.ant-table-container')).toBeVisible();
 
+    // Select any two distinct pipeline rows to exercise the bulk action; the
+    // test only needs two selections to enable "Re Deploy", not specific rows.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- loop-index style selection of two distinct rows for a bulk action; which two rows doesn't matter
     await page.locator(`td [type="checkbox"]`).first().click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- loop-index style selection of two distinct rows for a bulk action; which two rows doesn't matter
     await page.locator(`td [type="checkbox"]`).nth(1).click();
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();

@@ -161,9 +161,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByTestId('name').locator('input').fill(dpName);
 
       // Add description using the description editor (contenteditable div)
-      const descriptionEditor = page
-        .locator('[contenteditable="true"]')
-        .first();
+      const descriptionEditor = page.locator('[contenteditable="true"]');
       await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
       await descriptionEditor.click();
       await page.keyboard.type('Test data product description');
@@ -200,7 +198,7 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByTestId('edit-description').click();
 
       // Wait for editor modal to appear (contenteditable div in dialog)
-      const editor = page.locator('[contenteditable="true"]').first();
+      const editor = page.locator('[contenteditable="true"]');
       await editor.waitFor({ state: 'visible', timeout: 10000 });
 
       // Clear and add new description
@@ -332,7 +330,10 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Wait for search results
       await tagSearchResponse;
 
-      // Select the tag (use first() to handle duplicates)
+      // Select the tag - the search response renders the same tag in both
+      // the recently-used and full-results lists, producing two identical,
+      // interchangeable matches for this testid
+      // eslint-disable-next-line om-playwright/no-positional-locator -- known duplicate rendering of the identical tag option; either match selects the same tag
       await page.getByTestId('tag-PersonalData.Personal').first().click();
 
       // Save
@@ -398,11 +399,12 @@ test.describe('Data Product Comprehensive Tests', () => {
         .fill(table.entityResponseData.name);
       await searchRes;
 
-      // Select the table by clicking the checkbox in the card
+      // Select the table by clicking its card (card click toggles selection)
       const tableCheckbox = page
         .getByTestId('asset-selection-modal')
-        .locator(`[data-testid*="${table.entityResponseData.name}"]`)
-        .first();
+        .getByTestId(
+          `table-data-card_${table.entityResponseData.fullyQualifiedName ?? ''}`
+        );
 
       if (await tableCheckbox.isVisible()) {
         await tableCheckbox.click();
@@ -411,7 +413,6 @@ test.describe('Data Product Comprehensive Tests', () => {
         await page
           .getByTestId('asset-selection-modal')
           .getByText(table.entityResponseData.name)
-          .first()
           .click();
       }
 

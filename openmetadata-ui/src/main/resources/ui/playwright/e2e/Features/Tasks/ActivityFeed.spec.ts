@@ -127,7 +127,9 @@ test.describe('Activity Feed - Home Page Widget', () => {
     expect(count).toBeGreaterThanOrEqual(0);
 
     if (count > 0) {
-      // Task should show task ID
+      // Task should show task ID. Feed is sorted by createdAt desc
+      // (ActivityFeedProvider), so the first card is the most recent task.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- most-recent task in a newest-first feed
       await expect(taskItems.first()).toContainText(/TASK-/);
     }
   });
@@ -139,6 +141,9 @@ test.describe('Activity Feed - Home Page Widget', () => {
     await waitForPageLoaded(page);
 
     const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
+    // Feed is sorted by createdAt desc (ActivityFeedProvider), so the
+    // first card is the most recent task.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- most-recent task in a newest-first feed
     const taskItem = feedWidget
       .locator('[data-testid="task-feed-card"]')
       .first();
@@ -452,7 +457,7 @@ test.describe('Activity Feed - Entity Page', () => {
     const feedContainer = page
       .locator('[data-testid="global-setting-left-panel"]')
       .or(page.getByRole('button', { name: /all|tasks/i }));
-    await expect(feedContainer.first()).toBeVisible({ timeout: 10000 });
+    await expect(feedContainer).not.toHaveCount(0, { timeout: 10000 });
   });
 
   test('should toggle between All and Tasks in entity activity feed', async ({
