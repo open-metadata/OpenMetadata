@@ -239,7 +239,9 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   {runLabel}
                 </div>
                 <div className="tw:text-xs tw:text-tertiary">
-                  {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
+                  {run.startedAt}{' '}
+                  {/* eslint-disable-next-line i18next/no-literal-string -- punctuation separators around UTC offset */}
+                  ({getUtcOffsetLabel()}) &middot;{' '}
                   {t('message.ran-for-duration', { duration: run.duration })}
                 </div>
               </div>

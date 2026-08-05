@@ -156,9 +156,11 @@ const ExpressionCodeCell = ({
               </div>
               <div className="bulk-edit-code-editor-foot">
                 <span className="bulk-edit-code-editor-hint">
+                  {/* eslint-disable-next-line i18next/no-literal-string -- keyboard shortcut glyph */}
                   <span className="bulk-edit-code-editor-kbd">⌘↵</span>{' '}
                   {t('label.save').toLowerCase()}
                   {' · '}
+                  {/* eslint-disable-next-line i18next/no-literal-string -- keyboard key name */}
                   <span className="bulk-edit-code-editor-kbd">Esc</span>{' '}
                   {t('label.cancel').toLowerCase()}
                 </span>
