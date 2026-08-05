@@ -109,12 +109,11 @@ class ContextMemorySearchVisibilityTest {
             .path("bool")
             .path("filter");
 
+    // Compared against this class's own rendering, not a hardcoded field list: a literal would keep
+    // passing when a predicate is added to one side and forgotten on the other, which is the whole
+    // failure mode this test exists to catch.
     assertEquals(
-        Set.of(
-            ContextMemorySearchVisibility.FIELD_ENTITY_TYPE,
-            ContextMemorySearchVisibility.FIELD_VISIBILITY,
-            ContextMemorySearchVisibility.FIELD_OWNERS_ID,
-            ContextMemorySearchVisibility.FIELD_SHARED_WITH_IDS),
+        termFieldsIn(new ObjectMapper().readTree(buildElasticJson(nonAdminSubject()))),
         termFieldsIn(visibilityClause),
         "the vector rendering must key off exactly the fields this rule uses");
   }

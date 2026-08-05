@@ -54,8 +54,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * JSON, because it serves both engines from a {@code StringBuilder} and so cannot consume an
  * engine-specific {@code OMQueryBuilder}. They share the field constants, {@link
  * #sharedPrincipalIds} and {@link #isVisibilityEnforced}, and {@code
- * ContextMemorySearchVisibilityTest#rawJsonVectorClauseKeysOffTheSameFieldsAsThisRule} fails if they
- * drift. Change one, change both.
+ * ContextMemorySearchVisibilityTest#rawJsonVectorClauseKeysOffTheSameFieldsAsThisRule} compares the
+ * two renderings directly, so it fails if one gains a predicate the other lacks. It compares the set
+ * of fields keyed on, not the clause structure, so a change to how an existing field is matched still
+ * needs both sides updated by hand. Change one, change both.
  */
 public class ContextMemorySearchVisibility {
 

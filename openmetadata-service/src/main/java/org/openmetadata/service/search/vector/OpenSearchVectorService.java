@@ -875,8 +875,15 @@ public class OpenSearchVectorService implements VectorIndexService {
    * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
    * {@code docVersion} — defeating the rollout. Omitting the unchanged vector avoids that
    * all-or-nothing failure; the remaining fields are additive (new fields) or legal no-ops
-   * (unchanged keyword/text/integer). Absent-on-old-docs fields simply do not match until a Search
-   * Reindex backfills them, so there is zero regression before the backfill runs.
+   * (unchanged keyword/text/integer).
+   *
+   * <p>Absent-on-old-docs fields are inert for anything that merely scores or widens on them, so
+   * those upgrades carry no regression before the backfill runs. That is <b>not</b> true of a field a
+   * filter restricts on: {@code visibility} is required by the context memory clause in {@link
+   * VectorSearchQueryBuilder}, where absence means exclusion rather than indifference. Memory chunks
+   * written before it was stamped therefore stay out of every KNN result until a Search Reindex
+   * restamps them — deliberately, since an unstamped document may be a Private memory. Weigh that
+   * before making any future field a filter depends on.
    */
   private String buildChunkMappingUpgradeBody() {
     ObjectNode properties = buildChunkProperties();

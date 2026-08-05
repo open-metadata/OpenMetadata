@@ -190,9 +190,9 @@ public class VectorSearchQueryBuilder {
    */
   private static void appendMemoryVisibilityFilter(
       StringBuilder sb, SubjectContext subjectContext) {
-    boolean resolvable = MEMORY_VISIBILITY.isSubjectResolvable(subjectContext);
-    if (resolvable && subjectContext.isAdmin()) {
-      return;
+    boolean widen = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
+    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) && !widen) {
+      return; // an identified admin sees every memory, so no clause at all
     }
     // A sibling `filter` array rather than another `must` entry: a security constraint must not
     // contribute to the relevance score, and keeping it out of `must` also keeps the
@@ -207,17 +207,24 @@ public class VectorSearchQueryBuilder {
     sb.append(",{\"bool\":{\"must\":[")
         .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
         .append(',');
-    appendVisibleMemoryClause(sb, resolvable ? subjectContext : null);
+    appendVisibleMemoryClause(sb, widen ? subjectContext : null);
     sb.append("]}}");
     sb.append("]}}]");
   }
 
-  /** Mirrors {@code ContextMemorySearchVisibility#buildVisibleToUserClause}. */
+  /**
+   * Mirrors {@code ContextMemorySearchVisibility#buildVisibleToUserClause}, plus a time-boxed
+   * allowance for chunk documents written before {@code visibility} was stamped on them.
+   */
   private static void appendVisibleMemoryClause(StringBuilder sb, SubjectContext subjectContext) {
     sb.append("{\"bool\":{\"should\":[")
         .append(
             termClause(
                 ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    // Documents written before `visibility` was stamped stay excluded rather than grandfathered:
+    // an unstamped memory chunk may be a Private one, so admitting it would leak exactly what this
+    // filter hides. A Search Reindex restamps them.
+
     if (subjectContext != null) {
       User user = subjectContext.user();
       sb.append(",{\"nested\":{\"path\":\"")
