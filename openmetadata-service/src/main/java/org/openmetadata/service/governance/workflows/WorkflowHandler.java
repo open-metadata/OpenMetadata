@@ -1,9 +1,11 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.service.governance.workflows.Workflow.APPROVE_CONDITION;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_APPROVE_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_REJECT_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.REJECT_CONDITION;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
@@ -1487,6 +1489,31 @@ public class WorkflowHandler {
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.debug("Flowable Task for Task ID {} not found.", customTaskId);
+    }
+  }
+
+  /**
+   * Cancel every running MainWorkflow process instance whose relatedEntityId variable matches
+   * the given entity id. Called from EntityRepository.hardDelete so downstream nodes do not
+   * hit EntityNotFoundException on an entity that no longer exists.
+   */
+  public void cancelInstancesForEntity(UUID entityId, String reason) {
+    if (entityId == null) {
+      return;
+    }
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    String namespacedVar = getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE);
+    List<ProcessInstance> instances =
+        runtimeService
+            .createProcessInstanceQuery()
+            .variableValueEquals(namespacedVar, entityId.toString())
+            .list();
+    for (ProcessInstance pi : instances) {
+      try {
+        runtimeService.deleteProcessInstance(pi.getId(), reason);
+      } catch (FlowableException ignored) {
+        // Instance already ending or gone; deleteProcessInstance is idempotent enough here.
+      }
     }
   }
 

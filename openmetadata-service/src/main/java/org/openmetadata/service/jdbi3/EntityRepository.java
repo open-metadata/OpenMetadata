@@ -4941,6 +4941,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete the extension data storing custom properties
               removeExtension(entityInterface);
 
+              // Cancel any governance workflow instances tied to this entity before the row
+              // goes away, so downstream nodes do not throw EntityNotFoundException.
+              if (WorkflowHandler.isInitialized()) {
+                WorkflowHandler.getInstance()
+                    .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
+              }
+
               // Delete all the threads that are about this entity
               Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
@@ -6950,6 +6957,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // entity_usage is keyed by id (not covered by the root's FQN-prefix cleanup), so descendants
       // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
       daoCollection.usageDAO().deleteByIds(entityIds);
+    }
+    try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      if (WorkflowHandler.isInitialized()) {
+        WorkflowHandler handler = WorkflowHandler.getInstance();
+        for (UUID entityId : entityIds) {
+          handler.cancelInstancesForEntity(entityId, "Entity deleted");
+        }
+      }
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
       Entity.getFeedRepository().deleteByAbout(entityIds);
