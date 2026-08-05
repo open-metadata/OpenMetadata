@@ -63,6 +63,8 @@ import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
+const LABEL_KPI_UPPERCASE = 'label.kpi-uppercase';
+
 interface Props {
   chartFilter: ChartFilter;
   kpiList: Array<Kpi>;
@@ -322,7 +324,7 @@ const KPIChart: FC<Props> = ({
                 <ErrorPlaceHolder
                   className="border-none"
                   permissionValue={t('label.view-entity', {
-                    entity: t('label.kpi-uppercase'),
+                    entity: t(LABEL_KPI_UPPERCASE),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
                 />
@@ -342,14 +344,14 @@ const KPIChart: FC<Props> = ({
                 type="primary"
                 onClick={handleAddKpi}>
                 {t('label.add-entity', {
-                  entity: t('label.kpi-uppercase'),
+                  entity: t(LABEL_KPI_UPPERCASE),
                 })}
               </Button>
             }
             className="m-0 border-none"
             permission={createKPIPermission}
             permissionValue={t('label.create-entity', {
-              entity: t('label.kpi-uppercase'),
+              entity: t(LABEL_KPI_UPPERCASE),
             })}
             size={SIZE.MEDIUM}
             type={

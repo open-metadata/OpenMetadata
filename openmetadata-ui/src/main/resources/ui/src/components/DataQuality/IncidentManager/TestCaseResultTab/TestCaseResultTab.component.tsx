@@ -41,6 +41,9 @@ import {
   ParameterDisplayItem,
   useTestCaseResultTab,
 } from './useTestCaseResultTab';
+
+const LABEL_PARAMETER = 'label.parameter';
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -235,7 +238,7 @@ const TestCaseResultTab = ({
                   <Typography
                     as="span"
                     className="parameter-title tw:text-body">
-                    {t('label.parameter')}
+                    {t(LABEL_PARAMETER)}
                   </Typography>
                   {hasEditPermission &&
                     Boolean(
@@ -248,7 +251,7 @@ const TestCaseResultTab = ({
                         data-testid="edit-parameter-icon"
                         size="small"
                         title={t('label.edit-entity', {
-                          entity: t('label.parameter'),
+                          entity: t(LABEL_PARAMETER),
                         })}
                         onClick={() => setIsParameterEdit(true)}
                       />
@@ -280,7 +283,7 @@ const TestCaseResultTab = ({
                           data-testid="edit-sql-param-icon"
                           size="small"
                           title={t('label.edit-entity', {
-                            entity: t('label.parameter'),
+                            entity: t(LABEL_PARAMETER),
                           })}
                           onClick={() => setIsParameterEdit(true)}
                         />

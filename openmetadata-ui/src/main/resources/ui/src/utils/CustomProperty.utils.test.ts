@@ -40,6 +40,11 @@ import {
   serializeExtensionValue,
 } from './CustomProperty.utils';
 
+const DATE_TIME_CP = 'dateTime-cp' as const;
+const HYPERLINK_CP = 'hyperlink-cp' as const;
+const HTTPS_EXAMPLE_COM = 'https://example.com' as const;
+const TEST_VALUE = 'test value' as const;
+
 describe('CustomProperty.utils', () => {
   const createCustomProperty = (
     propertyType: string,
@@ -84,7 +89,7 @@ describe('CustomProperty.utils', () => {
     });
 
     it('should return DEFAULT_DATE_TIME_FORMAT for dateTime-cp type', () => {
-      const type = 'dateTime-cp';
+      const type = DATE_TIME_CP;
 
       const result = getCustomPropertyDateTimeDefaultFormat(type);
 
@@ -119,10 +124,7 @@ describe('CustomProperty.utils', () => {
   describe('custom property date-time formatting', () => {
     it('maps the backend microsecond pattern to a Luxon-compatible parser', () => {
       expect(
-        getCustomPropertyLuxonFormat(
-          'dateTime-cp',
-          'yyyy-MM-dd HH:mm:ss.SSSSSS'
-        )
+        getCustomPropertyLuxonFormat(DATE_TIME_CP, 'yyyy-MM-dd HH:mm:ss.SSSSSS')
       ).toBe('yyyy-MM-dd HH:mm:ss.u');
     });
 
@@ -140,7 +142,7 @@ describe('CustomProperty.utils', () => {
       expect(
         formatCustomPropertyDateTime(
           value,
-          'dateTime-cp',
+          DATE_TIME_CP,
           'yyyy-MM-dd HH:mm:ss.SSSSSS'
         )
       ).toBe('2026-07-28 14:30:15.123000');
@@ -150,11 +152,7 @@ describe('CustomProperty.utils', () => {
       const value = DateTime.fromISO('2026-07-28T14:30:15');
 
       expect(
-        formatCustomPropertyDateTime(
-          value,
-          'dateTime-cp',
-          'dd-MM-yyyy HH:mm:ss'
-        )
+        formatCustomPropertyDateTime(value, DATE_TIME_CP, 'dd-MM-yyyy HH:mm:ss')
       ).toBe('28-07-2026 14:30:15');
     });
 
@@ -201,7 +199,7 @@ describe('CustomProperty.utils', () => {
     });
 
     it('should return mapped format for valid dateTime-cp type and backend format', () => {
-      const type = 'dateTime-cp';
+      const type = DATE_TIME_CP;
       const backendFormat = 'yyyy-MM-dd HH:mm:ss';
       const expectedFormat =
         SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING[backendFormat];
@@ -389,7 +387,7 @@ describe('CustomProperty.utils', () => {
       ['string', 'plain text'],
       ['markdown', '**formatted**'],
       ['date-cp', '2026-07-28'],
-      ['dateTime-cp', '2026-07-28 14:30:00'],
+      [DATE_TIME_CP, '2026-07-28 14:30:00'],
       ['time-cp', '14:30:00'],
       ['email', 'owner@example.com'],
       ['duration', 'PT30M'],
@@ -594,29 +592,29 @@ describe('CustomProperty.utils', () => {
 
     it('serializes a hyperlink to its exact backend shape', () => {
       expect(
-        serializeExtensionValue(createCustomProperty('hyperlink-cp'), {
-          url: 'https://example.com',
+        serializeExtensionValue(createCustomProperty(HYPERLINK_CP), {
+          url: HTTPS_EXAMPLE_COM,
           displayText: 'Example',
           ignored: 'not allowed by the backend',
         })
       ).toEqual({
-        url: 'https://example.com',
+        url: HTTPS_EXAMPLE_COM,
         displayText: 'Example',
       });
     });
 
     it('omits an empty hyperlink display text', () => {
       expect(
-        serializeExtensionValue(createCustomProperty('hyperlink-cp'), {
-          url: 'https://example.com',
+        serializeExtensionValue(createCustomProperty(HYPERLINK_CP), {
+          url: HTTPS_EXAMPLE_COM,
           displayText: '',
         })
-      ).toEqual({ url: 'https://example.com' });
+      ).toEqual({ url: HTTPS_EXAMPLE_COM });
     });
 
     it('returns undefined for a hyperlink without a URL', () => {
       expect(
-        serializeExtensionValue(createCustomProperty('hyperlink-cp'), {
+        serializeExtensionValue(createCustomProperty(HYPERLINK_CP), {
           url: '',
           displayText: 'Example',
         })
@@ -687,9 +685,9 @@ describe('CustomProperty.utils', () => {
 
   describe('getCustomPropertyTypeDisplayName', () => {
     it.each([
-      ['hyperlink-cp', 'HYPERLINK'],
+      [HYPERLINK_CP, 'HYPERLINK'],
       ['date-cp', 'DATE'],
-      ['dateTime-cp', 'DATETIME'],
+      [DATE_TIME_CP, 'DATETIME'],
       ['time-cp', 'TIME'],
       ['table-cp', 'TABLE'],
       ['entityReference', 'ENTITYREFERENCE'],
@@ -719,9 +717,9 @@ describe('CustomProperty.utils', () => {
     });
 
     it('should convert string value to string', () => {
-      const result = formatTableCellValue('test value');
+      const result = formatTableCellValue(TEST_VALUE);
 
-      expect(result).toBe('test value');
+      expect(result).toBe(TEST_VALUE);
     });
 
     it('should convert number value to string', () => {
@@ -772,9 +770,9 @@ describe('CustomProperty.utils', () => {
     });
 
     it('should return value property for object with value', () => {
-      const result = formatTableCellValue({ value: 'test value' });
+      const result = formatTableCellValue({ value: TEST_VALUE });
 
-      expect(result).toBe('test value');
+      expect(result).toBe(TEST_VALUE);
     });
 
     it('should handle object with value being a number', () => {

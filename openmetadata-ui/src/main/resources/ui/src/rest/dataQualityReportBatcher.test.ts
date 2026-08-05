@@ -13,6 +13,8 @@
 import { batchedDataQualityReport } from './dataQualityReportBatcher';
 import { getDataQualityReportBatch } from './testAPI';
 
+const NETWORK_ERROR = 'network error';
+
 jest.mock('./testAPI', () => ({
   getDataQualityReportBatch: jest.fn(),
 }));
@@ -70,7 +72,7 @@ describe('dataQualityReportBatcher', () => {
   });
 
   it('should reject all callers when the batch request itself fails', async () => {
-    mockGetDataQualityReportBatch.mockRejectedValue(new Error('network error'));
+    mockGetDataQualityReportBatch.mockRejectedValue(new Error(NETWORK_ERROR));
 
     const first = batchedDataQualityReport({
       index: 'testCase',
@@ -81,8 +83,8 @@ describe('dataQualityReportBatcher', () => {
       aggregationQuery: 'agg',
     });
 
-    await expect(first).rejects.toThrow('network error');
-    await expect(second).rejects.toThrow('network error');
+    await expect(first).rejects.toThrow(NETWORK_ERROR);
+    await expect(second).rejects.toThrow(NETWORK_ERROR);
   });
 
   it('should start a new batch for requests fired after the previous flush', async () => {

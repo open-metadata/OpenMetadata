@@ -40,6 +40,8 @@ import {
   getExtensionPropertyNameFromFormKey,
 } from './AddDomainFormExtensionFields.utils';
 
+const HYPERLINK_CP = 'hyperlink-cp';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -296,7 +298,7 @@ describe('AddDomainFormExtensionFields', () => {
       { config: ['table', 'dashboard'] },
       'user_team_select_input',
     ],
-    ['hyperlink-cp', undefined, undefined],
+    [HYPERLINK_CP, undefined, undefined],
     ['markdown', undefined, undefined],
     ['date-cp', { config: 'yyyy-MM-dd' }, undefined],
     ['dateTime-cp', { config: 'yyyy-MM-dd HH:mm:ss' }, undefined],
@@ -340,7 +342,7 @@ describe('AddDomainFormExtensionFields', () => {
   );
 
   it('renders exactly the URL and display-text inputs for a hyperlink', () => {
-    const definition = buildDefinition('hyperlink-cp');
+    const definition = buildDefinition(HYPERLINK_CP);
 
     render(<ExtensionFieldsHarness definition={definition} />);
 
@@ -368,7 +370,7 @@ describe('AddDomainFormExtensionFields', () => {
 
   it.each([
     ['entityReference', { config: ['glossaryTerm'] }, 'ENTITYREFERENCE'],
-    ['hyperlink-cp', undefined, 'HYPERLINK'],
+    [HYPERLINK_CP, undefined, 'HYPERLINK'],
     ['date-cp', { config: 'yyyy-MM-dd' }, 'DATE'],
     ['string', undefined, 'STRING'],
   ])(
@@ -388,7 +390,7 @@ describe('AddDomainFormExtensionFields', () => {
   );
 
   it('blocks submit for a required property whose definition failed to load', async () => {
-    const definition = buildDefinition('hyperlink-cp');
+    const definition = buildDefinition(HYPERLINK_CP);
 
     render(
       <MissingDefinitionHarness formFields={[buildFormField(definition)]} />
@@ -591,7 +593,7 @@ describe('AddDomainFormExtensionFields helpers', () => {
     ['enum', 'enum'],
     ['entityReference', 'reference'],
     ['entityReferenceList', 'reference'],
-    ['hyperlink-cp', 'hyperlink'],
+    [HYPERLINK_CP, 'hyperlink'],
     ['markdown', 'markdown'],
     ['date-cp', 'date'],
     ['dateTime-cp', 'dateTime'],

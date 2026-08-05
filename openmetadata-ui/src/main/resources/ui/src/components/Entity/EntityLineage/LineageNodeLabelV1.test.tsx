@@ -17,6 +17,11 @@ import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
+const ENTITY_HEADER_DISPLAY_NAME = 'entity-header-display-name';
+const CHILDREN_INFO_DROPDOWN_BTN = 'children-info-dropdown-btn';
+const LINEAGE_FILTER_BUTTON = 'lineage-filter-button';
+const TEST_PASSED = 'test-passed';
+
 jest.mock('../../../hooks/useLineageStore', () => ({
   useLineageStore: jest.fn(),
 }));
@@ -164,11 +169,11 @@ describe('LineageNodeLabelV1', () => {
       );
 
       expect(
-        screen.getByTestId('entity-header-display-name')
+        screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)
       ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('entity-header-display-name')
-      ).toHaveTextContent('dim_customer');
+      expect(screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)).toHaveTextContent(
+        'dim_customer'
+      );
     });
 
     it('should render breadcrumbs from fully qualified name', () => {
@@ -261,7 +266,7 @@ describe('LineageNodeLabelV1', () => {
       );
 
       expect(
-        screen.getByTestId('children-info-dropdown-btn')
+        screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN)
       ).toBeInTheDocument();
       expect(screen.getByText('3 Columns')).toBeInTheDocument();
     });
@@ -275,7 +280,7 @@ describe('LineageNodeLabelV1', () => {
       );
 
       expect(
-        screen.queryByTestId('children-info-dropdown-btn')
+        screen.queryByTestId(CHILDREN_INFO_DROPDOWN_BTN)
       ).not.toBeInTheDocument();
     });
 
@@ -300,7 +305,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const dropdownButton = screen.getByTestId('children-info-dropdown-btn');
+      const dropdownButton = screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN);
       fireEvent.click(dropdownButton);
 
       expect(mockToggleColumnsList).toHaveBeenCalledTimes(1);
@@ -315,7 +320,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const dropdownButton = screen.getByTestId('children-info-dropdown-btn');
+      const dropdownButton = screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN);
 
       expect(dropdownButton).toHaveClass('expanded');
     });
@@ -329,7 +334,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const dropdownButton = screen.getByTestId('children-info-dropdown-btn');
+      const dropdownButton = screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN);
 
       expect(dropdownButton).toHaveClass('collapsed');
     });
@@ -346,7 +351,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      expect(screen.getByTestId('lineage-filter-button')).toBeInTheDocument();
+      expect(screen.getByTestId(LINEAGE_FILTER_BUTTON)).toBeInTheDocument();
     });
 
     it('should apply active class to filter button when filter is active', () => {
@@ -361,7 +366,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
       expect(filterButton).toHaveClass('active');
     });
@@ -378,7 +383,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
       expect(filterButton).not.toHaveClass('active');
     });
@@ -395,7 +400,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
       fireEvent.click(filterButton);
 
       expect(
@@ -420,7 +425,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
       expect(filterButton).toBeDisabled();
     });
@@ -437,7 +442,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
 
       expect(filterButton).toHaveAttribute(
         'aria-label',
@@ -456,7 +461,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const dropdownButton = screen.getByTestId('children-info-dropdown-btn');
+      const dropdownButton = screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN);
       const event = new MouseEvent('click', { bubbles: true });
       event.stopPropagation = stopPropagation;
 
@@ -479,7 +484,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
       const event = new MouseEvent('click', { bubbles: true });
       event.stopPropagation = stopPropagation;
 
@@ -503,7 +508,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      expect(screen.queryByTestId('test-passed')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TEST_PASSED)).not.toBeInTheDocument();
     });
 
     it('should render test summary when DQ is enabled and node has test suite', async () => {
@@ -520,7 +525,7 @@ describe('LineageNodeLabelV1', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-passed')).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_PASSED)).toBeInTheDocument();
       });
 
       expect(getTestCaseExecutionSummary).toHaveBeenCalledWith('test-suite-id');
@@ -539,7 +544,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      expect(screen.queryByTestId('test-passed')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TEST_PASSED)).not.toBeInTheDocument();
     });
 
     it('should handle test suite API error gracefully', async () => {
@@ -606,7 +611,7 @@ describe('LineageNodeLabelV1', () => {
       );
 
       expect(
-        screen.getByTestId('entity-header-display-name')
+        screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)
       ).toBeInTheDocument();
     });
 
@@ -624,7 +629,7 @@ describe('LineageNodeLabelV1', () => {
       );
 
       expect(
-        screen.getByTestId('entity-header-display-name')
+        screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)
       ).toBeInTheDocument();
     });
 
@@ -636,7 +641,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const dropdownButton = screen.getByTestId('children-info-dropdown-btn');
+      const dropdownButton = screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN);
       fireEvent.click(dropdownButton);
 
       expect(mockToggleColumnsList).not.toHaveBeenCalled();
@@ -651,7 +656,7 @@ describe('LineageNodeLabelV1', () => {
         />
       );
 
-      const filterButton = screen.getByTestId('lineage-filter-button');
+      const filterButton = screen.getByTestId(LINEAGE_FILTER_BUTTON);
       fireEvent.click(filterButton);
 
       expect(
@@ -735,16 +740,16 @@ describe('LineageNodeLabelV1', () => {
       );
 
       expect(
-        screen.getByTestId('entity-header-display-name')
+        screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)
       ).toBeInTheDocument();
       expect(screen.getByTestId('lineage-breadcrumbs')).toBeInTheDocument();
       expect(
-        screen.getByTestId('children-info-dropdown-btn')
+        screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('lineage-filter-button')).toBeInTheDocument();
+      expect(screen.getByTestId(LINEAGE_FILTER_BUTTON)).toBeInTheDocument();
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-passed')).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_PASSED)).toBeInTheDocument();
       });
     });
 
@@ -758,12 +763,12 @@ describe('LineageNodeLabelV1', () => {
       );
 
       expect(
-        screen.getByTestId('entity-header-display-name')
+        screen.getByTestId(ENTITY_HEADER_DISPLAY_NAME)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('lineage-filter-button')).not.toHaveClass(
+      expect(screen.getByTestId(LINEAGE_FILTER_BUTTON)).not.toHaveClass(
         'active'
       );
-      expect(screen.getByTestId('children-info-dropdown-btn')).toHaveClass(
+      expect(screen.getByTestId(CHILDREN_INFO_DROPDOWN_BTN)).toHaveClass(
         'collapsed'
       );
     });

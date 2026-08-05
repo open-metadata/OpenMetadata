@@ -23,6 +23,10 @@ import { FormProvider, useForm } from 'react-hook-form';
 import TeamAndUserSelectItemV2 from './TeamAndUserSelectItemV2';
 import { TeamAndUserSelectItemV2Props } from './TeamAndUserSelectItemV2.interface';
 
+const TEAM_ALPHA = 'team-alpha';
+const PLACEHOLDER_TEXT = 'placeholder-text';
+const SELECTED_TAG_TEAM_ALPHA = 'selected-tag-team-alpha';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithButton: ({
     children,
@@ -31,6 +35,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     children: ReactNode;
     onButtonClick?: (e: React.MouseEvent) => void;
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
     'data-testid'?: string;
   }) => (
     <span data-testid={tid}>
@@ -83,7 +88,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 const MOCK_OPTIONS = [
-  { label: 'Team Alpha', value: 'team-alpha' },
+  { label: 'Team Alpha', value: TEAM_ALPHA },
   { label: 'Team Beta', value: 'team-beta' },
 ];
 
@@ -128,7 +133,7 @@ describe('TeamAndUserSelectItemV2', () => {
   it('renders placeholder when no items are selected', () => {
     renderWithForm(<TeamAndUserSelectItemV2 {...MOCK_PROPS} />);
 
-    expect(screen.getByTestId('placeholder-text')).toBeInTheDocument();
+    expect(screen.getByTestId(PLACEHOLDER_TEXT)).toBeInTheDocument();
   });
 
   it('opens dropdown on trigger click', async () => {
@@ -238,25 +243,25 @@ describe('TeamAndUserSelectItemV2', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('team-alpha')).toBeInTheDocument();
+      expect(screen.getByTestId(TEAM_ALPHA)).toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('team-alpha'));
+      fireEvent.click(screen.getByTestId(TEAM_ALPHA));
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('selected-tag-team-alpha')).toBeInTheDocument();
-      expect(screen.queryByTestId('placeholder-text')).not.toBeInTheDocument();
+      expect(screen.getByTestId(SELECTED_TAG_TEAM_ALPHA)).toBeInTheDocument();
+      expect(screen.queryByTestId(PLACEHOLDER_TEXT)).not.toBeInTheDocument();
     });
   });
 
   it('removes badge on X click', async () => {
     renderWithForm(<TeamAndUserSelectItemV2 {...MOCK_PROPS} />, {
-      destinations: [{ config: { receivers: ['team-alpha'] } }],
+      destinations: [{ config: { receivers: [TEAM_ALPHA] } }],
     });
 
-    expect(screen.getByTestId('selected-tag-team-alpha')).toBeInTheDocument();
+    expect(screen.getByTestId(SELECTED_TAG_TEAM_ALPHA)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('selected-tag-team-alpha-remove'));
@@ -264,9 +269,9 @@ describe('TeamAndUserSelectItemV2', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByTestId('selected-tag-team-alpha')
+        screen.queryByTestId(SELECTED_TAG_TEAM_ALPHA)
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId('placeholder-text')).toBeInTheDocument();
+      expect(screen.getByTestId(PLACEHOLDER_TEXT)).toBeInTheDocument();
     });
   });
 

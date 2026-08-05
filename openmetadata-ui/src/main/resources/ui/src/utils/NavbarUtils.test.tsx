@@ -19,6 +19,9 @@ import { HELP_ITEMS_ENUM } from '../constants/Navbar.constants';
 import { URL_OM_RELEASE_UPDATES } from '../constants/URL.constants';
 import { getHelpDropdownItems } from './NavbarUtils';
 
+const CURRENT_VERSION = '{{currentVersion}}' as const;
+const NO_UNDERLINE = 'no-underline' as const;
+
 describe('NavbarUtils test', () => {
   describe('getHelpDropdownItems', () => {
     it('should return helpDropdown items with correct structure', () => {
@@ -62,7 +65,7 @@ describe('NavbarUtils test', () => {
 
       expect(versionItem).toBeDefined();
       expect(versionItem?.label.props.href).toBe(
-        URL_OM_RELEASE_UPDATES.replace('{{currentVersion}}', version)
+        URL_OM_RELEASE_UPDATES.replace(CURRENT_VERSION, version)
       );
     });
 
@@ -75,7 +78,7 @@ describe('NavbarUtils test', () => {
 
       expect(versionItem).toBeDefined();
       expect(versionItem?.label.props.href).toBe(
-        URL_OM_RELEASE_UPDATES.replace('{{currentVersion}}', '')
+        URL_OM_RELEASE_UPDATES.replace(CURRENT_VERSION, '')
       );
     });
 
@@ -88,7 +91,7 @@ describe('NavbarUtils test', () => {
 
       expect(versionItem).toBeDefined();
       expect(versionItem?.label.props.href).toBe(
-        URL_OM_RELEASE_UPDATES.replace('{{currentVersion}}', '')
+        URL_OM_RELEASE_UPDATES.replace(CURRENT_VERSION, '')
       );
     });
 
@@ -103,7 +106,7 @@ describe('NavbarUtils test', () => {
       expect(docItem?.label.type).toBe('a');
       expect(docItem?.label.props.target).toBe('_blank');
       expect(docItem?.label.props.rel).toBe('noreferrer');
-      expect(docItem?.label.props.className).toBe('no-underline');
+      expect(docItem?.label.props.className).toBe(NO_UNDERLINE);
 
       // Test SLACK item (external)
       const slackItem = helpDropdownItems.find(
@@ -113,7 +116,7 @@ describe('NavbarUtils test', () => {
       expect(slackItem?.label.type).toBe('a');
       expect(slackItem?.label.props.target).toBe('_blank');
       expect(slackItem?.label.props.rel).toBe('noreferrer');
-      expect(slackItem?.label.props.className).toBe('no-underline');
+      expect(slackItem?.label.props.className).toBe(NO_UNDERLINE);
 
       // Test VERSION item (external)
       const versionItem = helpDropdownItems.find(
@@ -123,7 +126,7 @@ describe('NavbarUtils test', () => {
       expect(versionItem?.label.type).toBe('a');
       expect(versionItem?.label.props.target).toBe('_blank');
       expect(versionItem?.label.props.rel).toBe('noreferrer');
-      expect(versionItem?.label.props.className).toBe('no-underline');
+      expect(versionItem?.label.props.className).toBe(NO_UNDERLINE);
     });
 
     it('should render internal links with correct attributes', () => {
@@ -136,7 +139,7 @@ describe('NavbarUtils test', () => {
 
       expect(tourItem?.label.type).toBe(Link);
       expect(tourItem?.label.props.to).toBe(ROUTES.TOUR);
-      expect(tourItem?.label.props.className).toBe('no-underline');
+      expect(tourItem?.label.props.className).toBe(NO_UNDERLINE);
 
       // Test API item (internal)
       const apiItem = helpDropdownItems.find(
@@ -145,7 +148,7 @@ describe('NavbarUtils test', () => {
 
       expect(apiItem?.label.type).toBe(Link);
       expect(apiItem?.label.props.to).toBe(ROUTES.SWAGGER);
-      expect(apiItem?.label.props.className).toBe('no-underline');
+      expect(apiItem?.label.props.className).toBe(NO_UNDERLINE);
     });
 
     it('should render label content with correct structure', () => {
@@ -250,7 +253,7 @@ describe('NavbarUtils test', () => {
       );
 
       expect(versionItem?.label.props.href).toBe(
-        URL_OM_RELEASE_UPDATES.replace('{{currentVersion}}', version)
+        URL_OM_RELEASE_UPDATES.replace(CURRENT_VERSION, version)
       );
     });
   });

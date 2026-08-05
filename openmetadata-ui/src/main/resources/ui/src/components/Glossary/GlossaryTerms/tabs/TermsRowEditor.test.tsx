@@ -23,6 +23,10 @@ import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import { TermsRowEditorProps } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
 
+const AUTOCOMPLETE_INPUT = 'autocomplete-input' as const;
+const RELATION_ROW_ROW_1 = 'relation-row-row-1' as const;
+const ADD_ROW_BUTTON = 'add-row-button' as const;
+
 jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
 }));
@@ -137,7 +141,7 @@ describe('TermsRow', () => {
       />
     );
 
-    expect(screen.getByTestId('relation-row-row-1')).toBeInTheDocument();
+    expect(screen.getByTestId(RELATION_ROW_ROW_1)).toBeInTheDocument();
   });
 
   it('renders the autocomplete for terms', () => {
@@ -236,7 +240,7 @@ describe('TermsRow', () => {
     );
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('autocomplete-input'), {
+      fireEvent.change(screen.getByTestId(AUTOCOMPLETE_INPUT), {
         target: { value: 'Search' },
       });
     });
@@ -260,7 +264,7 @@ describe('TermsRow', () => {
     );
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('autocomplete-input'), {
+      fireEvent.change(screen.getByTestId(AUTOCOMPLETE_INPUT), {
         target: { value: '' },
       });
     });
@@ -277,20 +281,20 @@ describe('TermsRowEditor', () => {
   it('renders all rows', () => {
     render(<TermsRowEditor {...editorProps} />);
 
-    expect(screen.getByTestId('relation-row-row-1')).toBeInTheDocument();
+    expect(screen.getByTestId(RELATION_ROW_ROW_1)).toBeInTheDocument();
     expect(screen.getByTestId('relation-row-row-2')).toBeInTheDocument();
   });
 
   it('renders the add row button', () => {
     render(<TermsRowEditor {...editorProps} />);
 
-    expect(screen.getByTestId('add-row-button')).toBeInTheDocument();
+    expect(screen.getByTestId(ADD_ROW_BUTTON)).toBeInTheDocument();
   });
 
   it('calls onAddRow when the add button is clicked', () => {
     render(<TermsRowEditor {...editorProps} />);
 
-    fireEvent.click(screen.getByTestId('add-row-button'));
+    fireEvent.click(screen.getByTestId(ADD_ROW_BUTTON));
 
     expect(editorProps.onAddRow).toHaveBeenCalledTimes(1);
   });
@@ -298,7 +302,7 @@ describe('TermsRowEditor', () => {
   it('renders with no rows when rows array is empty', () => {
     render(<TermsRowEditor {...editorProps} rows={[]} />);
 
-    expect(screen.queryByTestId('relation-row-row-1')).toBeNull();
-    expect(screen.getByTestId('add-row-button')).toBeInTheDocument();
+    expect(screen.queryByTestId(RELATION_ROW_ROW_1)).toBeNull();
+    expect(screen.getByTestId(ADD_ROW_BUTTON)).toBeInTheDocument();
   });
 });

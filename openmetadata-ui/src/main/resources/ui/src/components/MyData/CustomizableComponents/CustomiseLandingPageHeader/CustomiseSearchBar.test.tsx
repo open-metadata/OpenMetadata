@@ -24,6 +24,9 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExploreSearchIndex } from '../../../Explore/ExplorePage.interface';
 import CustomiseSearchBar from './CustomiseSearchBar';
 
+const NLP_SUGGESTIONS_BUTTON = 'nlp-suggestions-button' as const;
+const TEST_SEARCH = 'test search' as const;
+
 jest.mock('../../../../hooks/useApplicationStore');
 jest.mock('../../../../hooks/useSearchStore');
 jest.mock('../../../../context/TourProvider/TourProvider');
@@ -136,7 +139,7 @@ describe('CustomiseSearchBar', () => {
     render(<CustomiseSearchBar />);
 
     expect(
-      screen.queryByTestId('nlp-suggestions-button')
+      screen.queryByTestId(NLP_SUGGESTIONS_BUTTON)
     ).not.toBeInTheDocument();
   });
 
@@ -149,7 +152,7 @@ describe('CustomiseSearchBar', () => {
 
     render(<CustomiseSearchBar />);
 
-    expect(screen.getByTestId('nlp-suggestions-button')).toBeInTheDocument();
+    expect(screen.getByTestId(NLP_SUGGESTIONS_BUTTON)).toBeInTheDocument();
   });
 
   it('should show active state when NLP is active', () => {
@@ -161,7 +164,7 @@ describe('CustomiseSearchBar', () => {
 
     render(<CustomiseSearchBar />);
 
-    const nlpButton = screen.getByTestId('nlp-suggestions-button');
+    const nlpButton = screen.getByTestId(NLP_SUGGESTIONS_BUTTON);
 
     expect(nlpButton).toHaveClass('active');
   });
@@ -176,7 +179,7 @@ describe('CustomiseSearchBar', () => {
 
     render(<CustomiseSearchBar />);
 
-    const nlpButton = screen.getByTestId('nlp-suggestions-button');
+    const nlpButton = screen.getByTestId(NLP_SUGGESTIONS_BUTTON);
     fireEvent.click(nlpButton);
 
     expect(mockSetNLPActive).toHaveBeenCalledWith(true);
@@ -186,19 +189,19 @@ describe('CustomiseSearchBar', () => {
     render(<CustomiseSearchBar />);
 
     const searchInput = screen.getByTestId('searchBox');
-    fireEvent.change(searchInput, { target: { value: 'test search' } });
+    fireEvent.change(searchInput, { target: { value: TEST_SEARCH } });
 
-    expect(searchInput).toHaveValue('test search');
+    expect(searchInput).toHaveValue(TEST_SEARCH);
   });
 
   it('should handle Enter key press for search', () => {
     render(<CustomiseSearchBar />);
 
     const searchInput = screen.getByTestId('searchBox');
-    fireEvent.change(searchInput, { target: { value: 'test search' } });
+    fireEvent.change(searchInput, { target: { value: TEST_SEARCH } });
     fireEvent.keyDown(searchInput, { key: 'Enter', code: 'Enter' });
 
-    expect(mockAddToRecentSearched).toHaveBeenCalledWith('test search');
+    expect(mockAddToRecentSearched).toHaveBeenCalledWith(TEST_SEARCH);
     expect(mockNavigate).toHaveBeenCalled();
   });
 

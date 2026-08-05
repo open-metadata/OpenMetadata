@@ -15,6 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import EntityDetailHeader from './EntityDetailHeader.component';
 import { EntityDetailTab } from './EntityDetailHeader.interface';
 
+const SUMMARY_PANEL = 'Summary Panel';
+
 const tabs: EntityDetailTab[] = [
   { key: 'summary', label: 'Summary', panel: <div>Summary Panel</div> },
   {
@@ -50,7 +52,7 @@ describe('EntityDetailHeader', () => {
       <EntityDetailHeader defaultActiveKey="summary" tabs={tabs} title="S" />
     );
 
-    expect(screen.getByText('Summary Panel')).toBeInTheDocument();
+    expect(screen.getByText(SUMMARY_PANEL)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: /Insights/ }));
 
@@ -60,12 +62,12 @@ describe('EntityDetailHeader', () => {
   it('selects the first visible tab once tabs load asynchronously (uncontrolled)', () => {
     const { rerender } = render(<EntityDetailHeader tabs={[]} title="S" />);
 
-    expect(screen.queryByText('Summary Panel')).not.toBeInTheDocument();
+    expect(screen.queryByText(SUMMARY_PANEL)).not.toBeInTheDocument();
 
     rerender(<EntityDetailHeader tabs={tabs} title="S" />);
 
     expect(screen.getByRole('tab', { name: /Summary/ })).toBeInTheDocument();
-    expect(screen.getByText('Summary Panel')).toBeInTheDocument();
+    expect(screen.getByText(SUMMARY_PANEL)).toBeInTheDocument();
   });
 
   it('is controlled by activeKey: fires onTabChange without self-switching', () => {
@@ -82,7 +84,7 @@ describe('EntityDetailHeader', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Insights/ }));
 
     expect(onTabChange).toHaveBeenCalledWith('insights');
-    expect(screen.getByText('Summary Panel')).toBeInTheDocument();
+    expect(screen.getByText(SUMMARY_PANEL)).toBeInTheDocument();
     expect(screen.queryByText('Insights Panel')).not.toBeInTheDocument();
   });
 
@@ -97,7 +99,7 @@ describe('EntityDetailHeader', () => {
     );
 
     expect(screen.getByRole('tab', { name: /Summary/ })).toBeInTheDocument();
-    expect(screen.queryByText('Summary Panel')).not.toBeInTheDocument();
+    expect(screen.queryByText(SUMMARY_PANEL)).not.toBeInTheDocument();
   });
 
   it('renders the service logo when serviceLogoUrl is provided', () => {

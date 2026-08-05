@@ -76,6 +76,10 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
+
+const MESSAGE_ERROR = 'message.error';
+const SERVER_ENTITY_UPDATING_ERROR = 'server.entity-updating-error';
+const LABEL_DISPLAY_NAME = 'label.display-name';
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
 };
@@ -375,8 +379,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setLocalToast({
           open: true,
           message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
+            getErrorText(error as AxiosError, t(MESSAGE_ERROR)) ||
+            t(SERVER_ENTITY_UPDATING_ERROR, {
               entity: t('label.description'),
             }),
           type: 'error',
@@ -430,8 +434,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setLocalToast({
           open: true,
           message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
+            getErrorText(error as AxiosError, t(MESSAGE_ERROR)) ||
+            t(SERVER_ENTITY_UPDATING_ERROR, {
               entity: t('label.tag-plural'),
             }),
           type: 'error',
@@ -474,8 +478,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setLocalToast({
           open: true,
           message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
+            getErrorText(error as AxiosError, t(MESSAGE_ERROR)) ||
+            t(SERVER_ENTITY_UPDATING_ERROR, {
               entity: t('label.glossary-term-plural'),
             }),
           type: 'error',
@@ -498,8 +502,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setLocalToast({
           open: true,
           message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
+            getErrorText(error as AxiosError, t(MESSAGE_ERROR)) ||
+            t(SERVER_ENTITY_UPDATING_ERROR, {
               entity: t('label.custom-property-plural'),
             }),
           type: 'error',
@@ -514,7 +518,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       try {
         const response = await performColumnFieldUpdate(
           { displayName: data.displayName },
-          'label.display-name'
+          LABEL_DISPLAY_NAME
         );
         if (response) {
           setActiveColumn((prev: Column) => ({
@@ -526,9 +530,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         setLocalToast({
           open: true,
           message:
-            getErrorText(error as AxiosError, t('message.error')) ||
-            t('server.entity-updating-error', {
-              entity: t('label.display-name'),
+            getErrorText(error as AxiosError, t(MESSAGE_ERROR)) ||
+            t(SERVER_ENTITY_UPDATING_ERROR, {
+              entity: t(LABEL_DISPLAY_NAME),
             }),
           type: 'error',
         });
@@ -589,7 +593,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       } catch (error) {
         setLocalToast({
           open: true,
-          message: getErrorText(error as AxiosError, t('message.error')),
+          message: getErrorText(error as AxiosError, t(MESSAGE_ERROR)),
           type: 'error',
         });
       }
@@ -858,7 +862,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                       }
                       size="small"
                       title={t('label.edit-entity', {
-                        entity: t('label.display-name'),
+                        entity: t(LABEL_DISPLAY_NAME),
                       })}
                       onClick={() => setIsDisplayNameEditing(true)}
                     />
@@ -1020,7 +1024,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               : undefined,
           }}
           title={t('label.edit-entity', {
-            entity: t('label.display-name'),
+            entity: t(LABEL_DISPLAY_NAME),
           })}
           visible={isDisplayNameEditing}
           onCancel={() => setIsDisplayNameEditing(false)}

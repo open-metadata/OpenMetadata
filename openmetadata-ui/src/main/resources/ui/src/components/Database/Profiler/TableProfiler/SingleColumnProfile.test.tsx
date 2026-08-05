@@ -24,6 +24,11 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
 
+const CUSTOM_METRIC_GRAPHS = 'custom-metric-graphs' as const;
+const DB_SCHEMA_TEST_TABLE_TEST_COLUMN =
+  'db.schema.test_table.test_column' as const;
+const PROFILER_TAB_CONTAINER = 'profiler-tab-container' as const;
+
 const MOCK_START_TS = 1703980800000;
 const MOCK_END_TS = 1704067200000;
 const UPDATED_START_TS = 1703894400000;
@@ -282,7 +287,7 @@ const mockTableDetails: Table = {
     {
       name: 'test_column',
       dataType: 'INTEGER' as DataType,
-      fullyQualifiedName: 'db.schema.test_table.test_column',
+      fullyQualifiedName: DB_SCHEMA_TEST_TABLE_TEST_COLUMN,
       description: 'Test column description',
       tags: [],
     },
@@ -373,7 +378,7 @@ describe('SingleColumnProfile', () => {
   });
 
   const defaultProps = {
-    activeColumnFqn: 'db.schema.test_table.test_column',
+    activeColumnFqn: DB_SCHEMA_TEST_TABLE_TEST_COLUMN,
     tableDetails: mockTableDetails,
   };
 
@@ -382,9 +387,7 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
 
       expect(
@@ -402,7 +405,7 @@ describe('SingleColumnProfile', () => {
       expect(
         screen.getByTestId('profiler-details-card-quartile')
       ).toBeInTheDocument();
-      expect(screen.getByTestId('custom-metric-graphs')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_METRIC_GRAPHS)).toBeInTheDocument();
     });
 
     it('should render histogram section when histogram data is available', async () => {
@@ -444,9 +447,7 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId('histogram-metrics')).not.toBeInTheDocument();
@@ -463,9 +464,7 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
 
       expect(
@@ -501,7 +500,7 @@ describe('SingleColumnProfile', () => {
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
-          'db.schema.test_table.test_column',
+          DB_SCHEMA_TEST_TABLE_TEST_COLUMN,
           { startTs: MOCK_START_TS, endTs: MOCK_END_TS }
         );
       });
@@ -512,7 +511,7 @@ describe('SingleColumnProfile', () => {
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
-          'db.schema.test_table.test_column',
+          DB_SCHEMA_TEST_TABLE_TEST_COLUMN,
           expect.objectContaining({
             startTs: expect.any(Number),
             endTs: expect.any(Number),
@@ -569,7 +568,7 @@ describe('SingleColumnProfile', () => {
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(2);
         expect(mockGetColumnProfilerList).toHaveBeenLastCalledWith(
-          'db.schema.test_table.test_column',
+          DB_SCHEMA_TEST_TABLE_TEST_COLUMN,
           { startTs: UPDATED_START_TS, endTs: UPDATED_END_TS }
         );
       });
@@ -614,9 +613,7 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
     });
   });
@@ -631,9 +628,7 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
     });
 
@@ -650,9 +645,7 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
     });
   });
@@ -662,10 +655,10 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('custom-metric-graphs')).toBeInTheDocument();
+        expect(screen.getByTestId(CUSTOM_METRIC_GRAPHS)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('custom-metric-graphs')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_METRIC_GRAPHS)).toBeInTheDocument();
     });
 
     it('should fallback to custom metrics from context when tableDetails not provided', async () => {
@@ -679,7 +672,7 @@ describe('SingleColumnProfile', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('custom-metric-graphs')).toBeInTheDocument();
+        expect(screen.getByTestId(CUSTOM_METRIC_GRAPHS)).toBeInTheDocument();
       });
     });
 
@@ -692,10 +685,10 @@ describe('SingleColumnProfile', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('custom-metric-graphs')).toBeInTheDocument();
+        expect(screen.getByTestId(CUSTOM_METRIC_GRAPHS)).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('custom-metric-graphs')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_METRIC_GRAPHS)).toBeInTheDocument();
     });
   });
 
@@ -721,9 +714,7 @@ describe('SingleColumnProfile', () => {
       render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
     });
   });
@@ -733,9 +724,7 @@ describe('SingleColumnProfile', () => {
       const { rerender } = render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('profiler-tab-container')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(PROFILER_TAB_CONTAINER)).toBeInTheDocument();
       });
 
       mockGetColumnProfilerList.mockResolvedValue({

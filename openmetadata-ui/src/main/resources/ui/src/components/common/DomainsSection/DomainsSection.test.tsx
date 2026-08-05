@@ -17,6 +17,8 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainsSection from './DomainsSection';
 
+const DOMAIN_SELECT_SUBMIT = 'domain-select-submit';
+
 // i18n mock
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -65,6 +67,7 @@ jest.mock('../../../assets/svg/close-icon.svg', () => ({
 }));
 
 // Toast utils
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -89,7 +92,7 @@ const domainSelectableListMock = jest
       </button>
       {children}
       <button
-        data-testid="domain-select-submit"
+        data-testid={DOMAIN_SELECT_SUBMIT}
         onClick={() =>
           onUpdate([
             { id: 'd1', name: 'd1', displayName: 'Domain 1' },
@@ -244,7 +247,7 @@ describe('DomainsSection', () => {
       render(<DomainsSection {...defaultProps} onDomainUpdate={onUpdate} />);
 
       // No need to click edit - directly submit from the dropdown
-      fireEvent.click(screen.getByTestId('domain-select-submit'));
+      fireEvent.click(screen.getByTestId(DOMAIN_SELECT_SUBMIT));
 
       await waitFor(() => {
         expect(mockGetEntityAPI).toHaveBeenCalledWith('service.table1', {
@@ -266,7 +269,7 @@ describe('DomainsSection', () => {
       render(<DomainsSection {...defaultProps} />);
 
       // No need to click edit - directly submit from the dropdown
-      fireEvent.click(screen.getByTestId('domain-select-submit'));
+      fireEvent.click(screen.getByTestId(DOMAIN_SELECT_SUBMIT));
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalled();
@@ -299,7 +302,7 @@ describe('DomainsSection', () => {
       render(<DomainsSection {...defaultProps} />);
 
       // No need to click edit - directly submit from the dropdown
-      fireEvent.click(screen.getByTestId('domain-select-submit'));
+      fireEvent.click(screen.getByTestId(DOMAIN_SELECT_SUBMIT));
 
       await waitFor(() => {
         expect(screen.getByTestId('loader')).toBeInTheDocument();
@@ -314,7 +317,7 @@ describe('DomainsSection', () => {
       render(<DomainsSection {...defaultProps} entityId={undefined} />);
 
       // No need to click edit - directly submit from the dropdown
-      fireEvent.click(screen.getByTestId('domain-select-submit'));
+      fireEvent.click(screen.getByTestId(DOMAIN_SELECT_SUBMIT));
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(

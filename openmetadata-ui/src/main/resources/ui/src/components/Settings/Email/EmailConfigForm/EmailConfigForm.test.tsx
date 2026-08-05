@@ -15,6 +15,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TransportationStrategy } from '../../../../generated/email/smtpSettings';
 import EmailConfigForm from './EmailConfigForm.component';
 
+const LABEL_SAVE = 'label.save' as const;
+
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Button: jest
@@ -72,7 +74,7 @@ describe('Email Config Form Component', () => {
       screen.getByText('label.transportation-strategy')
     ).toBeInTheDocument();
     expect(screen.getByText('label.cancel')).toBeInTheDocument();
-    expect(screen.getByText('label.save')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_SAVE)).toBeInTheDocument();
     // Inputs and other form elements
     expect(screen.getByTestId('username-input')).toBeInTheDocument();
     expect(screen.getByTestId('password-input')).toBeInTheDocument();
@@ -113,7 +115,7 @@ describe('Email Config Form Component', () => {
     render(<EmailConfigForm {...mockProps} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.save'));
+      fireEvent.click(screen.getByText(LABEL_SAVE));
     });
 
     expect(mockOnSubmit).toHaveBeenCalledWith(emailConfigValues);
@@ -134,7 +136,7 @@ describe('Email Config Form Component', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.save'));
+      fireEvent.click(screen.getByText(LABEL_SAVE));
     });
 
     expect(mockOnSubmit).not.toHaveBeenCalled();
@@ -153,7 +155,7 @@ describe('Email Config Form Component', () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.save'));
+      fireEvent.click(screen.getByText(LABEL_SAVE));
     });
 
     expect(mockOnSubmit).toHaveBeenCalledWith({

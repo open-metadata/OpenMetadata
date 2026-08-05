@@ -15,6 +15,9 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourPage from './TourPage.component';
 
+const FEEDWIDGETDATA = '#feedWidgetData';
+const TOUR_COMPONENT = 'Tour.component';
+
 const mockUseTourProvider = {
   isTourOpen: true,
   updateIsTourOpen: jest.fn(),
@@ -89,7 +92,7 @@ describe('TourPage component', () => {
 
     const feedWidget = createReadyFeedWidget();
     mockQuerySelector.mockImplementation((selector) => {
-      if (selector === '#feedWidgetData') {
+      if (selector === FEEDWIDGETDATA) {
         return feedWidget;
       }
 
@@ -106,7 +109,7 @@ describe('TourPage component', () => {
     render(<TourPage />);
     await waitForTourReadyCheck();
 
-    expect(await screen.findByText('Tour.component')).toBeInTheDocument();
+    expect(await screen.findByText(TOUR_COMPONENT)).toBeInTheDocument();
   });
 
   it('clear search term should work correctly', async () => {
@@ -125,10 +128,10 @@ describe('TourPage component', () => {
 
     render(<TourPage />);
 
-    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+    expect(screen.queryByText(TOUR_COMPONENT)).not.toBeInTheDocument();
 
     mockQuerySelector.mockImplementation((selector) => {
-      if (selector === '#feedWidgetData') {
+      if (selector === FEEDWIDGETDATA) {
         return feedWidget;
       }
 
@@ -139,7 +142,7 @@ describe('TourPage component', () => {
     });
     await waitForTourReadyCheck(116);
 
-    expect(screen.getByText('Tour.component')).toBeInTheDocument();
+    expect(screen.getByText(TOUR_COMPONENT)).toBeInTheDocument();
 
     feedWidget.remove();
   });
@@ -172,7 +175,7 @@ describe('TourPage component', () => {
       });
 
     mockQuerySelector.mockImplementation((selector) => {
-      if (selector === '#feedWidgetData') {
+      if (selector === FEEDWIDGETDATA) {
         return feedWidget;
       }
 
@@ -181,12 +184,12 @@ describe('TourPage component', () => {
 
     render(<TourPage />);
 
-    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+    expect(screen.queryByText(TOUR_COMPONENT)).not.toBeInTheDocument();
 
     await waitForTourReadyCheck();
     await waitForTourReadyCheck();
 
-    expect(screen.getByText('Tour.component')).toBeInTheDocument();
+    expect(screen.getByText(TOUR_COMPONENT)).toBeInTheDocument();
     expect(getBoundingClientRect).toHaveBeenCalled();
   });
 

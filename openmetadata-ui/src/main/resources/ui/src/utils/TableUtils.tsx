@@ -71,6 +71,8 @@ import {
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { t } from './i18next/LocalUtil';
 
+const LABEL_ENTITY_KEY = 'label.entity-key';
+
 // These moved to EntityIconUtils/EntityServiceIconUtils so that importing TableUtils no longer
 // drags the entity-icon graph into every consumer. Re-exported because downstream repos (Collate)
 // still import them from here; they tree-shake away for callers that do not use them.
@@ -126,7 +128,7 @@ export const getConstraintIcon = ({
       break;
     }
     case ConstraintType.DistKey: {
-      title = t('label.entity-key', {
+      title = t(LABEL_ENTITY_KEY, {
         entity: t('label.dist'),
       });
       icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
@@ -135,7 +137,7 @@ export const getConstraintIcon = ({
       break;
     }
     case ConstraintType.SortKey: {
-      title = t('label.entity-key', {
+      title = t(LABEL_ENTITY_KEY, {
         entity: t('label.sort'),
       });
       icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
@@ -144,7 +146,7 @@ export const getConstraintIcon = ({
       break;
     }
     case ConstraintType.ClusterKey: {
-      title = t('label.entity-key', {
+      title = t(LABEL_ENTITY_KEY, {
         entity: t('label.cluster'),
       });
       icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;

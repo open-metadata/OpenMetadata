@@ -39,6 +39,8 @@ import { DomainFormType } from '../../Domain/DomainPage.interface';
  * products list page, the Data Marketplace overview "Add New" menu) can open
  * the same drawer. `onCreated` runs after a successful create.
  */
+const LABEL_DATA_PRODUCT = 'label.data-product';
+
 export const useDataProductCreateDrawer = (onCreated?: () => void) => {
   const { t } = useTranslation();
   const form = useForm<DomainFormValues>({
@@ -57,7 +59,7 @@ export const useDataProductCreateDrawer = (onCreated?: () => void) => {
         await createEntityWithCoverImage({
           formData,
           entityType: EntityType.DATA_PRODUCT,
-          entityLabel: t('label.data-product'),
+          entityLabel: t(LABEL_DATA_PRODUCT),
           entityPluralLabel: 'data-products',
           createEntity: addDataProducts,
           patchEntity: patchDataProduct,
@@ -73,10 +75,10 @@ export const useDataProductCreateDrawer = (onCreated?: () => void) => {
           form,
           'name',
           t('message.entity-with-name-already-exists', {
-            entity: t('label.data-product'),
+            entity: t(LABEL_DATA_PRODUCT),
           }),
           t('server.add-entity-error', {
-            entity: t('label.data-product').toLowerCase(),
+            entity: t(LABEL_DATA_PRODUCT).toLowerCase(),
           })
         );
 
@@ -90,7 +92,7 @@ export const useDataProductCreateDrawer = (onCreated?: () => void) => {
 
   const { formDrawer, openDrawer, closeDrawer } =
     useFormDrawerWithHook<DomainFormValues>({
-      title: t('label.add-entity', { entity: t('label.data-product') }),
+      title: t('label.add-entity', { entity: t(LABEL_DATA_PRODUCT) }),
       width: 670,
       closeOnEscape: false,
       className: 'tw:z-[20]',

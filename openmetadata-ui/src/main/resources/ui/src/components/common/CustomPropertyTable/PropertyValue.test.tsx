@@ -22,6 +22,8 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
 
+const HTTPS_OPEN_METADATA_ORG = 'https://open-metadata.org';
+const HYPERLINK_URL_INPUT = 'hyperlink-url-input';
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
@@ -80,6 +82,7 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 jest.mock('../../../utils/CustomProperty.utils', () => ({
   formatCustomPropertyDateTime: jest
     .fn()
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
     .mockImplementation((value) => value.toFormat('dd-MM-yyyy')),
   getCustomPropertyLuxonFormat: jest.fn().mockReturnValue('dd-MM-yyyy'),
   parseCustomPropertyDateTime: jest
@@ -439,7 +442,7 @@ describe('Test PropertyValue Component', () => {
     const extension = {
       yNumber: {
         displayText: 'OpenMetadata',
-        url: 'https://open-metadata.org',
+        url: HTTPS_OPEN_METADATA_ORG,
       },
     };
     const propertyType = {
@@ -457,21 +460,19 @@ describe('Test PropertyValue Component', () => {
 
     const hyperlink = await screen.findByTestId('hyperlink-value');
 
-    expect(hyperlink).toHaveAttribute('href', 'https://open-metadata.org');
+    expect(hyperlink).toHaveAttribute('href', HTTPS_OPEN_METADATA_ORG);
     expect(hyperlink).toHaveTextContent('OpenMetadata');
 
     await act(async () => {
       fireEvent.click(await screen.findByTestId('edit-icon'));
     });
 
-    expect(
-      await screen.findByTestId('hyperlink-url-input')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(HYPERLINK_URL_INPUT)).toBeInTheDocument();
     expect(
       await screen.findByTestId('hyperlink-display-text-input')
     ).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId('hyperlink-url-input'), {
+    fireEvent.change(screen.getByTestId(HYPERLINK_URL_INPUT), {
       target: { value: 'https://updated.example.com/docs' },
     });
     fireEvent.change(screen.getByTestId('hyperlink-display-text-input'), {
@@ -510,8 +511,8 @@ describe('Test PropertyValue Component', () => {
       fireEvent.click(await screen.findByTestId('edit-icon'));
     });
 
-    fireEvent.change(await screen.findByTestId('hyperlink-url-input'), {
-      target: { value: 'https://open-metadata.org' },
+    fireEvent.change(await screen.findByTestId(HYPERLINK_URL_INPUT), {
+      target: { value: HTTPS_OPEN_METADATA_ORG },
     });
 
     await act(async () => {
@@ -520,7 +521,7 @@ describe('Test PropertyValue Component', () => {
 
     await waitFor(() =>
       expect(mockUpdate).toHaveBeenCalledWith({
-        yNumber: { url: 'https://open-metadata.org' },
+        yNumber: { url: HTTPS_OPEN_METADATA_ORG },
       })
     );
   });

@@ -29,6 +29,8 @@ import Loader from '../Loader/Loader';
 import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
 import './GlossaryTermsSection.less';
 
+const LABEL_GLOSSARY_TERM_PLURAL = 'label.glossary-term-plural';
+
 const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   tags = [],
   showEditButton = true,
@@ -108,7 +110,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           fieldName: 'tags',
           currentValue: displayTags,
           newValue: updatedTags,
-          entityLabel: t('label.glossary-term-plural'),
+          entityLabel: t(LABEL_GLOSSARY_TERM_PLURAL),
           onSuccess: (newTags: TagLabel[]) => {
             setDisplayTags(newTags);
           },
@@ -179,7 +181,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           ) : (
             <span className="no-data-placeholder">
               {t('label.no-entity-assigned', {
-                entity: t('label.glossary-term-plural'),
+                entity: t(LABEL_GLOSSARY_TERM_PLURAL),
               })}
             </span>
           )}
@@ -208,7 +210,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     return (
       <span className="no-data-placeholder">
         {t('label.no-entity-assigned', {
-          entity: t('label.glossary-term-plural'),
+          entity: t(LABEL_GLOSSARY_TERM_PLURAL),
         })}
       </span>
     );
@@ -275,7 +277,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         data-testid="KnowledgePanel.GlossaryTerms">
         <div className="glossary-terms-header">
           <Typography.Text className="glossary-terms-title">
-            {t('label.glossary-term-plural')}
+            {t(LABEL_GLOSSARY_TERM_PLURAL)}
           </Typography.Text>
           {canShowEditButton && (
             <EditIconButton
@@ -285,7 +287,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
-                entity: t('label.glossary-term-plural'),
+                entity: t(LABEL_GLOSSARY_TERM_PLURAL),
               })}
               onClick={handleEditClick}
             />
@@ -306,7 +308,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
       data-testid="KnowledgePanel.GlossaryTerms">
       <div className="glossary-terms-header">
         <Typography.Text className="glossary-terms-title">
-          {t('label.glossary-term-plural')}
+          {t(LABEL_GLOSSARY_TERM_PLURAL)}
         </Typography.Text>
         {canShowEditButton && (
           <EditIconButton
@@ -316,7 +318,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
             size="small"
             title={t('label.edit-entity', {
-              entity: t('label.glossary-term-plural'),
+              entity: t(LABEL_GLOSSARY_TERM_PLURAL),
             })}
             onClick={handleEditClick}
           />

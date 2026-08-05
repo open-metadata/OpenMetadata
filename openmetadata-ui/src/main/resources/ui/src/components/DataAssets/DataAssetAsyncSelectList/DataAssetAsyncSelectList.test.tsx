@@ -17,6 +17,8 @@ import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';
 import { DataAssetOption } from './DataAssetAsyncSelectList.interface';
 
+const ANT_SELECT_SELECTOR = '.ant-select-selector';
+
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/TableUtils');
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -128,7 +130,7 @@ describe('DataAssetAsyncSelectList', () => {
     const { container } = render(<DataAssetAsyncSelectList />);
 
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
+      const inputBox = container.querySelector(ANT_SELECT_SELECTOR);
       inputBox && userEvent.click(inputBox);
     });
 
@@ -153,7 +155,7 @@ describe('DataAssetAsyncSelectList', () => {
     );
 
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
+      const inputBox = container.querySelector(ANT_SELECT_SELECTOR);
       inputBox && fireEvent.click(inputBox);
     });
 
@@ -189,7 +191,7 @@ describe('DataAssetAsyncSelectList', () => {
     );
 
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
+      const inputBox = container.querySelector(ANT_SELECT_SELECTOR);
       inputBox && userEvent.click(inputBox);
     });
 
@@ -292,7 +294,7 @@ describe('DataAssetAsyncSelectList', () => {
     );
 
     await act(async () => {
-      const inputBox = container.querySelector('.ant-select-selector');
+      const inputBox = container.querySelector(ANT_SELECT_SELECTOR);
       inputBox && userEvent.click(inputBox);
     });
 

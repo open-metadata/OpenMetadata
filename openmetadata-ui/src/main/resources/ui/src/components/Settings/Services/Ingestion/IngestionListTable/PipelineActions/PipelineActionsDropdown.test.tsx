@@ -20,6 +20,11 @@ import { mockPipelineActionsDropdownProps } from '../../../../../../mocks/Ingest
 import { ENTITY_PERMISSIONS } from '../../../../../../mocks/Permissions.mock';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
+const RE_DEPLOY_BUTTON = 're-deploy-button';
+const DELETE_BUTTON = 'delete-button';
+const KILL_BUTTON = 'kill-button';
+const EDIT_BUTTON = 'edit-button';
+const RUN_BUTTON = 'run-button';
 jest.mock(
   '../../../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',
   () =>
@@ -36,7 +41,7 @@ const clickOnMoreActions = async () => {
   fireEvent.click(moreActions);
 
   // Wait for dropdown menu items to appear
-  await screen.findByTestId('edit-button');
+  await screen.findByTestId(EDIT_BUTTON);
 };
 
 describe('PipelineActionsDropdown', () => {
@@ -47,11 +52,11 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-    expect(screen.getByTestId('kill-button')).toBeInTheDocument();
-    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('run-button')).toBeNull();
-    expect(screen.queryByTestId('re-deploy-button')).toBeNull();
+    expect(screen.getByTestId(EDIT_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(KILL_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(DELETE_BUTTON)).toBeInTheDocument();
+    expect(screen.queryByTestId(RUN_BUTTON)).toBeNull();
+    expect(screen.queryByTestId(RE_DEPLOY_BUTTON)).toBeNull();
   });
 
   it('should only display edit, kill and delete button when pipeline is not enabled', async () => {
@@ -72,11 +77,11 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-    expect(screen.getByTestId('kill-button')).toBeInTheDocument();
-    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('run-button')).toBeNull();
-    expect(screen.queryByTestId('re-deploy-button')).toBeNull();
+    expect(screen.getByTestId(EDIT_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(KILL_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(DELETE_BUTTON)).toBeInTheDocument();
+    expect(screen.queryByTestId(RUN_BUTTON)).toBeNull();
+    expect(screen.queryByTestId(RE_DEPLOY_BUTTON)).toBeNull();
   });
 
   it('should display all action buttons when pipeline is enabled and deployed', async () => {
@@ -98,11 +103,11 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-    expect(screen.getByTestId('kill-button')).toBeInTheDocument();
-    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
-    expect(screen.getByTestId('run-button')).toBeInTheDocument();
-    expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(KILL_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(DELETE_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(RUN_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(RE_DEPLOY_BUTTON)).toBeInTheDocument();
   });
 
   it('should hide run button when Trigger permission is absent', async () => {
@@ -130,9 +135,9 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    expect(screen.queryByTestId('run-button')).toBeNull();
-    expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
-    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.queryByTestId(RUN_BUTTON)).toBeNull();
+    expect(screen.getByTestId(RE_DEPLOY_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_BUTTON)).toBeInTheDocument();
   });
 
   it('should call deployIngestion when clicked on deploy button', async () => {
@@ -181,7 +186,7 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    const reDeployButton = screen.getByTestId('re-deploy-button');
+    const reDeployButton = screen.getByTestId(RE_DEPLOY_BUTTON);
 
     fireEvent.click(reDeployButton);
 
@@ -208,7 +213,7 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    const runButton = screen.getByTestId('run-button');
+    const runButton = screen.getByTestId(RUN_BUTTON);
 
     fireEvent.click(runButton);
 
@@ -235,7 +240,7 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    const editButton = screen.getByTestId('edit-button');
+    const editButton = screen.getByTestId(EDIT_BUTTON);
 
     fireEvent.click(editButton);
 
@@ -262,7 +267,7 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    const deleteButton = screen.getByTestId('delete-button');
+    const deleteButton = screen.getByTestId(DELETE_BUTTON);
 
     fireEvent.click(deleteButton);
 
@@ -289,7 +294,7 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    const killButton = screen.getByTestId('kill-button');
+    const killButton = screen.getByTestId(KILL_BUTTON);
 
     fireEvent.click(killButton);
 
@@ -314,7 +319,7 @@ describe('PipelineActionsDropdown', () => {
 
     await clickOnMoreActions();
 
-    const killButton = screen.getByTestId('kill-button');
+    const killButton = screen.getByTestId(KILL_BUTTON);
 
     fireEvent.click(killButton);
 

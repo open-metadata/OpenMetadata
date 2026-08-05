@@ -46,6 +46,8 @@ import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewer
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
 
+const LABEL_DESCRIPTION = 'label.description';
+
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
@@ -168,7 +170,7 @@ const Description = ({
         {!isVersionView && !isReadOnly && hasEditAccess && (
           <Tooltip
             title={t('label.edit-entity', {
-              entity: t('label.description'),
+              entity: t(LABEL_DESCRIPTION),
             })}>
             <Button
               color="secondary"
@@ -258,7 +260,7 @@ const Description = ({
           className="tw:text-text-secondary"
           size="text-sm"
           weight="semibold">
-          {t('label.description')}
+          {t(LABEL_DESCRIPTION)}
         </Typography>
         <DescriptionSourceBadge
           changeSummaryEntry={descriptionChangeSummary}
@@ -299,7 +301,7 @@ const Description = ({
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}
           placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
+            entity: t(LABEL_DESCRIPTION),
           })}
           value={description}
           visible={Boolean(isEditDescription)}

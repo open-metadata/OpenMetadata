@@ -34,6 +34,8 @@ import {
   validateReferenceURL,
 } from './GlossaryPureUtils';
 
+const TASK_UUID_1 = 'task-uuid-1';
+
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
     const fqn = 'example';
@@ -236,7 +238,7 @@ describe('Glossary Utils', () => {
       {
         '<#E::glossaryTerm::"Glossary"."Term">': [
           {
-            id: 'task-uuid-1',
+            id: TASK_UUID_1,
             assignees: [{ id: 'user-1' }],
           },
         ],
@@ -245,7 +247,7 @@ describe('Glossary Utils', () => {
 
     expect(result).toEqual({
       permission: true,
-      taskId: 'task-uuid-1',
+      taskId: TASK_UUID_1,
     });
   });
 
@@ -259,7 +261,7 @@ describe('Glossary Utils', () => {
       {
         '<#E::glossaryTerm::"Glossary"."Term">': [
           {
-            id: 'task-uuid-1',
+            id: TASK_UUID_1,
             assignees: [{ id: 'user-2' }],
           },
         ],
@@ -268,7 +270,7 @@ describe('Glossary Utils', () => {
 
     expect(result).toEqual({
       permission: false,
-      taskId: 'task-uuid-1',
+      taskId: TASK_UUID_1,
     });
   });
 });

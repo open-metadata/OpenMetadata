@@ -31,6 +31,8 @@ import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
 import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
+const LABEL_TABLE_CONSTRAINTS = 'label.table-constraints';
+
 const TableConstraints = ({
   renderAsExpandableCard = true,
 }: {
@@ -67,13 +69,13 @@ const TableConstraints = ({
   const headerExtra = showAddConstraint ? (
     <WidgetPlusButton
       data-testid="table-constraints-add-button"
-      title={t('label.add-entity', { entity: t('label.table-constraints') })}
+      title={t('label.add-entity', { entity: t(LABEL_TABLE_CONSTRAINTS) })}
       onClick={handleOpenEditConstraintModal}
     />
   ) : showEditConstraint ? (
     <WidgetEditButton
       data-testid="edit-table-constraint-button"
-      title={t('label.edit-entity', { entity: t('label.table-constraints') })}
+      title={t('label.edit-entity', { entity: t(LABEL_TABLE_CONSTRAINTS) })}
       onClick={handleOpenEditConstraintModal}
     />
   ) : null;
@@ -151,7 +153,7 @@ const TableConstraints = ({
         <WidgetCard
           headerExtra={headerExtra}
           isExpandDisabled={isEmpty(data?.tableConstraints)}
-          title={t('label.table-constraints')}>
+          title={t(LABEL_TABLE_CONSTRAINTS)}>
           {content}
         </WidgetCard>
       ) : (

@@ -13,6 +13,9 @@
 
 import { TargetEntityType } from '../../generated/governance/intakeForm';
 
+const LABEL_DISPLAY_NAME = 'label.display-name';
+const LABEL_TAG_PLURAL = 'label.tag-plural';
+
 export interface IntakeFormNativeField {
   path: string;
   /** i18n key resolved via t() at render time. */
@@ -33,25 +36,25 @@ export const NATIVE_FIELDS_BY_ENTITY_TYPE: Record<
   IntakeFormNativeField[]
 > = {
   [TargetEntityType.DataProduct]: [
-    { path: 'displayName', labelKey: 'label.display-name' },
+    { path: 'displayName', labelKey: LABEL_DISPLAY_NAME },
     { path: 'dataProductType', labelKey: 'label.data-product-type' },
     { path: 'visibility', labelKey: 'label.visibility' },
     { path: 'portfolioPriority', labelKey: 'label.portfolio-priority' },
-    { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'tags', labelKey: LABEL_TAG_PLURAL },
     { path: 'owners', labelKey: 'label.owner-plural' },
     { path: 'reviewers', labelKey: 'label.reviewer-plural' },
     { path: 'experts', labelKey: 'label.expert-plural' },
   ],
   [TargetEntityType.Domain]: [
-    { path: 'displayName', labelKey: 'label.display-name' },
-    { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'displayName', labelKey: LABEL_DISPLAY_NAME },
+    { path: 'tags', labelKey: LABEL_TAG_PLURAL },
     { path: 'owners', labelKey: 'label.owner-plural' },
     { path: 'experts', labelKey: 'label.expert-plural' },
   ],
   [TargetEntityType.GlossaryTerm]: [
-    { path: 'displayName', labelKey: 'label.display-name' },
+    { path: 'displayName', labelKey: LABEL_DISPLAY_NAME },
     { path: 'synonyms', labelKey: 'label.synonym-plural' },
-    { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'tags', labelKey: LABEL_TAG_PLURAL },
     { path: 'reviewers', labelKey: 'label.reviewer-plural' },
   ],
 };

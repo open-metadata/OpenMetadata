@@ -16,6 +16,9 @@ import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvide
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import SuggestionsSlider from './SuggestionsSlider';
 
+const REJECT_ALL_SUGGESTIONS = 'reject-all-suggestions';
+const MORE_SUGGESTION_BUTTON = 'more-suggestion-button';
+const ACCEPT_ALL_SUGGESTIONS = 'accept-all-suggestions';
 const mockAcceptRejectAllSuggestions = jest.fn();
 const mockFetchSuggestions = jest.fn();
 
@@ -62,14 +65,14 @@ describe('SuggestionsSlider', () => {
   it('renders buttons when there are selected user suggestions', () => {
     render(<SuggestionsSlider />);
 
-    expect(screen.getByTestId('accept-all-suggestions')).toBeInTheDocument();
-    expect(screen.getByTestId('reject-all-suggestions')).toBeInTheDocument();
+    expect(screen.getByTestId(ACCEPT_ALL_SUGGESTIONS)).toBeInTheDocument();
+    expect(screen.getByTestId(REJECT_ALL_SUGGESTIONS)).toBeInTheDocument();
   });
 
   it('calls acceptRejectAllSuggestions with correct action on accept button click', () => {
     render(<SuggestionsSlider />);
 
-    fireEvent.click(screen.getByTestId('accept-all-suggestions'));
+    fireEvent.click(screen.getByTestId(ACCEPT_ALL_SUGGESTIONS));
 
     expect(mockAcceptRejectAllSuggestions).toHaveBeenCalledWith(
       SuggestionAction.Accept
@@ -79,7 +82,7 @@ describe('SuggestionsSlider', () => {
   it('calls acceptRejectAllSuggestions with correct action on reject button click', () => {
     render(<SuggestionsSlider />);
 
-    fireEvent.click(screen.getByTestId('reject-all-suggestions'));
+    fireEvent.click(screen.getByTestId(REJECT_ALL_SUGGESTIONS));
 
     expect(mockAcceptRejectAllSuggestions).toHaveBeenCalledWith(
       SuggestionAction.Reject
@@ -90,7 +93,7 @@ describe('SuggestionsSlider', () => {
     render(<SuggestionsSlider />);
 
     expect(
-      screen.queryByTestId('more-suggestion-button')
+      screen.queryByTestId(MORE_SUGGESTION_BUTTON)
     ).not.toBeInTheDocument();
   });
 
@@ -103,7 +106,7 @@ describe('SuggestionsSlider', () => {
     render(<SuggestionsSlider />);
 
     expect(
-      screen.queryByTestId('more-suggestion-button')
+      screen.queryByTestId(MORE_SUGGESTION_BUTTON)
     ).not.toBeInTheDocument();
   });
 
@@ -115,9 +118,9 @@ describe('SuggestionsSlider', () => {
 
     render(<SuggestionsSlider />);
 
-    expect(screen.getByTestId('more-suggestion-button')).toBeInTheDocument();
+    expect(screen.getByTestId(MORE_SUGGESTION_BUTTON)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('more-suggestion-button'));
+    fireEvent.click(screen.getByTestId(MORE_SUGGESTION_BUTTON));
 
     expect(mockFetchSuggestions).toHaveBeenCalled();
   });
@@ -130,7 +133,7 @@ describe('SuggestionsSlider', () => {
 
     render(<SuggestionsSlider />);
 
-    const acceptButton = screen.getByTestId('accept-all-suggestions');
+    const acceptButton = screen.getByTestId(ACCEPT_ALL_SUGGESTIONS);
 
     expect(acceptButton).toBeDisabled();
   });
@@ -143,7 +146,7 @@ describe('SuggestionsSlider', () => {
 
     render(<SuggestionsSlider />);
 
-    const rejectButton = screen.getByTestId('reject-all-suggestions');
+    const rejectButton = screen.getByTestId(REJECT_ALL_SUGGESTIONS);
 
     expect(rejectButton).toBeDisabled();
   });
@@ -161,10 +164,10 @@ describe('SuggestionsSlider', () => {
     render(<SuggestionsSlider />);
 
     expect(
-      screen.queryByTestId('accept-all-suggestions')
+      screen.queryByTestId(ACCEPT_ALL_SUGGESTIONS)
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('reject-all-suggestions')
+      screen.queryByTestId(REJECT_ALL_SUGGESTIONS)
     ).not.toBeInTheDocument();
   });
 
@@ -200,7 +203,7 @@ describe('SuggestionsSlider', () => {
 
     render(<SuggestionsSlider />);
 
-    const moreButton = screen.getByTestId('more-suggestion-button');
+    const moreButton = screen.getByTestId(MORE_SUGGESTION_BUTTON);
     fireEvent.click(moreButton);
 
     expect(mockFetchSuggestions).toHaveBeenCalledTimes(1);

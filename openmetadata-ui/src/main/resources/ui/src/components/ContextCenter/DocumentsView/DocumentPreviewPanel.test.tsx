@@ -24,6 +24,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }: {
       children: React.ReactNode;
       className?: string;
+      // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object/type key
       'data-testid'?: string;
     }) => (
       <div className={className} data-testid={testId}>

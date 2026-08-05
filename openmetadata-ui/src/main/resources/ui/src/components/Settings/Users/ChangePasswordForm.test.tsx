@@ -20,6 +20,10 @@ import {
 import userEvent from '@testing-library/user-event';
 import ChangePasswordForm from './ChangePasswordForm';
 
+const LABEL_CANCEL = 'label.cancel' as const;
+const LABEL_UPDATE_ENTITY = 'label.update-entity' as const;
+const INPUT_NEW_PASSWORD = 'input-newPassword' as const;
+
 const mockSave = jest.fn();
 
 const mockCancel = jest.fn();
@@ -42,10 +46,10 @@ describe('ChangePasswordForm', () => {
 
   it('should handle form submission correctly for logged in user', async () => {
     render(<ChangePasswordForm {...MOCK_PROPS} />);
-    const cancelButton = await screen.findByText('label.cancel');
-    const submitButton = await screen.findByText('label.update-entity');
+    const cancelButton = await screen.findByText(LABEL_CANCEL);
+    const submitButton = await screen.findByText(LABEL_UPDATE_ENTITY);
     const oldPasswordInput = await screen.findByTestId('input-oldPassword');
-    const newPasswordInput = await screen.findByTestId('input-newPassword');
+    const newPasswordInput = await screen.findByTestId(INPUT_NEW_PASSWORD);
     const confirmPasswordInput = await screen.findByTestId(
       'input-confirm-newPassword'
     );
@@ -74,9 +78,9 @@ describe('ChangePasswordForm', () => {
       />
     );
 
-    const cancelButton = await screen.findByText('label.cancel');
-    const submitButton = await screen.findByText('label.update-entity');
-    const newPasswordInput = await screen.findByTestId('input-newPassword');
+    const cancelButton = await screen.findByText(LABEL_CANCEL);
+    const submitButton = await screen.findByText(LABEL_UPDATE_ENTITY);
+    const newPasswordInput = await screen.findByTestId(INPUT_NEW_PASSWORD);
     const confirmPasswordInput = await screen.findByTestId(
       'input-confirm-newPassword'
     );
@@ -107,8 +111,8 @@ describe('ChangePasswordForm', () => {
       />
     );
 
-    const cancelButton = await screen.findByText('label.cancel');
-    const submitButton = await screen.findByText('label.update-entity');
+    const cancelButton = await screen.findByText(LABEL_CANCEL);
+    const submitButton = await screen.findByText(LABEL_UPDATE_ENTITY);
 
     expect(cancelButton).toBeInTheDocument();
     expect(submitButton).toBeInTheDocument();
@@ -122,10 +126,10 @@ describe('ChangePasswordForm', () => {
 
   it('displays loading state during submission', async () => {
     render(<ChangePasswordForm {...MOCK_PROPS} isLoading />);
-    const submitButton = await screen.findByText('label.update-entity');
+    const submitButton = await screen.findByText(LABEL_UPDATE_ENTITY);
 
     const newPasswordInput = await screen.findByTestId('input-oldPassword');
-    const confirmPasswordInput = await screen.findByTestId('input-newPassword');
+    const confirmPasswordInput = await screen.findByTestId(INPUT_NEW_PASSWORD);
 
     fireEvent.change(newPasswordInput, { target: { value: 'oldPassword' } });
     fireEvent.change(confirmPasswordInput, { target: { value: 'Test@123' } });

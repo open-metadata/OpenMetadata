@@ -65,6 +65,13 @@ import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
+const LABEL_ENUM_VALUE_PLURAL = 'label.enum-value-plural';
+const LABEL_CUSTOM_PROPERTY = 'label.custom-property';
+const LABEL_COLUMN_PLURAL = 'label.column-plural';
+const LABEL_ADD_ENTITY = 'label.add-entity';
+const LABEL_FORMAT = 'label.format';
+const LABEL_NAME = 'label.name';
+const LABEL_TYPE = 'label.type';
 interface AddCustomPropertyProps {
   formRef?: FormInstance;
   onCancel?: () => void;
@@ -116,8 +123,8 @@ const AddCustomProperty = ({
         ),
       },
       {
-        name: t('label.add-entity', {
-          entity: t('label.custom-property'),
+        name: t(LABEL_ADD_ENTITY, {
+          entity: t(LABEL_CUSTOM_PROPERTY),
         }),
         url: '',
       },
@@ -258,19 +265,19 @@ const AddCustomProperty = ({
       {
         name: 'name',
         required: true,
-        label: t('label.name'),
+        label: t(LABEL_NAME),
         id: 'root/name',
         type: FieldTypes.UT_TEXT,
         props: {
           'data-testid': 'name',
           autoComplete: 'off',
         },
-        placeholder: t('label.name'),
+        placeholder: t(LABEL_NAME),
         rules: [
           {
             max: 256,
             message: t('message.entity-size-in-between', {
-              entity: t('label.name'),
+              entity: t(LABEL_NAME),
               min: 1,
               max: 256,
             }),
@@ -295,11 +302,11 @@ const AddCustomProperty = ({
       {
         name: 'propertyType',
         required: true,
-        label: t('label.type'),
+        label: t(LABEL_TYPE),
         id: 'root/propertyType',
         type: FieldTypes.UT_SELECT,
         placeholder: `${t('label.select-field', {
-          field: t('label.type'),
+          field: t(LABEL_TYPE),
         })}`,
         props: {
           'data-testid': 'propertyType',
@@ -343,13 +350,13 @@ const AddCustomProperty = ({
     () => ({
       name: 'enumConfig',
       required: false,
-      label: t('label.enum-value-plural'),
+      label: t(LABEL_ENUM_VALUE_PLURAL),
       id: 'root/enumConfig',
       type: FieldTypes.SELECT,
       props: {
         'data-testid': 'enumConfig',
         mode: 'tags',
-        placeholder: t('label.enum-value-plural'),
+        placeholder: t(LABEL_ENUM_VALUE_PLURAL),
         open: false,
         className: 'trim-select',
         getPopupContainer: (triggerNode: HTMLElement) =>
@@ -359,7 +366,7 @@ const AddCustomProperty = ({
         {
           required: true,
           message: t('label.field-required', {
-            field: t('label.enum-value-plural'),
+            field: t(LABEL_ENUM_VALUE_PLURAL),
           }),
         },
       ],
@@ -386,7 +393,7 @@ const AddCustomProperty = ({
     () => ({
       name: 'formatConfig',
       required: false,
-      label: t('label.format'),
+      label: t(LABEL_FORMAT),
       id: 'root/formatConfig',
       type: FieldTypes.UT_SELECT,
       props: {
@@ -396,14 +403,14 @@ const AddCustomProperty = ({
           label: option,
         })),
       },
-      placeholder: t('label.format'),
+      placeholder: t(LABEL_FORMAT),
       rules: [
         {
           validator: (_, value) => {
             if (value && !supportedFormats.includes(value)) {
               return Promise.reject(
                 t('label.field-invalid', {
-                  field: t('label.format'),
+                  field: t(LABEL_FORMAT),
                 })
               );
             }
@@ -428,7 +435,7 @@ const AddCustomProperty = ({
         options: ENTITY_REFERENCE_OPTIONS,
         'data-testid': 'entityReferenceConfig',
         placeholder: `${t('label.select-field', {
-          field: t('label.type'),
+          field: t(LABEL_TYPE),
         })}`,
         getPopupContainer: (triggerNode: HTMLElement) =>
           triggerNode.parentElement ?? document.body,
@@ -442,13 +449,13 @@ const AddCustomProperty = ({
       {
         name: 'columns',
         required: true,
-        label: t('label.column-plural'),
+        label: t(LABEL_COLUMN_PLURAL),
         id: 'root/columns',
         type: FieldTypes.SELECT,
         props: {
           'data-testid': 'columns',
           mode: 'tags',
-          placeholder: t('label.column-plural'),
+          placeholder: t(LABEL_COLUMN_PLURAL),
           getPopupContainer: (triggerNode: HTMLElement) =>
             triggerNode.parentElement ?? document.body,
         },
@@ -460,12 +467,12 @@ const AddCustomProperty = ({
                 if (value.length > 3) {
                   throw t('message.maximum-count-allowed', {
                     count: 3,
-                    label: t('label.column-plural'),
+                    label: t(LABEL_COLUMN_PLURAL),
                   });
                 }
               } else {
                 throw t('label.field-required', {
-                  field: t('label.column-plural'),
+                  field: t(LABEL_COLUMN_PLURAL),
                 });
               }
             },
@@ -632,8 +639,8 @@ const AddCustomProperty = ({
                 className="tw:text-primary"
                 size="text-lg"
                 weight="semibold">
-                {t('label.add-entity', {
-                  entity: t('label.custom-property'),
+                {t(LABEL_ADD_ENTITY, {
+                  entity: t(LABEL_CUSTOM_PROPERTY),
                 })}
               </Typography>
               <div className="tw:mr-8 tw:flex tw:items-center tw:gap-2">
@@ -721,8 +728,8 @@ const AddCustomProperty = ({
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.add-entity', {
-        entity: t('label.custom-property'),
+      pageTitle={t(LABEL_ADD_ENTITY, {
+        entity: t(LABEL_CUSTOM_PROPERTY),
       })}
       secondPanel={{
         children: secondPanelChildren,

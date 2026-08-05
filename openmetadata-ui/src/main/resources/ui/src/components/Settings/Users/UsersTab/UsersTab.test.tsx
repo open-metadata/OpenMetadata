@@ -17,6 +17,8 @@ import { getUserById } from '../../../../rest/userAPI';
 import { mockUsersTabData } from '../mocks/User.mocks';
 import { UsersTab } from './UsersTabs.component';
 
+const AARON_JOHNSON = 'Aaron Johnson';
+
 jest.mock('../../../../rest/userAPI', () => ({
   getUserById: jest
     .fn()
@@ -34,7 +36,7 @@ jest.mock('react-router-dom', () => ({
 const mockUsers = [
   {
     deleted: false,
-    displayName: 'Aaron Johnson',
+    displayName: AARON_JOHNSON,
     fullyQualifiedName: 'aaron_johnson0',
     href: 'http://localhost:8585/api/v1/users/f281e7fd-5fd3-4279-8a2d-ade80febd743',
     id: 'f281e7fd-5fd3-4279-8a2d-ade80febd743',
@@ -70,7 +72,7 @@ describe('UsersTab', () => {
       });
     });
 
-    expect(await screen.findAllByText('Aaron Johnson')).toHaveLength(2);
+    expect(await screen.findAllByText(AARON_JOHNSON)).toHaveLength(2);
     expect(await screen.findByText('Sales')).toBeInTheDocument();
     expect(await screen.findByText('Data Steward')).toBeInTheDocument();
   });

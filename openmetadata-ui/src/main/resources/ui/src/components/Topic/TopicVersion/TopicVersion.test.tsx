@@ -17,6 +17,7 @@ import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { topicVersionMockProps } from '../../../mocks/TopicVersion.mock';
 import TopicVersion from './TopicVersion.component';
 
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural';
 const mockPush = jest.fn();
 
 jest.mock(
@@ -89,7 +90,7 @@ describe('TopicVersion tests', () => {
     const description = screen.getByText('Description');
     const schemaTabLabel = screen.getByText('label.schema');
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
     const topicSchema = screen.getByText('TopicSchema');
@@ -116,7 +117,7 @@ describe('TopicVersion tests', () => {
     );
     const schemaTabLabel = screen.queryByText('label.schema');
     const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const topicSchema = screen.queryByText('TopicSchema');
 
@@ -137,7 +138,7 @@ describe('TopicVersion tests', () => {
     );
 
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
 
     expect(customPropertyTabLabel).toBeInTheDocument();
@@ -167,7 +168,7 @@ describe('TopicVersion tests', () => {
       );
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       fireEvent.click(customPropertyTabLabel);
@@ -192,7 +193,7 @@ describe('TopicVersion tests', () => {
       );
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       fireEvent.click(customPropertyTabLabel);
@@ -217,7 +218,7 @@ describe('TopicVersion tests', () => {
       );
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();

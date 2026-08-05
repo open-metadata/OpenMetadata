@@ -63,6 +63,8 @@ import {
 } from './DataQualityTab.interface';
 import './DataQualityTab.less';
 
+const LABEL_INCIDENT_PLURAL = 'label.incident-plural';
+const DATA_QUALITY = 'data-quality';
 const DetailItem: React.FC<DetailItemProps> = ({
   label,
   value,
@@ -269,7 +271,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     total: 0,
   });
   const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
-  const [activeTab, setActiveTab] = useState<string>('data-quality');
+  const [activeTab, setActiveTab] = useState<string>(DATA_QUALITY);
   const [searchText, setSearchText] = useState<string>('');
 
   // Incident-related state
@@ -647,7 +649,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       <div className="no-incidents">
         <Typography.Text className="text-grey-muted">
           {t('message.no-entity-found-for-name', {
-            entity: t('label.incident-plural'),
+            entity: t(LABEL_INCIDENT_PLURAL),
             name: `${t('label.type-filed-name', {
               fieldName: startCase(activeIncidentFilter),
             })}`,
@@ -804,7 +806,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             <SearchBarComponent
               containerClassName="searchbar-container"
               placeholder={t('label.search-for-type', {
-                type: t('label.incident-plural'),
+                type: t(LABEL_INCIDENT_PLURAL),
               })}
               searchValue={searchText}
               typingInterval={350}
@@ -820,16 +822,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   // Tab items configuration
   const tabItems = [
     {
-      key: 'data-quality',
+      key: DATA_QUALITY,
       label: (
         <span
           className={`tab-header-container ${
-            activeTab === 'data-quality' ? 'active' : ''
+            activeTab === DATA_QUALITY ? 'active' : ''
           }`}>
           {t('label.data-quality')}
           <span
             className={`data-quality-tab-count ${
-              activeTab === 'data-quality' ? 'active' : ''
+              activeTab === DATA_QUALITY ? 'active' : ''
             }`}>
             {statusCounts.total}
           </span>
@@ -844,7 +846,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           className={`tab-header-container ${
             activeTab === 'incidents' ? 'active' : ''
           }`}>
-          {t('label.incident-plural')}
+          {t(LABEL_INCIDENT_PLURAL)}
 
           <span
             className={`data-quality-tab-count ${

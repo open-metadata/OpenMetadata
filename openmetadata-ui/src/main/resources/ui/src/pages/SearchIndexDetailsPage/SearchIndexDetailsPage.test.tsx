@@ -20,6 +20,11 @@ import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import SearchIndexDetailsPage from './SearchIndexDetailsPage';
 
+const TEST_SERVICE_TEST_SEARCH_INDEX =
+  'test-service.test-search-index' as const;
+const FIELDS_FOLLOWERS_TAGS_OWNERS_DOMAINS_VOTES =
+  'fields,followers,tags,owners,domains,votes,dataProducts,extension' as const;
+
 const renderPage = () =>
   renderWithQueryClient(
     <MemoryRouter>
@@ -179,7 +184,7 @@ describe('SearchIndexDetailsPage component', () => {
     await waitFor(() => {
       expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
         'searchIndex',
-        'test-service.test-search-index'
+        TEST_SERVICE_TEST_SEARCH_INDEX
       );
     });
   });
@@ -222,10 +227,9 @@ describe('SearchIndexDetailsPage component', () => {
     await waitFor(
       () => {
         expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
-          'test-service.test-search-index',
+          TEST_SERVICE_TEST_SEARCH_INDEX,
           {
-            fields:
-              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+            fields: FIELDS_FOLLOWERS_TAGS_OWNERS_DOMAINS_VOTES,
           }
         );
       },
@@ -247,10 +251,9 @@ describe('SearchIndexDetailsPage component', () => {
     await waitFor(
       () => {
         expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
-          'test-service.test-search-index',
+          TEST_SERVICE_TEST_SEARCH_INDEX,
           {
-            fields:
-              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+            fields: FIELDS_FOLLOWERS_TAGS_OWNERS_DOMAINS_VOTES,
           }
         );
       },
@@ -277,10 +280,9 @@ describe('SearchIndexDetailsPage component', () => {
     await waitFor(
       () => {
         expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
-          'test-service.test-search-index',
+          TEST_SERVICE_TEST_SEARCH_INDEX,
           {
-            fields:
-              'fields,followers,tags,owners,domains,votes,dataProducts,extension',
+            fields: FIELDS_FOLLOWERS_TAGS_OWNERS_DOMAINS_VOTES,
           }
         );
       },
@@ -296,7 +298,7 @@ describe('SearchIndexDetailsPage component', () => {
     const mockSearchIndexData = {
       name: 'test-search-index',
       id: '123',
-      fullyQualifiedName: 'test-service.test-search-index',
+      fullyQualifiedName: TEST_SERVICE_TEST_SEARCH_INDEX,
     };
 
     (getSearchIndexDetailsByFQN as jest.Mock).mockImplementation(() =>

@@ -21,6 +21,13 @@ import { Edge, Node } from 'reactflow';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
 
+const _5C97531F_D164_4707_842E_AF52E0C43E26 =
+  '5c97531f-d164-4707-842e-af52e0c43e26';
+const _5D816D56_40A2_493F_AE9D_012F1CD337DD =
+  '5d816d56-40a2-493f-ae9d-012f1cd337dd';
+const LABEL_DESCRIPTION = 'label.description';
+const SERVER_NO_QUERY_AVAILABLE = 'server.no-query-available';
+
 jest.mock(
   '../../../components/common/DescriptionSection/DescriptionSection',
   () =>
@@ -88,11 +95,11 @@ const mockOnEdgeDetailsUpdate = jest.fn();
 // Create nodes that match the edge source/target IDs
 const createMockNodes = (): Node[] => [
   {
-    id: '5c97531f-d164-4707-842e-af52e0c43e26',
+    id: _5C97531F_D164_4707_842E_AF52E0C43E26,
     position: { x: 0, y: 0 },
     data: {
       node: {
-        id: '5c97531f-d164-4707-842e-af52e0c43e26',
+        id: _5C97531F_D164_4707_842E_AF52E0C43E26,
         type: 'table',
         name: 'stg_orders',
         fullyQualifiedName: 'RedshiftProd.dev.demo_dbt_jaffle.stg_orders',
@@ -101,11 +108,11 @@ const createMockNodes = (): Node[] => [
     },
   },
   {
-    id: '5d816d56-40a2-493f-ae9d-012f1cd337dd',
+    id: _5D816D56_40A2_493F_AE9D_012F1CD337DD,
     position: { x: 0, y: 0 },
     data: {
       node: {
-        id: '5d816d56-40a2-493f-ae9d-012f1cd337dd',
+        id: _5D816D56_40A2_493F_AE9D_012F1CD337DD,
         type: 'table',
         name: 'customers',
         fullyQualifiedName: 'RedshiftProd.dev.demo_dbt_jaffle.customers',
@@ -118,8 +125,8 @@ const createMockNodes = (): Node[] => [
 const mockEdgeInfoDrawer = {
   edge: {
     id: 'edge-5c97531f-d164-4707-842e-af52e0c43e26-5d816d56-40a2-493f-ae9d-012f1cd337dd',
-    source: '5c97531f-d164-4707-842e-af52e0c43e26',
-    target: '5d816d56-40a2-493f-ae9d-012f1cd337dd',
+    source: _5C97531F_D164_4707_842E_AF52E0C43E26,
+    target: _5D816D56_40A2_493F_AE9D_012F1CD337DD,
     type: 'buttonedge',
     animated: false,
     style: {
@@ -132,13 +139,13 @@ const mockEdgeInfoDrawer = {
       edge: {
         toEntity: {
           fqn: 'RedshiftProd.dev.demo_dbt_jaffle.customers',
-          id: '5d816d56-40a2-493f-ae9d-012f1cd337dd',
+          id: _5D816D56_40A2_493F_AE9D_012F1CD337DD,
           type: 'table',
         },
         pipeline: null,
         fromEntity: {
           fqn: 'RedshiftProd.dev.demo_dbt_jaffle.stg_orders',
-          id: '5c97531f-d164-4707-842e-af52e0c43e26',
+          id: _5C97531F_D164_4707_842E_AF52E0C43E26,
           type: 'table',
         },
         sqlQuery: null,
@@ -170,7 +177,7 @@ describe('EdgeInfoDrawer Component', () => {
     expect(
       await screen.findByText('label.edge-information')
     ).toBeInTheDocument();
-    expect(await screen.findByText('label.description')).toBeInTheDocument();
+    expect(await screen.findByText(LABEL_DESCRIPTION)).toBeInTheDocument();
     expect(
       await screen.findByText('label.sql-uppercase-query')
     ).toBeInTheDocument();
@@ -181,7 +188,7 @@ describe('EdgeInfoDrawer Component', () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
 
     expect(
-      await screen.findByText('server.no-query-available')
+      await screen.findByText(SERVER_NO_QUERY_AVAILABLE)
     ).toBeInTheDocument();
   });
 
@@ -195,7 +202,7 @@ describe('EdgeInfoDrawer Component', () => {
   it('should call onEdgeDetailsUpdate on update description', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
 
-    await screen.findByText('label.description');
+    await screen.findByText(LABEL_DESCRIPTION);
 
     const editButton = (await screen.findAllByTestId('edit-description'))[0];
 
@@ -209,7 +216,7 @@ describe('EdgeInfoDrawer Component', () => {
   it('should not render edit button if has no edit access', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} hasEditAccess={false} />);
 
-    await screen.findByText('label.description');
+    await screen.findByText(LABEL_DESCRIPTION);
 
     expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
@@ -303,7 +310,7 @@ describe('EdgeInfoDrawer Component', () => {
       'CREATE TABLE customers AS SELECT * FROM stg_orders'
     );
     expect(
-      screen.queryByText('server.no-query-available')
+      screen.queryByText(SERVER_NO_QUERY_AVAILABLE)
     ).not.toBeInTheDocument();
   });
 
@@ -366,7 +373,7 @@ describe('EdgeInfoDrawer Component', () => {
     );
 
     expect(
-      await screen.findByText('server.no-query-available')
+      await screen.findByText(SERVER_NO_QUERY_AVAILABLE)
     ).toBeInTheDocument();
   });
 

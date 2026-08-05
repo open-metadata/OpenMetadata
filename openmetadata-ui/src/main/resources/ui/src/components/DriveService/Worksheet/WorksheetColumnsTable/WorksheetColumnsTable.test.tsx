@@ -24,6 +24,8 @@ import { LabelType, State } from '../../../../generated/type/tagLabel';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import WorksheetColumnsTable from './WorksheetColumnsTable';
 
+const WORKSHEET_DATA_MODEL_TABLE = 'worksheet-data-model-table';
+const UNIQUE_IDENTIFIER_COLUMN = 'Unique identifier column';
 jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name),
 }));
@@ -143,7 +145,7 @@ const mockColumns: Column[] = [
     displayName: 'ID Column',
     dataType: DataType.Int,
     dataTypeDisplay: 'integer',
-    description: 'Unique identifier column',
+    description: UNIQUE_IDENTIFIER_COLUMN,
     constraint: Constraint.PrimaryKey,
     tags: [
       {
@@ -258,9 +260,7 @@ describe('WorksheetColumnsTable', () => {
   it('should render worksheet columns table successfully', () => {
     renderWorksheetColumnsTable();
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should display columns data correctly', () => {
@@ -292,7 +292,7 @@ describe('WorksheetColumnsTable', () => {
   it('should display column descriptions', () => {
     renderWorksheetColumnsTable();
 
-    expect(screen.getByText('Unique identifier column')).toBeInTheDocument();
+    expect(screen.getByText(UNIQUE_IDENTIFIER_COLUMN)).toBeInTheDocument();
     expect(
       screen.getByText('Name field with personal information')
     ).toBeInTheDocument();
@@ -317,10 +317,8 @@ describe('WorksheetColumnsTable', () => {
   it('should handle column description edit click', async () => {
     renderWorksheetColumnsTable();
 
-    expect(screen.getByText('Unique identifier column')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByText(UNIQUE_IDENTIFIER_COLUMN)).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle column description save', async () => {
@@ -329,19 +327,15 @@ describe('WorksheetColumnsTable', () => {
 
     renderWorksheetColumnsTable();
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
-    expect(screen.getByText('Unique identifier column')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
+    expect(screen.getByText(UNIQUE_IDENTIFIER_COLUMN)).toBeInTheDocument();
   });
 
   it('should handle column description cancel', async () => {
     renderWorksheetColumnsTable();
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
-    expect(screen.getByText('Unique identifier column')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
+    expect(screen.getByText(UNIQUE_IDENTIFIER_COLUMN)).toBeInTheDocument();
   });
 
   it('should disable editing when worksheet is deleted', () => {
@@ -349,9 +343,7 @@ describe('WorksheetColumnsTable', () => {
       deleted: true,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle limited edit permissions', () => {
@@ -365,25 +357,19 @@ describe('WorksheetColumnsTable', () => {
       }
     );
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should display table tags for classification tags', () => {
     renderWorksheetColumnsTable();
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should display table tags for glossary terms', () => {
     renderWorksheetColumnsTable();
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle columns with constraints', () => {
@@ -402,9 +388,7 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithoutDisplayName,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle columns without descriptions', () => {
@@ -417,9 +401,7 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithoutDescription,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle columns without tags', () => {
@@ -432,17 +414,13 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithoutTags,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle nested columns (children)', () => {
     renderWorksheetColumnsTable();
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle columns with different data types', () => {
@@ -468,9 +446,7 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithVariousTypes,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle long column names gracefully', () => {
@@ -487,9 +463,7 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithLongNames,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle columns with special characters', () => {
@@ -505,9 +479,7 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithSpecialChars,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle columns without fullyQualifiedName', () => {
@@ -520,9 +492,7 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithoutFQN,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle worksheet without fullyQualifiedName', () => {
@@ -530,17 +500,13 @@ describe('WorksheetColumnsTable', () => {
       fullyQualifiedName: undefined,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should render table description components', () => {
     renderWorksheetColumnsTable();
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 
   it('should handle columns with mixed tag types', () => {
@@ -568,8 +534,6 @@ describe('WorksheetColumnsTable', () => {
       columns: columnsWithMixedTags,
     });
 
-    expect(
-      screen.getByTestId('worksheet-data-model-table')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_DATA_MODEL_TABLE)).toBeInTheDocument();
   });
 });

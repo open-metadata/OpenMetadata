@@ -60,6 +60,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+const LABEL_DOCUMENT = 'label.document';
+const LABEL_DOCUMENT_PLURAL = 'label.document-plural';
+
 const getSuccessfulIds = (result: BulkOperationResult): Set<string> =>
   new Set(
     (result.successRequest ?? [])
@@ -318,7 +321,7 @@ const ContextCenterDocumentsPage: FC = () => {
         }
         showErrorToast(
           `${t('message.no-entity-available-with-name', {
-            entity: t('label.document'),
+            entity: t(LABEL_DOCUMENT),
           })} "${documentId}"`
         );
         setSearchParams((prev) => {
@@ -368,7 +371,7 @@ const ContextCenterDocumentsPage: FC = () => {
       }
       showSuccessToast(
         t('server.entity-deleted-success', {
-          entity: t('label.document'),
+          entity: t(LABEL_DOCUMENT),
         })
       );
       setFileToDelete(undefined);
@@ -482,14 +485,14 @@ const ContextCenterDocumentsPage: FC = () => {
       if (deletedIds.size > 0) {
         showSuccessToast(
           t('server.entity-deleted-success', {
-            entity: t('label.document-plural'),
+            entity: t(LABEL_DOCUMENT_PLURAL),
           })
         );
       }
       if (failedCount > 0) {
         showErrorToast(
           t('server.delete-entity-error', {
-            entity: t('label.document-plural'),
+            entity: t(LABEL_DOCUMENT_PLURAL),
           })
         );
       }
@@ -563,14 +566,14 @@ const ContextCenterDocumentsPage: FC = () => {
         if (movedIds.size > 0) {
           showSuccessToast(
             t('message.entity-moved-successfully', {
-              entity: t('label.document-plural'),
+              entity: t(LABEL_DOCUMENT_PLURAL),
             })
           );
         }
         if (failedCount > 0) {
           showErrorToast(
             t('server.move-entity-error', {
-              entity: t('label.document-plural'),
+              entity: t(LABEL_DOCUMENT_PLURAL),
             })
           );
         }
@@ -623,16 +626,16 @@ const ContextCenterDocumentsPage: FC = () => {
         <ContextCenterHeader
           breadcrumbs={[
             {
-              label: t('label.document-plural'),
+              label: t(LABEL_DOCUMENT_PLURAL),
             },
           ]}
           hasPermission={hasCreatePermission}
           searchPlaceholder={t('label.search-entity', {
-            entity: t('label.document-plural'),
+            entity: t(LABEL_DOCUMENT_PLURAL),
           })}
           searchQuery={documentSearchQuery}
           subtitle={t('message.context-center-documents-subtitle')}
-          title={t('label.document-plural')}
+          title={t(LABEL_DOCUMENT_PLURAL)}
           onSearch={setDocumentSearchQuery}
           onUploadFile={() => setIsUploadModalOpen(true)}
         />
@@ -775,7 +778,7 @@ const ContextCenterDocumentsPage: FC = () => {
           entityTitle={getEntityName(fileToDelete)}
           isDeleting={isDeletingFile}
           message={t('message.soft-delete-archive-message', {
-            entity: t('label.document').toLowerCase(),
+            entity: t(LABEL_DOCUMENT).toLowerCase(),
           })}
           open={Boolean(fileToDelete)}
           onCancel={handleCancelDelete}
@@ -785,15 +788,15 @@ const ContextCenterDocumentsPage: FC = () => {
 
       <DeleteModal
         entityTitle={`${selectedIds.size} ${(selectedIds.size === 1
-          ? t('label.document')
-          : t('label.document-plural')
+          ? t(LABEL_DOCUMENT)
+          : t(LABEL_DOCUMENT_PLURAL)
         ).toLowerCase()}`}
         isDeleting={isBulkDeleting}
         message={t('message.soft-delete-message-for-n-entities', {
           count: selectedIds.size,
           entity: (selectedIds.size === 1
-            ? t('label.document')
-            : t('label.document-plural')
+            ? t(LABEL_DOCUMENT)
+            : t(LABEL_DOCUMENT_PLURAL)
           ).toLowerCase(),
         })}
         open={isBulkDeleteModalOpen}

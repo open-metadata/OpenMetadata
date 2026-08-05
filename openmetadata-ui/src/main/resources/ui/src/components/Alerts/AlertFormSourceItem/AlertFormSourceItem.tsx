@@ -30,6 +30,8 @@ import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUt
 import './alert-form-source-item.less';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
+const LABEL_DATA_ASSET_PLURAL = 'label.data-asset-plural';
+
 function AlertFormSourceItem({
   filterResources,
 }: Readonly<AlertFormSourceItemProps>) {
@@ -67,7 +69,7 @@ function AlertFormSourceItem({
         className="source-dropdown-card"
         data-testid="drop-down-menu">
         <Typography.Text className="p-l-md text-grey-muted">
-          {t('label.data-asset-plural')}
+          {t(LABEL_DATA_ASSET_PLURAL)}
         </Typography.Text>
         <div className="p-t-xss">{menuNode}</div>
       </Card>
@@ -104,7 +106,7 @@ function AlertFormSourceItem({
               : undefined
           }
           messageVariables={{
-            fieldName: t('label.data-asset-plural'),
+            fieldName: t(LABEL_DATA_ASSET_PLURAL),
           }}
           name={['resources']}
           rules={[
@@ -121,7 +123,7 @@ function AlertFormSourceItem({
               data-testid="source-select"
               options={resourcesOptions}
               placeholder={t('label.select-field', {
-                field: t('label.data-asset-plural'),
+                field: t(LABEL_DATA_ASSET_PLURAL),
               })}
               value={selectedResource[0]}
               onChange={handleSourceChange}

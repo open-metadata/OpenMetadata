@@ -25,6 +25,12 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import SpreadsheetsTable from './SpreadsheetsTable';
 import { SpreadsheetsTableProps } from './SpreadsheetsTable.interface';
 
+const SPREADSHEETS_TABLE = 'spreadsheets-table' as const;
+const TEST_DRIVE_SERVICE = 'test-drive-service' as const;
+const TEST_DRIVE_SERVICE_1 = 'Test Drive Service' as const;
+const SPREADSHEET_ROW_0 = 'spreadsheet-row-0' as const;
+const SHOW_DELETED = 'show-deleted' as const;
+
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../../utils/TableColumn.util');
@@ -92,9 +98,9 @@ const mockSpreadsheets: Spreadsheet[] = [
     service: {
       id: 'service-1',
       type: 'driveService',
-      name: 'test-drive-service',
-      fullyQualifiedName: 'test-drive-service',
-      displayName: 'Test Drive Service',
+      name: TEST_DRIVE_SERVICE,
+      fullyQualifiedName: TEST_DRIVE_SERVICE,
+      displayName: TEST_DRIVE_SERVICE_1,
       deleted: false,
     },
     deleted: false,
@@ -113,9 +119,9 @@ const mockSpreadsheets: Spreadsheet[] = [
     service: {
       id: 'service-1',
       type: 'driveService',
-      name: 'test-drive-service',
-      fullyQualifiedName: 'test-drive-service',
-      displayName: 'Test Drive Service',
+      name: TEST_DRIVE_SERVICE,
+      fullyQualifiedName: TEST_DRIVE_SERVICE,
+      displayName: TEST_DRIVE_SERVICE_1,
       deleted: false,
     },
     deleted: false,
@@ -134,9 +140,9 @@ const mockSpreadsheets: Spreadsheet[] = [
     service: {
       id: 'service-1',
       type: 'driveService',
-      name: 'test-drive-service',
-      fullyQualifiedName: 'test-drive-service',
-      displayName: 'Test Drive Service',
+      name: TEST_DRIVE_SERVICE,
+      fullyQualifiedName: TEST_DRIVE_SERVICE,
+      displayName: TEST_DRIVE_SERVICE_1,
       deleted: false,
     },
     deleted: true,
@@ -193,14 +199,14 @@ describe('SpreadsheetsTable', () => {
   it('should render spreadsheets table successfully', () => {
     renderSpreadsheetsTable();
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
     expect(screen.getByTestId('table-filters')).toBeInTheDocument();
   });
 
   it('should display spreadsheets data correctly', () => {
     renderSpreadsheetsTable();
 
-    expect(screen.getByTestId('spreadsheet-row-0')).toHaveTextContent(
+    expect(screen.getByTestId(SPREADSHEET_ROW_0)).toHaveTextContent(
       'sales_data'
     );
     expect(screen.getByTestId('spreadsheet-row-1')).toHaveTextContent(
@@ -222,7 +228,7 @@ describe('SpreadsheetsTable', () => {
   it('should render show deleted toggle in filters', () => {
     renderSpreadsheetsTable();
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
 
     expect(deleteToggle).toBeInTheDocument();
     expect(deleteToggle).not.toBeChecked();
@@ -234,7 +240,7 @@ describe('SpreadsheetsTable', () => {
       handleShowDeleted: mockHandleShowDeleted,
     });
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
     fireEvent.click(deleteToggle);
 
     await waitFor(() => {
@@ -254,7 +260,7 @@ describe('SpreadsheetsTable', () => {
       showDeleted: true,
     });
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
 
     expect(deleteToggle).toBeChecked();
   });
@@ -283,8 +289,8 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: [],
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
-    expect(screen.queryByTestId('spreadsheet-row-0')).not.toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
+    expect(screen.queryByTestId(SPREADSHEET_ROW_0)).not.toBeInTheDocument();
   });
 
   it('should handle different page sizes', () => {
@@ -321,7 +327,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: spreadsheetsWithoutDescription,
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
   });
 
   it('should handle spreadsheets with rich description content', () => {
@@ -337,7 +343,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: spreadsheetsWithRichDescription,
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
   });
 
   it('should handle pagination when showing all data', () => {
@@ -350,7 +356,7 @@ describe('SpreadsheetsTable', () => {
       paging: largePaging,
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
   });
 
   it('should handle spreadsheets with long names', () => {
@@ -367,7 +373,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: spreadsheetsWithLongNames,
     });
 
-    expect(screen.getByTestId('spreadsheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle spreadsheets without displayName gracefully', () => {
@@ -382,7 +388,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: spreadsheetsWithoutDisplayName as Spreadsheet[],
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
   });
 
   it('should show correct number of spreadsheets', () => {
@@ -400,7 +406,7 @@ describe('SpreadsheetsTable', () => {
       handleShowDeleted: mockHandleShowDeleted,
     });
 
-    const deleteToggle = screen.getByTestId('show-deleted');
+    const deleteToggle = screen.getByTestId(SHOW_DELETED);
 
     fireEvent.click(deleteToggle);
 
@@ -414,7 +420,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: [],
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
   });
 
   it('should handle spreadsheets with undefined fullyQualifiedName', () => {
@@ -429,7 +435,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: spreadsheetsWithUndefinedFQN as Spreadsheet[],
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
   });
 
   it('should handle spreadsheets with complex tag structures', () => {
@@ -459,7 +465,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: spreadsheetsWithComplexTags,
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
   });
 
   it('should handle mixed deleted and active spreadsheets', () => {
@@ -473,7 +479,7 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: mixedSpreadsheets,
     });
 
-    expect(screen.getByTestId('spreadsheets-table')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEETS_TABLE)).toBeInTheDocument();
     expect(screen.getAllByTestId(/spreadsheet-row-/)).toHaveLength(3);
   });
 
@@ -490,6 +496,6 @@ describe('SpreadsheetsTable', () => {
       spreadsheets: spreadsheetsWithSpecialChars,
     });
 
-    expect(screen.getByTestId('spreadsheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(SPREADSHEET_ROW_0)).toBeInTheDocument();
   });
 });

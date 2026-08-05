@@ -25,6 +25,9 @@ import { LineageLayer } from '../../../../generated/settings/settings';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import LineageSearchSelect from './LineageSearchSelect';
 
+const LINEAGE_SEARCH = 'lineage-search' as const;
+const ANT_SELECT_SELECTOR = '.ant-select-selector' as const;
+
 const mockedNodes = [
   {
     data: {
@@ -99,11 +102,11 @@ describe('LineageSearchSelect', () => {
   it('should render select with options', async () => {
     const { container } = render(<LineageSearchSelect />);
     await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
+      expect(screen.getByTestId(LINEAGE_SEARCH)).toBeInTheDocument();
     });
 
     await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
+      const selectElm = container.querySelector(ANT_SELECT_SELECTOR);
       selectElm && userEvent.click(selectElm);
     });
 
@@ -115,11 +118,11 @@ describe('LineageSearchSelect', () => {
   it('should call onNodeClick and center the node', async () => {
     const { container } = render(<LineageSearchSelect />);
     await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
+      expect(screen.getByTestId(LINEAGE_SEARCH)).toBeInTheDocument();
     });
 
     await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
+      const selectElm = container.querySelector(ANT_SELECT_SELECTOR);
       selectElm && userEvent.click(selectElm);
     });
 
@@ -136,11 +139,11 @@ describe('LineageSearchSelect', () => {
   it('should call onColumnClick', async () => {
     const { container } = render(<LineageSearchSelect />);
     await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
+      expect(screen.getByTestId(LINEAGE_SEARCH)).toBeInTheDocument();
     });
 
     await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
+      const selectElm = container.querySelector(ANT_SELECT_SELECTOR);
       selectElm && userEvent.click(selectElm);
     });
 
@@ -182,18 +185,18 @@ describe('LineageSearchSelect', () => {
     }));
     const { container } = render(<LineageSearchSelect />);
     await waitFor(() => {
-      expect(screen.getByTestId('lineage-search')).toBeInTheDocument();
+      expect(screen.getByTestId(LINEAGE_SEARCH)).toBeInTheDocument();
     });
 
     // Open dropdown
     await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
+      const selectElm = container.querySelector(ANT_SELECT_SELECTOR);
       selectElm && userEvent.click(selectElm);
     });
 
     // Close dropdown
     await act(async () => {
-      const selectElm = container.querySelector('.ant-select-selector');
+      const selectElm = container.querySelector(ANT_SELECT_SELECTOR);
       selectElm && userEvent.click(selectElm);
     });
 

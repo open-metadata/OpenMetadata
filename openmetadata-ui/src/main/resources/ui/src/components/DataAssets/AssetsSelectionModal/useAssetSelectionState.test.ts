@@ -33,6 +33,9 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
+const GLOSSARY_TERM = 'glossary.term';
+const DATA_PRODUCT_2 = 'data.product';
+const DOMAIN_NAME = 'domain.name';
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
@@ -103,15 +106,15 @@ describe('useAssetSelectionState', () => {
     (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([]));
     (getGlossaryTermByFQN as jest.Mock).mockResolvedValue({
       id: 'glossary-term-id',
-      fullyQualifiedName: 'glossary.term',
+      fullyQualifiedName: GLOSSARY_TERM,
     });
     (getDomainByName as jest.Mock).mockResolvedValue({
       id: 'domain-id',
-      fullyQualifiedName: 'domain.name',
+      fullyQualifiedName: DOMAIN_NAME,
     });
     (getDataProductByName as jest.Mock).mockResolvedValue({
       id: 'data-product-id',
-      fullyQualifiedName: 'data.product',
+      fullyQualifiedName: DATA_PRODUCT_2,
     });
     (getTagByFqn as jest.Mock).mockResolvedValue({
       id: 'tag-id',
@@ -124,7 +127,7 @@ describe('useAssetSelectionState', () => {
   ) =>
     renderHook(() =>
       useAssetSelectionState({
-        entityFqn: 'glossary.term',
+        entityFqn: GLOSSARY_TERM,
         open: true,
         type: AssetsOfEntity.GLOSSARY,
         variant: 'modal',
@@ -189,7 +192,7 @@ describe('useAssetSelectionState', () => {
 
     await waitFor(() => {
       expect(getGlossaryTermByFQN).toHaveBeenCalledWith(
-        'glossary.term',
+        GLOSSARY_TERM,
         expect.anything()
       );
     });
@@ -199,7 +202,7 @@ describe('useAssetSelectionState', () => {
     renderAssetSelectionState({ type: AssetsOfEntity.DOMAIN });
 
     await waitFor(() => {
-      expect(getDomainByName).toHaveBeenCalledWith('glossary.term');
+      expect(getDomainByName).toHaveBeenCalledWith(GLOSSARY_TERM);
     });
   });
 
@@ -208,7 +211,7 @@ describe('useAssetSelectionState', () => {
 
     await waitFor(() => {
       expect(getDataProductByName).toHaveBeenCalledWith(
-        'glossary.term',
+        GLOSSARY_TERM,
         expect.anything()
       );
     });
@@ -218,7 +221,7 @@ describe('useAssetSelectionState', () => {
     renderAssetSelectionState({ type: AssetsOfEntity.TAG });
 
     await waitFor(() => {
-      expect(getTagByFqn).toHaveBeenCalledWith('glossary.term');
+      expect(getTagByFqn).toHaveBeenCalledWith(GLOSSARY_TERM);
     });
   });
 
@@ -468,7 +471,7 @@ describe('useAssetSelectionState', () => {
       });
 
       expect(addAssetsToDataProduct).toHaveBeenCalledWith(
-        'data.product',
+        DATA_PRODUCT_2,
         expect.any(Array)
       );
     });
@@ -492,7 +495,7 @@ describe('useAssetSelectionState', () => {
       });
 
       expect(addInputPortsToDataProduct).toHaveBeenCalledWith(
-        'data.product',
+        DATA_PRODUCT_2,
         expect.any(Array)
       );
     });
@@ -516,7 +519,7 @@ describe('useAssetSelectionState', () => {
       });
 
       expect(addOutputPortsToDataProduct).toHaveBeenCalledWith(
-        'data.product',
+        DATA_PRODUCT_2,
         expect.any(Array)
       );
     });
@@ -672,7 +675,7 @@ describe('useAssetSelectionState', () => {
       });
 
       expect(addAssetsToDomain).toHaveBeenCalledWith(
-        'domain.name',
+        DOMAIN_NAME,
         expect.any(Array),
         { dryRun: true }
       );
@@ -706,7 +709,7 @@ describe('useAssetSelectionState', () => {
 
       expect(addAssetsToDomain).toHaveBeenCalledTimes(2);
       expect(addAssetsToDomain).toHaveBeenLastCalledWith(
-        'domain.name',
+        DOMAIN_NAME,
         expect.any(Array)
       );
     });
@@ -745,7 +748,7 @@ describe('useAssetSelectionState', () => {
 
       await waitFor(() => {
         expect(addAssetsToDomain).toHaveBeenCalledWith(
-          'domain.name',
+          DOMAIN_NAME,
           expect.any(Array)
         );
       });

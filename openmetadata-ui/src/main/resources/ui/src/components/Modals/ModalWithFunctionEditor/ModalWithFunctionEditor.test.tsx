@@ -21,6 +21,8 @@ import { AxiosError } from 'axios';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModalWithFunctionEditor } from './ModalWithFunctionEditor';
 
+const SELECT_FROM_TEST_TABLE = 'SELECT * FROM test_table';
+const SQL_FUNCTION_INPUT = 'sql-function-input';
 // Mock dependencies
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -38,7 +40,7 @@ const mockOnCancel = jest.fn();
 
 const mockProps = {
   header: 'Test Header',
-  value: 'SELECT * FROM test_table',
+  value: SELECT_FROM_TEST_TABLE,
   visible: true,
   onSave: mockOnSave,
   onCancel: mockOnCancel,
@@ -54,14 +56,14 @@ describe('ModalWithFunctionEditor', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('header')).toBeInTheDocument();
-      expect(screen.getByTestId('sql-function-input')).toBeInTheDocument();
+      expect(screen.getByTestId(SQL_FUNCTION_INPUT)).toBeInTheDocument();
     });
 
     expect(screen.getByTestId('header')).toHaveTextContent('Test Header');
 
-    const input = screen.getByTestId('sql-function-input');
+    const input = screen.getByTestId(SQL_FUNCTION_INPUT);
 
-    expect(input).toHaveValue('SELECT * FROM test_table');
+    expect(input).toHaveValue(SELECT_FROM_TEST_TABLE);
   });
 
   it('should call onCancel when the cancel button is clicked', async () => {
@@ -90,17 +92,17 @@ describe('ModalWithFunctionEditor', () => {
       fireEvent.click(saveButton);
     });
 
-    expect(mockOnSave).toHaveBeenCalledWith('SELECT * FROM test_table');
+    expect(mockOnSave).toHaveBeenCalledWith(SELECT_FROM_TEST_TABLE);
   });
 
   it('should update the input value when changed', async () => {
     render(<ModalWithFunctionEditor {...mockProps} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('sql-function-input')).toBeInTheDocument();
+      expect(screen.getByTestId(SQL_FUNCTION_INPUT)).toBeInTheDocument();
     });
 
-    const input = screen.getByTestId('sql-function-input');
+    const input = screen.getByTestId(SQL_FUNCTION_INPUT);
 
     await act(async () => {
       fireEvent.change(input, {
@@ -133,9 +135,7 @@ describe('ModalWithFunctionEditor', () => {
       expect(showErrorToast).toHaveBeenCalledWith(error);
     });
 
-    expect(mockOnSaveWithError).toHaveBeenCalledWith(
-      'SELECT * FROM test_table'
-    );
+    expect(mockOnSaveWithError).toHaveBeenCalledWith(SELECT_FROM_TEST_TABLE);
   });
 
   it('should validate required fields', async () => {

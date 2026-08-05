@@ -28,6 +28,9 @@ import {
   SubscriptionType,
 } from '../generated/events/eventSubscription';
 
+const ID_EC9C9AE5_ED82_4C4E_B2B1_A603940CBE0A =
+  '{"id":"ec9c9ae5-ed82-4c4e-b2b1-a603940cbe0a","name":"Glue","fullyQualifiedName":"Glue","serviceType":"Glue","deleted":false}' as const;
+
 export const mockAlertDetails: EventSubscription = {
   id: 'e8d4782b-9b5b-44e5-898c-4f6348d5579a',
   name: 'Test Alert',
@@ -195,8 +198,7 @@ export const mockFailedEventData: TypedEvent = {
           fieldsDeleted: [],
           previousVersion: 0.2,
         },
-        entity:
-          '{"id":"ec9c9ae5-ed82-4c4e-b2b1-a603940cbe0a","name":"Glue","fullyQualifiedName":"Glue","serviceType":"Glue","deleted":false}',
+        entity: ID_EC9C9AE5_ED82_4C4E_B2B1_A603940CBE0A,
       },
       reason:
         'Failed to publish event of destination type Slack due to Failed to publish event of destination type Slack due to testing dummy failed event  ',
@@ -221,8 +223,7 @@ export const MOCK_ALERT_RECENT_EVENTS: TypedEvent[] = [
         currentVersion: 0.1,
         userName: 'admin',
         timestamp: 1730871300272,
-        entity:
-          '{"id":"ec9c9ae5-ed82-4c4e-b2b1-a603940cbe0a","name":"Glue","fullyQualifiedName":"Glue","serviceType":"Glue","deleted":false}',
+        entity: ID_EC9C9AE5_ED82_4C4E_B2B1_A603940CBE0A,
       },
     ],
     timestamp: 1730871300272,
@@ -239,8 +240,7 @@ export const MOCK_ALERT_RECENT_EVENTS: TypedEvent[] = [
         currentVersion: 0.1,
         userName: 'admin',
         timestamp: 1730871300446,
-        entity:
-          '{"id":"ec9c9ae5-ed82-4c4e-b2b1-a603940cbe0a","name":"Glue","fullyQualifiedName":"Glue","serviceType":"Glue","deleted":false}',
+        entity: ID_EC9C9AE5_ED82_4C4E_B2B1_A603940CBE0A,
       },
     ],
     timestamp: 1730871300446,
@@ -257,8 +257,7 @@ export const MOCK_ALERT_RECENT_EVENTS: TypedEvent[] = [
         currentVersion: 0.1,
         userName: 'admin',
         timestamp: 1730871300505,
-        entity:
-          '{"id":"ec9c9ae5-ed82-4c4e-b2b1-a603940cbe0a","name":"Glue","fullyQualifiedName":"Glue","serviceType":"Glue","deleted":false}',
+        entity: ID_EC9C9AE5_ED82_4C4E_B2B1_A603940CBE0A,
       },
     ],
     timestamp: 1730871300505,
@@ -275,8 +274,7 @@ export const MOCK_ALERT_RECENT_EVENTS: TypedEvent[] = [
         currentVersion: 0.1,
         userName: 'admin',
         timestamp: 1730871300632,
-        entity:
-          '{"id":"ec9c9ae5-ed82-4c4e-b2b1-a603940cbe0a","name":"Glue","fullyQualifiedName":"Glue","serviceType":"Glue","deleted":false}',
+        entity: ID_EC9C9AE5_ED82_4C4E_B2B1_A603940CBE0A,
       },
     ],
     timestamp: 1730871300632,
@@ -293,8 +291,7 @@ export const MOCK_ALERT_RECENT_EVENTS: TypedEvent[] = [
         currentVersion: 0.1,
         userName: 'admin',
         timestamp: 1730871300743,
-        entity:
-          '{"id":"ec9c9ae5-ed82-4c4e-b2b1-a603940cbe0a","name":"Glue","fullyQualifiedName":"Glue","serviceType":"Glue","deleted":false}',
+        entity: ID_EC9C9AE5_ED82_4C4E_B2B1_A603940CBE0A,
       },
     ],
     timestamp: 1730871300743,

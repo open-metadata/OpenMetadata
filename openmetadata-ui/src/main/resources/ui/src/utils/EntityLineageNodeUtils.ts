@@ -48,6 +48,9 @@ import { getEntityName } from './EntityNameUtils';
 import { isDeleted } from './EntityStatusUtils';
 import { t } from './i18next/LocalUtil';
 
+const LABEL_COLUMN_PLURAL = 'label.column-plural';
+const LABEL_FIELD_PLURAL = 'label.field-plural';
+
 export function getEntityChildrenAndLabel(node: LineageNodeType) {
   if (!node) {
     return {
@@ -62,7 +65,7 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
   > = {
     [EntityType.TABLE]: {
       data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
+      label: t(LABEL_COLUMN_PLURAL),
       childrenCount: node.columns?.length ?? 0,
     },
     [EntityType.DASHBOARD]: {
@@ -77,17 +80,17 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
     },
     [EntityType.DASHBOARD_DATA_MODEL]: {
       data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
+      label: t(LABEL_COLUMN_PLURAL),
       childrenCount: node.columns?.length ?? 0,
     },
     [EntityType.CONTAINER]: {
       data: node.flattenChildren ?? node.dataModel?.columns ?? [],
-      label: t('label.column-plural'),
+      label: t(LABEL_COLUMN_PLURAL),
       childrenCount: node.dataModel?.columns?.length ?? 0,
     },
     [EntityType.TOPIC]: {
       data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
-      label: t('label.field-plural'),
+      label: t(LABEL_FIELD_PLURAL),
       childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
     },
     [EntityType.API_ENDPOINT]: {
@@ -96,7 +99,7 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
         node?.responseSchema?.schemaFields ??
         node?.requestSchema?.schemaFields ??
         [],
-      label: t('label.field-plural'),
+      label: t(LABEL_FIELD_PLURAL),
       childrenCount:
         node?.responseSchema?.schemaFields?.length ??
         node?.requestSchema?.schemaFields?.length ??
@@ -104,7 +107,7 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
     },
     [EntityType.SEARCH_INDEX]: {
       data: node.flattenChildren ?? node.fields ?? [],
-      label: t('label.field-plural'),
+      label: t(LABEL_FIELD_PLURAL),
       childrenCount: node.fields?.length ?? 0,
     },
   };

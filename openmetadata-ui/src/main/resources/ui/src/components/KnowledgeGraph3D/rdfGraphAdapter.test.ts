@@ -23,6 +23,9 @@ import {
   TECHNICAL_LABELS,
 } from './rdfGraphAdapter';
 
+const HAS_COLUMN = 'Has column' as const;
+const DB_SCHEMA_CUSTOMERS = 'db.schema.CUSTOMERS' as const;
+
 const SAMPLE: GraphData = {
   nodes: [
     { id: 'T1', label: 'CUSTOMERS', type: 'table' },
@@ -108,7 +111,7 @@ describe('classifyEdge', () => {
   it('should classify structural relations as technical', () => {
     expect(classifyEdge('hasColumn', 'table', 'column')).toEqual({
       kind: 'technical',
-      label: 'Has column',
+      label: HAS_COLUMN,
     });
     expect(classifyEdge('downstream', 'table', 'table')).toEqual({
       kind: 'technical',
@@ -344,7 +347,7 @@ describe('enrichWithEntityFields', () => {
         id: 'iri-table',
         label: 'CUSTOMERS',
         type: 'table',
-        fullyQualifiedName: 'db.schema.CUSTOMERS',
+        fullyQualifiedName: DB_SCHEMA_CUSTOMERS,
       },
     ],
     edges: [],
@@ -352,13 +355,11 @@ describe('enrichWithEntityFields', () => {
 
   it('should add Has column relations from a table when RDF omits columns', () => {
     const enriched = enrichWithEntityFields(tableGraph, {
-      fullyQualifiedName: 'db.schema.CUSTOMERS',
+      fullyQualifiedName: DB_SCHEMA_CUSTOMERS,
       columns: [{ name: 'id' }, { name: 'email' }],
     });
     const columns = enriched.nodes.filter((n) => n.type === 'column');
-    const hasColumnLinks = enriched.links.filter(
-      (l) => l.label === 'Has column'
-    );
+    const hasColumnLinks = enriched.links.filter((l) => l.label === HAS_COLUMN);
 
     expect(columns.map((c) => c.name).sort()).toEqual(['email', 'id']);
     expect(hasColumnLinks).toHaveLength(2);
@@ -409,7 +410,7 @@ describe('enrichWithEntityFields', () => {
 
   it('should return the same graph reference when the entity carries no fields', () => {
     const enriched = enrichWithEntityFields(tableGraph, {
-      fullyQualifiedName: 'db.schema.CUSTOMERS',
+      fullyQualifiedName: DB_SCHEMA_CUSTOMERS,
     });
 
     expect(enriched).toBe(tableGraph);
@@ -432,9 +433,7 @@ describe('enrichWithEntityFields', () => {
       dataModel: { columns: [{ name: 'eventId' }, { name: 'payload' }] },
     });
     const columns = enriched.nodes.filter((n) => n.type === 'column');
-    const hasColumnLinks = enriched.links.filter(
-      (l) => l.label === 'Has column'
-    );
+    const hasColumnLinks = enriched.links.filter((l) => l.label === HAS_COLUMN);
 
     expect(columns.map((c) => c.name).sort()).toEqual(['eventId', 'payload']);
     expect(hasColumnLinks).toHaveLength(2);
@@ -472,7 +471,7 @@ describe('enrichWithEntityFields', () => {
 
   it('should prefer displayName over name for the field node name', () => {
     const enriched = enrichWithEntityFields(tableGraph, {
-      fullyQualifiedName: 'db.schema.CUSTOMERS',
+      fullyQualifiedName: DB_SCHEMA_CUSTOMERS,
       columns: [{ name: 'cust_email', displayName: 'Customer Email' }],
     });
     const column = enriched.nodes.find((n) => n.type === 'column');
@@ -483,13 +482,11 @@ describe('enrichWithEntityFields', () => {
 
   it('should dedupe duplicate field names into a single node', () => {
     const enriched = enrichWithEntityFields(tableGraph, {
-      fullyQualifiedName: 'db.schema.CUSTOMERS',
+      fullyQualifiedName: DB_SCHEMA_CUSTOMERS,
       columns: [{ name: 'email' }, { name: 'email' }],
     });
     const columns = enriched.nodes.filter((n) => n.type === 'column');
-    const hasColumnLinks = enriched.links.filter(
-      (l) => l.label === 'Has column'
-    );
+    const hasColumnLinks = enriched.links.filter((l) => l.label === HAS_COLUMN);
 
     expect(columns).toHaveLength(1);
     expect(hasColumnLinks).toHaveLength(1);

@@ -20,6 +20,8 @@ import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../../utils/StringUtils';
 import { TeamHierarchyNameCell } from './TeamHierarchyNameCell';
 
+const HIERARCHY_NAME_TOOLTIP = 'hierarchy-name-tooltip';
+
 jest.mock('antd', () => {
   const actual = jest.requireActual<typeof import('antd')>('antd');
 
@@ -33,7 +35,7 @@ jest.mock('antd', () => {
       title?: ReactNode;
     }) => (
       <span
-        data-testid="hierarchy-name-tooltip"
+        data-testid={HIERARCHY_NAME_TOOLTIP}
         data-tooltip-title={
           title === undefined || title === null ? '' : String(title)
         }>
@@ -150,7 +152,7 @@ describe('TeamHierarchyNameCell', () => {
     renderCell({ record: mockTeam });
 
     expect(
-      screen.queryByTestId('hierarchy-name-tooltip')
+      screen.queryByTestId(HIERARCHY_NAME_TOOLTIP)
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('team-name-Engineering')).toBeInTheDocument();
   });
@@ -165,7 +167,7 @@ describe('TeamHierarchyNameCell', () => {
 
     renderCell({ record: mockTeam });
 
-    const tooltip = screen.getByTestId('hierarchy-name-tooltip');
+    const tooltip = screen.getByTestId(HIERARCHY_NAME_TOOLTIP);
 
     expect(tooltip).toHaveAttribute('data-tooltip-title', 'Engineering');
     expect(
@@ -187,7 +189,7 @@ describe('TeamHierarchyNameCell', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('hierarchy-name-tooltip')).toBeInTheDocument();
+    expect(screen.getByTestId(HIERARCHY_NAME_TOOLTIP)).toBeInTheDocument();
 
     mockGetEntityName.mockReturnValue('Short');
     jest
@@ -204,7 +206,7 @@ describe('TeamHierarchyNameCell', () => {
     );
 
     expect(
-      screen.queryByTestId('hierarchy-name-tooltip')
+      screen.queryByTestId(HIERARCHY_NAME_TOOLTIP)
     ).not.toBeInTheDocument();
   });
 });

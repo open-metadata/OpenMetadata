@@ -17,6 +17,9 @@ import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
 import { MOCK_KNOWLEDGE_PAGES } from './KnowledgePages.mock';
 
+const VIEW_ALL_DATA_ASSET_RELATED_ARTICLES =
+  'view-all-data-asset-related-articles';
+const KNOWLEDGE_PAGES = 'knowledge-pages';
 const mockProps = {
   entityId: '6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2',
   entityType: 'table',
@@ -60,7 +63,7 @@ describe('KnowledgePages', () => {
       render(<KnowledgePages />, { wrapper: MemoryRouter });
     });
 
-    expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
+    expect(screen.getByTestId(KNOWLEDGE_PAGES)).toBeInTheDocument();
     expect(screen.getByText('label.context-center')).toBeInTheDocument();
 
     // article page
@@ -112,7 +115,7 @@ describe('KnowledgePages', () => {
       render(<KnowledgePages />, { wrapper: MemoryRouter });
     });
 
-    expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(KNOWLEDGE_PAGES)).not.toBeInTheDocument();
   });
 
   it('should not render when api fails', async () => {
@@ -128,7 +131,7 @@ describe('KnowledgePages', () => {
       render(<KnowledgePages />, { wrapper: MemoryRouter });
     });
 
-    expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(KNOWLEDGE_PAGES)).not.toBeInTheDocument();
   });
 
   it('should render view all link if total length is greater than 10', async () => {
@@ -145,7 +148,7 @@ describe('KnowledgePages', () => {
     });
 
     expect(
-      screen.getByTestId('view-all-data-asset-related-articles')
+      screen.getByTestId(VIEW_ALL_DATA_ASSET_RELATED_ARTICLES)
     ).toBeInTheDocument();
   });
 
@@ -163,7 +166,7 @@ describe('KnowledgePages', () => {
     });
 
     const viewAllLink = screen.getByTestId(
-      'view-all-data-asset-related-articles'
+      VIEW_ALL_DATA_ASSET_RELATED_ARTICLES
     );
 
     expect(viewAllLink).toHaveAttribute(
@@ -186,7 +189,7 @@ describe('KnowledgePages', () => {
     });
 
     expect(
-      screen.queryByTestId('view-all-data-asset-related-articles')
+      screen.queryByTestId(VIEW_ALL_DATA_ASSET_RELATED_ARTICLES)
     ).not.toBeInTheDocument();
   });
 
@@ -201,6 +204,6 @@ describe('KnowledgePages', () => {
 
     expect(getListKnowledgePages).not.toHaveBeenCalled();
 
-    expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(KNOWLEDGE_PAGES)).not.toBeInTheDocument();
   });
 });

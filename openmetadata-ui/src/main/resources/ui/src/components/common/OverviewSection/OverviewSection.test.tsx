@@ -13,6 +13,15 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import OverviewSection from './OverviewSection';
 
+const EDIT_BUTTON = 'edit-button' as const;
+const LABEL_OVERVIEW = 'label.overview' as const;
+const TYPE_LABEL = 'Type-label' as const;
+const TYPE_VALUE = 'Type-value' as const;
+const OVERVIEW_ROW = '.overview-row' as const;
+const OVERVIEW_LABEL = '.overview-label' as const;
+const OVERVIEW_VALUE = '.overview-value' as const;
+const TEST_TABLE = 'Test Table' as const;
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -108,7 +117,7 @@ describe('OverviewSection', () => {
       render(<OverviewSection {...defaultProps} />);
 
       expect(screen.getByTestId('section-title')).toHaveTextContent(
-        'label.overview'
+        LABEL_OVERVIEW
       );
     });
   });
@@ -117,8 +126,8 @@ describe('OverviewSection', () => {
     it('should render all overview items from entityInfoV1', () => {
       render(<OverviewSection {...defaultProps} />);
 
-      expect(screen.getByTestId('Type-label')).toBeInTheDocument();
-      expect(screen.getByTestId('Type-value')).toHaveTextContent('Table');
+      expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
+      expect(screen.getByTestId(TYPE_VALUE)).toHaveTextContent('Table');
       expect(screen.getByTestId('Rows-label')).toBeInTheDocument();
       expect(screen.getByTestId('Rows-value')).toHaveTextContent('1000');
       expect(screen.getByTestId('Columns-label')).toBeInTheDocument();
@@ -132,21 +141,21 @@ describe('OverviewSection', () => {
     it('should render items with correct structure', () => {
       const { container } = render(<OverviewSection {...defaultProps} />);
 
-      const overviewRows = container.querySelectorAll('.overview-row');
+      const overviewRows = container.querySelectorAll(OVERVIEW_ROW);
 
       expect(overviewRows).toHaveLength(5);
 
       overviewRows.forEach((row) => {
-        expect(row.querySelector('.overview-label')).toBeInTheDocument();
-        expect(row.querySelector('.overview-value')).toBeInTheDocument();
+        expect(row.querySelector(OVERVIEW_LABEL)).toBeInTheDocument();
+        expect(row.querySelector(OVERVIEW_VALUE)).toBeInTheDocument();
       });
     });
 
     it('should render items with correct CSS classes', () => {
       const { container } = render(<OverviewSection {...defaultProps} />);
 
-      const labels = container.querySelectorAll('.overview-label');
-      const values = container.querySelectorAll('.overview-value');
+      const labels = container.querySelectorAll(OVERVIEW_LABEL);
+      const values = container.querySelectorAll(OVERVIEW_VALUE);
 
       expect(labels).toHaveLength(5);
       expect(values).toHaveLength(5);
@@ -167,7 +176,7 @@ describe('OverviewSection', () => {
         />
       );
 
-      expect(screen.getByTestId('Type-label')).toBeInTheDocument();
+      expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
       expect(screen.getByTestId('Rows-label')).toBeInTheDocument();
       expect(screen.queryByTestId('Owners-label')).not.toBeInTheDocument();
       expect(screen.queryByTestId('Tier-label')).not.toBeInTheDocument();
@@ -177,20 +186,20 @@ describe('OverviewSection', () => {
       const info = [{ name: 'Type', value: 'Table', visible: ['explore'] }];
       render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByTestId('Type-label')).toBeInTheDocument();
-      expect(screen.getByTestId('Type-value')).toHaveTextContent('Table');
+      expect(screen.getByTestId(TYPE_LABEL)).toBeInTheDocument();
+      expect(screen.getByTestId(TYPE_VALUE)).toHaveTextContent('Table');
     });
   });
 
   describe('Data Types', () => {
     it('should render string values correctly', () => {
       const info = [
-        { name: 'Name', value: 'Test Table', visible: ['explore'] },
+        { name: 'Name', value: TEST_TABLE, visible: ['explore'] },
         { name: 'Type', value: 'Table', visible: ['explore'] },
       ];
       render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByText('Test Table')).toBeInTheDocument();
+      expect(screen.getByText(TEST_TABLE)).toBeInTheDocument();
       expect(screen.getByText('Table')).toBeInTheDocument();
     });
 
@@ -209,14 +218,14 @@ describe('OverviewSection', () => {
 
     it('should render mixed data types', () => {
       const info = [
-        { name: 'Name', value: 'Test Table', visible: ['explore'] },
+        { name: 'Name', value: TEST_TABLE, visible: ['explore'] },
         { name: 'Count', value: 100, visible: ['explore'] },
         { name: 'Active', value: 'Yes', visible: ['explore'] },
         { name: 'Score', value: 95.5, visible: ['explore'] },
       ];
       render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByText('Test Table')).toBeInTheDocument();
+      expect(screen.getByText(TEST_TABLE)).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument();
       expect(screen.getByText('Yes')).toBeInTheDocument();
       expect(screen.getByText('95.5')).toBeInTheDocument();
@@ -227,13 +236,13 @@ describe('OverviewSection', () => {
     it('should not show edit button by default', () => {
       render(<OverviewSection {...defaultProps} />);
 
-      expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(EDIT_BUTTON)).not.toBeInTheDocument();
     });
 
     it('should show edit button when showEditButton is true', () => {
       render(<OverviewSection {...defaultProps} showEditButton />);
 
-      expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+      expect(screen.getByTestId(EDIT_BUTTON)).toBeInTheDocument();
     });
 
     it('should call onEdit when edit button is clicked', () => {
@@ -242,7 +251,7 @@ describe('OverviewSection', () => {
         <OverviewSection {...defaultProps} showEditButton onEdit={mockOnEdit} />
       );
 
-      const editButton = screen.getByTestId('edit-button');
+      const editButton = screen.getByTestId(EDIT_BUTTON);
       fireEvent.click(editButton);
 
       expect(mockOnEdit).toHaveBeenCalledTimes(1);
@@ -251,13 +260,13 @@ describe('OverviewSection', () => {
     it('should not show edit button when showEditButton is false', () => {
       render(<OverviewSection {...defaultProps} showEditButton={false} />);
 
-      expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(EDIT_BUTTON)).not.toBeInTheDocument();
     });
 
     it('should show edit button but not call onEdit when onEdit is not provided', () => {
       render(<OverviewSection {...defaultProps} showEditButton />);
 
-      const editButton = screen.getByTestId('edit-button');
+      const editButton = screen.getByTestId(EDIT_BUTTON);
 
       expect(editButton).toBeInTheDocument();
 
@@ -280,7 +289,7 @@ describe('OverviewSection', () => {
       expect(SectionWithEdit).toHaveBeenCalledWith(
         expect.objectContaining({
           showEditButton: true,
-          title: 'label.overview',
+          title: LABEL_OVERVIEW,
           onEdit: mockOnEdit,
           children: expect.any(Object),
         }),
@@ -293,10 +302,10 @@ describe('OverviewSection', () => {
 
       // Assert via DOM to avoid brittle prop shape checks on mock component
       expect(screen.getByTestId('section-title')).toHaveTextContent(
-        'label.overview'
+        LABEL_OVERVIEW
       );
 
-      const editButton = screen.getByTestId('edit-button');
+      const editButton = screen.getByTestId(EDIT_BUTTON);
 
       expect(editButton).toBeInTheDocument();
       expect(() => fireEvent.click(editButton)).not.toThrow();
@@ -371,14 +380,14 @@ describe('OverviewSection', () => {
     it('should render items with proper structure for screen readers', () => {
       const { container } = render(<OverviewSection {...defaultProps} />);
 
-      const overviewRows = container.querySelectorAll('.overview-row');
+      const overviewRows = container.querySelectorAll(OVERVIEW_ROW);
 
       expect(overviewRows).toHaveLength(5);
 
       // Each row should have both label and value
       overviewRows.forEach((row) => {
-        const label = row.querySelector('.overview-label');
-        const value = row.querySelector('.overview-value');
+        const label = row.querySelector(OVERVIEW_LABEL);
+        const value = row.querySelector(OVERVIEW_VALUE);
 
         expect(label).toBeInTheDocument();
         expect(value).toBeInTheDocument();
@@ -391,7 +400,7 @@ describe('OverviewSection', () => {
         <OverviewSection {...defaultProps} showEditButton onEdit={mockOnEdit} />
       );
 
-      const editButton = screen.getByTestId('edit-button');
+      const editButton = screen.getByTestId(EDIT_BUTTON);
 
       expect(editButton).toBeInTheDocument();
       expect(editButton.tagName).toBe('BUTTON');
@@ -410,7 +419,7 @@ describe('OverviewSection', () => {
         <OverviewSection componentType="explore" entityInfoV1={info} />
       );
 
-      const overviewRows = container.querySelectorAll('.overview-row');
+      const overviewRows = container.querySelectorAll(OVERVIEW_ROW);
 
       expect(overviewRows).toHaveLength(100);
     });
@@ -418,7 +427,7 @@ describe('OverviewSection', () => {
     it('should re-render efficiently when props change', () => {
       const { rerender } = render(<OverviewSection {...defaultProps} />);
 
-      expect(screen.getByTestId('Type-value')).toHaveTextContent('Table');
+      expect(screen.getByTestId(TYPE_VALUE)).toHaveTextContent('Table');
 
       const newInfo = [
         { name: 'New Label', value: 'New Value', visible: ['explore'] },
@@ -430,7 +439,7 @@ describe('OverviewSection', () => {
       expect(screen.getByTestId('New Label-value')).toHaveTextContent(
         'New Value'
       );
-      expect(screen.queryByTestId('Type-value')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TYPE_VALUE)).not.toBeInTheDocument();
     });
   });
 });

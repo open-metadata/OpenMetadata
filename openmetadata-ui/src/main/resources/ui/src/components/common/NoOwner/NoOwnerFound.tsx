@@ -20,6 +20,8 @@ import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import { NoOwnerFoundProps } from './NoOwnerFound.interface';
 
+const LABEL_OWNER_PLURAL = 'label.owner-plural';
+
 export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
   showDashPlaceholder,
   isCompactView,
@@ -37,7 +39,7 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
   const ownerPlaceholder = useMemo(() => {
     const defaultPlaceholder = showDashPlaceholder
       ? NO_DATA_PLACEHOLDER
-      : t('label.no-entity', { entity: t('label.owner-plural') });
+      : t('label.no-entity', { entity: t(LABEL_OWNER_PLURAL) });
 
     if (placeHolder) {
       if (showLabel) {
@@ -80,9 +82,9 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
               data-testid="owner-link">
               {placeHolder ??
                 (!isCompactView
-                  ? t('label.owner-plural')
+                  ? t(LABEL_OWNER_PLURAL)
                   : t('label.no-entity', {
-                      entity: t('label.owner-plural'),
+                      entity: t(LABEL_OWNER_PLURAL),
                     }))}
             </Typography.Text>
           )}

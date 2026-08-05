@@ -65,6 +65,9 @@ import {
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+const LABEL_ALERT_PLURAL = 'label.alert-plural';
+const LABEL_ALERT = 'label.alert';
+
 const NotificationListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -143,7 +146,7 @@ const NotificationListPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.NOTIFICATIONS,
-        t('label.alert-plural')
+        t(LABEL_ALERT_PLURAL)
       ),
     []
   );
@@ -173,7 +176,7 @@ const NotificationListPage = () => {
         fetchAllAlertsPermission(data);
       } catch {
         showErrorToast(
-          t('server.entity-fetch-error', { entity: t('label.alert-plural') })
+          t('server.entity-fetch-error', { entity: t(LABEL_ALERT_PLURAL) })
         );
       } finally {
         setLoadingCount((count) => count - 1);
@@ -327,7 +330,7 @@ const NotificationListPage = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+    <PageLayoutV1 pageTitle={t(LABEL_ALERT_PLURAL)}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -340,7 +343,7 @@ const NotificationListPage = () => {
                 subHeader: t(PAGE_HEADERS.NOTIFICATION.subHeader),
               }}
               learningPageId={LEARNING_PAGE_IDS.ALERTS}
-              title={t('label.alert')}
+              title={t(LABEL_ALERT)}
             />
             {(alertResourcePermission?.Create ||
               alertResourcePermission?.All) && (
@@ -356,7 +359,7 @@ const NotificationListPage = () => {
                       )
                     )
                   }>
-                  {t('label.add-entity', { entity: t('label.alert') })}
+                  {t('label.add-entity', { entity: t(LABEL_ALERT) })}
                 </Button>
               </LimitWrapper>
             )}
@@ -382,9 +385,9 @@ const NotificationListPage = () => {
                   permission
                   className="p-y-md"
                   doc={ALERTS_DOCS}
-                  heading={t('label.alert')}
+                  heading={t(LABEL_ALERT)}
                   permissionValue={t('label.create-entity', {
-                    entity: t('label.alert'),
+                    entity: t(LABEL_ALERT),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>

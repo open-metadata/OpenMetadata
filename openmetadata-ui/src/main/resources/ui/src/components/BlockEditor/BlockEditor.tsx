@@ -42,6 +42,9 @@ import './Extensions/File/file-node.less';
 import { slashMenuPluginKey } from './Extensions/slash-command';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
+const PROSE_MIRROR_CONTENTEDITABLE_TRUE =
+  '.ProseMirror[contenteditable="true"]';
+
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
@@ -142,7 +145,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       if (hasFiles) {
         const editorElement = document.querySelector(
-          '.ProseMirror[contenteditable="true"]'
+          PROSE_MIRROR_CONTENTEDITABLE_TRUE
         );
         if (editorElement) {
           (editorElement as HTMLElement).classList.add('drag-over');
@@ -152,7 +155,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const handleDragLeave = (e: React.DragEvent) => {
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSE_MIRROR_CONTENTEDITABLE_TRUE
       );
       // Only remove class if we're leaving the editor area
       if (editorElement && !editorElement.contains(e.relatedTarget as Node)) {
@@ -168,7 +171,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       e.preventDefault();
 
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSE_MIRROR_CONTENTEDITABLE_TRUE
       );
       if (editorElement) {
         (editorElement as HTMLElement).classList.remove('drag-over');

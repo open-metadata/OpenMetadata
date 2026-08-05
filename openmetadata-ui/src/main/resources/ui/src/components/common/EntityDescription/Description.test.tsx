@@ -18,6 +18,13 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import Description from './Description';
 
+const REQUEST_DESCRIPTION = 'request-description';
+const SAMPLE_DESCRIPTION = 'Sample description';
+const DESCRIPTION_THREAD = 'description-thread';
+const AUTHORED_BY_FOOTER = 'authored-by-footer';
+const EDIT_DESCRIPTION = 'edit-description';
+const PROP_AUTHOR = 'prop-author';
+const EDIT_MODAL = 'edit-modal';
 const mockOnThreadLinkSelect = jest.fn();
 const mockNavigate = jest.fn();
 const mockOnDescriptionUpdate = jest.fn();
@@ -130,7 +137,7 @@ const mockUseGenericContext = useGenericContext as jest.Mock;
 const mockUseSuggestionsContext = useSuggestionsContext as jest.Mock;
 
 const defaultProps = {
-  description: 'Sample description',
+  description: SAMPLE_DESCRIPTION,
   entityType: EntityType.TABLE,
   entityName: 'test_table',
   hasEditAccess: true,
@@ -159,7 +166,7 @@ describe('Description', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('label.description')).toBeInTheDocument();
     expect(screen.getByTestId('previewer')).toHaveTextContent(
-      'Sample description'
+      SAMPLE_DESCRIPTION
     );
   });
 
@@ -170,26 +177,26 @@ describe('Description', () => {
       screen.getByTestId('asset-description-container')
     ).toBeInTheDocument();
     expect(screen.getByTestId('previewer')).toHaveTextContent(
-      'Sample description'
+      SAMPLE_DESCRIPTION
     );
   });
 
   it('should show the edit button when edit access is granted', () => {
     render(<Description {...defaultProps} />);
 
-    expect(screen.getByTestId('edit-description')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should hide the edit button when edit access is not granted', () => {
     render(<Description {...defaultProps} hasEditAccess={false} />);
 
-    expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_DESCRIPTION)).not.toBeInTheDocument();
   });
 
   it('should hide the edit button when read only', () => {
     render(<Description {...defaultProps} isReadOnly />);
 
-    expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_DESCRIPTION)).not.toBeInTheDocument();
   });
 
   it('should hide the edit button in version view', () => {
@@ -201,34 +208,34 @@ describe('Description', () => {
 
     render(<Description {...defaultProps} />);
 
-    expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_DESCRIPTION)).not.toBeInTheDocument();
   });
 
   it('should hide all action buttons when showActions is false', () => {
     render(<Description {...defaultProps} showActions={false} />);
 
-    expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('description-thread')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('request-description')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_DESCRIPTION)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DESCRIPTION_THREAD)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(REQUEST_DESCRIPTION)).not.toBeInTheDocument();
   });
 
   it('should render the comment thread button by default', () => {
     render(<Description {...defaultProps} />);
 
-    expect(screen.getByTestId('description-thread')).toBeInTheDocument();
+    expect(screen.getByTestId(DESCRIPTION_THREAD)).toBeInTheDocument();
   });
 
   it('should hide the comment thread button when showCommentsIcon is false', () => {
     render(<Description {...defaultProps} showCommentsIcon={false} />);
 
-    expect(screen.queryByTestId('description-thread')).not.toBeInTheDocument();
-    expect(screen.getByTestId('edit-description')).toBeInTheDocument();
+    expect(screen.queryByTestId(DESCRIPTION_THREAD)).not.toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should call onThreadLinkSelect with the description link on thread click', () => {
     render(<Description {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('description-thread'));
+    fireEvent.click(screen.getByTestId(DESCRIPTION_THREAD));
 
     expect(mockOnThreadLinkSelect).toHaveBeenCalledWith(
       expect.stringContaining('description')
@@ -238,17 +245,17 @@ describe('Description', () => {
   it('should open the editor modal when the edit button is clicked', async () => {
     render(<Description {...defaultProps} />);
 
-    expect(screen.queryByTestId('edit-modal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_MODAL)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('edit-description'));
+    fireEvent.click(screen.getByTestId(EDIT_DESCRIPTION));
 
-    expect(await screen.findByTestId('edit-modal')).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_MODAL)).toBeInTheDocument();
   });
 
   it('should call onDescriptionUpdate and close the modal on save', async () => {
     render(<Description {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('edit-description'));
+    fireEvent.click(screen.getByTestId(EDIT_DESCRIPTION));
     fireEvent.click(await screen.findByTestId('modal-save'));
 
     await waitFor(() =>
@@ -257,24 +264,24 @@ describe('Description', () => {
       )
     );
     await waitFor(() =>
-      expect(screen.queryByTestId('edit-modal')).not.toBeInTheDocument()
+      expect(screen.queryByTestId(EDIT_MODAL)).not.toBeInTheDocument()
     );
   });
 
   it('should close the modal on cancel without calling onDescriptionUpdate', async () => {
     render(<Description {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('edit-description'));
+    fireEvent.click(screen.getByTestId(EDIT_DESCRIPTION));
     fireEvent.click(await screen.findByTestId('modal-cancel'));
 
-    expect(screen.queryByTestId('edit-modal')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_MODAL)).not.toBeInTheDocument();
     expect(mockOnDescriptionUpdate).not.toHaveBeenCalled();
   });
 
   it('should navigate to the update-description path when a description exists', () => {
     render(<Description {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('request-description'));
+    fireEvent.click(screen.getByTestId(REQUEST_DESCRIPTION));
 
     expect(mockNavigate).toHaveBeenCalledWith('/update-path');
   });
@@ -282,7 +289,7 @@ describe('Description', () => {
   it('should navigate to the request-description path when description is empty', () => {
     render(<Description {...defaultProps} description="" />);
 
-    fireEvent.click(screen.getByTestId('request-description'));
+    fireEvent.click(screen.getByTestId(REQUEST_DESCRIPTION));
 
     expect(mockNavigate).toHaveBeenCalledWith('/request-path');
   });
@@ -290,7 +297,7 @@ describe('Description', () => {
   it('should not render the request-description button for non task entities', () => {
     render(<Description {...defaultProps} entityType={EntityType.DOMAIN} />);
 
-    expect(screen.queryByTestId('request-description')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(REQUEST_DESCRIPTION)).not.toBeInTheDocument();
   });
 
   it('should render the suggestion alert instead of the previewer when a suggestion is active', async () => {
@@ -337,13 +344,13 @@ describe('Description', () => {
 
     render(<Description {...defaultProps} />);
 
-    expect(screen.getByTestId('authored-by-footer')).toBeInTheDocument();
+    expect(screen.getByTestId(AUTHORED_BY_FOOTER)).toBeInTheDocument();
   });
 
   it('should not render the authored-by footer when change metadata is absent', () => {
     render(<Description {...defaultProps} />);
 
-    expect(screen.queryByTestId('authored-by-footer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(AUTHORED_BY_FOOTER)).not.toBeInTheDocument();
   });
 
   it('should render the authored-by footer from the explicit changeSummaryEntry prop', () => {
@@ -352,15 +359,15 @@ describe('Description', () => {
         {...defaultProps}
         changeSummaryEntry={{
           changeSource: ChangeSource.Manual,
-          changedBy: 'prop-author',
+          changedBy: PROP_AUTHOR,
           changedAt: 1783100000000,
         }}
       />
     );
 
-    expect(screen.getByTestId('authored-by-footer')).toHaveAttribute(
+    expect(screen.getByTestId(AUTHORED_BY_FOOTER)).toHaveAttribute(
       'data-changed-by',
-      'prop-author'
+      PROP_AUTHOR
     );
   });
 
@@ -382,15 +389,15 @@ describe('Description', () => {
         {...defaultProps}
         changeSummaryEntry={{
           changeSource: ChangeSource.Manual,
-          changedBy: 'prop-author',
+          changedBy: PROP_AUTHOR,
           changedAt: 1783100000000,
         }}
       />
     );
 
-    expect(screen.getByTestId('authored-by-footer')).toHaveAttribute(
+    expect(screen.getByTestId(AUTHORED_BY_FOOTER)).toHaveAttribute(
       'data-changed-by',
-      'prop-author'
+      PROP_AUTHOR
     );
   });
 

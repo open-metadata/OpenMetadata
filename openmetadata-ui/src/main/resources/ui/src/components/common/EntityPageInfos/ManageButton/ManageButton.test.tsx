@@ -16,6 +16,9 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
 import ManageButton from './ManageButton';
 
+const MANAGE_BUTTON = 'manage-button';
+const DELETE_BUTTON = 'delete-button';
+
 const mockHandleOnAsyncEntityDeleteConfirm = jest.fn();
 const mockHardDeleteEntity = jest.fn().mockResolvedValue(true);
 
@@ -71,7 +74,7 @@ describe('Test manage button component', () => {
   it('Should render manage button component', async () => {
     render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId(MANAGE_BUTTON);
 
     expect(manageButton).toBeInTheDocument();
   });
@@ -79,13 +82,13 @@ describe('Test manage button component', () => {
   it('Should render dropdown component on click of manage button', async () => {
     render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId(MANAGE_BUTTON);
 
     expect(manageButton).toBeInTheDocument();
 
     fireEvent.click(manageButton);
 
-    const deleteOption = await screen.findByTestId('delete-button');
+    const deleteOption = await screen.findByTestId(DELETE_BUTTON);
     const announcementOption = await screen.findByTestId('announcement-button');
 
     expect(deleteOption).toBeInTheDocument();
@@ -95,13 +98,13 @@ describe('Test manage button component', () => {
   it('Should render delete modal component on click of delete option', async () => {
     render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId(MANAGE_BUTTON);
 
     expect(manageButton).toBeInTheDocument();
 
     fireEvent.click(manageButton);
 
-    const deleteOption = await screen.findByTestId('delete-button');
+    const deleteOption = await screen.findByTestId(DELETE_BUTTON);
 
     expect(deleteOption).toBeInTheDocument();
 
@@ -113,11 +116,11 @@ describe('Test manage button component', () => {
   it('Should render the simple DeleteModal when allowSoftDelete is false', async () => {
     render(<ManageButton {...mockProps} allowSoftDelete={false} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId(MANAGE_BUTTON);
 
     fireEvent.click(manageButton);
 
-    const deleteOption = await screen.findByTestId('delete-button');
+    const deleteOption = await screen.findByTestId(DELETE_BUTTON);
 
     fireEvent.click(deleteOption);
 
@@ -133,8 +136,8 @@ describe('Test manage button component', () => {
       <ManageButton {...mockProps} isAsyncDelete allowSoftDelete={false} />
     );
 
-    fireEvent.click(await screen.findByTestId('manage-button'));
-    fireEvent.click(await screen.findByTestId('delete-button'));
+    fireEvent.click(await screen.findByTestId(MANAGE_BUTTON));
+    fireEvent.click(await screen.findByTestId(DELETE_BUTTON));
     fireEvent.click(await screen.findByTestId('confirm-delete-button'));
 
     await waitFor(() =>
@@ -152,8 +155,8 @@ describe('Test manage button component', () => {
 
     render(<ManageButton {...mockProps} allowSoftDelete={false} />);
 
-    fireEvent.click(await screen.findByTestId('manage-button'));
-    fireEvent.click(await screen.findByTestId('delete-button'));
+    fireEvent.click(await screen.findByTestId(MANAGE_BUTTON));
+    fireEvent.click(await screen.findByTestId(DELETE_BUTTON));
     fireEvent.click(await screen.findByTestId('confirm-delete-button'));
 
     await waitFor(() => expect(mockHardDeleteEntity).toHaveBeenCalledTimes(1));
@@ -164,7 +167,7 @@ describe('Test manage button component', () => {
   it('Should call announcement callback on click of announcement option', async () => {
     render(<ManageButton {...mockProps} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId(MANAGE_BUTTON);
 
     expect(manageButton).toBeInTheDocument();
 
@@ -183,7 +186,7 @@ describe('Test manage button component', () => {
     const mockPropsData = { ...mockProps, deleted: true };
     render(<ManageButton {...mockPropsData} />);
 
-    const manageButton = await screen.findByTestId('manage-button');
+    const manageButton = await screen.findByTestId(MANAGE_BUTTON);
 
     expect(manageButton).toBeInTheDocument();
 

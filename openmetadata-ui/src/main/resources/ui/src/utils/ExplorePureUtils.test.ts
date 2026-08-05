@@ -38,6 +38,15 @@ import {
   truncateBrowsePath,
 } from './ExplorePureUtils';
 
+const TIER_TIER1 = 'Tier.Tier1';
+const KEY_SERVICETYPE = '[{"key":"serviceType"}]';
+const SOME_VALUE = '{"some":"value"}';
+const REDSHIFT_PROD = 'redshift prod';
+const TIER_TIER2 = 'Tier.Tier2';
+const PII_SENSITIVE = 'PII.Sensitive';
+const SERVICE_UUID = 'service-uuid';
+const SCHEMA_NODE = 'schema-node';
+
 const DATABASE_KEY = 'database_root';
 const DASHBOARD_KEY = 'dashboard_root';
 const PIPELINE_KEY = 'pipeline_root';
@@ -95,7 +104,7 @@ describe('getQuickFilterMust', () => {
 
   it('extracts the must clauses from a serialized quick filter', () => {
     const must = [
-      { bool: { should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+      { bool: { should: [{ term: { 'tier.tagFQN': TIER_TIER1 } }] } },
     ];
 
     expect(
@@ -107,11 +116,11 @@ describe('getQuickFilterMust', () => {
 describe('getExploreResetFiltersSearchParams', () => {
   it('clears filter params while resetting currentPage and preserving pageSize', () => {
     const search = getExploreResetFiltersSearchParams({
-      browsePath: '[{"key":"serviceType"}]',
+      browsePath: KEY_SERVICETYPE,
       currentPage: '3',
       pageSize: '25',
-      queryFilter: '{"some":"value"}',
-      quickFilter: '{"some":"value"}',
+      queryFilter: SOME_VALUE,
+      quickFilter: SOME_VALUE,
       search: 'orders',
       showDeleted: 'true',
     });
@@ -130,20 +139,20 @@ describe('getExploreResetFiltersSearchParams', () => {
 describe('getExploreClearQueryFilterSearchParams', () => {
   it('clears advanced search while resetting currentPage and preserving other filters', () => {
     const search = getExploreClearQueryFilterSearchParams({
-      browsePath: '[{"key":"serviceType"}]',
+      browsePath: KEY_SERVICETYPE,
       currentPage: '3',
       pageSize: '25',
-      queryFilter: '{"some":"value"}',
-      quickFilter: '{"some":"value"}',
+      queryFilter: SOME_VALUE,
+      quickFilter: SOME_VALUE,
       search: 'orders',
       showDeleted: 'true',
     });
     const searchParams = new URLSearchParams(search);
 
-    expect(searchParams.get('browsePath')).toBe('[{"key":"serviceType"}]');
+    expect(searchParams.get('browsePath')).toBe(KEY_SERVICETYPE);
     expect(searchParams.get('currentPage')).toBe('1');
     expect(searchParams.get('pageSize')).toBe('25');
-    expect(searchParams.get('quickFilter')).toBe('{"some":"value"}');
+    expect(searchParams.get('quickFilter')).toBe(SOME_VALUE);
     expect(searchParams.get('search')).toBe('orders');
     expect(searchParams.get('showDeleted')).toBe('true');
     expect(searchParams.has('queryFilter')).toBe(false);
@@ -357,13 +366,14 @@ describe('hasServiceDrillDownFilter', () => {
       query: {
         bool: {
           must: [
-            { bool: { should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+            { bool: { should: [{ term: { 'tier.tagFQN': TIER_TIER1 } }] } },
           ],
         },
       },
     });
     const browsePath = JSON.stringify([
       {
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         key: 'service.displayName.keyword',
         label: 'service.displayName.keyword',
         value: [{ key: 'bigquery', label: 'bigquery' }],
@@ -442,7 +452,7 @@ const browseFields: ExploreQuickFilterField[] = [
   {
     key: 'service.displayName.keyword',
     label: 'service.displayName.keyword',
-    value: [{ key: 'redshift prod', label: 'redshift prod' }],
+    value: [{ key: REDSHIFT_PROD, label: REDSHIFT_PROD }],
   },
   {
     key: 'database.displayName',
@@ -516,7 +526,7 @@ describe('getBrowsePathQueryFilter', () => {
       { term: { serviceType: 'Redshift' } },
     ]);
     expect(must[2].bool.should).toEqual([
-      { term: { 'service.displayName.keyword': 'redshift prod' } },
+      { term: { 'service.displayName.keyword': REDSHIFT_PROD } },
     ]);
   });
 
@@ -561,11 +571,12 @@ describe('getBrowsePathQueryFilter — OR within a field, AND across fields', ()
   it('two tiers in one field become one must clause with two should terms (Tier1 OR Tier2)', () => {
     const filter = getBrowsePathQueryFilter([
       {
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         key: 'tier.tagFQN',
         label: 'tier.tagFQN',
         value: [
-          { key: 'Tier.Tier1', label: 'Tier.Tier1' },
-          { key: 'Tier.Tier2', label: 'Tier.Tier2' },
+          { key: TIER_TIER1, label: TIER_TIER1 },
+          { key: TIER_TIER2, label: TIER_TIER2 },
         ],
       },
     ]);
@@ -575,8 +586,8 @@ describe('getBrowsePathQueryFilter — OR within a field, AND across fields', ()
 
     expect(must).toHaveLength(1);
     expect(must[0].bool.should).toEqual([
-      { term: { 'tier.tagFQN': 'Tier.Tier1' } },
-      { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+      { term: { 'tier.tagFQN': TIER_TIER1 } },
+      { term: { 'tier.tagFQN': TIER_TIER2 } },
     ]);
   });
 
@@ -586,14 +597,15 @@ describe('getBrowsePathQueryFilter — OR within a field, AND across fields', ()
         key: 'tier.tagFQN',
         label: 'tier.tagFQN',
         value: [
-          { key: 'Tier.Tier1', label: 'Tier.Tier1' },
-          { key: 'Tier.Tier2', label: 'Tier.Tier2' },
+          { key: TIER_TIER1, label: TIER_TIER1 },
+          { key: TIER_TIER2, label: TIER_TIER2 },
         ],
       },
       {
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         key: 'tags.tagFQN',
         label: 'tags.tagFQN',
-        value: [{ key: 'PII.Sensitive', label: 'PII.Sensitive' }],
+        value: [{ key: PII_SENSITIVE, label: PII_SENSITIVE }],
       },
     ]);
     const must = filter?.query?.bool?.must as Array<{
@@ -603,7 +615,7 @@ describe('getBrowsePathQueryFilter — OR within a field, AND across fields', ()
     expect(must).toHaveLength(2);
     expect(must[0].bool.should).toHaveLength(2);
     expect(must[1].bool.should).toEqual([
-      { term: { 'tags.tagFQN': 'PII.Sensitive' } },
+      { term: { 'tags.tagFQN': PII_SENSITIVE } },
     ]);
   });
 
@@ -613,7 +625,7 @@ describe('getBrowsePathQueryFilter — OR within a field, AND across fields', ()
       {
         key: 'tags.tagFQN',
         label: 'tags.tagFQN',
-        value: [{ key: 'PII.Sensitive', label: 'PII.Sensitive' }],
+        value: [{ key: PII_SENSITIVE, label: PII_SENSITIVE }],
       },
     ]);
     const must = filter?.query?.bool?.must as unknown[];
@@ -713,7 +725,7 @@ describe('refreshRootCounts', () => {
         },
         children: [
           {
-            key: 'service-uuid',
+            key: SERVICE_UUID,
             title: 'BigQuery',
             count: 1687,
             data: { filterField: [serviceField] },
@@ -769,7 +781,7 @@ describe('refreshRootCounts', () => {
     ]);
     const serviceNode = result[0].children?.[0];
 
-    expect(serviceNode?.key).toBe('service-uuid');
+    expect(serviceNode?.key).toBe(SERVICE_UUID);
     expect(serviceNode?.count).toBe(1687);
     expect(serviceNode?.children?.[0].key).toBe('tables-uuid');
     expect(serviceNode?.children?.[0].count).toBe(24);
@@ -798,7 +810,7 @@ describe('reconcilePresentRoots', () => {
     key: 'Database',
     title: 'Databases',
     data: { isRoot: true, childEntities: [EntityType.TABLE] },
-    children: [{ key: 'service-uuid', title: 'mysql', count: 12 }],
+    children: [{ key: SERVICE_UUID, title: 'mysql', count: 12 }],
   } as unknown as ExploreTreeNode;
   const staticDatabases = {
     key: 'Database',
@@ -815,7 +827,7 @@ describe('reconcilePresentRoots', () => {
     const result = reconcilePresentRoots([staticDatabases], [liveDatabases]);
 
     expect(result[0]).toBe(liveDatabases);
-    expect(result[0].children?.[0].key).toBe('service-uuid');
+    expect(result[0].children?.[0].key).toBe(SERVICE_UUID);
   });
 
   it('re-adds a present root that is no longer in the live tree', () => {
@@ -918,7 +930,7 @@ describe('isSelectionWithinBrowsePath', () => {
       data: { isRoot: true, childEntities: [EntityType.TABLE] },
       children: [
         {
-          key: 'schema-node',
+          key: SCHEMA_NODE,
           data: { filterField: schemaPath },
           children: [
             {
@@ -933,7 +945,7 @@ describe('isSelectionWithinBrowsePath', () => {
   ] as unknown as ExploreTreeNode[];
 
   it('matches when the selected node is the browsed node itself', () => {
-    expect(isSelectionWithinBrowsePath(tree, ['schema-node'], schemaPath)).toBe(
+    expect(isSelectionWithinBrowsePath(tree, [SCHEMA_NODE], schemaPath)).toBe(
       true
     );
   });
@@ -948,7 +960,7 @@ describe('isSelectionWithinBrowsePath', () => {
     expect(
       isSelectionWithinBrowsePath(
         tree,
-        ['schema-node'],
+        [SCHEMA_NODE],
         [serviceType, service, database]
       )
     ).toBe(false);
@@ -956,7 +968,7 @@ describe('isSelectionWithinBrowsePath', () => {
 
   it('returns false for an empty selection or empty path', () => {
     expect(isSelectionWithinBrowsePath(tree, [], schemaPath)).toBe(false);
-    expect(isSelectionWithinBrowsePath(tree, ['schema-node'], [])).toBe(false);
+    expect(isSelectionWithinBrowsePath(tree, [SCHEMA_NODE], [])).toBe(false);
   });
 
   it('returns false when the selected key is not in the tree', () => {

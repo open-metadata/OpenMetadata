@@ -44,6 +44,9 @@ import {
   stripMarkdown,
 } from './StringUtils';
 
+const HELLO_WORLD = 'hello-world';
+const FOO_BAR_BAZ = 'foo-bar-baz';
+
 describe('StringUtils', () => {
   it('getEncodedFqn should return encoded Fqn', () => {
     const fqn = 'sample_data.db_sample.schema_sample.dim/client.';
@@ -201,22 +204,22 @@ describe('StringUtils', () => {
   describe('slugify', () => {
     it('should convert string to lowercase', () => {
       expect(slugify('HELLO')).toBe('hello');
-      expect(slugify('Hello World')).toBe('hello-world');
+      expect(slugify('Hello World')).toBe(HELLO_WORLD);
     });
 
     it('should replace spaces with hyphens', () => {
-      expect(slugify('hello world')).toBe('hello-world');
-      expect(slugify('foo bar baz')).toBe('foo-bar-baz');
+      expect(slugify('hello world')).toBe(HELLO_WORLD);
+      expect(slugify('foo bar baz')).toBe(FOO_BAR_BAZ);
     });
 
     it('should replace multiple spaces with single hyphen', () => {
-      expect(slugify('hello    world')).toBe('hello-world');
-      expect(slugify('foo  bar   baz')).toBe('foo-bar-baz');
+      expect(slugify('hello    world')).toBe(HELLO_WORLD);
+      expect(slugify('foo  bar   baz')).toBe(FOO_BAR_BAZ);
     });
 
     it('should replace special characters with hyphens', () => {
-      expect(slugify('hello@world')).toBe('hello-world');
-      expect(slugify('foo#bar$baz')).toBe('foo-bar-baz');
+      expect(slugify('hello@world')).toBe(HELLO_WORLD);
+      expect(slugify('foo#bar$baz')).toBe(FOO_BAR_BAZ);
       expect(slugify('test!@#$%^&*()value')).toBe('test-value');
     });
 
@@ -228,7 +231,7 @@ describe('StringUtils', () => {
     });
 
     it('should remove multiple consecutive hyphens', () => {
-      expect(slugify('hello---world')).toBe('hello-world');
+      expect(slugify('hello---world')).toBe(HELLO_WORLD);
       expect(slugify('foo@@bar')).toBe('foo-bar');
     });
 
@@ -260,17 +263,17 @@ describe('StringUtils', () => {
 
     it('should handle string with mixed case and special characters', () => {
       expect(slugify('Hello@World#123')).toBe('hello-world-123');
-      expect(slugify('Foo$Bar%Baz!')).toBe('foo-bar-baz');
+      expect(slugify('Foo$Bar%Baz!')).toBe(FOO_BAR_BAZ);
     });
 
     it('should handle underscores as special characters', () => {
-      expect(slugify('hello_world')).toBe('hello-world');
-      expect(slugify('foo_bar_baz')).toBe('foo-bar-baz');
+      expect(slugify('hello_world')).toBe(HELLO_WORLD);
+      expect(slugify('foo_bar_baz')).toBe(FOO_BAR_BAZ);
     });
 
     it('should handle dots and commas', () => {
-      expect(slugify('hello.world')).toBe('hello-world');
-      expect(slugify('foo,bar,baz')).toBe('foo-bar-baz');
+      expect(slugify('hello.world')).toBe(HELLO_WORLD);
+      expect(slugify('foo,bar,baz')).toBe(FOO_BAR_BAZ);
     });
 
     it('should handle URLs and paths', () => {
@@ -289,7 +292,7 @@ describe('StringUtils', () => {
     });
 
     it('should handle unicode characters by removing them', () => {
-      expect(slugify('hello\u00A0world')).toBe('hello-world');
+      expect(slugify('hello\u00A0world')).toBe(HELLO_WORLD);
       expect(slugify('café')).toBe('caf');
       expect(slugify('naïve')).toBe('na-ve');
     });

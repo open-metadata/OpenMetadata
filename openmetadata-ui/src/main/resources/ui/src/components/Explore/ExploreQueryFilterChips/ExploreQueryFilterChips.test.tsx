@@ -14,6 +14,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ExploreQuickFilterField } from '../ExplorePage.interface';
 import ExploreQueryFilterChips from './ExploreQueryFilterChips.component';
 
+const SERVICE_DISPLAYNAME_KEYWORD = 'service.displayName.keyword';
+const REDSHIFT_PROD = 'redshift prod';
+const CLEAR_ALL_CHIPS = 'clear-all-chips';
+
 const dataAssetField: ExploreQuickFilterField = {
   key: 'entityType.keyword',
   label: 'label.data-asset-plural',
@@ -24,9 +28,9 @@ const dataAssetField: ExploreQuickFilterField = {
 };
 
 const serviceField: ExploreQuickFilterField = {
-  key: 'service.displayName.keyword',
+  key: SERVICE_DISPLAYNAME_KEYWORD,
   label: 'label.service',
-  value: [{ key: 'redshift prod', label: 'redshift prod' }],
+  value: [{ key: REDSHIFT_PROD, label: REDSHIFT_PROD }],
 };
 
 const emptyField: ExploreQuickFilterField = {
@@ -100,7 +104,7 @@ describe('ExploreQueryFilterChips', () => {
     expect(screen.getByTestId('query-bar-empty-text')).toHaveTextContent(
       'Browsing your whole data estate'
     );
-    expect(screen.queryByTestId('clear-all-chips')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CLEAR_ALL_CHIPS)).not.toBeInTheDocument();
   });
 
   it('renders browse-location chips before filter chips with level labels', () => {
@@ -114,9 +118,9 @@ describe('ExploreQueryFilterChips', () => {
         ],
       },
       {
-        key: 'service.displayName.keyword',
-        label: 'service.displayName.keyword',
-        value: [{ key: 'redshift prod', label: 'redshift prod' }],
+        key: SERVICE_DISPLAYNAME_KEYWORD,
+        label: SERVICE_DISPLAYNAME_KEYWORD,
+        value: [{ key: REDSHIFT_PROD, label: REDSHIFT_PROD }],
       },
     ];
 
@@ -136,7 +140,7 @@ describe('ExploreQueryFilterChips', () => {
     expect(categoryChip).toHaveTextContent('label.in');
     expect(categoryChip).toHaveTextContent('Databases');
     expect(serviceChip).toHaveTextContent('label.service');
-    expect(serviceChip).toHaveTextContent('redshift prod');
+    expect(serviceChip).toHaveTextContent(REDSHIFT_PROD);
     expect(
       screen.getByTestId('query-chip-entityType.keyword-table')
     ).toBeInTheDocument();
@@ -174,7 +178,7 @@ describe('ExploreQueryFilterChips', () => {
       />
     );
 
-    expect(screen.queryByTestId('clear-all-chips')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CLEAR_ALL_CHIPS)).not.toBeInTheDocument();
 
     rerender(
       <ExploreQueryFilterChips
@@ -184,7 +188,7 @@ describe('ExploreQueryFilterChips', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('clear-all-chips'));
+    fireEvent.click(screen.getByTestId(CLEAR_ALL_CHIPS));
 
     expect(onClearAll).toHaveBeenCalledTimes(1);
   });

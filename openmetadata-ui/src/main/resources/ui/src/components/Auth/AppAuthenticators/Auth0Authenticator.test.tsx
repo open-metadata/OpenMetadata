@@ -18,13 +18,15 @@ import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import Auth0Authenticator from './Auth0Authenticator';
 
+const MOCK_ID_TOKEN = 'mock-id-token';
+
 // Mocks
 const loginWithRedirect = jest.fn().mockImplementation(() => Promise.resolve());
 const mockGetAccessTokenSilently = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
 const mockGetIdTokenClaims = jest.fn(() =>
-  Promise.resolve({ __raw: 'mock-id-token' })
+  Promise.resolve({ __raw: MOCK_ID_TOKEN })
 );
 const logout = jest.fn();
 
@@ -89,7 +91,7 @@ describe('Auth0Authenticator', () => {
   it('should resolve with id token and setOidcToken on renewIdToken (Auth0)', async () => {
     const ref = createRef<AuthenticatorRef>();
     mockGetIdTokenClaims.mockImplementationOnce(() =>
-      Promise.resolve({ __raw: 'mock-id-token' })
+      Promise.resolve({ __raw: MOCK_ID_TOKEN })
     );
     render(
       <Auth0Authenticator ref={ref}>
@@ -103,8 +105,8 @@ describe('Auth0Authenticator', () => {
 
     expect(mockGetAccessTokenSilently).toHaveBeenCalled();
     expect(mockGetIdTokenClaims).toHaveBeenCalled();
-    expect(setOidcToken).toHaveBeenCalledWith('mock-id-token');
-    expect(result).toBe('mock-id-token');
+    expect(setOidcToken).toHaveBeenCalledWith(MOCK_ID_TOKEN);
+    expect(result).toBe(MOCK_ID_TOKEN);
   });
 
   it('should reject if getAccessTokenSilently throws', async () => {

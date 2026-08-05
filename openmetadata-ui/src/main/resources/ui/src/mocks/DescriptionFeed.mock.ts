@@ -18,6 +18,16 @@ import {
   ThreadType,
 } from '../generated/entity/feed/thread';
 
+const E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_C =
+  '<#E::table::sample_data.ecommerce_db.shopify.cypress_version_table-400129>';
+const F17DB291_8BDB_4234_ABEE_FD7CCFD35304 =
+  'f17db291-8bdb-4234-abee-fd7ccfd35304';
+const CYPRESS_VERSION_TABLE_400129 = 'cypress_version_table-400129';
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_CYPRESS_V =
+  'sample_data.ecommerce_db.shopify.cypress_version_table-400129';
+const DESCRIPTION_FOR_CYPRESS_VERSION_TABLE_4001 =
+  'Description for cypress_version_table-400129';
+
 export const MOCK_DESCRIPTION_FEED_1: Thread = {
   id: '1e20be19-d44f-420d-87ee-c963f1074ac3',
   type: ThreadType.Conversation,
@@ -66,16 +76,14 @@ export const MOCK_DESCRIPTION_FEED_2: Thread = {
   type: ThreadType.Conversation,
   href: 'http://localhost:8585/api/v1/feed/fb553937-ef9c-46bb-af1f-4d336fcb05cd',
   threadTs: 1722236662421,
-  about:
-    '<#E::table::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
+  about: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_C,
   entityRef: {
-    id: 'f17db291-8bdb-4234-abee-fd7ccfd35304',
+    id: F17DB291_8BDB_4234_ABEE_FD7CCFD35304,
     type: 'table',
-    name: 'cypress_version_table-400129',
-    fullyQualifiedName:
-      'sample_data.ecommerce_db.shopify.cypress_version_table-400129',
-    description: 'Description for cypress_version_table-400129',
-    displayName: 'cypress_version_table-400129',
+    name: CYPRESS_VERSION_TABLE_400129,
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_CYPRESS_V,
+    description: DESCRIPTION_FOR_CYPRESS_VERSION_TABLE_4001,
+    displayName: CYPRESS_VERSION_TABLE_400129,
     deleted: false,
   },
   entityUrlLink: `[sample_data.ecommerce_db.shopify.cypress_version_table-400129](/table/sample_data.ecommerce_db.shopify.cypress_version_table-400129)`,
@@ -87,7 +95,7 @@ export const MOCK_DESCRIPTION_FEED_2: Thread = {
     fieldName: 'description',
     entitySpecificInfo: {
       diffMessage: `Added **description**: <span class="diff-added">Description for cypress_version_table-400129</span>`,
-      newDescription: 'Description for cypress_version_table-400129',
+      newDescription: DESCRIPTION_FOR_CYPRESS_VERSION_TABLE_4001,
       previousDescription: '',
     },
   },
@@ -106,16 +114,14 @@ export const MOCK_DESCRIPTION_FEED_3: Thread = {
   type: ThreadType.Conversation,
   href: 'http://localhost:8585/api/v1/feed/77501bc8-302c-4c82-a466-086337ec9ad9',
   threadTs: 1722236662421,
-  about:
-    '<#E::table::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
+  about: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_C,
   entityRef: {
-    id: 'f17db291-8bdb-4234-abee-fd7ccfd35304',
+    id: F17DB291_8BDB_4234_ABEE_FD7CCFD35304,
     type: 'table',
-    name: 'cypress_version_table-400129',
-    fullyQualifiedName:
-      'sample_data.ecommerce_db.shopify.cypress_version_table-400129',
-    description: 'Description for cypress_version_table-400129',
-    displayName: 'cypress_version_table-400129',
+    name: CYPRESS_VERSION_TABLE_400129,
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_CYPRESS_V,
+    description: DESCRIPTION_FOR_CYPRESS_VERSION_TABLE_4001,
+    displayName: CYPRESS_VERSION_TABLE_400129,
     deleted: false,
   },
   entityUrlLink: `[sample_data.ecommerce_db.shopify.cypress_version_table-400129](/table/sample_data.ecommerce_db.shopify.cypress_version_table-400129)`,
@@ -146,16 +152,14 @@ export const MOCK_DESCRIPTION_FEED_4: Thread = {
   type: ThreadType.Conversation,
   href: 'http://localhost:8585/api/v1/feed/2387533a-d594-4d89-9df5-89eba087a331',
   threadTs: 1722236662006,
-  about:
-    '<#E::table::sample_data.ecommerce_db.shopify.cypress_version_table-400129>',
+  about: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_C,
   entityRef: {
-    id: 'f17db291-8bdb-4234-abee-fd7ccfd35304',
+    id: F17DB291_8BDB_4234_ABEE_FD7CCFD35304,
     type: 'table',
-    name: 'cypress_version_table-400129',
-    fullyQualifiedName:
-      'sample_data.ecommerce_db.shopify.cypress_version_table-400129',
-    description: 'Description for cypress_version_table-400129',
-    displayName: 'cypress_version_table-400129',
+    name: CYPRESS_VERSION_TABLE_400129,
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_CYPRESS_V,
+    description: DESCRIPTION_FOR_CYPRESS_VERSION_TABLE_4001,
+    displayName: CYPRESS_VERSION_TABLE_400129,
     deleted: false,
   },
   entityUrlLink: `[sample_data.ecommerce_db.shopify.cypress_version_table-400129](/table/sample_data.ecommerce_db.shopify.cypress_version_table-400129)`,

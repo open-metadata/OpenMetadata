@@ -13,10 +13,27 @@
 
 import { MarkerType, Position } from 'reactflow';
 
+const F80DE28C_ECCE_46FB_88C7_152CC111F9EC =
+  'f80de28c-ecce-46fb-88c7-152cc111f9ec' as const;
+const _5F2EEE5D_1C08_4756_AF31_DABCE7CB26FD =
+  '5f2eee5d-1c08-4756-af31-dabce7cb26fd' as const;
+const _92D7CB90_CC49_497A_9B01_18F4C6A61951 =
+  '92d7cb90-cc49-497a-9b01-18f4c6a61951' as const;
+const _2D30F754_05DE_4372_AF27_F221997BFE9A =
+  '2d30f754-05de-4372-af27-f221997bfe9a' as const;
+const A0F3199F_5FEA_4C41_AF43_BB66EF3C845E =
+  'a0f3199f-5fea-4c41-af43-bb66ef3c845e' as const;
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW =
+  'sample_data.ecommerce_db.shopify.raw_product_catalog.comments' as const;
+const F52ACB5F_2B2C_440C_91C1_90B46D138FAD =
+  'f52acb5f-2b2c-440c-91c1-90b46d138fad' as const;
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM =
+  'sample_data.ecommerce_db.shopify.dim_location.location_id' as const;
+
 /* eslint-disable max-len */
 export const MOCK_LINEAGE_DATA = {
   entity: {
-    id: 'f80de28c-ecce-46fb-88c7-152cc111f9ec',
+    id: F80DE28C_ECCE_46FB_88C7_152CC111F9EC,
     type: 'table',
     name: 'fact_session',
     fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_session',
@@ -27,7 +44,7 @@ export const MOCK_LINEAGE_DATA = {
   },
   nodes: [
     {
-      id: '5f2eee5d-1c08-4756-af31-dabce7cb26fd',
+      id: _5F2EEE5D_1C08_4756_AF31_DABCE7CB26FD,
       type: 'table',
       name: 'dim_customer',
       fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
@@ -37,7 +54,7 @@ export const MOCK_LINEAGE_DATA = {
       href: 'http://localhost:8585/api/v1/tables/5f2eee5d-1c08-4756-af31-dabce7cb26fd',
     },
     {
-      id: '92d7cb90-cc49-497a-9b01-18f4c6a61951',
+      id: _92D7CB90_CC49_497A_9B01_18F4C6A61951,
       type: 'table',
       name: 'storage_service_entity',
       fullyQualifiedName:
@@ -46,7 +63,7 @@ export const MOCK_LINEAGE_DATA = {
       href: 'http://localhost:8585/api/v1/tables/92d7cb90-cc49-497a-9b01-18f4c6a61951',
     },
     {
-      id: '2d30f754-05de-4372-af27-f221997bfe9a',
+      id: _2D30F754_05DE_4372_AF27_F221997BFE9A,
       type: 'table',
       name: 'dim_address',
       fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
@@ -97,8 +114,8 @@ export const MOCK_LINEAGE_DATA = {
   ],
   upstreamEdges: [
     {
-      fromEntity: '2d30f754-05de-4372-af27-f221997bfe9a',
-      toEntity: '5f2eee5d-1c08-4756-af31-dabce7cb26fd',
+      fromEntity: _2D30F754_05DE_4372_AF27_F221997BFE9A,
+      toEntity: _5F2EEE5D_1C08_4756_AF31_DABCE7CB26FD,
       lineageDetails: {
         sqlQuery: '',
         columnsLineage: [
@@ -113,8 +130,8 @@ export const MOCK_LINEAGE_DATA = {
       },
     },
     {
-      fromEntity: '5f2eee5d-1c08-4756-af31-dabce7cb26fd',
-      toEntity: 'f80de28c-ecce-46fb-88c7-152cc111f9ec',
+      fromEntity: _5F2EEE5D_1C08_4756_AF31_DABCE7CB26FD,
+      toEntity: F80DE28C_ECCE_46FB_88C7_152CC111F9EC,
       lineageDetails: {
         sqlQuery: '',
         columnsLineage: [
@@ -129,12 +146,12 @@ export const MOCK_LINEAGE_DATA = {
       },
     },
     {
-      fromEntity: '92d7cb90-cc49-497a-9b01-18f4c6a61951',
-      toEntity: 'f80de28c-ecce-46fb-88c7-152cc111f9ec',
+      fromEntity: _92D7CB90_CC49_497A_9B01_18F4C6A61951,
+      toEntity: F80DE28C_ECCE_46FB_88C7_152CC111F9EC,
     },
     {
       fromEntity: 'b5d520fd-a4a5-4173-85d5-f804ddab452a',
-      toEntity: '2d30f754-05de-4372-af27-f221997bfe9a',
+      toEntity: _2D30F754_05DE_4372_AF27_F221997BFE9A,
       lineageDetails: {
         sqlQuery: '',
         columnsLineage: [
@@ -149,7 +166,7 @@ export const MOCK_LINEAGE_DATA = {
     },
     {
       fromEntity: 'bf99a241-76e9-4947-86a7-c9bf3c326974',
-      toEntity: '2d30f754-05de-4372-af27-f221997bfe9a',
+      toEntity: _2D30F754_05DE_4372_AF27_F221997BFE9A,
       lineageDetails: {
         sqlQuery: '',
         columnsLineage: [
@@ -164,17 +181,17 @@ export const MOCK_LINEAGE_DATA = {
     },
     {
       fromEntity: 'd4aab894-5877-44f1-840c-b08a2dc664a4',
-      toEntity: '2d30f754-05de-4372-af27-f221997bfe9a',
+      toEntity: _2D30F754_05DE_4372_AF27_F221997BFE9A,
     },
     {
       fromEntity: '5a51ea54-8304-4fa8-a7b2-1f083ff1580c',
-      toEntity: '92d7cb90-cc49-497a-9b01-18f4c6a61951',
+      toEntity: _92D7CB90_CC49_497A_9B01_18F4C6A61951,
     },
   ],
   downstreamEdges: [
     {
-      toEntity: '92d7cb90-cc49-497a-9b01-18f4c6a61951',
-      fromEntity: 'f80de28c-ecce-46fb-88c7-152cc111f9ec',
+      toEntity: _92D7CB90_CC49_497A_9B01_18F4C6A61951,
+      fromEntity: F80DE28C_ECCE_46FB_88C7_152CC111F9EC,
     },
   ],
 };
@@ -182,7 +199,7 @@ export const MOCK_LINEAGE_DATA = {
 export const MOCK_NODES_AND_EDGES = {
   nodes: [
     {
-      id: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+      id: A0F3199F_5FEA_4C41_AF43_BB66EF3C845E,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
       type: 'default',
@@ -196,8 +213,7 @@ export const MOCK_NODES_AND_EDGES = {
             dataType: 'STRING',
             dataLength: 1,
             dataTypeDisplay: 'string',
-            fullyQualifiedName:
-              'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW,
             constraint: 'NULL',
             ordinalPosition: 1,
             type: 'input',
@@ -205,7 +221,7 @@ export const MOCK_NODES_AND_EDGES = {
         },
         isExpanded: true,
         node: {
-          id: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
+          id: A0F3199F_5FEA_4C41_AF43_BB66EF3C845E,
           type: 'table',
           name: 'raw_product_catalog',
           fullyQualifiedName:
@@ -221,7 +237,7 @@ export const MOCK_NODES_AND_EDGES = {
       },
     },
     {
-      id: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+      id: F52ACB5F_2B2C_440C_91C1_90B46D138FAD,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
       type: 'output',
@@ -236,15 +252,14 @@ export const MOCK_NODES_AND_EDGES = {
             name: 'location_id',
             dataType: 'NUMERIC',
             dataTypeDisplay: 'numeric',
-            fullyQualifiedName:
-              'sample_data.ecommerce_db.shopify.dim_location.location_id',
+            fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
             constraint: 'PRIMARY_KEY',
             ordinalPosition: 1,
             type: 'output',
           },
         },
         node: {
-          id: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+          id: F52ACB5F_2B2C_440C_91C1_90B46D138FAD,
           type: 'table',
           name: 'dim_location',
           fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
@@ -262,31 +277,28 @@ export const MOCK_NODES_AND_EDGES = {
   edges: [
     {
       id: 'column-sample_data.ecommerce_db.shopify.raw_product_catalog.comments-sample_data.ecommerce_db.shopify.dim_location.location_id-edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
-      source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
-      target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
-      targetHandle: 'sample_data.ecommerce_db.shopify.dim_location.location_id',
-      sourceHandle:
-        'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+      source: A0F3199F_5FEA_4C41_AF43_BB66EF3C845E,
+      target: F52ACB5F_2B2C_440C_91C1_90B46D138FAD,
+      targetHandle: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
+      sourceHandle: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW,
       type: 'buttonedge',
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },
       data: {
         id: 'column-sample_data.ecommerce_db.shopify.raw_product_catalog.comments-sample_data.ecommerce_db.shopify.dim_location.location_id-edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
-        source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
-        target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
-        targetHandle:
-          'sample_data.ecommerce_db.shopify.dim_location.location_id',
-        sourceHandle:
-          'sample_data.ecommerce_db.shopify.raw_product_catalog.comments',
+        source: A0F3199F_5FEA_4C41_AF43_BB66EF3C845E,
+        target: F52ACB5F_2B2C_440C_91C1_90B46D138FAD,
+        targetHandle: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
+        sourceHandle: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_RAW,
         isEditMode: false,
         isColumnLineage: true,
       },
     },
     {
       id: 'edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
-      source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
-      target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+      source: A0F3199F_5FEA_4C41_AF43_BB66EF3C845E,
+      target: F52ACB5F_2B2C_440C_91C1_90B46D138FAD,
       type: 'buttonedge',
       animated: false,
       style: {
@@ -298,8 +310,8 @@ export const MOCK_NODES_AND_EDGES = {
       data: {
         id: 'edge-a0f3199f-5fea-4c41-af43-bb66ef3c845e-f52acb5f-2b2c-440c-91c1-90b46d138fad',
         label: '',
-        source: 'a0f3199f-5fea-4c41-af43-bb66ef3c845e',
-        target: 'f52acb5f-2b2c-440c-91c1-90b46d138fad',
+        source: A0F3199F_5FEA_4C41_AF43_BB66EF3C845E,
+        target: F52ACB5F_2B2C_440C_91C1_90B46D138FAD,
         sourceType: 'table',
         targetType: 'table',
         isEditMode: false,

@@ -27,6 +27,9 @@ import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useTestSuitesListPage } from './useTestSuitesListPage';
 
+const DATA_QUALITY_TEST_CASES_BUNDLE_SUITES =
+  '/data-quality/test-cases/bundle-suites';
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: { testSuite: { ViewAll: true, ViewBasic: true } },
@@ -400,7 +403,7 @@ describe('useTestSuitesListPage', () => {
   it('should navigate to the resolved sub-tab path when handleSubTabChange is called', () => {
     (
       observabilityRouterClassBase.getDataQualityPagePath as jest.Mock
-    ).mockReturnValue('/data-quality/test-cases/bundle-suites');
+    ).mockReturnValue(DATA_QUALITY_TEST_CASES_BUNDLE_SUITES);
 
     const { result } = renderHook(() => useTestSuitesListPage());
 
@@ -412,7 +415,7 @@ describe('useTestSuitesListPage', () => {
       observabilityRouterClassBase.getDataQualityPagePath
     ).toHaveBeenCalledWith('test-cases', 'bundle-suites');
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/data-quality/test-cases/bundle-suites'
+      DATA_QUALITY_TEST_CASES_BUNDLE_SUITES
     );
   });
 
@@ -600,7 +603,7 @@ describe('useTestSuitesListPage', () => {
   it('should navigate to the bundle-suites path when handleSubTabChange selects it', () => {
     (
       observabilityRouterClassBase.getDataQualityPagePath as jest.Mock
-    ).mockReturnValue('/data-quality/test-cases/bundle-suites');
+    ).mockReturnValue(DATA_QUALITY_TEST_CASES_BUNDLE_SUITES);
 
     const { result } = renderHook(() => useTestSuitesListPage());
 
@@ -617,7 +620,7 @@ describe('useTestSuitesListPage', () => {
       DataQualitySubTabs.BUNDLE_SUITES
     );
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/data-quality/test-cases/bundle-suites'
+      DATA_QUALITY_TEST_CASES_BUNDLE_SUITES
     );
     // characterization gap: the resulting `subTab` param change is owned by the
     // router (useParams is mocked to {}), so the URL->param binding is not

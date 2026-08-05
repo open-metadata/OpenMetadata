@@ -25,6 +25,26 @@ import {
 } from '../../../../rest/tasksAPI';
 import { TaskTabNew } from './TaskTabNew.component';
 
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY =
+  'sample_data.ecommerce_db.shopify."dim.shop"';
+const ADMIN_USER_ID = 'admin-user-id';
+const D6764107_E8B4_4748_B256_C86FECC66064 =
+  'd6764107-e8b4-4748-b256-c86fecc66064';
+const _31D072F8_7873_4976_88EA_AC0D2F51F632 =
+  '31d072f8-7873-4976-88ea-ac0d2f51f632';
+const CUSTOM_DESCRIPTION_PROPOSAL = 'Custom description proposal';
+const NEEDS_FINAL_VERIFICATION = 'Needs final verification';
+const TASK_TITLE = 'task-title';
+const LABEL_ASSIGNEE_PLURAL = 'label.assignee-plural';
+const TASK_PAYLOAD_DETAILS = 'task-payload-details';
+const COMMENTS_INPUT_FIELD = 'comments-input-field';
+const GLOSSARY_ACCEPT_REJECT_TASK_DROPDOWN =
+  'glossary-accept-reject-task-dropdown';
+const LABEL_SHOW_MORE = 'label.show-more';
+const LABEL_SHOW_LESS = 'label.show-less';
+const ACCESS_TYPE = 'Access Type';
+const COLUMNS_REQUESTED = 'Columns Requested';
+
 const MOCK_TASK: Task = {
   id: '8b5076bb-8284-46b0-b00d-5e43a184ba9b',
   taskId: 'TASK-00002',
@@ -37,17 +57,18 @@ const MOCK_TASK: Task = {
     id: 'table-id-1',
     type: 'table',
     name: 'dim.shop',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop"',
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
   },
   createdBy: {
-    id: 'admin-user-id',
+    id: ADMIN_USER_ID,
     type: 'user',
     name: 'admin',
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     displayName: 'Admin User',
   },
   assignees: [
     {
-      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      id: D6764107_E8B4_4748_B256_C86FECC66064,
       type: 'team',
       name: 'Sales',
       fullyQualifiedName: 'Sales',
@@ -84,17 +105,17 @@ const MOCK_TASK_RECOGNIZER_FEEDBACK: Task = {
     id: 'table-id-2',
     type: 'table',
     name: 'dim.shop',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop"',
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
   },
   createdBy: {
-    id: 'admin-user-id',
+    id: ADMIN_USER_ID,
     type: 'user',
     name: 'admin',
     displayName: 'Admin User',
   },
   assignees: [
     {
-      id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+      id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
       type: 'team',
       name: 'DataGovernance',
       fullyQualifiedName: 'DataGovernance',
@@ -114,7 +135,7 @@ const MOCK_TASK_RECOGNIZER_FEEDBACK: Task = {
       tagFQN: 'PII.Sensitive',
       userComments: 'This is not a sensitive field',
       createdBy: {
-        id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+        id: D6764107_E8B4_4748_B256_C86FECC66064,
         type: 'user',
         name: 'admin',
         displayName: 'Admin User',
@@ -143,13 +164,14 @@ const MOCK_INCIDENT_TASK: Task = {
       'sample_data.ecommerce_db.shopify."dim.shop".table_row_count',
   },
   createdBy: {
-    id: 'admin-user-id',
+    id: ADMIN_USER_ID,
     type: 'user',
     name: 'admin',
     displayName: 'Admin User',
   },
   assignees: [
     {
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       id: 'test-user-id',
       type: 'user',
       name: 'test-user',
@@ -177,10 +199,10 @@ const MOCK_CUSTOM_TASK: Task = {
     id: 'table-id-3',
     type: 'table',
     name: 'dim.shop',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop"',
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY,
   },
   createdBy: {
-    id: 'admin-user-id',
+    id: ADMIN_USER_ID,
     type: 'user',
     name: 'admin',
     displayName: 'Admin User',
@@ -196,8 +218,8 @@ const MOCK_CUSTOM_TASK: Task = {
   ],
   payload: {
     targetField: 'description',
-    proposedText: 'Custom description proposal',
-    reviewNotes: 'Needs final verification',
+    proposedText: CUSTOM_DESCRIPTION_PROPOSAL,
+    reviewNotes: NEEDS_FINAL_VERIFICATION,
   } as Task['payload'],
   comments: [],
   commentCount: 0,
@@ -284,6 +306,7 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../utils/TaskFormSchemaUtils', () => {
   const actual = jest.requireActual('../../../../utils/TaskFormSchemaUtils');
 
@@ -506,11 +529,9 @@ describe('TaskTabNew Component', () => {
       });
     });
 
-    expect(screen.getByTestId('task-title')).toBeInTheDocument();
-    expect(screen.getByTestId('task-title')).toHaveTextContent('#2');
-    expect(screen.getByTestId('task-title')).not.toHaveTextContent(
-      '#TASK-00002'
-    );
+    expect(screen.getByTestId(TASK_TITLE)).toBeInTheDocument();
+    expect(screen.getByTestId(TASK_TITLE)).toHaveTextContent('#2');
+    expect(screen.getByTestId(TASK_TITLE)).not.toHaveTextContent('#TASK-00002');
   });
 
   it('should display created by information', async () => {
@@ -530,7 +551,7 @@ describe('TaskTabNew Component', () => {
       });
     });
 
-    expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_ASSIGNEE_PLURAL)).toBeInTheDocument();
   });
 
   it('should expose assignee edit action for editable single-assignee tasks', async () => {
@@ -572,7 +593,7 @@ describe('TaskTabNew Component', () => {
       });
     });
 
-    expect(screen.getByTestId('task-payload-details')).toBeInTheDocument();
+    expect(screen.getByTestId(TASK_PAYLOAD_DETAILS)).toBeInTheDocument();
     expect(
       screen.getByText('PersonalData.SpecialCategory')
     ).toBeInTheDocument();
@@ -602,7 +623,7 @@ describe('TaskTabNew Component', () => {
       });
     });
 
-    expect(screen.getByTestId('task-payload-details')).toBeInTheDocument();
+    expect(screen.getByTestId(TASK_PAYLOAD_DETAILS)).toBeInTheDocument();
     expect(screen.getByText('Old description')).toBeInTheDocument();
     expect(screen.getByText('New description')).toBeInTheDocument();
   });
@@ -634,7 +655,7 @@ describe('TaskTabNew Component', () => {
     useAuth.mockReturnValue({ isAdminUser: true });
     useApplicationStore.mockReturnValue({
       currentUser: {
-        id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+        id: D6764107_E8B4_4748_B256_C86FECC66064,
         name: 'test-user',
         teams: [],
       },
@@ -666,7 +687,7 @@ describe('TaskTabNew Component', () => {
       });
     });
 
-    const commentInput = screen.getByTestId('comments-input-field');
+    const commentInput = screen.getByTestId(COMMENTS_INPUT_FIELD);
 
     expect(commentInput).toBeInTheDocument();
   });
@@ -683,11 +704,11 @@ describe('TaskTabNew Component', () => {
 
     useApplicationStore.mockReturnValue({
       currentUser: {
-        id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+        id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
         name: 'test-user',
         teams: [
           {
-            id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+            id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
             name: 'DataGovernance',
           },
         ],
@@ -756,11 +777,11 @@ describe('TaskTabNew Component', () => {
 
     useApplicationStore.mockReturnValue({
       currentUser: {
-        id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+        id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
         name: 'test-user',
         teams: [
           {
-            id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+            id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
             name: 'DataGovernance',
           },
         ],
@@ -777,7 +798,7 @@ describe('TaskTabNew Component', () => {
     });
 
     const dropdownButton = await screen.findByTestId(
-      'glossary-accept-reject-task-dropdown'
+      GLOSSARY_ACCEPT_REJECT_TASK_DROPDOWN
     );
 
     expect(dropdownButton).toBeInTheDocument();
@@ -837,11 +858,11 @@ describe('TaskTabNew Component', () => {
 
     useApplicationStore.mockReturnValue({
       currentUser: {
-        id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+        id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
         name: 'test-user',
         teams: [
           {
-            id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+            id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
             name: 'DataGovernance',
           },
         ],
@@ -858,7 +879,7 @@ describe('TaskTabNew Component', () => {
     });
 
     const dropdownButton = await screen.findByTestId(
-      'glossary-accept-reject-task-dropdown'
+      GLOSSARY_ACCEPT_REJECT_TASK_DROPDOWN
     );
 
     expect(dropdownButton).toBeInTheDocument();
@@ -871,7 +892,7 @@ describe('TaskTabNew Component', () => {
       });
     });
 
-    const commentInput = screen.getByTestId('comments-input-field');
+    const commentInput = screen.getByTestId(COMMENTS_INPUT_FIELD);
     await act(async () => {
       fireEvent.click(commentInput);
     });
@@ -907,7 +928,7 @@ describe('TaskTabNew Component', () => {
     });
 
     const dropdown = await screen.findByTestId(
-      'glossary-accept-reject-task-dropdown'
+      GLOSSARY_ACCEPT_REJECT_TASK_DROPDOWN
     );
 
     expect(dropdown).toBeInTheDocument();
@@ -959,7 +980,7 @@ describe('TaskTabNew Component', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('entity-link')).toHaveTextContent('entityName');
     expect(screen.getByText('label.created-by')).toBeInTheDocument();
-    expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_ASSIGNEE_PLURAL)).toBeInTheDocument();
   });
 
   it('renders schema-driven payload details for custom tasks', async () => {
@@ -999,9 +1020,9 @@ describe('TaskTabNew Component', () => {
       });
     });
 
-    expect(screen.getByTestId('task-payload-details')).toBeInTheDocument();
-    expect(screen.getByText('Custom description proposal')).toBeInTheDocument();
-    expect(screen.getByText('Needs final verification')).toBeInTheDocument();
+    expect(screen.getByTestId(TASK_PAYLOAD_DETAILS)).toBeInTheDocument();
+    expect(screen.getByText(CUSTOM_DESCRIPTION_PROPOSAL)).toBeInTheDocument();
+    expect(screen.getByText(NEEDS_FINAL_VERIFICATION)).toBeInTheDocument();
   });
 
   it('submits schema-driven payload when resolving a custom task', async () => {
@@ -1052,8 +1073,8 @@ describe('TaskTabNew Component', () => {
         newValue: undefined,
         payload: {
           targetField: 'description',
-          proposedText: 'Custom description proposal',
-          reviewNotes: 'Needs final verification',
+          proposedText: CUSTOM_DESCRIPTION_PROPOSAL,
+          reviewNotes: NEEDS_FINAL_VERIFICATION,
         },
       });
     });
@@ -1090,7 +1111,7 @@ describe('TaskTabNew Component', () => {
     expect(
       screen.getByTestId('workflow-task-action-primary')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
+    expect(screen.getByTestId(COMMENTS_INPUT_FIELD)).toBeInTheDocument();
   });
 
   const buildAssignees = (count: number) =>
@@ -1135,9 +1156,9 @@ describe('TaskTabNew Component', () => {
   it('should not render the show-more toggle when assignees fit the collapsed view', async () => {
     await renderDataAccessTaskWithAssignees(5);
 
-    expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
-    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
-    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+    expect(screen.getByText(LABEL_ASSIGNEE_PLURAL)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_SHOW_MORE)).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_SHOW_LESS)).not.toBeInTheDocument();
   });
 
   it('should clamp assignees and toggle the full list via show-more/show-less', async () => {
@@ -1145,24 +1166,24 @@ describe('TaskTabNew Component', () => {
 
     const collapsedChips = screen.getAllByText('ProfilePicture').length;
 
-    expect(screen.getByText('label.show-more')).toBeInTheDocument();
-    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+    expect(screen.getByText(LABEL_SHOW_MORE)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_SHOW_LESS)).not.toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.show-more'));
+      fireEvent.click(screen.getByText(LABEL_SHOW_MORE));
     });
 
-    expect(screen.getByText('label.show-less')).toBeInTheDocument();
-    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+    expect(screen.getByText(LABEL_SHOW_LESS)).toBeInTheDocument();
+    expect(screen.queryByText(LABEL_SHOW_MORE)).not.toBeInTheDocument();
     expect(screen.getAllByText('ProfilePicture').length).toBe(
       collapsedChips + 3
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByText('label.show-less'));
+      fireEvent.click(screen.getByText(LABEL_SHOW_LESS));
     });
 
-    expect(screen.getByText('label.show-more')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_SHOW_MORE)).toBeInTheDocument();
     expect(screen.getAllByText('ProfilePicture').length).toBe(collapsedChips);
   });
 
@@ -1177,11 +1198,11 @@ describe('TaskTabNew Component', () => {
       formSchema: {
         type: 'object',
         properties: {
-          accessType: { type: 'string', title: 'Access Type' },
+          accessType: { type: 'string', title: ACCESS_TYPE },
           columns: {
             type: 'array',
             items: { type: 'string' },
-            title: 'Columns Requested',
+            title: COLUMNS_REQUESTED,
           },
         },
       },
@@ -1207,15 +1228,15 @@ describe('TaskTabNew Component', () => {
   it('should render the columns field in the read-only form for column-level access', async () => {
     await renderDataAccessTaskWithAccessType(AccessType.ColumnLevel);
 
-    expect(screen.getByText('Access Type')).toBeInTheDocument();
-    expect(screen.getByText('Columns Requested')).toBeInTheDocument();
+    expect(screen.getByText(ACCESS_TYPE)).toBeInTheDocument();
+    expect(screen.getByText(COLUMNS_REQUESTED)).toBeInTheDocument();
   });
 
   it('should hide the columns field in the read-only form for non-column-level access', async () => {
     await renderDataAccessTaskWithAccessType(AccessType.FullAccess);
 
-    expect(screen.getByText('Access Type')).toBeInTheDocument();
-    expect(screen.queryByText('Columns Requested')).not.toBeInTheDocument();
+    expect(screen.getByText(ACCESS_TYPE)).toBeInTheDocument();
+    expect(screen.queryByText(COLUMNS_REQUESTED)).not.toBeInTheDocument();
   });
 
   it('resolves workflow-driven tasks using transition ids', async () => {
@@ -1262,8 +1283,8 @@ describe('TaskTabNew Component', () => {
         newValue: undefined,
         payload: {
           targetField: 'description',
-          proposedText: 'Custom description proposal',
-          reviewNotes: 'Needs final verification',
+          proposedText: CUSTOM_DESCRIPTION_PROPOSAL,
+          reviewNotes: NEEDS_FINAL_VERIFICATION,
         },
       });
     });

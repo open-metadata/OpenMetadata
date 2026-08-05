@@ -46,6 +46,13 @@ import {
   DummySetActiveActivityComponent,
 } from './DummyTestComponent';
 
+const ACTIVITY_123 = 'activity-123' as const;
+const E_TABLE_TEST = '<#E::table::test>' as const;
+const ASSIGNEES_CREATED_BY_ABOUT_COMMENTS_PAYLOAD =
+  'assignees,createdBy,about,comments,payload' as const;
+const DELETE_FEED = 'delete-feed' as const;
+const SET_ACTIVE = 'set-active' as const;
+
 const mockUseApplicationStore = jest.fn(() => ({
   currentUser: mockUserData,
 }));
@@ -68,12 +75,12 @@ jest.mock('../ActivityFeedDrawer/ActivityFeedDrawer', () =>
 
 const mockActivityEvents: ActivityEvent[] = [
   {
-    id: 'activity-123',
+    id: ACTIVITY_123,
     timestamp: 1234567890,
     eventType: 'entityUpdated' as ActivityEvent['eventType'],
     actor: { id: 'user-1', type: 'user', name: 'testuser' },
     entity: { id: 'entity-1', type: 'table', name: 'testTable' },
-    about: '<#E::table::test>',
+    about: E_TABLE_TEST,
     summary: 'Updated tags',
     reactions: [],
   },
@@ -195,7 +202,7 @@ describe('ActivityFeedProvider', () => {
         after: undefined,
         limit: undefined,
         domain: undefined,
-        fields: 'assignees,createdBy,about,comments,payload',
+        fields: ASSIGNEES_CREATED_BY_ABOUT_COMMENTS_PAYLOAD,
       })
     );
   });
@@ -215,7 +222,7 @@ describe('ActivityFeedProvider', () => {
         after: 'after-234',
         limit: undefined,
         domain: undefined,
-        fields: 'assignees,createdBy,about,comments,payload',
+        fields: ASSIGNEES_CREATED_BY_ABOUT_COMMENTS_PAYLOAD,
       })
     );
   });
@@ -243,7 +250,7 @@ describe('ActivityFeedProvider', () => {
         after: undefined,
         limit: undefined,
         domain: undefined,
-        fields: 'assignees,createdBy,about,comments,payload',
+        fields: ASSIGNEES_CREATED_BY_ABOUT_COMMENTS_PAYLOAD,
       })
     );
 
@@ -348,7 +355,7 @@ describe('ActivityFeedProvider', () => {
       expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('delete-feed'));
+    fireEvent.click(screen.getByTestId(DELETE_FEED));
 
     expect(deleteThread).toHaveBeenCalledWith('123');
     expect(deletePostById).not.toHaveBeenCalled();
@@ -362,10 +369,10 @@ describe('ActivityFeedProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('delete-feed')).toBeInTheDocument();
+      expect(screen.getByTestId(DELETE_FEED)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('delete-feed'));
+    fireEvent.click(screen.getByTestId(DELETE_FEED));
 
     expect(deleteThread).not.toHaveBeenCalled();
     expect(deletePostById).toHaveBeenCalledWith('123', '456');
@@ -428,7 +435,7 @@ describe('ActivityFeedProvider', () => {
 
       await waitFor(() => {
         expect(addActivityReaction).toHaveBeenCalledWith(
-          'activity-123',
+          ACTIVITY_123,
           ReactionType.ThumbsUp
         );
       });
@@ -452,7 +459,7 @@ describe('ActivityFeedProvider', () => {
 
       await waitFor(() => {
         expect(removeActivityReaction).toHaveBeenCalledWith(
-          'activity-123',
+          ACTIVITY_123,
           ReactionType.ThumbsUp
         );
       });
@@ -466,7 +473,7 @@ describe('ActivityFeedProvider', () => {
       eventType: 'entityUpdated' as ActivityEvent['eventType'],
       actor: { id: 'user-1', type: 'user', name: 'testuser' },
       entity: { id: 'entity-1', type: 'table', name: 'testTable' },
-      about: '<#E::table::test>',
+      about: E_TABLE_TEST,
       summary: 'Updated description',
     };
 
@@ -490,7 +497,7 @@ describe('ActivityFeedProvider', () => {
         expect(postThread).toHaveBeenCalledWith(
           expect.objectContaining({
             message: 'Test comment',
-            about: '<#E::table::test>',
+            about: E_TABLE_TEST,
           })
         );
       });
@@ -514,7 +521,7 @@ describe('ActivityFeedProvider', () => {
         );
       });
 
-      fireEvent.click(screen.getByTestId('set-active'));
+      fireEvent.click(screen.getByTestId(SET_ACTIVE));
 
       await waitFor(() => {
         expect(getAllFeeds).toHaveBeenCalled();
@@ -529,7 +536,7 @@ describe('ActivityFeedProvider', () => {
       eventType: 'entityUpdated' as ActivityEvent['eventType'],
       actor: { id: 'user-1', type: 'user', name: 'testuser' },
       entity: { id: 'entity-1', type: 'table', name: 'testTable' },
-      about: '<#E::table::test>',
+      about: E_TABLE_TEST,
       summary: 'Updated tags',
     };
 
@@ -547,11 +554,11 @@ describe('ActivityFeedProvider', () => {
         );
       });
 
-      fireEvent.click(screen.getByTestId('set-active'));
+      fireEvent.click(screen.getByTestId(SET_ACTIVE));
 
       await waitFor(() => {
         expect(getAllFeeds).toHaveBeenCalledWith(
-          '<#E::table::test>',
+          E_TABLE_TEST,
           undefined,
           'Conversation'
         );
@@ -572,7 +579,7 @@ describe('ActivityFeedProvider', () => {
         );
       });
 
-      fireEvent.click(screen.getByTestId('set-active'));
+      fireEvent.click(screen.getByTestId(SET_ACTIVE));
 
       await waitFor(() => {
         expect(screen.getByTestId('activity-thread-id')).toHaveTextContent(
@@ -590,7 +597,7 @@ describe('ActivityFeedProvider', () => {
         );
       });
 
-      fireEvent.click(screen.getByTestId('set-active'));
+      fireEvent.click(screen.getByTestId(SET_ACTIVE));
 
       await waitFor(() => {
         expect(screen.getByTestId('selected-activity-id')).toHaveTextContent(

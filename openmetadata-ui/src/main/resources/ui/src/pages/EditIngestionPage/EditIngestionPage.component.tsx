@@ -62,6 +62,8 @@ import { getServiceType } from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
+const SERVER_ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
+
 const EditIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
   const { t } = useTranslation();
@@ -108,7 +110,7 @@ const EditIngestionPage = () => {
             resolve();
           } else {
             showErrorToast(
-              t('server.entity-fetch-error', {
+              t(SERVER_ENTITY_FETCH_ERROR, {
                 entity: t('label.service-detail-lowercase-plural'),
               })
             );
@@ -118,7 +120,7 @@ const EditIngestionPage = () => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError(serviceCategory, serviceFQN));
           } else {
-            const errTextService = t('server.entity-fetch-error', {
+            const errTextService = t(SERVER_ENTITY_FETCH_ERROR, {
               entity: t('label.service-detail-lowercase-plural'),
             });
             showErrorToast(error, errTextService);
@@ -146,7 +148,7 @@ const EditIngestionPage = () => {
           if (error.response?.status === 404) {
             setErrorMsg(getEntityMissingError('Ingestion', ingestionFQN));
           } else {
-            const errTextIngestion = t('server.entity-fetch-error', {
+            const errTextIngestion = t(SERVER_ENTITY_FETCH_ERROR, {
               entity: t('label.ingestion-workflow'),
             });
             showErrorToast(error, errTextIngestion);

@@ -13,6 +13,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { useFieldFocusManagement } from './useFieldFocusManagement';
 
+const ROOT_HOST_PORT = 'root/hostPort' as const;
+
 describe('useFieldFocusManagement', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -26,7 +28,7 @@ describe('useFieldFocusManagement', () => {
     const { result } = renderHook(() => useFieldFocusManagement());
 
     act(() => {
-      result.current.handleFieldFocus('root/hostPort', { title: 'Host' });
+      result.current.handleFieldFocus(ROOT_HOST_PORT, { title: 'Host' });
     });
 
     expect(result.current.activeField).toBe('');
@@ -35,7 +37,7 @@ describe('useFieldFocusManagement', () => {
       jest.advanceTimersByTime(50);
     });
 
-    expect(result.current.activeField).toBe('root/hostPort');
+    expect(result.current.activeField).toBe(ROOT_HOST_PORT);
     expect(result.current.activeFieldMeta).toEqual({ title: 'Host' });
   });
 
@@ -54,7 +56,7 @@ describe('useFieldFocusManagement', () => {
     const { result } = renderHook(() => useFieldFocusManagement());
 
     act(() => {
-      result.current.handleFieldFocus('root/hostPort');
+      result.current.handleFieldFocus(ROOT_HOST_PORT);
       jest.advanceTimersByTime(50);
     });
 
@@ -85,7 +87,7 @@ describe('useFieldFocusManagement', () => {
     const { result } = renderHook(() => useFieldFocusManagement());
 
     act(() => {
-      result.current.handleFieldFocus('root/hostPort', { title: 'Host' });
+      result.current.handleFieldFocus(ROOT_HOST_PORT, { title: 'Host' });
       jest.advanceTimersByTime(50);
     });
 
@@ -127,7 +129,7 @@ describe('useFieldFocusManagement', () => {
     const { result, unmount } = renderHook(() => useFieldFocusManagement());
 
     act(() => {
-      result.current.handleFieldFocus('root/hostPort');
+      result.current.handleFieldFocus(ROOT_HOST_PORT);
     });
 
     unmount();

@@ -20,12 +20,28 @@ import {
   TaskPriority,
 } from '../rest/tasksAPI';
 
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRESS_ZIP_COLUMN_VALUES_TO_BE_BETWEEN =
+  'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between';
+const TEST_THE_NUMBER_OF_COLUMN_IN_TABLE_IS_BETWEEN_X_AND_Y =
+  'test the number of column in table is between x and y';
+const _6206A003_281C_4984_9728_4E949A4E4023 =
+  '6206a003-281c-4984-9728-4e949a4e4023';
+const D75B492B_3B73_449D_922C_14B61BC44B3D =
+  'd75b492b-3b73-449d-922c-14b61bc44b3d';
+const _65F7A1D2_EE28_4B43_B504_4BE90C689F4D =
+  '65f7a1d2-ee28-4b43-b504-4be90c689f4d';
+const _4188C516_0D74_4692_BFE6_1727C58893F9 =
+  '4188c516-0d74-4692-bfe6-1727c58893f9';
+const _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC =
+  '88e03a7b-3d53-4eaa-8daa-909cd535bedc';
+const AARON_JOHNSON = 'Aaron Johnson';
+
 export const MOCK_TEST_CASE_DATA = {
-  id: '4188c516-0d74-4692-bfe6-1727c58893f9',
+  id: _4188C516_0D74_4692_BFE6_1727C58893F9,
   name: 'column_values_to_be_between',
   fullyQualifiedName:
-    'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
-  description: 'test the number of column in table is between x and y',
+    SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRESS_ZIP_COLUMN_VALUES_TO_BE_BETWEEN,
+  description: TEST_THE_NUMBER_OF_COLUMN_IN_TABLE_IS_BETWEEN_X_AND_Y,
   testDefinition: {
     id: '43eeca01-e128-4de7-9e92-8035f4823993',
     type: 'testDefinition',
@@ -91,7 +107,7 @@ export const MOCK_THREAD_DATA = [
     threadTs: 1703570590556,
     about:
       '<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
-    entityId: '6206a003-281c-4984-9728-4e949a4e4023',
+    entityId: _6206A003_281C_4984_9728_4E949A4E4023,
     createdBy: 'admin',
     updatedAt: 1703570590652,
     updatedBy: 'admin',
@@ -112,11 +128,11 @@ export const MOCK_THREAD_DATA = [
       type: 'RequestTestCaseFailureResolution',
       assignees: [
         {
-          id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
+          id: D75B492B_3B73_449D_922C_14B61BC44B3D,
           type: 'user',
           name: 'aaron_johnson0',
           fullyQualifiedName: 'aaron_johnson0',
-          displayName: 'Aaron Johnson',
+          displayName: AARON_JOHNSON,
           deleted: false,
         },
       ],
@@ -133,7 +149,7 @@ export const MOCK_THREAD_DATA = [
     threadTs: 1703570590829,
     about:
       '<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.table_column_count_between>',
-    entityId: '6206a003-281c-4984-9728-4e949a4e4023',
+    entityId: _6206A003_281C_4984_9728_4E949A4E4023,
     createdBy: 'admin',
     updatedAt: 1703570590829,
     updatedBy: 'admin',
@@ -146,16 +162,16 @@ export const MOCK_THREAD_DATA = [
       type: 'RequestTestCaseFailureResolution',
       assignees: [
         {
-          id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
+          id: D75B492B_3B73_449D_922C_14B61BC44B3D,
           type: 'user',
           name: 'aaron_johnson0',
           fullyQualifiedName: 'aaron_johnson0',
-          displayName: 'Aaron Johnson',
+          displayName: AARON_JOHNSON,
           deleted: false,
         },
       ],
       status: 'Open',
-      testCaseResolutionStatusId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
+      testCaseResolutionStatusId: _65F7A1D2_EE28_4B43_B504_4BE90C689F4D,
     },
   },
 ];
@@ -170,24 +186,24 @@ export const MOCK_TASK_DATA: Task[] = [
     status: TaskEntityStatus.Completed,
     priority: TaskPriority.Medium,
     about: {
-      id: '6206a003-281c-4984-9728-4e949a4e4023',
+      id: _6206A003_281C_4984_9728_4E949A4E4023,
       type: 'testCase',
       fullyQualifiedName:
         'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
     },
     createdBy: {
-      id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+      id: _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC,
       type: 'user',
       name: 'admin',
       fullyQualifiedName: 'admin',
     },
     assignees: [
       {
-        id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
+        id: D75B492B_3B73_449D_922C_14B61BC44B3D,
         type: 'user',
         name: 'aaron_johnson0',
         fullyQualifiedName: 'aaron_johnson0',
-        displayName: 'Aaron Johnson',
+        displayName: AARON_JOHNSON,
       },
     ],
     comments: [],
@@ -203,24 +219,24 @@ export const MOCK_TASK_DATA: Task[] = [
     status: TaskEntityStatus.Open,
     priority: TaskPriority.Medium,
     about: {
-      id: '6206a003-281c-4984-9728-4e949a4e4023',
+      id: _6206A003_281C_4984_9728_4E949A4E4023,
       type: 'testCase',
       fullyQualifiedName:
         'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
     },
     createdBy: {
-      id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+      id: _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC,
       type: 'user',
       name: 'admin',
       fullyQualifiedName: 'admin',
     },
     assignees: [
       {
-        id: 'd75b492b-3b73-449d-922c-14b61bc44b3d',
+        id: D75B492B_3B73_449D_922C_14B61BC44B3D,
         type: 'user',
         name: 'aaron_johnson0',
         fullyQualifiedName: 'aaron_johnson0',
-        displayName: 'Aaron Johnson',
+        displayName: AARON_JOHNSON,
       },
     ],
     comments: [],
@@ -232,11 +248,11 @@ export const MOCK_TASK_DATA: Task[] = [
 export const MOCK_TEST_CASE_RESOLUTION_STATUS = [
   {
     id: 'a6029315-dcf9-4ed0-a26f-80077c97fe39',
-    stateId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
+    stateId: _65F7A1D2_EE28_4B43_B504_4BE90C689F4D,
     timestamp: 1709608154987,
     testCaseResolutionStatusType: 'New',
     updatedBy: {
-      id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+      id: _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC,
       type: 'user',
       name: 'admin',
       fullyQualifiedName: 'admin',
@@ -244,24 +260,24 @@ export const MOCK_TEST_CASE_RESOLUTION_STATUS = [
     },
     updatedAt: 1709608154987,
     testCaseReference: {
-      id: '4188c516-0d74-4692-bfe6-1727c58893f9',
+      id: _4188C516_0D74_4692_BFE6_1727C58893F9,
       type: 'testCase',
       name: 'column_values_to_be_between',
       fullyQualifiedName:
-        'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
-      description: 'test the number of column in table is between x and y',
+        SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRESS_ZIP_COLUMN_VALUES_TO_BE_BETWEEN,
+      description: TEST_THE_NUMBER_OF_COLUMN_IN_TABLE_IS_BETWEEN_X_AND_Y,
       deleted: false,
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols, sonarjs/no-duplicate-string -- fixture URL
       href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',
     },
   },
   {
     id: 'a7dca0d9-402e-46de-a814-b2891efbedea',
-    stateId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
+    stateId: _65F7A1D2_EE28_4B43_B504_4BE90C689F4D,
     timestamp: 1709608155011,
     testCaseResolutionStatusType: 'Ack',
     updatedBy: {
-      id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+      id: _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC,
       type: 'user',
       name: 'admin',
       fullyQualifiedName: 'admin',
@@ -269,12 +285,12 @@ export const MOCK_TEST_CASE_RESOLUTION_STATUS = [
     },
     updatedAt: 1709608155011,
     testCaseReference: {
-      id: '4188c516-0d74-4692-bfe6-1727c58893f9',
+      id: _4188C516_0D74_4692_BFE6_1727C58893F9,
       type: 'testCase',
       name: 'column_values_to_be_between',
       fullyQualifiedName:
-        'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
-      description: 'test the number of column in table is between x and y',
+        SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRESS_ZIP_COLUMN_VALUES_TO_BE_BETWEEN,
+      description: TEST_THE_NUMBER_OF_COLUMN_IN_TABLE_IS_BETWEEN_X_AND_Y,
       deleted: false,
       // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
       href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',
@@ -287,7 +303,7 @@ export const MOCK_INITIAL_ASSIGNEE = [
     id: '5ee13b3b-9aa1-48c8-abd2-b6f97fe46bd3',
     type: 'user',
     deleted: false,
-    displayName: 'Aaron Johnson',
+    displayName: AARON_JOHNSON,
     fullyQualifiedName: 'aaron_johnson0',
     href: 'http://localhost:8585/api/v1/users/5ee13b3b-9aa1-48c8-abd2-b6f97fe46bd3',
     name: 'aaron_johnson0',
@@ -329,7 +345,7 @@ export const MOCK_INITIAL_ASSIGNEE = [
     name: 'adam.matthews2',
   },
   {
-    id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+    id: _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC,
     type: 'user',
     deleted: false,
     fullyQualifiedName: 'admin',
@@ -351,11 +367,11 @@ export const MOCK_TEST_CASE_INCIDENT = {
   data: [
     {
       id: 'a7dca0d9-402e-46de-a814-b2891efbedea',
-      stateId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
+      stateId: _65F7A1D2_EE28_4B43_B504_4BE90C689F4D,
       timestamp: 1709608155011,
       testCaseResolutionStatusType: 'Ack',
       updatedBy: {
-        id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+        id: _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
@@ -363,12 +379,12 @@ export const MOCK_TEST_CASE_INCIDENT = {
       },
       updatedAt: 1709608155011,
       testCaseReference: {
-        id: '4188c516-0d74-4692-bfe6-1727c58893f9',
+        id: _4188C516_0D74_4692_BFE6_1727C58893F9,
         type: 'testCase',
         name: 'column_values_to_be_between',
         fullyQualifiedName:
-          'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
-        description: 'test the number of column in table is between x and y',
+          SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRESS_ZIP_COLUMN_VALUES_TO_BE_BETWEEN,
+        description: TEST_THE_NUMBER_OF_COLUMN_IN_TABLE_IS_BETWEEN_X_AND_Y,
         deleted: false,
         // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
         href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',
@@ -376,11 +392,11 @@ export const MOCK_TEST_CASE_INCIDENT = {
     },
     {
       id: 'a6029315-dcf9-4ed0-a26f-80077c97fe39',
-      stateId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
+      stateId: _65F7A1D2_EE28_4B43_B504_4BE90C689F4D,
       timestamp: 1709608154987,
       testCaseResolutionStatusType: 'New',
       updatedBy: {
-        id: '88e03a7b-3d53-4eaa-8daa-909cd535bedc',
+        id: _88E03A7B_3D53_4EAA_8DAA_909CD535BEDC,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',
@@ -388,12 +404,12 @@ export const MOCK_TEST_CASE_INCIDENT = {
       },
       updatedAt: 1709608154987,
       testCaseReference: {
-        id: '4188c516-0d74-4692-bfe6-1727c58893f9',
+        id: _4188C516_0D74_4692_BFE6_1727C58893F9,
         type: 'testCase',
         name: 'column_values_to_be_between',
         fullyQualifiedName:
-          'sample_data.ecommerce_db.shopify.dim_address.zip.column_values_to_be_between',
-        description: 'test the number of column in table is between x and y',
+          SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_ADDRESS_ZIP_COLUMN_VALUES_TO_BE_BETWEEN,
+        description: TEST_THE_NUMBER_OF_COLUMN_IN_TABLE_IS_BETWEEN_X_AND_Y,
         deleted: false,
         // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
         href: 'http://openmetadata-server:8585/api/v1/dataQuality/testCases/4188c516-0d74-4692-bfe6-1727c58893f9',

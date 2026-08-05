@@ -14,11 +14,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import WidgetCard from './WidgetCard';
 
+const WIDGET_TEST_1 = 'widget-test-1';
+const KNOWLEDGEPANEL_TESTWIDGET = 'KnowledgePanel.TestWidget';
+const THIS_IS_A_TEST_WIDGET_DESCRIPTION = 'This is a test widget description';
+const WIDGET_DESCRIPTION = 'widget-description';
+
 const mockWidget: DocStoreDocument = {
-  id: 'widget-test-1',
+  id: WIDGET_TEST_1,
   name: 'Test Widget',
-  fullyQualifiedName: 'KnowledgePanel.TestWidget',
-  description: 'This is a test widget description',
+  fullyQualifiedName: KNOWLEDGEPANEL_TESTWIDGET,
+  description: THIS_IS_A_TEST_WIDGET_DESCRIPTION,
   entityType: 'KnowledgePanel',
   data: {},
 };
@@ -65,12 +70,10 @@ describe('WidgetCard', () => {
         />
       );
 
-      expect(
-        screen.getByTestId('KnowledgePanel.TestWidget')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(KNOWLEDGEPANEL_TESTWIDGET)).toBeInTheDocument();
       expect(screen.getByText('Test Widget')).toBeInTheDocument();
       expect(
-        screen.getByText('This is a test widget description')
+        screen.getByText(THIS_IS_A_TEST_WIDGET_DESCRIPTION)
       ).toBeInTheDocument();
     });
 
@@ -83,11 +86,9 @@ describe('WidgetCard', () => {
         />
       );
 
-      const description = screen.getByTestId('widget-description');
+      const description = screen.getByTestId(WIDGET_DESCRIPTION);
 
-      expect(description).toHaveTextContent(
-        'This is a test widget description'
-      );
+      expect(description).toHaveTextContent(THIS_IS_A_TEST_WIDGET_DESCRIPTION);
     });
 
     it('should render default description when description is undefined', () => {
@@ -99,7 +100,7 @@ describe('WidgetCard', () => {
         />
       );
 
-      const description = screen.getByTestId('widget-description');
+      const description = screen.getByTestId(WIDGET_DESCRIPTION);
 
       expect(description).toHaveTextContent('message.no-description-available');
     });
@@ -113,11 +114,9 @@ describe('WidgetCard', () => {
         />
       );
 
-      expect(
-        screen.getByTestId('KnowledgePanel.TestWidget')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId(KNOWLEDGEPANEL_TESTWIDGET)).toBeInTheDocument();
 
-      expect(screen.getByTestId('widget-description')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_DESCRIPTION)).toBeInTheDocument();
 
       const contentDiv = container.querySelector('.widget-card-content');
 
@@ -135,9 +134,9 @@ describe('WidgetCard', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('KnowledgePanel.TestWidget'));
+      fireEvent.click(screen.getByTestId(KNOWLEDGEPANEL_TESTWIDGET));
 
-      expect(mockOnSelectWidget).toHaveBeenCalledWith('widget-test-1');
+      expect(mockOnSelectWidget).toHaveBeenCalledWith(WIDGET_TEST_1);
       expect(mockOnSelectWidget).toHaveBeenCalledTimes(1);
     });
 
@@ -166,7 +165,7 @@ describe('WidgetCard', () => {
       );
 
       expect(() => {
-        fireEvent.click(screen.getByTestId('KnowledgePanel.TestWidget'));
+        fireEvent.click(screen.getByTestId(KNOWLEDGEPANEL_TESTWIDGET));
       }).not.toThrow();
     });
 
@@ -179,13 +178,13 @@ describe('WidgetCard', () => {
         />
       );
 
-      const card = screen.getByTestId('KnowledgePanel.TestWidget');
+      const card = screen.getByTestId(KNOWLEDGEPANEL_TESTWIDGET);
 
       fireEvent.click(card);
       fireEvent.click(card);
       fireEvent.click(card);
 
-      expect(mockOnSelectWidget).toHaveBeenCalledWith('widget-test-1');
+      expect(mockOnSelectWidget).toHaveBeenCalledWith(WIDGET_TEST_1);
       expect(mockOnSelectWidget).toHaveBeenCalledTimes(3);
     });
   });

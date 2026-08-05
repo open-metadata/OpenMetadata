@@ -17,6 +17,8 @@ import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import RequestTag from './RequestTagPage';
 
+const LABEL_REQUEST_TAG_PLURAL = 'label.request-tag-plural';
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -49,6 +51,7 @@ jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
       setEntityData({
         id: 'id1',
         name: 'dim_location',
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
         tableType: 'Regular',
         owners: [
@@ -105,7 +108,7 @@ jest.mock('../../../hooks/useFqn', () => ({
 
 describe('RequestTagPage', () => {
   it('should render component', async () => {
-    render(<RequestTag pageTitle={i18n.t('label.request-tag-plural')} />, {
+    render(<RequestTag pageTitle={i18n.t(LABEL_REQUEST_TAG_PLURAL)} />, {
       wrapper: MemoryRouter,
     });
 
@@ -124,7 +127,7 @@ describe('RequestTagPage', () => {
   });
 
   it("should go back to previous page when 'Cancel' button is clicked", async () => {
-    render(<RequestTag pageTitle={i18n.t('label.request-tag-plural')} />, {
+    render(<RequestTag pageTitle={i18n.t(LABEL_REQUEST_TAG_PLURAL)} />, {
       wrapper: MemoryRouter,
     });
     const cancelBtn = await screen.findByTestId('cancel-btn');
@@ -138,7 +141,7 @@ describe('RequestTagPage', () => {
 
   it('should submit form when submit button is clicked', async () => {
     const mockCreateTask = createTask as jest.Mock;
-    render(<RequestTag pageTitle={i18n.t('label.request-tag-plural')} />, {
+    render(<RequestTag pageTitle={i18n.t(LABEL_REQUEST_TAG_PLURAL)} />, {
       wrapper: MemoryRouter,
     });
 

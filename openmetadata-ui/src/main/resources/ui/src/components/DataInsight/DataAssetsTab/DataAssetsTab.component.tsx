@@ -17,6 +17,8 @@ import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsig
 import Loader from '../../common/Loader/Loader';
 import { DataInsightChartCard } from '../DataInsightChartCard';
 
+const MESSAGE_FIELD_INSIGHT = 'message.field-insight';
+
 const DataAssetsTab = () => {
   const { t } = useTranslation();
   const { kpi } = useDataInsightProvider();
@@ -40,7 +42,7 @@ const DataAssetsTab = () => {
           header={t('label.data-insight-description-summary-type', {
             type: t('label.data-asset'),
           })}
-          subHeader={t('message.field-insight', {
+          subHeader={t(MESSAGE_FIELD_INSIGHT, {
             field: t('label.description-lowercase'),
           })}
           type={SystemChartType.PercentageOfDataAssetWithDescription}
@@ -52,7 +54,7 @@ const DataAssetsTab = () => {
           header={t('label.data-insight-owner-summary-type', {
             type: t('label.data-asset'),
           })}
-          subHeader={t('message.field-insight', {
+          subHeader={t(MESSAGE_FIELD_INSIGHT, {
             field: t('label.owner'),
           })}
           type={SystemChartType.PercentageOfDataAssetWithOwner}
@@ -63,7 +65,7 @@ const DataAssetsTab = () => {
           header={t('label.data-insight-description-summary-type', {
             type: t('label.service'),
           })}
-          subHeader={t('message.field-insight', {
+          subHeader={t(MESSAGE_FIELD_INSIGHT, {
             field: t('label.description-lowercase'),
           })}
           type={SystemChartType.PercentageOfServiceWithDescription}
@@ -74,7 +76,7 @@ const DataAssetsTab = () => {
           header={t('label.data-insight-owner-summary-type', {
             type: t('label.service'),
           })}
-          subHeader={t('message.field-insight', {
+          subHeader={t(MESSAGE_FIELD_INSIGHT, {
             field: t('label.owner'),
           })}
           type={SystemChartType.PercentageOfServiceWithOwner}
@@ -83,7 +85,7 @@ const DataAssetsTab = () => {
       <Col span={24}>
         <DataInsightChartCard
           header={t('label.data-insight-tier-summary')}
-          subHeader={t('message.field-insight', {
+          subHeader={t(MESSAGE_FIELD_INSIGHT, {
             field: t('label.tier'),
           })}
           type={SystemChartType.TotalDataAssetsByTier}

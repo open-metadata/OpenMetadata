@@ -15,6 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import ToggleExpandButton from './ToggleExpandButton';
 import { ToggleExpandButtonProps } from './ToggleExpandButton.interface';
 
+const TOGGLE_EXPAND_BUTTON = 'toggle-expand-button' as const;
+
 const mockToggleExpandAll = jest.fn();
 
 const mockProps: ToggleExpandButtonProps = {
@@ -27,7 +29,7 @@ describe('ToggleExpandButton component', () => {
   it('ToggleExpandButton should render expand all text and icon when all rows are not expanded', () => {
     render(<ToggleExpandButton {...mockProps} />);
 
-    expect(screen.getByTestId('toggle-expand-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TOGGLE_EXPAND_BUTTON)).toBeInTheDocument();
     expect(screen.getByTestId('expand-icon')).toBeInTheDocument();
     expect(screen.getByText('label.expand-all')).toBeInTheDocument();
   });
@@ -40,7 +42,7 @@ describe('ToggleExpandButton component', () => {
       />
     );
 
-    expect(screen.getByTestId('toggle-expand-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TOGGLE_EXPAND_BUTTON)).toBeInTheDocument();
     expect(screen.getByTestId('collapse-icon')).toBeInTheDocument();
     expect(screen.getByText('label.collapse-all')).toBeInTheDocument();
   });
@@ -48,7 +50,7 @@ describe('ToggleExpandButton component', () => {
   it('toggleExpandAll should be called on click of button', async () => {
     render(<ToggleExpandButton {...mockProps} />);
 
-    const toggleButton = screen.getByTestId('toggle-expand-button');
+    const toggleButton = screen.getByTestId(TOGGLE_EXPAND_BUTTON);
 
     expect(toggleButton).toBeInTheDocument();
 

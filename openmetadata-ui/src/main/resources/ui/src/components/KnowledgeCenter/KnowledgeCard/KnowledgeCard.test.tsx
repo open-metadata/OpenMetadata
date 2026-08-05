@@ -22,6 +22,9 @@ import {
   QUICK_LINK_MOCK_DATA,
 } from './KnowledgeCard.mock';
 
+const EDIT_QUICK_LINK_BTN = 'edit-quick-link-btn';
+const DELETE_QUICK_LINK_BTN = 'delete-quick-link-btn';
+
 const mockOnUpdateVote = jest.fn();
 const mockOnFollow = jest.fn();
 const mockOnUnFollow = jest.fn();
@@ -252,10 +255,8 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(
-      await screen.findByTestId('edit-quick-link-btn')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('delete-quick-link-btn')).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_QUICK_LINK_BTN)).toBeInTheDocument();
+    expect(screen.getByTestId(DELETE_QUICK_LINK_BTN)).toBeInTheDocument();
   });
 
   it('should open the quick link form modal on edit click', async () => {
@@ -264,7 +265,7 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    fireEvent.click(await screen.findByTestId('edit-quick-link-btn'));
+    fireEvent.click(await screen.findByTestId(EDIT_QUICK_LINK_BTN));
 
     expect(screen.getByTestId('quick-link-form-modal')).toBeInTheDocument();
   });
@@ -275,7 +276,7 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    fireEvent.click(await screen.findByTestId('delete-quick-link-btn'));
+    fireEvent.click(await screen.findByTestId(DELETE_QUICK_LINK_BTN));
 
     expect(screen.getByTestId('delete-widget-modal')).toBeInTheDocument();
   });
@@ -309,10 +310,8 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.queryByTestId('edit-quick-link-btn')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('delete-quick-link-btn')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_QUICK_LINK_BTN)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DELETE_QUICK_LINK_BTN)).not.toBeInTheDocument();
   });
 
   it('should render edit button when user has partial edit permission', async () => {
@@ -332,9 +331,7 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(
-      await screen.findByTestId('edit-quick-link-btn')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_QUICK_LINK_BTN)).toBeInTheDocument();
   });
 
   it('should not render edit and delete buttons for quick link when readonly', () => {
@@ -358,9 +355,7 @@ describe('Knowledge Card', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.queryByTestId('edit-quick-link-btn')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('delete-quick-link-btn')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_QUICK_LINK_BTN)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DELETE_QUICK_LINK_BTN)).not.toBeInTheDocument();
   });
 });

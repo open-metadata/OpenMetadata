@@ -184,6 +184,9 @@ import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
 
+const LABEL_SERVICE = 'label.service';
+const LABEL_CONNECTION = 'label.connection';
+
 const CUSTOM_SERVICE_TYPES = new Set<string>([
   DashboardServiceType.CustomDashboard,
   DatabaseServiceType.CustomDatabase,
@@ -1401,7 +1404,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       );
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.service'),
+          entity: t(LABEL_SERVICE),
         })
       );
       handleToggleDelete(newVersion);
@@ -1409,7 +1412,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.service'),
+          entity: t(LABEL_SERVICE),
         })
       );
     }
@@ -1723,7 +1726,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               title={
                 servicePermission.EditAll
                   ? t('label.edit-entity', {
-                      entity: t('label.connection'),
+                      entity: t(LABEL_CONNECTION),
                     })
                   : t('message.no-permission-for-action')
               }>
@@ -1734,7 +1737,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 type="primary"
                 onClick={goToEditConnection}>
                 {t('label.edit-entity', {
-                  entity: t('label.connection'),
+                  entity: t(LABEL_CONNECTION),
                 })}
               </Button>
             </Tooltip>
@@ -1903,7 +1906,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
 
     tabs.push({
-      name: t('label.connection'),
+      name: t(LABEL_CONNECTION),
       isHidden: !servicePermission.EditAll,
       key: EntityTabs.CONNECTION,
       children: testConnectionTab,
@@ -2019,7 +2022,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+          entity: `${getEntityName(serviceDetails)} ${t(LABEL_SERVICE)}`,
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

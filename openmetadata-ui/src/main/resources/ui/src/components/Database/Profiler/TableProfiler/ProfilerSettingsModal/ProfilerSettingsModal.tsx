@@ -79,6 +79,15 @@ import {
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
 
+const LABEL_PROFILE_CONFIG = 'label.profile-config';
+const LABEL_PROFILE_SAMPLE_TYPE = 'label.profile-sample-type';
+const LABEL_VALUE = 'label.value';
+const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
+const LABEL_START_ENTITY = 'label.start-entity';
+const LABEL_RANGE = 'label.range';
+const MESSAGE_ENTER_A_FIELD = 'message.enter-a-field';
+const LABEL_END_ENTITY = 'label.end-entity';
+
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))
 );
@@ -342,20 +351,20 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         if (data) {
           showSuccessToast(
             t('server.update-entity-success', {
-              entity: t('label.profile-config'),
+              entity: t(LABEL_PROFILE_CONFIG),
             })
           );
           onVisibilityChange(false);
         } else {
           throw t('server.entity-updating-error', {
-            entity: t('label.profile-config'),
+            entity: t(LABEL_PROFILE_CONFIG),
           });
         }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.profile-config'),
+            entity: t(LABEL_PROFILE_CONFIG),
           })
         );
       } finally {
@@ -484,7 +493,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             }}
             layout="vertical">
             <Form.Item
-              label={t('label.profile-sample-type', {
+              label={t(LABEL_PROFILE_SAMPLE_TYPE, {
                 type: '',
               })}
               name="profileSampleType">
@@ -496,7 +505,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 data-testid="profile-sample"
                 options={PROFILE_SAMPLE_OPTIONS}
                 placeholder={t('label.please-select-entity', {
-                  entity: t('label.profile-sample-type', {
+                  entity: t(LABEL_PROFILE_SAMPLE_TYPE, {
                     type: '',
                   }),
                 })}
@@ -507,8 +516,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             {state?.selectedProfileSampleType ===
               ProfileSampleType.Percentage && (
               <Form.Item
-                label={t('label.profile-sample-type', {
-                  type: t('label.value'),
+                label={t(LABEL_PROFILE_SAMPLE_TYPE, {
+                  type: t(LABEL_VALUE),
                 })}
                 name="profileSamplePercentage">
                 <SliderWithInput
@@ -521,8 +530,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
             {state?.selectedProfileSampleType === ProfileSampleType.Rows && (
               <Form.Item
-                label={t('label.profile-sample-type', {
-                  type: t('label.value'),
+                label={t(LABEL_PROFILE_SAMPLE_TYPE, {
+                  type: t(LABEL_VALUE),
                 })}
                 name="profileSampleRows">
                 <InputNumber
@@ -552,7 +561,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
           <p className="m-b-xs">
-            {t('label.profile-sample-type', {
+            {t(LABEL_PROFILE_SAMPLE_TYPE, {
               type: t('label.query'),
             })}{' '}
           </p>
@@ -697,7 +706,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   rules={[
                     {
                       required: state?.enablePartition,
-                      message: t('message.field-text-is-required', {
+                      message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                         fieldText: t('label.interval-type'),
                       }),
                     },
@@ -728,7 +737,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   rules={[
                     {
                       required: state?.enablePartition,
-                      message: t('message.field-text-is-required', {
+                      message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                         fieldText: t('label.column-entity', {
                           entity: t('label.name'),
                         }),
@@ -761,7 +770,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       rules={[
                         {
                           required: state?.enablePartition,
-                          message: t('message.field-text-is-required', {
+                          message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                             fieldText: t('label.interval'),
                           }),
                         },
@@ -788,7 +797,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       rules={[
                         {
                           required: state?.enablePartition,
-                          message: t('message.field-text-is-required', {
+                          message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                             fieldText: t('label.interval-unit'),
                           }),
                         },
@@ -813,8 +822,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       className="m-b-0"
                       label={
                         <span className="text-xs">
-                          {t('label.start-entity', {
-                            entity: t('label.range'),
+                          {t(LABEL_START_ENTITY, {
+                            entity: t(LABEL_RANGE),
                           })}
                         </span>
                       }
@@ -823,9 +832,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       rules={[
                         {
                           required: state?.enablePartition,
-                          message: t('message.field-text-is-required', {
-                            fieldText: t('label.start-entity', {
-                              entity: t('label.range'),
+                          message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                            fieldText: t(LABEL_START_ENTITY, {
+                              entity: t(LABEL_RANGE),
                             }),
                           }),
                         },
@@ -834,9 +843,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         className="w-full"
                         data-testid="start-range"
                         disabled={!state?.enablePartition}
-                        placeholder={t('message.enter-a-field', {
-                          field: t('label.start-entity', {
-                            entity: t('label.range'),
+                        placeholder={t(MESSAGE_ENTER_A_FIELD, {
+                          field: t(LABEL_START_ENTITY, {
+                            entity: t(LABEL_RANGE),
                           }),
                         })}
                         size="middle"
@@ -848,8 +857,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       className="m-b-0"
                       label={
                         <span className="text-xs">
-                          {t('label.end-entity', {
-                            entity: t('label.range'),
+                          {t(LABEL_END_ENTITY, {
+                            entity: t(LABEL_RANGE),
                           })}
                         </span>
                       }
@@ -858,9 +867,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       rules={[
                         {
                           required: state?.enablePartition,
-                          message: t('message.field-text-is-required', {
-                            fieldText: t('label.end-entity', {
-                              entity: t('label.range'),
+                          message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                            fieldText: t(LABEL_END_ENTITY, {
+                              entity: t(LABEL_RANGE),
                             }),
                           }),
                         },
@@ -869,9 +878,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         className="w-full"
                         data-testid="end-range"
                         disabled={!state?.enablePartition}
-                        placeholder={t('message.enter-a-field', {
-                          field: t('label.end-entity', {
-                            entity: t('label.range'),
+                        placeholder={t(MESSAGE_ENTER_A_FIELD, {
+                          field: t(LABEL_END_ENTITY, {
+                            entity: t(LABEL_RANGE),
                           }),
                         })}
                         size="middle"
@@ -888,7 +897,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       <>
                         <div className="flex items-center m-b-xs">
                           <p className="w-form-label text-xs m-r-sm">
-                            {`${t('label.value')}:`}
+                            {`${t(LABEL_VALUE)}:`}
                           </p>
                           <Button
                             className="include-columns-add-button flex-center"
@@ -909,20 +918,17 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 rules={[
                                   {
                                     required: state?.enablePartition,
-                                    message: t(
-                                      'message.field-text-is-required',
-                                      {
-                                        fieldText: t('label.value'),
-                                      }
-                                    ),
+                                    message: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                                      fieldText: t(LABEL_VALUE),
+                                    }),
                                   },
                                 ]}>
                                 <Input
                                   className="w-full"
                                   data-testid="partition-value"
                                   disabled={!state?.enablePartition}
-                                  placeholder={t('message.enter-a-field', {
-                                    field: t('label.value'),
+                                  placeholder={t(MESSAGE_ENTER_A_FIELD, {
+                                    field: t(LABEL_VALUE),
                                   })}
                                 />
                               </Form.Item>

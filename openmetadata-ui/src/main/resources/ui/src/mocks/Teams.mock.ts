@@ -24,25 +24,35 @@
 
 import { TeamType } from '../generated/entity/teams/team';
 
+const USERS_WITH_DATA_CONSUMER_ROLE =
+  'Users with Data Consumer role use different data assets for their day to day work.';
+const DATA_CONSUMER = 'Data Consumer';
+const _1497B0CF_CB5F_42C2_8E13_3AB68B90BFA0 =
+  '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0';
+const ORGANIZATION_UNDER_WHICH_ALL_THE =
+  'Organization under which all the other team hierarchy is created';
+const INGESTION_BOT = 'ingestion-bot';
+const ENTITY_UPDATED = 'Entity updated';
+const A0FB0583_B9B0_4FC4_8435_01ACAC401BCA =
+  'a0fb0583-b9b0-4fc4-8435-01acac401bca';
+
 export const MOCK_CURRENT_TEAM = {
   childrenCount: 22,
   defaultRoles: [
     {
       deleted: false,
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE,
+      displayName: DATA_CONSUMER,
       fullyQualifiedName: 'DataConsumer',
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols, sonarjs/no-duplicate-string -- test fixture URL
       href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
-      id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
+      id: _1497B0CF_CB5F_42C2_8E13_3AB68B90BFA0,
       name: 'DataConsumer',
       type: 'role',
     },
   ],
   deleted: false,
-  description:
-    'Organization under which all the other team hierarchy is created',
+  description: ORGANIZATION_UNDER_WHICH_ALL_THE,
   displayName: 'Organization',
   fullyQualifiedName: 'Organization',
   // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
@@ -127,13 +137,12 @@ export const MOCK_TABLE_DATA = [
     inheritedRoles: [
       {
         deleted: false,
-        description:
-          'Users with Data Consumer role use different data assets for their day to day work.',
-        displayName: 'Data Consumer',
+        description: USERS_WITH_DATA_CONSUMER_ROLE,
+        displayName: DATA_CONSUMER,
         fullyQualifiedName: 'DataConsumer',
         // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
-        id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
+        id: _1497B0CF_CB5F_42C2_8E13_3AB68B90BFA0,
         name: 'DataConsumer',
         type: 'role',
       },
@@ -144,7 +153,7 @@ export const MOCK_TABLE_DATA = [
     owns: [],
     teamType: undefined,
     updatedAt: 1670312015218,
-    updatedBy: 'ingestion-bot',
+    updatedBy: INGESTION_BOT,
     userCount: 50,
   },
   {
@@ -159,13 +168,12 @@ export const MOCK_TABLE_DATA = [
     inheritedRoles: [
       {
         deleted: false,
-        description:
-          'Users with Data Consumer role use different data assets for their day to day work.',
-        displayName: 'Data Consumer',
+        description: USERS_WITH_DATA_CONSUMER_ROLE,
+        displayName: DATA_CONSUMER,
         fullyQualifiedName: 'DataConsumer',
         // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
-        id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
+        id: _1497B0CF_CB5F_42C2_8E13_3AB68B90BFA0,
         name: 'DataConsumer',
         type: 'role',
       },
@@ -176,7 +184,7 @@ export const MOCK_TABLE_DATA = [
     owns: [],
     teamType: undefined,
     updatedAt: 1670312016093,
-    updatedBy: 'ingestion-bot',
+    updatedBy: INGESTION_BOT,
     userCount: 2,
   },
   {
@@ -191,13 +199,12 @@ export const MOCK_TABLE_DATA = [
     inheritedRoles: [
       {
         deleted: false,
-        description:
-          'Users with Data Consumer role use different data assets for their day to day work.',
+        description: USERS_WITH_DATA_CONSUMER_ROLE,
         displayName: 'Legal',
         fullyQualifiedName: 'Legal',
         // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
         href: 'http://sandbox-beta.open-metadata.org/api/v1/roles/1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
-        id: '1497b0cf-cb5f-42c2-8e13-3ab68b90bfa0',
+        id: _1497B0CF_CB5F_42C2_8E13_3AB68B90BFA0,
         name: 'Legal',
         type: 'role',
       },
@@ -208,7 +215,7 @@ export const MOCK_TABLE_DATA = [
     owns: [],
     teamType: undefined,
     updatedAt: 1670312016516,
-    updatedBy: 'ingestion-bot',
+    updatedBy: INGESTION_BOT,
     userCount: 3,
   },
 ];
@@ -255,9 +262,8 @@ export const MOCK_MARKETING_TEAM = {
       type: 'role',
       name: 'DataConsumer',
       fullyQualifiedName: 'DataConsumer',
-      description:
-        'Users with Data Consumer role use different data assets for their day to day work.',
-      displayName: 'Data Consumer',
+      description: USERS_WITH_DATA_CONSUMER_ROLE,
+      displayName: DATA_CONSUMER,
       deleted: false,
       href: 'test',
     },
@@ -282,7 +288,7 @@ export const MOCK_CSV_TEAM_DATA = {
     ],
     [
       'success',
-      'Entity updated',
+      ENTITY_UPDATED,
       'Applications',
       '',
       '',
@@ -295,7 +301,7 @@ export const MOCK_CSV_TEAM_DATA = {
     ],
     [
       'success',
-      'Entity updated',
+      ENTITY_UPDATED,
       'Infrastructure',
       '',
       '',
@@ -310,7 +316,7 @@ export const MOCK_CSV_TEAM_DATA = {
   parseData: [
     {
       status: 'success',
-      details: 'Entity updated',
+      details: ENTITY_UPDATED,
       'name*': 'Applications',
       displayName: '',
       description: '',
@@ -323,7 +329,7 @@ export const MOCK_CSV_TEAM_DATA = {
     },
     {
       status: 'success',
-      details: 'Entity updated',
+      details: ENTITY_UPDATED,
       'name*': 'Infrastructure',
       displayName: '',
       description: '',
@@ -349,14 +355,14 @@ export const MOCK_CHILD_TEAMS = [
     href: 'http://localhost:8585/api/v1/teams/7df98e19-d2f5-4397-b132-553543b8a33c',
     parents: [
       {
-        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        id: A0FB0583_B9B0_4FC4_8435_01ACAC401BCA,
         type: 'team',
         name: 'Organization',
         fullyQualifiedName: 'Organization',
-        description:
-          'Organization under which all the other team hierarchy is created',
+        description: ORGANIZATION_UNDER_WHICH_ALL_THE,
         displayName: 'Organization',
         deleted: false,
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',
       },
     ],
@@ -379,12 +385,11 @@ export const MOCK_CHILD_TEAMS = [
     href: 'http://localhost:8585/api/v1/teams/f79a6126-0fc3-4a65-9e22-3e64965833be',
     parents: [
       {
-        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        id: A0FB0583_B9B0_4FC4_8435_01ACAC401BCA,
         type: 'team',
         name: 'Organization',
         fullyQualifiedName: 'Organization',
-        description:
-          'Organization under which all the other team hierarchy is created',
+        description: ORGANIZATION_UNDER_WHICH_ALL_THE,
         displayName: 'Organization',
         deleted: false,
         href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',
@@ -411,12 +416,11 @@ export const MOCK_CHILD_TEAMS = [
     href: 'http://localhost:8585/api/v1/teams/7ff84954-632f-4c0c-a35d-c588e32851cf',
     parents: [
       {
-        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        id: A0FB0583_B9B0_4FC4_8435_01ACAC401BCA,
         type: 'team',
         name: 'Organization',
         fullyQualifiedName: 'Organization',
-        description:
-          'Organization under which all the other team hierarchy is created',
+        description: ORGANIZATION_UNDER_WHICH_ALL_THE,
         displayName: 'Organization',
         deleted: false,
         href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',
@@ -453,12 +457,11 @@ export const MOCK_CHILD_TEAMS = [
     href: 'http://localhost:8585/api/v1/teams/8e2e92ee-4fee-4c2d-894d-38c144f49894',
     parents: [
       {
-        id: 'a0fb0583-b9b0-4fc4-8435-01acac401bca',
+        id: A0FB0583_B9B0_4FC4_8435_01ACAC401BCA,
         type: 'team',
         name: 'Organization',
         fullyQualifiedName: 'Organization',
-        description:
-          'Organization under which all the other team hierarchy is created',
+        description: ORGANIZATION_UNDER_WHICH_ALL_THE,
         displayName: 'Organization',
         deleted: false,
         href: 'http://localhost:8585/api/v1/teams/a0fb0583-b9b0-4fc4-8435-01acac401bca',

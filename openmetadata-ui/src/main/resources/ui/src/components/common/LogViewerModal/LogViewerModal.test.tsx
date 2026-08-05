@@ -16,6 +16,12 @@ import LogViewerModal from './LogViewerModal.component';
 
 // Captures the props LazyLog was last rendered with so tests can drive its
 // scroll callback and assert on the imperative jump-to-end handle.
+const LOG_VIEWER_CLOSE = 'log-viewer-close';
+const LOG_VIEWER_DOWNLOAD = 'log-viewer-download';
+const LVM_FULLSCREEN = 'lvm-fullscreen';
+const LOG_VIEWER_SEARCH = 'log-viewer-search';
+const DATA_FOLLOW = 'data-follow';
+
 const mockLazyLog: {
   onScroll?: (v: {
     scrollTop: number;
@@ -108,6 +114,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     className?: string;
     'data-testid'?: string;
     'aria-label'?: string;
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
     'aria-pressed'?: boolean;
   }) => (
     <button
@@ -188,7 +195,7 @@ describe('LogViewerModal', () => {
     const onClose = jest.fn();
     render(<LogViewerModal {...defaultProps} onClose={onClose} />);
 
-    fireEvent.click(screen.getByTestId('log-viewer-close'));
+    fireEvent.click(screen.getByTestId(LOG_VIEWER_CLOSE));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -209,10 +216,10 @@ describe('LogViewerModal', () => {
     const onDownload = jest.fn();
     const { rerender } = render(<LogViewerModal {...defaultProps} />);
 
-    expect(screen.queryByTestId('log-viewer-download')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(LOG_VIEWER_DOWNLOAD)).not.toBeInTheDocument();
 
     rerender(<LogViewerModal {...defaultProps} onDownload={onDownload} />);
-    fireEvent.click(screen.getByTestId('log-viewer-download'));
+    fireEvent.click(screen.getByTestId(LOG_VIEWER_DOWNLOAD));
 
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
@@ -234,25 +241,25 @@ describe('LogViewerModal', () => {
 
     expect(fullScreenButton).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('icon-maximize')).toBeInTheDocument();
-    expect(screen.getByTestId('dialog')).not.toHaveClass('lvm-fullscreen');
+    expect(screen.getByTestId('dialog')).not.toHaveClass(LVM_FULLSCREEN);
 
     fireEvent.click(fullScreenButton);
 
     expect(fullScreenButton).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('icon-minimize')).toBeInTheDocument();
-    expect(screen.getByTestId('dialog')).toHaveClass('lvm-fullscreen');
+    expect(screen.getByTestId('dialog')).toHaveClass(LVM_FULLSCREEN);
   });
 
   it('resets fullscreen when the modal is closed and reopened', () => {
     const { rerender } = render(<LogViewerModal {...defaultProps} />);
     fireEvent.click(screen.getByTestId('log-viewer-fullscreen'));
 
-    expect(screen.getByTestId('dialog')).toHaveClass('lvm-fullscreen');
+    expect(screen.getByTestId('dialog')).toHaveClass(LVM_FULLSCREEN);
 
     rerender(<LogViewerModal {...defaultProps} open={false} />);
     rerender(<LogViewerModal {...defaultProps} open />);
 
-    expect(screen.getByTestId('dialog')).not.toHaveClass('lvm-fullscreen');
+    expect(screen.getByTestId('dialog')).not.toHaveClass(LVM_FULLSCREEN);
   });
 
   it('scrolls to the last line when jump-to-end is clicked', () => {
@@ -310,7 +317,7 @@ describe('LogViewerModal', () => {
       <LogViewerModal {...defaultProps} hasMore onLoadMore={onLoadMore} />
     );
 
-    fireEvent.change(screen.getByTestId('log-viewer-search'), {
+    fireEvent.change(screen.getByTestId(LOG_VIEWER_SEARCH), {
       target: { value: 'INFO' },
     });
     mockLazyLog.onScroll?.({
@@ -331,7 +338,7 @@ describe('LogViewerModal', () => {
     expect(
       screen.getByTestId('log-viewer-download-loader')
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('log-viewer-download')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(LOG_VIEWER_DOWNLOAD)).not.toBeInTheDocument();
   });
 
   it('shows the loader instead of logs when loading', () => {
@@ -355,10 +362,7 @@ describe('LogViewerModal', () => {
   it('passes the follow flag through to the log viewer', () => {
     render(<LogViewerModal {...defaultProps} follow />);
 
-    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
-      'data-follow',
-      'true'
-    );
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(DATA_FOLLOW, 'true');
   });
 
   it('colourises the logs by default and not when colorize is false', () => {
@@ -380,14 +384,14 @@ describe('LogViewerModal', () => {
   it('uses the dark close-button theme by default and light when theme is light', () => {
     const { rerender } = render(<LogViewerModal {...defaultProps} />);
 
-    expect(screen.getByTestId('log-viewer-close')).toHaveAttribute(
+    expect(screen.getByTestId(LOG_VIEWER_CLOSE)).toHaveAttribute(
       'data-theme',
       'dark'
     );
 
     rerender(<LogViewerModal {...defaultProps} theme="light" />);
 
-    expect(screen.getByTestId('log-viewer-close')).toHaveAttribute(
+    expect(screen.getByTestId(LOG_VIEWER_CLOSE)).toHaveAttribute(
       'data-theme',
       'light'
     );
@@ -396,17 +400,17 @@ describe('LogViewerModal', () => {
   it('shows the header search by default and hides it when enableSearch is false', () => {
     const { rerender } = render(<LogViewerModal {...defaultProps} />);
 
-    expect(screen.getByTestId('log-viewer-search')).toBeInTheDocument();
+    expect(screen.getByTestId(LOG_VIEWER_SEARCH)).toBeInTheDocument();
 
     rerender(<LogViewerModal {...defaultProps} enableSearch={false} />);
 
-    expect(screen.queryByTestId('log-viewer-search')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(LOG_VIEWER_SEARCH)).not.toBeInTheDocument();
   });
 
   it('filters the log lines and reports a match count as the user searches', () => {
     render(<LogViewerModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('log-viewer-search'), {
+    fireEvent.change(screen.getByTestId(LOG_VIEWER_SEARCH), {
       target: { value: 'WARN' },
     });
 
@@ -420,7 +424,7 @@ describe('LogViewerModal', () => {
   it('shows the empty state when the search matches no lines', () => {
     render(<LogViewerModal {...defaultProps} />);
 
-    fireEvent.change(screen.getByTestId('log-viewer-search'), {
+    fireEvent.change(screen.getByTestId(LOG_VIEWER_SEARCH), {
       target: { value: 'no-such-line' },
     });
 
@@ -465,10 +469,7 @@ describe('LogViewerModal — live (stream) mode', () => {
     render(<LogViewerModal {...defaultProps} mode="stream" />);
 
     expect(screen.getByTestId('log-viewer-live-indicator')).toBeInTheDocument();
-    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
-      'data-follow',
-      'true'
-    );
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(DATA_FOLLOW, 'true');
   });
 
   it('hides the live indicator and respects the follow prop when static', () => {
@@ -478,15 +479,12 @@ describe('LogViewerModal — live (stream) mode', () => {
       screen.queryByTestId('log-viewer-live-indicator')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('lazy-log')).toHaveAttribute(
-      'data-follow',
+      DATA_FOLLOW,
       'false'
     );
 
     rerender(<LogViewerModal {...defaultProps} follow />);
 
-    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
-      'data-follow',
-      'true'
-    );
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(DATA_FOLLOW, 'true');
   });
 });

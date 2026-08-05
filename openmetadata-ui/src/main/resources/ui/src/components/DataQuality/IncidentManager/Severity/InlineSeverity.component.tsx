@@ -20,6 +20,9 @@ import { Severities } from '../../../../generated/tests/testCaseResolutionStatus
 import { ChipTrigger } from '../TestCaseStatus/InlineIncidentStatus/ChipTrigger.component';
 import { InlineSeverityProps } from './Severity.interface';
 
+const LABEL_NO_ENTITY = 'label.no-entity';
+const LABEL_SEVERITY = 'label.severity';
+
 const SELECTED_ITEM_CLASS =
   'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';
 
@@ -38,7 +41,7 @@ const InlineSeverity = ({
     SEVERITY_COLORS[severityKey] ?? SEVERITY_COLORS['NoSeverity'];
   const label = severity
     ? startCase(severity)
-    : t('label.no-entity', { entity: t('label.severity') });
+    : t(LABEL_NO_ENTITY, { entity: t(LABEL_SEVERITY) });
 
   const palette = {
     bg: severityColor.bg,
@@ -91,9 +94,9 @@ const InlineSeverity = ({
             <Dropdown.Item
               className={SELECTED_ITEM_CLASS}
               id="none"
-              textValue={t('label.no-entity', { entity: t('label.severity') })}>
+              textValue={t(LABEL_NO_ENTITY, { entity: t(LABEL_SEVERITY) })}>
               <Typography as="span" size="text-sm" weight="regular">
-                {t('label.no-entity', { entity: t('label.severity') })}
+                {t(LABEL_NO_ENTITY, { entity: t(LABEL_SEVERITY) })}
               </Typography>
             </Dropdown.Item>
             <Dropdown.Separator />

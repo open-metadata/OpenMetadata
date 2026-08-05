@@ -14,6 +14,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import InlineAlert from './InlineAlert';
 
+const TEST_HEADING = 'Test Heading' as const;
+
 const mockSetInlineAlertDetails = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -25,7 +27,7 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 
 const mockProps = {
   type: 'error' as const,
-  heading: 'Test Heading',
+  heading: TEST_HEADING,
   description: 'Test Description',
   onClose: jest.fn(),
 };
@@ -34,14 +36,14 @@ describe('InlineAlert', () => {
   it('should render alert with basic props', () => {
     render(<InlineAlert {...mockProps} />);
 
-    expect(screen.getByText('Test Heading')).toBeInTheDocument();
+    expect(screen.getByText(TEST_HEADING)).toBeInTheDocument();
     expect(screen.getByText('Test Description')).toBeInTheDocument();
   });
 
   it('should handle show more/less functionality when subDescription is provided', () => {
     const mockTestProps = {
       type: 'error' as const,
-      heading: 'Test Heading',
+      heading: TEST_HEADING,
       description:
         'This is a very long description that should be truncated and this is for test purpose. This is a very long description that should be and this is for test purpose. This is a very long desc',
       onClose: jest.fn(),

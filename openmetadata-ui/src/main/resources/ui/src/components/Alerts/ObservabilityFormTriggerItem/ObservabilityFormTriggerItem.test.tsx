@@ -16,6 +16,7 @@ import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
 import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem';
 
+const ADD_TRIGGER = 'add-trigger';
 jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getConditionalField: jest
     .fn()
@@ -61,7 +62,7 @@ describe('ObservabilityFormTriggerItem', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByTestId('triggers-list')).toBeInTheDocument();
-    expect(screen.getByTestId('add-trigger')).toBeInTheDocument();
+    expect(screen.getByTestId(ADD_TRIGGER)).toBeInTheDocument();
   });
 
   it('add trigger button should be disabled if there is no selected trigger and filters', () => {
@@ -86,7 +87,7 @@ describe('ObservabilityFormTriggerItem', () => {
       </Form>
     );
 
-    const addButton = screen.getByTestId('add-trigger');
+    const addButton = screen.getByTestId(ADD_TRIGGER);
 
     expect(addButton).toBeDisabled();
   });
@@ -113,7 +114,7 @@ describe('ObservabilityFormTriggerItem', () => {
       </Form>
     );
 
-    const addButton = screen.getByTestId('add-trigger');
+    const addButton = screen.getByTestId(ADD_TRIGGER);
 
     expect(addButton).not.toBeDisabled();
   });

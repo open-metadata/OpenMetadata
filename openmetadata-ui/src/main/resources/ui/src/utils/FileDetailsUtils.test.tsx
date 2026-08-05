@@ -22,6 +22,9 @@ import {
   getFileWidgetsFromKey,
 } from './FileDetailsUtils';
 
+const LABEL_LINEAGE = 'label.lineage';
+const COMMON_WIDGETS = 'common-widgets';
+
 jest.mock('../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name, count, isActive }) => (
     <div data-testid={`tab-label-${name}`}>
@@ -126,7 +129,7 @@ describe('FileDetailsUtils', () => {
       render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
 
       expect(screen.getByTestId('tab-label-label.lineage')).toBeInTheDocument();
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
     });
 
     it('should render custom properties tab without count', () => {
@@ -203,7 +206,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
     });
 
     it('should handle zero feed count', () => {
@@ -254,7 +257,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - file - KnowledgePanel.Description')
       ).toBeInTheDocument();
@@ -274,7 +277,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - file - KnowledgePanel.DataProducts')
       ).toBeInTheDocument();
@@ -294,7 +297,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - file - KnowledgePanel.Tags')
       ).toBeInTheDocument();
@@ -314,7 +317,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - file - KnowledgePanel.GlossaryTerms')
       ).toBeInTheDocument();
@@ -334,7 +337,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText(
           'Common Widgets - file - KnowledgePanel.CustomProperties'
@@ -356,7 +359,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - file - unknown-widget')
       ).toBeInTheDocument();
@@ -376,7 +379,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
       expect(
         screen.getByText('Common Widgets - file - KnowledgePanel.Description')
       ).toBeInTheDocument();
@@ -420,7 +423,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{result}</MemoryRouter>);
 
-      expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
+      expect(screen.getByTestId(COMMON_WIDGETS)).toBeInTheDocument();
     });
 
     it('should handle all tab states correctly', () => {
@@ -588,7 +591,7 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{lineageTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
     });
   });
 });

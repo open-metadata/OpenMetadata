@@ -34,6 +34,13 @@ import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
 import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
+const WIDGET_WRAPPER = 'widget-wrapper';
+const SORT_OPTIONS = 'sort-options';
+const SORT_BY_DROPDOWN = 'sort-by-dropdown';
+const WIDGET_EMPTY_STATE = 'widget-empty-state';
+const TEST_WIDGET_KEY = 'test-widget-key';
+const DATA_TESTID = 'data-testid';
+
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -83,7 +90,7 @@ jest.mock('../Common/WidgetWrapper/WidgetWrapper', () => {
       <div
         data-length={dataLength}
         data-loading={loading}
-        data-testid="widget-wrapper">
+        data-testid={WIDGET_WRAPPER}>
         {header}
         {children}
       </div>
@@ -121,9 +128,9 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
             </button>
           )}
           {!isEditView && sortOptions && (
-            <div data-testid="sort-options">
+            <div data-testid={SORT_OPTIONS}>
               <select
-                data-testid="sort-by-dropdown"
+                data-testid={SORT_BY_DROPDOWN}
                 value={selectedSortBy}
                 onChange={(e) => onSortChange?.(e.target.value)}>
                 {sortOptions.map(
@@ -145,7 +152,7 @@ jest.mock('../Common/WidgetEmptyState/WidgetEmptyState', () => {
   return jest
     .fn()
     .mockImplementation(({ title, description, actionButtonText }) => (
-      <div data-testid="widget-empty-state">
+      <div data-testid={WIDGET_EMPTY_STATE}>
         <div>{title}</div>
         <div>{description}</div>
         <button>{actionButtonText}</button>
@@ -211,12 +218,12 @@ const mockChartData: DataInsightCustomChartResult = {
 };
 
 const defaultProps: TotalDataAssetsWidgetProps = {
-  widgetKey: 'test-widget-key',
+  widgetKey: TEST_WIDGET_KEY,
   isEditView: false,
   selectedDays: CHART_WIDGET_DAYS_DURATION,
   currentLayout: [
     {
-      i: 'test-widget-key',
+      i: TEST_WIDGET_KEY,
       x: 0,
       y: 0,
       w: 2,
@@ -263,7 +270,7 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_WRAPPER)).toBeInTheDocument();
       expect(screen.getByTestId('widget-header')).toBeInTheDocument();
       expect(
         screen.getByText('label.data-insight-total-entity-summary')
@@ -286,7 +293,7 @@ describe('TotalDataAssetsWidget', () => {
 
       fireEvent.click(removeButton);
 
-      expect(handleRemoveWidget).toHaveBeenCalledWith('test-widget-key');
+      expect(handleRemoveWidget).toHaveBeenCalledWith(TEST_WIDGET_KEY);
     });
 
     it('should render empty state when no data is available', async () => {
@@ -296,7 +303,7 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_EMPTY_STATE)).toBeInTheDocument();
       expect(
         screen.getByText('label.no-data-assets-to-display')
       ).toBeInTheDocument();
@@ -342,7 +349,7 @@ describe('TotalDataAssetsWidget', () => {
 
       renderTotalDataAssetsWidget();
 
-      const wrapper = screen.getByTestId('widget-wrapper');
+      const wrapper = screen.getByTestId(WIDGET_WRAPPER);
 
       expect(wrapper).toHaveAttribute('data-loading', 'true');
     });
@@ -354,8 +361,8 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget({ isEditView: false });
       });
 
-      expect(screen.getByTestId('sort-options')).toBeInTheDocument();
-      expect(screen.getByTestId('sort-by-dropdown')).toBeInTheDocument();
+      expect(screen.getByTestId(SORT_OPTIONS)).toBeInTheDocument();
+      expect(screen.getByTestId(SORT_BY_DROPDOWN)).toBeInTheDocument();
     });
 
     it('should not render sort dropdown when in edit view', async () => {
@@ -363,8 +370,8 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget({ isEditView: true });
       });
 
-      expect(screen.queryByTestId('sort-options')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('sort-by-dropdown')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SORT_OPTIONS)).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SORT_BY_DROPDOWN)).not.toBeInTheDocument();
     });
 
     it('should default to last 7 days sort option', async () => {
@@ -373,7 +380,7 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       const sortDropdown = screen.getByTestId(
-        'sort-by-dropdown'
+        SORT_BY_DROPDOWN
       ) as HTMLSelectElement;
 
       expect(sortDropdown.value).toBe(DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS);
@@ -384,7 +391,7 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+      const sortDropdown = screen.getByTestId(SORT_BY_DROPDOWN);
 
       // Change to 14 days
       await act(async () => {
@@ -407,7 +414,7 @@ describe('TotalDataAssetsWidget', () => {
       expect(getEpochMillisForPastDays).toHaveBeenCalledWith(7);
       expect(getCurrentMillis).toHaveBeenCalled();
 
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+      const sortDropdown = screen.getByTestId(SORT_BY_DROPDOWN);
 
       // Change to 14 days
       await act(async () => {
@@ -426,7 +433,7 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+      const sortDropdown = screen.getByTestId(SORT_BY_DROPDOWN);
 
       // Change to an unknown sort key
       await act(async () => {
@@ -466,7 +473,7 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget({
           currentLayout: [
             {
-              i: 'test-widget-key',
+              i: TEST_WIDGET_KEY,
               x: 0,
               y: 0,
               w: 2, // Full width
@@ -487,7 +494,7 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget({
           currentLayout: [
             {
-              i: 'test-widget-key',
+              i: TEST_WIDGET_KEY,
               x: 0,
               y: 0,
               w: 1, // Half width
@@ -560,7 +567,7 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      const wrapper = screen.getByTestId('widget-wrapper');
+      const wrapper = screen.getByTestId(WIDGET_WRAPPER);
 
       expect(wrapper).toHaveAttribute('data-loading', 'false');
       expect(wrapper).toHaveAttribute('data-length', '2'); // Two unique dates
@@ -572,8 +579,8 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Verify that the widget header receives the sorting props
-      expect(screen.getByTestId('sort-options')).toBeInTheDocument();
-      expect(screen.getByTestId('sort-by-dropdown')).toBeInTheDocument();
+      expect(screen.getByTestId(SORT_OPTIONS)).toBeInTheDocument();
+      expect(screen.getByTestId(SORT_BY_DROPDOWN)).toBeInTheDocument();
     });
   });
 
@@ -635,17 +642,17 @@ describe('TotalDataAssetsWidget', () => {
 
         // First item should be table (highest count)
         expect(legendItems[0]).toHaveAttribute(
-          'data-testid',
+          DATA_TESTID,
           'legend-item-table'
         );
         // Second item should be topic (medium count)
         expect(legendItems[1]).toHaveAttribute(
-          'data-testid',
+          DATA_TESTID,
           'legend-item-topic'
         );
         // Third item should be dashboard (lowest count)
         expect(legendItems[2]).toHaveAttribute(
-          'data-testid',
+          DATA_TESTID,
           'legend-item-dashboard'
         );
       });
@@ -707,7 +714,7 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       expect(showErrorToast).toHaveBeenCalledWith(networkError);
-      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_EMPTY_STATE)).toBeInTheDocument();
     });
 
     it('should handle API timeout errors', async () => {
@@ -733,7 +740,7 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Should show empty state when results is null/undefined
-      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_EMPTY_STATE)).toBeInTheDocument();
     });
 
     it('should handle sort change error gracefully', async () => {
@@ -746,7 +753,7 @@ describe('TotalDataAssetsWidget', () => {
       // Mock error on second call (after sort change)
       (getChartPreviewByName as jest.Mock).mockRejectedValueOnce(mockError);
 
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
+      const sortDropdown = screen.getByTestId(SORT_BY_DROPDOWN);
 
       await act(async () => {
         fireEvent.change(sortDropdown, {

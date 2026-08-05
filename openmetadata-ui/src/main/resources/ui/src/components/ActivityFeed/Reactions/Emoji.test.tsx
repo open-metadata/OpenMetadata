@@ -16,6 +16,8 @@ import { User } from '../../../generated/entity/teams/user';
 import { ReactionType } from '../../../generated/type/reaction';
 import Emoji from './Emoji';
 
+const EMOJI_BUTTON = 'emoji-button';
+
 const onReactionSelect = jest.fn();
 const mockUserData: User = {
   name: 'aaron_johnson0',
@@ -55,7 +57,7 @@ describe('Test Emoji Component', () => {
   it('Should render the component', async () => {
     const { findByTestId } = render(<Emoji {...mockProps} />);
 
-    const emojiButton = await findByTestId('emoji-button');
+    const emojiButton = await findByTestId(EMOJI_BUTTON);
 
     expect(emojiButton).toBeInTheDocument();
 
@@ -73,7 +75,7 @@ describe('Test Emoji Component', () => {
   it('Should render the tooltip component on hovering the emoji', async () => {
     const { findByTestId } = render(<Emoji {...mockProps} />);
 
-    const emojiButton = await findByTestId('emoji-button');
+    const emojiButton = await findByTestId(EMOJI_BUTTON);
 
     expect(emojiButton).toBeInTheDocument();
 
@@ -91,7 +93,7 @@ describe('Test Emoji Component', () => {
   it('Should call onReaction select on click of emoji button', async () => {
     const { findByTestId } = render(<Emoji {...mockProps} />);
 
-    const emojiButton = await findByTestId('emoji-button');
+    const emojiButton = await findByTestId(EMOJI_BUTTON);
 
     expect(emojiButton).toBeInTheDocument();
 

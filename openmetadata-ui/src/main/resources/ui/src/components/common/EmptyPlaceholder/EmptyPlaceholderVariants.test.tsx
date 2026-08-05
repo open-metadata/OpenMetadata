@@ -19,6 +19,11 @@ import NoSearchResultsPlaceholder from './NoSearchResultsPlaceholder';
 import PermissionPlaceholder from './PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from './SomethingWentWrongPlaceholder';
 
+const SHOULD_RENDER_THE_DEFAULT_TITLE =
+  'should render the default title and description';
+const CUSTOM_DESCRIPTION = 'custom description';
+const MESSAGE_NO_ACCESS_PLACEHOLDER = 'message.no-access-placeholder';
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
@@ -30,7 +35,7 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
 }));
 
 describe('NoSearchResultsPlaceholder', () => {
-  it('should render the default title and description', () => {
+  it(SHOULD_RENDER_THE_DEFAULT_TITLE, () => {
     render(<NoSearchResultsPlaceholder />);
 
     expect(
@@ -56,7 +61,7 @@ describe('NoSearchResultsPlaceholder', () => {
     );
 
     expect(screen.getByText('custom title')).toBeInTheDocument();
-    expect(screen.getByText('custom description')).toBeInTheDocument();
+    expect(screen.getByText(CUSTOM_DESCRIPTION)).toBeInTheDocument();
     expect(
       screen.queryByText('label.no-matching-result-plural')
     ).not.toBeInTheDocument();
@@ -64,7 +69,7 @@ describe('NoSearchResultsPlaceholder', () => {
 });
 
 describe('NoFilteredResultsPlaceholder', () => {
-  it('should render the default title and description', () => {
+  it(SHOULD_RENDER_THE_DEFAULT_TITLE, () => {
     render(<NoFilteredResultsPlaceholder />);
 
     expect(
@@ -113,7 +118,7 @@ describe('NoFilteredResultsPlaceholder', () => {
 });
 
 describe('SomethingWentWrongPlaceholder', () => {
-  it('should render the default title and description', () => {
+  it(SHOULD_RENDER_THE_DEFAULT_TITLE, () => {
     render(<SomethingWentWrongPlaceholder />);
 
     expect(
@@ -158,7 +163,7 @@ describe('NoDataPlaceholder', () => {
   it('should allow overriding the description', () => {
     render(<NoDataPlaceholder description="custom description" />);
 
-    expect(screen.getByText('custom description')).toBeInTheDocument();
+    expect(screen.getByText(CUSTOM_DESCRIPTION)).toBeInTheDocument();
     expect(
       screen.queryByText('message.no-data-available')
     ).not.toBeInTheDocument();
@@ -170,9 +175,7 @@ describe('PermissionPlaceholder', () => {
     render(<PermissionPlaceholder permissionValue="view" />);
 
     expect(screen.getByText('label.access-denied')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.no-access-placeholder')
-    ).toBeInTheDocument();
+    expect(screen.getByText(MESSAGE_NO_ACCESS_PLACEHOLDER)).toBeInTheDocument();
   });
 
   it('should not render any action button', () => {
@@ -184,9 +187,9 @@ describe('PermissionPlaceholder', () => {
   it('should allow overriding the description', () => {
     render(<PermissionPlaceholder description="custom description" />);
 
-    expect(screen.getByText('custom description')).toBeInTheDocument();
+    expect(screen.getByText(CUSTOM_DESCRIPTION)).toBeInTheDocument();
     expect(
-      screen.queryByText('message.no-access-placeholder')
+      screen.queryByText(MESSAGE_NO_ACCESS_PLACEHOLDER)
     ).not.toBeInTheDocument();
   });
 });
@@ -229,9 +232,7 @@ describe('CreatePlaceholder', () => {
   it('should fall back to the permission placeholder when permission is false', () => {
     render(<CreatePlaceholder permission={false} permissionValue="view" />);
 
-    expect(
-      screen.getByText('message.no-access-placeholder')
-    ).toBeInTheDocument();
+    expect(screen.getByText(MESSAGE_NO_ACCESS_PLACEHOLDER)).toBeInTheDocument();
     expect(
       screen.queryByText(
         'message.adding-new-entity-is-easy-just-give-it-a-spin'

@@ -39,6 +39,7 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<>ProfilePicture</>)
 );
 
+// eslint-disable-next-line sonarjs/no-duplicate-string -- module specifier cannot be a constant
 jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   ...jest.requireActual(
     '../../../Customization/GenericProvider/GenericContext'

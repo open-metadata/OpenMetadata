@@ -23,6 +23,15 @@ import { KnowledgePagesHierarchyRef } from '../../../interface/knowledge-center.
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
 
+const HOW_TO_DISCOVER_ASSETS_OF_INTEREST = 'How to Discover Assets of Interest';
+const HOW_TO_DISCOVER_ASSETS_OF_INTEREST_CHILD_1 =
+  'How to Discover Assets of Interest Child 1';
+const KNOWLEDGE_ARTICLE_WITH_CHILDREN = 'Knowledge Article with children';
+const ROLE_ROW = '[role="row"]';
+const BUTTON_SLOT_CHEVRON = 'button[slot="chevron"]';
+const EXHAUSTED_PARENT = 'Exhausted Parent';
+const EXHAUSTED_CHILD = 'Exhausted Child';
+
 const PageHierarchy = [
   {
     id: '62bec763-522d-4b70-ad85-f487b2f6102f',
@@ -30,7 +39,7 @@ const PageHierarchy = [
     name: 'Article_XJIGIKX2',
     description: 'description',
     fullyQualifiedName: 'Article_XJIGIKX2',
-    displayName: 'How to Discover Assets of Interest',
+    displayName: HOW_TO_DISCOVER_ASSETS_OF_INTEREST,
     childrenCount: 1,
     children: [
       {
@@ -39,7 +48,7 @@ const PageHierarchy = [
         name: 'Article_2p7Z8MAN',
         description: '',
         fullyQualifiedName: 'Article_2p7Z8MAN',
-        displayName: 'How to Discover Assets of Interest Child 1',
+        displayName: HOW_TO_DISCOVER_ASSETS_OF_INTEREST_CHILD_1,
         childrenCount: 1,
         children: [
           {
@@ -103,10 +112,10 @@ const PageHierarchy = [
   {
     id: '7f774865-a111-4cfa-ad9c-a9b1b34bd6fb',
     pageType: 'Article',
-    name: 'Knowledge Article with children',
+    name: KNOWLEDGE_ARTICLE_WITH_CHILDREN,
     description: 'description',
-    fullyQualifiedName: 'Knowledge Article with children',
-    displayName: 'Knowledge Article with children',
+    fullyQualifiedName: KNOWLEDGE_ARTICLE_WITH_CHILDREN,
+    displayName: KNOWLEDGE_ARTICLE_WITH_CHILDREN,
     childrenCount: 4,
     children: [
       {
@@ -186,6 +195,7 @@ const PageHierarchy = [
   },
 ];
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('rest/knowledgeCenterAPI', () => ({
   getPageHierarchyFromES: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -250,11 +260,11 @@ describe('KnowledgePagesHierarchy', () => {
 
     // should render the tree first level nodes
     expect(
-      screen.getByText('How to Discover Assets of Interest')
+      screen.getByText(HOW_TO_DISCOVER_ASSETS_OF_INTEREST)
     ).toBeInTheDocument();
     expect(screen.getByText('This is Updated')).toBeInTheDocument();
     expect(
-      screen.getByText('Knowledge Article with children')
+      screen.getByText(KNOWLEDGE_ARTICLE_WITH_CHILDREN)
     ).toBeInTheDocument();
 
     // should render the page icon for each top-level node
@@ -312,9 +322,9 @@ describe('KnowledgePagesHierarchy', () => {
     // The tree item row has role="row"; click the chevron button (slot="chevron")
     // inside the row for "How to Discover Assets of Interest" to expand it.
     const row = screen
-      .getByText('How to Discover Assets of Interest')
-      .closest('[role="row"]');
-    const expandBtn = row?.querySelector('button[slot="chevron"]');
+      .getByText(HOW_TO_DISCOVER_ASSETS_OF_INTEREST)
+      .closest(ROLE_ROW);
+    const expandBtn = row?.querySelector(BUTTON_SLOT_CHEVRON);
 
     expect(expandBtn).not.toBeNull();
 
@@ -323,7 +333,7 @@ describe('KnowledgePagesHierarchy', () => {
     });
 
     expect(
-      screen.getByText('How to Discover Assets of Interest Child 1')
+      screen.getByText(HOW_TO_DISCOVER_ASSETS_OF_INTEREST_CHILD_1)
     ).toBeInTheDocument();
   });
 
@@ -343,9 +353,9 @@ describe('KnowledgePagesHierarchy', () => {
     // Manually expand the ancestor so the active descendant is visible,
     // mirroring what the activeKey-driven auto-expand effect would do.
     const row = screen
-      .getByText('How to Discover Assets of Interest')
-      .closest('[role="row"]');
-    const chevron = row?.querySelector('button[slot="chevron"]');
+      .getByText(HOW_TO_DISCOVER_ASSETS_OF_INTEREST)
+      .closest(ROLE_ROW);
+    const chevron = row?.querySelector(BUTTON_SLOT_CHEVRON);
 
     expect(chevron).not.toBeNull();
 
@@ -354,7 +364,7 @@ describe('KnowledgePagesHierarchy', () => {
     });
 
     expect(
-      screen.getByText('How to Discover Assets of Interest Child 1')
+      screen.getByText(HOW_TO_DISCOVER_ASSETS_OF_INTEREST_CHILD_1)
     ).toBeInTheDocument();
 
     await act(async () => {
@@ -362,7 +372,7 @@ describe('KnowledgePagesHierarchy', () => {
     });
 
     expect(
-      screen.queryByText('How to Discover Assets of Interest Child 1')
+      screen.queryByText(HOW_TO_DISCOVER_ASSETS_OF_INTEREST_CHILD_1)
     ).not.toBeInTheDocument();
 
     // Re-rendering with the same activeKey (e.g. triggered by an unrelated
@@ -380,7 +390,7 @@ describe('KnowledgePagesHierarchy', () => {
     });
 
     expect(
-      screen.queryByText('How to Discover Assets of Interest Child 1')
+      screen.queryByText(HOW_TO_DISCOVER_ASSETS_OF_INTEREST_CHILD_1)
     ).not.toBeInTheDocument();
   });
 
@@ -458,10 +468,8 @@ describe('KnowledgePagesHierarchy', () => {
         );
       });
 
-      const row = screen
-        .getByText('Mismatched Count Parent')
-        .closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const row = screen.getByText('Mismatched Count Parent').closest(ROLE_ROW);
+      const expandBtn = row?.querySelector(BUTTON_SLOT_CHEVRON);
 
       await act(async () => {
         fireEvent.click(expandBtn as HTMLElement);
@@ -545,8 +553,8 @@ describe('KnowledgePagesHierarchy', () => {
         );
       });
 
-      const row = screen.getByText('Paged Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const row = screen.getByText('Paged Parent').closest(ROLE_ROW);
+      const expandBtn = row?.querySelector(BUTTON_SLOT_CHEVRON);
 
       await act(async () => {
         fireEvent.click(expandBtn as HTMLElement);
@@ -591,7 +599,7 @@ describe('KnowledgePagesHierarchy', () => {
           name: 'Article_Exhausted',
           description: '',
           fullyQualifiedName: parentFqn,
-          displayName: 'Exhausted Parent',
+          displayName: EXHAUSTED_PARENT,
           childrenCount: 1,
           children: [],
         },
@@ -602,7 +610,7 @@ describe('KnowledgePagesHierarchy', () => {
         name: 'Article_ExhaustedChild',
         description: '',
         fullyQualifiedName: `${parentFqn}.Article_ExhaustedChild`,
-        displayName: 'Exhausted Child',
+        displayName: EXHAUSTED_CHILD,
         childrenCount: 0,
         children: [],
       };
@@ -626,15 +634,15 @@ describe('KnowledgePagesHierarchy', () => {
         );
       });
 
-      const row = screen.getByText('Exhausted Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const row = screen.getByText(EXHAUSTED_PARENT).closest(ROLE_ROW);
+      const expandBtn = row?.querySelector(BUTTON_SLOT_CHEVRON);
 
       await act(async () => {
         fireEvent.click(expandBtn as HTMLElement);
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Exhausted Child')).toBeInTheDocument();
+        expect(screen.getByText(EXHAUSTED_CHILD)).toBeInTheDocument();
       });
 
       const callCountBeforeRefresh =
@@ -647,11 +655,10 @@ describe('KnowledgePagesHierarchy', () => {
       // A force refresh must clear stale exhaustion/offset tracking so the
       // node can be expanded and its children re-fetched again.
       const rowAfterRefresh = screen
-        .getByText('Exhausted Parent')
-        .closest('[role="row"]');
-      const expandBtnAfterRefresh = rowAfterRefresh?.querySelector(
-        'button[slot="chevron"]'
-      );
+        .getByText(EXHAUSTED_PARENT)
+        .closest(ROLE_ROW);
+      const expandBtnAfterRefresh =
+        rowAfterRefresh?.querySelector(BUTTON_SLOT_CHEVRON);
 
       await act(async () => {
         fireEvent.click(expandBtnAfterRefresh as HTMLElement);
@@ -663,7 +670,7 @@ describe('KnowledgePagesHierarchy', () => {
         );
       });
 
-      expect(screen.getByText('Exhausted Child')).toBeInTheDocument();
+      expect(screen.getByText(EXHAUSTED_CHILD)).toBeInTheDocument();
     });
   });
 

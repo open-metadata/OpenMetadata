@@ -26,6 +26,8 @@ import {
   getUpdatedStateFromFormState,
 } from './CronExpressionUtils';
 
+const MESSAGE_CRON_INVALID_DAY_OF = 'message.cron-invalid-day-of-week-field';
+
 describe('getCronDefaultValue function', () => {
   it('should generate day cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
     const result = getCronDefaultValue('SearchIndexingApplication');
@@ -177,10 +179,10 @@ describe('cronValidator', () => {
 
   it('should reject for invalid day of week (<0 or >6)', async () => {
     await expect(cronValidator({}, '0 0 * * 7')).rejects.toThrow(
-      'message.cron-invalid-day-of-week-field'
+      MESSAGE_CRON_INVALID_DAY_OF
     );
     await expect(cronValidator({}, '0 0 * * -1')).rejects.toThrow(
-      'message.cron-invalid-day-of-week-field'
+      MESSAGE_CRON_INVALID_DAY_OF
     );
   });
 
@@ -197,19 +199,19 @@ describe('cronValidator', () => {
 
   it('should reject for invalid day of week range (<0 or >6)', async () => {
     await expect(cronValidator({}, '0 0 * * 4-7')).rejects.toThrow(
-      'message.cron-invalid-day-of-week-field'
+      MESSAGE_CRON_INVALID_DAY_OF
     );
     await expect(cronValidator({}, '0 0 * * -1-3')).rejects.toThrow(
-      'message.cron-invalid-day-of-week-field'
+      MESSAGE_CRON_INVALID_DAY_OF
     );
   });
 
   it('should reject for mixed valid and invalid day of week range', async () => {
     await expect(cronValidator({}, '0 0 * * 0-7')).rejects.toThrow(
-      'message.cron-invalid-day-of-week-field'
+      MESSAGE_CRON_INVALID_DAY_OF
     );
     await expect(cronValidator({}, '0 0 * * -1-6')).rejects.toThrow(
-      'message.cron-invalid-day-of-week-field'
+      MESSAGE_CRON_INVALID_DAY_OF
     );
   });
 

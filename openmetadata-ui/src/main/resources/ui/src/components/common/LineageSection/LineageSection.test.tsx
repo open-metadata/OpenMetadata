@@ -16,6 +16,10 @@ import { getLineagePagingData } from '../../../rest/lineageAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import LineageSection from './LineageSection';
 
+const MESSAGE_NO_LINEAGE_AVAILABLE = 'message.no-lineage-available';
+const UPSTREAM_LINEAGE = 'upstream-lineage';
+const DOWNSTREAM_LINEAGE = 'downstream-lineage';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
     .fn()
@@ -98,9 +102,7 @@ describe('LineageSection', () => {
     render(<LineageSection />);
 
     expect(screen.getByText('label.lineage')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.no-lineage-available')
-    ).toBeInTheDocument();
+    expect(screen.getByText(MESSAGE_NO_LINEAGE_AVAILABLE)).toBeInTheDocument();
     expect(getLineagePagingData).not.toHaveBeenCalled();
   });
 
@@ -122,8 +124,8 @@ describe('LineageSection', () => {
     );
 
     expect(await screen.findByTestId('loader')).toBeInTheDocument();
-    expect(screen.queryByTestId('upstream-lineage')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('downstream-lineage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(UPSTREAM_LINEAGE)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DOWNSTREAM_LINEAGE)).not.toBeInTheDocument();
 
     resolvePromise({
       upstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
@@ -159,9 +161,7 @@ describe('LineageSection', () => {
     expect(screen.getByText('label.lineage')).toBeInTheDocument();
 
     await waitFor(() =>
-      expect(
-        screen.getByText('message.no-lineage-available')
-      ).toBeInTheDocument()
+      expect(screen.getByText(MESSAGE_NO_LINEAGE_AVAILABLE)).toBeInTheDocument()
     );
   });
 
@@ -183,10 +183,10 @@ describe('LineageSection', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument()
+      expect(screen.getByTestId(UPSTREAM_LINEAGE)).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
+    expect(screen.getByTestId(DOWNSTREAM_LINEAGE)).toBeInTheDocument();
     expect(screen.getByTestId('upstream-count')).toHaveTextContent('22');
     expect(screen.getByTestId('downstream-count')).toHaveTextContent('12');
 
@@ -212,10 +212,10 @@ describe('LineageSection', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument()
+      expect(screen.getByTestId(UPSTREAM_LINEAGE)).toBeInTheDocument()
     );
 
-    expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
+    expect(screen.getByTestId(DOWNSTREAM_LINEAGE)).toBeInTheDocument();
     expect(screen.getByTestId('upstream-count')).toHaveTextContent('15');
     expect(screen.getByTestId('downstream-count')).toHaveTextContent('0');
   });
@@ -241,11 +241,11 @@ describe('LineageSection', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument()
+      expect(screen.getByTestId(UPSTREAM_LINEAGE)).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByTestId('upstream-lineage'));
-    fireEvent.click(screen.getByTestId('downstream-lineage'));
+    fireEvent.click(screen.getByTestId(UPSTREAM_LINEAGE));
+    fireEvent.click(screen.getByTestId(DOWNSTREAM_LINEAGE));
 
     expect(onLineageClick).toHaveBeenCalled();
   });
@@ -266,9 +266,7 @@ describe('LineageSection', () => {
       expect(showErrorToast as unknown as jest.Mock).toHaveBeenCalled()
     );
 
-    expect(
-      screen.getByText('message.no-lineage-available')
-    ).toBeInTheDocument();
+    expect(screen.getByText(MESSAGE_NO_LINEAGE_AVAILABLE)).toBeInTheDocument();
   });
 
   it('calls getLineagePagingData with fqn and type', async () => {

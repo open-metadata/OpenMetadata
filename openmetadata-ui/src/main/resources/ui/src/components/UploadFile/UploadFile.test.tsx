@@ -16,6 +16,9 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import UploadFile from './UploadFile';
 import { UploadFileProps } from './UploadFile.interface';
 
+const UPLOAD_FILE_WIDGET = 'upload-file-widget';
+const TEST_CONTENT = 'test content';
+
 jest.mock('../../assets/svg/ic-drag-drop.svg', () => ({
   ReactComponent: () => <div data-testid="import-icon">ImportIcon</div>,
 }));
@@ -41,7 +44,7 @@ describe('UploadFile Component', () => {
   it('should render the upload component with correct props', async () => {
     render(<UploadFile {...defaultProps} />);
 
-    expect(screen.getByTestId('upload-file-widget')).toBeInTheDocument();
+    expect(screen.getByTestId(UPLOAD_FILE_WIDGET)).toBeInTheDocument();
     expect(screen.getByTestId('import-icon')).toBeInTheDocument();
     expect(
       await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
@@ -51,7 +54,7 @@ describe('UploadFile Component', () => {
   it('should render with disabled state', () => {
     render(<UploadFile {...defaultProps} disabled />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
 
     expect(uploadWidget).toHaveAttribute('disabled');
   });
@@ -59,7 +62,7 @@ describe('UploadFile Component', () => {
   it('should not render with disabled state', () => {
     render(<UploadFile {...defaultProps} />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
 
     expect(uploadWidget).not.toHaveAttribute('disabled');
   });
@@ -67,7 +70,7 @@ describe('UploadFile Component', () => {
   it('should render with custom file type', () => {
     render(<UploadFile {...defaultProps} fileType=".json,.xml" />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
 
     expect(uploadWidget).toHaveAttribute('accept', '.json,.xml');
   });
@@ -77,7 +80,7 @@ describe('UploadFile Component', () => {
 
     render(<UploadFile {...defaultProps} onCSVUploaded={mockOnCSVUploaded} />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
     const file = new File(['test,csv,content'], 'test.csv', {
       type: 'text/csv',
     });
@@ -98,10 +101,10 @@ describe('UploadFile Component', () => {
 
     render(<UploadFile {...defaultProps} onCSVUploaded={mockOnCSVUploaded} />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
 
     // Create a file that will cause an error when read
-    const file = new File(['test content'], 'test.csv', {
+    const file = new File([TEST_CONTENT], 'test.csv', {
       type: 'text/csv',
     });
 
@@ -135,8 +138,8 @@ describe('UploadFile Component', () => {
     const mockBeforeUpload = jest.fn(() => true);
     render(<UploadFile {...defaultProps} beforeUpload={mockBeforeUpload} />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
-    const file = new File(['test content'], 'test.csv', { type: 'text/csv' });
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
+    const file = new File([TEST_CONTENT], 'test.csv', { type: 'text/csv' });
 
     fireEvent.drop(uploadWidget, {
       dataTransfer: {
@@ -162,8 +165,8 @@ describe('UploadFile Component', () => {
       />
     );
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
-    const file = new File(['test content'], 'test.csv', { type: 'text/csv' });
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
+    const file = new File([TEST_CONTENT], 'test.csv', { type: 'text/csv' });
 
     fireEvent.drop(uploadWidget, {
       dataTransfer: {
@@ -187,8 +190,8 @@ describe('UploadFile Component', () => {
       />
     );
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
-    const file = new File(['test content'], 'test.csv', { type: 'text/csv' });
+    const uploadWidget = screen.getByTestId(UPLOAD_FILE_WIDGET);
+    const file = new File([TEST_CONTENT], 'test.csv', { type: 'text/csv' });
 
     fireEvent.drop(uploadWidget, {
       dataTransfer: {

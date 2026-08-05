@@ -14,6 +14,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
+const ADD_CONTEXT_CONDITION = 'add-context-condition';
+
 const mockAddRule = jest.fn();
 const mockQueryActions = { addRule: mockAddRule };
 
@@ -64,9 +66,9 @@ describe('RuleQueryBuilderField', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('add-context-condition')).toBeEnabled()
+      expect(screen.getByTestId(ADD_CONTEXT_CONDITION)).toBeEnabled()
     );
-    fireEvent.click(screen.getByTestId('add-context-condition'));
+    fireEvent.click(screen.getByTestId(ADD_CONTEXT_CONDITION));
     fireEvent.click(screen.getByTestId('emit-query-change'));
 
     expect(mockAddRule).toHaveBeenCalledWith([]);
@@ -85,8 +87,6 @@ describe('RuleQueryBuilderField', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('add-context-condition')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ADD_CONTEXT_CONDITION)).not.toBeInTheDocument();
   });
 });

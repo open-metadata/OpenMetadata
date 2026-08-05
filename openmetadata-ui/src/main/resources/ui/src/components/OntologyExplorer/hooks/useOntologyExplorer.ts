@@ -76,6 +76,8 @@ import {
   searchHitSourceToEntityRef,
 } from '../utils/graphBuilders';
 import { useOntologyGraphDerived } from './useOntologyGraphDerived';
+
+const MESSAGE_EXPORT_FAILED = 'message.export-failed';
 const MODEL_TERM_FIELDS = [
   TabSpecificField.RELATED_TERMS,
   TabSpecificField.CHILDREN,
@@ -1185,7 +1187,7 @@ export function useOntologyExplorer({
             const text = await data.text();
             const parsed = JSON.parse(text);
             showErrorToast(
-              parsed?.message ?? parsed?.error ?? t('message.export-failed')
+              parsed?.message ?? parsed?.error ?? t(MESSAGE_EXPORT_FAILED)
             );
 
             return;
@@ -1194,10 +1196,10 @@ export function useOntologyExplorer({
           }
         }
         showErrorToast(
-          error.response?.data?.message ?? t('message.export-failed')
+          error.response?.data?.message ?? t(MESSAGE_EXPORT_FAILED)
         );
       } else {
-        showErrorToast(t('message.export-failed'));
+        showErrorToast(t(MESSAGE_EXPORT_FAILED));
       }
     },
     [t]

@@ -32,6 +32,8 @@ import { getEntityLinkFromType } from './EntityLinkUtils';
 import { SearchClassBase } from './SearchClassBase';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
+const TEST_TESTSUITE = 'test.testSuite';
+
 jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteDetailsPath: jest.fn(),
   getTestSuiteFQN: jest.fn(),
@@ -235,7 +237,7 @@ describe('SearchClassBase', () => {
   // getEntityName
   it('should call getTestSuiteFQN if entity type is TestSuite', () => {
     searchClassBase.getEntityName({
-      name: 'test.testSuite',
+      name: TEST_TESTSUITE,
       displayName: 'Test.testSuite',
       entityType: EntityType.TEST_SUITE,
     });
@@ -256,7 +258,7 @@ describe('SearchClassBase', () => {
   // getEntityLink
   it('should call getTestSuiteDetailsPath if entity type is TestSuite', () => {
     searchClassBase.getEntityLink({
-      fullyQualifiedName: 'test.testSuite',
+      fullyQualifiedName: TEST_TESTSUITE,
       entityType: EntityType.TEST_SUITE,
       name: 'test',
     });
@@ -284,7 +286,7 @@ describe('SearchClassBase', () => {
 
   it('should not call getTestSuiteDetailsPath if entity type is not TestSuite', () => {
     searchClassBase.getEntityLink({
-      fullyQualifiedName: 'test.testSuite',
+      fullyQualifiedName: TEST_TESTSUITE,
       entityType: EntityType.TABLE,
       name: 'test',
     });

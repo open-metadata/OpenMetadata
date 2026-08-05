@@ -53,6 +53,10 @@ import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
+
+const SERVER_ENTITY_UPDATING_ERROR = 'server.entity-updating-error';
+const SERVER_UNEXPECTED_RESPONSE = 'server.unexpected-response';
+const LABEL_TEAM = 'label.team';
 const TeamsPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -129,7 +133,7 @@ const TeamsPage = () => {
         setChildTeams(modifiedTeams);
         setFetchAllTeamAdvancedDetails(true);
       } catch (error) {
-        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+        showErrorToast(error as AxiosError, t(SERVER_UNEXPECTED_RESPONSE));
       } finally {
         setIsTeamBasicDataLoading(false);
       }
@@ -180,7 +184,7 @@ const TeamsPage = () => {
         setChildTeams(modifiedTeams);
       }
     } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      showErrorToast(error as AxiosError, t(SERVER_UNEXPECTED_RESPONSE));
     } finally {
       setFetchAllTeamAdvancedDetails(false);
     }
@@ -204,10 +208,10 @@ const TeamsPage = () => {
           await getParentTeam(data.parents[0].name, false, loadPage);
         }
       } else {
-        throw t('server.unexpected-response');
+        throw t(SERVER_UNEXPECTED_RESPONSE);
       }
     } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      showErrorToast(error as AxiosError, t(SERVER_UNEXPECTED_RESPONSE));
     }
   };
 
@@ -256,7 +260,7 @@ const TeamsPage = () => {
         await getParentTeam(data.parents[0].name, true, loadPage);
       }
     } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      showErrorToast(error as AxiosError, t(SERVER_UNEXPECTED_RESPONSE));
     } finally {
       setIsPageLoading(false);
     }
@@ -282,7 +286,7 @@ const TeamsPage = () => {
         setSelectedTeam((prev) => ({ ...prev, ...data }));
         fetchAssets(data);
       } catch (error) {
-        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+        showErrorToast(error as AxiosError, t(SERVER_UNEXPECTED_RESPONSE));
       } finally {
         setFetchingAdvancedDetails(false);
       }
@@ -333,7 +337,7 @@ const TeamsPage = () => {
       ) {
         showErrorToast(
           t('server.entity-already-exist', {
-            entity: t('label.team'),
+            entity: t(LABEL_TEAM),
             entityPlural: t('label.team-plural-lowercase'),
             name: data.name,
           })
@@ -360,8 +364,8 @@ const TeamsPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.team'),
+        t(SERVER_ENTITY_UPDATING_ERROR, {
+          entity: t(LABEL_TEAM),
         })
       );
     }
@@ -414,13 +418,13 @@ const TeamsPage = () => {
             userCount: data.length,
           }));
         } else {
-          throw new Error(t('server.unexpected-response'));
+          throw new Error(t(SERVER_UNEXPECTED_RESPONSE));
         }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.team'),
+          t(SERVER_ENTITY_UPDATING_ERROR, {
+            entity: t(LABEL_TEAM),
           })
         );
       }
@@ -442,13 +446,13 @@ const TeamsPage = () => {
           userCount: updatedUsers?.length,
         }));
       } else {
-        throw new Error(t('server.unexpected-response'));
+        throw new Error(t(SERVER_UNEXPECTED_RESPONSE));
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.team'),
+        t(SERVER_ENTITY_UPDATING_ERROR, {
+          entity: t(LABEL_TEAM),
         })
       );
     }
@@ -463,7 +467,7 @@ const TeamsPage = () => {
         if (response) {
           setSelectedTeam((prev) => ({ ...prev, ...response }));
         } else {
-          throw t('server.unexpected-response');
+          throw t(SERVER_UNEXPECTED_RESPONSE);
         }
       } catch (error) {
         showErrorToast(error as AxiosError);

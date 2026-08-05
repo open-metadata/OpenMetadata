@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+const SHAILESH_PARMAR = 'shailesh.parmar';
+
 /* eslint-disable max-len */
 export const MOCK_QUERIES = [
   {
@@ -56,8 +58,8 @@ export const MOCK_QUERIES = [
         {
           id: 'cdccaedd-ed02-4c89-bc1a-1c4cd679d1e3',
           type: 'user',
-          name: 'shailesh.parmar',
-          fullyQualifiedName: 'shailesh.parmar',
+          name: SHAILESH_PARMAR,
+          fullyQualifiedName: SHAILESH_PARMAR,
           displayName: 'ShaileshParmar',
           deleted: false,
         },
@@ -213,8 +215,8 @@ export const MOCK_QUERIES = [
         {
           id: 'cdccaedd-ed02-4c89-bc1a-1c4cd679d1e3',
           type: 'user',
-          name: 'shailesh.parmar',
-          fullyQualifiedName: 'shailesh.parmar',
+          name: SHAILESH_PARMAR,
+          fullyQualifiedName: SHAILESH_PARMAR,
           displayName: 'ShaileshParmar',
           deleted: false,
         },

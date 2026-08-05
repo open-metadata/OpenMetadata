@@ -17,6 +17,12 @@ import { EntityType } from '../enums/entity.enum';
 import type { EntityReference } from '../generated/type/entityUsage';
 import i18n from './i18next/LocalUtil';
 
+const LABEL_PIPELINE = 'label.pipeline';
+const LABEL_DASHBOARD = 'label.dashboard';
+const LABEL_ENTITY_SERVICE = 'label.entity-service';
+const LABEL_DATABASE = 'label.database';
+const LABEL_ML_MODEL = 'label.ml-model';
+
 const { t } = i18n;
 
 /**
@@ -48,9 +54,9 @@ export const getEntityNameLabel = (entityName?: string) => {
   const entityNameLabels = {
     table: t('label.table'),
     topic: t('label.topic'),
-    pipeline: t('label.pipeline'),
+    pipeline: t(LABEL_PIPELINE),
     container: t('label.container'),
-    dashboard: t('label.dashboard'),
+    dashboard: t(LABEL_DASHBOARD),
     testCase: t('label.test-case'),
     testSuite: t('label.test-suite'),
     dataContract: t('label.data-contract'),
@@ -61,29 +67,29 @@ export const getEntityNameLabel = (entityName?: string) => {
     conversation: t('label.conversation'),
     dashboardDataModel: t('label.data-model'),
     databaseSchema: t('label.database-schema'),
-    databaseService: t('label.entity-service', {
-      entity: t('label.database'),
+    databaseService: t(LABEL_ENTITY_SERVICE, {
+      entity: t(LABEL_DATABASE),
     }),
-    dashboardService: t('label.entity-service', {
-      entity: t('label.dashboard'),
+    dashboardService: t(LABEL_ENTITY_SERVICE, {
+      entity: t(LABEL_DASHBOARD),
     }),
-    messagingService: t('label.entity-service', {
+    messagingService: t(LABEL_ENTITY_SERVICE, {
       entity: t('label.messaging'),
     }),
-    mlmodelService: t('label.entity-service', {
-      entity: t('label.ml-model'),
+    mlmodelService: t(LABEL_ENTITY_SERVICE, {
+      entity: t(LABEL_ML_MODEL),
     }),
-    pipelineService: t('label.entity-service', {
-      entity: t('label.pipeline'),
+    pipelineService: t(LABEL_ENTITY_SERVICE, {
+      entity: t(LABEL_PIPELINE),
     }),
-    storageService: t('label.entity-service', {
+    storageService: t(LABEL_ENTITY_SERVICE, {
       entity: t('label.storage'),
     }),
-    searchService: t('label.entity-service', { entity: t('label.search') }),
-    metadataService: t('label.entity-service', {
+    searchService: t(LABEL_ENTITY_SERVICE, { entity: t('label.search') }),
+    metadataService: t(LABEL_ENTITY_SERVICE, {
       entity: t('label.metadata'),
     }),
-    driveService: t('label.entity-service', {
+    driveService: t(LABEL_ENTITY_SERVICE, {
       entity: t('label.drive'),
     }),
     glossary: t('label.glossary'),
@@ -96,9 +102,9 @@ export const getEntityNameLabel = (entityName?: string) => {
     storedProcedure: t('label.stored-procedure'),
     searchIndex: t('label.search-index'),
     task: t('label.task'),
-    mlmodel: t('label.ml-model'),
+    mlmodel: t(LABEL_ML_MODEL),
     location: t('label.location'),
-    database: t('label.database'),
+    database: t(LABEL_DATABASE),
     alert: t('label.alert-plural'),
     query: t('label.query'),
     THREAD: t('label.thread'),
@@ -157,7 +163,7 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.DASHBOARD_SERVICE]: t('label.dashboard-service'),
   [EntityType.STORAGE_SERVICE]: t('label.storage-service'),
   [EntityType.SEARCH_SERVICE]: t('label.search-service'),
-  [EntityType.DRIVE_SERVICE]: t('label.entity-service', {
+  [EntityType.DRIVE_SERVICE]: t(LABEL_ENTITY_SERVICE, {
     entity: t('label.drive'),
   }),
   [EntityType.METRIC]: t('label.metric'),
@@ -169,14 +175,14 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.DATABASE_SCHEMA]: t('label.database-schema'),
   [EntityType.CHART]: t('label.chart'),
   [EntityType.STORED_PROCEDURE]: t('label.stored-procedure'),
-  [EntityType.DATABASE]: t('label.database'),
-  [EntityType.PIPELINE]: t('label.pipeline'),
+  [EntityType.DATABASE]: t(LABEL_DATABASE),
+  [EntityType.PIPELINE]: t(LABEL_PIPELINE),
   [EntityType.TAG]: t('label.tag'),
-  [EntityType.DASHBOARD]: t('label.dashboard'),
+  [EntityType.DASHBOARD]: t(LABEL_DASHBOARD),
   [EntityType.API_ENDPOINT]: t('label.api-endpoint'),
   [EntityType.TOPIC]: t('label.topic'),
   [EntityType.DATA_PRODUCT]: t('label.data-product'),
-  [EntityType.MLMODEL]: t('label.ml-model'),
+  [EntityType.MLMODEL]: t(LABEL_ML_MODEL),
   [EntityType.SEARCH_INDEX]: t('label.search-index'),
   [EntityType.API_COLLECTION]: t('label.api-collection'),
   [EntityType.TEST_SUITE]: t('label.test-suite'),

@@ -13,10 +13,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import SettingItemCard from './SettingItemCard.component';
 
+const TEST_CATEGORY = 'Test Category';
+
 const mockData = {
   key: 'test-key',
   icon: () => <svg>Test Icon</svg>,
-  category: 'Test Category',
+  category: TEST_CATEGORY,
   label: 'Test Label',
   description: 'This is an test description.',
 };
@@ -27,7 +29,7 @@ describe('SettingItemCard', () => {
   it('should render Setting Item Card', () => {
     render(<SettingItemCard data={mockData} onClick={mockOnClick} />);
 
-    expect(screen.getByText('Test Category')).toBeInTheDocument();
+    expect(screen.getByText(TEST_CATEGORY)).toBeInTheDocument();
     expect(
       screen.getByText('This is an test description.')
     ).toBeInTheDocument();
@@ -47,7 +49,7 @@ describe('SettingItemCard', () => {
       />
     );
 
-    expect(screen.queryByText('Test Category')).not.toBeInTheDocument();
+    expect(screen.queryByText(TEST_CATEGORY)).not.toBeInTheDocument();
     expect(screen.getByText('Test Label')).toBeInTheDocument();
   });
 

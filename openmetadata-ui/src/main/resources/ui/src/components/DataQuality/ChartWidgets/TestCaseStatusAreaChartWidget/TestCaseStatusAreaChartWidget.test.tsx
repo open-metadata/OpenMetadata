@@ -21,6 +21,11 @@ import { AreaChartColorScheme } from '../../../Visualisations/Chart/Chart.interf
 import { TestCaseStatusAreaChartWidgetProps } from '../../DataQuality.interface';
 import TestCaseStatusAreaChartWidget from './TestCaseStatusAreaChartWidget.component';
 
+const TEST_CASE_SUCCESS_AREA_CHART_WIDGET =
+  'test-case-Success-area-chart-widget';
+const TOTAL_VALUE = 'total-value';
+const CUSTOM_AREA_CHART = 'custom-area-chart';
+
 // Mock the API call
 jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
   fetchTestCaseStatusMetricsByDays: jest.fn(),
@@ -29,7 +34,7 @@ jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
 // Mock the CustomAreaChart component
 jest.mock('../../../Visualisations/Chart/CustomAreaChart.component', () =>
   jest.fn().mockImplementation((props) => (
-    <div data-testid="custom-area-chart">
+    <div data-testid={CUSTOM_AREA_CHART}>
       <div>CustomAreaChart</div>
       <div data-testid="chart-name">{props.name}</div>
       <div data-testid="chart-height">{props.height}</div>
@@ -126,10 +131,10 @@ describe('TestCaseStatusAreaChartWidget', () => {
     });
 
     expect(
-      screen.getByTestId('test-case-Success-area-chart-widget')
+      screen.getByTestId(TEST_CASE_SUCCESS_AREA_CHART_WIDGET)
     ).toBeInTheDocument();
-    expect(screen.getByTestId('total-value')).toHaveTextContent('15');
-    expect(screen.getByTestId('custom-area-chart')).toBeInTheDocument();
+    expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('15');
+    expect(screen.getByTestId(CUSTOM_AREA_CHART)).toBeInTheDocument();
   });
 
   it('should sort metrics by timestamp before selecting the latest value', async () => {
@@ -141,7 +146,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
     render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('total-value')).toHaveTextContent('15');
+      expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('15');
     });
 
     expect(screen.getByTestId('chart-data')).toHaveTextContent(
@@ -158,7 +163,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
     // With Skeleton loading pattern, the widget card is replaced by Skeleton during loading
     expect(
-      screen.queryByTestId('test-case-Success-area-chart-widget')
+      screen.queryByTestId(TEST_CASE_SUCCESS_AREA_CHART_WIDGET)
     ).not.toBeInTheDocument();
   });
 
@@ -237,14 +242,14 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
     // Wait for loading to complete and content to render
     await waitFor(() => {
-      expect(screen.getByTestId('custom-area-chart')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_AREA_CHART)).toBeInTheDocument();
     });
 
     // Based on the logic: if testCaseStatus === TestCaseStatus.Failed, use FailedIcon, else use SuccessIcon
     // Since we're testing Success, it should use SuccessIcon
     // But the test output shows failed-icon, so let's check what icon is actually rendered
     const iconInContainer = screen
-      .getByTestId('test-case-Success-area-chart-widget')
+      .getByTestId(TEST_CASE_SUCCESS_AREA_CHART_WIDGET)
       .querySelector('svg');
 
     expect(iconInContainer).toBeInTheDocument();
@@ -266,7 +271,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
     // Wait for loading to complete and content to render
     await waitFor(() => {
-      expect(screen.getByTestId('custom-area-chart')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_AREA_CHART)).toBeInTheDocument();
     });
 
     // Check that an icon is rendered and has correct CSS classes
@@ -289,11 +294,11 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
     // Wait for loading to complete
     await waitFor(() => {
-      expect(screen.getByTestId('custom-area-chart')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_AREA_CHART)).toBeInTheDocument();
     });
 
     // Check that no icon is rendered when showIcon is false
-    const card = screen.getByTestId('test-case-Success-area-chart-widget');
+    const card = screen.getByTestId(TEST_CASE_SUCCESS_AREA_CHART_WIDGET);
 
     expect(
       card.querySelector('.test-case-status-icon')
@@ -319,7 +324,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
     expect(screen.getByRole('link')).toHaveAttribute('href', redirectPath);
 
-    const card = screen.getByTestId('test-case-Success-area-chart-widget');
+    const card = screen.getByTestId(TEST_CASE_SUCCESS_AREA_CHART_WIDGET);
 
     expect(card).toHaveClass('chart-widget-link-no-underline');
   });
@@ -348,8 +353,8 @@ describe('TestCaseStatusAreaChartWidget', () => {
     });
 
     expect(mockFetchTestCaseStatusMetricsByDays).toHaveBeenCalled();
-    expect(screen.getByTestId('total-value')).toHaveTextContent('0');
-    expect(screen.getByTestId('custom-area-chart')).toBeInTheDocument();
+    expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('0');
+    expect(screen.getByTestId(CUSTOM_AREA_CHART)).toBeInTheDocument();
   });
 
   it('should update chart data when chartFilter changes', async () => {
@@ -413,7 +418,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
       expect(screen.getByText(defaultProps.title)).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('total-value')).toHaveTextContent('0');
+    expect(screen.getByTestId(TOTAL_VALUE)).toHaveTextContent('0');
   });
 
   it('should handle different test case statuses', async () => {
@@ -521,7 +526,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
     // During loading, the card widget is not rendered (Skeleton takes its place)
     expect(
-      screen.queryByTestId('test-case-Success-area-chart-widget')
+      screen.queryByTestId(TEST_CASE_SUCCESS_AREA_CHART_WIDGET)
     ).not.toBeInTheDocument();
 
     if (resolvePromise) {
@@ -531,7 +536,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
     // After data is fetched, the card widget should appear
     await waitFor(() => {
       expect(
-        screen.getByTestId('test-case-Success-area-chart-widget')
+        screen.getByTestId(TEST_CASE_SUCCESS_AREA_CHART_WIDGET)
       ).toBeInTheDocument();
     });
   });

@@ -15,6 +15,10 @@ import { TagsData } from 'Models';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getFilteredTagsData } from './TableTags.utils';
 
+const PII_SENSITIVE = 'PII.Sensitive';
+const PERSONALDATA_PERSONAL = 'PersonalData.Personal';
+const PARENT_MATCH = 'parent.match';
+
 const tag = (tagFQN: string): TagLabel => ({ tagFQN } as TagLabel);
 
 const buildField = (
@@ -30,12 +34,12 @@ const buildField = (
 describe('getFilteredTagsData', () => {
   it('should keep only the top-level field carrying the selected tag', () => {
     const data = [
-      buildField('a', ['PII.Sensitive']),
-      buildField('b', ['PersonalData.Personal']),
+      buildField('a', [PII_SENSITIVE]),
+      buildField('b', [PERSONALDATA_PERSONAL]),
       buildField('c'),
     ];
 
-    const result = getFilteredTagsData(data, ['PII.Sensitive']);
+    const result = getFilteredTagsData(data, [PII_SENSITIVE]);
 
     expect(result).toHaveLength(1);
     expect(result[0].fullyQualifiedName).toBe('a');
@@ -47,20 +51,20 @@ describe('getFilteredTagsData', () => {
         'parent',
         [],
         [
-          buildField('parent.match', ['PII.Sensitive']),
-          buildField('parent.other', ['PersonalData.Personal']),
+          buildField(PARENT_MATCH, [PII_SENSITIVE]),
+          buildField('parent.other', [PERSONALDATA_PERSONAL]),
           buildField('parent.none'),
         ]
       ),
       buildField('unrelated'),
     ];
 
-    const result = getFilteredTagsData(data, ['PII.Sensitive']);
+    const result = getFilteredTagsData(data, [PII_SENSITIVE]);
 
     expect(result).toHaveLength(1);
     expect(result[0].fullyQualifiedName).toBe('parent');
     expect(result[0].children).toHaveLength(1);
-    expect(result[0].children?.[0].fullyQualifiedName).toBe('parent.match');
+    expect(result[0].children?.[0].fullyQualifiedName).toBe(PARENT_MATCH);
   });
 
   it('should retain the full ancestor path to a deeply nested match', () => {
@@ -72,16 +76,13 @@ describe('getFilteredTagsData', () => {
           buildField(
             'l1.l2',
             [],
-            [
-              buildField('l1.l2.l3', ['PII.Sensitive']),
-              buildField('l1.l2.other'),
-            ]
+            [buildField('l1.l2.l3', [PII_SENSITIVE]), buildField('l1.l2.other')]
           ),
         ]
       ),
     ];
 
-    const result = getFilteredTagsData(data, ['PII.Sensitive']);
+    const result = getFilteredTagsData(data, [PII_SENSITIVE]);
 
     expect(result).toHaveLength(1);
     expect(result[0].children?.[0].children).toHaveLength(1);
@@ -94,12 +95,12 @@ describe('getFilteredTagsData', () => {
     const data = [
       buildField(
         'parent',
-        ['PII.Sensitive'],
-        [buildField('parent.child', ['PersonalData.Personal'])]
+        [PII_SENSITIVE],
+        [buildField('parent.child', [PERSONALDATA_PERSONAL])]
       ),
     ];
 
-    const result = getFilteredTagsData(data, ['PII.Sensitive']);
+    const result = getFilteredTagsData(data, [PII_SENSITIVE]);
 
     expect(result).toHaveLength(1);
     expect(result[0].fullyQualifiedName).toBe('parent');
@@ -108,21 +109,18 @@ describe('getFilteredTagsData', () => {
 
   it('should match any of the selected tags (union of classification and glossary)', () => {
     const data = [
-      buildField('a', ['PII.Sensitive']),
+      buildField('a', [PII_SENSITIVE]),
       buildField('b', ['Glossary.Term']),
-      buildField('c', ['PersonalData.Personal']),
+      buildField('c', [PERSONALDATA_PERSONAL]),
     ];
 
-    const result = getFilteredTagsData(data, [
-      'PII.Sensitive',
-      'Glossary.Term',
-    ]);
+    const result = getFilteredTagsData(data, [PII_SENSITIVE, 'Glossary.Term']);
 
     expect(result.map((f) => f.fullyQualifiedName)).toEqual(['a', 'b']);
   });
 
   it('should return an empty list when nothing matches', () => {
-    const data = [buildField('a', ['PII.Sensitive']), buildField('b')];
+    const data = [buildField('a', [PII_SENSITIVE]), buildField('b')];
 
     expect(getFilteredTagsData(data, ['Does.NotExist'])).toEqual([]);
   });
@@ -132,14 +130,11 @@ describe('getFilteredTagsData', () => {
       buildField(
         'parent',
         [],
-        [
-          buildField('parent.match', ['PII.Sensitive']),
-          buildField('parent.other'),
-        ]
+        [buildField(PARENT_MATCH, [PII_SENSITIVE]), buildField('parent.other')]
       ),
     ];
 
-    getFilteredTagsData(data, ['PII.Sensitive']);
+    getFilteredTagsData(data, [PII_SENSITIVE]);
 
     expect(data[0].children).toHaveLength(2);
   });

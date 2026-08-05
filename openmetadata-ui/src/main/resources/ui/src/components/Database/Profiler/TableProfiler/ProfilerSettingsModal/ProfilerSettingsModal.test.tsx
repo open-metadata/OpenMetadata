@@ -25,6 +25,7 @@ import { getTableProfilerConfig } from '../../../../../rest/tableAPI';
 import { ProfilerSettingsModalProps } from '../TableProfiler.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal';
 
+const SAMPLE_DATA_COUNT_INPUT = 'sample-data-count-input';
 const mockShowSuccessToast = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockOnVisibilityChange = jest.fn();
@@ -135,7 +136,7 @@ describe('Test ProfilerSettingsModal component', () => {
       expect(screen.getByTestId('enable-partition-switch')).toBeInTheDocument();
       expect(screen.getByTestId('interval-type')).toBeInTheDocument();
       expect(screen.getByTestId('column-name')).toBeInTheDocument();
-      expect(screen.getByTestId('sample-data-count-input')).toBeInTheDocument();
+      expect(screen.getByTestId(SAMPLE_DATA_COUNT_INPUT)).toBeInTheDocument();
     });
   });
 
@@ -167,7 +168,7 @@ describe('Test ProfilerSettingsModal component', () => {
     });
 
     await waitFor(() => {
-      const sampleDataCount = screen.getByTestId('sample-data-count-input');
+      const sampleDataCount = screen.getByTestId(SAMPLE_DATA_COUNT_INPUT);
 
       expect(sampleDataCount).toHaveAttribute('value', '500');
     });
@@ -178,7 +179,7 @@ describe('Test ProfilerSettingsModal component', () => {
       render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    const sampleDataCount = screen.getByTestId('sample-data-count-input');
+    const sampleDataCount = screen.getByTestId(SAMPLE_DATA_COUNT_INPUT);
 
     await act(async () => {
       fireEvent.change(sampleDataCount, { target: { value: '100' } });

@@ -19,6 +19,10 @@ import { ActivityEvent } from '../../../generated/entity/activity/activityEvent'
 import * as ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { MyFeedWidget } from './FeedWidget.component';
 
+const WIDGET_HEADER = 'widget-header';
+const ACTIVITY_FEED_LIST = 'activity-feed-list';
+const TEST_WIDGET = 'test-widget';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -63,7 +67,7 @@ jest.mock(
       widgetKey: string;
     }) =>
       (
-        <div data-testid="widget-header">
+        <div data-testid={WIDGET_HEADER}>
           <select
             data-testid="filter-select"
             onChange={(e) => onSortChange(e.target.value)}>
@@ -90,7 +94,7 @@ jest.mock(
       activityList: ActivityEvent[];
       onAfterClose: () => void;
     }) => (
-      <div data-testid="activity-feed-list">
+      <div data-testid={ACTIVITY_FEED_LIST}>
         <button data-testid="close-button" onClick={onAfterClose}>
           Close
         </button>
@@ -156,11 +160,11 @@ const renderComponent = (overrides = {}) => {
   return render(
     <BrowserRouter>
       <MyFeedWidget
-        currentLayout={[{ i: 'test-widget', w: 4, h: 3, x: 0, y: 0 }]}
+        currentLayout={[{ i: TEST_WIDGET, w: 4, h: 3, x: 0, y: 0 }]}
         handleLayoutUpdate={jest.fn()}
         handleRemoveWidget={jest.fn()}
         isEditView={false}
-        widgetKey="test-widget"
+        widgetKey={TEST_WIDGET}
         {...overrides}
       />
     </BrowserRouter>
@@ -177,7 +181,7 @@ describe('MyFeedWidget', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('activity-feed-list')).toBeInTheDocument();
+        expect(screen.getByTestId(ACTIVITY_FEED_LIST)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('activity-item-0')).toHaveTextContent(
@@ -208,7 +212,7 @@ describe('MyFeedWidget', () => {
     it('should render widget header', () => {
       renderComponent();
 
-      expect(screen.getByTestId('widget-header')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_HEADER)).toBeInTheDocument();
     });
 
     it('should render widget footer', async () => {
@@ -255,7 +259,7 @@ describe('MyFeedWidget', () => {
 
       fireEvent.click(screen.getByTestId('remove-widget-button'));
 
-      expect(handleRemoveWidget).toHaveBeenCalledWith('test-widget');
+      expect(handleRemoveWidget).toHaveBeenCalledWith(TEST_WIDGET);
     });
 
     it('should call handleRemoveWidget when close button is clicked', async () => {
@@ -263,19 +267,19 @@ describe('MyFeedWidget', () => {
       renderComponent({ handleRemoveWidget });
 
       await waitFor(() => {
-        expect(screen.getByTestId('activity-feed-list')).toBeInTheDocument();
+        expect(screen.getByTestId(ACTIVITY_FEED_LIST)).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByTestId('close-button'));
 
-      expect(handleRemoveWidget).toHaveBeenCalledWith('test-widget');
+      expect(handleRemoveWidget).toHaveBeenCalledWith(TEST_WIDGET);
     });
 
     it('should handle undefined handleRemoveWidget gracefully', async () => {
       renderComponent({ handleRemoveWidget: undefined });
 
       await waitFor(() => {
-        expect(screen.getByTestId('activity-feed-list')).toBeInTheDocument();
+        expect(screen.getByTestId(ACTIVITY_FEED_LIST)).toBeInTheDocument();
       });
 
       expect(() => {
@@ -288,13 +292,13 @@ describe('MyFeedWidget', () => {
     it('should handle missing layout gracefully', () => {
       renderComponent({ currentLayout: [] });
 
-      expect(screen.getByTestId('widget-header')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_HEADER)).toBeInTheDocument();
     });
 
     it('should handle undefined layout gracefully', () => {
       renderComponent({ currentLayout: undefined });
 
-      expect(screen.getByTestId('widget-header')).toBeInTheDocument();
+      expect(screen.getByTestId(WIDGET_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -303,7 +307,7 @@ describe('MyFeedWidget', () => {
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('activity-feed-list')).toBeInTheDocument();
+        expect(screen.getByTestId(ACTIVITY_FEED_LIST)).toBeInTheDocument();
       });
 
       // The showActivityDrawer is passed as onActivityClick prop

@@ -21,6 +21,7 @@ import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import InlineSeverity from './InlineSeverity.component';
 
+const CHIP_TRIGGER = 'chip-trigger';
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
   ChevronUp: () => <svg data-testid="icon-chevron-up" />,
@@ -165,59 +166,49 @@ describe('InlineSeverity', () => {
     it('renders Severity1 chip label', () => {
       renderComponent(Severities.Severity1);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 1'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 1');
     });
 
     it('renders Severity2 chip label', () => {
       renderComponent(Severities.Severity2);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 2'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 2');
     });
 
     it('renders Severity3 chip label', () => {
       renderComponent(Severities.Severity3);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 3'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 3');
     });
 
     it('renders Severity4 chip label', () => {
       renderComponent(Severities.Severity4);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 4'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 4');
     });
 
     it('renders Severity5 chip label', () => {
       renderComponent(Severities.Severity5);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 5'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 5');
     });
 
     it('renders "No Severity" label when severity is undefined', () => {
       renderComponent(undefined);
 
-      expect(screen.getByTestId('chip-trigger')).toBeInTheDocument();
+      expect(screen.getByTestId(CHIP_TRIGGER)).toBeInTheDocument();
     });
 
     it('chip is disabled without edit permission', () => {
       renderComponent(Severities.Severity1, false);
 
-      expect(screen.getByTestId('chip-trigger')).toBeDisabled();
+      expect(screen.getByTestId(CHIP_TRIGGER)).toBeDisabled();
     });
 
     it('chip is enabled with edit permission', () => {
       renderComponent(Severities.Severity1, true);
 
-      expect(screen.getByTestId('chip-trigger')).not.toBeDisabled();
+      expect(screen.getByTestId(CHIP_TRIGGER)).not.toBeDisabled();
     });
 
     it('dropdown root is not rendered without edit permission', () => {
@@ -235,9 +226,7 @@ describe('InlineSeverity', () => {
     it('chip label updates when severity prop changes', () => {
       const { rerender } = renderComponent(Severities.Severity1);
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 1'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 1');
 
       rerender(
         <InlineSeverity
@@ -247,9 +236,7 @@ describe('InlineSeverity', () => {
         />
       );
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 3'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 3');
     });
 
     it('chip label updates from no-severity to a severity', () => {
@@ -263,9 +250,7 @@ describe('InlineSeverity', () => {
         />
       );
 
-      expect(screen.getByTestId('chip-trigger')).toHaveTextContent(
-        'Severity 2'
-      );
+      expect(screen.getByTestId(CHIP_TRIGGER)).toHaveTextContent('Severity 2');
     });
   });
 
@@ -274,7 +259,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity1);
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('chip-trigger'));
+        fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
       });
 
       expect(screen.getByTestId('dropdown-popover')).toBeInTheDocument();
@@ -284,7 +269,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity1);
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('chip-trigger'));
+        fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
       });
 
       Object.values(Severities).forEach((sev) => {
@@ -296,7 +281,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity1);
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('chip-trigger'));
+        fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
       });
 
       expect(screen.getByTestId('dropdown-item-none')).toBeInTheDocument();
@@ -306,7 +291,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity1);
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('chip-trigger'));
+        fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
       });
 
       expect(screen.getByTestId('dropdown-separator')).toBeInTheDocument();
@@ -316,7 +301,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity1);
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('chip-trigger'));
+        fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
       });
 
       await act(async () => {
@@ -334,7 +319,7 @@ describe('InlineSeverity', () => {
       renderComponent(Severities.Severity2);
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('chip-trigger'));
+        fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
       });
 
       await act(async () => {
@@ -353,7 +338,7 @@ describe('InlineSeverity', () => {
         const { unmount } = renderComponent(undefined);
 
         await act(async () => {
-          fireEvent.click(screen.getByTestId('chip-trigger'));
+          fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
         });
 
         await act(async () => {
@@ -388,7 +373,7 @@ describe('InlineSeverity', () => {
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('chip-trigger'));
+        fireEvent.click(screen.getByTestId(CHIP_TRIGGER));
       });
 
       await act(async () => {
@@ -397,14 +382,14 @@ describe('InlineSeverity', () => {
         );
       });
 
-      expect(screen.getByTestId('chip-trigger')).toBeDisabled();
+      expect(screen.getByTestId(CHIP_TRIGGER)).toBeDisabled();
 
       await act(async () => {
         resolveSubmit();
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('chip-trigger')).not.toBeDisabled();
+        expect(screen.getByTestId(CHIP_TRIGGER)).not.toBeDisabled();
       });
     });
   });
@@ -425,7 +410,7 @@ describe('InlineSeverity', () => {
         />
       );
 
-      expect(screen.getByTestId('chip-trigger')).toBeInTheDocument();
+      expect(screen.getByTestId(CHIP_TRIGGER)).toBeInTheDocument();
     });
   });
 });

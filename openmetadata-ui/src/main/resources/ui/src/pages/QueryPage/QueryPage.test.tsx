@@ -50,6 +50,7 @@ jest.mock('../../components/common/Loader/Loader', () => {
 jest.mock('../../components/Database/TableQueries/QueryCard', () => {
   return jest.fn().mockImplementation(() => <div>QueryCard</div>);
 });
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../rest/queryAPI', () => ({
   ...jest.requireActual('../../rest/queryAPI'),
   getQueryById: jest

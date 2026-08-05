@@ -25,6 +25,9 @@ import {
 import { downloadIngestionLog } from '../utils/IngestionLogs/LogsUtils';
 import { useEntityLogs } from './useEntityLogs';
 
+const SVC_PIPELINE = 'svc.pipeline';
+const MY_PIPELINE = 'My Pipeline';
+
 const mockReset = jest.fn();
 const mockUpdateProgress = jest.fn();
 
@@ -77,8 +80,8 @@ describe('useEntityLogs', () => {
   it('loads ingestion pipeline logs and derives pagination', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
-      fullyQualifiedName: 'svc.pipeline',
-      name: 'My Pipeline',
+      fullyQualifiedName: SVC_PIPELINE,
+      name: MY_PIPELINE,
       pipelineType: 'Metadata',
     });
     (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
@@ -88,13 +91,13 @@ describe('useEntityLogs', () => {
     const { result } = renderHook(() =>
       useEntityLogs({
         logEntityType: 'databaseServices',
-        fqn: 'svc.pipeline',
+        fqn: SVC_PIPELINE,
       })
     );
 
     await waitFor(() => expect(result.current.logs).toBe('line1\nline2'));
 
-    expect(result.current.title).toBe('My Pipeline');
+    expect(result.current.title).toBe(MY_PIPELINE);
     expect(result.current.totalLines).toBe(2);
     expect(result.current.hasMore).toBe(true);
   });
@@ -104,14 +107,14 @@ describe('useEntityLogs', () => {
     // fire a request for `/logs//last`.
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
-      name: 'My Pipeline',
+      name: MY_PIPELINE,
       pipelineType: 'Metadata',
     });
 
     renderHook(() =>
       useEntityLogs({
         logEntityType: 'databaseServices',
-        fqn: 'svc.pipeline',
+        fqn: SVC_PIPELINE,
       })
     );
 
@@ -123,8 +126,8 @@ describe('useEntityLogs', () => {
   it('appends the next page when loadMore is called', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
-      fullyQualifiedName: 'svc.pipeline',
-      name: 'My Pipeline',
+      fullyQualifiedName: SVC_PIPELINE,
+      name: MY_PIPELINE,
       pipelineType: 'Metadata',
     });
     (getIngestionPipelineLogById as jest.Mock)
@@ -139,7 +142,7 @@ describe('useEntityLogs', () => {
     const { result } = renderHook(() =>
       useEntityLogs({
         logEntityType: 'databaseServices',
-        fqn: 'svc.pipeline',
+        fqn: SVC_PIPELINE,
       })
     );
 
@@ -220,8 +223,8 @@ describe('useEntityLogs', () => {
   it('downloads ingestion logs and resets the progress store', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
-      fullyQualifiedName: 'svc.pipeline',
-      name: 'My Pipeline',
+      fullyQualifiedName: SVC_PIPELINE,
+      name: MY_PIPELINE,
       pipelineType: 'Metadata',
     });
     (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
@@ -231,7 +234,7 @@ describe('useEntityLogs', () => {
     const { result } = renderHook(() =>
       useEntityLogs({
         logEntityType: 'databaseServices',
-        fqn: 'svc.pipeline',
+        fqn: SVC_PIPELINE,
       })
     );
 
@@ -242,7 +245,7 @@ describe('useEntityLogs', () => {
     });
 
     // Logs are fetched/downloaded by fqn (not id) so the backend needs no id -> fqn lookup.
-    expect(downloadIngestionLog).toHaveBeenCalledWith('svc.pipeline');
+    expect(downloadIngestionLog).toHaveBeenCalledWith(SVC_PIPELINE);
     expect(mockUpdateProgress).toHaveBeenCalled();
     expect(mockReset).toHaveBeenCalled();
   });
@@ -252,8 +255,8 @@ describe('useEntityLogs — live (polling) state', () => {
   it('is live while the ingestion run is running', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
-      fullyQualifiedName: 'svc.pipeline',
-      name: 'My Pipeline',
+      fullyQualifiedName: SVC_PIPELINE,
+      name: MY_PIPELINE,
       pipelineType: 'Metadata',
       pipelineStatuses: [{ pipelineState: PipelineState.Running }],
     });
@@ -264,7 +267,7 @@ describe('useEntityLogs — live (polling) state', () => {
     const { result } = renderHook(() =>
       useEntityLogs({
         logEntityType: 'databaseServices',
-        fqn: 'svc.pipeline',
+        fqn: SVC_PIPELINE,
       })
     );
 
@@ -274,8 +277,8 @@ describe('useEntityLogs — live (polling) state', () => {
   it('is not live once the ingestion run reaches a terminal state', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
-      fullyQualifiedName: 'svc.pipeline',
-      name: 'My Pipeline',
+      fullyQualifiedName: SVC_PIPELINE,
+      name: MY_PIPELINE,
       pipelineType: 'Metadata',
       pipelineStatuses: [{ pipelineState: PipelineState.Success }],
     });
@@ -286,7 +289,7 @@ describe('useEntityLogs — live (polling) state', () => {
     const { result } = renderHook(() =>
       useEntityLogs({
         logEntityType: 'databaseServices',
-        fqn: 'svc.pipeline',
+        fqn: SVC_PIPELINE,
       })
     );
 

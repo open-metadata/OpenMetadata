@@ -72,6 +72,7 @@ describe('useSsoTestLogin', () => {
 
   it('should obtain an id_token in the popup and validate it on the backend', async () => {
     mockUserManager.mockImplementation(() => ({
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       signinPopup: jest.fn().mockResolvedValue({ id_token: 'id-token-123' }),
     }));
     mockTestLoginValidateToken.mockResolvedValue(

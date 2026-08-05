@@ -15,6 +15,8 @@ import { EntityTabs } from '../enums/entity.enum';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import i18n, { Transi18next } from './i18next/LocalUtil';
 
+const LABEL_SCHEMA = 'label.schema';
+
 interface ArgObject {
   searchTerm: string;
   updateTourPage: (value: CurrentTourPageType) => void;
@@ -124,7 +126,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-high-level-assets-information-step"
           renderElement={<strong />}
           values={{
-            text: i18n.t('label.schema'),
+            text: i18n.t(LABEL_SCHEMA),
           }}
         />
       </p>
@@ -139,7 +141,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-owner-step"
           renderElement={<strong />}
           values={{
-            text: i18n.t('label.schema'),
+            text: i18n.t(LABEL_SCHEMA),
           }}
         />
       </p>
@@ -154,7 +156,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-follow-step"
           renderElement={<strong />}
           values={{
-            text: i18n.t('label.schema'),
+            text: i18n.t(LABEL_SCHEMA),
           }}
         />
       </p>
@@ -169,7 +171,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-get-to-know-table-schema"
           renderElement={<strong />}
           values={{
-            text: i18n.t('label.schema'),
+            text: i18n.t(LABEL_SCHEMA),
           }}
         />
       </p>

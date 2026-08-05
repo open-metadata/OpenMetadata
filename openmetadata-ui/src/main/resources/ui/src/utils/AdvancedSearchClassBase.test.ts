@@ -23,6 +23,21 @@ import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
 import { getEntityName } from './EntityNameUtils';
+
+const STATUS_FIELD = 'Status Field' as const;
+const OWNER_FIELD = 'Owner Field' as const;
+const OWNER_FIELD_DISPLAY_NAME_KEYWORD =
+  'ownerField.displayName.keyword' as const;
+const ARRAY_ENTITY_REFERENCE = 'array<entityReference>' as const;
+const OWNERS_FIELD = 'Owners Field' as const;
+const DATE_FIELD = 'Date Field' as const;
+const DATE_FIELD_KEYWORD = 'dateField.keyword' as const;
+const NUMBER_FIELD = 'Number Field' as const;
+const INTEGER_FIELD = 'Integer Field' as const;
+const TIMESTAMP_FIELD = 'Timestamp Field' as const;
+const TEXT_FIELD = 'Text Field' as const;
+const TEXT_FIELD_KEYWORD = 'textField.keyword' as const;
+const TEST_TABLE = 'Test Table' as const;
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -333,7 +348,7 @@ describe('getCustomPropertiesSubFields', () => {
       },
     };
 
-    const mockLabel = 'Status Field';
+    const mockLabel = STATUS_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -369,7 +384,7 @@ describe('getCustomPropertiesSubFields', () => {
       type: 'entityReference',
     };
 
-    const mockLabel = 'Owner Field';
+    const mockLabel = OWNER_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -378,7 +393,7 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(result).toEqual({
-      subfieldsKey: 'ownerField.displayName.keyword',
+      subfieldsKey: OWNER_FIELD_DISPLAY_NAME_KEYWORD,
       dataObject: {
         __omPropertyType: 'entityReference',
         type: 'select',
@@ -394,10 +409,10 @@ describe('getCustomPropertiesSubFields', () => {
   it('should return correct configuration for array<entityReference> type with displayName.keyword suffix', () => {
     const mockField = {
       name: 'ownersField',
-      type: 'array<entityReference>',
+      type: ARRAY_ENTITY_REFERENCE,
     };
 
-    const mockLabel = 'Owners Field';
+    const mockLabel = OWNERS_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -408,7 +423,7 @@ describe('getCustomPropertiesSubFields', () => {
     expect(result).toEqual({
       subfieldsKey: 'ownersField.displayName.keyword',
       dataObject: {
-        __omPropertyType: 'array<entityReference>',
+        __omPropertyType: ARRAY_ENTITY_REFERENCE,
         type: 'select',
         label: mockLabel,
         fieldSettings: {
@@ -425,7 +440,7 @@ describe('getCustomPropertiesSubFields', () => {
       type: 'date-cp',
     };
 
-    const mockLabel = 'Date Field';
+    const mockLabel = DATE_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -434,7 +449,7 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(result).toEqual({
-      subfieldsKey: 'dateField.keyword',
+      subfieldsKey: DATE_FIELD_KEYWORD,
       dataObject: {
         __omPropertyType: 'date-cp',
         type: 'date',
@@ -457,7 +472,7 @@ describe('getCustomPropertiesSubFields', () => {
       },
     };
 
-    const mockLabel = 'Date Field';
+    const mockLabel = DATE_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -466,7 +481,7 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(result).toEqual({
-      subfieldsKey: 'dateField.keyword',
+      subfieldsKey: DATE_FIELD_KEYWORD,
       dataObject: {
         __omPropertyType: 'date-cp',
         type: 'date',
@@ -486,7 +501,7 @@ describe('getCustomPropertiesSubFields', () => {
       type: 'number',
     };
 
-    const mockLabel = 'Number Field';
+    const mockLabel = NUMBER_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -510,7 +525,7 @@ describe('getCustomPropertiesSubFields', () => {
       type: 'integer',
     };
 
-    const mockLabel = 'Integer Field';
+    const mockLabel = INTEGER_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -534,7 +549,7 @@ describe('getCustomPropertiesSubFields', () => {
       type: 'timestamp',
     };
 
-    const mockLabel = 'Timestamp Field';
+    const mockLabel = TIMESTAMP_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -558,7 +573,7 @@ describe('getCustomPropertiesSubFields', () => {
       type: 'string',
     };
 
-    const mockLabel = 'Text Field';
+    const mockLabel = TEXT_FIELD;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -567,7 +582,7 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(result).toEqual({
-      subfieldsKey: 'textField.keyword',
+      subfieldsKey: TEXT_FIELD_KEYWORD,
       dataObject: {
         __omPropertyType: 'string',
         type: 'text',
@@ -621,7 +636,7 @@ describe('getCustomPropertiesSubFields', () => {
         },
       },
     };
-    const mockLabel = 'Test Table';
+    const mockLabel = TEST_TABLE;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -659,7 +674,7 @@ describe('getCustomPropertiesSubFields', () => {
         },
       },
     };
-    const mockLabel = 'Test Table';
+    const mockLabel = TEST_TABLE;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -675,7 +690,7 @@ describe('getCustomPropertiesSubFields', () => {
       name: 'testTable',
       type: 'table-cp',
     };
-    const mockLabel = 'Test Table';
+    const mockLabel = TEST_TABLE;
     mockGetEntityName.mockReturnValue(mockLabel);
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -693,7 +708,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'ownerField',
           type: 'entityReference',
         };
-        const mockLabel = 'Owner Field';
+        const mockLabel = OWNER_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -702,7 +717,7 @@ describe('getCustomPropertiesSubFields', () => {
         );
 
         expect(result).toEqual({
-          subfieldsKey: 'ownerField.displayName.keyword',
+          subfieldsKey: OWNER_FIELD_DISPLAY_NAME_KEYWORD,
           dataObject: {
             __omPropertyType: 'entityReference',
             type: 'select',
@@ -720,7 +735,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'ownerField',
           type: 'entityReference',
         };
-        const mockLabel = 'Owner Field';
+        const mockLabel = OWNER_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -745,9 +760,9 @@ describe('getCustomPropertiesSubFields', () => {
       it('should use .displayName.keyword for array<entityReference> with ElasticSearch output', () => {
         const mockField = {
           name: 'ownersField',
-          type: 'array<entityReference>',
+          type: ARRAY_ENTITY_REFERENCE,
         };
-        const mockLabel = 'Owners Field';
+        const mockLabel = OWNERS_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -758,7 +773,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'ownersField.displayName.keyword',
           dataObject: {
-            __omPropertyType: 'array<entityReference>',
+            __omPropertyType: ARRAY_ENTITY_REFERENCE,
             type: 'select',
             label: mockLabel,
             fieldSettings: {
@@ -772,9 +787,9 @@ describe('getCustomPropertiesSubFields', () => {
       it('should use .displayName for array<entityReference> with JSONLogic output', () => {
         const mockField = {
           name: 'ownersField',
-          type: 'array<entityReference>',
+          type: ARRAY_ENTITY_REFERENCE,
         };
-        const mockLabel = 'Owners Field';
+        const mockLabel = OWNERS_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -785,7 +800,7 @@ describe('getCustomPropertiesSubFields', () => {
         expect(result).toEqual({
           subfieldsKey: 'ownersField.displayName',
           dataObject: {
-            __omPropertyType: 'array<entityReference>',
+            __omPropertyType: ARRAY_ENTITY_REFERENCE,
             type: 'select',
             label: mockLabel,
             fieldSettings: {
@@ -803,7 +818,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'textField',
           type: 'string',
         };
-        const mockLabel = 'Text Field';
+        const mockLabel = TEXT_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -812,7 +827,7 @@ describe('getCustomPropertiesSubFields', () => {
         );
 
         expect(result).toEqual({
-          subfieldsKey: 'textField.keyword',
+          subfieldsKey: TEXT_FIELD_KEYWORD,
           dataObject: {
             __omPropertyType: 'string',
             type: 'text',
@@ -828,7 +843,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'textField',
           type: 'string',
         };
-        const mockLabel = 'Text Field';
+        const mockLabel = TEXT_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -858,7 +873,7 @@ describe('getCustomPropertiesSubFields', () => {
             },
           },
         };
-        const mockLabel = 'Status Field';
+        const mockLabel = STATUS_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -897,7 +912,7 @@ describe('getCustomPropertiesSubFields', () => {
             },
           },
         };
-        const mockLabel = 'Status Field';
+        const mockLabel = STATUS_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -933,7 +948,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'numberField',
           type: 'number',
         };
-        const mockLabel = 'Number Field';
+        const mockLabel = NUMBER_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -957,7 +972,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'numberField',
           type: 'number',
         };
-        const mockLabel = 'Number Field';
+        const mockLabel = NUMBER_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -981,7 +996,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'integerField',
           type: 'integer',
         };
-        const mockLabel = 'Integer Field';
+        const mockLabel = INTEGER_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1005,7 +1020,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'integerField',
           type: 'integer',
         };
-        const mockLabel = 'Integer Field';
+        const mockLabel = INTEGER_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1029,7 +1044,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'timestampField',
           type: 'timestamp',
         };
-        const mockLabel = 'Timestamp Field';
+        const mockLabel = TIMESTAMP_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1053,7 +1068,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'timestampField',
           type: 'timestamp',
         };
-        const mockLabel = 'Timestamp Field';
+        const mockLabel = TIMESTAMP_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1079,7 +1094,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'dateField',
           type: 'date-cp',
         };
-        const mockLabel = 'Date Field';
+        const mockLabel = DATE_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1088,7 +1103,7 @@ describe('getCustomPropertiesSubFields', () => {
         );
 
         expect(result).toEqual({
-          subfieldsKey: 'dateField.keyword',
+          subfieldsKey: DATE_FIELD_KEYWORD,
           dataObject: {
             __omPropertyType: 'date-cp',
             type: 'date',
@@ -1107,7 +1122,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'dateField',
           type: 'date-cp',
         };
-        const mockLabel = 'Date Field';
+        const mockLabel = DATE_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1137,7 +1152,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'ownerField',
           type: 'entityReference',
         };
-        const mockLabel = 'Owner Field';
+        const mockLabel = OWNER_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1145,7 +1160,7 @@ describe('getCustomPropertiesSubFields', () => {
         );
 
         expect(result).toEqual({
-          subfieldsKey: 'ownerField.displayName.keyword',
+          subfieldsKey: OWNER_FIELD_DISPLAY_NAME_KEYWORD,
           dataObject: {
             __omPropertyType: 'entityReference',
             type: 'select',
@@ -1163,7 +1178,7 @@ describe('getCustomPropertiesSubFields', () => {
           name: 'textField',
           type: 'string',
         };
-        const mockLabel = 'Text Field';
+        const mockLabel = TEXT_FIELD;
         mockGetEntityName.mockReturnValue(mockLabel);
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
@@ -1171,7 +1186,7 @@ describe('getCustomPropertiesSubFields', () => {
         );
 
         expect(result).toEqual({
-          subfieldsKey: 'textField.keyword',
+          subfieldsKey: TEXT_FIELD_KEYWORD,
           dataObject: {
             __omPropertyType: 'string',
             type: 'text',

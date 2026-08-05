@@ -57,6 +57,9 @@ import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import './tags-container.style.less';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
+const LABEL_GLOSSARY_TERM = 'label.glossary-term';
+const LABEL_TAG_PLURAL = 'label.tag-plural';
+
 const TagSelectForm = withSuspenseFallback(
   lazy(() => import('../TagsSelectForm/TagsSelectForm.component'))
 );
@@ -222,8 +225,8 @@ const TagsContainerV2 = ({
           data-testid="add-tag"
           title={t('label.add-entity', {
             entity: isGlossaryType
-              ? t('label.glossary-term')
-              : t('label.tag-plural'),
+              ? t(LABEL_GLOSSARY_TERM)
+              : t(LABEL_TAG_PLURAL),
           })}
           onClick={handleAddClick}
         />
@@ -332,8 +335,8 @@ const TagsContainerV2 = ({
             title={t('label.edit-entity', {
               entity:
                 tagType === TagSource.Classification
-                  ? t('label.tag-plural')
-                  : t('label.glossary-term'),
+                  ? t(LABEL_TAG_PLURAL)
+                  : t(LABEL_GLOSSARY_TERM),
             })}
             onClick={handleAddClick}
           />
@@ -367,8 +370,8 @@ const TagsContainerV2 = ({
           title={t('label.edit-entity', {
             entity:
               tagType === TagSource.Classification
-                ? t('label.tag-plural')
-                : t('label.glossary-term'),
+                ? t(LABEL_TAG_PLURAL)
+                : t(LABEL_GLOSSARY_TERM),
           })}
           onClick={handleAddClick}
         />
@@ -493,9 +496,7 @@ const TagsContainerV2 = ({
         forceExpand={isEditTags}
         headerExtra={headerExtra}
         isExpandDisabled={isEmpty(tags?.[tagType]) && !isEditTags}
-        title={
-          isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')
-        }>
+        title={isGlossaryType ? t(LABEL_GLOSSARY_TERM) : t(LABEL_TAG_PLURAL)}>
         {/* Since WidgetCard is another component without onClick, wrapping the content in a
             div to stop propagation */}
         <div

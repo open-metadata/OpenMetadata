@@ -29,6 +29,12 @@ import {
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
+const MESSAGE_DESTINATION_SELECTION_WARNING =
+  'message.destination-selection-warning';
+const HTTPS_EXAMPLE_COM_WEBHOOK = 'https://example.com/webhook';
+const BEARER_TOKEN123 = 'Bearer token123';
+const TEST_RESOURCE = 'test-resource';
+const CUSTOM_VALUE = 'custom-value';
 const MOCK_DESTINATION_SELECT_ITEM_PROPS: DestinationSelectItemProps = {
   selectorKey: 0,
   id: 0,
@@ -269,7 +275,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -362,7 +368,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -386,7 +392,7 @@ describe('DestinationSelectItem component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.destination-selection-warning')
+          screen.getByText(MESSAGE_DESTINATION_SELECTION_WARNING)
         ).toBeInTheDocument();
       });
       useWatchMock.mockRestore();
@@ -455,7 +461,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -479,7 +485,7 @@ describe('DestinationSelectItem component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.destination-selection-warning')
+          screen.getByText(MESSAGE_DESTINATION_SELECTION_WARNING)
         ).toBeInTheDocument();
       });
       useWatchMock.mockRestore();
@@ -548,7 +554,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -575,7 +581,7 @@ describe('DestinationSelectItem component', () => {
           screen.queryByText('message.destination-owner-selection-warning')
         ).not.toBeInTheDocument();
         expect(
-          screen.queryByText('message.destination-selection-warning')
+          screen.queryByText(MESSAGE_DESTINATION_SELECTION_WARNING)
         ).not.toBeInTheDocument();
       });
       useWatchMock.mockRestore();
@@ -599,7 +605,7 @@ describe('DestinationSelectItem component', () => {
               ];
             }
             if (Array.isArray(val) && val[0] === 'resources') {
-              return ['test-resource'];
+              return [TEST_RESOURCE];
             }
 
             return '';
@@ -633,7 +639,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -650,7 +656,7 @@ describe('DestinationSelectItem component', () => {
                   destinationType: SubscriptionType.Email,
                 },
               ],
-              resources: ['test-resource'],
+              resources: [TEST_RESOURCE],
             }}>
             <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
           </Form>
@@ -861,7 +867,7 @@ describe('DestinationSelectItem component', () => {
               ];
             }
             if (Array.isArray(val) && val[0] === 'resources') {
-              return ['test-resource'];
+              return [TEST_RESOURCE];
             }
 
             return '';
@@ -899,7 +905,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -917,7 +923,7 @@ describe('DestinationSelectItem component', () => {
                 downstreamDepth: 3,
               },
             ],
-            resources: ['test-resource'],
+            resources: [TEST_RESOURCE],
           }}>
           <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
         </Form>
@@ -961,10 +967,10 @@ describe('DestinationSelectItem component', () => {
           type: SubscriptionType.Webhook,
           category: SubscriptionCategory.External,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
             headers: {
               'Content-Type': 'application/json',
-              Authorization: 'Bearer token123',
+              Authorization: BEARER_TOKEN123,
             },
             queryParams: {
               param1: 'value1',
@@ -1006,10 +1012,10 @@ describe('DestinationSelectItem component', () => {
               type: SubscriptionType.Webhook,
               category: SubscriptionCategory.External,
               config: {
-                endpoint: 'https://example.com/webhook',
+                endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
                 headers: [
                   { key: 'Content-Type', value: 'application/json' },
-                  { key: 'Authorization', value: 'Bearer token123' },
+                  { key: 'Authorization', value: BEARER_TOKEN123 },
                 ],
                 queryParams: [{ key: 'param1', value: 'value1' }],
               },
@@ -1022,13 +1028,13 @@ describe('DestinationSelectItem component', () => {
                 category: SubscriptionCategory.External,
                 destinationType: SubscriptionType.Webhook,
                 config: {
-                  endpoint: 'https://example.com/webhook',
+                  endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
                 },
               },
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -1044,16 +1050,16 @@ describe('DestinationSelectItem component', () => {
                   category: SubscriptionCategory.External,
                   destinationType: SubscriptionType.Webhook,
                   config: {
-                    endpoint: 'https://example.com/webhook',
+                    endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
                     headers: [
                       { key: 'Content-Type', value: 'application/json' },
-                      { key: 'Authorization', value: 'Bearer token123' },
+                      { key: 'Authorization', value: BEARER_TOKEN123 },
                     ],
                     queryParams: [{ key: 'param1', value: 'value1' }],
                   },
                 },
               ],
-              resources: ['test-resource'],
+              resources: [TEST_RESOURCE],
             }}>
             <DestinationSelectItem
               {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
@@ -1078,9 +1084,9 @@ describe('DestinationSelectItem component', () => {
           type: SubscriptionType.Webhook,
           category: SubscriptionCategory.External,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
             headers: {
-              'X-Custom-Header': 'custom-value',
+              'X-Custom-Header': CUSTOM_VALUE,
             },
             queryParams: {
               apiKey: 'key123',
@@ -1123,8 +1129,8 @@ describe('DestinationSelectItem component', () => {
               type: SubscriptionType.Webhook,
               category: SubscriptionCategory.External,
               config: {
-                endpoint: 'https://example.com/webhook',
-                headers: [{ key: 'X-Custom-Header', value: 'custom-value' }],
+                endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
+                headers: [{ key: 'X-Custom-Header', value: CUSTOM_VALUE }],
                 queryParams: [
                   { key: 'apiKey', value: 'key123' },
                   { key: 'version', value: 'v2' },
@@ -1142,7 +1148,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -1158,10 +1164,8 @@ describe('DestinationSelectItem component', () => {
                   category: SubscriptionCategory.External,
                   destinationType: SubscriptionType.Webhook,
                   config: {
-                    endpoint: 'https://example.com/webhook',
-                    headers: [
-                      { key: 'X-Custom-Header', value: 'custom-value' },
-                    ],
+                    endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
+                    headers: [{ key: 'X-Custom-Header', value: CUSTOM_VALUE }],
                     queryParams: [
                       { key: 'apiKey', value: 'key123' },
                       { key: 'version', value: 'v2' },
@@ -1169,7 +1173,7 @@ describe('DestinationSelectItem component', () => {
                   },
                 },
               ],
-              resources: ['test-resource'],
+              resources: [TEST_RESOURCE],
             }}>
             <DestinationSelectItem
               {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
@@ -1233,7 +1237,7 @@ describe('DestinationSelectItem component', () => {
               type: SubscriptionType.Webhook,
               category: SubscriptionCategory.External,
               config: {
-                endpoint: 'https://example.com/webhook',
+                endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
               },
             };
           }
@@ -1247,7 +1251,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -1263,11 +1267,11 @@ describe('DestinationSelectItem component', () => {
                   category: SubscriptionCategory.External,
                   destinationType: SubscriptionType.Webhook,
                   config: {
-                    endpoint: 'https://example.com/webhook',
+                    endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
                   },
                 },
               ],
-              resources: ['test-resource'],
+              resources: [TEST_RESOURCE],
             }}>
             <DestinationSelectItem
               {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
@@ -1292,7 +1296,7 @@ describe('DestinationSelectItem component', () => {
           type: SubscriptionType.Webhook,
           category: SubscriptionCategory.External,
           config: {
-            endpoint: 'https://example.com/webhook',
+            endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
           },
           statusDetails: {
             status: Status.Success,
@@ -1330,7 +1334,7 @@ describe('DestinationSelectItem component', () => {
               type: SubscriptionType.Webhook,
               category: SubscriptionCategory.External,
               config: {
-                endpoint: 'https://example.com/webhook',
+                endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
               },
             };
           }
@@ -1344,7 +1348,7 @@ describe('DestinationSelectItem component', () => {
             ];
           }
           if (Array.isArray(name) && name[0] === 'resources') {
-            return ['test-resource'];
+            return [TEST_RESOURCE];
           }
 
           return undefined;
@@ -1360,11 +1364,11 @@ describe('DestinationSelectItem component', () => {
                   category: SubscriptionCategory.External,
                   destinationType: SubscriptionType.Webhook,
                   config: {
-                    endpoint: 'https://example.com/webhook',
+                    endpoint: HTTPS_EXAMPLE_COM_WEBHOOK,
                   },
                 },
               ],
-              resources: ['test-resource'],
+              resources: [TEST_RESOURCE],
             }}>
             <DestinationSelectItem
               {...MOCK_DESTINATION_SELECT_ITEM_PROPS}

@@ -16,6 +16,8 @@ import {
   getCustomizePageOptions,
 } from './PersonaUtils';
 
+const DATA_ASSETS = 'data-assets' as const;
+
 describe('PersonaUtils', () => {
   describe('getCustomizePageCategories', () => {
     it('should return the correct categories', () => {
@@ -48,7 +50,7 @@ describe('PersonaUtils', () => {
           icon: 'svg-mock',
         }),
         expect.objectContaining({
-          key: 'data-assets',
+          key: DATA_ASSETS,
           label: 'label.data-asset-plural',
           icon: 'svg-mock',
         }),
@@ -98,7 +100,7 @@ describe('PersonaUtils', () => {
     });
 
     it('should return the correct options for data-assets category', () => {
-      const options = getCustomizePageOptions('data-assets');
+      const options = getCustomizePageOptions(DATA_ASSETS);
 
       expect(options).toHaveLength(19);
       expect(options).toEqual(
@@ -133,7 +135,7 @@ describe('PersonaUtils', () => {
     });
 
     it('should exclude governance and special entities from data-assets category', () => {
-      const options = getCustomizePageOptions('data-assets');
+      const options = getCustomizePageOptions(DATA_ASSETS);
       const keys = options.map((option) => option.key);
 
       expect(options).toHaveLength(19);
@@ -147,7 +149,7 @@ describe('PersonaUtils', () => {
     });
 
     it('should include all other entities in data-assets category', () => {
-      const options = getCustomizePageOptions('data-assets');
+      const options = getCustomizePageOptions(DATA_ASSETS);
       const keys = options.map((option) => option.key);
 
       expect(options).toHaveLength(19);

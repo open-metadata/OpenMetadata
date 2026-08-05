@@ -52,6 +52,8 @@ import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBa
 import './test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from './useTestSuiteDetailsPage';
 
+const LABEL_TEST_CASE_PLURAL = 'label.test-case-plural';
+
 const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
@@ -146,7 +148,7 @@ const TestSuiteDetailsPage = () => {
           <TabsLabel
             count={pagingData.paging.total}
             id={EntityTabs.TEST_CASES}
-            name={t('label.test-case-plural')}
+            name={t(LABEL_TEST_CASE_PLURAL)}
           />
         ),
         children: (
@@ -333,7 +335,7 @@ const TestSuiteDetailsPage = () => {
                     data-testid="add-test-case-btn"
                     size="md">
                     {t('label.add-entity', {
-                      entity: t('label.test-case-plural'),
+                      entity: t(LABEL_TEST_CASE_PLURAL),
                     })}
                   </Button>
                   <ModalOverlay>
@@ -341,7 +343,7 @@ const TestSuiteDetailsPage = () => {
                       <Dialog
                         showCloseButton
                         title={t('label.add-entity', {
-                          entity: t('label.test-case-plural'),
+                          entity: t(LABEL_TEST_CASE_PLURAL),
                         })}
                         onClose={() => setIsTestCaseModalOpen(false)}>
                         <Dialog.Content>

@@ -24,6 +24,13 @@ import {
 } from '../../../generated/type/csvImportResult';
 import { EntityImport } from './EntityImport.component';
 
+const UPLOAD_FILE_WIDGET = 'upload-file-widget';
+const CANCEL_BUTTON = 'cancel-button';
+const GLOSSARY_TERMS_CSV = 'glossary-terms.csv';
+const TEXT_PLAIN = 'text/plain';
+const IMPORT_BUTTON = 'import-button';
+const IMPORT_RESULTS = 'import-results';
+
 let mockCsvImportResult = {
   dryRun: true,
   status: 'success',
@@ -97,13 +104,13 @@ describe('EntityImport component', () => {
     expect(
       await screen.findByTestId('upload-file-container')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('upload-file-widget')).toBeInTheDocument();
-    expect(await screen.findByTestId('cancel-button')).toBeInTheDocument();
+    expect(await screen.findByTestId(UPLOAD_FILE_WIDGET)).toBeInTheDocument();
+    expect(await screen.findByTestId(CANCEL_BUTTON)).toBeInTheDocument();
   });
 
   it('Cancel button should work', async () => {
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
-    const cancelBtn = await screen.findByTestId('cancel-button');
+    const cancelBtn = await screen.findByTestId(CANCEL_BUTTON);
 
     expect(cancelBtn).toBeInTheDocument();
 
@@ -115,14 +122,14 @@ describe('EntityImport component', () => {
   });
 
   it('Import should work for success csv file scenario', async () => {
-    const file = new File([mockCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
+    const file = new File([mockCsvContent], GLOSSARY_TERMS_CSV, {
+      type: TEXT_PLAIN,
     });
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
     const uploadDragger = await waitFor(() =>
-      screen.getByTestId('upload-file-widget')
+      screen.getByTestId(UPLOAD_FILE_WIDGET)
     );
 
     expect(uploadDragger).toBeInTheDocument();
@@ -147,9 +154,9 @@ describe('EntityImport component', () => {
       callback(JSON.stringify(mockResponse));
     });
 
-    const importButton = await screen.findByTestId('import-button');
+    const importButton = await screen.findByTestId(IMPORT_BUTTON);
 
-    expect(await screen.findByTestId('import-results')).toBeInTheDocument();
+    expect(await screen.findByTestId(IMPORT_RESULTS)).toBeInTheDocument();
     expect(importButton).toBeInTheDocument();
 
     await act(async () => {
@@ -167,7 +174,7 @@ describe('EntityImport component', () => {
 
     expect(successBadge).toBeInTheDocument();
     expect(previewButton).toBeInTheDocument();
-    expect(fileName).toHaveTextContent('glossary-terms.csv');
+    expect(fileName).toHaveTextContent(GLOSSARY_TERMS_CSV);
 
     await act(async () => {
       fireEvent.click(previewButton);
@@ -182,14 +189,14 @@ describe('EntityImport component', () => {
       status: Status.PartialSuccess,
     };
 
-    const file = new File([mockCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
+    const file = new File([mockCsvContent], GLOSSARY_TERMS_CSV, {
+      type: TEXT_PLAIN,
     });
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
     const uploadDragger = await waitFor(() =>
-      screen.getByTestId('upload-file-widget')
+      screen.getByTestId(UPLOAD_FILE_WIDGET)
     );
 
     expect(uploadDragger).toBeInTheDocument();
@@ -214,9 +221,9 @@ describe('EntityImport component', () => {
       callback(JSON.stringify(mockResponse));
     });
 
-    const importButton = await screen.findByTestId('import-button');
+    const importButton = await screen.findByTestId(IMPORT_BUTTON);
 
-    expect(await screen.findByTestId('import-results')).toBeInTheDocument();
+    expect(await screen.findByTestId(IMPORT_RESULTS)).toBeInTheDocument();
     expect(importButton).toBeInTheDocument();
 
     await act(async () => {
@@ -234,7 +241,7 @@ describe('EntityImport component', () => {
 
     expect(successBadge).toBeInTheDocument();
     expect(previewButton).toBeInTheDocument();
-    expect(fileName).toHaveTextContent('glossary-terms.csv');
+    expect(fileName).toHaveTextContent(GLOSSARY_TERMS_CSV);
 
     await act(async () => {
       fireEvent.click(previewButton);
@@ -247,14 +254,14 @@ describe('EntityImport component', () => {
   it('Import Should not work for failure', async () => {
     mockCsvImportResult = { ...mockCsvImportResult, status: Status.Failure };
 
-    const file = new File([mockIncorrectCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
+    const file = new File([mockIncorrectCsvContent], GLOSSARY_TERMS_CSV, {
+      type: TEXT_PLAIN,
     });
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
     const uploadDragger = await waitFor(() =>
-      screen.getByTestId('upload-file-widget')
+      screen.getByTestId(UPLOAD_FILE_WIDGET)
     );
 
     expect(uploadDragger).toBeInTheDocument();
@@ -279,12 +286,12 @@ describe('EntityImport component', () => {
       callback(JSON.stringify(mockResponse));
     });
 
-    const importButton = screen.queryByTestId('import-button');
+    const importButton = screen.queryByTestId(IMPORT_BUTTON);
     const cancelPreviewButton = await screen.findByTestId(
       'preview-cancel-button'
     );
 
-    expect(await screen.findByTestId('import-results')).toBeInTheDocument();
+    expect(await screen.findByTestId(IMPORT_RESULTS)).toBeInTheDocument();
 
     // for failure import button should not render
     expect(importButton).not.toBeInTheDocument();
@@ -299,14 +306,14 @@ describe('EntityImport component', () => {
       abortReason: 'Something went wrong',
     };
 
-    const file = new File([mockCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
+    const file = new File([mockCsvContent], GLOSSARY_TERMS_CSV, {
+      type: TEXT_PLAIN,
     });
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
     const uploadDragger = await waitFor(() =>
-      screen.getByTestId('upload-file-widget')
+      screen.getByTestId(UPLOAD_FILE_WIDGET)
     );
 
     expect(uploadDragger).toBeInTheDocument();
@@ -332,7 +339,7 @@ describe('EntityImport component', () => {
     });
 
     const abortedReason = await screen.findByTestId('abort-reason');
-    const cancelButton = await screen.findByTestId('cancel-button');
+    const cancelButton = await screen.findByTestId(CANCEL_BUTTON);
 
     expect(abortedReason).toBeInTheDocument();
     expect(abortedReason).toHaveTextContent('Something went wrong');

@@ -46,6 +46,10 @@ import {
   getEntityExtraInfoLength,
 } from './DataAssetsHeader.utils';
 
+const LABEL_NUMBER_OF_OBJECT_PLURAL = 'label.number-of-object-plural';
+const TEST_SPREADSHEET = 'test-spreadsheet';
+const LABEL_USAGE = 'label.usage';
+const LABEL_SIZE = 'label.size';
 // Mock only ExtraInfoLink, not ExtraInfoLabel as we want to test it
 jest.mock('./DataAssetsHeader.utils', () => ({
   ...jest.requireActual('./DataAssetsHeader.utils'),
@@ -133,7 +137,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.type');
     expect(JSON.stringify(assetData.extraInfo)).toContain('Regular');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.usage');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(LABEL_USAGE);
     expect(JSON.stringify(assetData.extraInfo)).toContain('getUsagePercentile');
 
     expect(JSON.stringify(assetData.extraInfo)).toContain(
@@ -168,7 +172,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.usage'
+      LABEL_USAGE
     );
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
       'getUsagePercentile'
@@ -251,7 +255,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.project');
     expect(JSON.stringify(assetData.extraInfo)).toContain('workspace');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.usage');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(LABEL_USAGE);
     expect(JSON.stringify(assetData.extraInfo)).toContain('getUsagePercentile');
 
     //  If Data does not present
@@ -283,7 +287,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.usage'
+      LABEL_USAGE
     );
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
       'getUsagePercentile'
@@ -337,7 +341,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.dashboard');
     expect(JSON.stringify(assetData.extraInfo)).toContain('forecast_sales');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.usage');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(LABEL_USAGE);
     expect(JSON.stringify(assetData.extraInfo)).toContain('getUsagePercentile');
 
     //  If Data does not present
@@ -387,7 +391,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.usage'
+      LABEL_USAGE
     );
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
       'getUsagePercentile'
@@ -412,11 +416,11 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'label.number-of-object-plural'
+      LABEL_NUMBER_OF_OBJECT_PLURAL
     );
     expect(JSON.stringify(assetData.extraInfo)).toContain('10');
 
-    expect(JSON.stringify(assetData.extraInfo)).toContain('label.size');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(LABEL_SIZE);
     expect(JSON.stringify(assetData.extraInfo)).toContain('bytesToSize');
 
     //  If Data has 0 as a value,it should display them
@@ -436,10 +440,10 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(JSON.stringify(assetWithZeroData.extraInfo)).toContain(
-      'label.number-of-object-plural'
+      LABEL_NUMBER_OF_OBJECT_PLURAL
     );
 
-    expect(JSON.stringify(assetWithZeroData.extraInfo)).toContain('label.size');
+    expect(JSON.stringify(assetWithZeroData.extraInfo)).toContain(LABEL_SIZE);
 
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
@@ -467,11 +471,11 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
 
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.number-of-object-plural'
+      LABEL_NUMBER_OF_OBJECT_PLURAL
     );
 
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'label.size'
+      LABEL_SIZE
     );
   });
 
@@ -534,7 +538,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
   it('Function getDataAssetsHeaderInfo should return data for Spreadsheet entity', () => {
     const mockSpreadsheet: Spreadsheet = {
       id: 'spreadsheet-123',
-      name: 'test-spreadsheet',
+      name: TEST_SPREADSHEET,
       fullyQualifiedName: 'service.directory.test-spreadsheet',
       mimeType:
         'application/vnd.google-apps.spreadsheet' as SpreadsheetMIMEType,
@@ -550,7 +554,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     const assetData = getDataAssetsHeaderInfo(
       EntityType.SPREADSHEET,
       mockSpreadsheet,
-      'test-spreadsheet',
+      TEST_SPREADSHEET,
       []
     );
 
@@ -584,7 +588,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
         createdTime: undefined,
         modifiedTime: undefined,
       },
-      'test-spreadsheet',
+      TEST_SPREADSHEET,
       []
     );
 

@@ -24,6 +24,12 @@ import { loadConnectionSchema } from '../../../../../utils/ServiceConnectionUtil
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ConnectionObjectFieldTemplate from './ConnectionObjectFieldTemplate';
 
+const CONNECTION_SECTION_AUTHENTICATION = 'connection-section-authentication';
+const CONNECTION_SECTION_CONNECTION = 'connection-section-connection';
+const CONNECTION_SECTION_ADVANCED = 'connection-section-advanced';
+const CONNECTION_SECTION_SCOPE = 'connection-section-scope';
+const CONNECTION_GROUPED_FORM = 'connection-grouped-form';
+const FIELD_DATABASE = 'field-database';
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span data-testid="chevron" />,
   InfoCircle: () => <span data-testid="info-circle" />,
@@ -146,23 +152,21 @@ describe('ConnectionObjectFieldTemplate', () => {
   it('renders the grouped section cards at the connection root', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
-    expect(screen.getByTestId('connection-grouped-form')).toBeInTheDocument();
+    expect(screen.getByTestId(CONNECTION_GROUPED_FORM)).toBeInTheDocument();
     expect(
-      screen.getByTestId('connection-section-connection')
+      screen.getByTestId(CONNECTION_SECTION_CONNECTION)
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('connection-section-authentication')
+      screen.getByTestId(CONNECTION_SECTION_AUTHENTICATION)
     ).toBeInTheDocument();
-    expect(screen.getByTestId('connection-section-scope')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('connection-section-advanced')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(CONNECTION_SECTION_SCOPE)).toBeInTheDocument();
+    expect(screen.getByTestId(CONNECTION_SECTION_ADVANCED)).toBeInTheDocument();
   });
 
   it('puts required fields under Connection', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
-    const connection = screen.getByTestId('connection-section-connection');
+    const connection = screen.getByTestId(CONNECTION_SECTION_CONNECTION);
 
     expect(within(connection).getByTestId('field-account')).toBeInTheDocument();
     expect(
@@ -177,7 +181,7 @@ describe('ConnectionObjectFieldTemplate', () => {
   it('shows Authentication as its own section with dynamic required badge', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
-    const auth = screen.getByTestId('connection-section-authentication');
+    const auth = screen.getByTestId(CONNECTION_SECTION_AUTHENTICATION);
 
     // password/privateKey are not schema-required in the Snowflake test fixture,
     // so the badge shows "optional" rather than a fixed "1 required"
@@ -187,9 +191,10 @@ describe('ConnectionObjectFieldTemplate', () => {
   it('renders Authentication as Password / Key pair tabs and swaps fields', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
-    const auth = screen.getByTestId('connection-section-authentication');
+    const auth = screen.getByTestId(CONNECTION_SECTION_AUTHENTICATION);
 
     expect(within(auth).getByTestId('auth-tabs')).toBeInTheDocument();
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated fixture/mock literal; extraction unsafe here
     expect(within(auth).getByTestId('field-password')).toBeInTheDocument();
     expect(
       within(auth).queryByTestId('field-privateKey')
@@ -210,7 +215,7 @@ describe('ConnectionObjectFieldTemplate', () => {
       <ConnectionObjectFieldTemplate {...getSalesforceProps(handleFocus)} />
     );
 
-    const connection = screen.getByTestId('connection-section-connection');
+    const connection = screen.getByTestId(CONNECTION_SECTION_CONNECTION);
 
     expect(
       within(connection).getByTestId('field-username')
@@ -232,7 +237,7 @@ describe('ConnectionObjectFieldTemplate', () => {
   it('does not render Snowflake key-pair tabs for non-key-pair secrets', () => {
     render(<ConnectionObjectFieldTemplate {...getSalesforceProps()} />);
 
-    const auth = screen.getByTestId('connection-section-authentication');
+    const auth = screen.getByTestId(CONNECTION_SECTION_AUTHENTICATION);
 
     expect(within(auth).queryByTestId('auth-tabs')).not.toBeInTheDocument();
     expect(within(auth).getByTestId('field-password')).toBeInTheDocument();
@@ -245,13 +250,13 @@ describe('ConnectionObjectFieldTemplate', () => {
   it('collapses Scope & options until expanded', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
-    expect(screen.queryByTestId('field-database')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(FIELD_DATABASE)).not.toBeInTheDocument();
 
     fireEvent.click(
-      within(screen.getByTestId('connection-section-scope')).getByRole('button')
+      within(screen.getByTestId(CONNECTION_SECTION_SCOPE)).getByRole('button')
     );
 
-    expect(screen.getByTestId('field-database')).toBeInTheDocument();
+    expect(screen.getByTestId(FIELD_DATABASE)).toBeInTheDocument();
     expect(screen.getByTestId('field-queryTag')).toBeInTheDocument();
   });
 
@@ -270,16 +275,16 @@ describe('ConnectionObjectFieldTemplate', () => {
     );
 
     expect(
-      screen.queryByTestId('connection-section-scope')
+      screen.queryByTestId(CONNECTION_SECTION_SCOPE)
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('field-database')).toBeInTheDocument();
+    expect(screen.getByTestId(FIELD_DATABASE)).toBeInTheDocument();
     expect(screen.getByTestId('field-queryTag')).toBeInTheDocument();
   });
 
   it('renders Advanced Config with compact primary fields before object rows', () => {
     render(<ConnectionObjectFieldTemplate {...getProps('root')} />);
 
-    const advanced = screen.getByTestId('connection-section-advanced');
+    const advanced = screen.getByTestId(CONNECTION_SECTION_ADVANCED);
 
     fireEvent.click(within(advanced).getByRole('button'));
 
@@ -311,7 +316,7 @@ describe('ConnectionObjectFieldTemplate', () => {
 
     expect(screen.getByTestId('core-object-template')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('connection-grouped-form')
+      screen.queryByTestId(CONNECTION_GROUPED_FORM)
     ).not.toBeInTheDocument();
   });
 
@@ -344,12 +349,12 @@ describe('ConnectionObjectFieldTemplate', () => {
         />
       );
 
-      expect(screen.getByTestId('connection-grouped-form')).toBeInTheDocument();
+      expect(screen.getByTestId(CONNECTION_GROUPED_FORM)).toBeInTheDocument();
       expect(
-        screen.getByTestId('connection-section-connection')
+        screen.getByTestId(CONNECTION_SECTION_CONNECTION)
       ).toBeInTheDocument();
 
-      const scope = screen.queryByTestId('connection-section-scope');
+      const scope = screen.queryByTestId(CONNECTION_SECTION_SCOPE);
 
       if (scope) {
         scopeConnectorCount += 1;
@@ -362,7 +367,7 @@ describe('ConnectionObjectFieldTemplate', () => {
         ).not.toBeNull();
       }
 
-      const advanced = screen.queryByTestId('connection-section-advanced');
+      const advanced = screen.queryByTestId(CONNECTION_SECTION_ADVANCED);
 
       if (advanced) {
         advancedConnectorCount += 1;

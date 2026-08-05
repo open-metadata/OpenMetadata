@@ -16,6 +16,8 @@ import {
   QueryFilterInterface,
 } from '../../../pages/ExplorePage/ExplorePage.interface';
 
+const PII_SENSITIVE = 'PII.Sensitive' as const;
+
 export const mockAdvancedSearchQueryFilters: QueryFilterInterface = {
   query: {
     bool: {
@@ -38,7 +40,7 @@ export const mockESQueryFilters: QueryFilterInterface = {
   query: {
     bool: {
       must: [
-        { bool: { should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }] } },
+        { bool: { should: [{ term: { 'tags.tagFQN': PII_SENSITIVE } }] } },
       ],
     },
   },
@@ -48,7 +50,7 @@ export const mockCombinedQueryFilterValue: QueryFilterInterface = {
   query: {
     bool: {
       must: [
-        { bool: { should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }] } },
+        { bool: { should: [{ term: { 'tags.tagFQN': PII_SENSITIVE } }] } },
         { bool: { must: [{ term: { 'owner.type': 'team' } }] } },
         {
           bool: {
@@ -64,7 +66,7 @@ export const mockCombinedQueryFilterValue: QueryFilterInterface = {
 };
 
 export const mockCombinedMustFieldArray: QueryFieldInterface[] = [
-  { bool: { should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }] } },
+  { bool: { should: [{ term: { 'tags.tagFQN': PII_SENSITIVE } }] } },
   { bool: { must: [{ term: { 'owner.type': 'team' } }] } },
   {
     bool: {
@@ -77,5 +79,5 @@ export const mockCombinedMustFieldArray: QueryFieldInterface[] = [
 ];
 
 export const mockQueryFilterArray: QueryFieldInterface[] = [
-  { bool: { should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }] } },
+  { bool: { should: [{ term: { 'tags.tagFQN': PII_SENSITIVE } }] } },
 ];

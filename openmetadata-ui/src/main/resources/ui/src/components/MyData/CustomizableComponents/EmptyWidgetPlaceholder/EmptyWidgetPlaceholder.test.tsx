@@ -17,6 +17,8 @@ import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import EmptyWidgetPlaceholder from './EmptyWidgetPlaceholder';
 import { EmptyWidgetPlaceholderProps } from './EmptyWidgetPlaceholder.interface';
 
+const REMOVE_WIDGET_BUTTON = 'remove-widget-button';
+const DRAG_WIDGET_BUTTON = 'drag-widget-button';
 const mockProps: EmptyWidgetPlaceholderProps = {
   iconHeight: SIZE.MEDIUM,
   iconWidth: SIZE.MEDIUM,
@@ -42,8 +44,8 @@ describe('EmptyWidgetPlaceholder component', () => {
     expect(
       screen.getByTestId(LandingPageWidgetKeys.ACTIVITY_FEED)
     ).toBeInTheDocument();
-    expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
-    expect(screen.getByTestId('remove-widget-button')).toBeInTheDocument();
+    expect(screen.getByTestId(DRAG_WIDGET_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(REMOVE_WIDGET_BUTTON)).toBeInTheDocument();
     expect(screen.getByTestId('no-data-image')).toBeInTheDocument();
     expect(
       screen.getByText('message.adding-new-entity-is-easy-just-give-it-a-spin')
@@ -56,8 +58,8 @@ describe('EmptyWidgetPlaceholder component', () => {
       render(<EmptyWidgetPlaceholder {...mockProps} isEditable={undefined} />);
     });
 
-    expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
-    expect(screen.getByTestId('remove-widget-button')).toBeInTheDocument();
+    expect(screen.getByTestId(DRAG_WIDGET_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(REMOVE_WIDGET_BUTTON)).toBeInTheDocument();
   });
 
   it('EmptyWidgetPlaceholder should not display drag and remove buttons when isEditable is false', async () => {
@@ -65,8 +67,8 @@ describe('EmptyWidgetPlaceholder component', () => {
       render(<EmptyWidgetPlaceholder {...mockProps} isEditable={false} />);
     });
 
-    expect(screen.queryByTestId('drag-widget-button')).toBeNull();
-    expect(screen.queryByTestId('remove-widget-button')).toBeNull();
+    expect(screen.queryByTestId(DRAG_WIDGET_BUTTON)).toBeNull();
+    expect(screen.queryByTestId(REMOVE_WIDGET_BUTTON)).toBeNull();
   });
 
   it('EmptyWidgetPlaceholder should call handleAddClick after clicking on add widget button', async () => {
@@ -95,7 +97,7 @@ describe('EmptyWidgetPlaceholder component', () => {
 
     expect(mockProps.handleRemoveWidget).toHaveBeenCalledTimes(0);
 
-    const removeButton = screen.getByTestId('remove-widget-button');
+    const removeButton = screen.getByTestId(REMOVE_WIDGET_BUTTON);
 
     fireEvent.click(removeButton);
 

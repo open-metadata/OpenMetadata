@@ -224,6 +224,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       value,
       onChange,
     }: {
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       'data-testid'?: string;
       value?: string;
       onChange?: (val: string) => void;

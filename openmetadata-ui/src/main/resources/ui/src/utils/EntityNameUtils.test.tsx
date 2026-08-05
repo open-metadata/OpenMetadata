@@ -13,6 +13,7 @@
 import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
 import { getDomainDisplayName } from './EntityNameUtils';
 
+const ENGINEERING_DOMAIN = 'Engineering Domain';
 jest.mock('../constants/constants', () => ({
   DEFAULT_DOMAIN_VALUE: 'All Domains',
   getEntityDetailsPath: jest.fn(),
@@ -35,13 +36,13 @@ describe('EntityNameUtils unit tests', () => {
       const mockEntityRef = {
         id: '123',
         name: 'Engineering',
-        displayName: 'Engineering Domain',
+        displayName: ENGINEERING_DOMAIN,
         type: 'domain',
       };
 
       const result = getDomainDisplayName(mockEntityRef);
 
-      expect(result).toBe('Engineering Domain');
+      expect(result).toBe(ENGINEERING_DOMAIN);
     });
 
     it('should return entity name without displayName when activeDomainEntityRef has only name', () => {
@@ -80,13 +81,13 @@ describe('EntityNameUtils unit tests', () => {
       const mockEntityRef = {
         id: '123',
         name: 'Engineering',
-        displayName: 'Engineering Domain',
+        displayName: ENGINEERING_DOMAIN,
         type: 'domain',
       };
 
       const result = getDomainDisplayName(mockEntityRef, DEFAULT_DOMAIN_VALUE);
 
-      expect(result).toBe('Engineering Domain');
+      expect(result).toBe(ENGINEERING_DOMAIN);
     });
   });
 });

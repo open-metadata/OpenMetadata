@@ -32,6 +32,9 @@ import { generateFormFields } from '../../../../utils/formUtils';
 import Banner from '../../../common/Banner/Banner';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 
+const LABEL_ENUM_VALUE_PLURAL = 'label.enum-value-plural';
+const LABEL_ENTITY_REFERENCE_TYPES = 'label.entity-reference-types';
+
 export interface FormData {
   description: string;
   customPropertyConfig: string[];
@@ -102,13 +105,13 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   const enumConfigField: FieldProp = {
     name: 'customPropertyConfig',
     required: false,
-    label: t('label.enum-value-plural'),
+    label: t(LABEL_ENUM_VALUE_PLURAL),
     id: 'root/customPropertyConfig',
     type: FieldTypes.SELECT,
     props: {
       'data-testid': 'customPropertyConfig',
       mode: 'tags',
-      placeholder: t('label.enum-value-plural'),
+      placeholder: t(LABEL_ENUM_VALUE_PLURAL),
       onChange: (value: string[]) => {
         const updatedValues = uniq([...value]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
@@ -120,7 +123,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       {
         required: true,
         message: t('label.field-required', {
-          field: t('label.enum-value-plural'),
+          field: t(LABEL_ENUM_VALUE_PLURAL),
         }),
       },
     ],
@@ -129,14 +132,14 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   const entityReferenceConfigField: FieldProp = {
     name: 'customPropertyConfig',
     required: false,
-    label: t('label.entity-reference-types'),
+    label: t(LABEL_ENTITY_REFERENCE_TYPES),
     id: 'root/customPropertyConfig',
     type: FieldTypes.SELECT,
     props: {
       'data-testid': 'customPropertyConfig',
       mode: 'multiple',
       options: ENTITY_REFERENCE_OPTIONS,
-      placeholder: t('label.entity-reference-types'),
+      placeholder: t(LABEL_ENTITY_REFERENCE_TYPES),
       onChange: (value: string[]) => {
         const entityReferenceConfig = customProperty.customPropertyConfig
           ?.config as string[];
@@ -151,7 +154,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       {
         required: true,
         message: t('label.field-required', {
-          field: t('label.entity-reference-types'),
+          field: t(LABEL_ENTITY_REFERENCE_TYPES),
         }),
       },
     ],

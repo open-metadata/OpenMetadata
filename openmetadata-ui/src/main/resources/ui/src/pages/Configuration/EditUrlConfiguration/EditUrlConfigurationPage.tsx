@@ -39,6 +39,9 @@ import {
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
+const LABEL_ENTITY_CONFIGURATION = 'label.entity-configuration';
+const LABEL_BRAND_NAME_URL = 'label.brand-name-url';
+
 const { Item } = Form;
 const EditUrlConfigurationPage = () => {
   const navigate = useNavigate();
@@ -71,8 +74,8 @@ const EditUrlConfigurationPage = () => {
         url: getSettingPath(),
       },
       {
-        name: t('label.entity-configuration', {
-          entity: t('label.brand-name-url'),
+        name: t(LABEL_ENTITY_CONFIGURATION, {
+          entity: t(LABEL_BRAND_NAME_URL),
         }),
         url: getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
@@ -81,8 +84,8 @@ const EditUrlConfigurationPage = () => {
       },
       {
         name: t('label.edit-entity', {
-          entity: t('label.entity-configuration', {
-            entity: t('label.brand-name-url'),
+          entity: t(LABEL_ENTITY_CONFIGURATION, {
+            entity: t(LABEL_BRAND_NAME_URL),
           }),
         }),
         url: '',
@@ -105,8 +108,8 @@ const EditUrlConfigurationPage = () => {
       await updateSettingsConfig(configData as Settings);
       showSuccessToast(
         t('server.update-entity-success', {
-          entity: t('label.entity-configuration', {
-            entity: t('label.brand-name-url'),
+          entity: t(LABEL_ENTITY_CONFIGURATION, {
+            entity: t(LABEL_BRAND_NAME_URL),
           }),
         })
       );
@@ -138,7 +141,7 @@ const EditUrlConfigurationPage = () => {
           setActiveField(e.target.id);
         }}>
         <Item
-          label={t('label.brand-name-url')}
+          label={t(LABEL_BRAND_NAME_URL)}
           name="openMetadataUrl"
           rules={[{ required: true }]}>
           <Input
@@ -193,8 +196,8 @@ const EditUrlConfigurationPage = () => {
         allowScroll: true,
       }}
       pageTitle={t('label.edit-entity', {
-        entity: t('label.entity-configuration', {
-          entity: t('label.brand-name-url'),
+        entity: t(LABEL_ENTITY_CONFIGURATION, {
+          entity: t(LABEL_BRAND_NAME_URL),
         }),
       })}
       secondPanel={{

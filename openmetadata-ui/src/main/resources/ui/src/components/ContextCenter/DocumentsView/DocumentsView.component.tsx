@@ -52,6 +52,8 @@ import {
   ListHeaderProps,
 } from './DocumentsView.interface';
 
+const LABEL_DOCUMENT = 'label.document';
+
 /* ---------------------------------------------------------------
    Shared folder list — renders a popover menu of folder choices.
    Used both as a submenu inside FileActions and as a standalone
@@ -170,7 +172,7 @@ const FileActions: FC<FileActionsProps> = ({
         onFileMoved?.(file, null);
         showSuccessToast(
           t('message.entity-removed-from-folder', {
-            entity: t('label.document'),
+            entity: t(LABEL_DOCUMENT),
           })
         );
       } else {
@@ -178,7 +180,7 @@ const FileActions: FC<FileActionsProps> = ({
         onFileMoved?.(file, folderId);
         showSuccessToast(
           t('message.entity-moved-successfully', {
-            entity: t('label.document'),
+            entity: t(LABEL_DOCUMENT),
           })
         );
       }
@@ -200,7 +202,7 @@ const FileActions: FC<FileActionsProps> = ({
         data-testid="manage-button"
         icon={<DotsVerticalIcon height={20} width={20} />}
         size="sm"
-        tooltip={t('label.manage-entity', { entity: t('label.document') })}
+        tooltip={t('label.manage-entity', { entity: t(LABEL_DOCUMENT) })}
       />
       <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu

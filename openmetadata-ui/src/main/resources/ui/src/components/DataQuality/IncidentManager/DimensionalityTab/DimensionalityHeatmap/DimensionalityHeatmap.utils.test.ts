@@ -21,40 +21,44 @@ import {
   transformDimensionResultsToHeatmapData,
 } from './DimensionalityHeatmap.utils';
 
+const _2025_01_01 = '2025-01-01';
+const _2025_01_03 = '2025-01-03';
+const _2025_01_07 = '2025-01-07';
+
 describe('DimensionalityHeatmap.utils', () => {
   describe('generateDateRange', () => {
     it('should generate date range in reverse order', () => {
-      const startTs = new Date('2025-01-01').getTime();
-      const endTs = new Date('2025-01-03').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
+      const endTs = new Date(_2025_01_03).getTime();
 
       const result = generateDateRange(startTs, endTs);
 
-      expect(result).toEqual(['2025-01-01', '2025-01-02', '2025-01-03']);
+      expect(result).toEqual([_2025_01_01, '2025-01-02', _2025_01_03]);
     });
 
     it('should handle single day range', () => {
-      const startTs = new Date('2025-01-01').getTime();
-      const endTs = new Date('2025-01-01').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
+      const endTs = new Date(_2025_01_01).getTime();
 
       const result = generateDateRange(startTs, endTs);
 
-      expect(result).toEqual(['2025-01-01']);
+      expect(result).toEqual([_2025_01_01]);
     });
 
     it('should handle week-long range', () => {
-      const startTs = new Date('2025-01-01').getTime();
-      const endTs = new Date('2025-01-07').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
+      const endTs = new Date(_2025_01_07).getTime();
 
       const result = generateDateRange(startTs, endTs);
 
       expect(result).toHaveLength(7);
-      expect(result[0]).toBe('2025-01-01');
-      expect(result[6]).toBe('2025-01-07');
+      expect(result[0]).toBe(_2025_01_01);
+      expect(result[6]).toBe(_2025_01_07);
     });
 
     it('should throw error when start date is after end date', () => {
-      const startTs = new Date('2025-01-07').getTime();
-      const endTs = new Date('2025-01-01').getTime();
+      const startTs = new Date(_2025_01_07).getTime();
+      const endTs = new Date(_2025_01_01).getTime();
 
       expect(() => generateDateRange(startTs, endTs)).toThrow(
         'Invalid date range'
@@ -112,10 +116,10 @@ describe('DimensionalityHeatmap.utils', () => {
 
     it('should transform single dimension with single date', () => {
       const results = [
-        createMockResult('US', '2025-01-01', TestCaseStatus.Success),
+        createMockResult('US', _2025_01_01, TestCaseStatus.Success),
       ];
-      const startTs = new Date('2025-01-01').getTime();
-      const endTs = new Date('2025-01-01').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
+      const endTs = new Date(_2025_01_01).getTime();
 
       const heatmapData = transformDimensionResultsToHeatmapData(
         results,
@@ -131,11 +135,11 @@ describe('DimensionalityHeatmap.utils', () => {
 
     it('should handle multiple dimensions', () => {
       const results = [
-        createMockResult('US', '2025-01-01', TestCaseStatus.Success),
-        createMockResult('EU', '2025-01-01', TestCaseStatus.Failed),
+        createMockResult('US', _2025_01_01, TestCaseStatus.Success),
+        createMockResult('EU', _2025_01_01, TestCaseStatus.Failed),
       ];
-      const startTs = new Date('2025-01-01').getTime();
-      const endTs = new Date('2025-01-01').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
+      const endTs = new Date(_2025_01_01).getTime();
 
       const heatmapData = transformDimensionResultsToHeatmapData(
         results,
@@ -150,10 +154,10 @@ describe('DimensionalityHeatmap.utils', () => {
 
     it('should fill missing dates with no-data status', () => {
       const results = [
-        createMockResult('US', '2025-01-01', TestCaseStatus.Success),
+        createMockResult('US', _2025_01_01, TestCaseStatus.Success),
       ];
-      const startTs = new Date('2025-01-01').getTime();
-      const endTs = new Date('2025-01-03').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
+      const endTs = new Date(_2025_01_03).getTime();
 
       const heatmapData = transformDimensionResultsToHeatmapData(
         results,
@@ -179,8 +183,8 @@ describe('DimensionalityHeatmap.utils', () => {
         },
       ] as DimensionResultWithTimestamp[];
 
-      const startTs = new Date('2025-01-01').getTime();
-      const endTs = new Date('2025-01-01').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
+      const endTs = new Date(_2025_01_01).getTime();
 
       const heatmapData = transformDimensionResultsToHeatmapData(
         resultsWithoutTimestamp,
@@ -195,11 +199,11 @@ describe('DimensionalityHeatmap.utils', () => {
       const results = [];
       for (let i = 0; i < 100; i++) {
         results.push(
-          createMockResult(`Dim${i}`, '2025-01-01', TestCaseStatus.Success)
+          createMockResult(`Dim${i}`, _2025_01_01, TestCaseStatus.Success)
         );
       }
 
-      const startTs = new Date('2025-01-01').getTime();
+      const startTs = new Date(_2025_01_01).getTime();
       const endTs = new Date('2025-01-30').getTime();
 
       const start = performance.now();

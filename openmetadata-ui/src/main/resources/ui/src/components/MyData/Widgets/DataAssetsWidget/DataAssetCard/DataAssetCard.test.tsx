@@ -16,6 +16,8 @@ import { getExplorePath } from '../../../../../utils/RouterUtils';
 import { getServiceIcon } from '../../../../../utils/ServiceIconUtils';
 import DataAssetCard from './DataAssetCard.component';
 
+const SERVICE_ICON = 'service-icon';
+
 const mockLinkButton = jest.fn();
 const filterQuery =
   '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}';
@@ -75,7 +77,7 @@ describe('DataAssetCard', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('service-icon').querySelector('img')
+        screen.getByTestId(SERVICE_ICON).querySelector('img')
       ).toBeInTheDocument();
     });
 
@@ -107,7 +109,7 @@ describe('DataAssetCard', () => {
 
     expect(getServiceIcon).toHaveBeenCalledWith('scikit');
     expect(
-      screen.getByTestId('service-icon').querySelector('img')
+      screen.getByTestId(SERVICE_ICON).querySelector('img')
     ).toHaveAttribute('src', 'icon-scikit');
   });
 
@@ -116,7 +118,7 @@ describe('DataAssetCard', () => {
 
     expect(getServiceIcon).toHaveBeenCalledWith('db2');
     expect(
-      screen.getByTestId('service-icon').querySelector('img')
+      screen.getByTestId(SERVICE_ICON).querySelector('img')
     ).toHaveAttribute('src', 'icon-db2');
   });
 });

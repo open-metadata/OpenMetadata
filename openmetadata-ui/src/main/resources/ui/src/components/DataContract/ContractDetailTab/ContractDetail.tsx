@@ -82,6 +82,9 @@ import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
 import './contract-detail.less';
+const LABEL_CONTRACT = 'label.contract';
+const LABEL_INHERITED_ENTITY = 'label.inherited-entity';
+
 const ContractSecurityCard = withSuspenseFallback(
   lazy(() => import('../ContractSecurity/ContractSecurityCard.component'))
 );
@@ -171,7 +174,7 @@ const ContractDetail: React.FC<{
       downloadContractYamlFile(contract);
       showSuccessToast(
         t('message.entity-exported-successfully', {
-          entity: t('label.contract'),
+          entity: t(LABEL_CONTRACT),
         })
       );
     } catch (err) {
@@ -305,7 +308,7 @@ const ContractDetail: React.FC<{
         gap={4}>
         <img
           alt={t('label.approved-entity', {
-            entity: t('label.contract'),
+            entity: t(LABEL_CONTRACT),
           })}
           className="contract-status-img"
           height={90}
@@ -327,8 +330,8 @@ const ContractDetail: React.FC<{
               {(contract as ContractWithInheritance & { inherited?: boolean })
                 .inherited && (
                 <Tooltip
-                  title={t('label.inherited-entity', {
-                    entity: t('label.contract'),
+                  title={t(LABEL_INHERITED_ENTITY, {
+                    entity: t(LABEL_CONTRACT),
                   })}>
                   <TooltipTrigger>
                     <ButtonUtility
@@ -599,7 +602,7 @@ const ContractDetail: React.FC<{
               data-testid="add-contract-button"
               iconTrailing={ChevronDown}
               size="sm">
-              {t('label.add-entity', { entity: t('label.contract') })}
+              {t('label.add-entity', { entity: t(LABEL_CONTRACT) })}
             </Button>
             <Dropdown.Popover>
               <Dropdown.Menu
@@ -714,7 +717,7 @@ const ContractDetail: React.FC<{
 
                 const inheritedIcon = isInherited ? (
                   <Tooltip
-                    title={t('label.inherited-entity', {
+                    title={t(LABEL_INHERITED_ENTITY, {
                       entity: t('label.terms-of-service'),
                     })}>
                     <TooltipTrigger>
@@ -779,7 +782,7 @@ const ContractDetail: React.FC<{
                 (() => {
                   const inheritedIcon = contract.security?.inherited ? (
                     <Tooltip
-                      title={t('label.inherited-entity', {
+                      title={t(LABEL_INHERITED_ENTITY, {
                         entity: t('label.security'),
                       })}>
                       <TooltipTrigger>

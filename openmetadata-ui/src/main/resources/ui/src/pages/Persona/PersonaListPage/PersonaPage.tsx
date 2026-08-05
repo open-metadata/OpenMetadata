@@ -39,6 +39,8 @@ import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUti
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './persona-page.less';
 
+const LABEL_PERSONA = 'label.persona';
+
 const PERSONA_PAGE_SIZE = 12;
 
 export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
@@ -113,10 +115,10 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
         <ErrorPlaceHolder
           buttonId="add-persona-button"
           className="border-none"
-          heading={t('label.persona')}
+          heading={t(LABEL_PERSONA)}
           permission={isAdminUser}
           permissionValue={t('label.create-entity', {
-            entity: t('label.persona'),
+            entity: t(LABEL_PERSONA),
           })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddNewPersona}
@@ -187,7 +189,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
                 data-testid="add-persona-button"
                 type="primary"
                 onClick={handleAddNewPersona}>
-                {t('label.add-entity', { entity: t('label.persona') })}
+                {t('label.add-entity', { entity: t(LABEL_PERSONA) })}
               </Button>
             </div>
           </div>

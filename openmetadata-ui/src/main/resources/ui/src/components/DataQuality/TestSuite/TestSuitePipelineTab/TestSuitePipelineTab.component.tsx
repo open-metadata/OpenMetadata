@@ -75,6 +75,10 @@ import IngestionStatusCount from '../../../Settings/Services/Ingestion/Ingestion
 import PipelineActions from '../../../Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions';
 import { IngestionRecentRuns } from '../../../Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 
+const SERVER_INGESTION_WORKFLOW_OPERATION_ERROR =
+  'server.ingestion-workflow-operation-error';
+const LABEL_PIPELINE = 'label.pipeline';
+
 interface Props {
   testSuite: TableType['testSuite'] | TestSuite;
   isLogicalTestSuite?: boolean;
@@ -252,7 +256,7 @@ const TestSuitePipelineTab = ({
         setPipelineIdToFetchStatus(id);
       } catch {
         showErrorToast(
-          t('server.ingestion-workflow-operation-error', {
+          t(SERVER_INGESTION_WORKFLOW_OPERATION_ERROR, {
             operation: 'triggering',
             displayName,
           })
@@ -276,7 +280,7 @@ const TestSuitePipelineTab = ({
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.ingestion-workflow-operation-error', {
+          t(SERVER_INGESTION_WORKFLOW_OPERATION_ERROR, {
             operation: 'updating',
             displayName,
           })
@@ -305,7 +309,7 @@ const TestSuitePipelineTab = ({
       } catch (error) {
         showErrorToast(
           error as AxiosError,
-          t('server.ingestion-workflow-operation-error', {
+          t(SERVER_INGESTION_WORKFLOW_OPERATION_ERROR, {
             operation: t('label.deleting-lowercase'),
             displayName,
           })
@@ -363,7 +367,7 @@ const TestSuitePipelineTab = ({
                     {
                       key: 'add-pipeline',
                       label: t('label.add-entity', {
-                        entity: t('label.pipeline'),
+                        entity: t(LABEL_PIPELINE),
                       }),
                       color: 'primary' as const,
                       iconLeading: Plus,
@@ -424,14 +428,14 @@ const TestSuitePipelineTab = ({
             data-testid="add-pipeline-button"
             type="primary"
             onClick={handleAddPipelineRedirection}>
-            {t('label.add-entity', { entity: t('label.pipeline') })}
+            {t('label.add-entity', { entity: t(LABEL_PIPELINE) })}
           </Button>
         </Col>
       )}
       <Col span={24}>
         <TableCard.Root>
           <Table
-            aria-label={t('label.pipeline')}
+            aria-label={t(LABEL_PIPELINE)}
             data-testid="ingestion-list-table">
             <Table.Header
               columns={[

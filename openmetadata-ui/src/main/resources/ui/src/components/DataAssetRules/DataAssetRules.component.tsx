@@ -48,6 +48,10 @@ import RichTextEditorPreviewerNew from '../common/RichTextEditor/RichTextEditorP
 import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './DataAssetRules.less';
 
+const LABEL_DATA_ASSET_RULES = 'label.data-asset-rules';
+const LABEL_DESCRIPTION = 'label.description';
+const LABEL_NAME = 'label.name';
+
 export const useSemanticsRulesState = () => {
   const { t } = useTranslation();
   const [semanticsRules, setSemanticsRules] = useState<SemanticsRule[]>([]);
@@ -94,16 +98,14 @@ export const useSemanticsRulesState = () => {
 
         showSuccessToast(
           t('server.update-entity-success', {
-            entity: t('label.data-asset-rules'),
+            entity: t(LABEL_DATA_ASSET_RULES),
           })
         );
       } catch (error) {
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.data-asset-rules').toLocaleLowerCase(
-              i18n.language
-            ),
+            entity: t(LABEL_DATA_ASSET_RULES).toLocaleLowerCase(i18n.language),
           })
         );
 
@@ -148,7 +150,7 @@ export const SemanticsRuleForm: React.FC<{
   return (
     <Form form={form} layout="vertical">
       <Form.Item
-        label={t('label.name')}
+        label={t(LABEL_NAME)}
         name="name"
         rules={[
           {
@@ -165,17 +167,17 @@ export const SemanticsRuleForm: React.FC<{
             },
           },
         ]}>
-        <Input placeholder={t('label.name')} />
+        <Input placeholder={t(LABEL_NAME)} />
       </Form.Item>
       <Form.Item
-        label={t('label.description')}
+        label={t(LABEL_DESCRIPTION)}
         name="description"
         rules={[
           {
             required: true,
           },
         ]}>
-        <Input.TextArea placeholder={t('label.description')} rows={2} />
+        <Input.TextArea placeholder={t(LABEL_DESCRIPTION)} rows={2} />
       </Form.Item>
       <Form.Item
         name="rule"
@@ -333,12 +335,12 @@ export const useSemanticsRuleList = ({
 
   const columns = [
     {
-      title: t('label.name'),
+      title: t(LABEL_NAME),
       dataIndex: 'name',
       className: 'col-name',
     },
     {
-      title: t('label.description'),
+      title: t(LABEL_DESCRIPTION),
       dataIndex: 'description',
       className: 'col-description',
       render: (description: string) => (
@@ -393,7 +395,7 @@ export const useSemanticsRuleList = ({
           />
           <Typography.Text>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: t('label.data-asset-rules'),
+              entity: t(LABEL_DATA_ASSET_RULES),
             })}
           </Typography.Text>
           <Button

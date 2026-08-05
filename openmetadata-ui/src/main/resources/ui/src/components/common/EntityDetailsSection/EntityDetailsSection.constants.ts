@@ -12,20 +12,23 @@
  */
 import { EntityType } from '../../../enums/entity.enum';
 
+const LABEL_COLUMN_PLURAL = 'label.column-plural' as const;
+const LABEL_FIELD_PLURAL = 'label.field-plural' as const;
+
 /**
  * Entity type → i18n key for the child list label. Used by EntityDetailsSection
  * search placeholder and by getEntityChildrenAndLabel (EntityLineageUtils).
  * e.g. TABLE → "Columns", DASHBOARD → "Charts", PIPELINE → "Tasks"
  */
 export const SEARCH_PLACEHOLDER_MAP: Record<string, string> = {
-  [EntityType.TABLE]: 'label.column-plural',
-  [EntityType.DASHBOARD_DATA_MODEL]: 'label.column-plural',
-  [EntityType.TOPIC]: 'label.field-plural',
-  [EntityType.CONTAINER]: 'label.column-plural',
+  [EntityType.TABLE]: LABEL_COLUMN_PLURAL,
+  [EntityType.DASHBOARD_DATA_MODEL]: LABEL_COLUMN_PLURAL,
+  [EntityType.TOPIC]: LABEL_FIELD_PLURAL,
+  [EntityType.CONTAINER]: LABEL_COLUMN_PLURAL,
   [EntityType.PIPELINE]: 'label.task-plural',
   [EntityType.DASHBOARD]: 'label.chart-plural',
-  [EntityType.SEARCH_INDEX]: 'label.field-plural',
-  [EntityType.API_ENDPOINT]: 'label.field-plural',
+  [EntityType.SEARCH_INDEX]: LABEL_FIELD_PLURAL,
+  [EntityType.API_ENDPOINT]: LABEL_FIELD_PLURAL,
   [EntityType.API_COLLECTION]: 'label.api-endpoint-plural',
   [EntityType.DATABASE_SCHEMA]: 'label.table-plural',
   [EntityType.DATABASE]: 'label.database-schema-plural',

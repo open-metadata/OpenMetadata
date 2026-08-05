@@ -24,6 +24,14 @@ import { getActiveAnnouncements } from '../../rest/announcementsAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import MyDataPage from './MyDataPage.component';
 
+const MOCK_PAGE_LAYOUT_V1 = 'page-layout-v1';
+const MOCK_CUSTOMISE_LANDING_PAGE_HEADER = 'customise-landing-page-header';
+const KNOWLEDGE_PANEL_ACTIVITY_FEED = 'KnowledgePanel.ActivityFeed';
+const KNOWLEDGE_PANEL_FOLLOWING = 'KnowledgePanel.Following';
+const KNOWLEDGE_PANEL_KPI = 'KnowledgePanel.KPI';
+const KNOWLEDGE_PANEL_TOTAL_ASSETS = 'KnowledgePanel.TotalAssets';
+const KNOWLEDGE_PANEL_MY_DATA = 'KnowledgePanel.MyData';
+
 const mockLocalStorage = (() => {
   let store: Record<string, string> = {};
 
@@ -68,7 +76,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (
-      <div data-testid="page-layout-v1">{children}</div>
+      <div data-testid={MOCK_PAGE_LAYOUT_V1}>{children}</div>
     ));
 });
 
@@ -89,7 +97,7 @@ jest.mock(
     return jest
       .fn()
       .mockImplementation(() => (
-        <div data-testid="customise-landing-page-header">
+        <div data-testid={MOCK_CUSTOMISE_LANDING_PAGE_HEADER}>
           CustomiseLandingPageHeader
         </div>
       ));
@@ -149,6 +157,7 @@ jest.mock('../../rest/searchAPI', () => {
       ),
   };
 });
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('react-grid-layout', () => ({
   ...jest.requireActual('react-grid-layout'),
   WidthProvider: jest
@@ -255,7 +264,7 @@ describe('MyDataPage component', () => {
     expect(screen.queryByTestId('react-grid-layout')).not.toBeInTheDocument();
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
     expect(
-      screen.getByTestId('customise-landing-page-header')
+      screen.getByTestId(MOCK_CUSTOMISE_LANDING_PAGE_HEADER)
     ).toBeInTheDocument();
   });
 
@@ -263,7 +272,7 @@ describe('MyDataPage component', () => {
     render(<MyDataPage />);
 
     expect(
-      screen.getByTestId('customise-landing-page-header')
+      screen.getByTestId(MOCK_CUSTOMISE_LANDING_PAGE_HEADER)
     ).toBeInTheDocument();
     expect(screen.getByText('CustomiseLandingPageHeader')).toBeInTheDocument();
   });
@@ -272,19 +281,19 @@ describe('MyDataPage component', () => {
     render(<MyDataPage />);
 
     expect(
-      await screen.findByText('KnowledgePanel.ActivityFeed')
+      await screen.findByText(KNOWLEDGE_PANEL_ACTIVITY_FEED)
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.Following')
+      await screen.findByText(KNOWLEDGE_PANEL_FOLLOWING)
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
-      expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
-      expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+      expect(screen.queryByText(KNOWLEDGE_PANEL_KPI)).toBeNull();
+      expect(screen.queryByText(KNOWLEDGE_PANEL_TOTAL_ASSETS)).toBeNull();
+      expect(screen.queryByText(KNOWLEDGE_PANEL_MY_DATA)).toBeNull();
     });
   });
 
@@ -298,19 +307,19 @@ describe('MyDataPage component', () => {
     render(<MyDataPage />);
 
     expect(
-      await screen.findByText('KnowledgePanel.ActivityFeed')
+      await screen.findByText(KNOWLEDGE_PANEL_ACTIVITY_FEED)
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.Following')
+      await screen.findByText(KNOWLEDGE_PANEL_FOLLOWING)
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
-      expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
-      expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+      expect(screen.queryByText(KNOWLEDGE_PANEL_KPI)).toBeNull();
+      expect(screen.queryByText(KNOWLEDGE_PANEL_TOTAL_ASSETS)).toBeNull();
+      expect(screen.queryByText(KNOWLEDGE_PANEL_MY_DATA)).toBeNull();
     });
   });
 
@@ -321,7 +330,7 @@ describe('MyDataPage component', () => {
     render(<MyDataPage />);
 
     expect(
-      await screen.findByText('KnowledgePanel.ActivityFeed')
+      await screen.findByText(KNOWLEDGE_PANEL_ACTIVITY_FEED)
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.DataAssets')
@@ -330,14 +339,14 @@ describe('MyDataPage component', () => {
       await screen.findByText('KnowledgePanel.KnowledgeCenter')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.Following')
+      await screen.findByText(KNOWLEDGE_PANEL_FOLLOWING)
     ).toBeInTheDocument();
-    expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
+    expect(await screen.findByText(KNOWLEDGE_PANEL_KPI)).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.TotalAssets')
+      await screen.findByText(KNOWLEDGE_PANEL_TOTAL_ASSETS)
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.MyData')
+      await screen.findByText(KNOWLEDGE_PANEL_MY_DATA)
     ).toBeInTheDocument();
   });
 
@@ -347,21 +356,21 @@ describe('MyDataPage component', () => {
       render(<MyDataPage />);
     });
 
-    await screen.findByTestId('page-layout-v1');
+    await screen.findByTestId(MOCK_PAGE_LAYOUT_V1);
 
     expect(
-      screen.getByTestId('KnowledgePanel.ActivityFeed')
+      screen.getByTestId(KNOWLEDGE_PANEL_ACTIVITY_FEED)
     ).toBeInTheDocument();
     expect(screen.getByTestId('KnowledgePanel.DataAssets')).toBeInTheDocument();
     expect(
       screen.getByTestId('KnowledgePanel.KnowledgeCenter')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('KnowledgePanel.Following')).toBeInTheDocument();
-    expect(screen.getByTestId('KnowledgePanel.KPI')).toBeInTheDocument();
+    expect(screen.getByTestId(KNOWLEDGE_PANEL_FOLLOWING)).toBeInTheDocument();
+    expect(screen.getByTestId(KNOWLEDGE_PANEL_KPI)).toBeInTheDocument();
     expect(
-      screen.getByTestId('KnowledgePanel.TotalAssets')
+      screen.getByTestId(KNOWLEDGE_PANEL_TOTAL_ASSETS)
     ).toBeInTheDocument();
-    expect(screen.getByTestId('KnowledgePanel.MyData')).toBeInTheDocument();
+    expect(screen.getByTestId(KNOWLEDGE_PANEL_MY_DATA)).toBeInTheDocument();
   });
 
   describe('Component Structure', () => {
@@ -370,9 +379,9 @@ describe('MyDataPage component', () => {
         render(<MyDataPage />);
       });
 
-      expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_PAGE_LAYOUT_V1)).toBeInTheDocument();
       expect(
-        screen.getByTestId('customise-landing-page-header')
+        screen.getByTestId(MOCK_CUSTOMISE_LANDING_PAGE_HEADER)
       ).toBeInTheDocument();
       expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
       expect(screen.getByText('LimitWrapper')).toBeInTheDocument();
@@ -383,8 +392,8 @@ describe('MyDataPage component', () => {
         render(<MyDataPage />);
       });
 
-      const pageLayout = screen.getByTestId('page-layout-v1');
-      const header = screen.getByTestId('customise-landing-page-header');
+      const pageLayout = screen.getByTestId(MOCK_PAGE_LAYOUT_V1);
+      const header = screen.getByTestId(MOCK_CUSTOMISE_LANDING_PAGE_HEADER);
       const gridLayout = screen.getByTestId('react-grid-layout');
 
       // Check that header comes before grid layout in the DOM
@@ -401,7 +410,7 @@ describe('MyDataPage component', () => {
 
       expect(screen.getByText('WelcomeScreen')).toBeInTheDocument();
       expect(
-        screen.queryByTestId('customise-landing-page-header')
+        screen.queryByTestId(MOCK_CUSTOMISE_LANDING_PAGE_HEADER)
       ).not.toBeInTheDocument();
     });
 
@@ -411,15 +420,15 @@ describe('MyDataPage component', () => {
       });
 
       // Verify main content elements are present
-      expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
+      expect(screen.getByTestId(MOCK_PAGE_LAYOUT_V1)).toBeInTheDocument();
       expect(
-        screen.getByTestId('customise-landing-page-header')
+        screen.getByTestId(MOCK_CUSTOMISE_LANDING_PAGE_HEADER)
       ).toBeInTheDocument();
       expect(screen.getByTestId('react-grid-layout')).toBeInTheDocument();
 
       // Verify the grid wrapper structure
       const gridWrapper = screen
-        .getByTestId('page-layout-v1')
+        .getByTestId(MOCK_PAGE_LAYOUT_V1)
         .querySelector('.grid-wrapper');
 
       expect(gridWrapper).toBeInTheDocument();

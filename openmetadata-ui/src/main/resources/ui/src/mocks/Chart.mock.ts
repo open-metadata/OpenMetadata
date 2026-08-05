@@ -19,6 +19,8 @@ import {
   TagSource,
 } from '../generated/entity/data/chart';
 
+const GLOSSARY_TERM = 'Glossary=Term';
+
 export const MOCK_CHART_DATA: Chart = {
   id: 'f4464d71-f900-4f8c-aca1-b7b95cc077e1',
   name: '127',
@@ -35,10 +37,10 @@ export const MOCK_CHART_DATA: Chart = {
   tags: [
     {
       tagFQN: 'Glossary.Glossary=Term',
-      displayName: 'Glossary=Term',
-      name: 'Glossary=Term',
+      displayName: GLOSSARY_TERM,
+      name: GLOSSARY_TERM,
       labelType: LabelType.Manual,
-      description: 'Glossary=Term',
+      description: GLOSSARY_TERM,
       style: {},
       source: TagSource.Glossary,
       state: State.Confirmed,

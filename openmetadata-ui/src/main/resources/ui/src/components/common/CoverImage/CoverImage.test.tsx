@@ -22,6 +22,8 @@ jest.mock('../../BlockEditor/Extensions/image/ImageClassBase', () => ({
 import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 import { CoverImage } from './CoverImage.component';
 
+const COVER_IMAGE = 'cover-image';
+
 const mockGetAuthenticatedImageUrl =
   imageClassBase.getAuthenticatedImageUrl as jest.Mock;
 
@@ -36,20 +38,20 @@ describe('CoverImage', () => {
 
     expect(screen.getByTestId('cover-image-container')).toBeInTheDocument();
     expect(screen.getByTestId('cover-image-placeholder')).toBeInTheDocument();
-    expect(screen.queryByTestId('cover-image')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COVER_IMAGE)).not.toBeInTheDocument();
   });
 
   it('renders gradient placeholder when imageUrl is an empty string', () => {
     render(<CoverImage imageUrl="" />);
 
     expect(screen.getByTestId('cover-image-placeholder')).toBeInTheDocument();
-    expect(screen.queryByTestId('cover-image')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COVER_IMAGE)).not.toBeInTheDocument();
   });
 
   it('renders the image for a public imageUrl when no auth hook is present', () => {
     render(<CoverImage imageUrl="https://example.com/img.png" />);
 
-    const image = screen.getByTestId('cover-image');
+    const image = screen.getByTestId(COVER_IMAGE);
 
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', 'https://example.com/img.png');
@@ -67,7 +69,7 @@ describe('CoverImage', () => {
     render(<CoverImage imageUrl="/api/v1/attachments/123" />);
 
     expect(screen.getByTestId('cover-image-loading')).toBeInTheDocument();
-    expect(screen.queryByTestId('cover-image')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COVER_IMAGE)).not.toBeInTheDocument();
   });
 
   it('renders image when authenticated blob URL is ready', () => {
@@ -78,7 +80,7 @@ describe('CoverImage', () => {
 
     render(<CoverImage imageUrl="/api/v1/attachments/123" />);
 
-    const image = screen.getByTestId('cover-image');
+    const image = screen.getByTestId(COVER_IMAGE);
 
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', 'blob:http://localhost/abc');
@@ -92,7 +94,7 @@ describe('CoverImage', () => {
       />
     );
 
-    const image = screen.getByTestId('cover-image');
+    const image = screen.getByTestId(COVER_IMAGE);
 
     expect(image).toHaveStyle({ transform: 'translateY(-16%)' });
   });
@@ -100,7 +102,7 @@ describe('CoverImage', () => {
   it('does not apply transform when position.y is absent', () => {
     render(<CoverImage imageUrl="https://example.com/img.png" />);
 
-    const image = screen.getByTestId('cover-image');
+    const image = screen.getByTestId(COVER_IMAGE);
 
     expect(image).not.toHaveStyle({
       transform: expect.stringContaining('translateY'),

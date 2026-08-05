@@ -36,6 +36,8 @@ import {
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
+const LABEL_OWNER_PLURAL = 'label.owner-plural';
+
 const UserTeamSelectableList = withSuspenseFallback(
   lazy(() =>
     import(
@@ -84,13 +86,13 @@ export const OwnerLabelV2 = <
           {isEmpty(data.owners) ? (
             <WidgetPlusButton
               data-testid="add-owner"
-              title={t('label.add-entity', { entity: t('label.owner-plural') })}
+              title={t('label.add-entity', { entity: t(LABEL_OWNER_PLURAL) })}
             />
           ) : (
             <WidgetEditButton
               data-testid="edit-owner"
               title={t('label.edit-entity', {
-                entity: t('label.owner-plural'),
+                entity: t(LABEL_OWNER_PLURAL),
               })}
             />
           )}
@@ -104,7 +106,7 @@ export const OwnerLabelV2 = <
       dataTestId={dataTestId}
       headerExtra={headerExtra}
       isExpandDisabled={isEmpty(data.owners)}
-      title={t('label.owner-plural')}>
+      title={t(LABEL_OWNER_PLURAL)}>
       {getOwnerVersionLabel(
         data,
         isVersionView ?? false,

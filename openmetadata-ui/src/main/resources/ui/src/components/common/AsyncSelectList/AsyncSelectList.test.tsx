@@ -23,6 +23,10 @@ import userEvent from '@testing-library/user-event';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';
 import AsyncSelectList from './AsyncSelectList';
 
+const TAG_SELECTOR = 'tag-selector' as const;
+const ENTITY_TAGS = 'entity-tags' as const;
+const TAG_TAGS_0 = 'tag-tags-0' as const;
+
 jest.mock('lodash', () => {
   const module = jest.requireActual('lodash');
   module.debounce = jest.fn((fn) => fn);
@@ -63,7 +67,7 @@ describe('Test AsyncSelect List Component', () => {
       render(<AsyncSelectList {...mockProps} />);
     });
 
-    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+    expect(screen.getByTestId(TAG_SELECTOR)).toBeInTheDocument();
   });
 
   it('Should render value if passed', async () => {
@@ -71,7 +75,7 @@ describe('Test AsyncSelect List Component', () => {
       render(<AsyncSelectList {...mockProps} value={['select-1']} />);
     });
 
-    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+    expect(screen.getByTestId(TAG_SELECTOR)).toBeInTheDocument();
 
     expect(screen.getByTitle('select-1')).toBeInTheDocument();
   });
@@ -81,10 +85,10 @@ describe('Test AsyncSelect List Component', () => {
       render(<AsyncSelectList {...mockProps} />);
     });
 
-    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+    expect(screen.getByTestId(TAG_SELECTOR)).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.focus(screen.getByTestId('tag-selector'));
+      fireEvent.focus(screen.getByTestId(TAG_SELECTOR));
     });
 
     expect(mockFetchOptions).toHaveBeenCalledWith('', 1);
@@ -95,18 +99,18 @@ describe('Test AsyncSelect List Component', () => {
       render(<AsyncSelectList {...mockProps} />);
     });
 
-    expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+    expect(screen.getByTestId(TAG_SELECTOR)).toBeInTheDocument();
 
     await act(async () => {
       // first focus
-      fireEvent.focus(screen.getByTestId('tag-selector'));
+      fireEvent.focus(screen.getByTestId(TAG_SELECTOR));
 
       expect(mockFetchOptions).toHaveBeenCalledWith('', 1);
 
-      fireEvent.blur(screen.getByTestId('tag-selector'));
+      fireEvent.blur(screen.getByTestId(TAG_SELECTOR));
 
       // second focus
-      fireEvent.focus(screen.getByTestId('tag-selector'));
+      fireEvent.focus(screen.getByTestId(TAG_SELECTOR));
     });
 
     expect(mockFetchOptions).toHaveBeenCalledWith('', 1);
@@ -124,12 +128,12 @@ describe('Test AsyncSelect List Component', () => {
     expect(searchInput.value).toBe('');
 
     await act(async () => {
-      fireEvent.change(searchInput, { target: { value: 'entity-tags' } });
+      fireEvent.change(searchInput, { target: { value: ENTITY_TAGS } });
     });
 
-    expect(searchInput.value).toBe('entity-tags');
+    expect(searchInput.value).toBe(ENTITY_TAGS);
 
-    expect(mockFetchOptions).toHaveBeenCalledWith('entity-tags', 1);
+    expect(mockFetchOptions).toHaveBeenCalledWith(ENTITY_TAGS, 1);
 
     expect(mockFetchOptions).toHaveBeenCalledTimes(2);
   });
@@ -170,7 +174,7 @@ describe('Test AsyncSelect List Component', () => {
     });
 
     const selectInput = await findByRole(
-      screen.getByTestId('tag-selector'),
+      screen.getByTestId(TAG_SELECTOR),
       'combobox'
     );
 
@@ -195,7 +199,7 @@ describe('Test AsyncSelect List Component', () => {
     });
 
     const selectInput = await findByRole(
-      screen.getByTestId('tag-selector'),
+      screen.getByTestId(TAG_SELECTOR),
       'combobox'
     );
 
@@ -203,10 +207,10 @@ describe('Test AsyncSelect List Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitFor(() => screen.getByTestId('tag-tags-0'));
+    await waitFor(() => screen.getByTestId(TAG_TAGS_0));
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('tag-tags-0'));
+      fireEvent.click(screen.getByTestId(TAG_TAGS_0));
     });
 
     expect(mockOnChange).not.toHaveBeenCalled();
@@ -227,7 +231,7 @@ describe('Test AsyncSelect List Component', () => {
     });
 
     const selectInput = await findByRole(
-      screen.getByTestId('tag-selector'),
+      screen.getByTestId(TAG_SELECTOR),
       'combobox'
     );
 
@@ -235,10 +239,10 @@ describe('Test AsyncSelect List Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitFor(() => screen.getByTestId('tag-tags-0'));
+    await waitFor(() => screen.getByTestId(TAG_TAGS_0));
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('tag-tags-0'));
+      fireEvent.click(screen.getByTestId(TAG_TAGS_0));
     });
 
     expect(mockOnChange).toHaveBeenCalledTimes(1);
@@ -260,7 +264,7 @@ describe('Test AsyncSelect List Component', () => {
     });
 
     const selectInput = await findByRole(
-      screen.getByTestId('tag-selector'),
+      screen.getByTestId(TAG_SELECTOR),
       'combobox'
     );
 
@@ -268,8 +272,8 @@ describe('Test AsyncSelect List Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitFor(() => screen.getByTestId('tag-tags-0'));
+    await waitFor(() => screen.getByTestId(TAG_TAGS_0));
 
-    expect(screen.getByTestId('tag-tags-0')).toHaveClass('option-class');
+    expect(screen.getByTestId(TAG_TAGS_0)).toHaveClass('option-class');
   });
 });

@@ -31,6 +31,17 @@ import {
 import { EntityReference } from '../../generated/type/entityReference';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 
+const PERSONALDATA_SPECIALCATEGORY = 'PersonalData.SpecialCategory';
+const GDPR_SPECIAL_CATEGORY_DATA_IS =
+  'GDPR special category data is personal information of data subjects that is especially sensitive.';
+const _456E7890_E12B_34C5_D678_901234567890 =
+  '456e7890-e12b-34c5-d678-901234567890';
+const SAMPLE_DATABASE_TEST_SCHEMA = 'sample_database.test_schema';
+const _789E0123_E45F_67G8_H901_234567890123 =
+  '789e0123-e45f-67g8-h901-234567890123';
+const _012E3456_E78H_90I1_J234_567890123456 =
+  '012e3456-e78h-90i1-j234-567890123456';
+
 const { Text } = Typography;
 
 export const mockTextBasedSummaryTitleResponse = (
@@ -73,9 +84,8 @@ export const mockGetSummaryListItemTypeResponse = 'PrestoOperator';
 
 export const mockTagsSortAndHighlightResponse = [
   {
-    tagFQN: 'PersonalData.SpecialCategory',
-    description:
-      'GDPR special category data is personal information of data subjects that is especially sensitive.',
+    tagFQN: PERSONALDATA_SPECIALCATEGORY,
+    description: GDPR_SPECIAL_CATEGORY_DATA_IS,
     source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
@@ -83,15 +93,14 @@ export const mockTagsSortAndHighlightResponse = [
   },
   {
     tagFQN: 'PersonalData.Category1',
-    description:
-      'GDPR special category data is personal information of data subjects that is especially sensitive.',
+    description: GDPR_SPECIAL_CATEGORY_DATA_IS,
     source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
 ];
 
-export const mockTagFQNsForHighlight = ['PersonalData.SpecialCategory'];
+export const mockTagFQNsForHighlight = [PERSONALDATA_SPECIALCATEGORY];
 
 export const mockListItemNameHighlight =
   '<span className="text-highlighter">title2</span>';
@@ -244,16 +253,14 @@ export const mockEntityDataWithNesting: Column[] = [
     tags: [
       {
         tagFQN: 'PersonalData.Category1',
-        description:
-          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        description: GDPR_SPECIAL_CATEGORY_DATA_IS,
         source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
       {
-        tagFQN: 'PersonalData.SpecialCategory',
-        description:
-          'GDPR special category data is personal information of data subjects that is especially sensitive.',
+        tagFQN: PERSONALDATA_SPECIALCATEGORY,
+        description: GDPR_SPECIAL_CATEGORY_DATA_IS,
         source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
@@ -411,19 +418,19 @@ export const mockStoredProcedureWithCode: StoredProcedure = {
     code: 'CREATE PROCEDURE test_stored_procedure()\nBEGIN\n  SELECT * FROM users;\nEND',
   } as StoredProcedureCodeObject,
   databaseSchema: {
-    id: '456e7890-e12b-34c5-d678-901234567890',
+    id: _456E7890_E12B_34C5_D678_901234567890,
     name: 'test_schema',
-    fullyQualifiedName: 'sample_database.test_schema',
+    fullyQualifiedName: SAMPLE_DATABASE_TEST_SCHEMA,
     type: 'databaseSchema',
   },
   database: {
-    id: '789e0123-e45f-67g8-h901-234567890123',
+    id: _789E0123_E45F_67G8_H901_234567890123,
     name: 'sample_database',
     fullyQualifiedName: 'sample_database',
     type: 'database',
   },
   service: {
-    id: '012e3456-e78h-90i1-j234-567890123456',
+    id: _012E3456_E78H_90I1_J234_567890123456,
     name: 'mysql_service',
     fullyQualifiedName: 'mysql_service',
     type: 'databaseService',
@@ -437,19 +444,19 @@ export const mockStoredProcedureWithoutCode: StoredProcedure = {
   description: 'A test stored procedure without code',
   storedProcedureCode: null,
   databaseSchema: {
-    id: '456e7890-e12b-34c5-d678-901234567890',
+    id: _456E7890_E12B_34C5_D678_901234567890,
     name: 'test_schema',
-    fullyQualifiedName: 'sample_database.test_schema',
+    fullyQualifiedName: SAMPLE_DATABASE_TEST_SCHEMA,
     type: 'databaseSchema',
   },
   database: {
-    id: '789e0123-e45f-67g8-h901-234567890123',
+    id: _789E0123_E45F_67G8_H901_234567890123,
     name: 'sample_database',
     fullyQualifiedName: 'sample_database',
     type: 'database',
   },
   service: {
-    id: '012e3456-e78h-90i1-j234-567890123456',
+    id: _012E3456_E78H_90I1_J234_567890123456,
     name: 'mysql_service',
     fullyQualifiedName: 'mysql_service',
     type: 'databaseService',
@@ -466,19 +473,19 @@ export const mockStoredProcedureWithEmptyCode: StoredProcedure = {
     code: '',
   } as StoredProcedureCodeObject,
   databaseSchema: {
-    id: '456e7890-e12b-34c5-d678-901234567890',
+    id: _456E7890_E12B_34C5_D678_901234567890,
     name: 'test_schema',
-    fullyQualifiedName: 'sample_database.test_schema',
+    fullyQualifiedName: SAMPLE_DATABASE_TEST_SCHEMA,
     type: 'databaseSchema',
   },
   database: {
-    id: '789e0123-e45f-67g8-h901-234567890123',
+    id: _789E0123_E45F_67G8_H901_234567890123,
     name: 'sample_database',
     fullyQualifiedName: 'sample_database',
     type: 'database',
   },
   service: {
-    id: '012e3456-e78h-90i1-j234-567890123456',
+    id: _012E3456_E78H_90I1_J234_567890123456,
     name: 'mysql_service',
     fullyQualifiedName: 'mysql_service',
     type: 'databaseService',

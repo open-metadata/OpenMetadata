@@ -18,6 +18,8 @@ import {
 import { TASK_FEED } from '../../../mocks/Task.mock';
 import TagsTask from './TagsTask';
 
+const REQUEST_TAGS = 'request-tags';
+
 jest.mock('./TagSuggestion', () =>
   jest.fn().mockImplementation(({ onChange }) => (
     <div>
@@ -72,7 +74,7 @@ describe('Test TagsTask Component', () => {
     render(<TagsTask {...mockProps} />);
 
     expect(screen.getByTestId('tags-task')).toBeInTheDocument();
-    expect(screen.getByTestId('request-tags')).toBeInTheDocument();
+    expect(screen.getByTestId(REQUEST_TAGS)).toBeInTheDocument();
 
     expect(screen.getByText('TagsDiffView')).toBeInTheDocument();
   });
@@ -84,14 +86,14 @@ describe('Test TagsTask Component', () => {
         task={{
           ...mockTask,
           suggestion:
-            // eslint-disable-next-line max-len
+            // eslint-disable-next-line max-len, sonarjs/no-duplicate-string
             '[{"tagFQN":"PersonalData.SpecialCategory","source":"Classification","name":"SpecialCategory","description":"GDPR special category data is personal information of data subjects that is especially sensitive, the exposure of which could significantly impact the rights and freedoms of data subjects and potentially be used against them for unlawful discrimination."}]',
         }}
       />
     );
 
     expect(screen.getByTestId('tags-task')).toBeInTheDocument();
-    expect(screen.getByTestId('request-tags')).toBeInTheDocument();
+    expect(screen.getByTestId(REQUEST_TAGS)).toBeInTheDocument();
 
     expect(screen.getByText('TagsDiffView')).toBeInTheDocument();
   });
@@ -110,7 +112,7 @@ describe('Test TagsTask Component', () => {
     );
 
     expect(screen.getByTestId('tags-task')).toBeInTheDocument();
-    expect(screen.getByTestId('request-tags')).toBeInTheDocument();
+    expect(screen.getByTestId(REQUEST_TAGS)).toBeInTheDocument();
 
     expect(screen.getByText('TagsDiffView')).toBeInTheDocument();
   });
@@ -119,7 +121,7 @@ describe('Test TagsTask Component', () => {
     render(<TagsTask {...mockProps} task={mockTask} />);
 
     expect(screen.getByTestId('tags-task')).toBeInTheDocument();
-    expect(screen.getByTestId('request-tags')).toBeInTheDocument();
+    expect(screen.getByTestId(REQUEST_TAGS)).toBeInTheDocument();
 
     expect(screen.getByTestId('no-suggestion')).toBeInTheDocument();
   });
@@ -128,7 +130,7 @@ describe('Test TagsTask Component', () => {
     render(<TagsTask {...mockProps} hasEditAccess />);
 
     expect(screen.getByTestId('tags-task')).toBeInTheDocument();
-    expect(screen.getByTestId('request-tags')).toBeInTheDocument();
+    expect(screen.getByTestId(REQUEST_TAGS)).toBeInTheDocument();
 
     expect(screen.getByText('TagsDiffView')).toBeInTheDocument();
   });
@@ -137,7 +139,7 @@ describe('Test TagsTask Component', () => {
     render(<TagsTask {...mockProps} hasEditAccess isTaskActionEdit />);
 
     expect(screen.getByTestId('tags-task')).toBeInTheDocument();
-    expect(screen.getByTestId('request-tags')).toBeInTheDocument();
+    expect(screen.getByTestId(REQUEST_TAGS)).toBeInTheDocument();
 
     expect(screen.getByText('TagSuggestion')).toBeInTheDocument();
 

@@ -21,6 +21,11 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import WorkflowsTable from './WorkflowsTable';
 
+const CONTAINER_LIST_TABLE = 'container-list-table';
+const WORKSHEET_ROW_0 = 'worksheet-row-0';
+const WORKSHEET_ROW_1 = 'worksheet-row-1';
+const EMPTY_STATE = 'empty-state';
+
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityNameUtils');
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -143,18 +148,18 @@ describe('WorkflowsTable', () => {
   it('should render workflows table successfully', () => {
     renderWorkflowsTable();
 
-    expect(screen.getByTestId('container-list-table')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTAINER_LIST_TABLE)).toBeInTheDocument();
   });
 
   it('should display worksheets data correctly', () => {
     renderWorkflowsTable();
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
-    expect(screen.getByTestId('worksheet-row-1')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_1)).toBeInTheDocument();
     expect(screen.getByTestId('worksheet-row-2')).toBeInTheDocument();
 
-    expect(screen.getByTestId('worksheet-row-0')).toHaveTextContent('Sales_Q1');
-    expect(screen.getByTestId('worksheet-row-1')).toHaveTextContent(
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toHaveTextContent('Sales_Q1');
+    expect(screen.getByTestId(WORKSHEET_ROW_1)).toHaveTextContent(
       'Inventory_Report'
     );
     expect(screen.getByTestId('worksheet-row-2')).toHaveTextContent(
@@ -184,7 +189,7 @@ describe('WorkflowsTable', () => {
       worksheets: [],
     });
 
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_STATE)).toBeInTheDocument();
     expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
   });
 
@@ -193,7 +198,7 @@ describe('WorkflowsTable', () => {
       worksheets: undefined,
     });
 
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_STATE)).toBeInTheDocument();
   });
 
   it('should handle worksheets with rich text descriptions', () => {
@@ -208,7 +213,7 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithRichText,
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle worksheets with long names', () => {
@@ -225,7 +230,7 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithLongNames,
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle worksheets with special characters in names', () => {
@@ -241,7 +246,7 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithSpecialChars,
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle worksheets without displayName', () => {
@@ -256,7 +261,7 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithoutDisplayName as EntityReference[],
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle worksheets without fullyQualifiedName', () => {
@@ -271,14 +276,14 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithoutFQN as EntityReference[],
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should generate correct entity detail paths', () => {
     renderWorkflowsTable();
 
-    expect(screen.getByTestId('container-list-table')).toBeInTheDocument();
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTAINER_LIST_TABLE)).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle deleted worksheets', () => {
@@ -291,8 +296,8 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithDeleted,
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
-    expect(screen.getByTestId('worksheet-row-1')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_1)).toBeInTheDocument();
   });
 
   it('should handle mixed worksheet types correctly', () => {
@@ -305,8 +310,8 @@ describe('WorkflowsTable', () => {
       worksheets: mixedWorksheets,
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
-    expect(screen.getByTestId('worksheet-row-1')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_1)).toBeInTheDocument();
   });
 
   it('should handle single worksheet correctly', () => {
@@ -314,8 +319,8 @@ describe('WorkflowsTable', () => {
       worksheets: [mockWorksheets[0]],
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
-    expect(screen.queryByTestId('worksheet-row-1')).not.toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
+    expect(screen.queryByTestId(WORKSHEET_ROW_1)).not.toBeInTheDocument();
   });
 
   it('should handle worksheets with empty string description', () => {
@@ -330,7 +335,7 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithEmptyDescription,
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should handle worksheets with null description', () => {
@@ -345,7 +350,7 @@ describe('WorkflowsTable', () => {
       worksheets: worksheetsWithNullDescription,
     });
 
-    expect(screen.getByTestId('worksheet-row-0')).toBeInTheDocument();
+    expect(screen.getByTestId(WORKSHEET_ROW_0)).toBeInTheDocument();
   });
 
   it('should render correct number of worksheet rows', () => {
@@ -367,7 +372,7 @@ describe('WorkflowsTable', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('container-list-table')).toBeInTheDocument();
-    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTAINER_LIST_TABLE)).toBeInTheDocument();
+    expect(screen.getByTestId(EMPTY_STATE)).toBeInTheDocument();
   });
 });

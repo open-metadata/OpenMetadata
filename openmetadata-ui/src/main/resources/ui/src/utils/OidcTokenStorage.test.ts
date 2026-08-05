@@ -30,6 +30,7 @@ import { oidcTokenStorage } from './OidcTokenStorage';
 import { swTokenStorage } from './SwTokenStorage';
 import { isServiceWorkerAvailable } from './SwTokenStorageUtils';
 
+const TEST_VALUE = 'test-value';
 const mockSwTokenStorage = swTokenStorage as jest.Mocked<typeof swTokenStorage>;
 const mockIsServiceWorkerAvailable = isServiceWorkerAvailable as jest.Mock;
 
@@ -54,34 +55,34 @@ describe('OidcTokenStorage', () => {
     it('should use service worker when available', async () => {
       mockIsServiceWorkerAvailable.mockReturnValue(true);
       mockSwTokenStorage.setItem.mockResolvedValue(undefined);
-      mockSwTokenStorage.getItem.mockResolvedValue('test-value');
+      mockSwTokenStorage.getItem.mockResolvedValue(TEST_VALUE);
 
-      await oidcTokenStorage.set('test-key', 'test-value');
+      await oidcTokenStorage.set('test-key', TEST_VALUE);
       const result = await oidcTokenStorage.get('test-key');
 
       expect(mockSwTokenStorage.setItem).toHaveBeenCalledWith(
         'test-key',
-        'test-value'
+        TEST_VALUE
       );
       expect(mockSwTokenStorage.getItem).toHaveBeenCalledWith('test-key');
-      expect(result).toBe('test-value');
+      expect(result).toBe(TEST_VALUE);
       expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
       expect(mockLocalStorage.getItem).not.toHaveBeenCalled();
     });
 
     it('should fallback to localStorage when service worker unavailable', async () => {
       mockIsServiceWorkerAvailable.mockReturnValue(false);
-      mockLocalStorage.getItem.mockReturnValue('test-value');
+      mockLocalStorage.getItem.mockReturnValue(TEST_VALUE);
 
-      await oidcTokenStorage.set('test-key', 'test-value');
+      await oidcTokenStorage.set('test-key', TEST_VALUE);
       const result = await oidcTokenStorage.get('test-key');
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
         'test-key',
-        'test-value'
+        TEST_VALUE
       );
       expect(mockLocalStorage.getItem).toHaveBeenCalledWith('test-key');
-      expect(result).toBe('test-value');
+      expect(result).toBe(TEST_VALUE);
       expect(mockSwTokenStorage.setItem).not.toHaveBeenCalled();
       expect(mockSwTokenStorage.getItem).not.toHaveBeenCalled();
     });

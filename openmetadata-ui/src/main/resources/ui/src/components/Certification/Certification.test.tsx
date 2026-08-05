@@ -22,6 +22,10 @@ import { getTags } from '../../rest/tagAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Certification from './Certification.component';
 
+const CERTIFICATION_GOLD = 'Certification.Gold';
+const DATA_TESTID = 'data-testid';
+const RADIO_BTN_CERTIFICATION_SILVER = 'radio-btn-Certification.Silver';
+
 jest.mock('../../assets/svg/ic-certification.svg', () => ({
   ReactComponent: () => <div data-testid="certification-icon" />,
 }));
@@ -50,7 +54,7 @@ const mockCertifications: Tag[] = [
     id: 'gold-id',
     name: 'Gold',
     displayName: 'Gold',
-    fullyQualifiedName: 'Certification.Gold',
+    fullyQualifiedName: CERTIFICATION_GOLD,
     description: 'Gold certification',
   },
   {
@@ -67,7 +71,7 @@ const mockOnClose = jest.fn();
 
 const defaultProps = {
   permission: true,
-  currentCertificate: 'Certification.Gold',
+  currentCertificate: CERTIFICATION_GOLD,
   onCertificationUpdate: mockOnCertificationUpdate,
   onClose: mockOnClose,
   children: <button data-testid="certification-trigger">Edit</button>,
@@ -112,15 +116,15 @@ describe('Certification', () => {
     const radioButtons = screen.getAllByTestId(/radio-btn-/);
 
     expect(radioButtons[0]).toHaveAttribute(
-      'data-testid',
+      DATA_TESTID,
       'radio-btn-Certification.Gold'
     );
     expect(radioButtons[1]).toHaveAttribute(
-      'data-testid',
-      'radio-btn-Certification.Silver'
+      DATA_TESTID,
+      RADIO_BTN_CERTIFICATION_SILVER
     );
     expect(radioButtons[2]).toHaveAttribute(
-      'data-testid',
+      DATA_TESTID,
       'radio-btn-Certification.Bronze'
     );
   });
@@ -143,13 +147,13 @@ describe('Certification', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('radio-btn-Certification.Silver')
+        screen.getByTestId(RADIO_BTN_CERTIFICATION_SILVER)
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('radio-btn-Certification.Silver'));
+    fireEvent.click(screen.getByTestId(RADIO_BTN_CERTIFICATION_SILVER));
 
-    expect(screen.getByTestId('radio-btn-Certification.Silver')).toBeChecked();
+    expect(screen.getByTestId(RADIO_BTN_CERTIFICATION_SILVER)).toBeChecked();
   });
 
   it('should call onCertificationUpdate with the selected certification', async () => {
@@ -168,7 +172,7 @@ describe('Certification', () => {
     await waitFor(() => {
       expect(mockOnCertificationUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          fullyQualifiedName: 'Certification.Gold',
+          fullyQualifiedName: CERTIFICATION_GOLD,
         })
       );
     });

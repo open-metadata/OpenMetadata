@@ -58,6 +58,7 @@ jest.mock('./useTestCase.store', () => ({
 jest.mock('../../../rest/testAPI', () => ({
   getTestCaseByFqn: jest.fn().mockImplementation(() =>
     Promise.resolve({
+      // eslint-disable-next-line sonarjs/no-duplicate-string -- jest.mock module path must be a string literal
       ...jest.requireActual('../../../mocks/TestCase.mock').MOCK_TEST_CASE_DATA,
     })
   ),

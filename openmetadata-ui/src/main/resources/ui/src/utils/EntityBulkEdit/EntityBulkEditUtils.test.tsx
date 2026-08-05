@@ -22,6 +22,9 @@ import {
   isBulkEditRoute,
 } from './EntityBulkEditUtils';
 
+const BULK_EDIT_TABLE = 'bulk-edit-table';
+const DATA_QUALITY_TEST_CASES = '/data-quality/test-cases';
+
 jest.mock('../EntityUtilClassBase', () => ({
   getEntityLink: jest
     .fn()
@@ -177,7 +180,7 @@ describe('EntityBulkEditUtils', () => {
 
       render(<div>{result}</div>);
 
-      const button = screen.getByTestId('bulk-edit-table');
+      const button = screen.getByTestId(BULK_EDIT_TABLE);
 
       expect(button).toBeInTheDocument();
       expect(button).toHaveClass('text-primary');
@@ -196,7 +199,7 @@ describe('EntityBulkEditUtils', () => {
 
       render(<div>{result}</div>);
 
-      const button = screen.getByTestId('bulk-edit-table');
+      const button = screen.getByTestId(BULK_EDIT_TABLE);
       button.click();
 
       expect(mockOnClickHandler).toHaveBeenCalledTimes(1);
@@ -207,7 +210,7 @@ describe('EntityBulkEditUtils', () => {
 
       render(<div>{result}</div>);
 
-      const button = screen.getByTestId('bulk-edit-table');
+      const button = screen.getByTestId(BULK_EDIT_TABLE);
 
       expect(button).toHaveAttribute('type', 'button');
     });
@@ -225,7 +228,7 @@ describe('EntityBulkEditUtils', () => {
     it('should return data quality page path for TEST_CASE with wildcard fqn', () => {
       const result = getBulkEntityNavigationPath(EntityType.TEST_CASE, '*');
 
-      expect(result).toBe('/data-quality/test-cases');
+      expect(result).toBe(DATA_QUALITY_TEST_CASES);
     });
 
     it('should return metrics listing path for METRIC with wildcard fqn', () => {
@@ -263,7 +266,7 @@ describe('EntityBulkEditUtils', () => {
         'test.case.fqn'
       );
 
-      expect(result).toBe('/data-quality/test-cases');
+      expect(result).toBe(DATA_QUALITY_TEST_CASES);
     });
 
     it('should return data quality page path for TEST_CASE with unknown source entity type', () => {
@@ -273,7 +276,7 @@ describe('EntityBulkEditUtils', () => {
         'UNKNOWN_TYPE' as EntityType
       );
 
-      expect(result).toBe('/data-quality/test-cases');
+      expect(result).toBe(DATA_QUALITY_TEST_CASES);
     });
 
     it('should return entity link for non-TEST_CASE entity types', () => {

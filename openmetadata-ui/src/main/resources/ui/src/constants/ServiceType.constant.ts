@@ -30,6 +30,8 @@ import { SearchServiceType } from '../generated/entity/services/searchService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 
+const LABEL_ENTITY_SERVICE = 'label.entity-service';
+
 export const OPEN_METADATA = 'OpenMetadata';
 export const JWT_CONFIG = 'openMetadataJWTClientConfig';
 
@@ -70,21 +72,21 @@ export const servicesDisplayName: Record<
   string,
   { key: string; entity: string }
 > = {
-  databaseServices: { key: 'label.entity-service', entity: 'label.database' },
-  messagingServices: { key: 'label.entity-service', entity: 'label.messaging' },
-  dashboardServices: { key: 'label.entity-service', entity: 'label.dashboard' },
-  pipelineServices: { key: 'label.entity-service', entity: 'label.pipeline' },
-  mlmodelServices: { key: 'label.entity-service', entity: 'label.ml-model' },
-  metadataServices: { key: 'label.entity-service', entity: 'label.metadata' },
-  storageServices: { key: 'label.entity-service', entity: 'label.storage' },
-  searchServices: { key: 'label.entity-service', entity: 'label.search' },
+  databaseServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.database' },
+  messagingServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.messaging' },
+  dashboardServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.dashboard' },
+  pipelineServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.pipeline' },
+  mlmodelServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.ml-model' },
+  metadataServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.metadata' },
+  storageServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.storage' },
+  searchServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.search' },
   dashboardDataModel: {
-    key: 'label.entity-service',
+    key: LABEL_ENTITY_SERVICE,
     entity: 'label.data-model',
   },
-  apiServices: { key: 'label.entity-service', entity: 'label.api-uppercase' },
-  securityServices: { key: 'label.entity-service', entity: 'label.security' },
-  driveServices: { key: 'label.entity-service', entity: 'label.drive' },
+  apiServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.api-uppercase' },
+  securityServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.security' },
+  driveServices: { key: LABEL_ENTITY_SERVICE, entity: 'label.drive' },
 };
 
 export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({

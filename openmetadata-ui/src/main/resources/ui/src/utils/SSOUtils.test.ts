@@ -44,6 +44,35 @@ import {
   updateLoadingState,
 } from './SSOUtils';
 
+const ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER =
+  'org.openmetadata.service.security.DefaultAuthorizer' as const;
+const ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER =
+  'org.openmetadata.service.security.JwtFilter' as const;
+const HTTPS_ACCOUNTS_GOOGLE_COM = 'https://accounts.google.com' as const;
+const HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3 =
+  'https://www.googleapis.com/oauth2/v3/certs' as const;
+const HTTPS_ACCOUNTS_GOOGLE_COM_WELL_KNOWN =
+  'https://accounts.google.com/.well-known/openid-configuration' as const;
+const REQUIRED_FIELD = 'Required field' as const;
+const INVALID_URL = 'Invalid URL' as const;
+const ROOT_CLIENT_ID = 'root/clientId' as const;
+const ROOT_AUTHENTICATION_CONFIGURATION_CLIENT_ID =
+  'root/authenticationConfiguration/clientId' as const;
+const ROOT_AUTHENTICATION_CONFIGURATION_OIDC_CONFIGURATION_SECRET =
+  'root/authenticationConfiguration/oidcConfiguration/secret' as const;
+const TEST_CLIENT_ID = 'test-client-id' as const;
+const TEST_SECRET = 'test-secret' as const;
+const LDAP_EXAMPLE_COM = 'ldap.example.com' as const;
+const HTTPS_IDP_EXAMPLE_COM_AUTH = 'https://idp.example.com/auth' as const;
+const SHOULD_HANDLE_MISSING_SAML_CONFIGURATION_GRACEFULLY =
+  'should handle missing samlConfiguration gracefully' as const;
+const HTTPS_APP_EXAMPLE_COM_CALLBACK =
+  'https://app.example.com/callback' as const;
+const HTTPS_EXISTING_EXAMPLE_COM_CALLBACK =
+  'https://existing.example.com/callback' as const;
+const MISSING_ENTITY_ID = 'missing entityID' as const;
+const NO_SINGLE_SIGN_ON_SERVICE = 'no SingleSignOnService' as const;
+
 // Mock the constants module
 jest.mock('../constants/SSO.constant', () => ({
   COMMON_AUTH_FIELDS_TO_REMOVE: ['responseType'],
@@ -57,10 +86,12 @@ jest.mock('../constants/SSO.constant', () => ({
     'org.openmetadata.service.security.DefaultAuthorizer',
   DEFAULT_CONTAINER_REQUEST_FILTER:
     'org.openmetadata.service.security.JwtFilter',
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   DEFAULT_CALLBACK_URL: 'http://localhost:8585/callback',
   OIDC_SSO_DEFAULTS: {
     tokenValidity: 3600,
     sessionExpiry: 604800,
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     serverUrl: 'http://localhost:8585',
   },
   GOOGLE_SSO_DEFAULTS: {
@@ -70,6 +101,7 @@ jest.mock('../constants/SSO.constant', () => ({
       'https://accounts.google.com/.well-known/openid-configuration',
   },
   SAML_SSO_DEFAULTS: {
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     authority: 'http://localhost:8585/api/v1/auth/login',
     idp: {
       authorityUrl: 'http://localhost:8585/api/v1/auth/login',
@@ -111,24 +143,24 @@ describe('SSOUtils', () => {
    */
   describe('parseValidationErrors', () => {
     it('should parse single field error correctly', () => {
-      const errors = [{ field: 'clientId', error: 'Required field' }];
+      const errors = [{ field: 'clientId', error: REQUIRED_FIELD }];
       const result = parseValidationErrors(errors);
 
       expect(result).toEqual({
-        clientId: { __errors: ['Required field'] },
+        clientId: { __errors: [REQUIRED_FIELD] },
       });
     });
 
     it('should parse multiple field errors correctly', () => {
       const errors = [
-        { field: 'clientId', error: 'Required field' },
-        { field: 'authority', error: 'Invalid URL' },
+        { field: 'clientId', error: REQUIRED_FIELD },
+        { field: 'authority', error: INVALID_URL },
       ];
       const result = parseValidationErrors(errors);
 
       expect(result).toEqual({
-        clientId: { __errors: ['Required field'] },
-        authority: { __errors: ['Invalid URL'] },
+        clientId: { __errors: [REQUIRED_FIELD] },
+        authority: { __errors: [INVALID_URL] },
       });
     });
 
@@ -215,7 +247,7 @@ describe('SSOUtils', () => {
         } as unknown as ErrorSchema,
       };
 
-      clearFieldError(fieldErrorsRef, 'root/clientId');
+      clearFieldError(fieldErrorsRef, ROOT_CLIENT_ID);
 
       expect(fieldErrorsRef.current).toEqual({});
     });
@@ -232,7 +264,7 @@ describe('SSOUtils', () => {
 
       clearFieldError(
         fieldErrorsRef,
-        'root/authenticationConfiguration/clientId'
+        ROOT_AUTHENTICATION_CONFIGURATION_CLIENT_ID
       );
 
       expect(fieldErrorsRef.current).toEqual({
@@ -269,7 +301,7 @@ describe('SSOUtils', () => {
 
       clearFieldError(
         fieldErrorsRef,
-        'root/authenticationConfiguration/oidcConfiguration/secret'
+        ROOT_AUTHENTICATION_CONFIGURATION_OIDC_CONFIGURATION_SECRET
       );
 
       // Note: The cleanup only removes one level of empty parents (oidcConfiguration),
@@ -305,7 +337,7 @@ describe('SSOUtils', () => {
 
       clearFieldError(
         fieldErrorsRef,
-        'root/authenticationConfiguration/oidcConfiguration/secret'
+        ROOT_AUTHENTICATION_CONFIGURATION_OIDC_CONFIGURATION_SECRET
       );
 
       expect(fieldErrorsRef.current).toEqual({
@@ -338,10 +370,10 @@ describe('SSOUtils', () => {
         ClientType.Public
       );
       expect(result.authenticationConfiguration.authority).toBe(
-        'https://accounts.google.com'
+        HTTPS_ACCOUNTS_GOOGLE_COM
       );
       expect(result.authenticationConfiguration.publicKeyUrls).toEqual([
-        'https://www.googleapis.com/oauth2/v3/certs',
+        HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3,
       ]);
       expect(
         result.authenticationConfiguration.oidcConfiguration
@@ -365,7 +397,7 @@ describe('SSOUtils', () => {
       ).toBeDefined();
       expect(
         result.authenticationConfiguration.oidcConfiguration?.discoveryUri
-      ).toBe('https://accounts.google.com/.well-known/openid-configuration');
+      ).toBe(HTTPS_ACCOUNTS_GOOGLE_COM_WELL_KNOWN);
       expect(
         result.authenticationConfiguration.oidcConfiguration?.tokenValidity
       ).toBe(3600);
@@ -501,10 +533,10 @@ describe('SSOUtils', () => {
 
       expect(result.authorizerConfiguration).toBeDefined();
       expect(result.authorizerConfiguration.className).toBe(
-        'org.openmetadata.service.security.DefaultAuthorizer'
+        ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER
       );
       expect(result.authorizerConfiguration.containerRequestFilter).toBe(
-        'org.openmetadata.service.security.JwtFilter'
+        ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER
       );
       expect(result.authorizerConfiguration.enforcePrincipalDomain).toBe(false);
       expect(result.authorizerConfiguration.enableSecureSocketConnection).toBe(
@@ -530,22 +562,22 @@ describe('SSOUtils', () => {
           provider: 'google',
           providerName: 'Google',
           clientType: ClientType.Public,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3],
           tokenValidationAlgorithm: 'RS256',
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
           enableSelfSignup: true,
           oidcConfiguration: {
             id: 'test-id',
-            secret: 'test-secret',
+            secret: TEST_SECRET,
           },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -567,24 +599,24 @@ describe('SSOUtils', () => {
           provider: 'google',
           providerName: 'Google',
           clientType: ClientType.Confidential,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3],
           tokenValidationAlgorithm: 'RS256',
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
           enableSelfSignup: true,
           oidcConfiguration: {
             id: 'test-id',
-            secret: 'test-secret',
+            secret: TEST_SECRET,
             callbackUrl: 'http://localhost:8585/callback',
             serverUrl: 'http://localhost:8585/callback',
           },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -609,20 +641,20 @@ describe('SSOUtils', () => {
           provider: 'google',
           providerName: 'Google',
           clientType: ClientType.Public,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3],
           tokenValidationAlgorithm: 'RS256',
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
           enableSelfSignup: true,
-          ldapConfiguration: { host: 'ldap.example.com' },
+          ldapConfiguration: { host: LDAP_EXAMPLE_COM },
           samlConfiguration: { debugMode: false },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -647,7 +679,7 @@ describe('SSOUtils', () => {
           providerName: 'SAML',
           clientType: ClientType.Public,
           authority: 'http://localhost:8585/api/v1/auth/login',
-          clientId: 'test-client-id',
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
           publicKeyUrls: [],
           tokenValidationAlgorithm: 'RS256',
@@ -669,8 +701,8 @@ describe('SSOUtils', () => {
           },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -705,7 +737,7 @@ describe('SSOUtils', () => {
           jwtPrincipalClaimsMapping: [],
           enableSelfSignup: true,
           ldapConfiguration: {
-            host: 'ldap.example.com',
+            host: LDAP_EXAMPLE_COM,
             truststoreFormat: 'CustomTrustStore',
             trustStoreConfig: {
               customTrustManagerConfig: {
@@ -718,8 +750,8 @@ describe('SSOUtils', () => {
           },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -748,18 +780,18 @@ describe('SSOUtils', () => {
           provider: 'google',
           providerName: 'Google',
           clientType: ClientType.Public,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3],
           tokenValidationAlgorithm: 'RS256',
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
           enableSelfSignup: true,
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -786,18 +818,18 @@ describe('SSOUtils', () => {
           provider: 'google',
           providerName: 'Google',
           clientType: ClientType.Public,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3],
           tokenValidationAlgorithm: 'RS256',
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
           enableSelfSignup: true,
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: ['admin@example.com'],
           botPrincipals: ['bot@example.com'],
           principalDomain: '',
@@ -818,7 +850,7 @@ describe('SSOUtils', () => {
           providerName: 'SAML',
           clientType: ClientType.Confidential,
           authority: 'http://localhost:8585/api/v1/auth/login',
-          clientId: 'test-client-id',
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
           publicKeyUrls: [],
           tokenValidationAlgorithm: 'RS256',
@@ -828,8 +860,8 @@ describe('SSOUtils', () => {
           samlConfiguration: {},
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -861,8 +893,8 @@ describe('SSOUtils', () => {
           ldapConfiguration: {},
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -883,24 +915,24 @@ describe('SSOUtils', () => {
           provider: 'google',
           providerName: 'Google',
           clientType: ClientType.Confidential,
-          authority: 'https://accounts.google.com',
-          clientId: 'test-client-id',
+          authority: HTTPS_ACCOUNTS_GOOGLE_COM,
+          clientId: TEST_CLIENT_ID,
           callbackUrl: 'http://localhost:8585/callback',
-          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          publicKeyUrls: [HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3],
           tokenValidationAlgorithm: 'RS256',
           jwtPrincipalClaims: ['email'],
           jwtPrincipalClaimsMapping: [],
           enableSelfSignup: true,
           oidcConfiguration: {
             id: 'test-id',
-            secret: 'test-secret',
+            secret: TEST_SECRET,
             callbackUrl: 'http://localhost:8585/callback',
             serverUrl: 'http://localhost:8585/callback/',
           },
         },
         authorizerConfiguration: {
-          className: 'org.openmetadata.service.security.DefaultAuthorizer',
-          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          className: ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER,
+          containerRequestFilter: ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER,
           adminPrincipals: [],
           principalDomain: '',
           enforcePrincipalDomain: false,
@@ -924,11 +956,11 @@ describe('SSOUtils', () => {
     it('should return empty array for identical objects', () => {
       const oldData = {
         clientId: 'test-id',
-        authority: 'https://accounts.google.com',
+        authority: HTTPS_ACCOUNTS_GOOGLE_COM,
       };
       const newData = {
         clientId: 'test-id',
-        authority: 'https://accounts.google.com',
+        authority: HTTPS_ACCOUNTS_GOOGLE_COM,
       };
 
       const result = findChangedFields(oldData, newData);
@@ -939,16 +971,16 @@ describe('SSOUtils', () => {
     it('should detect single field change', () => {
       const oldData = {
         clientId: 'old-id',
-        authority: 'https://accounts.google.com',
+        authority: HTTPS_ACCOUNTS_GOOGLE_COM,
       };
       const newData = {
         clientId: 'new-id',
-        authority: 'https://accounts.google.com',
+        authority: HTTPS_ACCOUNTS_GOOGLE_COM,
       };
 
       const result = findChangedFields(oldData, newData);
 
-      expect(result).toEqual(['root/clientId']);
+      expect(result).toEqual([ROOT_CLIENT_ID]);
     });
 
     it('should detect multiple field changes', () => {
@@ -963,7 +995,7 @@ describe('SSOUtils', () => {
 
       const result = findChangedFields(oldData, newData);
 
-      expect(result).toContain('root/clientId');
+      expect(result).toContain(ROOT_CLIENT_ID);
       expect(result).toContain('root/authority');
       expect(result).toHaveLength(2);
     });
@@ -982,7 +1014,7 @@ describe('SSOUtils', () => {
 
       const result = findChangedFields(oldData, newData);
 
-      expect(result).toEqual(['root/authenticationConfiguration/clientId']);
+      expect(result).toEqual([ROOT_AUTHENTICATION_CONFIGURATION_CLIENT_ID]);
     });
 
     it('should detect array value changes', () => {
@@ -1005,12 +1037,12 @@ describe('SSOUtils', () => {
       };
       const newData = {
         clientId: 'new-id',
-        authority: 'https://accounts.google.com',
+        authority: HTTPS_ACCOUNTS_GOOGLE_COM,
       };
 
       const result = findChangedFields(oldData, newData);
 
-      expect(result).toContain('root/clientId');
+      expect(result).toContain(ROOT_CLIENT_ID);
       expect(result).toContain('root/authority');
     });
 
@@ -1045,7 +1077,7 @@ describe('SSOUtils', () => {
       const result = findChangedFields(oldData, newData);
 
       expect(result).toEqual([
-        'root/authenticationConfiguration/oidcConfiguration/secret',
+        ROOT_AUTHENTICATION_CONFIGURATION_OIDC_CONFIGURATION_SECRET,
       ]);
     });
   });
@@ -1204,7 +1236,7 @@ describe('SSOUtils', () => {
         authenticationConfiguration: {
           provider: AuthProvider.LDAP,
           ldapConfiguration: {
-            host: 'ldap.example.com',
+            host: LDAP_EXAMPLE_COM,
             port: 389,
             // Missing isFullDn and sslEnabled
           },
@@ -1227,7 +1259,7 @@ describe('SSOUtils', () => {
         authenticationConfiguration: {
           provider: AuthProvider.LDAP,
           ldapConfiguration: {
-            host: 'ldap.example.com',
+            host: LDAP_EXAMPLE_COM,
             port: 389,
             truststoreFormat: 'CustomTrust',
             trustStoreConfig: {
@@ -1253,7 +1285,7 @@ describe('SSOUtils', () => {
         authenticationConfiguration: {
           provider: AuthProvider.LDAP,
           ldapConfiguration: {
-            host: 'ldap.example.com',
+            host: LDAP_EXAMPLE_COM,
             port: 389,
             truststoreFormat: 'HostName',
             trustStoreConfig: {
@@ -1278,7 +1310,7 @@ describe('SSOUtils', () => {
         authenticationConfiguration: {
           provider: AuthProvider.LDAP,
           ldapConfiguration: {
-            host: 'ldap.example.com',
+            host: LDAP_EXAMPLE_COM,
             port: 389,
             truststoreFormat: 'JVMDefault',
             trustStoreConfig: {
@@ -1303,7 +1335,7 @@ describe('SSOUtils', () => {
         authenticationConfiguration: {
           provider: AuthProvider.LDAP,
           ldapConfiguration: {
-            host: 'ldap.example.com',
+            host: LDAP_EXAMPLE_COM,
             port: 389,
             truststoreFormat: 'TrustAll',
             trustStoreConfig: {
@@ -1356,7 +1388,7 @@ describe('SSOUtils', () => {
     it('should populate IDP authorityUrl from root authority', () => {
       const authConfig = {
         provider: AuthProvider.Saml,
-        authority: 'https://idp.example.com/auth',
+        authority: HTTPS_IDP_EXAMPLE_COM_AUTH,
         samlConfiguration: {
           idp: {
             authorityUrl: '',
@@ -1367,7 +1399,7 @@ describe('SSOUtils', () => {
       populateSamlIdpAuthority(authConfig);
 
       expect(authConfig.samlConfiguration?.idp?.authorityUrl).toBe(
-        'https://idp.example.com/auth'
+        HTTPS_IDP_EXAMPLE_COM_AUTH
       );
     });
 
@@ -1391,7 +1423,7 @@ describe('SSOUtils', () => {
     it('should not override existing IDP authorityUrl', () => {
       const authConfig = {
         provider: AuthProvider.Saml,
-        authority: 'https://idp.example.com/auth',
+        authority: HTTPS_IDP_EXAMPLE_COM_AUTH,
         samlConfiguration: {
           idp: {
             authorityUrl: 'https://existing.example.com/auth',
@@ -1402,14 +1434,14 @@ describe('SSOUtils', () => {
       populateSamlIdpAuthority(authConfig);
 
       expect(authConfig.samlConfiguration?.idp?.authorityUrl).toBe(
-        'https://idp.example.com/auth'
+        HTTPS_IDP_EXAMPLE_COM_AUTH
       );
     });
 
-    it('should handle missing samlConfiguration gracefully', () => {
+    it(SHOULD_HANDLE_MISSING_SAML_CONFIGURATION_GRACEFULLY, () => {
       const authConfig = {
         provider: AuthProvider.Saml,
-        authority: 'https://idp.example.com/auth',
+        authority: HTTPS_IDP_EXAMPLE_COM_AUTH,
       } as unknown as Parameters<typeof populateSamlIdpAuthority>[0];
 
       expect(() => populateSamlIdpAuthority(authConfig)).not.toThrow();
@@ -1418,7 +1450,7 @@ describe('SSOUtils', () => {
     it('should handle missing idp in samlConfiguration gracefully', () => {
       const authConfig = {
         provider: AuthProvider.Saml,
-        authority: 'https://idp.example.com/auth',
+        authority: HTTPS_IDP_EXAMPLE_COM_AUTH,
         samlConfiguration: {},
       } as unknown as Parameters<typeof populateSamlIdpAuthority>[0];
 
@@ -1434,7 +1466,7 @@ describe('SSOUtils', () => {
     it('should populate SP callback and acs from root callbackUrl', () => {
       const authConfig = {
         provider: AuthProvider.Saml,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         samlConfiguration: {
           sp: {
             callback: '',
@@ -1446,10 +1478,10 @@ describe('SSOUtils', () => {
       populateSamlSpCallback(authConfig);
 
       expect(authConfig.samlConfiguration?.sp?.callback).toBe(
-        'https://app.example.com/callback'
+        HTTPS_APP_EXAMPLE_COM_CALLBACK
       );
       expect(authConfig.samlConfiguration?.sp?.acs).toBe(
-        'https://app.example.com/callback'
+        HTTPS_APP_EXAMPLE_COM_CALLBACK
       );
     });
 
@@ -1470,10 +1502,10 @@ describe('SSOUtils', () => {
       );
     });
 
-    it('should handle missing samlConfiguration gracefully', () => {
+    it(SHOULD_HANDLE_MISSING_SAML_CONFIGURATION_GRACEFULLY, () => {
       const authConfig = {
         provider: AuthProvider.Saml,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof populateSamlSpCallback>[0];
 
       expect(() => populateSamlSpCallback(authConfig)).not.toThrow();
@@ -1482,7 +1514,7 @@ describe('SSOUtils', () => {
     it('should handle missing sp in samlConfiguration gracefully', () => {
       const authConfig = {
         provider: AuthProvider.Saml,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         samlConfiguration: {},
       } as unknown as Parameters<typeof populateSamlSpCallback>[0];
 
@@ -1499,8 +1531,8 @@ describe('SSOUtils', () => {
       const configData: FormData = {
         authenticationConfiguration: {
           provider: AuthProvider.Saml,
-          authority: 'https://idp.example.com/auth',
-          callbackUrl: 'https://app.example.com/callback',
+          authority: HTTPS_IDP_EXAMPLE_COM_AUTH,
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
           samlConfiguration: {
             idp: {
               authorityUrl: '',
@@ -1525,16 +1557,16 @@ describe('SSOUtils', () => {
         }
       ).samlConfiguration;
 
-      expect(samlConfig.idp.authorityUrl).toBe('https://idp.example.com/auth');
-      expect(samlConfig.sp.callback).toBe('https://app.example.com/callback');
-      expect(samlConfig.sp.acs).toBe('https://app.example.com/callback');
+      expect(samlConfig.idp.authorityUrl).toBe(HTTPS_IDP_EXAMPLE_COM_AUTH);
+      expect(samlConfig.sp.callback).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
+      expect(samlConfig.sp.acs).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
     });
 
-    it('should handle missing samlConfiguration gracefully', () => {
+    it(SHOULD_HANDLE_MISSING_SAML_CONFIGURATION_GRACEFULLY, () => {
       const configData: FormData = {
         authenticationConfiguration: {
           provider: AuthProvider.Saml,
-          authority: 'https://idp.example.com/auth',
+          authority: HTTPS_IDP_EXAMPLE_COM_AUTH,
         } as unknown,
         authorizerConfiguration: {} as unknown,
       } as FormData;
@@ -1546,7 +1578,7 @@ describe('SSOUtils', () => {
       const configData: FormData = {
         authenticationConfiguration: {
           provider: AuthProvider.Saml,
-          authority: 'https://idp.example.com/auth',
+          authority: HTTPS_IDP_EXAMPLE_COM_AUTH,
           samlConfiguration: {
             idp: {
               authorityUrl: '',
@@ -1564,14 +1596,14 @@ describe('SSOUtils', () => {
         }
       ).samlConfiguration;
 
-      expect(samlConfig.idp.authorityUrl).toBe('https://idp.example.com/auth');
+      expect(samlConfig.idp.authorityUrl).toBe(HTTPS_IDP_EXAMPLE_COM_AUTH);
     });
 
     it('should handle partial samlConfiguration (only SP)', () => {
       const configData: FormData = {
         authenticationConfiguration: {
           provider: AuthProvider.Saml,
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
           samlConfiguration: {
             sp: {
               callback: '',
@@ -1590,15 +1622,15 @@ describe('SSOUtils', () => {
         }
       ).samlConfiguration;
 
-      expect(samlConfig.sp.callback).toBe('https://app.example.com/callback');
-      expect(samlConfig.sp.acs).toBe('https://app.example.com/callback');
+      expect(samlConfig.sp.callback).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
+      expect(samlConfig.sp.acs).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
     });
 
     it('should populate default IDP authorityUrl when authority is missing', () => {
       const configData: FormData = {
         authenticationConfiguration: {
           provider: AuthProvider.Saml,
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
           samlConfiguration: {
             idp: {
               authorityUrl: '',
@@ -1695,10 +1727,10 @@ describe('SSOUtils', () => {
         ClientType.Confidential
       );
       expect(result.authenticationConfiguration.authority).toBe(
-        'https://accounts.google.com'
+        HTTPS_ACCOUNTS_GOOGLE_COM
       );
       expect(result.authenticationConfiguration.publicKeyUrls).toEqual([
-        'https://www.googleapis.com/oauth2/v3/certs',
+        HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3,
       ]);
       expect(
         result.authenticationConfiguration.oidcConfiguration
@@ -1806,10 +1838,10 @@ describe('SSOUtils', () => {
       const result = createFreshFormData(AuthProvider.Google);
 
       expect(result.authorizerConfiguration.className).toBe(
-        'org.openmetadata.service.security.DefaultAuthorizer'
+        ORG_OPENMETADATA_SERVICE_SECURITY_DEFAULT_AUTHORIZER
       );
       expect(result.authorizerConfiguration.containerRequestFilter).toBe(
-        'org.openmetadata.service.security.JwtFilter'
+        ORG_OPENMETADATA_SERVICE_SECURITY_JWT_FILTER
       );
       expect(result.authorizerConfiguration.enforcePrincipalDomain).toBe(false);
       expect(result.authorizerConfiguration.enableSecureSocketConnection).toBe(
@@ -1995,13 +2027,13 @@ describe('SSOUtils', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
         oidcConfiguration: {
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         },
       } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
 
       handleConfidentialToPublicSwitch(authConfig);
 
-      expect(authConfig.callbackUrl).toBe('https://app.example.com/callback');
+      expect(authConfig.callbackUrl).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
     });
 
     it('should use default callback URL if OIDC callbackUrl is missing', () => {
@@ -2018,7 +2050,7 @@ describe('SSOUtils', () => {
     it('should not override existing root callbackUrl', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
-        callbackUrl: 'https://existing.example.com/callback',
+        callbackUrl: HTTPS_EXISTING_EXAMPLE_COM_CALLBACK,
         oidcConfiguration: {
           callbackUrl: 'https://oidc.example.com/callback',
         },
@@ -2026,24 +2058,22 @@ describe('SSOUtils', () => {
 
       handleConfidentialToPublicSwitch(authConfig);
 
-      expect(authConfig.callbackUrl).toBe(
-        'https://existing.example.com/callback'
-      );
+      expect(authConfig.callbackUrl).toBe(HTTPS_EXISTING_EXAMPLE_COM_CALLBACK);
     });
 
     it('should add Google-specific defaults for Google provider', () => {
       const authConfig = {
         provider: AuthProvider.Google,
         oidcConfiguration: {
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         },
       } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
 
       handleConfidentialToPublicSwitch(authConfig);
 
-      expect(authConfig.authority).toBe('https://accounts.google.com');
+      expect(authConfig.authority).toBe(HTTPS_ACCOUNTS_GOOGLE_COM);
       expect(authConfig.publicKeyUrls).toEqual([
-        'https://www.googleapis.com/oauth2/v3/certs',
+        HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3,
       ]);
     });
 
@@ -2051,7 +2081,7 @@ describe('SSOUtils', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
         oidcConfiguration: {
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         },
       } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
 
@@ -2070,7 +2100,7 @@ describe('SSOUtils', () => {
     it('should initialize OIDC configuration if missing', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
 
       handlePublicToConfidentialSwitch(authConfig);
@@ -2081,14 +2111,14 @@ describe('SSOUtils', () => {
     it('should move callback URL from root to OIDC config', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
 
       handlePublicToConfidentialSwitch(authConfig);
 
       expect(
         (authConfig.oidcConfiguration as Record<string, unknown>)?.callbackUrl
-      ).toBe('https://app.example.com/callback');
+      ).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
     });
 
     it('should not override existing OIDC callbackUrl', () => {
@@ -2096,7 +2126,7 @@ describe('SSOUtils', () => {
         provider: AuthProvider.Azure,
         callbackUrl: 'https://root.example.com/callback',
         oidcConfiguration: {
-          callbackUrl: 'https://existing.example.com/callback',
+          callbackUrl: HTTPS_EXISTING_EXAMPLE_COM_CALLBACK,
         },
       } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
 
@@ -2104,7 +2134,7 @@ describe('SSOUtils', () => {
 
       expect(
         (authConfig.oidcConfiguration as Record<string, unknown>)?.callbackUrl
-      ).toBe('https://existing.example.com/callback');
+      ).toBe(HTTPS_EXISTING_EXAMPLE_COM_CALLBACK);
     });
 
     it('should use default callback URL if root callbackUrl is missing', () => {
@@ -2122,7 +2152,7 @@ describe('SSOUtils', () => {
     it('should add Google-specific OIDC defaults for Google provider', () => {
       const authConfig = {
         provider: AuthProvider.Google,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
 
       handlePublicToConfidentialSwitch(authConfig);
@@ -2134,7 +2164,7 @@ describe('SSOUtils', () => {
 
       expect(oidcConfig.type).toBe(AuthProvider.Google);
       expect(oidcConfig.discoveryUri).toBe(
-        'https://accounts.google.com/.well-known/openid-configuration'
+        HTTPS_ACCOUNTS_GOOGLE_COM_WELL_KNOWN
       );
       expect(oidcConfig.tokenValidity).toBe(3600);
       expect(oidcConfig.sessionExpiry).toBe(604800);
@@ -2151,7 +2181,7 @@ describe('SSOUtils', () => {
     it('should not override existing Google OIDC field values', () => {
       const authConfig = {
         provider: AuthProvider.Google,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         oidcConfiguration: {
           scope: 'custom scope',
           useNonce: true,
@@ -2182,7 +2212,7 @@ describe('SSOUtils', () => {
     it('should not add Google defaults for non-Google providers', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
 
       handlePublicToConfidentialSwitch(authConfig);
@@ -2208,7 +2238,7 @@ describe('SSOUtils', () => {
         provider: AuthProvider.Azure,
         clientType: ClientType.Public,
         oidcConfiguration: {
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         },
       } as unknown as Parameters<typeof handleClientTypeChange>[0];
 
@@ -2218,14 +2248,14 @@ describe('SSOUtils', () => {
         ClientType.Public
       );
 
-      expect(authConfig?.callbackUrl).toBe('https://app.example.com/callback');
+      expect(authConfig?.callbackUrl).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
     });
 
     it('should handle Public to Confidential transition', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
         clientType: ClientType.Confidential,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof handleClientTypeChange>[0];
 
       handleClientTypeChange(
@@ -2237,7 +2267,7 @@ describe('SSOUtils', () => {
       expect(authConfig?.oidcConfiguration).toBeDefined();
       expect(
         (authConfig?.oidcConfiguration as Record<string, unknown>)?.callbackUrl
-      ).toBe('https://app.example.com/callback');
+      ).toBe(HTTPS_APP_EXAMPLE_COM_CALLBACK);
     });
 
     it('should do nothing if authConfig is undefined', () => {
@@ -2274,7 +2304,7 @@ describe('SSOUtils', () => {
         provider: AuthProvider.Google,
         clientType: ClientType.Public,
         oidcConfiguration: {
-          callbackUrl: 'https://app.example.com/callback',
+          callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
         },
       } as unknown as Parameters<typeof handleClientTypeChange>[0];
 
@@ -2284,9 +2314,9 @@ describe('SSOUtils', () => {
         ClientType.Public
       );
 
-      expect(authConfig?.authority).toBe('https://accounts.google.com');
+      expect(authConfig?.authority).toBe(HTTPS_ACCOUNTS_GOOGLE_COM);
       expect(authConfig?.publicKeyUrls).toEqual([
-        'https://www.googleapis.com/oauth2/v3/certs',
+        HTTPS_WWW_GOOGLEAPIS_COM_OAUTH2_V3,
       ]);
     });
 
@@ -2294,7 +2324,7 @@ describe('SSOUtils', () => {
       const authConfig = {
         provider: AuthProvider.Google,
         clientType: ClientType.Confidential,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof handleClientTypeChange>[0];
 
       handleClientTypeChange(
@@ -2310,7 +2340,7 @@ describe('SSOUtils', () => {
 
       expect(oidcConfig.type).toBe(AuthProvider.Google);
       expect(oidcConfig.discoveryUri).toBe(
-        'https://accounts.google.com/.well-known/openid-configuration'
+        HTTPS_ACCOUNTS_GOOGLE_COM_WELL_KNOWN
       );
       expect(oidcConfig.tokenValidity).toBe(3600);
     });
@@ -2319,7 +2349,7 @@ describe('SSOUtils', () => {
       const authConfig = {
         provider: AuthProvider.Azure,
         clientType: ClientType.Confidential,
-        callbackUrl: 'https://app.example.com/callback',
+        callbackUrl: HTTPS_APP_EXAMPLE_COM_CALLBACK,
       } as unknown as Parameters<typeof handleClientTypeChange>[0];
 
       handleClientTypeChange(authConfig, undefined, ClientType.Confidential);
@@ -2420,7 +2450,7 @@ describe('SSOUtils', () => {
   describe('extractFieldName', () => {
     it('should extract simple field name from path', () => {
       expect(
-        extractFieldName('root/authenticationConfiguration/clientId')
+        extractFieldName(ROOT_AUTHENTICATION_CONFIGURATION_CLIENT_ID)
       ).toBe('clientId');
     });
 
@@ -2522,7 +2552,7 @@ describe('SSOUtils', () => {
     beforeEach(() => {
       setActiveFieldMock = jest.fn();
       mockElement = document.createElement('div');
-      mockElement.id = 'root/authenticationConfiguration/clientId';
+      mockElement.id = ROOT_AUTHENTICATION_CONFIGURATION_CLIENT_ID;
       document.body.appendChild(mockElement);
     });
 
@@ -2704,7 +2734,7 @@ describe('SSOUtils', () => {
         response: {
           data: {
             status: 'failed',
-            errors: [{ field: 'clientId', error: 'Required field' }],
+            errors: [{ field: 'clientId', error: REQUIRED_FIELD }],
           },
         },
       };
@@ -2788,8 +2818,8 @@ describe('SSOUtils', () => {
           data: {
             status: 'failed',
             errors: [
-              { field: 'clientId', error: 'Required field' },
-              { field: 'authority', error: 'Invalid URL' },
+              { field: 'clientId', error: REQUIRED_FIELD },
+              { field: 'authority', error: INVALID_URL },
               { field: 'callbackUrl', error: 'Invalid format' },
             ],
           },
@@ -3110,7 +3140,7 @@ describe('parseSamlMetadataXml', () => {
   </IDPSSODescriptor>
 </EntityDescriptor>`;
 
-    expect(() => parseSamlMetadataXml(noEntityId)).toThrow('missing entityID');
+    expect(() => parseSamlMetadataXml(noEntityId)).toThrow(MISSING_ENTITY_ID);
   });
 
   it('should throw when SingleSignOnService is missing', () => {
@@ -3120,7 +3150,9 @@ describe('parseSamlMetadataXml', () => {
   </IDPSSODescriptor>
 </EntityDescriptor>`;
 
-    expect(() => parseSamlMetadataXml(noSso)).toThrow('no SingleSignOnService');
+    expect(() => parseSamlMetadataXml(noSso)).toThrow(
+      NO_SINGLE_SIGN_ON_SERVICE
+    );
   });
 
   it('should pick KeyDescriptor with use="signing" over others', () => {
@@ -3232,7 +3264,7 @@ describe('parseSamlMetadataXml', () => {
   </channel>
 </rss>`;
 
-    expect(() => parseSamlMetadataXml(rssFeed)).toThrow('missing entityID');
+    expect(() => parseSamlMetadataXml(rssFeed)).toThrow(MISSING_ENTITY_ID);
   });
 
   it('should throw on HTML file renamed to XML', () => {
@@ -3242,7 +3274,7 @@ describe('parseSamlMetadataXml', () => {
   <body><p>This is HTML</p></body>
 </html>`;
 
-    expect(() => parseSamlMetadataXml(html)).toThrow('missing entityID');
+    expect(() => parseSamlMetadataXml(html)).toThrow(MISSING_ENTITY_ID);
   });
 
   it('should throw when IDPSSODescriptor is missing entirely', () => {
@@ -3251,7 +3283,7 @@ describe('parseSamlMetadataXml', () => {
 </EntityDescriptor>`;
 
     expect(() => parseSamlMetadataXml(noIdpDescriptor)).toThrow(
-      'no SingleSignOnService'
+      NO_SINGLE_SIGN_ON_SERVICE
     );
   });
 
@@ -3269,7 +3301,7 @@ describe('parseSamlMetadataXml', () => {
 </EntityDescriptor>`;
 
     expect(() => parseSamlMetadataXml(emptyLocationMetadata)).toThrow(
-      'no SingleSignOnService'
+      NO_SINGLE_SIGN_ON_SERVICE
     );
   });
 
@@ -3319,7 +3351,7 @@ describe('parseSamlMetadataXml', () => {
 </EntityDescriptor>`;
 
     expect(() => parseSamlMetadataXml(noLocationAttr)).toThrow(
-      'no SingleSignOnService'
+      NO_SINGLE_SIGN_ON_SERVICE
     );
   });
 
@@ -3338,7 +3370,7 @@ describe('parseSamlMetadataXml', () => {
 </EntityDescriptor>`;
 
     expect(() => parseSamlMetadataXml(unsupportedBindingsMetadata)).toThrow(
-      'no SingleSignOnService'
+      NO_SINGLE_SIGN_ON_SERVICE
     );
   });
 });

@@ -14,6 +14,8 @@
 import { OktaCustomStorage } from './OktaCustomStorage';
 import { swTokenStorage } from './SwTokenStorage';
 
+const TEST_TOKEN = 'test-token';
+
 jest.mock('./SwTokenStorage', () => ({
   swTokenStorage: {
     getItem: jest.fn(),
@@ -73,17 +75,17 @@ describe('OktaCustomStorage', () => {
     });
 
     it('should store item in memory cache', async () => {
-      await storage.setItem('idToken', 'test-token');
+      await storage.setItem('idToken', TEST_TOKEN);
 
-      expect(storage.getItem('idToken')).toBe('test-token');
+      expect(storage.getItem('idToken')).toBe(TEST_TOKEN);
     });
 
     it('should persist item to IndexedDB', async () => {
-      await storage.setItem('idToken', 'test-token');
+      await storage.setItem('idToken', TEST_TOKEN);
 
       expect(mockSetItem).toHaveBeenCalledWith(
         'okta_tokens',
-        JSON.stringify({ idToken: 'test-token' })
+        JSON.stringify({ idToken: TEST_TOKEN })
       );
     });
 

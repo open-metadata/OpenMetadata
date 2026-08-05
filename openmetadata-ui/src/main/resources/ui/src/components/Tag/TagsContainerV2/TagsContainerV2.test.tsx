@@ -23,6 +23,9 @@ import {
 } from '../../../generated/type/tagLabel';
 import TagsContainerV2 from './TagsContainerV2';
 
+const PERSONAL_DATA = 'Personal data';
+const MOCK_TAG_SELECT_FORM = 'mock-tag-select-form';
+
 let capturedOnSubmit:
   | ((data: { value: string; data?: Partial<EntityTags> }[]) => Promise<void>)
   | undefined;
@@ -31,7 +34,7 @@ jest.mock('../TagsSelectForm/TagsSelectForm.component', () => {
   return jest.fn().mockImplementation((props) => {
     capturedOnSubmit = props.onSubmit;
 
-    return <div data-testid="mock-tag-select-form">TagSelectForm</div>;
+    return <div data-testid={MOCK_TAG_SELECT_FORM}>TagSelectForm</div>;
   });
 });
 
@@ -89,7 +92,7 @@ const personalDataTag: EntityTags = {
   state: State.Confirmed,
   appliedBy: 'admin',
   appliedAt: new Date(APPLIED_AT_ISO),
-  description: 'Personal data',
+  description: PERSONAL_DATA,
 };
 
 const piiSensitiveTag: EntityTags = {
@@ -157,7 +160,7 @@ const renderTagsContainerInsideClickableParent = (props: {
 const enterEditMode = async () => {
   const editButton = screen.getByTestId('edit-button');
   fireEvent.click(editButton);
-  await screen.findByTestId('mock-tag-select-form');
+  await screen.findByTestId(MOCK_TAG_SELECT_FORM);
 };
 
 describe('TagsContainerV2 handleSave', () => {
@@ -201,7 +204,7 @@ describe('TagsContainerV2 handleSave', () => {
         state: State.Confirmed,
         appliedBy: 'admin',
         appliedAt: personalDataTag.appliedAt,
-        description: 'Personal data',
+        description: PERSONAL_DATA,
       })
     );
   });
@@ -289,7 +292,7 @@ describe('TagsContainerV2 handleSave', () => {
       expect.objectContaining({
         appliedBy: 'admin',
         appliedAt: personalDataTag.appliedAt,
-        description: 'Personal data',
+        description: PERSONAL_DATA,
       })
     );
     expect(added).toEqual(
@@ -348,7 +351,7 @@ describe('TagsContainerV2 click propagation', () => {
 
     await enterEditMode();
 
-    expect(screen.getByTestId('mock-tag-select-form')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_TAG_SELECT_FORM)).toBeInTheDocument();
     expect(onParentClick).not.toHaveBeenCalled();
   });
 
@@ -405,7 +408,7 @@ describe('TagsContainerV2 click propagation', () => {
 
     await enterEditMode();
 
-    expect(screen.getByTestId('mock-tag-select-form')).toBeInTheDocument();
+    expect(screen.getByTestId(MOCK_TAG_SELECT_FORM)).toBeInTheDocument();
     expect(onParentClick).not.toHaveBeenCalled();
   });
 });

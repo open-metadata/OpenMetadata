@@ -22,6 +22,9 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import TestCaseIncidentManagerStatus from './TestCaseIncidentManagerStatus.component';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
+const INLINE_HAS_PERMISSION = 'inline-has-permission';
+const EDIT_RESOLUTION_ICON = 'edit-resolution-icon';
+
 const mockProps: TestCaseStatusIncidentManagerProps = {
   data: {
     id: 'a5621b4b-362f-4635-9c88-ac883449662e',
@@ -80,7 +83,7 @@ jest.mock('./InlineTestCaseIncidentStatus.component', () => ({
         <span data-testid="inline-status-type">
           {data.testCaseResolutionStatusType}
         </span>
-        <span data-testid="inline-has-permission">
+        <span data-testid={INLINE_HAS_PERMISSION}>
           {hasEditPermission.toString()}
         </span>
         <button data-testid="inline-submit-btn" onClick={() => onSubmit(data)}>
@@ -95,9 +98,7 @@ describe('TestCaseIncidentManagerStatus', () => {
     render(<TestCaseIncidentManagerStatus {...mockProps} />);
 
     expect(await screen.findByText('label.new')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('edit-resolution-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_RESOLUTION_ICON)).toBeInTheDocument();
   });
 
   it('Should not show edit icon if edit permission is false', async () => {
@@ -107,17 +108,15 @@ describe('TestCaseIncidentManagerStatus', () => {
     );
 
     expect(
-      queryByTestId(container, 'edit-resolution-icon')
+      queryByTestId(container, EDIT_RESOLUTION_ICON)
     ).not.toBeInTheDocument();
   });
 
   it('Should render modal onClick of edit icon', async () => {
     render(<TestCaseIncidentManagerStatus {...mockProps} />);
-    const editIcon = await screen.findByTestId('edit-resolution-icon');
+    const editIcon = await screen.findByTestId(EDIT_RESOLUTION_ICON);
 
-    expect(
-      await screen.findByTestId('edit-resolution-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_RESOLUTION_ICON)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(editIcon);
@@ -128,11 +127,9 @@ describe('TestCaseIncidentManagerStatus', () => {
 
   it('Should call onSubmit function onClick of submit', async () => {
     render(<TestCaseIncidentManagerStatus {...mockProps} />);
-    const editIcon = await screen.findByTestId('edit-resolution-icon');
+    const editIcon = await screen.findByTestId(EDIT_RESOLUTION_ICON);
 
-    expect(
-      await screen.findByTestId('edit-resolution-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_RESOLUTION_ICON)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(editIcon);
@@ -152,11 +149,9 @@ describe('TestCaseIncidentManagerStatus', () => {
     const { container } = render(
       <TestCaseIncidentManagerStatus {...mockProps} />
     );
-    const editIcon = await screen.findByTestId('edit-resolution-icon');
+    const editIcon = await screen.findByTestId(EDIT_RESOLUTION_ICON);
 
-    expect(
-      await screen.findByTestId('edit-resolution-icon')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId(EDIT_RESOLUTION_ICON)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(editIcon);
@@ -193,7 +188,7 @@ describe('TestCaseIncidentManagerStatus', () => {
     it('should pass hasEditPermission as true when permission exists', () => {
       render(<TestCaseIncidentManagerStatus {...mockProps} isInline />);
 
-      expect(screen.getByTestId('inline-has-permission')).toHaveTextContent(
+      expect(screen.getByTestId(INLINE_HAS_PERMISSION)).toHaveTextContent(
         'true'
       );
     });
@@ -202,7 +197,7 @@ describe('TestCaseIncidentManagerStatus', () => {
       (checkPermission as jest.Mock).mockReturnValueOnce(false);
       render(<TestCaseIncidentManagerStatus {...mockProps} isInline />);
 
-      expect(screen.getByTestId('inline-has-permission')).toHaveTextContent(
+      expect(screen.getByTestId(INLINE_HAS_PERMISSION)).toHaveTextContent(
         'false'
       );
     });
@@ -224,7 +219,7 @@ describe('TestCaseIncidentManagerStatus', () => {
       );
 
       expect(
-        queryByTestId(container, 'edit-resolution-icon')
+        queryByTestId(container, EDIT_RESOLUTION_ICON)
       ).not.toBeInTheDocument();
       expect(
         queryByText(container, 'TestCaseStatusModal')
@@ -240,7 +235,7 @@ describe('TestCaseIncidentManagerStatus', () => {
         />
       );
 
-      expect(screen.getByTestId('inline-has-permission')).toHaveTextContent(
+      expect(screen.getByTestId(INLINE_HAS_PERMISSION)).toHaveTextContent(
         'false'
       );
     });

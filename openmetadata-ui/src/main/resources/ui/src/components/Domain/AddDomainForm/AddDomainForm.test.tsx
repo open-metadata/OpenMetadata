@@ -58,6 +58,12 @@ import {
 import AddDomainFormExtensionFields from './AddDomainFormExtensionFields';
 import { getExtensionFormKey } from './AddDomainFormExtensionFields.utils';
 
+const CANCEL_DOMAIN = 'cancel-domain' as const;
+const SAVE_DOMAIN = 'save-domain' as const;
+const INTAKE_FORM_ID = 'intake-form-id' as const;
+const MARKETING_DOMAIN = 'Marketing domain' as const;
+const MARKETING_SALES = 'Marketing.Sales' as const;
+
 // Mock i18next
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -97,6 +103,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     'data-testid': testId,
   }: {
     label?: ReactNode;
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     'data-testid'?: string;
   }) => <div data-testid={testId}>{label}</div>;
 
@@ -161,6 +168,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       rules,
       children,
     }: {
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       control: import('react-hook-form').Control<TFieldValues>;
       name: import('react-hook-form').FieldPath<TFieldValues>;
       rules?: Omit<
@@ -347,7 +355,7 @@ describe('AddDomainForm', () => {
   it('should call onCancel when cancel button is clicked', () => {
     render(<AddDomainFormHarness />);
 
-    const cancelButton = screen.getByTestId('cancel-domain');
+    const cancelButton = screen.getByTestId(CANCEL_DOMAIN);
     fireEvent.click(cancelButton);
 
     expect(mockOnCancel).toHaveBeenCalledTimes(1);
@@ -356,7 +364,7 @@ describe('AddDomainForm', () => {
   it('should render loading state on save button when loading is true', () => {
     render(<AddDomainFormHarness loading />);
 
-    const saveButton = screen.getByTestId('save-domain');
+    const saveButton = screen.getByTestId(SAVE_DOMAIN);
 
     expect(saveButton).toHaveAttribute('disabled');
   });
@@ -380,7 +388,7 @@ describe('AddDomainForm', () => {
   it('should handle form submission', () => {
     render(<AddDomainFormHarness />);
 
-    const saveButton = screen.getByTestId('save-domain');
+    const saveButton = screen.getByTestId(SAVE_DOMAIN);
     fireEvent.click(saveButton);
 
     expect(saveButton).toBeInTheDocument();
@@ -398,7 +406,7 @@ describe('AddDomainForm', () => {
     };
     mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
       entityType: TargetEntityType.Domain,
-      id: 'intake-form-id',
+      id: INTAKE_FORM_ID,
       name: 'domainIntake',
       requiredFields: [
         {
@@ -490,7 +498,7 @@ describe('AddDomainForm', () => {
     ];
     mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
       entityType: TargetEntityType.DataProduct,
-      id: 'intake-form-id',
+      id: INTAKE_FORM_ID,
       name: 'dataProductIntake',
       formFields,
     } as IntakeForm);
@@ -539,7 +547,7 @@ describe('AddDomainForm', () => {
 
     mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
       entityType: TargetEntityType.DataProduct,
-      id: 'intake-form-id',
+      id: INTAKE_FORM_ID,
       name: 'dataProductIntake',
       requiredFields,
     } as IntakeForm);
@@ -592,8 +600,8 @@ describe('AddDomainForm', () => {
   it('should have correct button labels', () => {
     render(<AddDomainFormHarness />);
 
-    const cancelButton = screen.getByTestId('cancel-domain');
-    const saveButton = screen.getByTestId('save-domain');
+    const cancelButton = screen.getByTestId(CANCEL_DOMAIN);
+    const saveButton = screen.getByTestId(SAVE_DOMAIN);
 
     expect(cancelButton).toHaveTextContent('label.cancel');
     expect(saveButton).toHaveTextContent('label.save');
@@ -602,7 +610,7 @@ describe('AddDomainForm', () => {
   it('should disable save button during loading', () => {
     render(<AddDomainFormHarness loading />);
 
-    const saveButton = screen.getByTestId('save-domain');
+    const saveButton = screen.getByTestId(SAVE_DOMAIN);
 
     expect(saveButton).toBeDisabled();
   });
@@ -610,7 +618,7 @@ describe('AddDomainForm', () => {
   it('should not disable cancel button during loading', () => {
     render(<AddDomainFormHarness loading />);
 
-    const cancelButton = screen.getByTestId('cancel-domain');
+    const cancelButton = screen.getByTestId(CANCEL_DOMAIN);
 
     expect(cancelButton).not.toBeDisabled();
   });
@@ -689,7 +697,7 @@ describe('transformDomainFormData', () => {
   const baseForm: DomainFormValues = {
     name: 'marketing',
     displayName: 'Marketing',
-    description: 'Marketing domain',
+    description: MARKETING_DOMAIN,
     color: '#FF0000',
     iconURL: 'https://example.com/icon.svg',
     coverImage: null,
@@ -724,7 +732,7 @@ describe('transformDomainFormData', () => {
     expect(result).toMatchObject({
       name: 'marketing',
       displayName: 'Marketing',
-      description: 'Marketing domain',
+      description: MARKETING_DOMAIN,
       domainType: DomainType.Aggregate,
       style: { color: '#FF0000', iconURL: 'https://example.com/icon.svg' },
       owners: [ownerRef],
@@ -773,10 +781,10 @@ describe('transformDomainFormData', () => {
   });
 
   it('uses the form-provided domain FQN for DATA_PRODUCT', () => {
-    const selectedDomain = buildItem('Marketing.Sales', {
+    const selectedDomain = buildItem(MARKETING_SALES, {
       id: 'domain-1',
       type: 'domain',
-      fullyQualifiedName: 'Marketing.Sales',
+      fullyQualifiedName: MARKETING_SALES,
     } as EntityReference);
     const parentDomain = { fullyQualifiedName: 'Finance' } as Domain;
 
@@ -786,7 +794,7 @@ describe('transformDomainFormData', () => {
       parentDomain
     );
 
-    expect(result).toHaveProperty('domains', ['Marketing.Sales']);
+    expect(result).toHaveProperty('domains', [MARKETING_SALES]);
   });
 
   it('falls back to parentDomain FQN when DATA_PRODUCT has no domain selection', () => {
@@ -829,7 +837,7 @@ describe('transformDomainFormData', () => {
 
     expect(result.name).toBe('marketing');
     expect(result.displayName).toBe('Marketing');
-    expect(result.description).toBe('Marketing domain');
+    expect(result.description).toBe(MARKETING_DOMAIN);
     expect(result.coverImage).toBe(coverImage);
   });
 

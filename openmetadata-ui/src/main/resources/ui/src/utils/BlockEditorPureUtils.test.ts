@@ -16,6 +16,10 @@ import {
   isHTMLString,
 } from './BlockEditorPureUtils';
 
+const CODE_GT_CODE = '<code>&gt;</code>';
+const CODE_LT_CODE = '<code>&lt;</code>';
+const DATA_TYPE_MENTION = 'data-type="mention"';
+
 describe('formatClientContent: markdown special characters', () => {
   it('should preserve > inside a code span instead of double-escaping it', () => {
     const markdown = 'Use `>` to compare';
@@ -25,7 +29,7 @@ describe('formatClientContent: markdown special characters', () => {
     // The rendered output must carry a real ">" character, not a literal "&gt;"
     // that the user can see. `&amp;gt;` is the double-escape bug.
     expect(result).not.toContain('&amp;gt;');
-    expect(result).toContain('<code>&gt;</code>');
+    expect(result).toContain(CODE_GT_CODE);
   });
 
   it('should preserve < inside a code span', () => {
@@ -34,7 +38,7 @@ describe('formatClientContent: markdown special characters', () => {
     const result = formatClientContent(markdown);
 
     expect(result).not.toContain('&amp;lt;');
-    expect(result).toContain('<code>&lt;</code>');
+    expect(result).toContain(CODE_LT_CODE);
   });
 
   it('should preserve operators in the TestCaseForm operator documentation', () => {
@@ -45,9 +49,9 @@ describe('formatClientContent: markdown special characters', () => {
 
     expect(result).not.toContain('&amp;gt;');
     expect(result).not.toContain('&amp;lt;');
-    expect(result).toContain('<code>&gt;</code>');
+    expect(result).toContain(CODE_GT_CODE);
     expect(result).toContain('<code>&gt;=</code>');
-    expect(result).toContain('<code>&lt;</code>');
+    expect(result).toContain(CODE_LT_CODE);
   });
 
   it('should preserve > and < inside a fenced code block', () => {
@@ -103,8 +107,8 @@ describe('getHtmlStringFromMarkdownString', () => {
   it('should keep > and < inside code spans as entities, not double-escape them', () => {
     const result = getHtmlStringFromMarkdownString('Use `>` and `<`');
 
-    expect(result).toContain('<code>&gt;</code>');
-    expect(result).toContain('<code>&lt;</code>');
+    expect(result).toContain(CODE_GT_CODE);
+    expect(result).toContain(CODE_LT_CODE);
     expect(result).not.toContain('&amp;gt;');
   });
 
@@ -207,7 +211,7 @@ describe('formatClientContent: mentions and hashtags', () => {
 
     const result = formatClientContent(markdown);
 
-    expect(result).toContain('data-type="mention"');
+    expect(result).toContain(DATA_TYPE_MENTION);
     expect(result).toContain('@john');
     expect(result.match(/@john/g) ?? []).toHaveLength(1);
   });
@@ -218,7 +222,7 @@ describe('formatClientContent: mentions and hashtags', () => {
 
     const result = formatClientContent(markdown);
 
-    expect(result).toContain('data-type="mention"');
+    expect(result).toContain(DATA_TYPE_MENTION);
     expect(result).toContain('@Infrastructure');
     expect(result.match(/@Infrastructure/g) ?? []).toHaveLength(1);
   });
@@ -262,7 +266,7 @@ describe('formatClientContent: mentions and hashtags', () => {
       'hi [@x](http://localhost:3000/table/db.foo)'
     );
 
-    expect(result).not.toContain('data-type="mention"');
+    expect(result).not.toContain(DATA_TYPE_MENTION);
     expect(result).toContain('href="http://localhost:3000/table/db.foo"');
   });
 

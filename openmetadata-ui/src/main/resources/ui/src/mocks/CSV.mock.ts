@@ -16,6 +16,8 @@ import { ExtensionDataProps } from '../components/Modals/ModalWithCustomProperty
 import { Category, Type } from '../generated/entity/type';
 import { EntityReference } from '../generated/tests/testCase';
 
+const DATETIME_CP = 'dateTime-cp';
+
 export const MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_CSV_STRING = `dateCp:2024-09-18;dateTimeCp:15-09-2024 22:09:57;durationCp:PH23723D;emailCp:john.david@email.com;expert:user:"aaron.singh2";expertListPanel:databaseSchema:Glue.default.information_schema|glossaryTerm:"PW%40606600.Quick073437a4"."PW.ec0bbdf3%Bear5c6a56cc"|dashboard:sample_superset.11|user:angel_smith0|team:Legal Admin|user:anna_parker9;integerCp:2244;"markdownCp:# Project Title
 
 ## Overview
@@ -161,10 +163,10 @@ export const MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES: Type = {
       propertyType: {
         id: '8b17270b-4191-41cc-971b-4d5baaa8791a',
         type: 'type',
-        name: 'dateTime-cp',
-        fullyQualifiedName: 'dateTime-cp',
+        name: DATETIME_CP,
+        fullyQualifiedName: DATETIME_CP,
         description: '"Date and time as defined in custom property."',
-        displayName: 'dateTime-cp',
+        displayName: DATETIME_CP,
         href: 'http://localhost:8585/api/v1/metadata/types/8b17270b-4191-41cc-971b-4d5baaa8791a',
       },
       customPropertyConfig: {

@@ -31,6 +31,11 @@ import {
 import TestCaseFormBody from './TestCaseFormBody';
 import { FormValues, TestLevel } from './TestCaseFormV1.interface';
 
+const COLUMN_VALUES_TO_BE_BETWEEN = 'Column Values To Be Between' as const;
+const PARAMETER_MIN_VALUE = 'parameter-minValue' as const;
+const TEST_CASE_NAME = 'test-case-name' as const;
+const PIPELINE_NAME = 'pipeline-name' as const;
+
 jest.mock('../../../common/RichTextEditor/RichTextEditor', () => ({
   __esModule: true,
   default: jest
@@ -138,7 +143,7 @@ const TEST_DEFINITION = {
   id: 'def-1',
   name: 'columnValuesToBeBetween',
   fullyQualifiedName: TEST_DEFINITION_FQN,
-  displayName: 'Column Values To Be Between',
+  displayName: COLUMN_VALUES_TO_BE_BETWEEN,
   description: 'Validate column values lie within a range',
   parameterDefinition: [
     {
@@ -374,11 +379,11 @@ describe('TestCaseFormBody', () => {
     await act(async () => {
       formRef?.setValue('testTypeId', {
         id: TEST_DEFINITION_FQN,
-        label: 'Column Values To Be Between',
+        label: COLUMN_VALUES_TO_BE_BETWEEN,
       } as never);
     });
 
-    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(await screen.findByTestId(PARAMETER_MIN_VALUE)).toBeInTheDocument();
   });
 
   it('hides the parameter fields when dynamic assertion is enabled', async () => {
@@ -398,23 +403,21 @@ describe('TestCaseFormBody', () => {
     await act(async () => {
       formRef?.setValue('testTypeId', {
         id: TEST_DEFINITION_FQN,
-        label: 'Column Values To Be Between',
+        label: COLUMN_VALUES_TO_BE_BETWEEN,
       } as never);
     });
 
     expect(
       await screen.findByTestId('use-dynamic-assertion')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(await screen.findByTestId(PARAMETER_MIN_VALUE)).toBeInTheDocument();
 
     await act(async () => {
       formRef?.setValue('useDynamicAssertion', true);
     });
 
     await waitFor(() => {
-      expect(
-        screen.queryByTestId('parameter-minValue')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(PARAMETER_MIN_VALUE)).not.toBeInTheDocument();
     });
   });
 
@@ -439,7 +442,7 @@ describe('TestCaseFormBody', () => {
     await act(async () => {
       formRef?.setValue('testTypeId', {
         id: TEST_DEFINITION_FQN,
-        label: 'Column Values To Be Between',
+        label: COLUMN_VALUES_TO_BE_BETWEEN,
       } as never);
     });
 
@@ -453,7 +456,7 @@ describe('TestCaseFormBody', () => {
       renderBody({ table: SELECTED_TABLE });
     });
 
-    expect(await screen.findByTestId('test-case-name')).toBeInTheDocument();
+    expect(await screen.findByTestId(TEST_CASE_NAME)).toBeInTheDocument();
     expect(await screen.findByTestId('description')).toBeInTheDocument();
     expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
     expect(
@@ -473,7 +476,7 @@ describe('TestCaseFormBody', () => {
     await act(async () => {
       formRef?.setValue('testTypeId', {
         id: TEST_DEFINITION_FQN,
-        label: 'Column Values To Be Between',
+        label: COLUMN_VALUES_TO_BE_BETWEEN,
       } as never);
     });
 
@@ -493,7 +496,7 @@ describe('TestCaseFormBody', () => {
       expect(mockGetListTestDefinitions).toHaveBeenCalled();
     });
 
-    const nameField = await screen.findByTestId('test-case-name');
+    const nameField = await screen.findByTestId(TEST_CASE_NAME);
     const nameInput = nameField.querySelector('input') as HTMLInputElement;
 
     await act(async () => {
@@ -503,7 +506,7 @@ describe('TestCaseFormBody', () => {
     await act(async () => {
       formRef?.setValue('testTypeId', {
         id: TEST_DEFINITION_FQN,
-        label: 'Column Values To Be Between',
+        label: COLUMN_VALUES_TO_BE_BETWEEN,
       } as never);
     });
 
@@ -519,7 +522,7 @@ describe('TestCaseFormBody', () => {
       renderBody({ table: SELECTED_TABLE });
     });
 
-    expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
+    expect(await screen.findByTestId(PIPELINE_NAME)).toBeInTheDocument();
     expect(
       await screen.findByTestId('schedule-interval-v1')
     ).toBeInTheDocument();
@@ -541,7 +544,7 @@ describe('TestCaseFormBody', () => {
       expect(mockGetIngestionPipelines).toHaveBeenCalled();
     });
 
-    expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(PIPELINE_NAME)).not.toBeInTheDocument();
   });
 
   it('renders the select-all switch and AddTestCaseList when table has a test suite', async () => {
@@ -672,7 +675,7 @@ describe('TestCaseFormBody', () => {
         renderBody({ table: SELECTED_TABLE, isEditMode: true });
       });
 
-      const nameField = await screen.findByTestId('test-case-name');
+      const nameField = await screen.findByTestId(TEST_CASE_NAME);
       const nameInput = nameField.querySelector('input');
 
       expect(nameInput).toBeDisabled();
@@ -699,7 +702,7 @@ describe('TestCaseFormBody', () => {
         expect(mockGetListTestDefinitions).toHaveBeenCalled();
       });
 
-      expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(PIPELINE_NAME)).not.toBeInTheDocument();
     });
 
     it('renders the display name field in edit mode', async () => {
@@ -730,7 +733,7 @@ describe('TestCaseFormBody', () => {
       await act(async () => {
         formRef?.setValue('testTypeId', {
           id: TEST_DEFINITION_FQN,
-          label: 'Column Values To Be Between',
+          label: COLUMN_VALUES_TO_BE_BETWEEN,
         } as never);
       });
 
@@ -751,7 +754,7 @@ describe('TestCaseFormBody', () => {
             selectedColumn: 'email',
             testTypeId: {
               id: TEST_DEFINITION_FQN,
-              label: 'Column Values To Be Between',
+              label: COLUMN_VALUES_TO_BE_BETWEEN,
             } as never,
           }
         );
@@ -764,7 +767,7 @@ describe('TestCaseFormBody', () => {
       expect(formRef?.getValues('selectedColumn')).toBe('email');
       expect(formRef?.getValues('testTypeId')).toEqual({
         id: TEST_DEFINITION_FQN,
-        label: 'Column Values To Be Between',
+        label: COLUMN_VALUES_TO_BE_BETWEEN,
       });
     });
 
@@ -801,7 +804,7 @@ describe('TestCaseFormBody', () => {
       expect(screen.getByTestId('test-type-card')).toBeInTheDocument();
       expect(screen.queryByTestId('select-table-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('test-details-card')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(PIPELINE_NAME)).not.toBeInTheDocument();
     });
   });
 });

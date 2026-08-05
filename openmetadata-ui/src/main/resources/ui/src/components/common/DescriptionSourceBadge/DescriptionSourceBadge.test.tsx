@@ -15,6 +15,8 @@ import { render, screen } from '@testing-library/react';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
 import DescriptionSourceBadge from './DescriptionSourceBadge';
 
+const SOURCE_ACTOR = 'source-actor';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -82,7 +84,7 @@ describe('DescriptionSourceBadge', () => {
       />
     );
 
-    expect(screen.getByTestId('source-actor')).toHaveTextContent(
+    expect(screen.getByTestId(SOURCE_ACTOR)).toHaveTextContent(
       /label\.authored-by.*admin/
     );
     expect(screen.getByTestId('source-timestamp')).toHaveTextContent(
@@ -153,7 +155,7 @@ describe('DescriptionSourceBadge', () => {
       />
     );
 
-    const actor = screen.getByTestId('source-actor');
+    const actor = screen.getByTestId(SOURCE_ACTOR);
 
     expect(actor).toBeInTheDocument();
     expect(actor).toHaveTextContent('John Doe');
@@ -168,7 +170,7 @@ describe('DescriptionSourceBadge', () => {
       />
     );
 
-    expect(screen.queryByTestId('source-actor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SOURCE_ACTOR)).not.toBeInTheDocument();
   });
 
   it('should render badge only when metadata is disabled', () => {
@@ -185,7 +187,7 @@ describe('DescriptionSourceBadge', () => {
     );
 
     expect(screen.getByTestId('ai-suggested-badge')).toBeInTheDocument();
-    expect(screen.queryByTestId('source-actor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SOURCE_ACTOR)).not.toBeInTheDocument();
     expect(screen.queryByTestId('source-timestamp')).not.toBeInTheDocument();
   });
 

@@ -35,6 +35,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { RelatedDataAssetsForm } from './RelatedDataAssetsForm';
 
+const LABEL_DATA_ASSET_PLURAL = 'label.data-asset-plural';
 interface RelatedDataAssetsProps {
   hasPermission: boolean;
   relatedDataAssets: KnowledgePage['relatedEntities'];
@@ -183,7 +184,7 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
       <WidgetPlusButton
         data-testid="add-data-assets-container"
         title={t('label.add-entity', {
-          entity: t('label.data-asset-plural'),
+          entity: t(LABEL_DATA_ASSET_PLURAL),
         })}
         onClick={() => setIsEdit(true)}
       />
@@ -191,7 +192,7 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
       <WidgetEditButton
         data-testid="edit-data-assets"
         title={t('label.edit-entity', {
-          entity: t('label.data-asset-plural'),
+          entity: t(LABEL_DATA_ASSET_PLURAL),
         })}
         onClick={() => setIsEdit(true)}
       />
@@ -237,7 +238,7 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
       forceExpand={isEdit}
       headerExtra={headerExtra}
       isExpandDisabled={isEmpty(filteredRelatedDataAssets) && !isEdit}
-      title={t('label.data-asset-plural')}>
+      title={t(LABEL_DATA_ASSET_PLURAL)}>
       {content}
     </WidgetCard>
   );

@@ -20,6 +20,7 @@ import {
 } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 
+const LABEL_NUMBER_DAY_PLURAL = 'label.number-day-plural';
 const { Option } = Select;
 
 const getJWTTokenExpiryLabel = (expiry: JWTTokenExpiry) => {
@@ -29,13 +30,13 @@ const getJWTTokenExpiryLabel = (expiry: JWTTokenExpiry) => {
     case JWTTokenExpiry.The1:
       return t('label.1-day');
     case JWTTokenExpiry.The7:
-      return t('label.number-day-plural', { number: 7 });
+      return t(LABEL_NUMBER_DAY_PLURAL, { number: 7 });
     case JWTTokenExpiry.The30:
-      return t('label.number-day-plural', { number: 30 });
+      return t(LABEL_NUMBER_DAY_PLURAL, { number: 30 });
     case JWTTokenExpiry.The60:
-      return t('label.number-day-plural', { number: 60 });
+      return t(LABEL_NUMBER_DAY_PLURAL, { number: 60 });
     case JWTTokenExpiry.The90:
-      return t('label.number-day-plural', { number: 90 });
+      return t(LABEL_NUMBER_DAY_PLURAL, { number: 90 });
     case JWTTokenExpiry.Unlimited:
       return t('label.unlimited');
     default:

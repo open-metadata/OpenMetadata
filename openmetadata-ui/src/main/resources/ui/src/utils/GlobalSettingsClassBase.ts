@@ -82,6 +82,29 @@ import {
 import { userPermissions } from '../utils/PermissionsUtils';
 import { t } from './i18next/LocalUtil';
 
+const LABEL_SEARCH = 'label.search';
+const LABEL_DATABASE_PLURAL = 'label.database-plural';
+const LABEL_DASHBOARD_PLURAL = 'label.dashboard-plural';
+const LABEL_PIPELINE_PLURAL = 'label.pipeline-plural';
+const LABEL_ML_MODEL_PLURAL = 'label.ml-model-plural';
+const LABEL_TABLE_PLURAL = 'label.table-plural';
+const MESSAGE_SEARCH_SETTINGS_FOR_ENTITY = 'message.search-settings-for-entity';
+const LABEL_TOPIC_PLURAL = 'label.topic-plural';
+const LABEL_GLOSSARY_TERM = 'label.glossary-term';
+const LABEL_API_ENDPOINT = 'label.api-endpoint';
+const LABEL_DASHBOARD_DATA_MODEL_PLURAL = 'label.dashboard-data-model-plural';
+const LABEL_STORED_PROCEDURE_PLURAL = 'label.stored-procedure-plural';
+const LABEL_CONTAINER_PLURAL = 'label.container-plural';
+const LABEL_DATABASE_SCHEMA = 'label.database-schema';
+const LABEL_SEARCH_INDEX_PLURAL = 'label.search-index-plural';
+const LABEL_DIRECTORY_PLURAL = 'label.directory-plural';
+const LABEL_FILE_PLURAL = 'label.file-plural';
+const LABEL_SPREADSHEET_PLURAL = 'label.spreadsheet-plural';
+const LABEL_WORKSHEET_PLURAL = 'label.worksheet-plural';
+const LABEL_COLUMN_PLURAL = 'label.column-plural';
+const MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY =
+  'message.define-custom-property-for-entity';
+
 class GlobalSettingsClassBase {
   settingCategories: Record<string, { name: string; url: string }> = {
     [GlobalSettingsMenuCategory.SERVICES]: {
@@ -105,7 +128,7 @@ class GlobalSettingsClassBase {
       url: GlobalSettingsMenuCategory.PREFERENCES,
     },
     [GlobalSettingOptions.SEARCH_SETTINGS]: {
-      name: t('label.search'),
+      name: t(LABEL_SEARCH),
       url: `${GlobalSettingsMenuCategory.PREFERENCES}/${GlobalSettingOptions.SEARCH_SETTINGS}`,
     },
     [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
@@ -177,7 +200,7 @@ class GlobalSettingsClassBase {
             icon: IconAPI,
           },
           {
-            label: t('label.database-plural'),
+            label: t(LABEL_DATABASE_PLURAL),
             description: t('message.page-sub-header-for-databases'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.DATABASE_SERVICE,
@@ -197,7 +220,7 @@ class GlobalSettingsClassBase {
             icon: MessagingIcon,
           },
           {
-            label: t('label.dashboard-plural'),
+            label: t(LABEL_DASHBOARD_PLURAL),
             description: t('message.page-sub-header-for-dashboards'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.DASHBOARD_SERVICE,
@@ -207,7 +230,7 @@ class GlobalSettingsClassBase {
             icon: DashboardIcon,
           },
           {
-            label: t('label.pipeline-plural'),
+            label: t(LABEL_PIPELINE_PLURAL),
             description: t('message.page-sub-header-for-pipelines'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.PIPELINE_SERVICE,
@@ -217,7 +240,7 @@ class GlobalSettingsClassBase {
             icon: PipelineIcon,
           },
           {
-            label: t('label.ml-model-plural'),
+            label: t(LABEL_ML_MODEL_PLURAL),
             description: t('message.page-sub-header-for-ml-models'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.ML_MODEL_SERVICE,
@@ -237,7 +260,7 @@ class GlobalSettingsClassBase {
             icon: StorageIcon,
           },
           {
-            label: t('label.search'),
+            label: t(LABEL_SEARCH),
             description: t('message.page-sub-header-for-search'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.SEARCH_SERVICE,
@@ -434,97 +457,97 @@ class GlobalSettingsClassBase {
             icon: ProfilerConfigIcon,
           },
           {
-            label: t('label.search'),
+            label: t(LABEL_SEARCH),
             description: t('message.page-sub-header-for-search-setting'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
             icon: PreferencesSearchIcon,
             items: [
               {
-                label: t('label.table-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.table-plural'),
+                label: t(LABEL_TABLE_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_TABLE_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.TABLES}`,
                 icon: TableIcon,
               },
               {
-                label: t('label.dashboard-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.dashboard-plural'),
+                label: t(LABEL_DASHBOARD_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_DASHBOARD_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARDS}`,
                 icon: DashboardIcon,
               },
               {
-                label: t('label.pipeline-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.pipeline-plural'),
+                label: t(LABEL_PIPELINE_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_PIPELINE_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.PIPELINES}`,
                 icon: PipelineIcon,
               },
               {
-                label: t('label.topic-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.topic-plural'),
+                label: t(LABEL_TOPIC_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_TOPIC_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.TOPICS}`,
                 icon: MessagingIcon,
               },
               {
-                label: t('label.glossary-term'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.glossary-term'),
+                label: t(LABEL_GLOSSARY_TERM),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_GLOSSARY_TERM),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.GLOSSARY_TERM}`,
                 icon: GlossaryIcon,
               },
               {
-                label: t('label.api-endpoint'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.api-endpoint'),
+                label: t(LABEL_API_ENDPOINT),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_API_ENDPOINT),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.API_ENDPOINTS}`,
                 icon: APIEndpointIcon,
               },
               {
-                label: t('label.dashboard-data-model-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.dashboard-data-model-plural'),
+                label: t(LABEL_DASHBOARD_DATA_MODEL_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_DASHBOARD_DATA_MODEL_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
                 icon: DashboardDataModelIcon,
               },
               {
-                label: t('label.stored-procedure-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.stored-procedure-plural'),
+                label: t(LABEL_STORED_PROCEDURE_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_STORED_PROCEDURE_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.STORED_PROCEDURES}`,
                 icon: StoredProcedureIcon,
               },
               {
-                label: t('label.container-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.container-plural'),
+                label: t(LABEL_CONTAINER_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_CONTAINER_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.CONTAINERS}`,
                 icon: StorageIcon,
               },
               {
-                label: t('label.ml-model-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.ml-model-plural'),
+                label: t(LABEL_ML_MODEL_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_ML_MODEL_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.MLMODELS}`,
@@ -532,7 +555,7 @@ class GlobalSettingsClassBase {
               },
               {
                 label: t('label.data-product-plural'),
-                description: t('message.search-settings-for-entity', {
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
                   entity: t('label.data-product-plural'),
                 }),
                 isProtected: Boolean(isAdminUser),
@@ -541,7 +564,7 @@ class GlobalSettingsClassBase {
               },
               {
                 label: t('label.query'),
-                description: t('message.search-settings-for-entity', {
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
                   entity: t('label.query'),
                 }),
                 isProtected: Boolean(isAdminUser),
@@ -550,7 +573,7 @@ class GlobalSettingsClassBase {
               },
               {
                 label: t('label.tag-plural'),
-                description: t('message.search-settings-for-entity', {
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
                   entity: t('label.tag-plural'),
                 }),
                 isProtected: Boolean(isAdminUser),
@@ -558,18 +581,18 @@ class GlobalSettingsClassBase {
                 icon: TagIcon,
               },
               {
-                label: t('label.database-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.database-plural'),
+                label: t(LABEL_DATABASE_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_DATABASE_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASES}`,
                 icon: DatabaseIcon,
               },
               {
-                label: t('label.database-schema'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.database-schema'),
+                label: t(LABEL_DATABASE_SCHEMA),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_DATABASE_SCHEMA),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
@@ -577,7 +600,7 @@ class GlobalSettingsClassBase {
               },
               {
                 label: t('label.domain-plural'),
-                description: t('message.search-settings-for-entity', {
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
                   entity: t('label.domain-plural'),
                 }),
                 isProtected: Boolean(isAdminUser),
@@ -586,7 +609,7 @@ class GlobalSettingsClassBase {
               },
               {
                 label: t('label.metric-plural'),
-                description: t('message.search-settings-for-entity', {
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
                   entity: t('label.metric-plural'),
                 }),
                 isProtected: Boolean(isAdminUser),
@@ -594,54 +617,54 @@ class GlobalSettingsClassBase {
                 icon: MetricIcon,
               },
               {
-                label: t('label.search-index-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.search-index-plural'),
+                label: t(LABEL_SEARCH_INDEX_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_SEARCH_INDEX_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SEARCH_INDEXES}`,
                 icon: SearchIndexIcon,
               },
               {
-                label: t('label.directory-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.directory-plural'),
+                label: t(LABEL_DIRECTORY_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_DIRECTORY_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DIRECTORIES}`,
                 icon: DirectoryIcon,
               },
               {
-                label: t('label.file-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.file-plural'),
+                label: t(LABEL_FILE_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_FILE_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.FILES}`,
                 icon: FileIcon,
               },
               {
-                label: t('label.spreadsheet-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.spreadsheet-plural'),
+                label: t(LABEL_SPREADSHEET_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_SPREADSHEET_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SPREADSHEETS}`,
                 icon: SpreadsheetIcon,
               },
               {
-                label: t('label.worksheet-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.worksheet-plural'),
+                label: t(LABEL_WORKSHEET_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_WORKSHEET_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.WORKSHEETS}`,
                 icon: WorksheetIcon,
               },
               {
-                label: t('label.column-plural'),
-                description: t('message.search-settings-for-entity', {
-                  entity: t('label.column-plural'),
+                label: t(LABEL_COLUMN_PLURAL),
+                description: t(MESSAGE_SEARCH_SETTINGS_FOR_ENTITY, {
+                  entity: t(LABEL_COLUMN_PLURAL),
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.COLUMN}`,
@@ -690,7 +713,7 @@ class GlobalSettingsClassBase {
         items: [
           {
             label: t('label.api-collection'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
               entity: t('label.api-collection'),
             }),
             isProtected: Boolean(isAdminUser),
@@ -698,9 +721,9 @@ class GlobalSettingsClassBase {
             icon: APICollectionIcon,
           },
           {
-            label: t('label.api-endpoint'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.api-endpoint'),
+            label: t(LABEL_API_ENDPOINT),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_API_ENDPOINT),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
@@ -708,7 +731,7 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.data-product'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
               entity: t('label.data-product'),
             }),
             isProtected: Boolean(isAdminUser),
@@ -716,9 +739,9 @@ class GlobalSettingsClassBase {
             icon: DataProductIcon,
           },
           {
-            label: t('label.dashboard-data-model-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.dashboard-data-model-plural'),
+            label: t(LABEL_DASHBOARD_DATA_MODEL_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_DASHBOARD_DATA_MODEL_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
@@ -726,7 +749,7 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.database'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
               entity: t('label.database'),
             }),
             isProtected: Boolean(isAdminUser),
@@ -734,9 +757,9 @@ class GlobalSettingsClassBase {
             icon: DatabaseIcon,
           },
           {
-            label: t('label.database-schema'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.database-schema'),
+            label: t(LABEL_DATABASE_SCHEMA),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_DATABASE_SCHEMA),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
@@ -744,7 +767,7 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.metric'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
               entity: t('label.metric'),
             }),
             isProtected: Boolean(isAdminUser),
@@ -752,88 +775,88 @@ class GlobalSettingsClassBase {
             icon: MetricIcon,
           },
           {
-            label: t('label.table-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.table-plural'),
+            label: t(LABEL_TABLE_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_TABLE_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLES}`,
             icon: TableIcon,
           },
           {
-            label: t('label.stored-procedure-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.stored-procedure-plural'),
+            label: t(LABEL_STORED_PROCEDURE_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_STORED_PROCEDURE_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.STORED_PROCEDURES}`,
             icon: StoredProcedureIcon,
           },
           {
-            label: t('label.dashboard-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.dashboard-plural'),
+            label: t(LABEL_DASHBOARD_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_DASHBOARD_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARDS}`,
             icon: DashboardIcon,
           },
           {
-            label: t('label.pipeline-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.pipeline-plural'),
+            label: t(LABEL_PIPELINE_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_PIPELINE_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.PIPELINES}`,
             icon: PipelineIcon,
           },
           {
-            label: t('label.topic-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.topic-plural'),
+            label: t(LABEL_TOPIC_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_TOPIC_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TOPICS}`,
             icon: MessagingIcon,
           },
           {
-            label: t('label.container-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.container-plural'),
+            label: t(LABEL_CONTAINER_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_CONTAINER_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CONTAINERS}`,
             icon: StorageIcon,
           },
           {
-            label: t('label.ml-model-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.ml-model-plural'),
+            label: t(LABEL_ML_MODEL_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_ML_MODEL_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.MLMODELS}`,
             icon: MlModelIcon,
           },
           {
-            label: t('label.search-index-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.search-index-plural'),
+            label: t(LABEL_SEARCH_INDEX_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_SEARCH_INDEX_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SEARCH_INDEXES}`,
             icon: SearchIndexIcon,
           },
           {
-            label: t('label.column-plural'),
+            label: t(LABEL_COLUMN_PLURAL),
             description: t('message.define-custom-property-for-column'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.COLUMN}`,
             icon: ColumnIcon,
           },
           {
-            label: t('label.glossary-term'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.glossary-term'),
+            label: t(LABEL_GLOSSARY_TERM),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_GLOSSARY_TERM),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
@@ -841,7 +864,7 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.domain'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
               entity: t('label.domain'),
             }),
             isProtected: Boolean(isAdminUser),
@@ -850,7 +873,7 @@ class GlobalSettingsClassBase {
           },
           {
             label: t('label.chart-plural'),
-            description: t('message.define-custom-property-for-entity', {
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
               entity: t('label.chart-plural'),
             }),
             isProtected: Boolean(isAdminUser),
@@ -858,36 +881,36 @@ class GlobalSettingsClassBase {
             icon: ChartIcon,
           },
           {
-            label: t('label.directory-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.directory-plural'),
+            label: t(LABEL_DIRECTORY_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_DIRECTORY_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
             icon: DirectoryIcon,
           },
           {
-            label: t('label.file-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.file-plural'),
+            label: t(LABEL_FILE_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_FILE_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.FILES}`,
             icon: FileIcon,
           },
           {
-            label: t('label.spreadsheet-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.spreadsheet-plural'),
+            label: t(LABEL_SPREADSHEET_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_SPREADSHEET_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SPREADSHEETS}`,
             icon: SpreadsheetIcon,
           },
           {
-            label: t('label.worksheet-plural'),
-            description: t('message.define-custom-property-for-entity', {
-              entity: t('label.worksheet-plural'),
+            label: t(LABEL_WORKSHEET_PLURAL),
+            description: t(MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY, {
+              entity: t(LABEL_WORKSHEET_PLURAL),
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,

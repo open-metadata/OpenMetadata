@@ -16,6 +16,8 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
+const EXISTING_SERVICE = 'existing-service';
+
 const mockTranslate = (key: string) => key;
 
 jest.mock('react-i18next', () => ({
@@ -44,7 +46,7 @@ describe('useServiceNameValidation', () => {
       {
         initialProps: {
           enabled: false,
-          serviceName: 'existing-service',
+          serviceName: EXISTING_SERVICE,
         },
       }
     );
@@ -82,14 +84,14 @@ describe('useServiceNameValidation', () => {
 
   it('clears duplicate-name state when validation is reset', async () => {
     (getServiceByFQN as jest.Mock).mockResolvedValue({
-      name: 'existing-service',
+      name: EXISTING_SERVICE,
     });
 
     const { result } = renderHook(() =>
       useServiceNameValidation({
         enabled: true,
         serviceCategory: ServiceCategory.DATABASE_SERVICES,
-        serviceName: 'existing-service',
+        serviceName: EXISTING_SERVICE,
       })
     );
 

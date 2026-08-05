@@ -31,6 +31,14 @@ import {
 } from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
+const TAXONOMY_PROJECT_IDS = 'Taxonomy Project IDs' as const;
+const ROOT_TAXONOMY_PROJECT_ID = 'root/taxonomyProjectID' as const;
+const CHANGE_VALID_FORM = 'change-valid-form' as const;
+const SUBMIT_BUTTON = 'submit-button' as const;
+const MARK_TEST_CONNECTION_SUCCESS = 'mark-test-connection-success' as const;
+const REASON_MESSAGE = 'reason message' as const;
+const IP_ADDRESS = 'ip-address' as const;
+
 const mockServicesData = {
   id: '1',
   description: 'Test service',
@@ -277,7 +285,7 @@ jest.mock('../../../common/TestConnection/TestConnection', () =>
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getPipelineServiceHostIp: jest.fn().mockReturnValue({
     data: {
-      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- mock IP fixture
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip, sonarjs/no-duplicate-string -- mock IP fixture
       ip: '192.168.0.1',
     },
     status: 200,
@@ -319,7 +327,7 @@ describe('ServiceConfig', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useAirflowStatus as jest.Mock).mockReturnValue({
-      reason: 'reason message',
+      reason: REASON_MESSAGE,
       isAirflowAvailable: true,
       platform: 'Argo',
     });
@@ -352,7 +360,7 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
     await act(async () => {
-      expect(await screen.findByTestId('ip-address')).toBeInTheDocument();
+      expect(await screen.findByTestId(IP_ADDRESS)).toBeInTheDocument();
       expect(
         await screen.findByText('message.airflow-host-ip-address')
       ).toBeInTheDocument();
@@ -403,7 +411,7 @@ describe('ServiceConfig', () => {
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
-    const submitButton = await screen.findByTestId('submit-button');
+    const submitButton = await screen.findByTestId(SUBMIT_BUTTON);
 
     fireEvent.click(submitButton);
 
@@ -485,14 +493,14 @@ describe('ServiceConfig', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).toBeDisabled();
     });
 
     (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(0);
-    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId(CHANGE_VALID_FORM));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
   });
 
@@ -501,7 +509,7 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} isSubmitDisabled />);
     });
 
-    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+    expect(await screen.findByTestId(SUBMIT_BUTTON)).toBeDisabled();
   });
 
   it('should not gate the submit button on test connection results', async () => {
@@ -509,12 +517,12 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
     });
 
-    expect(await screen.findByTestId('submit-button')).not.toBeDisabled();
+    expect(await screen.findByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
 
-    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+    fireEvent.click(screen.getByTestId(MARK_TEST_CONNECTION_SUCCESS));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
   });
 
@@ -530,7 +538,7 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
     });
 
-    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId(CHANGE_VALID_FORM));
 
     const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
 
@@ -552,7 +560,7 @@ describe('ServiceConfig', () => {
 
   it('should use selected ingestion runner when deciding whether to show the IP alert', async () => {
     (useAirflowStatus as jest.Mock).mockReturnValue({
-      reason: 'reason message',
+      reason: REASON_MESSAGE,
       isAirflowAvailable: true,
       platform: 'Hybrid',
     });
@@ -565,7 +573,7 @@ describe('ServiceConfig', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('ip-address')).toBeInTheDocument();
+      expect(screen.getByTestId(IP_ADDRESS)).toBeInTheDocument();
     });
   });
 
@@ -582,11 +590,11 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
     });
 
-    fireEvent.click(screen.getByTestId('change-valid-form'));
-    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+    fireEvent.click(screen.getByTestId(CHANGE_VALID_FORM));
+    fireEvent.click(screen.getByTestId(MARK_TEST_CONNECTION_SUCCESS));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
   });
 
@@ -603,10 +611,10 @@ describe('ServiceConfig', () => {
       );
     });
 
-    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+    fireEvent.click(screen.getByTestId(MARK_TEST_CONNECTION_SUCCESS));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
 
     expect(onSave).not.toHaveBeenCalled();
@@ -617,17 +625,17 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
     });
 
-    fireEvent.click(screen.getByTestId('change-valid-form'));
-    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+    fireEvent.click(screen.getByTestId(CHANGE_VALID_FORM));
+    fireEvent.click(screen.getByTestId(MARK_TEST_CONNECTION_SUCCESS));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
 
-    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId(CHANGE_VALID_FORM));
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).not.toBeDisabled();
     });
   });
 
@@ -639,13 +647,13 @@ describe('ServiceConfig', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('submit-button')).toBeDisabled();
+      expect(screen.getByTestId(SUBMIT_BUTTON)).toBeDisabled();
     });
   });
 
   it('should render test connection even when airflow status is unavailable', async () => {
     (useAirflowStatus as jest.Mock).mockReturnValue({
-      reason: 'reason message',
+      reason: REASON_MESSAGE,
       isAirflowAvailable: false,
       platform: 'Argo',
     });
@@ -661,7 +669,7 @@ describe('ServiceConfig', () => {
     (getPipelineServiceHostIp as jest.Mock).mockRejectedValueOnce(new Error());
     render(<ConnectionConfigForm {...mockProps} />);
     await act(async () => {
-      expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(IP_ADDRESS)).not.toBeInTheDocument();
     });
   });
 
@@ -675,7 +683,7 @@ describe('ServiceConfig', () => {
     }));
     render(<ConnectionConfigForm {...mockProps} />);
     await act(async () => {
-      expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(IP_ADDRESS)).not.toBeInTheDocument();
     });
   });
 
@@ -753,10 +761,10 @@ describe('ServiceConfig', () => {
 
     expect(getConnectionFieldSection).toHaveBeenCalledWith(
       expect.anything(),
-      'root/taxonomyProjectID'
+      ROOT_TAXONOMY_PROJECT_ID
     );
-    expect(mockOnFocus).toHaveBeenCalledWith('root/taxonomyProjectID', {
-      title: 'Taxonomy Project IDs',
+    expect(mockOnFocus).toHaveBeenCalledWith(ROOT_TAXONOMY_PROJECT_ID, {
+      title: TAXONOMY_PROJECT_IDS,
       section: 'scope',
     });
   });
@@ -769,7 +777,7 @@ describe('ServiceConfig', () => {
     fireEvent.click(screen.getByTestId('focus-via-rjsf'));
 
     expect(mockOnFocus).toHaveBeenCalledWith('root/hostPort', {
-      title: 'Taxonomy Project IDs',
+      title: TAXONOMY_PROJECT_IDS,
       section: 'scope',
     });
   });
@@ -787,7 +795,7 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
 
-    const ipAddress = await screen.findByTestId('ip-address');
+    const ipAddress = await screen.findByTestId(IP_ADDRESS);
 
     expect(ipAddress).toBeInTheDocument();
 

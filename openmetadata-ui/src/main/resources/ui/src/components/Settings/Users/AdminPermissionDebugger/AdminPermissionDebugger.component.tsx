@@ -50,6 +50,9 @@ import {
 } from './AdminPermissionDebugger.constants';
 import './AdminPermissionDebugger.style.less';
 
+const LABEL_RESOURCE = 'label.resource';
+const LABEL_OPERATION = 'label.operation';
+
 const { Title, Text } = Typography;
 const { Option } = Select;
 
@@ -379,20 +382,20 @@ const AdminPermissionDebugger: React.FC = () => {
                 <Space className="w-full" direction="vertical">
                   <Space>
                     <Form.Item
-                      label={t('label.resource')}
+                      label={t(LABEL_RESOURCE)}
                       name="resource"
                       rules={[
                         {
                           required: true,
                           message: t('label.field-required', {
-                            field: t('label.resource'),
+                            field: t(LABEL_RESOURCE),
                           }),
                         },
                       ]}>
                       <Select
                         showSearch
                         placeholder={t('label.select-entity', {
-                          entity: t('label.resource'),
+                          entity: t(LABEL_RESOURCE),
                         })}
                         style={{ width: 200 }}>
                         {PERMISSION_RESOURCES.map((resource) => (
@@ -404,20 +407,20 @@ const AdminPermissionDebugger: React.FC = () => {
                     </Form.Item>
 
                     <Form.Item
-                      label={t('label.operation')}
+                      label={t(LABEL_OPERATION)}
                       name="operation"
                       rules={[
                         {
                           required: true,
                           message: t('label.field-required', {
-                            field: t('label.operation'),
+                            field: t(LABEL_OPERATION),
                           }),
                         },
                       ]}>
                       <Select
                         showArrow
                         placeholder={t('label.select-entity', {
-                          entity: t('label.operation'),
+                          entity: t(LABEL_OPERATION),
                         })}
                         style={{ width: 200 }}>
                         {PERMISSION_OPERATIONS.map((operation) => (

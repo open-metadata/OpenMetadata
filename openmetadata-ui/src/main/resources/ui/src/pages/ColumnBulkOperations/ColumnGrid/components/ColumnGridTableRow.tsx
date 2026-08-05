@@ -17,6 +17,7 @@ import React, { useMemo } from 'react';
 import Loader from '../../../../components/common/Loader/Loader';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 
+const TW_BG_UTILITY_WARNING_50 = 'tw:bg-utility-warning-50';
 interface ColumnGridTableRowProps {
   /** Width percent per column id for fixed column layout */
   columnWidthPercent?: Record<string, string>;
@@ -68,10 +69,10 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
         rowType: type,
         rowClassName: classNames(
           'tw:transition-colors',
-          'tw:bg-utility-warning-50',
-          isSelected && 'tw:bg-utility-warning-50'
+          TW_BG_UTILITY_WARNING_50,
+          isSelected && TW_BG_UTILITY_WARNING_50
         ),
-        cellClassName: classNames('tw:bg-utility-warning-50'),
+        cellClassName: classNames(TW_BG_UTILITY_WARNING_50),
       };
     }
 

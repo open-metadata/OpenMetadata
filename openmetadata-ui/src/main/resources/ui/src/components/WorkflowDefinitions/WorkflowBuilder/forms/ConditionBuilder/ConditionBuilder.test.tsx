@@ -16,6 +16,8 @@ import React from 'react';
 import { ConditionBuilder } from './ConditionBuilder';
 import type { ConditionFieldDefinition } from './ConditionBuilder.interface';
 
+const PII_SENSITIVE = 'PII.Sensitive';
+
 // Capture onSearchChange passed to Autocomplete so tests can invoke it
 let capturedOnSearchChange: ((search: string) => void) | undefined;
 let capturedFilterOption: (() => boolean) | undefined;
@@ -32,6 +34,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Autocomplete = (props: {
     items: Array<{ id: string | number; label?: string }>;
     selectedItems: { items: Array<{ id: string; label?: string }> };
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     'data-testid'?: string;
     filterOption?: () => boolean;
     onSearchChange?: (search: string) => void;
@@ -182,7 +185,7 @@ const makeTagFieldDef = (
   values: [],
   valueType: 'dropdown',
   fetchOptions: jest.fn().mockResolvedValue([
-    { value: 'PII.Sensitive', label: 'PII.Sensitive' },
+    { value: PII_SENSITIVE, label: PII_SENSITIVE },
     { value: 'Tier.Tier1', label: 'Tier.Tier1' },
   ]),
   supportsSearch: true,
@@ -235,7 +238,7 @@ describe('ConditionBuilder — server-side tag search', () => {
           value={{
             config: {
               condition: 'AND',
-              rules: { tags: ['PII.Sensitive'] },
+              rules: { tags: [PII_SENSITIVE] },
             },
           }}
           onChange={onChange}
@@ -260,7 +263,7 @@ describe('ConditionBuilder — server-side tag search', () => {
           value={{
             config: {
               condition: 'AND',
-              rules: { tags: ['PII.Sensitive'] },
+              rules: { tags: [PII_SENSITIVE] },
             },
           }}
           onChange={onChange}

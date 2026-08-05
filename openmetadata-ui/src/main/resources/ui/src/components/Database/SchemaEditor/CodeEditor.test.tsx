@@ -16,6 +16,12 @@ import React from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import CodeEditor from './CodeEditor';
 
+const CODE_MIRROR_EDITOR = 'code-mirror-editor' as const;
+const EDITOR_VALUE = 'editor-value' as const;
+const CODE_MIRROR_INPUT = 'code-mirror-input' as const;
+const EDITOR_OPTIONS = 'editor-options' as const;
+const QUERY_COPY_BUTTON = 'query-copy-button' as const;
+
 const mockOnChange = jest.fn();
 const mockOnFocus = jest.fn();
 const mockOnCopyToClipBoard = jest.fn();
@@ -100,15 +106,15 @@ describe('CodeEditor Component', () => {
     render(<CodeEditor />);
 
     expect(screen.getByTestId('code-mirror-container')).toBeInTheDocument();
-    expect(screen.getByTestId('code-mirror-editor')).toBeInTheDocument();
+    expect(screen.getByTestId(CODE_MIRROR_EDITOR)).toBeInTheDocument();
     expect(screen.getByTestId('copy-button-container')).toBeInTheDocument();
-    expect(screen.getByTestId('query-copy-button')).toBeInTheDocument();
+    expect(screen.getByTestId(QUERY_COPY_BUTTON)).toBeInTheDocument();
   });
 
   it('should render with provided value', () => {
     render(<CodeEditor {...defaultProps} />);
 
-    expect(screen.getByTestId('editor-value')).toHaveTextContent('test code');
+    expect(screen.getByTestId(EDITOR_VALUE)).toHaveTextContent('test code');
   });
 
   it('should render with custom title', () => {
@@ -132,7 +138,7 @@ describe('CodeEditor Component', () => {
     const editorClass = 'custom-editor-class';
     render(<CodeEditor editorClass={editorClass} />);
 
-    expect(screen.getByTestId('code-mirror-editor')).toHaveClass(editorClass);
+    expect(screen.getByTestId(CODE_MIRROR_EDITOR)).toHaveClass(editorClass);
   });
 
   it('should hide copy button when showCopyButton is false', () => {
@@ -141,13 +147,13 @@ describe('CodeEditor Component', () => {
     expect(
       screen.queryByTestId('copy-button-container')
     ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('query-copy-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(QUERY_COPY_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should call onCopyToClipBoard when copy button is clicked', () => {
     render(<CodeEditor {...defaultProps} />);
 
-    const copyButton = screen.getByTestId('query-copy-button');
+    const copyButton = screen.getByTestId(QUERY_COPY_BUTTON);
     fireEvent.click(copyButton);
 
     expect(mockOnCopyToClipBoard).toHaveBeenCalledTimes(1);
@@ -156,7 +162,7 @@ describe('CodeEditor Component', () => {
   it('should call onChange when editor value changes', () => {
     render(<CodeEditor {...defaultProps} />);
 
-    const input = screen.getByTestId('code-mirror-input');
+    const input = screen.getByTestId(CODE_MIRROR_INPUT);
     fireEvent.change(input, { target: { value: 'new code' } });
 
     expect(mockOnChange).toHaveBeenCalledWith('new code');
@@ -165,7 +171,7 @@ describe('CodeEditor Component', () => {
   it('should call onFocus when editor is focused', () => {
     render(<CodeEditor {...defaultProps} />);
 
-    const input = screen.getByTestId('code-mirror-input');
+    const input = screen.getByTestId(CODE_MIRROR_INPUT);
     fireEvent.focus(input);
 
     expect(mockOnFocus).toHaveBeenCalledTimes(1);
@@ -174,7 +180,7 @@ describe('CodeEditor Component', () => {
   it('should not call onChange when onChange prop is not provided', () => {
     render(<CodeEditor value="test" />);
 
-    const input = screen.getByTestId('code-mirror-input');
+    const input = screen.getByTestId(CODE_MIRROR_INPUT);
     fireEvent.change(input, { target: { value: 'new code' } });
 
     expect(mockOnChange).not.toHaveBeenCalled();
@@ -184,7 +190,7 @@ describe('CodeEditor Component', () => {
     const customMode = { name: CSMode.SQL, json: false };
     render(<CodeEditor mode={customMode} />);
 
-    const optionsElement = screen.getByTestId('editor-options');
+    const optionsElement = screen.getByTestId(EDITOR_OPTIONS);
     const options = JSON.parse(optionsElement.textContent || '{}');
 
     expect(options.mode).toEqual(customMode);
@@ -198,7 +204,7 @@ describe('CodeEditor Component', () => {
     };
     render(<CodeEditor options={customOptions} />);
 
-    const optionsElement = screen.getByTestId('editor-options');
+    const optionsElement = screen.getByTestId(EDITOR_OPTIONS);
     const options = JSON.parse(optionsElement.textContent || '{}');
 
     expect(options.lineNumbers).toBe(true);
@@ -237,21 +243,17 @@ describe('CodeEditor Component', () => {
   it('should update internal value when value prop changes', () => {
     const { rerender } = render(<CodeEditor value="initial value" />);
 
-    expect(screen.getByTestId('editor-value')).toHaveTextContent(
-      'initial value'
-    );
+    expect(screen.getByTestId(EDITOR_VALUE)).toHaveTextContent('initial value');
 
     rerender(<CodeEditor value="updated value" />);
 
-    expect(screen.getByTestId('editor-value')).toHaveTextContent(
-      'updated value'
-    );
+    expect(screen.getByTestId(EDITOR_VALUE)).toHaveTextContent('updated value');
   });
 
   it('should display copy button correctly', () => {
     render(<CodeEditor />);
 
-    const copyButton = screen.getByTestId('query-copy-button');
+    const copyButton = screen.getByTestId(QUERY_COPY_BUTTON);
 
     expect(copyButton).toBeInTheDocument();
   });
@@ -265,7 +267,7 @@ describe('CodeEditor Component', () => {
   it('should handle default JavaScript mode', () => {
     render(<CodeEditor />);
 
-    const optionsElement = screen.getByTestId('editor-options');
+    const optionsElement = screen.getByTestId(EDITOR_OPTIONS);
     const options = JSON.parse(optionsElement.textContent || '{}');
 
     expect(options.mode).toEqual({
@@ -277,6 +279,6 @@ describe('CodeEditor Component', () => {
   it('should render without onFocus when not provided', () => {
     render(<CodeEditor value="test" onChange={mockOnChange} />);
 
-    expect(screen.getByTestId('code-mirror-editor')).toBeInTheDocument();
+    expect(screen.getByTestId(CODE_MIRROR_EDITOR)).toBeInTheDocument();
   });
 });

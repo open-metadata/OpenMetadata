@@ -17,6 +17,11 @@ import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import OktaAuthenticator from './OktaAuthenticator';
 
+const NEW_ID_TOKEN = 'new-id-token';
+const ACCESS_TOKEN = 'access-token';
+const EXISTING_ID_TOKEN = 'existing-id-token';
+const FALLBACK_ID_TOKEN = 'fallback-id-token';
+
 jest.mock('@okta/okta-react', () => ({
   useOktaAuth: jest.fn(),
 }));
@@ -138,8 +143,8 @@ describe('OktaAuthenticator', () => {
 
   describe('renewToken', () => {
     it('should renew tokens successfully and return new token', async () => {
-      const mockIdToken = { idToken: 'new-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
+      const mockIdToken = { idToken: NEW_ID_TOKEN };
+      const mockAccessToken = { accessToken: ACCESS_TOKEN };
       const mockRenewedTokens = {
         idToken: mockIdToken,
         accessToken: mockAccessToken,
@@ -165,13 +170,13 @@ describe('OktaAuthenticator', () => {
       expect(mockOktaAuth.tokenManager.setTokens).toHaveBeenCalledWith(
         mockRenewedTokens
       );
-      expect(setOidcToken).toHaveBeenCalledWith('new-id-token');
-      expect(result).toBe('new-id-token');
+      expect(setOidcToken).toHaveBeenCalledWith(NEW_ID_TOKEN);
+      expect(result).toBe(NEW_ID_TOKEN);
     });
 
     it('should use fallback getIdToken if renewed token is not available', async () => {
-      const mockIdToken = { idToken: 'existing-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
+      const mockIdToken = { idToken: EXISTING_ID_TOKEN };
+      const mockAccessToken = { accessToken: ACCESS_TOKEN };
       const mockRenewedTokens = {
         idToken: undefined,
         accessToken: mockAccessToken,
@@ -181,7 +186,7 @@ describe('OktaAuthenticator', () => {
         .mockResolvedValueOnce(mockIdToken)
         .mockResolvedValueOnce(mockAccessToken);
       mockOktaAuth.token.renewTokens.mockResolvedValueOnce(mockRenewedTokens);
-      mockOktaAuth.getIdToken.mockReturnValueOnce('fallback-id-token');
+      mockOktaAuth.getIdToken.mockReturnValueOnce(FALLBACK_ID_TOKEN);
 
       render(
         <OktaAuthenticator
@@ -193,8 +198,8 @@ describe('OktaAuthenticator', () => {
       const result = await authenticatorRef?.renewIdToken();
 
       expect(mockOktaAuth.getIdToken).toHaveBeenCalledTimes(1);
-      expect(setOidcToken).toHaveBeenCalledWith('fallback-id-token');
-      expect(result).toBe('fallback-id-token');
+      expect(setOidcToken).toHaveBeenCalledWith(FALLBACK_ID_TOKEN);
+      expect(result).toBe(FALLBACK_ID_TOKEN);
     });
 
     it('should redirect to sign-in if no existing tokens', async () => {
@@ -219,8 +224,8 @@ describe('OktaAuthenticator', () => {
     });
 
     it('should redirect to sign-in when token renewal fails', async () => {
-      const mockIdToken = { idToken: 'existing-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
+      const mockIdToken = { idToken: EXISTING_ID_TOKEN };
+      const mockAccessToken = { accessToken: ACCESS_TOKEN };
 
       mockOktaAuth.tokenManager.get
         .mockResolvedValueOnce(mockIdToken)
@@ -253,8 +258,8 @@ describe('OktaAuthenticator', () => {
     });
 
     it('should return empty string if all token sources fail', async () => {
-      const mockIdToken = { idToken: 'existing-id-token' };
-      const mockAccessToken = { accessToken: 'access-token' };
+      const mockIdToken = { idToken: EXISTING_ID_TOKEN };
+      const mockAccessToken = { accessToken: ACCESS_TOKEN };
       const mockRenewedTokens = {
         idToken: undefined,
         accessToken: mockAccessToken,

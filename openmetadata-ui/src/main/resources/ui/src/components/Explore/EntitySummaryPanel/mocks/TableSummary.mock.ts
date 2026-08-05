@@ -20,13 +20,15 @@ import {
   TagSource,
 } from '../../../../generated/entity/data/table';
 
+const DIM_API_CLIENT = 'dim.api/client' as const;
+
 export const mockTableEntityDetails: Table = {
   id: '8dd1f238-6ba0-46c6-a091-7db81f2a6bed',
-  name: 'dim.api/client',
+  name: DIM_API_CLIENT,
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.api/client"',
   description:
     'This dimension table contains a row for each channel or app that your customers use to create orders. ',
-  displayName: 'dim.api/client',
+  displayName: DIM_API_CLIENT,
   version: 0.2,
   updatedAt: 1672668265493,
   updatedBy: 'admin',
@@ -124,7 +126,7 @@ export const mockTableEntityDetails: Table = {
   followers: [],
   testSuite: {
     id: 'id',
-    name: 'dim.api/client',
+    name: DIM_API_CLIENT,
     type: 'testSuite',
   },
 };

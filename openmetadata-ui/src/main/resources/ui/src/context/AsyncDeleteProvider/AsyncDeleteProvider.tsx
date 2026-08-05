@@ -25,6 +25,8 @@ import {
   DeleteWidgetAsyncFormFields,
 } from './AsyncDeleteProvider.interface';
 
+const SERVER_DELETE_ENTITY_ERROR = 'server.delete-entity-error';
+
 export const AsyncDeleteContext = createContext({} as AsyncDeleteContextType);
 
 const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
@@ -60,7 +62,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
       if (asyncDeleteJobRef.current?.status === 'FAILED') {
         showErrorToast(
           asyncDeleteJobRef.current.error ??
-            t('server.delete-entity-error', {
+            t(SERVER_DELETE_ENTITY_ERROR, {
               entity: entityName,
             })
         );
@@ -83,7 +85,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.delete-entity-error', {
+        t(SERVER_DELETE_ENTITY_ERROR, {
           entity: entityName,
         })
       );
@@ -103,7 +105,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     if (response.status === 'FAILED') {
       showErrorToast(
         response.error ??
-          t('server.delete-entity-error', {
+          t(SERVER_DELETE_ENTITY_ERROR, {
             entity: response.entityName,
           })
       );

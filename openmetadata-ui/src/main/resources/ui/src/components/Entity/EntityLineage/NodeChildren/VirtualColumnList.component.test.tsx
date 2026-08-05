@@ -19,6 +19,11 @@ import VirtualColumnList, {
   VirtualColumnListProps,
 } from './VirtualColumnList.component';
 
+const COLUMN_SCROLL_UP = 'column-scroll-up';
+const COLUMN_SCROLL_DOWN = 'column-scroll-down';
+const COLUMN_TABLE_COL0 = 'column-table.col0';
+const OUTSIDE_CURRENT_PAGE_ITEM = 'outside-current-page-item';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest
     .fn()
@@ -86,8 +91,8 @@ describe('VirtualColumnList', () => {
   it('renders empty list without navigation buttons', () => {
     render(<VirtualColumnList {...defaultProps} />);
 
-    expect(screen.queryByTestId('column-scroll-up')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('column-scroll-down')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_SCROLL_UP)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_SCROLL_DOWN)).not.toBeInTheDocument();
   });
 
   it('renders columns within page size without navigation', () => {
@@ -97,8 +102,8 @@ describe('VirtualColumnList', () => {
 
     render(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
-    expect(screen.queryByTestId('column-scroll-up')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('column-scroll-down')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_SCROLL_UP)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_SCROLL_DOWN)).not.toBeInTheDocument();
 
     flatItems.forEach((item) => {
       expect(
@@ -115,8 +120,8 @@ describe('VirtualColumnList', () => {
 
     render(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
-    expect(screen.getByTestId('column-scroll-up')).toBeInTheDocument();
-    expect(screen.getByTestId('column-scroll-down')).toBeInTheDocument();
+    expect(screen.getByTestId(COLUMN_SCROLL_UP)).toBeInTheDocument();
+    expect(screen.getByTestId(COLUMN_SCROLL_DOWN)).toBeInTheDocument();
   });
 
   it('disables up button at the start', () => {
@@ -127,7 +132,7 @@ describe('VirtualColumnList', () => {
 
     render(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
-    const upButton = screen.getByTestId('column-scroll-up');
+    const upButton = screen.getByTestId(COLUMN_SCROLL_UP);
 
     expect(upButton).toBeDisabled();
   });
@@ -140,7 +145,7 @@ describe('VirtualColumnList', () => {
 
     render(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
-    const downButton = screen.getByTestId('column-scroll-down');
+    const downButton = screen.getByTestId(COLUMN_SCROLL_DOWN);
 
     expect(downButton).not.toBeDisabled();
   });
@@ -153,10 +158,10 @@ describe('VirtualColumnList', () => {
 
     render(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
-    const downButton = screen.getByTestId('column-scroll-down');
+    const downButton = screen.getByTestId(COLUMN_SCROLL_DOWN);
     fireEvent.click(downButton);
 
-    expect(screen.queryByTestId('column-table.col0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_TABLE_COL0)).not.toBeInTheDocument();
     expect(
       screen.getByTestId(`column-table.col${LINEAGE_CHILD_ITEMS_PER_PAGE}`)
     ).toBeInTheDocument();
@@ -172,15 +177,15 @@ describe('VirtualColumnList', () => {
       <VirtualColumnList {...defaultProps} flatItems={flatItems} />
     );
 
-    const downButton = screen.getByTestId('column-scroll-down');
+    const downButton = screen.getByTestId(COLUMN_SCROLL_DOWN);
     fireEvent.click(downButton);
 
     rerender(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
-    const upButton = screen.getByTestId('column-scroll-up');
+    const upButton = screen.getByTestId(COLUMN_SCROLL_UP);
     fireEvent.click(upButton);
 
-    expect(screen.getByTestId('column-table.col0')).toBeInTheDocument();
+    expect(screen.getByTestId(COLUMN_TABLE_COL0)).toBeInTheDocument();
   });
 
   it('stops propagation on button clicks', () => {
@@ -191,7 +196,7 @@ describe('VirtualColumnList', () => {
 
     render(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
-    const downButton = screen.getByTestId('column-scroll-down');
+    const downButton = screen.getByTestId(COLUMN_SCROLL_DOWN);
     const mockEvent = {
       stopPropagation: jest.fn(),
     } as unknown as React.MouseEvent<HTMLButtonElement>;
@@ -231,7 +236,7 @@ describe('VirtualColumnList', () => {
       <VirtualColumnList {...defaultProps} flatItems={flatItems} />
     );
 
-    const downButton = screen.getByTestId('column-scroll-down');
+    const downButton = screen.getByTestId(COLUMN_SCROLL_DOWN);
     fireEvent.click(downButton);
 
     rerender(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
@@ -253,7 +258,7 @@ describe('VirtualColumnList', () => {
 
     const outsideItems = screen.getAllByTestId(/column-table\.col/);
     const outsideItem = outsideItems.find((item) =>
-      item.className.includes('outside-current-page-item')
+      item.className.includes(OUTSIDE_CURRENT_PAGE_ITEM)
     );
 
     expect(outsideItem).toBeInTheDocument();
@@ -269,10 +274,10 @@ describe('VirtualColumnList', () => {
       <VirtualColumnList {...defaultProps} flatItems={flatItems1} />
     );
 
-    const downButton = screen.getByTestId('column-scroll-down');
+    const downButton = screen.getByTestId(COLUMN_SCROLL_DOWN);
     fireEvent.click(downButton);
 
-    expect(screen.queryByTestId('column-table.col0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(COLUMN_TABLE_COL0)).not.toBeInTheDocument();
 
     const flatItems2 = Array.from(
       { length: LINEAGE_CHILD_ITEMS_PER_PAGE + 5 },
@@ -342,7 +347,7 @@ describe('VirtualColumnList', () => {
 
     const outsideItems = screen
       .getAllByTestId(/column-table\.col/)
-      .filter((item) => item.className.includes('outside-current-page-item'));
+      .filter((item) => item.className.includes(OUTSIDE_CURRENT_PAGE_ITEM));
 
     expect(outsideItems).toHaveLength(0);
   });
@@ -360,14 +365,14 @@ describe('VirtualColumnList', () => {
     render(<VirtualColumnList {...defaultProps} flatItems={flatItems} />);
 
     const insideContainer = screen
-      .getByTestId('column-table.col0')
+      .getByTestId(COLUMN_TABLE_COL0)
       .closest('.inside-current-page-items');
 
     expect(insideContainer).toBeInTheDocument();
 
     const allItems = screen.getAllByTestId(/column-table\.col/);
     const outsideItem = allItems.find((item) =>
-      item.className.includes('outside-current-page-item')
+      item.className.includes(OUTSIDE_CURRENT_PAGE_ITEM)
     );
 
     expect(outsideItem).toBeInTheDocument();

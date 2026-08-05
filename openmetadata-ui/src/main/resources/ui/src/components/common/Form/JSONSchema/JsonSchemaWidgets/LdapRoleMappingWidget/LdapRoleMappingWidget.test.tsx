@@ -22,6 +22,10 @@ import {
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import LdapRoleMappingWidget from './LdapRoleMappingWidget';
 
+const ADD_MAPPING_BTN = 'add-mapping-btn';
+const CN_ADMINS_DC_COMPANY_DC = 'cn=admins,dc=company,dc=com';
+const CN_DUPLICATE_DC_EXAMPLE_DC = 'cn=duplicate,dc=example,dc=com';
+
 jest.mock('../../../../../../rest/rolesAPIV1', () => ({
   searchRoles: jest.fn(),
 }));
@@ -72,7 +76,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       expect(screen.queryByText(/label.ldap-group-dn/)).not.toBeInTheDocument();
@@ -81,7 +85,7 @@ describe('LdapRoleMappingWidget', () => {
 
     it('should render with existing mappings', async () => {
       const existingMappings = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin', 'DataSteward'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin', 'DataSteward'],
         'cn=users,dc=company,dc=com': ['DataConsumer'],
       });
 
@@ -96,7 +100,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       expect(
-        screen.getByDisplayValue('cn=admins,dc=company,dc=com')
+        screen.getByDisplayValue(CN_ADMINS_DC_COMPANY_DC)
       ).toBeInTheDocument();
       expect(
         screen.getByDisplayValue('cn=users,dc=company,dc=com')
@@ -105,7 +109,7 @@ describe('LdapRoleMappingWidget', () => {
 
     it('should show header when mappings exist', async () => {
       const existingMappings = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin'],
       });
 
       await act(async () => {
@@ -134,7 +138,7 @@ describe('LdapRoleMappingWidget', () => {
         ).toBeInTheDocument();
       });
 
-      expect(screen.queryByTestId('add-mapping-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(ADD_MAPPING_BTN)).not.toBeInTheDocument();
     });
   });
 
@@ -145,11 +149,11 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       await waitFor(() => {
@@ -159,7 +163,7 @@ describe('LdapRoleMappingWidget', () => {
 
     it('should remove mapping when delete button is clicked', async () => {
       const existingMappings = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin'],
       });
 
       await act(async () => {
@@ -189,17 +193,18 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       const input = await screen.findByTestId(/^ldap-group-input-/);
 
       await act(async () => {
         fireEvent.change(input, {
+          // eslint-disable-next-line sonarjs/no-duplicate-string
           target: { value: 'cn=test,dc=example,dc=com' },
         });
       });
@@ -209,7 +214,7 @@ describe('LdapRoleMappingWidget', () => {
 
     it('should update roles select', async () => {
       const existingMappings = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin'],
       });
 
       await act(async () => {
@@ -229,7 +234,7 @@ describe('LdapRoleMappingWidget', () => {
   describe('Data Synchronization Tests', () => {
     it('should parse JSON string value correctly', async () => {
       const validJson = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin', 'DataSteward'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin', 'DataSteward'],
       });
 
       await act(async () => {
@@ -238,7 +243,7 @@ describe('LdapRoleMappingWidget', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByDisplayValue('cn=admins,dc=company,dc=com')
+          screen.getByDisplayValue(CN_ADMINS_DC_COMPANY_DC)
         ).toBeInTheDocument();
       });
     });
@@ -251,7 +256,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId(/^mapping-card-/)).not.toBeInTheDocument();
@@ -263,11 +268,11 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       const input = await screen.findByTestId(/^ldap-group-input-/);
@@ -291,11 +296,11 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       const input = await screen.findByTestId(/^ldap-group-input-/);
@@ -329,11 +334,11 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       const input = await screen.findByTestId(/^ldap-group-input-/);
@@ -357,11 +362,11 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       const firstInput = await screen.findByTestId(/^ldap-group-input-/);
@@ -373,7 +378,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       const inputs = await screen.findAllByTestId(/^ldap-group-input-/);
@@ -397,15 +402,15 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       await waitFor(async () => {
@@ -418,13 +423,13 @@ describe('LdapRoleMappingWidget', () => {
 
       await act(async () => {
         fireEvent.change(inputs[0], {
-          target: { value: 'cn=duplicate,dc=example,dc=com' },
+          target: { value: CN_DUPLICATE_DC_EXAMPLE_DC },
         });
       });
 
       await act(async () => {
         fireEvent.change(inputs[1], {
-          target: { value: 'cn=duplicate,dc=example,dc=com' },
+          target: { value: CN_DUPLICATE_DC_EXAMPLE_DC },
         });
       });
 
@@ -439,15 +444,15 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       await waitFor(async () => {
@@ -460,13 +465,13 @@ describe('LdapRoleMappingWidget', () => {
 
       await act(async () => {
         fireEvent.change(inputs[0], {
-          target: { value: 'cn=duplicate,dc=example,dc=com' },
+          target: { value: CN_DUPLICATE_DC_EXAMPLE_DC },
         });
       });
 
       await act(async () => {
         fireEvent.change(inputs[1], {
-          target: { value: 'cn=duplicate,dc=example,dc=com' },
+          target: { value: CN_DUPLICATE_DC_EXAMPLE_DC },
         });
       });
 
@@ -489,7 +494,7 @@ describe('LdapRoleMappingWidget', () => {
   describe('React Key Stability Tests', () => {
     it('should use stable IDs for consistent mappings', async () => {
       const existingMappings = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin'],
       });
 
       await act(async () => {
@@ -510,11 +515,11 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       const input = await screen.findByTestId(/^ldap-group-input-/);
@@ -562,7 +567,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
     });
 
@@ -574,7 +579,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('add-mapping-btn'));
+        fireEvent.click(screen.getByTestId(ADD_MAPPING_BTN));
       });
 
       await waitFor(() => {
@@ -586,7 +591,7 @@ describe('LdapRoleMappingWidget', () => {
   describe('Incomplete Mapping Tests', () => {
     it('should keep mapping visible when ldapGroup is cleared but roles are selected', async () => {
       const existingMappings = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin', 'DataSteward'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin', 'DataSteward'],
       });
 
       await act(async () => {
@@ -597,7 +602,7 @@ describe('LdapRoleMappingWidget', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByDisplayValue('cn=admins,dc=company,dc=com')
+          screen.getByDisplayValue(CN_ADMINS_DC_COMPANY_DC)
         ).toBeInTheDocument();
       });
 
@@ -623,7 +628,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId(/^mapping-card-/)).not.toBeInTheDocument();
@@ -635,13 +640,13 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('add-mapping-btn')).toBeInTheDocument();
+        expect(screen.getByTestId(ADD_MAPPING_BTN)).toBeInTheDocument();
       });
     });
 
     it('should disable inputs when disabled prop is true', async () => {
       const existingMappings = JSON.stringify({
-        'cn=admins,dc=company,dc=com': ['Admin'],
+        CN_ADMINS_DC_COMPANY_DC: ['Admin'],
       });
 
       await act(async () => {
@@ -658,7 +663,7 @@ describe('LdapRoleMappingWidget', () => {
 
       expect(input).toBeDisabled();
 
-      const addButton = screen.getByTestId('add-mapping-btn');
+      const addButton = screen.getByTestId(ADD_MAPPING_BTN);
 
       expect(addButton).toBeDisabled();
     });
@@ -669,7 +674,7 @@ describe('LdapRoleMappingWidget', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('add-mapping-btn')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(ADD_MAPPING_BTN)).not.toBeInTheDocument();
       });
     });
 

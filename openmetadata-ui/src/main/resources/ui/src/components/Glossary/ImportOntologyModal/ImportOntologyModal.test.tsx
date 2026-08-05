@@ -23,6 +23,9 @@ import { importGlossaryOntology } from '../../../rest/importExportAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ImportOntologyModal from './ImportOntologyModal.component';
 
+const IMPORT_ONTOLOGY_SUBMIT = 'import-ontology-submit';
+const ONTOLOGY_VALIDATION_SUMMARY = 'ontology-validation-summary';
+
 jest.mock('../../../rest/importExportAPI', () => ({
   importGlossaryOntology: jest.fn(),
 }));
@@ -99,7 +102,7 @@ describe('ImportOntologyModal', () => {
     renderModal();
 
     expect(screen.getByTestId('upload-ontology-dragger')).toBeInTheDocument();
-    expect(screen.getByTestId('import-ontology-submit')).toBeDisabled();
+    expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).toBeDisabled();
   });
 
   it('should dry-run validate on upload and enable import for a valid file', async () => {
@@ -115,11 +118,11 @@ describe('ImportOntologyModal', () => {
     );
 
     expect(
-      await screen.findByTestId('ontology-validation-summary')
+      await screen.findByTestId(ONTOLOGY_VALIDATION_SUMMARY)
     ).toBeInTheDocument();
 
     await waitFor(() =>
-      expect(screen.getByTestId('import-ontology-submit')).not.toBeDisabled()
+      expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).not.toBeDisabled()
     );
   });
 
@@ -146,7 +149,7 @@ describe('ImportOntologyModal', () => {
       await screen.findByTestId('ontology-validation-issues')
     ).toBeInTheDocument();
     expect(screen.getByText('Failed http://x#A: boom')).toBeInTheDocument();
-    expect(screen.getByTestId('import-ontology-submit')).toBeDisabled();
+    expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).toBeDisabled();
   });
 
   it('should commit with dryRun=false and report success on import', async () => {
@@ -158,11 +161,11 @@ describe('ImportOntologyModal', () => {
 
     await uploadFile();
     await waitFor(() =>
-      expect(screen.getByTestId('import-ontology-submit')).not.toBeDisabled()
+      expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).not.toBeDisabled()
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('import-ontology-submit'));
+      fireEvent.click(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT));
     });
 
     await waitFor(() =>
@@ -186,11 +189,11 @@ describe('ImportOntologyModal', () => {
 
     await uploadFile();
     await waitFor(() =>
-      expect(screen.getByTestId('import-ontology-submit')).not.toBeDisabled()
+      expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).not.toBeDisabled()
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('import-ontology-submit'));
+      fireEvent.click(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT));
     });
 
     await waitFor(() =>
@@ -234,7 +237,7 @@ describe('ImportOntologyModal', () => {
 
       await uploadFile();
 
-      const summary = await screen.findByTestId('ontology-validation-summary');
+      const summary = await screen.findByTestId(ONTOLOGY_VALIDATION_SUMMARY);
 
       expect(summary).toHaveTextContent('terms=3');
       expect(summary).toHaveTextContent('relations=1');
@@ -253,7 +256,7 @@ describe('ImportOntologyModal', () => {
       await uploadFile();
 
       await waitFor(() =>
-        expect(screen.getByTestId('import-ontology-submit')).not.toBeDisabled()
+        expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).not.toBeDisabled()
       );
     });
 
@@ -306,7 +309,7 @@ describe('ImportOntologyModal', () => {
         expect.stringContaining('message.invalid-file-format')
       );
       expect(mockImport).not.toHaveBeenCalled();
-      expect(screen.getByTestId('import-ontology-submit')).toBeDisabled();
+      expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).toBeDisabled();
     });
 
     it('should show an error and keep import disabled when validation fails', async () => {
@@ -318,9 +321,9 @@ describe('ImportOntologyModal', () => {
       await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
 
       expect(
-        screen.queryByTestId('ontology-validation-summary')
+        screen.queryByTestId(ONTOLOGY_VALIDATION_SUMMARY)
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId('import-ontology-submit')).toBeDisabled();
+      expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).toBeDisabled();
     });
 
     it('should show an error and keep the modal open when the commit fails', async () => {
@@ -333,11 +336,11 @@ describe('ImportOntologyModal', () => {
 
       await uploadFile();
       await waitFor(() =>
-        expect(screen.getByTestId('import-ontology-submit')).not.toBeDisabled()
+        expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).not.toBeDisabled()
       );
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('import-ontology-submit'));
+        fireEvent.click(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT));
       });
 
       await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
@@ -358,12 +361,12 @@ describe('ImportOntologyModal', () => {
       await uploadFile();
 
       expect(
-        await screen.findByTestId('ontology-validation-summary')
+        await screen.findByTestId(ONTOLOGY_VALIDATION_SUMMARY)
       ).toBeInTheDocument();
       expect(
         screen.queryByTestId('ontology-validation-issues')
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId('import-ontology-submit')).toBeDisabled();
+      expect(screen.getByTestId(IMPORT_ONTOLOGY_SUBMIT)).toBeDisabled();
     });
 
     it('should show an error when the file cannot be read', async () => {

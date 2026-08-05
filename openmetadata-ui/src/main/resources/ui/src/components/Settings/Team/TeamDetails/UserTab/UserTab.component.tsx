@@ -60,6 +60,8 @@ import { UserSelectableList } from '../../../../common/UserSelectableList/UserSe
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { UserTabProps } from './UserTab.interface';
 
+const LABEL_USER = 'label.user';
+
 export const UserTab = ({
   permission,
   currentTeam,
@@ -321,7 +323,7 @@ export const UserTab = ({
     }
 
     return permission.EditAll
-      ? t('label.add-new-entity', { entity: t('label.user') })
+      ? t('label.add-new-entity', { entity: t(LABEL_USER) })
       : t('message.no-permission-for-action');
   }, [permission, isTeamDeleted, t]);
 
@@ -361,10 +363,10 @@ export const UserTab = ({
           </Space>
         }
         className="mt-0-important border-none"
-        heading={t('label.user')}
+        heading={t(LABEL_USER)}
         permission={editUserPermission}
         permissionValue={t('label.edit-entity', {
-          entity: t('label.user'),
+          entity: t(LABEL_USER),
         })}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
       />
@@ -405,7 +407,7 @@ export const UserTab = ({
                     selectedUsers={currentTeam?.users ?? []}
                     onUpdate={onAddUser}>
                     <Button data-testid="add-new-user" type="primary">
-                      {t('label.add-entity', { entity: t('label.user') })}
+                      {t('label.add-entity', { entity: t(LABEL_USER) })}
                     </Button>
                   </UserSelectableList>
                 )}

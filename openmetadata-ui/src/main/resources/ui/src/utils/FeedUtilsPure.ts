@@ -56,6 +56,8 @@ import { getSanitizeContent } from './sanitize.utils';
 import { getDecodedFqn, getEncodedFqn } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
+const SERVER_ENTITY_FEED_FETCH_ERROR = 'server.entity-feed-fetch-error';
+
 export const getEntityType = (entityLink: string) => {
   return EntityLink.getEntityType(entityLink);
 };
@@ -601,7 +603,7 @@ export const getFeedCounts = async (
       mentionCount: 0,
     });
   } catch (err) {
-    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+    showErrorToast(err as AxiosError, t(SERVER_ENTITY_FEED_FETCH_ERROR));
   }
 };
 
@@ -626,7 +628,7 @@ export const fetchEntityTaskCountsInto = async (
       };
     });
   } catch (err) {
-    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+    showErrorToast(err as AxiosError, t(SERVER_ENTITY_FEED_FETCH_ERROR));
   }
 };
 
@@ -652,6 +654,6 @@ export const fetchEntityActivityCountInto = async (
       };
     });
   } catch (err) {
-    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+    showErrorToast(err as AxiosError, t(SERVER_ENTITY_FEED_FETCH_ERROR));
   }
 };

@@ -25,6 +25,14 @@ import {
   TableSearchSource,
 } from '../../interface/search.interface';
 
+const ID_OF_THE_API_CLIENT_THAT =
+  'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.' as const;
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM =
+  'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id' as const;
+const _6952B1C3_0518_4F61_9519_A4E39562FE69 =
+  '6952b1c3-0518-4f61-9519-a4e39562fe69' as const;
+const CHART_NAME = 'chart name' as const;
+
 export const mockOptionsArray = [
   { key: 'option_1', label: 'option_1' },
   { key: 'option_2', label: 'option_2' },
@@ -72,10 +80,8 @@ export const mockGetServiceOptionData: SuggestOption<
         name: 'api_client_id',
         dataType: DataType.Numeric,
         dataTypeDisplay: 'numeric',
-        description:
-          'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
-        fullyQualifiedName:
-          'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id',
+        description: ID_OF_THE_API_CLIENT_THAT,
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
         tags: [],
         ordinalPosition: 1,
         customMetrics: [],
@@ -113,7 +119,7 @@ export const mockGetServiceOptionData: SuggestOption<
       deleted: false,
     },
     service: {
-      id: '6952b1c3-0518-4f61-9519-a4e39562fe69',
+      id: _6952B1C3_0518_4F61_9519_A4E39562FE69,
       type: 'databaseService',
       name: 'sample_data',
       displayName: 'sample_data display',
@@ -140,7 +146,7 @@ export const mockGetServiceOptionDataWithoutDN: SuggestOption<
     ...mockGetServiceOptionData._source,
     type: '',
     service: {
-      id: '6952b1c3-0518-4f61-9519-a4e39562fe69',
+      id: _6952B1C3_0518_4F61_9519_A4E39562FE69,
       type: 'databaseService',
       name: 'sample_data',
       fullyQualifiedName: 'sample_data',
@@ -159,7 +165,7 @@ export const mockGetServiceOptionDataWithoutNameDN: SuggestOption<
     ...mockGetServiceOptionData._source,
     type: '',
     service: {
-      id: '6952b1c3-0518-4f61-9519-a4e39562fe69',
+      id: _6952B1C3_0518_4F61_9519_A4E39562FE69,
       type: 'databaseService',
       fullyQualifiedName: 'sample_data',
       description: 'd',
@@ -186,10 +192,8 @@ export const mockGetColumnOptionsData: SuggestOption<
         displayName: 'ad_id display',
         dataType: DataType.Numeric,
         dataTypeDisplay: 'numeric',
-        description:
-          'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
-        fullyQualifiedName:
-          'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id',
+        description: ID_OF_THE_API_CLIENT_THAT,
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
         tags: [],
         ordinalPosition: 1,
         customMetrics: [],
@@ -215,10 +219,8 @@ export const mockGetColumnOptionsDataWithoutDN: SuggestOption<
         name: 'ad_id',
         dataType: DataType.Numeric,
         dataTypeDisplay: 'numeric',
-        description:
-          'ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.',
-        fullyQualifiedName:
-          'sample_data.ecommerce_db.shopify."dim.api/client".api_client_id',
+        description: ID_OF_THE_API_CLIENT_THAT,
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM,
         tags: [],
         ordinalPosition: 1,
         customMetrics: [],
@@ -355,7 +357,7 @@ export const mockGetChartsOptionsData: SuggestOption<
     charts: [
       {
         id: '3',
-        name: 'chart name',
+        name: CHART_NAME,
         displayName: 'chart display',
         type: '',
       },
@@ -368,7 +370,7 @@ export const mockGetChartsOptionsDataWithoutDN: SuggestOption<
   ExploreSearchSource
 > = {
   ...mockGetServiceOptionData,
-  text: 'chart name',
+  text: CHART_NAME,
   _source: {
     ...mockGetServiceOptionData,
     type: '',
@@ -383,7 +385,7 @@ export const mockGetChartsOptionsDataWithoutDN: SuggestOption<
     charts: [
       {
         id: '3',
-        name: 'chart name',
+        name: CHART_NAME,
         type: '',
       },
     ],

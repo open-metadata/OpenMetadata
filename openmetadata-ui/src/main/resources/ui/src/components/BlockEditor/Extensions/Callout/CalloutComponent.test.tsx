@@ -15,6 +15,8 @@ import userEvent from '@testing-library/user-event';
 import { NodeViewProps } from '@tiptap/core';
 import CalloutComponent from './CalloutComponent';
 
+const CALLOUT_INFO_BTN = 'callout-info-btn';
+
 const mockNode = {
   attrs: {
     calloutType: 'info',
@@ -47,7 +49,7 @@ describe('CalloutComponent', () => {
     expect(calloutNode).toBeInTheDocument();
     expect(calloutNode).toHaveAttribute('data-type', 'callout');
 
-    expect(screen.getByTestId('callout-info-btn')).toBeInTheDocument();
+    expect(screen.getByTestId(CALLOUT_INFO_BTN)).toBeInTheDocument();
 
     expect(screen.getByTestId('callout-content')).toBeInTheDocument();
   });
@@ -57,7 +59,7 @@ describe('CalloutComponent', () => {
       render(<CalloutComponent {...mockNodeViewProps} />);
     });
 
-    const calloutButton = screen.getByTestId('callout-info-btn');
+    const calloutButton = screen.getByTestId(CALLOUT_INFO_BTN);
 
     fireEvent.click(calloutButton);
 
@@ -85,7 +87,7 @@ describe('CalloutComponent', () => {
       render(<CalloutComponent {...nodeViewProps} />);
     });
 
-    const calloutButton = screen.getByTestId('callout-info-btn');
+    const calloutButton = screen.getByTestId(CALLOUT_INFO_BTN);
 
     await act(async () => {
       userEvent.click(calloutButton);

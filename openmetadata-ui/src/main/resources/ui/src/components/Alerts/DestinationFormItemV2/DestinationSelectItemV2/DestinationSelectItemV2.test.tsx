@@ -46,6 +46,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (key: string) => void;
     value?: string | null;
     items?: { id: string; label?: string; isDisabled?: boolean }[];
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object/type key
     'data-testid'?: string;
   }) => (
     <select

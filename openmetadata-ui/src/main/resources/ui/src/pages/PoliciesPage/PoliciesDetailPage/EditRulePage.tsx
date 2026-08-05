@@ -37,6 +37,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
+const LABEL_RULE = 'label.rule';
+
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const InitialData: Rule = {
@@ -137,7 +139,7 @@ const EditRulePage = () => {
       ) {
         showErrorToast(
           t('server.entity-already-exist', {
-            entity: t('label.rule'),
+            entity: t(LABEL_RULE),
             entityPlural: t('label.rule-lowercase-plural'),
             name: ruleData.name,
           })
@@ -162,15 +164,13 @@ const EditRulePage = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.edit-entity', { entity: t('label.rule') })}>
+    <PageLayoutV1 pageTitle={t('label.edit-entity', { entity: t(LABEL_RULE) })}>
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
         <Typography.Paragraph
           className="text-base"
           data-testid="edit-rule-title">
-          {t('label.edit-entity', { entity: t('label.rule') })}{' '}
-          {`"${ruleName}"`}
+          {t('label.edit-entity', { entity: t(LABEL_RULE) })} {`"${ruleName}"`}
         </Typography.Paragraph>
         <Form
           data-testid="rule-form"

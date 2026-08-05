@@ -38,6 +38,8 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
 
+const LABEL_DOMAIN_PLURAL = 'label.domain-plural';
+
 const DomainSelectableList = withSuspenseFallback(
   lazy(
     () =>
@@ -131,7 +133,7 @@ export const DomainLabelV2 = <
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain-plural'),
+              entity: t(LABEL_DOMAIN_PLURAL),
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
@@ -177,7 +179,7 @@ export const DomainLabelV2 = <
       <WidgetPlusButton
         data-testid="add-domain"
         title={t('label.add-entity', {
-          entity: t('label.domain-plural'),
+          entity: t(LABEL_DOMAIN_PLURAL),
         })}
         onClick={(e) => e.stopPropagation()}
       />
@@ -186,7 +188,7 @@ export const DomainLabelV2 = <
         data-testid="edit-domain"
         disabled={!hasPermission}
         title={t('label.edit-entity', {
-          entity: t('label.domain-plural'),
+          entity: t(LABEL_DOMAIN_PLURAL),
         })}
         onClick={(e) => e.stopPropagation()}
       />
@@ -210,7 +212,7 @@ export const DomainLabelV2 = <
         <WidgetCard
           headerExtra={selectableList}
           isExpandDisabled={isEmpty(activeDomain)}
-          title={t('label.domain-plural')}>
+          title={t(LABEL_DOMAIN_PLURAL)}>
           {domainLink && (
             <div className="d-flex items-center gap-1 flex-wrap">
               {domainLink}

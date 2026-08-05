@@ -19,6 +19,12 @@ import {
 } from '../../../mocks/Task.mock';
 import TaskFeedCard from './TaskFeedCardNew.component';
 
+const ADMIN_USER = 'Admin User';
+const APPROVE_BUTTON = 'approve-button';
+const REJECT_BUTTON = 'reject-button';
+const _31D072F8_7873_4976_88EA_AC0D2F51F632 =
+  '31d072f8-7873-4976-88ea-ac0d2f51f632';
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn(),
@@ -56,7 +62,7 @@ jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
     {
       id: 'user-id',
       name: 'admin',
-      displayName: 'Admin User',
+      displayName: ADMIN_USER,
     },
   ]),
 }));
@@ -122,7 +128,7 @@ jest.mock('../../../utils/EntityLink', () => {
 });
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Admin User'),
+  getEntityName: jest.fn().mockReturnValue(ADMIN_USER),
 }));
 
 jest.mock('../../../rest/tasksAPI', () => ({
@@ -158,7 +164,7 @@ describe('TaskFeedCardNew Component', () => {
     });
 
     expect(screen.getByTestId('task-created-by')).toBeInTheDocument();
-    expect(screen.getByText('Admin User')).toBeInTheDocument();
+    expect(screen.getByText(ADMIN_USER)).toBeInTheDocument();
   });
 
   it('should display timestamp', async () => {
@@ -209,8 +215,8 @@ describe('TaskFeedCardNew Component', () => {
       });
     });
 
-    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
-    expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+    expect(screen.getByTestId(APPROVE_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(REJECT_BUTTON)).toBeInTheDocument();
   });
 
   it('should handle approve button click', async () => {
@@ -224,7 +230,7 @@ describe('TaskFeedCardNew Component', () => {
       });
     });
 
-    const approveButton = screen.getByTestId('approve-button');
+    const approveButton = screen.getByTestId(APPROVE_BUTTON);
     await act(async () => {
       fireEvent.click(approveButton);
     });
@@ -243,7 +249,7 @@ describe('TaskFeedCardNew Component', () => {
       });
     });
 
-    const rejectButton = screen.getByTestId('reject-button');
+    const rejectButton = screen.getByTestId(REJECT_BUTTON);
     await act(async () => {
       fireEvent.click(rejectButton);
     });
@@ -287,11 +293,11 @@ describe('TaskFeedCardNew Component', () => {
     } = require('../../../hooks/useApplicationStore');
     useApplicationStore.mockReturnValue({
       currentUser: {
-        id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+        id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
         name: 'test-user',
         teams: [
           {
-            id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+            id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
             name: 'DataGovernance',
           },
         ],
@@ -304,8 +310,8 @@ describe('TaskFeedCardNew Component', () => {
       });
     });
 
-    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
-    expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+    expect(screen.getByTestId(APPROVE_BUTTON)).toBeInTheDocument();
+    expect(screen.getByTestId(REJECT_BUTTON)).toBeInTheDocument();
   });
 
   it('should handle recognizer feedback approval', async () => {
@@ -315,11 +321,11 @@ describe('TaskFeedCardNew Component', () => {
     } = require('../../../hooks/useApplicationStore');
     useApplicationStore.mockReturnValue({
       currentUser: {
-        id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+        id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
         name: 'test-user',
         teams: [
           {
-            id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+            id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
             name: 'DataGovernance',
           },
         ],
@@ -332,7 +338,7 @@ describe('TaskFeedCardNew Component', () => {
       });
     });
 
-    const approveButton = screen.getByTestId('approve-button');
+    const approveButton = screen.getByTestId(APPROVE_BUTTON);
     await act(async () => {
       fireEvent.click(approveButton);
     });
@@ -352,11 +358,11 @@ describe('TaskFeedCardNew Component', () => {
     } = require('../../../hooks/useApplicationStore');
     useApplicationStore.mockReturnValue({
       currentUser: {
-        id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+        id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
         name: 'test-user',
         teams: [
           {
-            id: '31d072f8-7873-4976-88ea-ac0d2f51f632',
+            id: _31D072F8_7873_4976_88EA_AC0D2F51F632,
             name: 'DataGovernance',
           },
         ],
@@ -369,7 +375,7 @@ describe('TaskFeedCardNew Component', () => {
       });
     });
 
-    const rejectButton = screen.getByTestId('reject-button');
+    const rejectButton = screen.getByTestId(REJECT_BUTTON);
     await act(async () => {
       fireEvent.click(rejectButton);
     });
@@ -400,7 +406,7 @@ describe('TaskFeedCardNew Component', () => {
       });
     });
 
-    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(APPROVE_BUTTON)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(REJECT_BUTTON)).not.toBeInTheDocument();
   });
 });

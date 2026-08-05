@@ -16,6 +16,9 @@ import { showErrorToast } from '../utils/ToastUtils';
 import { getAttachmentId } from '../utils/UploadAttachmentUtils';
 import { useAuthenticatedFile } from './useAuthenticatedFile';
 
+const REPORT_PDF = 'report.pdf';
+const SERVER_UNEXPECTED_ERROR = 'server.unexpected-error';
+
 jest.mock('../rest/assetAPI', () => ({
   downloadAsset: jest.fn(),
 }));
@@ -88,7 +91,7 @@ describe('useAuthenticatedFile', () => {
     const { result } = renderHook(() => useAuthenticatedFile(url));
 
     await act(async () => {
-      await result.current.downloadFile('report.pdf');
+      await result.current.downloadFile(REPORT_PDF);
     });
 
     expect(mockGetAttachmentId).toHaveBeenCalledWith(url);
@@ -105,13 +108,13 @@ describe('useAuthenticatedFile', () => {
     const { result } = renderHook(() => useAuthenticatedFile(url));
 
     await act(async () => {
-      await result.current.downloadFile('report.pdf');
+      await result.current.downloadFile(REPORT_PDF);
     });
 
     expect(mockDownloadAsset).not.toHaveBeenCalled();
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       expect.any(Error),
-      'server.unexpected-error'
+      SERVER_UNEXPECTED_ERROR
     );
     expect(mockShowErrorToast.mock.calls[0][0]).not.toEqual(expect.any(String));
     expect(result.current.isLoading).toBe(false);
@@ -123,13 +126,13 @@ describe('useAuthenticatedFile', () => {
     const { result } = renderHook(() => useAuthenticatedFile(url));
 
     await act(async () => {
-      await result.current.downloadFile('report.pdf');
+      await result.current.downloadFile(REPORT_PDF);
     });
 
     expect(mockDownloadAsset).toHaveBeenCalledTimes(1);
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       expect.any(Error),
-      'server.unexpected-error'
+      SERVER_UNEXPECTED_ERROR
     );
     expect(result.current.isLoading).toBe(false);
   });
@@ -140,12 +143,12 @@ describe('useAuthenticatedFile', () => {
     const { result } = renderHook(() => useAuthenticatedFile(url));
 
     await act(async () => {
-      await result.current.downloadFile('report.pdf');
+      await result.current.downloadFile(REPORT_PDF);
     });
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       expect.any(Error),
-      'server.unexpected-error'
+      SERVER_UNEXPECTED_ERROR
     );
     expect(result.current.isLoading).toBe(false);
   });
@@ -162,7 +165,7 @@ describe('useAuthenticatedFile', () => {
 
     let downloadPromise: Promise<void>;
     act(() => {
-      downloadPromise = result.current.downloadFile('report.pdf');
+      downloadPromise = result.current.downloadFile(REPORT_PDF);
     });
 
     expect(result.current.isLoading).toBe(true);
@@ -181,8 +184,8 @@ describe('useAuthenticatedFile', () => {
 
     await act(async () => {
       await Promise.all([
-        result.current.downloadFile('report.pdf'),
-        result.current.downloadFile('report.pdf'),
+        result.current.downloadFile(REPORT_PDF),
+        result.current.downloadFile(REPORT_PDF),
       ]);
     });
 

@@ -45,6 +45,13 @@ import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
+const HTTPS_EXAMPLE_COM_ICON_SVG = ' https://example.com/icon.svg ';
+const ICON_URL_TRIMMED = 'https://example.com/icon.svg';
+const SOURCE_URL_BUTTON = 'source-url-button';
+const TRIGGER_AUTO_PILOT_APPLICATION_BUTTON =
+  'trigger-auto-pilot-application-button';
+const DATA_CONTRACT_LATEST_RESULT_BTN = 'data-contract-latest-result-btn';
+
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',
@@ -243,7 +250,7 @@ jest.mock('../../Modals/IconColorModal', () =>
         onClick={() => {
           void onSubmit({
             color: ' #654321 ',
-            iconURL: ' https://example.com/icon.svg ',
+            iconURL: HTTPS_EXAMPLE_COM_ICON_SVG,
           });
         }}>
         Submit Custom Style
@@ -490,7 +497,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const sourceUrlButton = screen.getByTestId('source-url-button');
+    const sourceUrlButton = screen.getByTestId(SOURCE_URL_BUTTON);
 
     const sourceUrlLink = screen.getByRole('link');
 
@@ -503,7 +510,7 @@ describe('DataAssetsHeader component', () => {
   it('should not render source URL button when sourceUrl is not present', () => {
     render(<DataAssetsHeader {...mockProps} />);
 
-    expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SOURCE_URL_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should render source URL button from endpointURL for API entities', () => {
@@ -519,7 +526,7 @@ describe('DataAssetsHeader component', () => {
 
     render(<DataAssetsHeader {...apiEndpointProps} />);
 
-    const sourceUrlButton = screen.getByTestId('source-url-button');
+    const sourceUrlButton = screen.getByTestId(SOURCE_URL_BUTTON);
 
     expect(sourceUrlButton).toBeInTheDocument();
     expect(screen.getByRole('link')).toHaveAttribute('href', mockEndpointUrl);
@@ -694,7 +701,7 @@ describe('DataAssetsHeader component', () => {
           ...mockProps.dataAsset,
           style: {
             color: '#123456',
-            iconURL: 'https://example.com/icon.svg',
+            iconURL: ICON_URL_TRIMMED,
           },
         }}
         onStyleUpdate={onStyleUpdate}
@@ -718,7 +725,7 @@ describe('DataAssetsHeader component', () => {
     await waitFor(() => {
       expect(onStyleUpdate).toHaveBeenCalledWith({
         color: '#654321',
-        iconURL: 'https://example.com/icon.svg',
+        iconURL: ICON_URL_TRIMMED,
       });
     });
   });
@@ -743,7 +750,7 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(
-      screen.queryByTestId('trigger-auto-pilot-application-button')
+      screen.queryByTestId(TRIGGER_AUTO_PILOT_APPLICATION_BUTTON)
     ).not.toBeInTheDocument();
   });
 
@@ -762,7 +769,7 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(
-      screen.queryByTestId('trigger-auto-pilot-application-button')
+      screen.queryByTestId(TRIGGER_AUTO_PILOT_APPLICATION_BUTTON)
     ).not.toBeInTheDocument();
   });
 
@@ -780,7 +787,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+    const button = screen.getByTestId(TRIGGER_AUTO_PILOT_APPLICATION_BUTTON);
 
     expect(button).toBeInTheDocument();
 
@@ -805,7 +812,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+    const button = screen.getByTestId(TRIGGER_AUTO_PILOT_APPLICATION_BUTTON);
 
     expect(button).toBeDisabled();
   });
@@ -824,7 +831,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+    const button = screen.getByTestId(TRIGGER_AUTO_PILOT_APPLICATION_BUTTON);
 
     expect(button).toBeEnabled();
   });
@@ -845,7 +852,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+    const button = screen.getByTestId(TRIGGER_AUTO_PILOT_APPLICATION_BUTTON);
 
     expect(button).toBeDisabled();
     expect(button).toBeInTheDocument();
@@ -865,7 +872,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const button = screen.getByTestId('trigger-auto-pilot-application-button');
+    const button = screen.getByTestId(TRIGGER_AUTO_PILOT_APPLICATION_BUTTON);
 
     expect(button).toBeInTheDocument();
     expect(button).toBeEnabled();
@@ -900,7 +907,7 @@ describe('DataAssetsHeader component', () => {
         render(<DataAssetsHeader {...mockProps} />);
       });
 
-      const button = screen.getByTestId('data-contract-latest-result-btn');
+      const button = screen.getByTestId(DATA_CONTRACT_LATEST_RESULT_BTN);
 
       expect(button).toBeInTheDocument();
       expect(button).toHaveClass('data-contract-latest-result-button');
@@ -923,7 +930,7 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(
-        screen.getByTestId('data-contract-latest-result-btn')
+        screen.getByTestId(DATA_CONTRACT_LATEST_RESULT_BTN)
       ).toBeInTheDocument();
     });
 
@@ -949,7 +956,7 @@ describe('DataAssetsHeader component', () => {
         render(<DataAssetsHeader {...mockProps} />);
       });
 
-      const button = screen.getByTestId('data-contract-latest-result-btn');
+      const button = screen.getByTestId(DATA_CONTRACT_LATEST_RESULT_BTN);
       fireEvent.click(button);
 
       expect(mockGetEntityDetailsPath).toHaveBeenCalledWith(
@@ -976,7 +983,7 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(
-        screen.queryByTestId('data-contract-latest-result-btn')
+        screen.queryByTestId(DATA_CONTRACT_LATEST_RESULT_BTN)
       ).not.toBeInTheDocument();
     });
 
@@ -1003,7 +1010,7 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(
-        screen.queryByTestId('data-contract-latest-result-btn')
+        screen.queryByTestId(DATA_CONTRACT_LATEST_RESULT_BTN)
       ).not.toBeInTheDocument();
     });
 
@@ -1023,7 +1030,7 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(
-        screen.queryByTestId('data-contract-latest-result-btn')
+        screen.queryByTestId(DATA_CONTRACT_LATEST_RESULT_BTN)
       ).not.toBeInTheDocument();
     });
 
@@ -1048,7 +1055,7 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(
-        screen.queryByTestId('data-contract-latest-result-btn')
+        screen.queryByTestId(DATA_CONTRACT_LATEST_RESULT_BTN)
       ).not.toBeInTheDocument();
     });
 
@@ -1072,7 +1079,7 @@ describe('DataAssetsHeader component', () => {
         render(<DataAssetsHeader {...mockProps} />);
       });
 
-      const button = screen.getByTestId('data-contract-latest-result-btn');
+      const button = screen.getByTestId(DATA_CONTRACT_LATEST_RESULT_BTN);
 
       expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
     });
@@ -1094,7 +1101,7 @@ describe('DataAssetsHeader component', () => {
         render(<DataAssetsHeader {...mockProps} />);
       });
 
-      const button = screen.getByTestId('data-contract-latest-result-btn');
+      const button = screen.getByTestId(DATA_CONTRACT_LATEST_RESULT_BTN);
 
       expect(button.querySelector('.anticon')).not.toBeInTheDocument();
     });

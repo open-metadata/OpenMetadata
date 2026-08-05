@@ -35,6 +35,8 @@ import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
+const LABEL_ROLE_PLURAL = 'label.role-plural';
+
 const getMaxTagPlaceholder = (t: TFunction) => (omittedValues: unknown[]) =>
   (
     <span className="max-tag-text">
@@ -96,7 +98,7 @@ const UserProfileRoles = ({
         showErrorToast(
           err as AxiosError,
           t('server.entity-fetch-error', {
-            entity: t('label.role-plural'),
+            entity: t(LABEL_ROLE_PLURAL),
           })
         );
       } finally {
@@ -254,7 +256,7 @@ const UserProfileRoles = ({
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text className="text-sm font-medium">
-            {t('label.role-plural')}
+            {t(LABEL_ROLE_PLURAL)}
           </Typography.Text>
           <Popover
             destroyTooltipOnHide
@@ -270,7 +272,7 @@ const UserProfileRoles = ({
                     <RoleIcon height={16} />
                   </div>
                   <Typography.Text className="user-profile-edit-popover-card-title">
-                    {t('label.role-plural')}
+                    {t(LABEL_ROLE_PLURAL)}
                   </Typography.Text>
                 </div>
 
@@ -348,7 +350,7 @@ const UserProfileRoles = ({
             {isAdminUser && (
               <Tooltip
                 title={t('label.edit-entity', {
-                  entity: t('label.role-plural'),
+                  entity: t(LABEL_ROLE_PLURAL),
                 })}>
                 <EditIcon
                   className="cursor-pointer align-middle"

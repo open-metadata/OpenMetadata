@@ -16,6 +16,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdvancedAssetsFilterField } from './AdvancedAssetsFilterField.component';
 
+const ADVANCED_FILTER_CONTAINER = 'advanced-filter-container';
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
 }));
@@ -150,7 +152,7 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapper>
     );
 
-    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
+    expect(screen.getByTestId(ADVANCED_FILTER_CONTAINER)).toBeInTheDocument();
   });
 
   it('handles query changes correctly', () => {
@@ -181,7 +183,7 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapper>
     );
 
-    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
+    expect(screen.getByTestId(ADVANCED_FILTER_CONTAINER)).toBeInTheDocument();
   });
 
   it('renders hidden form field for query filter', () => {
@@ -191,7 +193,7 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapper>
     );
 
-    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
+    expect(screen.getByTestId(ADVANCED_FILTER_CONTAINER)).toBeInTheDocument();
   });
 
   it('does not show alert message when no filtered resource count', () => {
@@ -231,6 +233,6 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapperWithEmptyFilter>
     );
 
-    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
+    expect(screen.getByTestId(ADVANCED_FILTER_CONTAINER)).toBeInTheDocument();
   });
 });

@@ -20,6 +20,8 @@ import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClass
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CommonWidgets } from './CommonWidgets';
 
+const CUSTOM_PROPERTIES_WIDGET = 'custom-properties-widget';
+
 // Mock the required dependencies
 jest.mock('../../Customization/GenericProvider/GenericContext');
 jest.mock('../../common/EntityDescription/Description', () => ({
@@ -41,7 +43,7 @@ jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
 }));
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: () => (
-    <div data-testid="custom-properties-widget">Custom Properties Widget</div>
+    <div data-testid={CUSTOM_PROPERTIES_WIDGET}>Custom Properties Widget</div>
   ),
 }));
 jest.mock('../OwnerLabelV2/OwnerLabelV2', () => ({
@@ -186,7 +188,7 @@ describe('CommonWidgets', () => {
     );
 
     expect(
-      await screen.findByTestId('custom-properties-widget')
+      await screen.findByTestId(CUSTOM_PROPERTIES_WIDGET)
     ).toBeInTheDocument();
   });
 
@@ -301,7 +303,7 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        await screen.findByTestId('custom-properties-widget')
+        await screen.findByTestId(CUSTOM_PROPERTIES_WIDGET)
       ).toBeInTheDocument();
     });
 
@@ -331,7 +333,7 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        await screen.findByTestId('custom-properties-widget')
+        await screen.findByTestId(CUSTOM_PROPERTIES_WIDGET)
       ).toBeInTheDocument();
     });
 
@@ -360,7 +362,7 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        await screen.findByTestId('custom-properties-widget')
+        await screen.findByTestId(CUSTOM_PROPERTIES_WIDGET)
       ).toBeInTheDocument();
     });
 
@@ -390,7 +392,7 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        await screen.findByTestId('custom-properties-widget')
+        await screen.findByTestId(CUSTOM_PROPERTIES_WIDGET)
       ).toBeInTheDocument();
     });
   });

@@ -13,27 +13,30 @@
 import { EntityReference } from '../generated/type/entityReference';
 import { Suggestion, SuggestionType } from '../types/taskSuggestion';
 
+const E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D =
+  '<#E::table::sample_data.ecommerce_db.shopify.dim_address>';
+
 export const MOCK_SUGGESTIONS = [
   {
     id: '1',
     description: 'Test suggestion1',
     type: SuggestionType.SuggestDescription,
     createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
   },
   {
     id: '2',
     description: 'Test suggestion2',
     type: SuggestionType.SuggestTagLabel,
     createdBy: { id: '2', name: 'Avatar 2', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
   },
   {
     id: '3',
     description: 'Test suggestion3',
     type: SuggestionType.SuggestDescription,
     createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
   },
 ];
 
@@ -43,14 +46,14 @@ export const MOCK_SUGGESTIONS_WITH_SAME_USER = [
     description: 'Test suggestion1',
     type: SuggestionType.SuggestDescription,
     createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
   },
   {
     id: '2',
     description: 'Test suggestion2',
     type: SuggestionType.SuggestTagLabel,
     createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+    entityLink: E_TABLE_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_D,
   },
 ];
 

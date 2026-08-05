@@ -15,6 +15,9 @@ import { useTranslation } from 'react-i18next';
 import { FileType } from '../../../BlockEditor.interface';
 import EmbedLinkElement from './EmbedLinkElement';
 
+const EMBED_INPUT = 'embed-input';
+const LABEL_EMBED_FILE_TYPE = 'label.embed-file-type';
+
 describe('EmbedLinkElement', () => {
   const mockUpdateAttributes = jest.fn();
   const mockOnPopupVisibleChange = jest.fn();
@@ -50,7 +53,7 @@ describe('EmbedLinkElement', () => {
     expect(screen.getByTestId('embed-link-form')).toBeInTheDocument();
 
     // Check if input field has initial value
-    const input = screen.getByTestId('embed-input');
+    const input = screen.getByTestId(EMBED_INPUT);
 
     expect(input).toHaveValue(mockSrc);
   });
@@ -69,8 +72,8 @@ describe('EmbedLinkElement', () => {
       />
     );
 
-    const input = screen.getByTestId('embed-input');
-    const submitButton = screen.getByText('label.embed-file-type');
+    const input = screen.getByTestId(EMBED_INPUT);
+    const submitButton = screen.getByText(LABEL_EMBED_FILE_TYPE);
 
     // Update input value
     fireEvent.change(input, {
@@ -105,8 +108,8 @@ describe('EmbedLinkElement', () => {
       />
     );
 
-    const input = screen.getByTestId('embed-input');
-    const submitButton = screen.getByText('label.embed-file-type');
+    const input = screen.getByTestId(EMBED_INPUT);
+    const submitButton = screen.getByText(LABEL_EMBED_FILE_TYPE);
 
     // Set invalid URL
     fireEvent.change(input, { target: { value: 'invalid-url' } });
@@ -139,8 +142,8 @@ describe('EmbedLinkElement', () => {
       />
     );
 
-    const input = screen.getByTestId('embed-input');
-    const submitButton = screen.getByText('label.embed-file-type');
+    const input = screen.getByTestId(EMBED_INPUT);
+    const submitButton = screen.getByText(LABEL_EMBED_FILE_TYPE);
 
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.click(submitButton);

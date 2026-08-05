@@ -41,6 +41,18 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { DataAssetSummaryPanelV1 } from './DataAssetSummaryPanelV1';
 import { DataAssetSummaryPanelProps } from './DataAssetSummaryPanelV1.interface';
 
+const NEW_DESCRIPTION = 'New description';
+const OWNERS_SECTION = 'owners-section';
+const DOMAINS_SECTION = 'domains-section';
+const GLOSSARY_TERMS_SECTION = 'glossary-terms-section';
+const TAGS_SECTION = 'tags-section';
+const DATA_PRODUCTS_SECTION = 'data-products-section';
+const UPDATE_DESCRIPTION_BTN = 'update-description-btn';
+const DATA_QUALITY_SECTION = 'data-quality-section';
+const TEST_SUCCESS = 'test-success';
+const TEST_FAILED = 'test-failed';
+const TEST_ABORTED = 'test-aborted';
+
 type DataAssetType = DataAssetSummaryPanelProps['dataAsset'];
 
 // Mock TablePureUtils to ensure functions are available
@@ -203,8 +215,8 @@ jest.mock('../common/DescriptionSection/DescriptionSection', () => {
       <div data-testid="description-section">
         {hasPermission && (
           <button
-            data-testid="update-description-btn"
-            onClick={() => onDescriptionUpdate?.('New description')}>
+            data-testid={UPDATE_DESCRIPTION_BTN}
+            onClick={() => onDescriptionUpdate?.(NEW_DESCRIPTION)}>
             Update Description
           </button>
         )}
@@ -228,7 +240,7 @@ jest.mock('../common/OverviewSection/OverviewSection', () => {
 
 jest.mock('../common/DataQualitySection/DataQualitySection', () => {
   return jest.fn().mockImplementation(({ tests, totalTests }) => (
-    <div data-testid="data-quality-section">
+    <div data-testid={DATA_QUALITY_SECTION}>
       <div data-testid="total-tests">{totalTests}</div>
       {tests.map((test: { type: string; count: number }) => (
         <div data-testid={`test-${test.type}`} key={test.type}>
@@ -243,7 +255,7 @@ jest.mock('../common/OwnersSection/OwnersSection', () => {
   return jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="owners-section">Owners Section</div>
+      <div data-testid={OWNERS_SECTION}>Owners Section</div>
     ));
 });
 
@@ -251,7 +263,7 @@ jest.mock('../common/DomainsSection/DomainsSection', () => {
   return jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="domains-section">Domains Section</div>
+      <div data-testid={DOMAINS_SECTION}>Domains Section</div>
     ));
 });
 
@@ -259,7 +271,7 @@ jest.mock('../common/GlossaryTermsSection/GlossaryTermsSection', () => {
   return jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="glossary-terms-section">Glossary Terms Section</div>
+      <div data-testid={GLOSSARY_TERMS_SECTION}>Glossary Terms Section</div>
     ));
 });
 
@@ -267,7 +279,7 @@ jest.mock('../common/TagsSection/TagsSection', () => {
   return jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="tags-section">Tags Section</div>
+      <div data-testid={TAGS_SECTION}>Tags Section</div>
     ));
 });
 
@@ -275,7 +287,7 @@ jest.mock('../common/DataProductsSection/DataProductsSection', () => {
   return jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="data-products-section">Data Products Section</div>
+      <div data-testid={DATA_PRODUCTS_SECTION}>Data Products Section</div>
     ));
 });
 
@@ -503,13 +515,11 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('owners-section')).toBeInTheDocument();
-        expect(screen.getByTestId('domains-section')).toBeInTheDocument();
-        expect(
-          screen.getByTestId('glossary-terms-section')
-        ).toBeInTheDocument();
-        expect(screen.getByTestId('tags-section')).toBeInTheDocument();
-        expect(screen.getByTestId('data-products-section')).toBeInTheDocument();
+        expect(screen.getByTestId(OWNERS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(DOMAINS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(GLOSSARY_TERMS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(TAGS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_PRODUCTS_SECTION)).toBeInTheDocument();
       });
     });
 
@@ -524,14 +534,14 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('owners-section')).toBeInTheDocument();
-        expect(screen.getByTestId('domains-section')).toBeInTheDocument();
-        expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        expect(screen.getByTestId(OWNERS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(DOMAINS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(TAGS_SECTION)).toBeInTheDocument();
         expect(
-          screen.queryByTestId('glossary-terms-section')
+          screen.queryByTestId(GLOSSARY_TERMS_SECTION)
         ).not.toBeInTheDocument();
         expect(
-          screen.queryByTestId('data-products-section')
+          screen.queryByTestId(DATA_PRODUCTS_SECTION)
         ).not.toBeInTheDocument();
       });
     });
@@ -549,14 +559,14 @@ describe('DataAssetSummaryPanelV1', () => {
       await waitFor(() => {
         expect(screen.getByTestId('description-section')).toBeInTheDocument();
         expect(screen.getByTestId('overview-section')).toBeInTheDocument();
-        expect(screen.getByTestId('owners-section')).toBeInTheDocument();
-        expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        expect(screen.getByTestId(OWNERS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(TAGS_SECTION)).toBeInTheDocument();
         // USER entity type should not have glossary terms or data products
         expect(
-          screen.queryByTestId('glossary-terms-section')
+          screen.queryByTestId(GLOSSARY_TERMS_SECTION)
         ).not.toBeInTheDocument();
         expect(
-          screen.queryByTestId('data-products-section')
+          screen.queryByTestId(DATA_PRODUCTS_SECTION)
         ).not.toBeInTheDocument();
       });
     });
@@ -654,13 +664,11 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('update-description-btn')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(UPDATE_DESCRIPTION_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('update-description-btn'));
+        fireEvent.click(screen.getByTestId(UPDATE_DESCRIPTION_BTN));
       });
 
       await waitFor(() => {
@@ -668,11 +676,11 @@ describe('DataAssetSummaryPanelV1', () => {
           {
             op: 'replace',
             path: '/description',
-            value: 'New description',
+            value: NEW_DESCRIPTION,
           },
         ]);
         expect(showSuccessToast).toHaveBeenCalled();
-        expect(mockOnDescriptionUpdate).toHaveBeenCalledWith('New description');
+        expect(mockOnDescriptionUpdate).toHaveBeenCalledWith(NEW_DESCRIPTION);
       });
     });
 
@@ -685,13 +693,11 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('update-description-btn')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(UPDATE_DESCRIPTION_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('update-description-btn'));
+        fireEvent.click(screen.getByTestId(UPDATE_DESCRIPTION_BTN));
       });
 
       await waitFor(() => {
@@ -715,13 +721,11 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.getByTestId('update-description-btn')
-        ).toBeInTheDocument();
+        expect(screen.getByTestId(UPDATE_DESCRIPTION_BTN)).toBeInTheDocument();
       });
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('update-description-btn'));
+        fireEvent.click(screen.getByTestId(UPDATE_DESCRIPTION_BTN));
       });
 
       await waitFor(() => {
@@ -729,7 +733,7 @@ describe('DataAssetSummaryPanelV1', () => {
           {
             op: 'replace',
             path: '/description',
-            value: 'New description',
+            value: NEW_DESCRIPTION,
           },
         ]);
       });
@@ -747,10 +751,10 @@ describe('DataAssetSummaryPanelV1', () => {
 
       expect(screen.getByTestId('summary-panel-skeleton')).toBeInTheDocument();
       expect(
-        screen.queryByTestId('update-description-btn')
+        screen.queryByTestId(UPDATE_DESCRIPTION_BTN)
       ).not.toBeInTheDocument();
-      expect(screen.queryByTestId('owners-section')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('tags-section')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(OWNERS_SECTION)).not.toBeInTheDocument();
+      expect(screen.queryByTestId(TAGS_SECTION)).not.toBeInTheDocument();
     });
 
     it('should render mapped extension sections without edit actions', async () => {
@@ -765,10 +769,10 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       expect(
-        screen.queryByTestId('update-description-btn')
+        screen.queryByTestId(UPDATE_DESCRIPTION_BTN)
       ).not.toBeInTheDocument();
-      expect(screen.getByTestId('owners-section')).toBeInTheDocument();
-      expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+      expect(screen.getByTestId(OWNERS_SECTION)).toBeInTheDocument();
+      expect(screen.getByTestId(TAGS_SECTION)).toBeInTheDocument();
     });
   });
 
@@ -789,21 +793,15 @@ describe('DataAssetSummaryPanelV1', () => {
       // Wait for test cases to load and data quality section to render
       await waitFor(
         () => {
-          expect(
-            screen.getByTestId('data-quality-section')
-          ).toBeInTheDocument();
+          expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
         },
         { timeout: 3000 }
       );
 
       expect(screen.getByTestId('total-tests')).toHaveTextContent('3');
-      expect(screen.getByTestId('test-success')).toHaveTextContent(
-        'success: 1'
-      );
-      expect(screen.getByTestId('test-failed')).toHaveTextContent('failed: 1');
-      expect(screen.getByTestId('test-aborted')).toHaveTextContent(
-        'aborted: 1'
-      );
+      expect(screen.getByTestId(TEST_SUCCESS)).toHaveTextContent('success: 1');
+      expect(screen.getByTestId(TEST_FAILED)).toHaveTextContent('failed: 1');
+      expect(screen.getByTestId(TEST_ABORTED)).toHaveTextContent('aborted: 1');
     });
 
     it('should not render data quality section when no test cases', async () => {
@@ -814,18 +812,16 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('data-quality-section')).toHaveTextContent(
+        expect(screen.queryByTestId(DATA_QUALITY_SECTION)).toHaveTextContent(
           '0'
         );
-        expect(screen.getByTestId('test-success')).toHaveTextContent(
+        expect(screen.getByTestId(TEST_SUCCESS)).toHaveTextContent(
           'success: 0'
         );
-        expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+        expect(screen.getByTestId(TEST_ABORTED)).toHaveTextContent(
           'aborted: 0'
         );
-        expect(screen.getByTestId('test-failed')).toHaveTextContent(
-          'failed: 0'
-        );
+        expect(screen.getByTestId(TEST_FAILED)).toHaveTextContent('failed: 0');
       });
     });
 
@@ -839,18 +835,14 @@ describe('DataAssetSummaryPanelV1', () => {
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(mockError);
-        expect(screen.getByTestId('data-quality-section')).toHaveTextContent(
-          '0'
-        );
-        expect(screen.getByTestId('test-success')).toHaveTextContent(
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toHaveTextContent('0');
+        expect(screen.getByTestId(TEST_SUCCESS)).toHaveTextContent(
           'success: 0'
         );
-        expect(screen.getByTestId('test-aborted')).toHaveTextContent(
+        expect(screen.getByTestId(TEST_ABORTED)).toHaveTextContent(
           'aborted: 0'
         );
-        expect(screen.getByTestId('test-failed')).toHaveTextContent(
-          'failed: 0'
-        );
+        expect(screen.getByTestId(TEST_FAILED)).toHaveTextContent('failed: 0');
       });
     });
   });
@@ -889,9 +881,9 @@ describe('DataAssetSummaryPanelV1', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('owners-section')).toBeInTheDocument();
-        expect(screen.getByTestId('domains-section')).toBeInTheDocument();
-        expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        expect(screen.getByTestId(OWNERS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(DOMAINS_SECTION)).toBeInTheDocument();
+        expect(screen.getByTestId(TAGS_SECTION)).toBeInTheDocument();
       });
     });
 
@@ -954,7 +946,7 @@ describe('DataAssetSummaryPanelV1', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('data-products-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_PRODUCTS_SECTION)).toBeInTheDocument();
       });
 
       await act(async () => {
@@ -968,7 +960,7 @@ describe('DataAssetSummaryPanelV1', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId('data-products-section')
+          screen.queryByTestId(DATA_PRODUCTS_SECTION)
         ).not.toBeInTheDocument();
       });
     });

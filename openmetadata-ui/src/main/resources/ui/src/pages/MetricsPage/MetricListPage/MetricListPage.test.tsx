@@ -22,6 +22,9 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 
 import MetricListPage from './MetricListPage';
 
+const LABEL_SEARCH_ENTITY = 'label.search-entity';
+const ERROR_PLACEHOLDER = 'error-placeholder';
+
 const mockNavigate = jest.fn();
 
 const buildSearchResponse = (metrics: Array<Record<string, unknown>>) => ({
@@ -187,7 +190,7 @@ jest.mock(
   () => ({
     __esModule: true,
     default: ({ doc }: { doc: string }) => (
-      <div data-testid="error-placeholder">
+      <div data-testid={ERROR_PLACEHOLDER}>
         <a href={doc} rel="noreferrer" target="_blank">
           docs
         </a>
@@ -292,9 +295,7 @@ describe('MetricListPage', () => {
 
     renderPage();
 
-    const searchInput = await screen.findByPlaceholderText(
-      'label.search-entity'
-    );
+    const searchInput = await screen.findByPlaceholderText(LABEL_SEARCH_ENTITY);
 
     fireEvent.change(searchInput, { target: { value: 'sales' } });
     fireEvent.click(screen.getByTestId('bulk-edit-metric'));
@@ -412,9 +413,7 @@ describe('MetricListPage', () => {
 
     renderPage();
 
-    const searchInput = await screen.findByPlaceholderText(
-      'label.search-entity'
-    );
+    const searchInput = await screen.findByPlaceholderText(LABEL_SEARCH_ENTITY);
 
     fireEvent.change(searchInput, { target: { value: 'sales' } });
     fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
@@ -443,17 +442,15 @@ describe('MetricListPage', () => {
 
     renderPage();
 
-    const searchInput = await screen.findByPlaceholderText(
-      'label.search-entity'
-    );
+    const searchInput = await screen.findByPlaceholderText(LABEL_SEARCH_ENTITY);
 
     fireEvent.change(searchInput, { target: { value: 'zzz' } });
 
-    await screen.findByTestId('error-placeholder', {}, { timeout: 2000 });
+    await screen.findByTestId(ERROR_PLACEHOLDER, {}, { timeout: 2000 });
 
     fireEvent.change(searchInput, { target: { value: '' } });
 
-    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(ERROR_PLACEHOLDER)).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('metric-empty-placeholder')
     ).not.toBeInTheDocument();
@@ -472,7 +469,7 @@ describe('MetricListPage', () => {
 
     renderPage();
 
-    expect(await screen.findByTestId('error-placeholder')).toBeInTheDocument();
+    expect(await screen.findByTestId(ERROR_PLACEHOLDER)).toBeInTheDocument();
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
   });

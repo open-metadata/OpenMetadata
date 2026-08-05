@@ -16,6 +16,8 @@ import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 import ScheduleInterval from './ScheduleInterval';
 import { ScheduleIntervalProps } from './ScheduleInterval.interface';
 
+const ENABLE_DEBUG_LOG = 'enable-debug-log' as const;
+
 const mockScheduleIntervalProps: ScheduleIntervalProps<{ cron: string }> = {
   status: 'initial',
   initialData: { cron: '' },
@@ -68,7 +70,7 @@ describe('Test ScheduleInterval component', () => {
       render(<ScheduleInterval {...mockScheduleIntervalProps} />);
     });
 
-    expect(screen.queryByTestId('enable-debug-log')).toBeNull();
+    expect(screen.queryByTestId(ENABLE_DEBUG_LOG)).toBeNull();
   });
 
   it('should render enable debug log switch when allowEnableDebugLog is true', async () => {
@@ -81,7 +83,7 @@ describe('Test ScheduleInterval component', () => {
       );
     });
 
-    expect(screen.getByTestId('enable-debug-log')).toBeInTheDocument();
+    expect(screen.getByTestId(ENABLE_DEBUG_LOG)).toBeInTheDocument();
   });
 
   it('debug log switch should be initially checked when debugLogInitialValue is true', async () => {
@@ -94,7 +96,7 @@ describe('Test ScheduleInterval component', () => {
       );
     });
 
-    expect(screen.getByTestId('enable-debug-log')).toHaveClass(
+    expect(screen.getByTestId(ENABLE_DEBUG_LOG)).toHaveClass(
       'ant-switch-checked'
     );
   });
@@ -109,7 +111,7 @@ describe('Test ScheduleInterval component', () => {
       );
     });
 
-    expect(screen.getByTestId('enable-debug-log')).not.toHaveClass(
+    expect(screen.getByTestId(ENABLE_DEBUG_LOG)).not.toHaveClass(
       'ant-switch-checked'
     );
   });

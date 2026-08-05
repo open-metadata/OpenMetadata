@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+const _9304F330_2E9A_4513_883B_C939E29683A8 =
+  '9304f330-2e9a-4513-883b-c939e29683a8';
+
 /* eslint-disable max-len */
 export const MOCK_KNOWLEDGE_PAGE_DATA = {
   id: '8e6427d6-98cc-4334-b2f2-15fb62bde887',
@@ -38,7 +42,7 @@ export const MOCK_KNOWLEDGE_PAGE_DATA = {
   },
   owners: [
     {
-      id: '9304f330-2e9a-4513-883b-c939e29683a8',
+      id: _9304F330_2E9A_4513_883B_C939E29683A8,
       type: 'user',
       name: 'admin',
       fullyQualifiedName: 'admin',
@@ -48,7 +52,7 @@ export const MOCK_KNOWLEDGE_PAGE_DATA = {
   ],
   followers: [
     {
-      id: '9304f330-2e9a-4513-883b-c939e29683a8',
+      id: _9304F330_2E9A_4513_883B_C939E29683A8,
       type: 'user',
       name: 'admin',
       fullyQualifiedName: 'admin',
@@ -61,7 +65,7 @@ export const MOCK_KNOWLEDGE_PAGE_DATA = {
     downVotes: 0,
     upVoters: [
       {
-        id: '9304f330-2e9a-4513-883b-c939e29683a8',
+        id: _9304F330_2E9A_4513_883B_C939E29683A8,
         type: 'user',
         name: 'admin',
         fullyQualifiedName: 'admin',

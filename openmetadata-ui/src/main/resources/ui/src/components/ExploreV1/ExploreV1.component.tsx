@@ -85,6 +85,9 @@ import { ReactComponent as IconAscending } from './../../assets/svg/ic-ascending
 import { ReactComponent as IconDescending } from './../../assets/svg/ic-descending.svg';
 import './exploreV1.less';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
+
+const LABEL_EXPORT = 'label.export';
+
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -662,7 +665,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => (
       <div className="d-flex flex-col gap-1">
         <CoreTypography className="tw:text-primary" size="text-md">
-          {t('label.export')}
+          {t(LABEL_EXPORT)}
         </CoreTypography>
         <CoreTypography
           className="tw:text-secondary"
@@ -772,7 +775,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 <Dropdown.Menu aria-label={t('label.action-plural')}>
                   <Dropdown.Item
                     icon={Download01}
-                    label={t('label.export')}
+                    label={t(LABEL_EXPORT)}
                     onPress={handleOpenExportScopeModal}
                   />
 
@@ -949,7 +952,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             isTabScopeDisabled,
           loading: isExporting,
         }}
-        okText={t('label.export')}
+        okText={t(LABEL_EXPORT)}
         open={showExportScopeModal}
         title={exportModalTitle}
         width={680}

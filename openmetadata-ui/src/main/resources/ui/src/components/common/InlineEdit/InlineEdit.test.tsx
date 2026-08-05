@@ -13,6 +13,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import InlineEdit from './InlineEdit.component';
 
+const INLINE_CANCEL_BTN = 'inline-cancel-btn';
+const INLINE_SAVE_BTN = 'inline-save-btn';
 const mockProps = {
   onCancel: jest.fn(),
   onSave: jest.fn(),
@@ -30,8 +32,8 @@ describe('InlineEdit component', () => {
       await screen.findByTestId('inline-edit-container')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('children')).toBeInTheDocument();
-    expect(await screen.findByTestId('inline-cancel-btn')).toBeInTheDocument();
-    expect(await screen.findByTestId('inline-save-btn')).toBeInTheDocument();
+    expect(await screen.findByTestId(INLINE_CANCEL_BTN)).toBeInTheDocument();
+    expect(await screen.findByTestId(INLINE_SAVE_BTN)).toBeInTheDocument();
   });
 
   it('onCancel function should be called when cancel button is clicked', async () => {
@@ -41,7 +43,7 @@ describe('InlineEdit component', () => {
       </InlineEdit>
     );
 
-    const cancelBtn = await screen.findByTestId('inline-cancel-btn');
+    const cancelBtn = await screen.findByTestId(INLINE_CANCEL_BTN);
 
     expect(cancelBtn).toBeInTheDocument();
 
@@ -57,7 +59,7 @@ describe('InlineEdit component', () => {
       </InlineEdit>
     );
 
-    const saveBtn = await screen.findByTestId('inline-save-btn');
+    const saveBtn = await screen.findByTestId(INLINE_SAVE_BTN);
 
     expect(saveBtn).toBeInTheDocument();
 
@@ -73,8 +75,8 @@ describe('InlineEdit component', () => {
       </InlineEdit>
     );
 
-    const saveBtn = await screen.findByTestId('inline-save-btn');
-    const cancelBtn = await screen.findByTestId('inline-cancel-btn');
+    const saveBtn = await screen.findByTestId(INLINE_SAVE_BTN);
+    const cancelBtn = await screen.findByTestId(INLINE_CANCEL_BTN);
 
     expect(saveBtn).toHaveClass('ant-btn-loading');
 

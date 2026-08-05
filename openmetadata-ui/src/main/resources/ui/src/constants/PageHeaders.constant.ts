@@ -11,6 +11,13 @@
  *  limitations under the License.
  */
 
+const LABEL_DASHBOARD_PLURAL = 'label.dashboard-plural';
+const LABEL_PIPELINE_PLURAL = 'label.pipeline-plural';
+const LABEL_ML_MODEL_PLURAL = 'label.ml-model-plural';
+const LABEL_SEARCH = 'label.search';
+const MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY =
+  'message.define-custom-property-for-entity';
+
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
     header: 'label.advanced-search',
@@ -69,15 +76,15 @@ export const PAGE_HEADERS = {
     subHeader: 'message.page-sub-header-for-messagings',
   },
   DASHBOARD_SERVICES: {
-    header: 'label.dashboard-plural',
+    header: LABEL_DASHBOARD_PLURAL,
     subHeader: 'message.page-sub-header-for-dashboards',
   },
   PIPELINES_SERVICES: {
-    header: 'label.pipeline-plural',
+    header: LABEL_PIPELINE_PLURAL,
     subHeader: 'message.page-sub-header-for-pipelines',
   },
   ML_MODELS_SERVICES: {
-    header: 'label.ml-model-plural',
+    header: LABEL_ML_MODEL_PLURAL,
     subHeader: 'message.page-sub-header-for-ml-models',
   },
   METADATA_SERVICES: {
@@ -89,7 +96,7 @@ export const PAGE_HEADERS = {
     subHeader: 'message.page-sub-header-for-storages',
   },
   SEARCH_SERVICES: {
-    header: 'label.search',
+    header: LABEL_SEARCH,
     subHeader: 'message.page-sub-header-for-search',
   },
   API_SERVICES: {
@@ -110,7 +117,7 @@ export const PAGE_HEADERS = {
   },
   TABLES_CUSTOM_ATTRIBUTES: {
     header: 'label.table-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.table-plural' },
   },
   COLUMN_CUSTOM_ATTRIBUTES: {
@@ -119,67 +126,67 @@ export const PAGE_HEADERS = {
   },
   TOPICS_CUSTOM_ATTRIBUTES: {
     header: 'label.topic-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.topic-plural' },
   },
   DASHBOARD_CUSTOM_ATTRIBUTES: {
-    header: 'label.dashboard-plural',
-    subHeader: 'message.define-custom-property-for-entity',
-    subHeaderParams: { entity: 'label.dashboard-plural' },
+    header: LABEL_DASHBOARD_PLURAL,
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
+    subHeaderParams: { entity: LABEL_DASHBOARD_PLURAL },
   },
   DASHBOARD_DATA_MODEL_CUSTOM_ATTRIBUTES: {
     header: 'label.dashboard-data-model-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.dashboard-data-model-plural' },
   },
   DATA_PRODUCT_CUSTOM_ATTRIBUTES: {
     header: 'label.data-product-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.data-product-plural' },
   },
   PIPELINES_CUSTOM_ATTRIBUTES: {
-    header: 'label.pipeline-plural',
-    subHeader: 'message.define-custom-property-for-entity',
-    subHeaderParams: { entity: 'label.pipeline-plural' },
+    header: LABEL_PIPELINE_PLURAL,
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
+    subHeaderParams: { entity: LABEL_PIPELINE_PLURAL },
   },
   ML_MODELS_CUSTOM_ATTRIBUTES: {
-    header: 'label.ml-model-plural',
-    subHeader: 'message.define-custom-property-for-entity',
-    subHeaderParams: { entity: 'label.ml-model-plural' },
+    header: LABEL_ML_MODEL_PLURAL,
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
+    subHeaderParams: { entity: LABEL_ML_MODEL_PLURAL },
   },
   CONTAINER_CUSTOM_ATTRIBUTES: {
     header: 'label.container-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.container-plural' },
   },
   STORED_PROCEDURE_CUSTOM_ATTRIBUTES: {
     header: 'label.stored-procedure-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.stored-procedure-plural' },
   },
   DOMAIN_CUSTOM_ATTRIBUTES: {
     header: 'label.domain-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.domain-plural' },
   },
   SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
     header: 'label.search-index-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.search-index-plural' },
   },
   GLOSSARY_TERM_CUSTOM_ATTRIBUTES: {
     header: 'label.glossary-term',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.glossary-term' },
   },
   DATABASE_CUSTOM_ATTRIBUTES: {
     header: 'label.database',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.database' },
   },
   DATABASE_SCHEMA_CUSTOM_ATTRIBUTES: {
     header: 'label.database-schema',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.database-schema' },
   },
   BOTS: {
@@ -205,11 +212,11 @@ export const PAGE_HEADERS = {
     subHeader: 'message.page-sub-header-for-login-configuration',
   },
   SEARCH_RBAC: {
-    header: 'label.search',
+    header: LABEL_SEARCH,
     subHeader: 'message.page-sub-header-for-search-setting',
   },
   SEARCH_SETTINGS: {
-    header: 'label.search',
+    header: LABEL_SEARCH,
     subHeader: 'message.page-sub-header-for-search-setting',
   },
   LINEAGE_CONFIG: {
@@ -236,22 +243,22 @@ export const PAGE_HEADERS = {
   },
   API_COLLECTION_CUSTOM_ATTRIBUTES: {
     header: 'label.api-collection-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.api-collection-plural' },
   },
   API_ENDPOINT_CUSTOM_ATTRIBUTES: {
     header: 'label.api-endpoint-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.api-endpoint-plural' },
   },
   METRIC_CUSTOM_ATTRIBUTES: {
     header: 'label.metric-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.metric-plural' },
   },
   CHARTS_CUSTOM_ATTRIBUTES: {
     header: 'label.chart-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.chart-plural' },
   },
   PLATFORM_LINEAGE: {
@@ -260,22 +267,22 @@ export const PAGE_HEADERS = {
   },
   DIRECTORY_CUSTOM_ATTRIBUTES: {
     header: 'label.directory-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.directory-plural' },
   },
   FILE_CUSTOM_ATTRIBUTES: {
     header: 'label.file-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.file-plural' },
   },
   SPREADSHEET_CUSTOM_ATTRIBUTES: {
     header: 'label.spreadsheet-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.spreadsheet-plural' },
   },
   WORKSHEET_CUSTOM_ATTRIBUTES: {
     header: 'label.worksheet-plural',
-    subHeader: 'message.define-custom-property-for-entity',
+    subHeader: MESSAGE_DEFINE_CUSTOM_PROPERTY_FOR_ENTITY,
     subHeaderParams: { entity: 'label.worksheet-plural' },
   },
 };

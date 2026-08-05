@@ -21,6 +21,8 @@ import tagClassBase from '../../utils/TagClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import TagPage from './TagPage';
 
+const CERTIFICATION_GOLD = 'Certification.Gold';
+
 const render = renderWithQueryClient;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -99,6 +101,7 @@ jest.mock('../../utils/TagClassBase', () => ({
 jest.mock('../../rest/tagAPI', () => ({
   getTagByFqn: jest.fn().mockResolvedValue({
     name: 'NonSensitive',
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     fullyQualifiedName: 'PII.NonSensitive',
   }),
 }));
@@ -287,17 +290,17 @@ describe('TagPage', () => {
     jest.clearAllMocks();
 
     // Change FQN
-    (useFqn as jest.Mock).mockReturnValue({ fqn: 'Certification.Gold' });
+    (useFqn as jest.Mock).mockReturnValue({ fqn: CERTIFICATION_GOLD });
 
     (getTagByFqn as jest.Mock).mockResolvedValueOnce({
       name: 'Gold',
-      fullyQualifiedName: 'Certification.Gold',
+      fullyQualifiedName: CERTIFICATION_GOLD,
     });
 
     rerender(<TagPage />);
 
     await waitFor(() => {
-      expect(getTagByFqn).toHaveBeenCalledWith('Certification.Gold', {
+      expect(getTagByFqn).toHaveBeenCalledWith(CERTIFICATION_GOLD, {
         fields: ['domains', 'owners', 'reviewers'],
       });
       expect(searchQuery).toHaveBeenCalled();

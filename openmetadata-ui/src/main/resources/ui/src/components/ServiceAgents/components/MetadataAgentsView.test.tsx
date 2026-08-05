@@ -19,6 +19,8 @@ import { getErrorPlaceHolder } from '../../../utils/IngestionUtils';
 import { Agent } from '../AgentsPage.interface';
 import MetadataAgentsView from './MetadataAgentsView.component';
 
+const CONFIRM_DELETE = 'confirm-delete';
+
 const mockRunAgent = jest.fn();
 const mockRedeployAgent = jest.fn();
 const mockKillAgent = jest.fn();
@@ -100,7 +102,7 @@ jest.mock('../../common/LogViewerModal/LogViewerModal.component', () =>
 jest.mock('../../common/DeleteModal/DeleteModal', () => ({
   __esModule: true,
   default: ({ onDelete }: { onDelete: () => void }) => (
-    <button data-testid="confirm-delete" onClick={onDelete}>
+    <button data-testid={CONFIRM_DELETE} onClick={onDelete}>
       DeleteModal
     </button>
   ),
@@ -246,19 +248,19 @@ describe('MetadataAgentsView', () => {
   it('should open the delete modal and delete the pipeline on confirmation', async () => {
     renderView();
 
-    expect(screen.queryByTestId('confirm-delete')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONFIRM_DELETE)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('dispatch-delete'));
 
     expect(mockDeleteIngestionPipelineById).not.toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-delete'));
+      fireEvent.click(screen.getByTestId(CONFIRM_DELETE));
     });
 
     expect(mockDeleteIngestionPipelineById).toHaveBeenCalledWith(baseAgent.id);
     expect(mockOnRefresh).toHaveBeenCalled();
-    expect(screen.queryByTestId('confirm-delete')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONFIRM_DELETE)).not.toBeInTheDocument();
   });
 
   it('should hand the run history drawer the live agent when its status changes while open', () => {
@@ -289,6 +291,6 @@ describe('MetadataAgentsView', () => {
     expect(mockRunAgent).not.toHaveBeenCalled();
     expect(mockToggleAgent).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('confirm-delete')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(CONFIRM_DELETE)).not.toBeInTheDocument();
   });
 });

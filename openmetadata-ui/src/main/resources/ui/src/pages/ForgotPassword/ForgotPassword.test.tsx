@@ -15,6 +15,9 @@ import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvi
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
+const SEND_LOGIN_LINK = 'Send Login Link';
+const TEST_EXAMPLE_COM = 'test@example.com';
+
 const mockNavigate = jest.fn();
 const mockHandleForgotPassword = jest.fn();
 const mockHandleError = jest.fn().mockImplementation(() => {
@@ -52,7 +55,7 @@ jest.mock('react-i18next', () => ({
       const translations: Record<string, string> = {
         'message.enter-your-registered-email': 'Enter your registered email',
         'label.email': 'Email',
-        'label.send-login-link': 'Send Login Link',
+        'label.send-login-link': SEND_LOGIN_LINK,
         'server.email-not-found': 'Email not found',
         'label.field-invalid': '{{field}} is invalid',
       };
@@ -81,15 +84,15 @@ describe('ForgotPassword', () => {
 
     const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+    const submitButton = getByText(SEND_LOGIN_LINK);
     await act(async () => {
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+      fireEvent.change(emailInput, { target: { value: TEST_EXAMPLE_COM } });
     });
     await act(async () => {
       fireEvent.click(submitButton);
     });
 
-    expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
+    expect(mockHandleForgotPassword).toHaveBeenCalledWith(TEST_EXAMPLE_COM);
   });
 
   it('shows an error when email is not provided', async () => {
@@ -97,7 +100,7 @@ describe('ForgotPassword', () => {
       <ForgotPassword />
     );
     const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+    const submitButton = getByText(SEND_LOGIN_LINK);
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: '' } });
@@ -112,15 +115,15 @@ describe('ForgotPassword', () => {
   it('shows success toast on submit', async () => {
     const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+    const submitButton = getByText(SEND_LOGIN_LINK);
     await act(async () => {
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+      fireEvent.change(emailInput, { target: { value: TEST_EXAMPLE_COM } });
     });
     await act(async () => {
       fireEvent.click(submitButton);
     });
 
-    expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
+    expect(mockHandleForgotPassword).toHaveBeenCalledWith(TEST_EXAMPLE_COM);
     expect(showSuccessToast).toHaveBeenCalled();
   });
 
@@ -141,15 +144,15 @@ describe('ForgotPassword', () => {
 
     const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+    const submitButton = getByText(SEND_LOGIN_LINK);
     await act(async () => {
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+      fireEvent.change(emailInput, { target: { value: TEST_EXAMPLE_COM } });
     });
     await act(async () => {
       fireEvent.click(submitButton);
     });
 
     expect(showErrorToast).toHaveBeenCalledWith('Email not found');
-    expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
+    expect(mockHandleError).toHaveBeenCalledWith(TEST_EXAMPLE_COM);
   });
 });

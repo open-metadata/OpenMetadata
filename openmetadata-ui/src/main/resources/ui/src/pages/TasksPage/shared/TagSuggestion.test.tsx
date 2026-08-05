@@ -16,6 +16,8 @@ import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSe
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import TagSuggestion from './TagSuggestion';
 
+const SELECT_TAGS = 'Select tags';
+
 jest.mock('../../../components/common/AsyncSelectList/AsyncSelectList', () => {
   return jest.fn().mockImplementation(() => <div>AsyncSelectList</div>);
 });
@@ -23,7 +25,7 @@ jest.mock('../../../components/common/AsyncSelectList/AsyncSelectList', () => {
 describe('TagSuggestion', () => {
   const onChange = jest.fn();
   const value: TagLabel[] = [];
-  const placeholder = 'Select tags';
+  const placeholder = SELECT_TAGS;
   const initialOptions: SelectOption[] = [];
   const tagType = TagSource.Classification;
   const selectProps = {};
@@ -46,7 +48,7 @@ describe('TagSuggestion', () => {
       expect.objectContaining({
         initialOptions: [],
         mode: 'multiple',
-        placeholder: 'Select tags',
+        placeholder: SELECT_TAGS,
         value: [],
       }),
       {}
@@ -71,7 +73,7 @@ describe('TagSuggestion', () => {
       expect.objectContaining({
         initialOptions: [],
         mode: 'multiple',
-        placeholder: 'Select tags',
+        placeholder: SELECT_TAGS,
         value: [],
         open: true,
       }),

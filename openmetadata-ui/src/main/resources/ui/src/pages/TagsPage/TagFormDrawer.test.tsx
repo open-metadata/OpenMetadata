@@ -31,6 +31,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       isOpen: boolean;
       onOpenChange?: (isOpen: boolean) => void;
       children: (arg: { close: () => void }) => React.ReactNode;
+      // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
       'data-testid'?: string;
     }) => {
       if (!isOpen) {

@@ -22,6 +22,8 @@ import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import ColumnProfileTable from './ColumnProfileTable';
 
+const TEST_TABLE = 'test.table' as const;
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const Table = Object.assign(
     jest
@@ -149,6 +151,7 @@ jest.mock('../../../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((data) => data),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: '' }),
 }));
@@ -158,6 +161,7 @@ jest.mock('../../../../../hooks/useCustomLocation/useCustomLocation', () => ({
   default: jest.fn().mockReturnValue({ search: '', pathname: '/test' }),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../../rest/tableAPI', () => ({
   getTableColumnsByFQN: jest.fn().mockResolvedValue({
     data: [],
@@ -338,13 +342,13 @@ describe('Test ColumnProfileTable component', () => {
       '../../../../../rest/tableAPI'
     );
     const { useFqn } = jest.requireMock('../../../../../hooks/useFqn');
-    useFqn.mockReturnValueOnce({ fqn: 'test.table' });
+    useFqn.mockReturnValueOnce({ fqn: TEST_TABLE });
 
     await act(async () => {
       render(<ColumnProfileTable />, { wrapper: MemoryRouter });
     });
 
-    expect(getTableColumnsByFQN).toHaveBeenCalledWith('test.table', {
+    expect(getTableColumnsByFQN).toHaveBeenCalledWith(TEST_TABLE, {
       limit: expect.any(Number),
       offset: 0,
       fields: expect.any(String),
@@ -369,7 +373,7 @@ describe('ColumnProfileTable proportion column renders', () => {
       '../../../../../rest/tableAPI'
     );
     const { useFqn } = jest.requireMock('../../../../../hooks/useFqn');
-    useFqn.mockReturnValue({ fqn: 'test.table' });
+    useFqn.mockReturnValue({ fqn: TEST_TABLE });
     getTableColumnsByFQN.mockResolvedValueOnce({
       data: [
         {

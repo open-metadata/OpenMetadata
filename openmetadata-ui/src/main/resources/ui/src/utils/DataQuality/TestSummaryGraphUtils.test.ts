@@ -19,6 +19,10 @@ import {
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
 
+const FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0 =
+  'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.';
+const _3093DBEE_196B_4284_9F97_7103063D0DD7 =
+  '3093dbee-196b-4284-9f97-7103063d0dd7';
 jest.mock('../../constants/profiler.constant', () => {
   return {
     COLORS: ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'],
@@ -63,14 +67,14 @@ describe('prepareChartData', () => {
           timestamp: 1720525804736,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           maxBound: 1720275283528,
           minBound: 1720165283528,
         },
@@ -78,14 +82,14 @@ describe('prepareChartData', () => {
           timestamp: 1720525503943,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           maxBound: 1720275283528,
           minBound: 1720165283528,
         },
@@ -99,7 +103,7 @@ describe('prepareChartData', () => {
       data: [
         {
           boundArea: [1720165283528, 1720275283528],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525503943,
           status: 'Failed',
@@ -107,7 +111,7 @@ describe('prepareChartData', () => {
         },
         {
           boundArea: [1720165283528, 1720275283528],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525804736,
           status: 'Failed',
@@ -132,42 +136,42 @@ describe('prepareChartData', () => {
           timestamp: 1720525804736,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           maxBound: 1720275283528,
         },
         {
           timestamp: 1720525503943,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           minBound: 1720165283528,
         },
         {
           timestamp: 1720525503943,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           maxBound: 1720275283528,
           minBound: 1720165283528,
         },
@@ -181,7 +185,7 @@ describe('prepareChartData', () => {
       data: [
         {
           boundArea: [1720165283528, 1720275283528],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525503943,
           status: 'Failed',
@@ -189,7 +193,7 @@ describe('prepareChartData', () => {
         },
         {
           boundArea: undefined,
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525503943,
           status: 'Failed',
@@ -197,7 +201,7 @@ describe('prepareChartData', () => {
         },
         {
           boundArea: undefined,
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525804736,
           status: 'Failed',
@@ -222,14 +226,14 @@ describe('prepareChartData', () => {
           timestamp: 1720525804736,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           maxBound: 1720275283528,
           minBound: 1720165283528,
         },
@@ -243,7 +247,7 @@ describe('prepareChartData', () => {
       data: [
         {
           boundArea: [1720165283528, 1720275283528],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525804736,
           status: 'Failed',
@@ -302,14 +306,14 @@ describe('prepareChartData', () => {
           timestamp: 1720525804736,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
         },
       ],
       entityThread: [],
@@ -321,7 +325,7 @@ describe('prepareChartData', () => {
       data: [
         {
           boundArea: undefined,
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525804736,
           status: 'Failed',
@@ -346,22 +350,22 @@ describe('prepareChartData', () => {
           timestamp: 1720525804736,
           testCaseStatus: 'Aborted',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
         },
         {
           timestamp: 1720525503943,
           testCaseStatus: 'Failed',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [
             {
               name: 'max',
               value: '1720520076998',
             },
           ],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           minBound: 1720165283528,
         },
       ],
@@ -374,7 +378,7 @@ describe('prepareChartData', () => {
       data: [
         {
           boundArea: undefined,
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           max: 1720520076998,
           name: 1720525503943,
           status: 'Failed',
@@ -382,7 +386,7 @@ describe('prepareChartData', () => {
         },
         {
           boundArea: undefined,
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           name: 1720525804736,
           status: 'Aborted',
           task: undefined,
@@ -406,17 +410,17 @@ describe('prepareChartData', () => {
           timestamp: 1720525804736,
           testCaseStatus: 'Aborted',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
         },
         {
           timestamp: 1720525503943,
           testCaseStatus: 'Aborted',
           result:
-            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+            FOUND_MAX_1720520076998_VS_THE_EXPECTED_MIN_1720165283528_0_MAX_1720275283528_0,
           testResultValue: [],
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
         },
       ],
       entityThread: [],
@@ -428,14 +432,14 @@ describe('prepareChartData', () => {
       data: [
         {
           boundArea: undefined,
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           name: 1720525503943,
           status: 'Aborted',
           task: undefined,
         },
         {
           boundArea: undefined,
-          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          incidentId: _3093DBEE_196B_4284_9F97_7103063D0DD7,
           name: 1720525804736,
           status: 'Aborted',
           task: undefined,

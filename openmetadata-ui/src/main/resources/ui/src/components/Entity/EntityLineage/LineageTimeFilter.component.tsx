@@ -27,6 +27,8 @@ import {
   LineageTimePresetKey,
 } from './LineageTimeFilter.interface';
 
+const LABEL_LAST_N_DAYS = 'label.last-n-days';
+
 const PRESET_DAYS: Record<
   Exclude<
     LineageTimePresetKey,
@@ -78,7 +80,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
       return t('label.all-time');
     }
     if (matchedPresetDays !== null) {
-      return t('label.last-n-days', { count: matchedPresetDays });
+      return t(LABEL_LAST_N_DAYS, { count: matchedPresetDays });
     }
     if (isPointInTime && endTime !== undefined) {
       return t('label.as-of-date', {
@@ -168,15 +170,15 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
       },
       {
         key: LineageTimePresetKey.Last7Days,
-        label: t('label.last-n-days', { count: 7 }),
+        label: t(LABEL_LAST_N_DAYS, { count: 7 }),
       },
       {
         key: LineageTimePresetKey.Last14Days,
-        label: t('label.last-n-days', { count: 14 }),
+        label: t(LABEL_LAST_N_DAYS, { count: 14 }),
       },
       {
         key: LineageTimePresetKey.Last28Days,
-        label: t('label.last-n-days', { count: 28 }),
+        label: t(LABEL_LAST_N_DAYS, { count: 28 }),
       },
       {
         key: LineageTimePresetKey.CustomRange,

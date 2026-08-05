@@ -96,6 +96,9 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+
+const LABEL_CONTAINER = 'label.container';
+
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -589,7 +592,7 @@ const ContainerPage = () => {
       );
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.container'),
+          entity: t(LABEL_CONTAINER),
         })
       );
       handleToggleDelete(newVersion);
@@ -597,7 +600,7 @@ const ContainerPage = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.container'),
+          entity: t(LABEL_CONTAINER),
         })
       );
     }
@@ -841,7 +844,7 @@ const ContainerPage = () => {
   if (hasError || isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.container'), decodedEntityFqn)}
+        {getEntityMissingError(t(LABEL_CONTAINER), decodedEntityFqn)}
       </ErrorPlaceHolder>
     );
   }
@@ -851,7 +854,7 @@ const ContainerPage = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.container'),
+          entity: t(LABEL_CONTAINER),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

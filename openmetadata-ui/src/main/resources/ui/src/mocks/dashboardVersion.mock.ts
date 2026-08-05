@@ -24,26 +24,38 @@ import {
   mockVersionHandler,
 } from './VersionCommon.mock';
 
+const _4EE70A0C_6EC9_4C93_A91C_4A57D65BEBC8 =
+  '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8' as const;
+const TEST_DESCRIPTION = 'test description' as const;
+const HTTP_LOCALHOST_808_SUPERSET_DASHBOARD_ETA =
+  'http://localhost:808/superset/dashboard/eta_predictions_performance/' as const;
+const ETA_PREDICTIONS_ACCURACY = 'ETA Predictions Accuracy' as const;
+const _067319FD_FA77_4B55_B481_F438489B0931 =
+  '067319fd-fa77-4b55-b481-f438489b0931' as const;
+const B1E14BF6_9078_40D7_ABF5_21A5FCB056BD =
+  'b1e14bf6-9078-40d7-abf5-21a5fcb056bd' as const;
+const DATA_THAT_CAN_BE_USED_TO =
+  'Data that can be used to directly or indirectly identify a person.' as const;
+
 export const mockDashboardData: Dashboard = {
-  id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
+  id: _4EE70A0C_6EC9_4C93_A91C_4A57D65BEBC8,
   name: 'eta_predictions_performance',
   dashboardType: DashboardType.Dashboard,
   displayName: 'ETA Predictions Performance',
   fullyQualifiedName: 'sample_superset.eta_predictions_performance',
-  description: 'test description',
+  description: TEST_DESCRIPTION,
   version: 0.3,
   updatedAt: 1649337873334,
   updatedBy: 'anonymous',
   project: 'workspace',
-  sourceUrl:
-    'http://localhost:808/superset/dashboard/eta_predictions_performance/',
+  sourceUrl: HTTP_LOCALHOST_808_SUPERSET_DASHBOARD_ETA,
   charts: [
     {
       id: '0698ab5d-a122-4b86-a6e5-d10bf3550bd7',
       type: 'chart',
       name: 'with_description',
       description: 'test',
-      displayName: 'ETA Predictions Accuracy',
+      displayName: ETA_PREDICTIONS_ACCURACY,
       deleted: false,
     },
     {
@@ -51,13 +63,13 @@ export const mockDashboardData: Dashboard = {
       type: 'chart',
       name: 'without_description',
       description: '',
-      displayName: 'ETA Predictions Accuracy',
+      displayName: ETA_PREDICTIONS_ACCURACY,
       deleted: false,
     },
   ],
   owners: [
     {
-      id: '067319fd-fa77-4b55-b481-f438489b0931',
+      id: _067319FD_FA77_4B55_B481_F438489B0931,
       type: 'user',
       name: 'aaron_johnson0',
       displayName: 'Aaron Johnson',
@@ -66,7 +78,7 @@ export const mockDashboardData: Dashboard = {
   ],
   tags: [],
   service: {
-    id: 'b1e14bf6-9078-40d7-abf5-21a5fcb056bd',
+    id: B1E14BF6_9078_40D7_ABF5_21A5FCB056BD,
     type: 'dashboardService',
     name: 'sample_superset',
     deleted: false,
@@ -139,49 +151,46 @@ export const dashboardVersionProps: DashboardVersionProp = {
 };
 
 export const mockTagChangeVersion = {
-  id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
-  description: 'test description',
+  id: _4EE70A0C_6EC9_4C93_A91C_4A57D65BEBC8,
+  description: TEST_DESCRIPTION,
   version: 0.4,
   updatedAt: 1649354506617,
   updatedBy: 'anonymous',
-  sourceUrl:
-    'http://localhost:808/superset/dashboard/eta_predictions_performance/',
+  sourceUrl: HTTP_LOCALHOST_808_SUPERSET_DASHBOARD_ETA,
   charts: [
     {
       id: '0698ab5d-a122-4b86-a6e5-d10bf3550bd7',
       type: 'chart',
       name: 'sample_superset.210',
       description: 'test',
-      displayName: 'ETA Predictions Accuracy',
+      displayName: ETA_PREDICTIONS_ACCURACY,
       deleted: false,
     },
   ],
   owners: [
     {
-      id: '067319fd-fa77-4b55-b481-f438489b0931',
+      id: _067319FD_FA77_4B55_B481_F438489B0931,
       type: 'user',
     },
   ],
   tags: [
     {
       tagFQN: 'PersonalData.Personal',
-      description:
-        'Data that can be used to directly or indirectly identify a person.',
+      description: DATA_THAT_CAN_BE_USED_TO,
       source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
     {
       tagFQN: 'Tier.Tier1',
-      description:
-        'Data that can be used to directly or indirectly identify a person.',
+      description: DATA_THAT_CAN_BE_USED_TO,
       source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
   ],
   service: {
-    id: 'b1e14bf6-9078-40d7-abf5-21a5fcb056bd',
+    id: B1E14BF6_9078_40D7_ABF5_21A5FCB056BD,
     type: 'dashboardService',
     name: 'sample_superset',
     deleted: false,
@@ -203,40 +212,37 @@ export const mockTagChangeVersion = {
 } as unknown as VersionData;
 
 export const mockNoChartData = {
-  id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
-  description: 'test description',
+  id: _4EE70A0C_6EC9_4C93_A91C_4A57D65BEBC8,
+  description: TEST_DESCRIPTION,
   name: 'test',
   version: 0.4,
   updatedAt: 1649354506617,
   updatedBy: 'anonymous',
-  sourceUrl:
-    'http://localhost:808/superset/dashboard/eta_predictions_performance/',
+  sourceUrl: HTTP_LOCALHOST_808_SUPERSET_DASHBOARD_ETA,
   owners: [
     {
-      id: '067319fd-fa77-4b55-b481-f438489b0931',
+      id: _067319FD_FA77_4B55_B481_F438489B0931,
       type: 'user',
     },
   ],
   tags: [
     {
       tagFQN: 'PersonalData.Personal',
-      description:
-        'Data that can be used to directly or indirectly identify a person.',
+      description: DATA_THAT_CAN_BE_USED_TO,
       source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
     {
       tagFQN: 'Tier.Tier1',
-      description:
-        'Data that can be used to directly or indirectly identify a person.',
+      description: DATA_THAT_CAN_BE_USED_TO,
       source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
   ],
   service: {
-    id: 'b1e14bf6-9078-40d7-abf5-21a5fcb056bd',
+    id: B1E14BF6_9078_40D7_ABF5_21A5FCB056BD,
     type: 'dashboardService',
     name: 'sample_superset',
     deleted: false,

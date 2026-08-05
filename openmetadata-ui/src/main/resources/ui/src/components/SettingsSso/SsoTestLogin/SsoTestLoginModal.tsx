@@ -19,6 +19,8 @@ import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import { SsoTestLoginModalProps } from './SsoTestLogin.interface';
 
+const LABEL_FAILED = 'label.failed';
+
 const SsoTestLoginModal = ({
   open,
   isTesting,
@@ -65,7 +67,7 @@ const SsoTestLoginModal = ({
             {result.domainCheck.resolvedDomain}{' '}
             {result.domainCheck.passed
               ? `(${t('label.success')})`
-              : `(${t('label.failed')})`}
+              : `(${t(LABEL_FAILED)})`}
           </Typography.Paragraph>
         )}
       </div>
@@ -90,7 +92,7 @@ const SsoTestLoginModal = ({
         <InlineAlert
           alertClassName="sso-test-login-error"
           description={error}
-          heading={t('label.failed')}
+          heading={t(LABEL_FAILED)}
           type="error"
         />
       );
@@ -110,7 +112,7 @@ const SsoTestLoginModal = ({
               isSuccess ? 'sso-test-login-success' : 'sso-test-login-failed'
             }
             description={description}
-            heading={isSuccess ? t('label.success') : t('label.failed')}
+            heading={isSuccess ? t('label.success') : t(LABEL_FAILED)}
             type={isSuccess ? 'success' : 'error'}
           />
           {resultDetails}

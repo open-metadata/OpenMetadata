@@ -20,6 +20,17 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import CustomControlsComponent from './CustomControls.component';
 
+const MODE_LINEAGE_DEPTH_3_DIR_DOWNSTREAM =
+  '?mode=lineage&depth=3&dir=downstream';
+const EXPLORE_QUICK_FILTERS = 'explore-quick-filters';
+const SEARCH_BAR = 'search-bar';
+const LABEL_FILTER_PLURAL = 'label.filter-plural';
+const LABEL_LINEAGE = 'label.lineage';
+const LABEL_IMPACT_ANALYSIS = 'label.impact-analysis';
+const LINEAGE_CONFIG = 'lineage-config';
+const MODE_IMPACT_ANALYSIS_DEPTH_3_DIR_DOWNSTREA =
+  '?mode=impact_analysis&depth=3&dir=downstream';
+
 const mockOnExportClick = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
 const mockSetSelectedQuickFilters = jest.fn();
@@ -33,7 +44,7 @@ const mockLineageConfig = {
 
 const mockNavigate = jest.fn();
 const mockLocation = {
-  search: '?mode=lineage&depth=3&dir=downstream',
+  search: MODE_LINEAGE_DEPTH_3_DIR_DOWNSTREAM,
 };
 
 const defaultProps = {
@@ -162,7 +173,7 @@ jest.mock('../../Explore/ExploreQuickFilters', () =>
   jest
     .fn()
     .mockReturnValue(
-      <div data-testid="explore-quick-filters">ExploreQuickFilters</div>
+      <div data-testid={EXPLORE_QUICK_FILTERS}>ExploreQuickFilters</div>
     )
 );
 
@@ -181,7 +192,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
   jest.fn(({ onSearch, searchValue, placeholder }) => (
     <input
       aria-label="Search"
-      data-testid="search-bar"
+      data-testid={SEARCH_BAR}
       placeholder={placeholder}
       value={searchValue}
       onChange={(e) => onSearch(e.target.value)}
@@ -214,7 +225,7 @@ jest.mock('../../../rest/lineageAPI', () => ({
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
-    search: '?mode=lineage&depth=3&dir=downstream',
+    search: MODE_LINEAGE_DEPTH_3_DIR_DOWNSTREAM,
   }));
 });
 
@@ -232,7 +243,7 @@ jest.mock('../../../hooks/useLineageStore', () => ({
 // Mock window.location
 Object.defineProperty(window, 'location', {
   value: {
-    search: '?mode=lineage&depth=3&dir=downstream',
+    search: MODE_LINEAGE_DEPTH_3_DIR_DOWNSTREAM,
   },
   writable: true,
 });
@@ -247,11 +258,11 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    expect(screen.getByLabelText('label.filter-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.lineage')).toBeInTheDocument();
-    expect(screen.getByText('label.impact-analysis')).toBeInTheDocument();
+    expect(screen.getByLabelText(LABEL_FILTER_PLURAL)).toBeInTheDocument();
+    expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
+    expect(screen.getByText(LABEL_IMPACT_ANALYSIS)).toBeInTheDocument();
     expect(screen.getByLabelText('label.export')).toBeInTheDocument();
-    expect(screen.getByTestId('lineage-config')).toBeInTheDocument();
+    expect(screen.getByTestId(LINEAGE_CONFIG)).toBeInTheDocument();
     expect(screen.getByLabelText('label.full-screen-view')).toBeInTheDocument();
   });
 
@@ -265,19 +276,19 @@ describe('CustomControls', () => {
 
   it('shows SearchBar when in impact analysis mode', () => {
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
-      search: '?mode=impact_analysis&depth=3&dir=downstream',
+      search: MODE_IMPACT_ANALYSIS_DEPTH_3_DIR_DOWNSTREA,
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
     });
 
-    expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    expect(screen.getByTestId(SEARCH_BAR)).toBeInTheDocument();
   });
 
   it('Not shows SearchBar when in impact analysis mode & onSearchValueChange is not provided', () => {
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
-      search: '?mode=impact_analysis&depth=3&dir=downstream',
+      search: MODE_IMPACT_ANALYSIS_DEPTH_3_DIR_DOWNSTREA,
     }));
 
     render(
@@ -290,7 +301,7 @@ describe('CustomControls', () => {
       }
     );
 
-    expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(SEARCH_BAR)).not.toBeInTheDocument();
   });
 
   it('toggles filter selection when filter button is clicked', () => {
@@ -298,10 +309,10 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const filterButton = screen.getByLabelText('label.filter-plural');
+    const filterButton = screen.getByLabelText(LABEL_FILTER_PLURAL);
     fireEvent.click(filterButton);
 
-    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+    expect(screen.getByTestId(EXPLORE_QUICK_FILTERS)).toBeInTheDocument();
   });
 
   it('navigates to lineage mode when lineage button is clicked', () => {
@@ -309,7 +320,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const lineageButton = screen.getByText('label.lineage');
+    const lineageButton = screen.getByText(LABEL_LINEAGE);
     fireEvent.click(lineageButton);
 
     expect(mockNavigate).toHaveBeenCalled();
@@ -320,7 +331,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const impactAnalysisButton = screen.getByText('label.impact-analysis');
+    const impactAnalysisButton = screen.getByText(LABEL_IMPACT_ANALYSIS);
     fireEvent.click(impactAnalysisButton);
 
     expect(mockNavigate).toHaveBeenCalled();
@@ -372,7 +383,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const settingsButton = screen.getByTestId('lineage-config');
+    const settingsButton = screen.getByTestId(LINEAGE_CONFIG);
     fireEvent.click(settingsButton);
 
     expect(screen.getByTestId('lineage-config-modal')).toBeInTheDocument();
@@ -383,7 +394,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const settingsButton = screen.getByTestId('lineage-config');
+    const settingsButton = screen.getByTestId(LINEAGE_CONFIG);
     fireEvent.click(settingsButton);
 
     const saveButton = screen.getByText('Save');
@@ -407,14 +418,14 @@ describe('CustomControls', () => {
 
   it('shows node depth selector in impact analysis mode with filters active', () => {
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
-      search: '?mode=impact_analysis&depth=3&dir=downstream',
+      search: MODE_IMPACT_ANALYSIS_DEPTH_3_DIR_DOWNSTREA,
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
     });
 
-    const filterButton = screen.getByLabelText('label.filter-plural');
+    const filterButton = screen.getByLabelText(LABEL_FILTER_PLURAL);
     fireEvent.click(filterButton);
 
     // Node depth should be visible in the filter section
@@ -429,14 +440,14 @@ describe('CustomControls', () => {
 
   it('opens node depth menu and selects new depth', () => {
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
-      search: '?mode=impact_analysis&depth=3&dir=downstream',
+      search: MODE_IMPACT_ANALYSIS_DEPTH_3_DIR_DOWNSTREA,
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
     });
 
-    const filterButton = screen.getByLabelText('label.filter-plural');
+    const filterButton = screen.getByLabelText(LABEL_FILTER_PLURAL);
     fireEvent.click(filterButton);
 
     const nodeDepthButton = screen.getByText(
@@ -452,14 +463,14 @@ describe('CustomControls', () => {
 
   it('calls onSearchValueChange when search value changes in impact analysis mode', () => {
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
-      search: '?mode=impact_analysis&depth=3&dir=downstream',
+      search: MODE_IMPACT_ANALYSIS_DEPTH_3_DIR_DOWNSTREA,
     }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
     });
 
-    const searchInput = screen.getByTestId('search-bar');
+    const searchInput = screen.getByTestId(SEARCH_BAR);
     fireEvent.change(searchInput, { target: { value: 'test search' } });
 
     expect(mockOnSearchValueChange).toHaveBeenCalledWith('test search');
@@ -483,7 +494,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const filterButton = screen.getByLabelText('label.filter-plural');
+    const filterButton = screen.getByLabelText(LABEL_FILTER_PLURAL);
     fireEvent.click(filterButton);
 
     expect(screen.getByText('label.clear-entity')).toBeInTheDocument();
@@ -497,7 +508,7 @@ describe('CustomControls', () => {
     });
 
     // Component should render correctly with upstream direction
-    expect(screen.getByText('label.lineage')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
   });
 
   it('handles missing query parameters with defaults', () => {
@@ -508,8 +519,8 @@ describe('CustomControls', () => {
     });
 
     // Component should render with default values
-    expect(screen.getByText('label.lineage')).toBeInTheDocument();
-    expect(screen.getByText('label.impact-analysis')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_LINEAGE)).toBeInTheDocument();
+    expect(screen.getByText(LABEL_IMPACT_ANALYSIS)).toBeInTheDocument();
   });
 
   it('should pass nodeIds to ExploreQuickFilters when ids passed through props', () => {
@@ -535,7 +546,7 @@ describe('CustomControls', () => {
       }
     );
 
-    const filterButton = screen.getByLabelText('label.filter-plural');
+    const filterButton = screen.getByLabelText(LABEL_FILTER_PLURAL);
     fireEvent.click(filterButton);
 
     expect(ExploreQuickFilters).toHaveBeenCalledWith(
@@ -551,7 +562,7 @@ describe('CustomControls', () => {
       expect.anything()
     );
 
-    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+    expect(screen.getByTestId(EXPLORE_QUICK_FILTERS)).toBeInTheDocument();
   });
 
   it('should pass nodeIds to ExploreQuickFilters from provider when ids not passed through props', () => {
@@ -571,7 +582,7 @@ describe('CustomControls', () => {
       wrapper: Wrapper,
     });
 
-    const filterButton = screen.getByLabelText('label.filter-plural');
+    const filterButton = screen.getByLabelText(LABEL_FILTER_PLURAL);
     fireEvent.click(filterButton);
 
     expect(ExploreQuickFilters).toHaveBeenCalledWith(
@@ -587,6 +598,6 @@ describe('CustomControls', () => {
       expect.anything()
     );
 
-    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+    expect(screen.getByTestId(EXPLORE_QUICK_FILTERS)).toBeInTheDocument();
   });
 });

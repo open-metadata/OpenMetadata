@@ -16,6 +16,8 @@ import { UseFormReturn } from 'react-hook-form';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import { TagFormValues } from './TagsPage.interface';
 
+const SAVE_BUTTON = 'save-button';
+
 jest.mock('./TagsForm', () => {
   return jest.fn(() => <div data-testid="tags-form">Tags Form</div>);
 });
@@ -31,6 +33,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       isOpen: boolean;
       onOpenChange?: (isOpen: boolean) => void;
       children: (arg: { close: () => void }) => React.ReactNode;
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       'data-testid'?: string;
     }) => {
       if (!isOpen) {
@@ -170,7 +173,7 @@ describe('ClassificationFormDrawer', () => {
   it('should disable save button when isLoading is true', () => {
     render(<ClassificationFormDrawer {...defaultProps} isLoading />);
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(SAVE_BUTTON);
 
     expect(saveButton).toBeDisabled();
   });
@@ -178,7 +181,7 @@ describe('ClassificationFormDrawer', () => {
   it('should keep "Save" text visible when isLoading is true', () => {
     render(<ClassificationFormDrawer {...defaultProps} isLoading />);
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(SAVE_BUTTON);
 
     expect(saveButton).toHaveTextContent('label.save');
   });
@@ -186,7 +189,7 @@ describe('ClassificationFormDrawer', () => {
   it('should show "Save" text when isLoading is false', () => {
     render(<ClassificationFormDrawer {...defaultProps} />);
 
-    const saveButton = screen.getByTestId('save-button');
+    const saveButton = screen.getByTestId(SAVE_BUTTON);
 
     expect(saveButton).toHaveTextContent('label.save');
   });

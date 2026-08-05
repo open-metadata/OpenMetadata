@@ -91,6 +91,8 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+
+const LABEL_COLLECTION = 'label.collection';
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -333,7 +335,7 @@ const APICollectionPage: FunctionComponent = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.collection'),
+            entity: t(LABEL_COLLECTION),
           })
         );
       }
@@ -405,7 +407,7 @@ const APICollectionPage: FunctionComponent = () => {
       );
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.collection'),
+          entity: t(LABEL_COLLECTION),
         })
       );
       handleToggleDelete(newVersion);
@@ -413,7 +415,7 @@ const APICollectionPage: FunctionComponent = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.collection'),
+          entity: t(LABEL_COLLECTION),
         })
       );
     }

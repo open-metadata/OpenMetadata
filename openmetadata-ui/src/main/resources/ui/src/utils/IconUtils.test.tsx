@@ -13,10 +13,15 @@
 import { render } from '@testing-library/react';
 import { getEntityAvatarProps, isImageUrl, renderIcon } from './IconUtils';
 
+const HTTP_EXAMPLE_COM_IMAGE_PNG = 'http://example.com/image.png';
+const ASSETS_ICON_SVG = '/assets/icon.svg';
+const ASSETS_CERTIFICATIONS_GOLD_SVG = 'assets/certifications/gold.svg';
+const CUSTOM_CLASS = 'custom-class';
+
 describe('IconUtils', () => {
   describe('isImageUrl', () => {
     it('should return true for valid http URLs', () => {
-      expect(isImageUrl('http://example.com/image.png')).toBe(true);
+      expect(isImageUrl(HTTP_EXAMPLE_COM_IMAGE_PNG)).toBe(true);
       expect(isImageUrl('http://example.com/path/to/image.jpg')).toBe(true);
     });
 
@@ -27,7 +32,7 @@ describe('IconUtils', () => {
 
     it('should return true for absolute paths', () => {
       expect(isImageUrl('/path/to/image.png')).toBe(true);
-      expect(isImageUrl('/assets/icon.svg')).toBe(true);
+      expect(isImageUrl(ASSETS_ICON_SVG)).toBe(true);
     });
 
     it('should return true for data URIs', () => {
@@ -43,7 +48,7 @@ describe('IconUtils', () => {
     });
 
     it('should return true for relative image paths', () => {
-      expect(isImageUrl('assets/certifications/gold.svg')).toBe(true);
+      expect(isImageUrl(ASSETS_CERTIFICATIONS_GOLD_SVG)).toBe(true);
       expect(isImageUrl('images/icons/bronze.png')).toBe(true);
     });
 
@@ -138,12 +143,12 @@ describe('IconUtils', () => {
 
     it('should render img element for valid image URLs', () => {
       const { container } = render(
-        <>{renderIcon('http://example.com/image.png')}</>
+        <>{renderIcon(HTTP_EXAMPLE_COM_IMAGE_PNG)}</>
       );
       const img = container.querySelector('img');
 
       expect(img).toBeInTheDocument();
-      expect(img).toHaveAttribute('src', 'http://example.com/image.png');
+      expect(img).toHaveAttribute('src', HTTP_EXAMPLE_COM_IMAGE_PNG);
     });
 
     it('should render img element for valid image filenames', () => {
@@ -181,12 +186,12 @@ describe('IconUtils', () => {
 
     it('should apply custom className to icon component', () => {
       const { container } = render(
-        <>{renderIcon('Cube01', { className: 'custom-class' })}</>
+        <>{renderIcon('Cube01', { className: CUSTOM_CLASS })}</>
       );
       const svg = container.querySelector('svg');
 
       expect(svg).toBeInTheDocument();
-      expect(svg).toHaveClass('custom-class');
+      expect(svg).toHaveClass(CUSTOM_CLASS);
     });
 
     it('should apply custom alt text to img element', () => {
@@ -209,24 +214,24 @@ describe('IconUtils', () => {
 
     it('should render img element for relative image paths', () => {
       const { container } = render(
-        <>{renderIcon('assets/certifications/gold.svg')}</>
+        <>{renderIcon(ASSETS_CERTIFICATIONS_GOLD_SVG)}</>
       );
       const img = container.querySelector('img');
 
       expect(img).toBeInTheDocument();
       expect(img?.getAttribute('src')).toContain(
-        'assets/certifications/gold.svg'
+        ASSETS_CERTIFICATIONS_GOLD_SVG
       );
     });
 
     it('should apply custom className to img element', () => {
       const { container } = render(
-        <>{renderIcon('icon.png', { className: 'custom-class' })}</>
+        <>{renderIcon('icon.png', { className: CUSTOM_CLASS })}</>
       );
       const img = container.querySelector('img');
 
       expect(img).toBeInTheDocument();
-      expect(img).toHaveClass('custom-class');
+      expect(img).toHaveClass(CUSTOM_CLASS);
     });
 
     it('should apply custom styles to img element', () => {
@@ -264,11 +269,11 @@ describe('IconUtils', () => {
 
     it('should return src for absolute path icon URLs', () => {
       const result = getEntityAvatarProps({
-        style: { iconURL: '/assets/icon.svg' },
+        style: { iconURL: ASSETS_ICON_SVG },
         entityType: 'domain',
       });
 
-      expect(result.src).toBe('/assets/icon.svg');
+      expect(result.src).toBe(ASSETS_ICON_SVG);
     });
 
     it('should return undefined src for non-URL iconURL', () => {

@@ -29,6 +29,13 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import WorksheetVersion from './WorksheetVersion';
 import { WorksheetVersionProps } from './WorksheetVersion.interface';
 
+const DATA_ASSETS_VERSION_HEADER = 'data-assets-version-header';
+const ENTITY_VERSION_TIMELINE = 'entity-version-timeline';
+const VERSION_TABLE = 'version-table';
+const TAGS_CONTAINER = 'tags-container';
+const TEST_WORKSHEET = 'Test Worksheet';
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural';
+
 jest.mock('../../../../utils/useRequiredParams');
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityVersionUtils', () => ({
@@ -81,7 +88,7 @@ jest.mock(
   '../../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () =>
     jest.fn(() => (
-      <div data-testid="data-assets-version-header">
+      <div data-testid={DATA_ASSETS_VERSION_HEADER}>
         Data Assets Version Header
       </div>
     ))
@@ -95,14 +102,14 @@ jest.mock(
 );
 jest.mock('../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
   jest.fn(() => (
-    <div data-testid="entity-version-timeline">Entity Version Timeline</div>
+    <div data-testid={ENTITY_VERSION_TIMELINE}>Entity Version Timeline</div>
   ))
 );
 jest.mock('../../../Entity/VersionTable/VersionTable.component', () =>
-  jest.fn(() => <div data-testid="version-table">Version Table</div>)
+  jest.fn(() => <div data-testid={VERSION_TABLE}>Version Table</div>)
 );
 jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () =>
-  jest.fn(() => <div data-testid="tags-container">Tags Container</div>)
+  jest.fn(() => <div data-testid={TAGS_CONTAINER}>Tags Container</div>)
 );
 
 const mockNavigate = jest.fn();
@@ -117,7 +124,7 @@ const mockGetVersionPath = getVersionPath as jest.Mock;
 const mockWorksheetData: Worksheet = {
   id: 'worksheet-id-1',
   name: 'test-worksheet',
-  displayName: 'Test Worksheet',
+  displayName: TEST_WORKSHEET,
   fullyQualifiedName: 'test-service.test-spreadsheet.test-worksheet',
   description: 'Test worksheet description',
   spreadsheet: {
@@ -135,7 +142,7 @@ const mockWorksheetData: Worksheet = {
     fieldsAdded: [
       {
         name: 'displayName',
-        newValue: 'Test Worksheet',
+        newValue: TEST_WORKSHEET,
       },
     ],
     fieldsUpdated: [],
@@ -219,7 +226,7 @@ const defaultProps: WorksheetVersionProps = {
       url: '/spreadsheet/test-service.test-spreadsheet',
     },
     {
-      name: 'Test Worksheet',
+      name: TEST_WORKSHEET,
       url: '/worksheet/test-service.test-spreadsheet.test-worksheet',
     },
   ],
@@ -263,7 +270,7 @@ describe('WorksheetVersion', () => {
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('data-assets-version-header')
+      screen.queryByTestId(DATA_ASSETS_VERSION_HEADER)
     ).not.toBeInTheDocument();
   });
 
@@ -271,11 +278,9 @@ describe('WorksheetVersion', () => {
     renderWorksheetVersion();
 
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
     expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should render tabs with correct structure', async () => {
@@ -296,14 +301,14 @@ describe('WorksheetVersion', () => {
     renderWorksheetVersion();
 
     expect(screen.getByTestId('description')).toBeInTheDocument();
-    expect(screen.getByTestId('version-table')).toBeInTheDocument();
+    expect(screen.getByTestId(VERSION_TABLE)).toBeInTheDocument();
   });
 
   it('should display data products and tags containers', async () => {
     renderWorksheetVersion();
 
     expect(screen.getByTestId('data-products-container')).toBeInTheDocument();
-    expect(screen.getAllByTestId('tags-container').length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId(TAGS_CONTAINER).length).toBeGreaterThan(0);
   });
 
   it('should handle tab change correctly', async () => {
@@ -337,10 +342,8 @@ describe('WorksheetVersion', () => {
       deleted: true,
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should handle version handler calls', async () => {
@@ -349,7 +352,7 @@ describe('WorksheetVersion', () => {
       versionHandler: mockVersionHandler,
     });
 
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should handle back handler calls', async () => {
@@ -358,7 +361,7 @@ describe('WorksheetVersion', () => {
       backHandler: mockBackHandler,
     });
 
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should render with different version numbers', () => {
@@ -366,10 +369,8 @@ describe('WorksheetVersion', () => {
       version: '2.0',
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should handle empty data products and domains', () => {
@@ -386,15 +387,13 @@ describe('WorksheetVersion', () => {
       tier: undefined,
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   it('should display tags container for each tag type', () => {
     renderWorksheetVersion();
 
-    const tagsContainers = screen.getAllByTestId('tags-container');
+    const tagsContainers = screen.getAllByTestId(TAGS_CONTAINER);
 
     expect(tagsContainers.length).toBeGreaterThan(0);
   });
@@ -448,9 +447,7 @@ describe('WorksheetVersion', () => {
       </MemoryRouter>
     );
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   it('should handle empty fullyQualifiedName', () => {
@@ -463,9 +460,7 @@ describe('WorksheetVersion', () => {
       currentVersionData: worksheetDataWithoutFQN as Worksheet,
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   it('should handle worksheets with columns', () => {
@@ -493,7 +488,7 @@ describe('WorksheetVersion', () => {
       currentVersionData: worksheetWithColumns as Worksheet,
     });
 
-    expect(screen.getByTestId('version-table')).toBeInTheDocument();
+    expect(screen.getByTestId(VERSION_TABLE)).toBeInTheDocument();
   });
 
   it('should handle worksheets without columns', () => {
@@ -506,7 +501,7 @@ describe('WorksheetVersion', () => {
       currentVersionData: worksheetWithoutColumns as Worksheet,
     });
 
-    expect(screen.getByTestId('version-table')).toBeInTheDocument();
+    expect(screen.getByTestId(VERSION_TABLE)).toBeInTheDocument();
   });
 
   it('should handle worksheets with complex column structures', () => {
@@ -536,13 +531,13 @@ describe('WorksheetVersion', () => {
       currentVersionData: worksheetWithComplexColumns as Worksheet,
     });
 
-    expect(screen.getByTestId('version-table')).toBeInTheDocument();
+    expect(screen.getByTestId(VERSION_TABLE)).toBeInTheDocument();
   });
 
   it('should handle constraint changes in columns', () => {
     renderWorksheetVersion();
 
-    expect(screen.getByTestId('version-table')).toBeInTheDocument();
+    expect(screen.getByTestId(VERSION_TABLE)).toBeInTheDocument();
   });
 
   it('should handle worksheet with no service information', () => {
@@ -555,9 +550,7 @@ describe('WorksheetVersion', () => {
       currentVersionData: worksheetWithoutService as unknown as Worksheet,
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   it('should handle different tab types', () => {
@@ -567,9 +560,7 @@ describe('WorksheetVersion', () => {
 
     renderWorksheetVersion();
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   it('should handle worksheets with tags', () => {
@@ -597,7 +588,7 @@ describe('WorksheetVersion', () => {
       currentVersionData: worksheetWithTags as Worksheet,
     });
 
-    expect(screen.getAllByTestId('tags-container').length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId(TAGS_CONTAINER).length).toBeGreaterThan(0);
   });
 
   it('should handle worksheets without tags', () => {
@@ -610,7 +601,7 @@ describe('WorksheetVersion', () => {
       currentVersionData: worksheetWithoutTags as Worksheet,
     });
 
-    expect(screen.getAllByTestId('tags-container').length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId(TAGS_CONTAINER).length).toBeGreaterThan(0);
   });
 
   describe('ViewCustomFields Permission Tests', () => {
@@ -625,7 +616,7 @@ describe('WorksheetVersion', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
@@ -642,7 +633,7 @@ describe('WorksheetVersion', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
@@ -661,7 +652,7 @@ describe('WorksheetVersion', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();

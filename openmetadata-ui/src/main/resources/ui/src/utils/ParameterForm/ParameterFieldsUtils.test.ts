@@ -26,8 +26,11 @@ import {
   unwrapSelectValues,
 } from './ParameterFieldsUtils';
 
+const SVC_DB_SCH_T2 = 'svc.db.sch.t2';
+
 describe('sanitizeParamName / restoreParamName', () => {
   it('sanitizes dotted names with the sentinel', () => {
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
     expect(sanitizeParamName('table2.keyColumns')).toBe('table2___keyColumns');
   });
 
@@ -166,7 +169,7 @@ describe('normalizeParamsForPayload', () => {
   it('round-trips a realistic tableDiff-like params object', () => {
     const result = normalizeParamsForPayload(
       {
-        table2: { id: 'svc.db.sch.t2', label: 'svc.db.sch.t2' },
+        table2: { id: SVC_DB_SCH_T2, label: SVC_DB_SCH_T2 },
         keyColumns: [{ value: { id: 'id' } }, { value: { id: 'name' } }],
         table2___keyColumns: [{ value: { id: 'id2' } }],
         useColumns: [{ value: { id: 'email' } }],
@@ -184,7 +187,7 @@ describe('normalizeParamsForPayload', () => {
     );
 
     expect(result).toEqual({
-      table2: 'svc.db.sch.t2',
+      table2: SVC_DB_SCH_T2,
       keyColumns: [{ value: 'id' }, { value: 'name' }],
       'table2.keyColumns': [{ value: 'id2' }],
       useColumns: [{ value: 'email' }],

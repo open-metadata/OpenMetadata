@@ -83,6 +83,39 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
 
+const LABEL_ENTITY_SERVICE = 'label.entity-service';
+const TW_TEXT_UTILITY_BLUE_700 = 'tw:text-utility-blue-700';
+const TW_BG_UTILITY_BLUE_50 = 'tw:bg-utility-blue-50';
+const TW_BORDER_UTILITY_BLUE_200 = 'tw:border-utility-blue-200';
+const TW_TEXT_UTILITY_PURPLE_600 = 'tw:text-utility-purple-600';
+const TW_BG_UTILITY_PURPLE_50 = 'tw:bg-utility-purple-50';
+const TW_BORDER_UTILITY_PURPLE_200 = 'tw:border-utility-purple-200';
+const TW_TEXT_UTILITY_SUCCESS_600 = 'tw:text-utility-success-600';
+const TW_BG_UTILITY_SUCCESS_50 = 'tw:bg-utility-success-50';
+const TW_BORDER_UTILITY_SUCCESS_200 = 'tw:border-utility-success-200';
+const TW_TEXT_UTILITY_INDIGO_600 = 'tw:text-utility-indigo-600';
+const TW_BG_UTILITY_INDIGO_50 = 'tw:bg-utility-indigo-50';
+const TW_BORDER_UTILITY_INDIGO_300 = 'tw:border-utility-indigo-300';
+const TW_TEXT_UTILITY_GRAY_BLUE_500 = 'tw:text-utility-gray-blue-500';
+const TW_BG_UTILITY_GRAY_BLUE_50 = 'tw:bg-utility-gray-blue-50';
+const TW_BORDER_UTILITY_GRAY_BLUE_200 = 'tw:border-utility-gray-blue-200';
+const TW_TEXT_UTILITY_WARNING_600 = 'tw:text-utility-warning-600';
+const TW_BG_UTILITY_WARNING_50 = 'tw:bg-utility-warning-50';
+const TW_BORDER_UTILITY_WARNING_300 = 'tw:border-utility-warning-300';
+const TW_TEXT_UTILITY_FUCHSIA_600 = 'tw:text-utility-fuchsia-600';
+const TW_BG_UTILITY_FUCHSIA_50 = 'tw:bg-utility-fuchsia-50';
+const TW_BORDER_UTILITY_FUCHSIA_200 = 'tw:border-utility-fuchsia-200';
+const TW_TEXT_TEAL_600_TW_DARK_TEXT_TEAL_400 =
+  'tw:text-teal-600 tw:dark:text-teal-400';
+const TW_BG_TEAL_50_TW_DARK_BG_TEAL_950 = 'tw:bg-teal-50 tw:dark:bg-teal-950';
+const TW_BORDER_TEAL_300_TW_DARK_BORDER_TEAL_700 =
+  'tw:border-teal-300 tw:dark:border-teal-700';
+const TW_TEXT_UTILITY_PINK_600 = 'tw:text-utility-pink-600';
+const TW_BG_UTILITY_PINK_50 = 'tw:bg-utility-pink-50';
+const TW_BORDER_UTILITY_PINK_200 = 'tw:border-utility-pink-200';
+const TW_TEXT_UTILITY_INDIGO_700 = 'tw:text-utility-indigo-700';
+const TW_BORDER_UTILITY_INDIGO_200 = 'tw:border-utility-indigo-200';
+
 export const AssetsFilterOptions: Array<{
   label: string;
   key: AssetsUnion;
@@ -150,21 +183,21 @@ export const AssetsFilterOptions: Array<{
     value: SearchIndex.SEARCH_INDEX,
   },
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.database'),
     }),
     key: EntityType.DATABASE_SERVICE,
     value: SearchIndex.DATABASE_SERVICE,
   },
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.messaging'),
     }),
     key: EntityType.MESSAGING_SERVICE,
     value: SearchIndex.MESSAGING_SERVICE,
   },
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.dashboard'),
     }),
     key: EntityType.DASHBOARD_SERVICE,
@@ -172,35 +205,35 @@ export const AssetsFilterOptions: Array<{
   },
 
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.pipeline'),
     }),
     key: EntityType.PIPELINE_SERVICE,
     value: SearchIndex.PIPELINE_SERVICE,
   },
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.ml-model'),
     }),
     key: EntityType.MLMODEL_SERVICE,
     value: SearchIndex.ML_MODEL_SERVICE,
   },
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.storage'),
     }),
     key: EntityType.STORAGE_SERVICE,
     value: SearchIndex.STORAGE_SERVICE,
   },
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.search-index'),
     }),
     key: EntityType.SEARCH_SERVICE,
     value: SearchIndex.SEARCH_SERVICE,
   },
   {
-    label: i18n.t('label.entity-service', {
+    label: i18n.t(LABEL_ENTITY_SERVICE, {
       entity: i18n.t('label.api-uppercase'),
     }),
     key: EntityType.API_SERVICE,
@@ -287,45 +320,45 @@ export const ENTITY_ICON_MAPPER: Record<
   }
 > = {
   [EntityType.TABLE]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: Table,
   },
   [EntityType.DASHBOARD]: {
-    iconClass: 'tw:text-utility-purple-600',
-    bgClass: 'tw:bg-utility-purple-50',
-    borderClass: 'tw:border-utility-purple-200',
+    iconClass: TW_TEXT_UTILITY_PURPLE_600,
+    bgClass: TW_BG_UTILITY_PURPLE_50,
+    borderClass: TW_BORDER_UTILITY_PURPLE_200,
     icon: Dashboard,
   },
   [EntityType.TABLE_COLUMN]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: Column,
   },
   [EntityType.PIPELINE]: {
-    iconClass: 'tw:text-utility-success-600',
-    bgClass: 'tw:bg-utility-success-50',
-    borderClass: 'tw:border-utility-success-200',
+    iconClass: TW_TEXT_UTILITY_SUCCESS_600,
+    bgClass: TW_BG_UTILITY_SUCCESS_50,
+    borderClass: TW_BORDER_UTILITY_SUCCESS_200,
     icon: Pipeline,
   },
   [EntityType.INGESTION_PIPELINE]: {
-    iconClass: 'tw:text-utility-success-600',
-    bgClass: 'tw:bg-utility-success-50',
-    borderClass: 'tw:border-utility-success-200',
+    iconClass: TW_TEXT_UTILITY_SUCCESS_600,
+    bgClass: TW_BG_UTILITY_SUCCESS_50,
+    borderClass: TW_BORDER_UTILITY_SUCCESS_200,
     icon: IngestionPipeline,
   },
   [EntityType.DATA_PRODUCT]: {
-    iconClass: 'tw:text-utility-indigo-600',
-    bgClass: 'tw:bg-utility-indigo-50',
-    borderClass: 'tw:border-utility-indigo-300',
+    iconClass: TW_TEXT_UTILITY_INDIGO_600,
+    bgClass: TW_BG_UTILITY_INDIGO_50,
+    borderClass: TW_BORDER_UTILITY_INDIGO_300,
     icon: DataProduct,
   },
   [EntityType.CHART]: {
-    iconClass: 'tw:text-utility-purple-600',
-    bgClass: 'tw:bg-utility-purple-50',
-    borderClass: 'tw:border-utility-purple-200',
+    iconClass: TW_TEXT_UTILITY_PURPLE_600,
+    bgClass: TW_BG_UTILITY_PURPLE_50,
+    borderClass: TW_BORDER_UTILITY_PURPLE_200,
     icon: Chart,
   },
   [EntityType.MESSAGING_SERVICE]: {
@@ -335,123 +368,123 @@ export const ENTITY_ICON_MAPPER: Record<
     icon: MessagingService,
   },
   [EntityType.DASHBOARD_SERVICE]: {
-    iconClass: 'tw:text-utility-purple-600',
-    bgClass: 'tw:bg-utility-purple-50',
-    borderClass: 'tw:border-utility-purple-200',
+    iconClass: TW_TEXT_UTILITY_PURPLE_600,
+    bgClass: TW_BG_UTILITY_PURPLE_50,
+    borderClass: TW_BORDER_UTILITY_PURPLE_200,
     icon: DashboardService,
   },
   [EntityType.GLOSSARY_TERM]: {
-    iconClass: 'tw:text-utility-gray-blue-500',
-    bgClass: 'tw:bg-utility-gray-blue-50',
-    borderClass: 'tw:border-utility-gray-blue-200',
+    iconClass: TW_TEXT_UTILITY_GRAY_BLUE_500,
+    bgClass: TW_BG_UTILITY_GRAY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_GRAY_BLUE_200,
     icon: GlossaryTerm,
   },
   [EntityType.STORAGE_SERVICE]: {
-    iconClass: 'tw:text-utility-warning-600',
-    bgClass: 'tw:bg-utility-warning-50',
-    borderClass: 'tw:border-utility-warning-300',
+    iconClass: TW_TEXT_UTILITY_WARNING_600,
+    bgClass: TW_BG_UTILITY_WARNING_50,
+    borderClass: TW_BORDER_UTILITY_WARNING_300,
     icon: StorageService,
   },
   [EntityType.CONTAINER]: {
-    iconClass: 'tw:text-utility-warning-600',
-    bgClass: 'tw:bg-utility-warning-50',
-    borderClass: 'tw:border-utility-warning-300',
+    iconClass: TW_TEXT_UTILITY_WARNING_600,
+    bgClass: TW_BG_UTILITY_WARNING_50,
+    borderClass: TW_BORDER_UTILITY_WARNING_300,
     icon: Container,
   },
   [EntityType.DATABASE_SCHEMA]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: DatabaseSchema,
   },
   [EntityType.TAG]: {
-    iconClass: 'tw:text-utility-gray-blue-500',
-    bgClass: 'tw:bg-utility-gray-blue-50',
-    borderClass: 'tw:border-utility-gray-blue-200',
+    iconClass: TW_TEXT_UTILITY_GRAY_BLUE_500,
+    bgClass: TW_BG_UTILITY_GRAY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_GRAY_BLUE_200,
     icon: Tag,
   },
   [EntityType.DASHBOARD_DATA_MODEL]: {
-    iconClass: 'tw:text-utility-purple-600',
-    bgClass: 'tw:bg-utility-purple-50',
-    borderClass: 'tw:border-utility-purple-200',
+    iconClass: TW_TEXT_UTILITY_PURPLE_600,
+    bgClass: TW_BG_UTILITY_PURPLE_50,
+    borderClass: TW_BORDER_UTILITY_PURPLE_200,
     icon: DashboardDataModel,
   },
   [EntityType.DATABASE]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: DatabaseAsset,
   },
   [EntityType.STORED_PROCEDURE]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: StoredProcedure,
   },
   [EntityType.KNOWLEDGE_PAGE]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: FileIcon,
   },
   [EntityType.KNOWLEDGE_CENTER]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: KnowledgeCenter,
   },
   [EntityType.WORKSHEET]: {
-    iconClass: 'tw:text-utility-purple-600',
-    bgClass: 'tw:bg-utility-purple-50',
-    borderClass: 'tw:border-utility-purple-200',
+    iconClass: TW_TEXT_UTILITY_PURPLE_600,
+    bgClass: TW_BG_UTILITY_PURPLE_50,
+    borderClass: TW_BORDER_UTILITY_PURPLE_200,
     icon: ClipboardMinus,
   },
   [EntityType.DATABASE_SERVICE]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: DatabaseService,
   },
   [EntityType.MLMODEL]: {
-    iconClass: 'tw:text-utility-fuchsia-600',
-    bgClass: 'tw:bg-utility-fuchsia-50',
-    borderClass: 'tw:border-utility-fuchsia-200',
+    iconClass: TW_TEXT_UTILITY_FUCHSIA_600,
+    bgClass: TW_BG_UTILITY_FUCHSIA_50,
+    borderClass: TW_BORDER_UTILITY_FUCHSIA_200,
     icon: MLModel,
   },
   [EntityType.CLASSIFICATION]: {
-    iconClass: 'tw:text-utility-gray-blue-500',
-    bgClass: 'tw:bg-utility-gray-blue-50',
-    borderClass: 'tw:border-utility-gray-blue-200',
+    iconClass: TW_TEXT_UTILITY_GRAY_BLUE_500,
+    bgClass: TW_BG_UTILITY_GRAY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_GRAY_BLUE_200,
     icon: Classification,
   },
   [EntityType.GLOSSARY]: {
-    iconClass: 'tw:text-utility-gray-blue-500',
-    bgClass: 'tw:bg-utility-gray-blue-50',
-    borderClass: 'tw:border-utility-gray-blue-200',
+    iconClass: TW_TEXT_UTILITY_GRAY_BLUE_500,
+    bgClass: TW_BG_UTILITY_GRAY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_GRAY_BLUE_200,
     icon: Glossary,
   },
   [EntityType.METRIC]: {
     iconClass: 'tw:text-utility-success-700',
-    bgClass: 'tw:bg-utility-success-50',
+    bgClass: TW_BG_UTILITY_SUCCESS_50,
     borderClass: 'tw:border-utility-success-300',
     icon: Metric,
   },
   [EntityType.DRIVE_SERVICE]: {
-    iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
-    bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
-    borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
+    iconClass: TW_TEXT_TEAL_600_TW_DARK_TEXT_TEAL_400,
+    bgClass: TW_BG_TEAL_50_TW_DARK_BG_TEAL_950,
+    borderClass: TW_BORDER_TEAL_300_TW_DARK_BORDER_TEAL_700,
     icon: DriveService,
   },
   [EntityType.SPREADSHEET]: {
-    iconClass: 'tw:text-utility-fuchsia-600',
-    bgClass: 'tw:bg-utility-fuchsia-50',
-    borderClass: 'tw:border-utility-fuchsia-200',
+    iconClass: TW_TEXT_UTILITY_FUCHSIA_600,
+    bgClass: TW_BG_UTILITY_FUCHSIA_50,
+    borderClass: TW_BORDER_UTILITY_FUCHSIA_200,
     icon: SpreadSheet,
   },
   [EntityType.DIRECTORY]: {
-    iconClass: 'tw:text-utility-success-600',
-    bgClass: 'tw:bg-utility-success-50',
-    borderClass: 'tw:border-utility-success-200',
+    iconClass: TW_TEXT_UTILITY_SUCCESS_600,
+    bgClass: TW_BG_UTILITY_SUCCESS_50,
+    borderClass: TW_BORDER_UTILITY_SUCCESS_200,
     icon: FileCheck02,
   },
   [EntityType.TOPIC]: {
@@ -461,87 +494,87 @@ export const ENTITY_ICON_MAPPER: Record<
     icon: Topic,
   },
   [EntityType.FILE]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: File05,
   },
   [EntityType.MLMODEL_SERVICE]: {
-    iconClass: 'tw:text-utility-fuchsia-600',
-    bgClass: 'tw:bg-utility-fuchsia-50',
-    borderClass: 'tw:border-utility-fuchsia-200',
+    iconClass: TW_TEXT_UTILITY_FUCHSIA_600,
+    bgClass: TW_BG_UTILITY_FUCHSIA_50,
+    borderClass: TW_BORDER_UTILITY_FUCHSIA_200,
     icon: MLModelService,
   },
   [EntityType.PIPELINE_SERVICE]: {
-    iconClass: 'tw:text-utility-success-600',
-    bgClass: 'tw:bg-utility-success-50',
-    borderClass: 'tw:border-utility-success-200',
+    iconClass: TW_TEXT_UTILITY_SUCCESS_600,
+    bgClass: TW_BG_UTILITY_SUCCESS_50,
+    borderClass: TW_BORDER_UTILITY_SUCCESS_200,
     icon: PipelineService,
   },
   [EntityType.DOMAIN]: {
-    iconClass: 'tw:text-utility-gray-blue-500',
-    bgClass: 'tw:bg-utility-gray-blue-50',
-    borderClass: 'tw:border-utility-gray-blue-200',
+    iconClass: TW_TEXT_UTILITY_GRAY_BLUE_500,
+    bgClass: TW_BG_UTILITY_GRAY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_GRAY_BLUE_200,
     icon: Domain,
   },
   [EntityType.METADATA_SERVICE]: {
-    iconClass: 'tw:text-utility-gray-blue-500',
-    bgClass: 'tw:bg-utility-gray-blue-50',
-    borderClass: 'tw:border-utility-gray-blue-200',
+    iconClass: TW_TEXT_UTILITY_GRAY_BLUE_500,
+    bgClass: TW_BG_UTILITY_GRAY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_GRAY_BLUE_200,
     icon: MetadataService,
   },
   [EntityType.API_ENDPOINT]: {
-    iconClass: 'tw:text-utility-pink-600',
-    bgClass: 'tw:bg-utility-pink-50',
-    borderClass: 'tw:border-utility-pink-200',
+    iconClass: TW_TEXT_UTILITY_PINK_600,
+    bgClass: TW_BG_UTILITY_PINK_50,
+    borderClass: TW_BORDER_UTILITY_PINK_200,
     icon: APIEndpoint,
   },
   [EntityType.API_SERVICE]: {
-    iconClass: 'tw:text-utility-pink-600',
-    bgClass: 'tw:bg-utility-pink-50',
-    borderClass: 'tw:border-utility-pink-200',
+    iconClass: TW_TEXT_UTILITY_PINK_600,
+    bgClass: TW_BG_UTILITY_PINK_50,
+    borderClass: TW_BORDER_UTILITY_PINK_200,
     icon: APIService,
   },
   [EntityType.API_COLLECTION]: {
-    iconClass: 'tw:text-utility-pink-600',
-    bgClass: 'tw:bg-utility-pink-50',
-    borderClass: 'tw:border-utility-pink-200',
+    iconClass: TW_TEXT_UTILITY_PINK_600,
+    bgClass: TW_BG_UTILITY_PINK_50,
+    borderClass: TW_BORDER_UTILITY_PINK_200,
     icon: APICollection,
   },
   [EntityType.SERVICE]: {
-    iconClass: 'tw:text-utility-fuchsia-600',
-    bgClass: 'tw:bg-utility-fuchsia-50',
-    borderClass: 'tw:border-utility-fuchsia-200',
+    iconClass: TW_TEXT_UTILITY_FUCHSIA_600,
+    bgClass: TW_BG_UTILITY_FUCHSIA_50,
+    borderClass: TW_BORDER_UTILITY_FUCHSIA_200,
     icon: Settings02,
   },
   [EntityType.SEARCH_SERVICE]: {
-    iconClass: 'tw:text-utility-indigo-600',
-    bgClass: 'tw:bg-utility-indigo-50',
-    borderClass: 'tw:border-utility-indigo-300',
+    iconClass: TW_TEXT_UTILITY_INDIGO_600,
+    bgClass: TW_BG_UTILITY_INDIGO_50,
+    borderClass: TW_BORDER_UTILITY_INDIGO_300,
     icon: SearchService,
   },
   contextFile: {
-    iconClass: 'tw:text-utility-fuchsia-600',
-    bgClass: 'tw:bg-utility-fuchsia-50',
-    borderClass: 'tw:border-utility-fuchsia-200',
+    iconClass: TW_TEXT_UTILITY_FUCHSIA_600,
+    bgClass: TW_BG_UTILITY_FUCHSIA_50,
+    borderClass: TW_BORDER_UTILITY_FUCHSIA_200,
     icon: File02,
   },
   [EntityType.SEARCH_INDEX]: {
-    iconClass: 'tw:text-utility-indigo-600',
-    bgClass: 'tw:bg-utility-indigo-50',
-    borderClass: 'tw:border-utility-indigo-300',
+    iconClass: TW_TEXT_UTILITY_INDIGO_600,
+    bgClass: TW_BG_UTILITY_INDIGO_50,
+    borderClass: TW_BORDER_UTILITY_INDIGO_300,
     icon: SearchIndexIcon,
   },
   [EntityType.QUERY]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: Query,
   },
   [EntityType.DATA_CONTRACT]: {
-    iconClass: 'tw:text-utility-indigo-600',
-    bgClass: 'tw:bg-utility-indigo-50',
-    borderClass: 'tw:border-utility-indigo-300',
+    iconClass: TW_TEXT_UTILITY_INDIGO_600,
+    bgClass: TW_BG_UTILITY_INDIGO_50,
+    borderClass: TW_BORDER_UTILITY_INDIGO_300,
     icon: DataContract,
   },
   [EntityType.SECURITY_SERVICE]: {
@@ -551,9 +584,9 @@ export const ENTITY_ICON_MAPPER: Record<
     icon: SecurityService,
   },
   contextMemory: {
-    iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
-    bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
-    borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
+    iconClass: TW_TEXT_TEAL_600_TW_DARK_TEXT_TEAL_400,
+    bgClass: TW_BG_TEAL_50_TW_DARK_BG_TEAL_950,
+    borderClass: TW_BORDER_TEAL_300_TW_DARK_BORDER_TEAL_700,
     icon: MemoriesIcon,
   },
   aiAutomation: {
@@ -563,15 +596,15 @@ export const ENTITY_ICON_MAPPER: Record<
     icon: AIAutomation,
   },
   marketplace: {
-    iconClass: 'tw:text-utility-warning-600',
-    bgClass: 'tw:bg-utility-warning-50',
-    borderClass: 'tw:border-utility-warning-300',
+    iconClass: TW_TEXT_UTILITY_WARNING_600,
+    bgClass: TW_BG_UTILITY_WARNING_50,
+    borderClass: TW_BORDER_UTILITY_WARNING_300,
     icon: Marketplace,
   },
   [EntityType.TEST_CASE]: {
-    iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
-    bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
-    borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
+    iconClass: TW_TEXT_TEAL_600_TW_DARK_TEXT_TEAL_400,
+    bgClass: TW_BG_TEAL_50_TW_DARK_BG_TEAL_950,
+    borderClass: TW_BORDER_TEAL_300_TW_DARK_BORDER_TEAL_700,
     icon: TestCase,
   },
   folder: {
@@ -581,74 +614,74 @@ export const ENTITY_ICON_MAPPER: Record<
     icon: FolderIcon,
   },
   contextPlugin: {
-    iconClass: 'tw:text-utility-fuchsia-600',
-    bgClass: 'tw:bg-utility-fuchsia-50',
-    borderClass: 'tw:border-utility-fuchsia-200',
+    iconClass: TW_TEXT_UTILITY_FUCHSIA_600,
+    bgClass: TW_BG_UTILITY_FUCHSIA_50,
+    borderClass: TW_BORDER_UTILITY_FUCHSIA_200,
     icon: CodeSquare01,
   },
   dynamicAgent: {
-    iconClass: 'tw:text-utility-fuchsia-600',
-    bgClass: 'tw:bg-utility-fuchsia-50',
-    borderClass: 'tw:border-utility-fuchsia-200',
+    iconClass: TW_TEXT_UTILITY_FUCHSIA_600,
+    bgClass: TW_BG_UTILITY_FUCHSIA_50,
+    borderClass: TW_BORDER_UTILITY_FUCHSIA_200,
     icon: DynamicAgent,
   },
   [EntityType.AI_APPLICATION]: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: CpuChip01,
   },
   aiFrameworkControl: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: AIFrameworkControl,
   },
   aiGovernancePolicy: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: AIGovernancePolicy,
   },
   aiGovernanceFramework: {
-    iconClass: 'tw:text-utility-blue-700',
-    bgClass: 'tw:bg-utility-blue-50',
-    borderClass: 'tw:border-utility-blue-200',
+    iconClass: TW_TEXT_UTILITY_BLUE_700,
+    bgClass: TW_BG_UTILITY_BLUE_50,
+    borderClass: TW_BORDER_UTILITY_BLUE_200,
     icon: AIGovernanceFramework,
   },
   [EntityType.LLM_MODEL]: {
     iconClass: 'tw:text-utility-purple-700',
-    bgClass: 'tw:bg-utility-purple-50',
-    borderClass: 'tw:border-utility-purple-200',
+    bgClass: TW_BG_UTILITY_PURPLE_50,
+    borderClass: TW_BORDER_UTILITY_PURPLE_200,
     icon: Atom01,
   },
   [EntityType.MCP_SERVER]: {
-    iconClass: 'tw:text-utility-indigo-700',
-    bgClass: 'tw:bg-utility-indigo-50',
-    borderClass: 'tw:border-utility-indigo-200',
+    iconClass: TW_TEXT_UTILITY_INDIGO_700,
+    bgClass: TW_BG_UTILITY_INDIGO_50,
+    borderClass: TW_BORDER_UTILITY_INDIGO_200,
     icon: Server04,
   },
   [EntityType.LLM_SERVICE]: {
-    iconClass: 'tw:text-utility-indigo-700',
-    bgClass: 'tw:bg-utility-indigo-50',
-    borderClass: 'tw:border-utility-indigo-200',
+    iconClass: TW_TEXT_UTILITY_INDIGO_700,
+    bgClass: TW_BG_UTILITY_INDIGO_50,
+    borderClass: TW_BORDER_UTILITY_INDIGO_200,
     icon: LLMService,
   },
   [EntityType.MCP_SERVICE]: {
-    iconClass: 'tw:text-utility-indigo-700',
-    bgClass: 'tw:bg-utility-indigo-50',
-    borderClass: 'tw:border-utility-indigo-200',
+    iconClass: TW_TEXT_UTILITY_INDIGO_700,
+    bgClass: TW_BG_UTILITY_INDIGO_50,
+    borderClass: TW_BORDER_UTILITY_INDIGO_200,
     icon: MCPService,
   },
   [EntityType.TEST_SUITE]: {
-    iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
-    bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
-    borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
+    iconClass: TW_TEXT_TEAL_600_TW_DARK_TEXT_TEAL_400,
+    bgClass: TW_BG_TEAL_50_TW_DARK_BG_TEAL_950,
+    borderClass: TW_BORDER_TEAL_300_TW_DARK_BORDER_TEAL_700,
     icon: TestSuite,
   },
   dataObservability: {
     iconClass: 'tw:text-utility-success-700',
-    bgClass: 'tw:bg-utility-success-50',
+    bgClass: TW_BG_UTILITY_SUCCESS_50,
     borderClass: 'tw:border-utility-success-300',
     icon: DataObservability,
   },
@@ -665,9 +698,9 @@ export const ENTITY_ICON_MAPPER: Record<
     icon: AuditReport,
   },
   testDefinition: {
-    iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
-    bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
-    borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
+    iconClass: TW_TEXT_TEAL_600_TW_DARK_TEXT_TEAL_400,
+    bgClass: TW_BG_TEAL_50_TW_DARK_BG_TEAL_950,
+    borderClass: TW_BORDER_TEAL_300_TW_DARK_BORDER_TEAL_700,
     icon: TestDefinition,
   },
   default: {

@@ -19,6 +19,16 @@ import {
 } from '../../../generated/entity/feed/thread';
 import DescriptionTask from './DescriptionTask';
 
+const B76B005D_3540_4F85_86DB_197ABDCAF351 =
+  'b76b005d-3540-4f85-86db-197abdcaf351';
+const ADAM_MATTHEWS = 'Adam Matthews';
+const THIS_IS_A_RAW_ORDERS =
+  'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables';
+const THIS_IS_A_RAW_ORDERS_2 =
+  'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to build our dim and fact tables';
+const REQUEST_DESCRIPTION = 'request-description';
+const UPDATE_DESCRIPTION = 'update-description';
+
 const mockProps = {
   taskThread: {
     id: '9542599e-f2f9-46d1-9fc0-d03620351a0d',
@@ -41,25 +51,22 @@ const mockProps = {
       type: 'UpdateDescription',
       assignees: [
         {
-          id: 'b76b005d-3540-4f85-86db-197abdcaf351',
+          id: B76B005D_3540_4F85_86DB_197ABDCAF351,
           type: 'user',
           name: 'adam_matthews2',
           fullyQualifiedName: 'adam_matthews2',
-          displayName: 'Adam Matthews',
+          displayName: ADAM_MATTHEWS,
           deleted: true,
         },
       ],
       status: 'Open',
-      oldValue:
-        'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables',
-      suggestion:
-        'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to build our dim and fact tables',
+      oldValue: THIS_IS_A_RAW_ORDERS,
+      suggestion: THIS_IS_A_RAW_ORDERS_2,
     },
   } as Thread,
   isTaskActionEdit: false,
   hasEditAccess: true,
-  suggestion:
-    'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to build our dim and fact tables',
+  suggestion: THIS_IS_A_RAW_ORDERS_2,
   value: '',
   onChange: jest.fn(),
 };
@@ -70,9 +77,9 @@ describe('Test Description Task Component', () => {
 
     const container = await screen.findByTestId('description-task');
 
-    const requestDescription = screen.queryByTestId('request-description');
+    const requestDescription = screen.queryByTestId(REQUEST_DESCRIPTION);
 
-    const updateDescription = await screen.findByTestId('update-description');
+    const updateDescription = await screen.findByTestId(UPDATE_DESCRIPTION);
 
     expect(container).toBeInTheDocument();
     expect(requestDescription).not.toBeInTheDocument();
@@ -89,19 +96,17 @@ describe('Test Description Task Component', () => {
             id: 5,
             assignees: [
               {
-                id: 'b76b005d-3540-4f85-86db-197abdcaf351',
+                id: B76B005D_3540_4F85_86DB_197ABDCAF351,
                 type: 'user',
                 name: 'adam_matthews2',
                 fullyQualifiedName: 'adam_matthews2',
-                displayName: 'Adam Matthews',
+                displayName: ADAM_MATTHEWS,
                 deleted: true,
               },
             ],
             status: ThreadTaskStatus.Open,
-            oldValue:
-              'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables',
-            suggestion:
-              'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to build our dim and fact tables',
+            oldValue: THIS_IS_A_RAW_ORDERS,
+            suggestion: THIS_IS_A_RAW_ORDERS_2,
 
             type: TaskType.RequestDescription,
           },
@@ -111,9 +116,9 @@ describe('Test Description Task Component', () => {
 
     const container = await screen.findByTestId('description-task');
 
-    const updateDescription = screen.queryByTestId('update-description');
+    const updateDescription = screen.queryByTestId(UPDATE_DESCRIPTION);
 
-    const requestDescription = await screen.findByTestId('request-description');
+    const requestDescription = await screen.findByTestId(REQUEST_DESCRIPTION);
 
     expect(container).toBeInTheDocument();
     expect(requestDescription).toBeInTheDocument();
@@ -130,19 +135,17 @@ describe('Test Description Task Component', () => {
             id: 5,
             assignees: [
               {
-                id: 'b76b005d-3540-4f85-86db-197abdcaf351',
+                id: B76B005D_3540_4F85_86DB_197ABDCAF351,
                 type: 'user',
                 name: 'adam_matthews2',
                 fullyQualifiedName: 'adam_matthews2',
-                displayName: 'Adam Matthews',
+                displayName: ADAM_MATTHEWS,
                 deleted: true,
               },
             ],
             status: ThreadTaskStatus.Open,
-            oldValue:
-              'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables',
-            suggestion:
-              'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to build our dim and fact tables',
+            oldValue: THIS_IS_A_RAW_ORDERS,
+            suggestion: THIS_IS_A_RAW_ORDERS_2,
 
             type: TaskType.UpdateDescription,
           },
@@ -150,9 +153,9 @@ describe('Test Description Task Component', () => {
       />
     );
 
-    const requestDescription = screen.queryByTestId('request-description');
+    const requestDescription = screen.queryByTestId(REQUEST_DESCRIPTION);
 
-    const updateDescription = await screen.findByTestId('update-description');
+    const updateDescription = await screen.findByTestId(UPDATE_DESCRIPTION);
 
     expect(requestDescription).not.toBeInTheDocument();
     expect(updateDescription).toBeInTheDocument();

@@ -15,12 +15,15 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WidgetWrapper from './WidgetWrapper';
 
+const WIDGET_CONTENT = 'widget-content';
+const WIDGET_WRAPPER = 'widget-wrapper';
+const WIDGET_HEADER = 'widget-header';
 const mockProps = {
-  children: <div data-testid="widget-content">Widget Content</div>,
+  children: <div data-testid={WIDGET_CONTENT}>Widget Content</div>,
   loading: false,
   dataLength: 5,
   className: 'custom-wrapper-class',
-  dataTestId: 'widget-wrapper',
+  dataTestId: WIDGET_WRAPPER,
 };
 
 const renderWidgetWrapper = (props = {}) => {
@@ -35,21 +38,21 @@ describe('WidgetWrapper', () => {
   it('renders children content', () => {
     renderWidgetWrapper();
 
-    expect(screen.getByTestId('widget-content')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_CONTENT)).toBeInTheDocument();
     expect(screen.getByText('Widget Content')).toBeInTheDocument();
   });
 
   it('renders with loading state', () => {
     renderWidgetWrapper({ loading: true });
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_WRAPPER)).toBeInTheDocument();
     expect(screen.getByTestId('entity-list-skeleton')).toBeInTheDocument();
   });
 
   it('applies custom className', () => {
     renderWidgetWrapper();
 
-    const wrapper = screen.getByTestId('widget-wrapper');
+    const wrapper = screen.getByTestId(WIDGET_WRAPPER);
 
     expect(wrapper).toHaveClass('custom-wrapper-class');
   });
@@ -63,7 +66,7 @@ describe('WidgetWrapper', () => {
     });
 
     expect(screen.getByText('Default Content')).toBeInTheDocument();
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_WRAPPER)).toBeInTheDocument();
   });
 
   it('renders complex children content', () => {
@@ -85,13 +88,13 @@ describe('WidgetWrapper', () => {
   it('handles empty children gracefully', () => {
     renderWidgetWrapper({ children: null });
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_WRAPPER)).toBeInTheDocument();
   });
 
   it('renders with different loading states', () => {
     const { rerender } = renderWidgetWrapper({ loading: false });
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_WRAPPER)).toBeInTheDocument();
 
     rerender(
       <MemoryRouter>
@@ -99,13 +102,13 @@ describe('WidgetWrapper', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_WRAPPER)).toBeInTheDocument();
   });
 
   it('applies card widget class', () => {
     renderWidgetWrapper();
 
-    const wrapper = screen.getByTestId('widget-wrapper');
+    const wrapper = screen.getByTestId(WIDGET_WRAPPER);
 
     expect(wrapper).toHaveClass('card-widget');
   });
@@ -127,21 +130,21 @@ describe('WidgetWrapper', () => {
   });
 
   it('renders header when provided', () => {
-    const headerElement = <div data-testid="widget-header">Widget Header</div>;
+    const headerElement = <div data-testid={WIDGET_HEADER}>Widget Header</div>;
 
     renderWidgetWrapper({ header: headerElement });
 
-    expect(screen.getByTestId('widget-header')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_HEADER)).toBeInTheDocument();
     expect(screen.getByText('Widget Header')).toBeInTheDocument();
-    expect(screen.getByTestId('widget-content')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_CONTENT)).toBeInTheDocument();
   });
 
   it('renders header even when loading', () => {
-    const headerElement = <div data-testid="widget-header">Widget Header</div>;
+    const headerElement = <div data-testid={WIDGET_HEADER}>Widget Header</div>;
 
     renderWidgetWrapper({ header: headerElement, loading: true });
 
-    expect(screen.getByTestId('widget-header')).toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_HEADER)).toBeInTheDocument();
     expect(screen.getByText('Widget Header')).toBeInTheDocument();
     expect(screen.getByTestId('entity-list-skeleton')).toBeInTheDocument();
   });
@@ -149,7 +152,7 @@ describe('WidgetWrapper', () => {
   it('renders without header when not provided', () => {
     renderWidgetWrapper({ header: undefined });
 
-    expect(screen.queryByTestId('widget-header')).not.toBeInTheDocument();
-    expect(screen.getByTestId('widget-content')).toBeInTheDocument();
+    expect(screen.queryByTestId(WIDGET_HEADER)).not.toBeInTheDocument();
+    expect(screen.getByTestId(WIDGET_CONTENT)).toBeInTheDocument();
   });
 });

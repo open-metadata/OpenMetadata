@@ -13,6 +13,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import RichTextEditorPreviewerV1 from './RichTextEditorPreviewerV1';
 
+const MARKDOWN_PARSER = 'markdown-parser';
+
 /**
  * End-to-end guard for the HTML-entity rendering bug.
  *
@@ -38,7 +40,7 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
     );
 
     const container = await screen.findByTestId(
-      'markdown-parser',
+      MARKDOWN_PARSER,
       {},
       RENDER_TIMEOUT
     );
@@ -69,7 +71,7 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
     );
 
     const container = await screen.findByTestId(
-      'markdown-parser',
+      MARKDOWN_PARSER,
       {},
       RENDER_TIMEOUT
     );
@@ -93,7 +95,7 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
       />
     );
 
-    await screen.findByTestId('markdown-parser', {}, RENDER_TIMEOUT);
+    await screen.findByTestId(MARKDOWN_PARSER, {}, RENDER_TIMEOUT);
 
     expect(container.querySelector('script')).toBeNull();
   });

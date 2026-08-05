@@ -25,6 +25,10 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import FileVersion from './FileVersion';
 import { FileVersionProps } from './FileVersion.interface';
 
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural';
+const DATA_ASSETS_VERSION_HEADER = 'data-assets-version-header';
+const ENTITY_VERSION_TIMELINE = 'entity-version-timeline';
+const CUSTOM_PROPERTY_TABLE = 'custom-property-table';
 jest.mock('../../../../utils/useRequiredParams');
 jest.mock('../../../../utils/RouterUtils');
 jest.mock('../../../../utils/EntityVersionUtils', () => ({
@@ -214,7 +218,7 @@ describe('FileVersion', () => {
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(
-      screen.queryByTestId('data-assets-version-header')
+      screen.queryByTestId(DATA_ASSETS_VERSION_HEADER)
     ).not.toBeInTheDocument();
   });
 
@@ -222,11 +226,9 @@ describe('FileVersion', () => {
     renderFileVersion();
 
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
     expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should render tabs with correct structure', async () => {
@@ -279,7 +281,7 @@ describe('FileVersion', () => {
     const customPropertiesTab = screen.getByRole('tab', { name: /custom/i });
     fireEvent.click(customPropertiesTab);
 
-    expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+    expect(screen.getByTestId(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
   });
 
   it('should handle deleted file version', () => {
@@ -287,10 +289,8 @@ describe('FileVersion', () => {
       deleted: true,
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should handle version handler calls', async () => {
@@ -299,7 +299,7 @@ describe('FileVersion', () => {
       versionHandler: mockVersionHandler,
     });
 
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should handle back handler calls', async () => {
@@ -308,7 +308,7 @@ describe('FileVersion', () => {
       backHandler: mockBackHandler,
     });
 
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should render with different version numbers', () => {
@@ -316,10 +316,8 @@ describe('FileVersion', () => {
       version: '2.0',
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('entity-version-timeline')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
+    expect(screen.getByTestId(ENTITY_VERSION_TIMELINE)).toBeInTheDocument();
   });
 
   it('should handle empty data products and domains', () => {
@@ -336,9 +334,7 @@ describe('FileVersion', () => {
       tier: undefined,
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   it('should display tags container for each tag type', () => {
@@ -363,7 +359,7 @@ describe('FileVersion', () => {
     fireEvent.click(customPropertiesTab);
 
     await waitFor(() => {
-      expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
     });
   });
 
@@ -393,9 +389,7 @@ describe('FileVersion', () => {
       </MemoryRouter>
     );
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   it('should handle empty fullyQualifiedName', () => {
@@ -408,9 +402,7 @@ describe('FileVersion', () => {
       currentVersionData: fileDataWithoutFQN,
     });
 
-    expect(
-      screen.getByTestId('data-assets-version-header')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_VERSION_HEADER)).toBeInTheDocument();
   });
 
   describe('ViewCustomFields Permission Tests', () => {
@@ -425,14 +417,14 @@ describe('FileVersion', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
 
       fireEvent.click(customPropertyTabLabel);
 
-      expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
     });
 
     it('should render custom properties tab when ViewCustomFields is false', () => {
@@ -446,14 +438,14 @@ describe('FileVersion', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
 
       fireEvent.click(customPropertyTabLabel);
 
-      expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
     });
 
     it('should render custom properties tab when ViewCustomFields is undefined', () => {
@@ -469,14 +461,14 @@ describe('FileVersion', () => {
       });
 
       const customPropertyTabLabel = screen.getByText(
-        'label.custom-property-plural'
+        LABEL_CUSTOM_PROPERTY_PLURAL
       );
 
       expect(customPropertyTabLabel).toBeInTheDocument();
 
       fireEvent.click(customPropertyTabLabel);
 
-      expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_PROPERTY_TABLE)).toBeInTheDocument();
     });
   });
 });

@@ -65,6 +65,8 @@ import { t } from './i18next/LocalUtil';
 import { pruneEmptyChildren } from './TablePureUtils';
 import { showErrorToast } from './ToastUtils';
 
+const MESSAGE_NO_DATA_AVAILABLE = 'message.no-data-available';
+const REQUEST_SCHEMA = 'request-schema';
 const { Text } = AntTypography;
 
 // Recursive component to render nested columns
@@ -396,7 +398,7 @@ const SchemaFieldCardsV1: React.FC<{
   if (isEmpty(columns)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -456,7 +458,7 @@ const TopicFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -561,7 +563,7 @@ const ContainerFieldCardsV1: React.FC<{
   if (isEmpty(filteredColumns)) {
     return (
       <div className="no-data-container text-grey-muted m-t-md d-flex justify-center align-items-center">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -607,7 +609,7 @@ const PipelineTasksV1: React.FC<{
   if (isEmpty(filteredTasks)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -716,7 +718,7 @@ const APICollectionEndpointsV1: React.FC<{
   if (isEmpty(filteredEndpoints) && hasInitialized) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -821,7 +823,7 @@ const DatabaseSchemaTablesV1: React.FC<{
   if (isEmpty(filteredTables) && hasInitialized) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -884,7 +886,7 @@ const DashboardChartsV1: React.FC<{
   if (isEmpty(filteredCharts)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -919,9 +921,9 @@ const APIEndpointSchemaV1: React.FC<{
   loading?: boolean;
   searchText?: string;
 }> = ({ entityInfo, loading, searchText }) => {
-  const [viewType, setViewType] = useState<
-    'request-schema' | 'response-schema'
-  >('request-schema');
+  const [viewType, setViewType] = useState<REQUEST_SCHEMA | 'response-schema'>(
+    REQUEST_SCHEMA
+  );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const requestSchemaFields = entityInfo.requestSchema?.schemaFields || [];
@@ -930,7 +932,7 @@ const APIEndpointSchemaV1: React.FC<{
   const viewTypeOptions = [
     {
       label: t('label.request'),
-      value: 'request-schema',
+      value: REQUEST_SCHEMA,
     },
     {
       label: t('label.response'),
@@ -940,9 +942,7 @@ const APIEndpointSchemaV1: React.FC<{
 
   const activeSchemaFields = useMemo(() => {
     const fields =
-      viewType === 'request-schema'
-        ? requestSchemaFields
-        : responseSchemaFields;
+      viewType === REQUEST_SCHEMA ? requestSchemaFields : responseSchemaFields;
 
     if (!searchText) {
       return fields;
@@ -1076,7 +1076,7 @@ const APIEndpointSchemaV1: React.FC<{
   if (isEmpty(requestSchemaFields) && isEmpty(responseSchemaFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -1090,7 +1090,7 @@ const APIEndpointSchemaV1: React.FC<{
           options={viewTypeOptions}
           value={viewType}
           onChange={(value) =>
-            setViewType(value as 'request-schema' | 'response-schema')
+            setViewType(value as REQUEST_SCHEMA | 'response-schema')
           }
         />
         <Button size="small" type="link" onClick={handleToggleExpandAll}>
@@ -1102,7 +1102,7 @@ const APIEndpointSchemaV1: React.FC<{
 
       {isEmpty(activeSchemaFields) ? (
         <div className="no-data-container m-x-md">
-          <Text className="no-data-text">{t('message.no-data-available')}</Text>
+          <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
         </div>
       ) : (
         <div className="m-l-md">
@@ -1151,7 +1151,7 @@ const DatabaseSchemasV1: React.FC<{
   if (isEmpty(filteredSchemas)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }
@@ -1211,7 +1211,7 @@ const SearchIndexFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <div className="no-data-container">
-        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        <Text className="no-data-text">{t(MESSAGE_NO_DATA_AVAILABLE)}</Text>
       </div>
     );
   }

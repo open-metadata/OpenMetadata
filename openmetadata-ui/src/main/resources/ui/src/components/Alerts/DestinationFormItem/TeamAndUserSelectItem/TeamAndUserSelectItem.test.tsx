@@ -19,6 +19,9 @@ import {
 } from '../../../../constants/TeamAndUserSelectItem.constants';
 import TeamAndUserSelectItem from './TeamAndUserSelectItem';
 
+const DROPDOWN_TRIGGER_BUTTON = 'dropdown-trigger-button';
+const TEAM_USER_SELECT_DROPDOWN_0 = 'team-user-select-dropdown-0';
+
 jest.mock('../../../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
@@ -37,16 +40,14 @@ describe('TeamAndUserSelectItem Component', () => {
       render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
     });
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
+    const triggerButton = screen.getByTestId(DROPDOWN_TRIGGER_BUTTON);
 
     await act(async () => {
       fireEvent.click(triggerButton);
       jest.advanceTimersByTime(500);
     });
 
-    expect(
-      screen.getByTestId('team-user-select-dropdown-0')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(TEAM_USER_SELECT_DROPDOWN_0)).toBeInTheDocument();
   });
 
   it('should show initial options on click of trigger button', async () => {
@@ -54,7 +55,7 @@ describe('TeamAndUserSelectItem Component', () => {
       render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
     });
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
+    const triggerButton = screen.getByTestId(DROPDOWN_TRIGGER_BUTTON);
 
     await act(async () => {
       fireEvent.click(triggerButton);
@@ -77,7 +78,7 @@ describe('TeamAndUserSelectItem Component', () => {
       render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
     });
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
+    const triggerButton = screen.getByTestId(DROPDOWN_TRIGGER_BUTTON);
 
     await act(async () => {
       fireEvent.click(triggerButton);
@@ -118,21 +119,19 @@ describe('TeamAndUserSelectItem Component', () => {
       render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
     });
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
+    const triggerButton = screen.getByTestId(DROPDOWN_TRIGGER_BUTTON);
 
     await act(async () => {
       fireEvent.click(triggerButton);
       jest.advanceTimersByTime(500);
     });
 
-    expect(
-      screen.getByTestId('team-user-select-dropdown-0')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId(TEAM_USER_SELECT_DROPDOWN_0)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(document.body);
     });
 
-    expect(screen.queryByTestId('team-user-select-dropdown-0')).toBeNull();
+    expect(screen.queryByTestId(TEAM_USER_SELECT_DROPDOWN_0)).toBeNull();
   });
 });

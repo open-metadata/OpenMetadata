@@ -28,6 +28,10 @@ import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import NotificationListPage from './NotificationListPage';
 
+const ALERT_TEST = 'alert-test' as const;
+const CONFIRM_DELETE = 'confirm-delete' as const;
+const ALERT_DELETE_ALERT_TEST = 'alert-delete-alert-test' as const;
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
@@ -60,8 +64,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 const MOCK_DATA = [
   {
     id: '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
-    name: 'alert-test',
-    fullyQualifiedName: 'alert-test',
+    name: ALERT_TEST,
+    fullyQualifiedName: ALERT_TEST,
     href: 'http://localhost:8585/api/v1/events/subscriptions/971a21b3-eeaf-4765-bda7-4e2cdb9788de',
     version: 0.1,
     updatedAt: 1682366749021,
@@ -276,7 +280,7 @@ describe('Notification Alerts Page Tests', () => {
     });
 
     const editButton = await screen.findByTestId('alert-edit-alert-test');
-    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+    const deleteButton = await screen.findByTestId(ALERT_DELETE_ALERT_TEST);
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
@@ -289,7 +293,7 @@ describe('Notification Alerts Page Tests', () => {
       });
     });
 
-    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+    const deleteButton = await screen.findByTestId(ALERT_DELETE_ALERT_TEST);
 
     await act(async () => {
       userEvent.click(deleteButton);
@@ -311,20 +315,20 @@ describe('Notification Alerts Page Tests', () => {
 
     (getAllAlerts as jest.Mock).mockClear();
 
-    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+    const deleteButton = await screen.findByTestId(ALERT_DELETE_ALERT_TEST);
 
     await act(async () => {
       userEvent.click(deleteButton);
     });
 
-    await screen.findByTestId('confirm-delete');
+    await screen.findByTestId(CONFIRM_DELETE);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-delete'));
+      fireEvent.click(screen.getByTestId(CONFIRM_DELETE));
     });
 
     expect(hardDeleteEntity).toHaveBeenCalledWith(
-      'alert-test',
+      ALERT_TEST,
       '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
       'subscription'
     );
@@ -345,16 +349,16 @@ describe('Notification Alerts Page Tests', () => {
 
     (getAllAlerts as jest.Mock).mockClear();
 
-    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+    const deleteButton = await screen.findByTestId(ALERT_DELETE_ALERT_TEST);
 
     await act(async () => {
       userEvent.click(deleteButton);
     });
 
-    await screen.findByTestId('confirm-delete');
+    await screen.findByTestId(CONFIRM_DELETE);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-delete'));
+      fireEvent.click(screen.getByTestId(CONFIRM_DELETE));
     });
 
     expect(hardDeleteEntity).toHaveBeenCalled();
@@ -411,7 +415,7 @@ describe('Notification Alerts Page Tests', () => {
 
     const addButton = screen.queryByText(/label.add-entity/);
     const editButton = screen.queryByTestId('alert-edit-alert-test');
-    const deleteButton = screen.queryByTestId('alert-delete-alert-test');
+    const deleteButton = screen.queryByTestId(ALERT_DELETE_ALERT_TEST);
 
     expect(addButton).not.toBeInTheDocument();
     expect(editButton).not.toBeInTheDocument();

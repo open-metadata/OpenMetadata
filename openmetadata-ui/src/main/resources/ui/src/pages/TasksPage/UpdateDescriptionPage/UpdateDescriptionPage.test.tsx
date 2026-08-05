@@ -15,6 +15,12 @@ import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateDescription from './UpdateDescriptionPage';
+
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION =
+  'sample_data.ecommerce_db.shopify.dim_location';
+const UNIQUE_IDENTIFIER_FOR_THE_STORE_THIS_COLUMN_IS_THE =
+  'Unique identifier for the store. This column is the primary key for this table.';
+const LABEL_UPDATE_DESCRIPTION = 'label.update-description';
 const mockNavigate = jest.fn();
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
@@ -43,7 +49,7 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 const mockTableData = {
   id: 'id1',
   name: 'dim_location',
-  fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
+  fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION,
   description:
     'This dimension table contains online shop information. This table contains one shop per row.',
   tableType: 'Regular',
@@ -59,8 +65,7 @@ const mockTableData = {
       name: 'shop_id',
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
-      description:
-        'Unique identifier for the store. This column is the primary key for this table.',
+      description: UNIQUE_IDENTIFIER_FOR_THE_STORE_THIS_COLUMN_IS_THE,
       fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop".shop_id',
       tags: [],
       constraint: 'PRIMARY_KEY',
@@ -80,6 +85,7 @@ jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
 jest.mock('../../../utils/TaskAssigneeUtils', () => ({
   fetchOptions: jest.fn(),
 }));
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../utils/TaskFieldUtils', () => ({
   ...jest.requireActual('../../../utils/TaskFieldUtils'),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
@@ -92,7 +98,7 @@ jest.mock('../../../utils/TaskFieldUtils', () => ({
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
   getTaskEntityFQN: jest
     .fn()
-    .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
+    .mockReturnValue(SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)
@@ -125,14 +131,12 @@ jest.mock('../../../rest/tasksAPI', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
     .fn()
-    .mockReturnValue({ fqn: 'sample_data.ecommerce_db.shopify.dim_location' }),
+    .mockReturnValue({ fqn: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCATION }),
 }));
 
 describe('UpdateDescriptionPage', () => {
   it('should render component', async () => {
-    render(
-      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
-    );
+    render(<UpdateDescription pageTitle={i18n.t(LABEL_UPDATE_DESCRIPTION)} />);
 
     expect(
       await screen.findByText('TitleBreadcrumb.component')
@@ -149,9 +153,7 @@ describe('UpdateDescriptionPage', () => {
   });
 
   it("should go back to previous page when 'Cancel' button is clicked", async () => {
-    render(
-      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
-    );
+    render(<UpdateDescription pageTitle={i18n.t(LABEL_UPDATE_DESCRIPTION)} />);
     const cancelBtn = await screen.findByTestId('cancel-btn');
 
     act(() => {
@@ -163,9 +165,7 @@ describe('UpdateDescriptionPage', () => {
 
   it('should submit form when submit button is clicked', async () => {
     const mockCreateTask = createTask as jest.Mock;
-    render(
-      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
-    );
+    render(<UpdateDescription pageTitle={i18n.t(LABEL_UPDATE_DESCRIPTION)} />);
     const submitBtn = await screen.findByTestId('submit-btn');
 
     await act(async () => {
@@ -180,10 +180,8 @@ describe('UpdateDescriptionPage', () => {
       about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
-        newDescription:
-          'Unique identifier for the store. This column is the primary key for this table.',
-        currentDescription:
-          'Unique identifier for the store. This column is the primary key for this table.',
+        newDescription: UNIQUE_IDENTIFIER_FOR_THE_STORE_THIS_COLUMN_IS_THE,
+        currentDescription: UNIQUE_IDENTIFIER_FOR_THE_STORE_THIS_COLUMN_IS_THE,
         fieldPath: 'columns::shop_id::description',
       },
     });
@@ -197,9 +195,7 @@ describe('UpdateDescriptionPage', () => {
       description: '',
     });
 
-    render(
-      <UpdateDescription pageTitle={i18n.t('label.update-description')} />
-    );
+    render(<UpdateDescription pageTitle={i18n.t(LABEL_UPDATE_DESCRIPTION)} />);
 
     expect(await screen.findByTestId('description-tabs')).toBeInTheDocument();
     expect(

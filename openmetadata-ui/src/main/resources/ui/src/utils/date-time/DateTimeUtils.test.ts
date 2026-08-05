@@ -27,6 +27,8 @@ import {
   isValidDateFormat,
 } from './DateTimeUtils';
 
+const _0_DAYS_0_HOURS = '0 Days, 0 Hours';
+const _1D_1H_1M_1S = '1d 1h 1m 1s';
 const systemLocale = Settings.defaultLocale;
 const systemZoneName = Settings.defaultZone;
 
@@ -110,20 +112,20 @@ describe('Date and DateTime Format Validation', () => {
 });
 
 describe('calculateInterval', () => {
-  it('should return "0 Days, 0 Hours" for the same start and end time', () => {
+  it('should return _0_DAYS_0_HOURS for the same start and end time', () => {
     const startTime = 1710831125922;
     const endTime = 1710831125922;
     const result = calculateInterval(startTime, endTime);
 
-    expect(result).toBe('0 Days, 0 Hours');
+    expect(result).toBe(_0_DAYS_0_HOURS);
   });
 
-  it('should return "0 Days, 0 Hours" for a small interval', () => {
+  it('should return _0_DAYS_0_HOURS for a small interval', () => {
     const startTime = 1710831125922;
     const endTime = 1710831125924;
     const result = calculateInterval(startTime, endTime);
 
-    expect(result).toBe('0 Days, 0 Hours');
+    expect(result).toBe(_0_DAYS_0_HOURS);
   });
 
   it('should return "1 Days, 0 Hours" for a 24-hour interval', () => {
@@ -155,7 +157,7 @@ describe('calculateInterval', () => {
     const endTimeInSeconds = startTimeInSeconds + 56 * 60 * 60; // 56 hours later
     const result = calculateInterval(startTimeInSeconds, endTimeInSeconds);
 
-    expect(result).toBe('0 Days, 0 Hours');
+    expect(result).toBe(_0_DAYS_0_HOURS);
   });
 });
 
@@ -170,7 +172,7 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     { input: 61000, expected: '1m 1s' },
     { input: 3661000, expected: '1h 1m 1s' },
     { input: 86400000, expected: '1d' },
-    { input: 90061000, expected: '1d 1h 1m 1s' },
+    { input: 90061000, expected: _1D_1H_1M_1S },
     { input: -1000, expected: '-1s' },
     { input: 1200, expected: '1s 200ms', showMilliseconds: true },
     {
@@ -230,7 +232,7 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     },
     {
       input: 90061000,
-      expected: '1d 1h 1m 1s',
+      expected: _1D_1H_1M_1S,
       expectedWithLength: '1d 1h 1m',
       length: 3,
     },
@@ -328,7 +330,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
       },
       {
         input: 90061,
-        expected: '1d 1h 1m 1s',
+        expected: _1D_1H_1M_1S,
         description: '1 day 1 hour 1 minute 1 second',
       },
       {
@@ -360,7 +362,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
       { input: 90061, length: 1, expected: '1d' },
       { input: 90061, length: 2, expected: '1d 1h' },
       { input: 90061, length: 3, expected: '1d 1h 1m' },
-      { input: 90061, length: 4, expected: '1d 1h 1m 1s' },
+      { input: 90061, length: 4, expected: _1D_1H_1M_1S },
       { input: 7265, length: 2, expected: '2h 1m' },
       { input: 34249261, length: 3, expected: '1Y 1M 6d' },
     ];

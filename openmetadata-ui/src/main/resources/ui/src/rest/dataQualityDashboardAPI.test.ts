@@ -32,6 +32,24 @@ import {
   fetchTotalEntityCount,
 } from './dataQualityDashboardAPI';
 import { batchedDataQualityReport } from './dataQualityReportBatcher';
+
+const SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER =
+  'should call getDataQualityReport with correct query when ownerFqn is provided';
+const SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_2 =
+  'should call getDataQualityReport with correct query when all filters are provided';
+const SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_3 =
+  'should call getDataQualityReport with correct query when no filters are provided';
+const TIER_TIER1 = 'Tier.Tier1';
+const BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME =
+  'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId';
+const SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_4 =
+  'should call getDataQualityReport with correct query when tags and tier are provided';
+const SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_5 =
+  'should call getDataQualityReport with correct query when date range is provided';
+const BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_2 =
+  'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value';
+const BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3 =
+  'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName';
 jest.mock('./testAPI', () => ({
   getDataQualityReport: jest.fn(),
 }));
@@ -50,7 +68,7 @@ jest.mock('../utils/DataQuality/DataQualityPureUtils', () => ({
 
 describe('dataQualityDashboardAPI', () => {
   describe('fetchTotalEntityCount', () => {
-    it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER, async () => {
       const filters = { ownerFqn: 'owner1' };
       (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
         {
@@ -159,7 +177,7 @@ describe('dataQualityDashboardAPI', () => {
       });
     });
 
-    it('should call getDataQualityReport with correct query when all filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_2, async () => {
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
       (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
         {
@@ -214,7 +232,7 @@ describe('dataQualityDashboardAPI', () => {
       });
     });
 
-    it('should call getDataQualityReport with correct query when no filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_3, async () => {
       await fetchTotalEntityCount();
 
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
@@ -414,7 +432,7 @@ describe('dataQualityDashboardAPI', () => {
 
   testCases.map((testData) => {
     describe(`${testData.functionName}`, () => {
-      it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
+      it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER, async () => {
         const filters = { ownerFqn: testCaseData.filters.ownerFqn };
         (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
           testCaseData.ownerExpectedQuery,
@@ -471,7 +489,7 @@ describe('dataQualityDashboardAPI', () => {
         });
       });
 
-      it('should call getDataQualityReport with correct query when all filters are provided', async () => {
+      it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_2, async () => {
         const filters = testCaseData.filters;
 
         (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
@@ -493,7 +511,7 @@ describe('dataQualityDashboardAPI', () => {
         });
       });
 
-      it('should call getDataQualityReport with correct query when no filters are provided', async () => {
+      it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_3, async () => {
         await testData.func();
 
         expect(batchedDataQualityReport).toHaveBeenCalledWith({
@@ -592,15 +610,15 @@ describe('dataQualityDashboardAPI', () => {
     it('should call getDataQualityReport with tier filter using buildMustEsFilterForTier (not tags)', async () => {
       const tierFilter = {
         bool: {
-          should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }],
+          should: [{ term: { 'tier.tagFQN': TIER_TIER1 } }],
           minimum_should_match: 1,
         },
       };
       (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
 
-      await fetchTestCaseSummaryByNoDimension({ tier: ['Tier.Tier1'] });
+      await fetchTestCaseSummaryByNoDimension({ tier: [TIER_TIER1] });
 
-      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith([TIER_TIER1]);
       expect(buildMustEsFilterForTags).not.toHaveBeenCalled();
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
@@ -630,7 +648,7 @@ describe('dataQualityDashboardAPI', () => {
       };
       const tierFilter = {
         bool: {
-          should: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }],
+          should: [{ term: { 'tier.tagFQN': TIER_TIER1 } }],
           minimum_should_match: 1,
         },
       };
@@ -639,11 +657,11 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTestCaseSummaryByNoDimension({
         tags: ['tag1'],
-        tier: ['Tier.Tier1'],
+        tier: [TIER_TIER1],
       });
 
       expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1']);
-      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
+      expect(buildMustEsFilterForTier).toHaveBeenCalledWith([TIER_TIER1]);
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -697,7 +715,7 @@ describe('dataQualityDashboardAPI', () => {
   });
 
   describe('fetchCountOfIncidentStatusTypeByDays', () => {
-    it('should call getDataQualityReport with correct query when no filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_3, async () => {
       const status = TestCaseResolutionStatusTypes.ACK;
 
       await fetchCountOfIncidentStatusTypeByDays(status);
@@ -721,12 +739,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME,
       });
     });
 
-    it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER, async () => {
       const status = TestCaseResolutionStatusTypes.Assigned;
       const filters = { ownerFqn: 'owner1' };
       (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce({
@@ -762,12 +779,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME,
       });
     });
 
-    it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_4, async () => {
       const status = TestCaseResolutionStatusTypes.New;
       const filters = { tags: ['tag1'], tier: ['tier1'] };
       const tagsFilter = {
@@ -814,12 +830,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME,
       });
     });
 
-    it('should call getDataQualityReport with correct query when all filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_2, async () => {
       const status = TestCaseResolutionStatusTypes.Resolved;
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
       const ownerFilter = {
@@ -874,12 +889,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME,
       });
     });
 
-    it('should call getDataQualityReport with correct query when date range is provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_5, async () => {
       const status = TestCaseResolutionStatusTypes.Resolved;
       const filters = { startTs: 1729073964962, endTs: 1729678764965 };
 
@@ -904,14 +918,13 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=stateId',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME,
       });
     });
   });
 
   describe('fetchIncidentTimeMetrics', () => {
-    it('should call getDataQualityReport with correct query when no filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_3, async () => {
       const type = IncidentTimeMetricsType.TIME_TO_RESOLUTION;
 
       await fetchIncidentTimeMetrics(type);
@@ -944,12 +957,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_2,
       });
     });
 
-    it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER, async () => {
       const type = IncidentTimeMetricsType.TIME_TO_RESPONSE;
       const filters = {
         ownerFqn: testCaseData.filters.ownerFqn,
@@ -999,12 +1011,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_2,
       });
     });
 
-    it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_4, async () => {
       const type = IncidentTimeMetricsType.TIME_TO_RESOLUTION;
       const filters = {
         tags: ['tag1'],
@@ -1065,12 +1076,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_2,
       });
     });
 
-    it('should call getDataQualityReport with correct query when all filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_2, async () => {
       const type = IncidentTimeMetricsType.TIME_TO_RESOLUTION;
       const filters = {
         ownerFqn: testCaseData.filters.ownerFqn,
@@ -1137,12 +1147,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_2,
       });
     });
 
-    it('should call getDataQualityReport with correct query when date range is provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_5, async () => {
       const type = IncidentTimeMetricsType.TIME_TO_RESOLUTION;
       const filters = { startTs: 1729073964962, endTs: 1729678764965 };
 
@@ -1176,14 +1185,13 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResolutionStatus',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=metrics:aggType=nested:path=metrics,bucketName=byName:aggType=terms:field=metrics.name.keyword,bucketName=avgValue:aggType=avg:field=metrics.value',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_2,
       });
     });
   });
 
   describe('fetchTestCaseStatusMetricsByDays', () => {
-    it('should call getDataQualityReport with correct query when no filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_3, async () => {
       const status = TestCaseStatus.Success;
 
       await fetchTestCaseStatusMetricsByDays(status);
@@ -1207,12 +1215,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResult',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3,
       });
     });
 
-    it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER, async () => {
       const status = TestCaseStatus.Failed;
       const filters = { ownerFqn: testCaseData.filters.ownerFqn };
       (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(
@@ -1249,12 +1256,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResult',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3,
       });
     });
 
-    it('should call getDataQualityReport with correct query when tags and tier are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_4, async () => {
       const status = TestCaseStatus.Aborted;
       const filters = { tags: ['tag1'], tier: ['tier1'] };
       const tagsFilter = {
@@ -1301,12 +1307,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResult',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3,
       });
     });
 
-    it('should call getDataQualityReport with correct query when all filters are provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_2, async () => {
       const status = TestCaseStatus.Failed;
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
       const ownerFilter = {
@@ -1361,12 +1366,11 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResult',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3,
       });
     });
 
-    it('should call getDataQualityReport with correct query when date range is provided', async () => {
+    it(SHOULD_CALL_GETDATAQUALITYREPORT_WITH_CORRECT_QUER_5, async () => {
       const status = TestCaseStatus.Success;
       const filters = { startTs: 1729073964962, endTs: 1729678764965 };
 
@@ -1391,8 +1395,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResult',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3,
       });
     });
 
@@ -1431,8 +1434,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResult',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3,
       });
     });
 
@@ -1470,8 +1472,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'testCaseResult',
-        aggregationQuery:
-          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+        aggregationQuery: BUCKETNAME_BYDAY_AGGTYPE_DATE_HISTOGRAM_FIELD_TIME_3,
       });
     });
   });

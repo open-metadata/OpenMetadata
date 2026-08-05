@@ -18,6 +18,15 @@ import {
   updateContainerColumnTags,
 } from './ContainerDetailPureUtils';
 import { getEntityDetailsPath } from './RouterUtils';
+
+const SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_API_CLIENT_ID =
+  'sample_kafka.customer_events.Order.api_client_id';
+const SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_ORDER_ID =
+  'sample_kafka.customer_events.Order.order_id';
+const ALL_THE_ORDER_EVENTS_ON_OUR_ONLINE_STORE =
+  'All the order events on our online store';
+const SAMPLE_KAFKA_CUSTOMER_EVENTS_ID = 'sample_kafka.customer_events.id';
+const UPDATED_DESCRIPTION = 'updated description';
 const mockTagOptions = [
   {
     tagFQN: 'PII.Sensitive',
@@ -48,19 +57,19 @@ const nestedColumn = {
   name: 'Order',
   displayName: 'Order',
   dataType: DataType.Record,
-  description: 'All the order events on our online store',
+  description: ALL_THE_ORDER_EVENTS_ON_OUR_ONLINE_STORE,
   children: [
     {
       name: 'order_id',
       dataType: DataType.Int,
       description: 'order_id',
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_ORDER_ID,
     },
     {
       name: 'api_client_id',
       dataType: DataType.Int,
       description: 'api_client_id',
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_API_CLIENT_ID,
     },
   ],
 };
@@ -68,26 +77,26 @@ const nestedColumn = {
 const singleColumn = {
   name: 'id',
   dataType: DataType.String,
-  fullyQualifiedName: 'sample_kafka.customer_events.id',
+  fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ID,
 };
 
 const updatedNestedColumn: Column = {
   name: 'Order',
   displayName: 'Order',
   dataType: DataType.Record,
-  description: 'All the order events on our online store',
+  description: ALL_THE_ORDER_EVENTS_ON_OUR_ONLINE_STORE,
   children: [
     {
       name: 'order_id',
       dataType: DataType.Int,
       description: 'order_id',
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_ORDER_ID,
     },
     {
       name: 'api_client_id',
       dataType: DataType.Int,
-      description: 'updated description',
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
+      description: UPDATED_DESCRIPTION,
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_API_CLIENT_ID,
     },
   ],
 };
@@ -95,29 +104,29 @@ const updatedNestedColumn: Column = {
 const updatedSingleColumn = {
   name: 'id',
   dataType: DataType.String,
-  fullyQualifiedName: 'sample_kafka.customer_events.id',
-  description: 'updated description',
+  fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ID,
+  description: UPDATED_DESCRIPTION,
 };
 
 const nestedColumnWithTags = {
   name: 'Order',
   displayName: 'Order',
   dataType: DataType.Record,
-  description: 'All the order events on our online store',
+  description: ALL_THE_ORDER_EVENTS_ON_OUR_ONLINE_STORE,
   children: [
     {
       name: 'order_id',
       dataType: DataType.Int,
       description: 'order_id',
       tags: [],
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_ORDER_ID,
     },
     {
       name: 'api_client_id',
       dataType: DataType.Int,
       description: 'api_client_id',
       tags: [],
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_API_CLIENT_ID,
     },
   ],
 };
@@ -126,21 +135,21 @@ const updatedNestedColumnWithTags: Column = {
   name: 'Order',
   displayName: 'Order',
   dataType: DataType.Record,
-  description: 'All the order events on our online store',
+  description: ALL_THE_ORDER_EVENTS_ON_OUR_ONLINE_STORE,
   children: [
     {
       name: 'order_id',
       dataType: DataType.Int,
       description: 'order_id',
       tags: mockTags as Column['tags'],
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.order_id',
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_ORDER_ID,
     },
     {
       name: 'api_client_id',
       dataType: DataType.Int,
       description: 'api_client_id',
       tags: [],
-      fullyQualifiedName: 'sample_kafka.customer_events.Order.api_client_id',
+      fullyQualifiedName: SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_API_CLIENT_ID,
     },
   ],
 };
@@ -167,15 +176,15 @@ describe('getContainerDetailPath', () => {
     // updated the single column
     updateContainerColumnDescription(
       containerColumns,
-      'sample_kafka.customer_events.id',
-      'updated description'
+      SAMPLE_KAFKA_CUSTOMER_EVENTS_ID,
+      UPDATED_DESCRIPTION
     );
 
     // updated the nested column
     updateContainerColumnDescription(
       containerColumns,
-      'sample_kafka.customer_events.Order.api_client_id',
-      'updated description'
+      SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_API_CLIENT_ID,
+      UPDATED_DESCRIPTION
     );
 
     const updatedContainerColumns = [updatedSingleColumn, updatedNestedColumn];
@@ -185,13 +194,13 @@ describe('getContainerDetailPath', () => {
 
   it('updateContainerColumnTags method should update the column', () => {
     const containerColumns = [
-      { ...singleColumn, tags: [], description: 'updated description' },
+      { ...singleColumn, tags: [], description: UPDATED_DESCRIPTION },
     ];
 
     // updated the single column
     updateContainerColumnTags(
       containerColumns,
-      'sample_kafka.customer_events.id',
+      SAMPLE_KAFKA_CUSTOMER_EVENTS_ID,
       mockTagOptions
     );
 
@@ -208,7 +217,7 @@ describe('getContainerDetailPath', () => {
     // updated the single column
     updateContainerColumnTags(
       containerColumns,
-      'sample_kafka.customer_events.Order.order_id',
+      SAMPLE_KAFKA_CUSTOMER_EVENTS_ORDER_ORDER_ID,
       mockTagOptions
     );
 

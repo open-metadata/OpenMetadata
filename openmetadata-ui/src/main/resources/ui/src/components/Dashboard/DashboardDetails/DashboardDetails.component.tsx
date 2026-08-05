@@ -63,6 +63,8 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
+
+const LABEL_DASHBOARD = 'label.dashboard';
 const DashboardDetails = ({
   updateDashboardDetailsState,
   dashboardDetails,
@@ -123,7 +125,7 @@ const DashboardDetails = ({
     } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
-          entity: t('label.dashboard'),
+          entity: t(LABEL_DASHBOARD),
         })
       );
     }
@@ -219,7 +221,7 @@ const DashboardDetails = ({
       );
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.dashboard'),
+          entity: t(LABEL_DASHBOARD),
         })
       );
       handleToggleDelete(newVersion);
@@ -227,7 +229,7 @@ const DashboardDetails = ({
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.dashboard'),
+          entity: t(LABEL_DASHBOARD),
         })
       );
     }

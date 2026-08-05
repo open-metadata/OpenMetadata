@@ -22,6 +22,12 @@ import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import ContractSLA from './ContractSLA.component';
 
+const MESSAGE_COMPLETENESS_SLA_DESCRIPTION_LABEL_COMPLETENESS_09_00_UTC =
+  'message.completeness-sla-description - label.completeness: 09:00 UTC';
+const CONTRACT_SLA_CARD = 'contract-sla-card';
+const TEST_CONTRACT = 'Test Contract';
+const TEST_CONTRACT_2 = 'test.contract';
+const CHECK_ICON = 'check-icon';
 jest.mock('../../../utils/i18next/LocalUtil', () => ({
   ...jest.requireActual('../../../utils/i18next/LocalUtil'),
   Transi18next: ({
@@ -56,8 +62,8 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
 describe('ContractSLA Component', () => {
   it('should render null when contract.sla is empty', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       sla: {},
     } as DataContract;
 
@@ -68,8 +74,8 @@ describe('ContractSLA Component', () => {
 
   it('should render null when contract.sla is undefined', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
     } as DataContract;
 
     const { container } = render(<ContractSLA contract={contract} />);
@@ -79,8 +85,8 @@ describe('ContractSLA Component', () => {
 
   it('should render SLA card with refresh frequency', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -93,7 +99,7 @@ describe('ContractSLA Component', () => {
 
     render(<ContractSLA contract={contract} />);
 
-    expect(screen.getByTestId('contract-sla-card')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTRACT_SLA_CARD)).toBeInTheDocument();
     expect(
       screen.getByText('label.service-level-agreement')
     ).toBeInTheDocument();
@@ -102,13 +108,13 @@ describe('ContractSLA Component', () => {
         'message.freshness-sla-description - label.freshness: 24 hour'
       )
     ).toBeInTheDocument();
-    expect(screen.getByTestId('check-icon')).toBeInTheDocument();
+    expect(screen.getByTestId(CHECK_ICON)).toBeInTheDocument();
   });
 
   it('should render SLA card with availability time', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       sla: {
         availabilityTime: '09:00 UTC',
       },
@@ -116,18 +122,18 @@ describe('ContractSLA Component', () => {
 
     render(<ContractSLA contract={contract} />);
 
-    expect(screen.getByTestId('contract-sla-card')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTRACT_SLA_CARD)).toBeInTheDocument();
     expect(
       screen.getByText(
-        'message.completeness-sla-description - label.completeness: 09:00 UTC'
+        MESSAGE_COMPLETENESS_SLA_DESCRIPTION_LABEL_COMPLETENESS_09_00_UTC
       )
     ).toBeInTheDocument();
   });
 
   it('should render SLA card with max latency', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -140,7 +146,7 @@ describe('ContractSLA Component', () => {
 
     render(<ContractSLA contract={contract} />);
 
-    expect(screen.getByTestId('contract-sla-card')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTRACT_SLA_CARD)).toBeInTheDocument();
     expect(
       screen.getByText(
         'message.latency-sla-description - label.latency: 5 minute'
@@ -150,8 +156,8 @@ describe('ContractSLA Component', () => {
 
   it('should render SLA card with retention', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -164,7 +170,7 @@ describe('ContractSLA Component', () => {
 
     render(<ContractSLA contract={contract} />);
 
-    expect(screen.getByTestId('contract-sla-card')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTRACT_SLA_CARD)).toBeInTheDocument();
     expect(
       screen.getByText(
         'message.retention-sla-description - label.retention: 30 day'
@@ -174,8 +180,8 @@ describe('ContractSLA Component', () => {
 
   it('should render all SLA items when all properties are present', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -197,7 +203,7 @@ describe('ContractSLA Component', () => {
 
     render(<ContractSLA contract={contract} />);
 
-    expect(screen.getByTestId('contract-sla-card')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTRACT_SLA_CARD)).toBeInTheDocument();
 
     // Check all SLA items are rendered
     expect(
@@ -207,7 +213,7 @@ describe('ContractSLA Component', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'message.completeness-sla-description - label.completeness: 09:00 UTC'
+        MESSAGE_COMPLETENESS_SLA_DESCRIPTION_LABEL_COMPLETENESS_09_00_UTC
       )
     ).toBeInTheDocument();
     expect(
@@ -222,15 +228,15 @@ describe('ContractSLA Component', () => {
     ).toBeInTheDocument();
 
     // Check that all check icons are rendered
-    const checkIcons = screen.getAllByTestId('check-icon');
+    const checkIcons = screen.getAllByTestId(CHECK_ICON);
 
     expect(checkIcons).toHaveLength(4);
   });
 
   it('should render only provided SLA items', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -247,7 +253,7 @@ describe('ContractSLA Component', () => {
 
     render(<ContractSLA contract={contract} />);
 
-    expect(screen.getByTestId('contract-sla-card')).toBeInTheDocument();
+    expect(screen.getByTestId(CONTRACT_SLA_CARD)).toBeInTheDocument();
 
     // Check only provided items are rendered
     expect(
@@ -270,15 +276,15 @@ describe('ContractSLA Component', () => {
     ).not.toBeInTheDocument();
 
     // Check correct number of check icons
-    const checkIcons = screen.getAllByTestId('check-icon');
+    const checkIcons = screen.getAllByTestId(CHECK_ICON);
 
     expect(checkIcons).toHaveLength(2);
   });
 
   it('should handle uppercase units and convert them to lowercase', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -309,8 +315,8 @@ describe('ContractSLA Component', () => {
 
   it('should have correct CSS classes applied', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -341,8 +347,8 @@ describe('ContractSLA Component', () => {
 
   it('should render SLA items in the correct order', () => {
     const contract: DataContract = {
-      fullyQualifiedName: 'test.contract',
-      name: 'Test Contract',
+      fullyQualifiedName: TEST_CONTRACT_2,
+      name: TEST_CONTRACT,
       id: MOCK_DATA_CONTRACT.id,
       entity: MOCK_DATA_CONTRACT.entity,
       sla: {
@@ -384,8 +390,8 @@ describe('ContractSLA Component', () => {
   describe('Edge Cases', () => {
     it('should handle zero values correctly', () => {
       const contract: DataContract = {
-        fullyQualifiedName: 'test.contract',
-        name: 'Test Contract',
+        fullyQualifiedName: TEST_CONTRACT_2,
+        name: TEST_CONTRACT,
         id: MOCK_DATA_CONTRACT.id,
         entity: MOCK_DATA_CONTRACT.entity,
         sla: {
@@ -416,8 +422,8 @@ describe('ContractSLA Component', () => {
 
     it('should handle empty string for availabilityTime', () => {
       const contract: DataContract = {
-        fullyQualifiedName: 'test.contract',
-        name: 'Test Contract',
+        fullyQualifiedName: TEST_CONTRACT_2,
+        name: TEST_CONTRACT,
         sla: {
           availabilityTime: '',
         },
@@ -431,8 +437,8 @@ describe('ContractSLA Component', () => {
 
     it('should handle partial SLA objects with undefined properties', () => {
       const contract: DataContract = {
-        fullyQualifiedName: 'test.contract',
-        name: 'Test Contract',
+        fullyQualifiedName: TEST_CONTRACT_2,
+        name: TEST_CONTRACT,
         sla: {
           refreshFrequency: undefined,
           availabilityTime: '09:00 UTC',
@@ -444,15 +450,15 @@ describe('ContractSLA Component', () => {
       render(<ContractSLA contract={contract} />);
 
       // Only availabilityTime should be rendered
-      expect(screen.getByTestId('contract-sla-card')).toBeInTheDocument();
+      expect(screen.getByTestId(CONTRACT_SLA_CARD)).toBeInTheDocument();
       expect(
         screen.getByText(
-          'message.completeness-sla-description - label.completeness: 09:00 UTC'
+          MESSAGE_COMPLETENESS_SLA_DESCRIPTION_LABEL_COMPLETENESS_09_00_UTC
         )
       ).toBeInTheDocument();
 
       // Check only one check icon is rendered
-      const checkIcons = screen.getAllByTestId('check-icon');
+      const checkIcons = screen.getAllByTestId(CHECK_ICON);
 
       expect(checkIcons).toHaveLength(1);
     });

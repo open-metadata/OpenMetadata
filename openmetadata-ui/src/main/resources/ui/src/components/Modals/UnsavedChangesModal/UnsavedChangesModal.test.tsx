@@ -18,10 +18,12 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         'message.unsaved-changes': 'Unsaved changes',
         'message.unsaved-changes-description':
           'Do you want to save or discard changes?',
         'message.unsaved-changes-discard': 'Discard',
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         'message.unsaved-changes-save': 'Save changes',
       };
 

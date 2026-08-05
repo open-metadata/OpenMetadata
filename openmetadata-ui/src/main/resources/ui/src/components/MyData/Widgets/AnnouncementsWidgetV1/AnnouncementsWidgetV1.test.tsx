@@ -15,6 +15,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
 import AnnouncementsWidgetV1 from './AnnouncementsWidgetV1.component';
 
+const ALBERTO_UPDATED_DIM_ADDRESS_TABLE = 'Alberto updated `dim_address_table`';
+const TOTAL_DATA_ASSETS = 'Total Data Assets';
+
 // Mock React Router hooks
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -64,7 +67,7 @@ const mockAnnouncements: AnnouncementEntity[] = [
   {
     id: '1',
     name: 'announcement-one',
-    displayName: 'Alberto updated `dim_address_table`',
+    displayName: ALBERTO_UPDATED_DIM_ADDRESS_TABLE,
     description: 'We will be deprecating a column, please change accordingly.',
     entityLink:
       '<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog>',
@@ -76,7 +79,7 @@ const mockAnnouncements: AnnouncementEntity[] = [
   {
     id: '2',
     name: 'announcement-two',
-    displayName: 'Total Data Assets',
+    displayName: TOTAL_DATA_ASSETS,
     description:
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae congue nullam consectetur Lorem ipsum',
     entityLink:
@@ -129,9 +132,9 @@ describe('AnnouncementsWidgetV1', () => {
     expect(screen.getByTestId('announcement-card-v1-2')).toBeInTheDocument();
     expect(screen.getByText('alberto')).toBeInTheDocument();
     expect(
-      screen.getByText('Alberto updated `dim_address_table`')
+      screen.getByText(ALBERTO_UPDATED_DIM_ADDRESS_TABLE)
     ).toBeInTheDocument();
-    expect(screen.getByText('Total Data Assets')).toBeInTheDocument();
+    expect(screen.getByText(TOTAL_DATA_ASSETS)).toBeInTheDocument();
   });
 
   it('should render loading state', () => {
@@ -155,11 +158,11 @@ describe('AnnouncementsWidgetV1', () => {
     // Check first announcement content
     expect(screen.getByText('alberto')).toBeInTheDocument();
     expect(
-      screen.getByText('Alberto updated `dim_address_table`')
+      screen.getByText(ALBERTO_UPDATED_DIM_ADDRESS_TABLE)
     ).toBeInTheDocument();
 
     // Check second announcement content
-    expect(screen.getByText('Total Data Assets')).toBeInTheDocument();
+    expect(screen.getByText(TOTAL_DATA_ASSETS)).toBeInTheDocument();
   });
 
   it('should handle announcement card clicks', () => {

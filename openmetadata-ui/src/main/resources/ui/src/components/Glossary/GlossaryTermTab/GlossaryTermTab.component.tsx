@@ -125,6 +125,10 @@ import {
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
+
+const LABEL_GLOSSARY_TERM = 'label.glossary-term';
+const LABEL_MOVE_THE_ENTITY = 'label.move-the-entity';
+const LABEL_TERM_LOWERCASE = 'label.term-lowercase';
 const WorkflowHistory = withSuspenseFallback(
   lazy(
     () => import('../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component')
@@ -1041,7 +1045,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               {allowAddTerm && (
                 <Tooltip
                   title={t('label.add-entity', {
-                    entity: t('label.glossary-term'),
+                    entity: t(LABEL_GLOSSARY_TERM),
                   })}>
                   <Button
                     className="add-new-term-btn text-grey-muted flex-center"
@@ -1060,7 +1064,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
               <Tooltip
                 title={t('label.edit-entity', {
-                  entity: t('label.glossary-term'),
+                  entity: t(LABEL_GLOSSARY_TERM),
                 })}>
                 <Button
                   className="cursor-pointer flex-center"
@@ -1354,8 +1358,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return (
             <>
               <AriaButton
-                aria-label={t('label.move-the-entity', {
-                  entity: t('label.term-lowercase'),
+                aria-label={t(LABEL_MOVE_THE_ENTITY, {
+                  entity: t(LABEL_TERM_LOWERCASE),
                 })}
                 className="glossary-term-drag-handle-hidden"
                 slot="drag">
@@ -1370,8 +1374,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const isLoading = loadingChildren[record.fullyQualifiedName || ''];
         const dragHandle = (
           <AriaButton
-            aria-label={t('label.move-the-entity', {
-              entity: t('label.term-lowercase'),
+            aria-label={t(LABEL_MOVE_THE_ENTITY, {
+              entity: t(LABEL_TERM_LOWERCASE),
             })}
             className="glossary-term-drag-handle m-r-xs"
             slot="drag">
@@ -1763,7 +1767,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         className="tw:relative tw:flex tw:items-center tw:justify-center glossary-terms-empty-container"
         ref={tableContainerRef}>
         <EmptyPlaceholder
-          data-testid={`create-error-placeholder-${t('label.glossary-term')}`}
+          data-testid={`create-error-placeholder-${t(LABEL_GLOSSARY_TERM)}`}
           description={t('message.glossary-term-empty-description')}
           footer={
             canCreateTerm ? (
@@ -1871,8 +1875,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           title={
             <>
               <WarningOutlined className="m-r-xs warning-icon" />
-              {t('label.move-the-entity', {
-                entity: t('label.glossary-term'),
+              {t(LABEL_MOVE_THE_ENTITY, {
+                entity: t(LABEL_GLOSSARY_TERM),
               })}
             </>
           }
@@ -1888,7 +1892,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 (activeGlossary && getEntityName(activeGlossary)),
               entity: isUndefined(movedGlossaryTerm?.to)
                 ? ''
-                : t('label.term-lowercase'),
+                : t(LABEL_TERM_LOWERCASE),
             }}
           />
           {hasReviewers && (

@@ -53,13 +53,12 @@ const mockUseActivityFeedProviderValue = {
 const mockFetchTaskCount = jest.fn();
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
-  getIncidentTaskByStateId: jest
-    .fn()
-    .mockImplementation(() =>
-      Promise.resolve(
-        jest.requireActual('../../../../mocks/TestCase.mock').MOCK_TASK_DATA[1]
-      )
-    ),
+  getIncidentTaskByStateId: jest.fn().mockImplementation(() =>
+    Promise.resolve(
+      // eslint-disable-next-line sonarjs/no-duplicate-string
+      jest.requireActual('../../../../mocks/TestCase.mock').MOCK_TASK_DATA[1]
+    )
+  ),
   getListTestCaseIncidentByStateId: jest
     .fn()
     .mockImplementation(() =>

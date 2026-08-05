@@ -14,6 +14,11 @@ import { renderHook } from '@testing-library/react-hooks';
 import { useRequiredParams } from '../utils/useRequiredParams';
 import { useFqn } from './useFqn';
 
+const SAMPLE_DATA_DB_SAMPLE_SCHEMA =
+  'sample_data.db_sample.schema_sample.dim/client.';
+const SERVICE_DATABASE_SCHEMA_TABLE_COLUMN =
+  'service.database.schema.table.column';
+
 jest.mock('../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(),
 }));
@@ -25,18 +30,18 @@ jest.mock('../utils/StringUtils', () => ({
 describe('useFqn', () => {
   it('returns decoded fqn and ingestionFQN', () => {
     (useRequiredParams as jest.Mock).mockReturnValue({
-      fqn: 'sample_data.db_sample.schema_sample.dim/client.',
-      ingestionFQN: 'sample_data.db_sample.schema_sample.dim/client.',
+      fqn: SAMPLE_DATA_DB_SAMPLE_SCHEMA,
+      ingestionFQN: SAMPLE_DATA_DB_SAMPLE_SCHEMA,
       ruleName: 'testing / policy rule do not use',
     });
 
     const { result } = renderHook(() => useFqn());
 
     expect(result.current).toEqual({
-      fqn: 'sample_data.db_sample.schema_sample.dim/client.',
-      ingestionFQN: 'sample_data.db_sample.schema_sample.dim/client.',
+      fqn: SAMPLE_DATA_DB_SAMPLE_SCHEMA,
+      ingestionFQN: SAMPLE_DATA_DB_SAMPLE_SCHEMA,
       ruleName: 'testing / policy rule do not use',
-      entityFqn: 'sample_data.db_sample.schema_sample.dim/client.',
+      entityFqn: SAMPLE_DATA_DB_SAMPLE_SCHEMA,
       columnFqn: undefined,
     });
   });
@@ -57,8 +62,8 @@ describe('useFqn', () => {
 
   it('returns split entityFqn and columnFqn when type is provided', () => {
     (useRequiredParams as jest.Mock).mockReturnValue({
-      fqn: 'service.database.schema.table.column',
-      ingestionFQN: 'service.database.schema.table.column',
+      fqn: SERVICE_DATABASE_SCHEMA_TABLE_COLUMN,
+      ingestionFQN: SERVICE_DATABASE_SCHEMA_TABLE_COLUMN,
       ruleName: '',
     });
 
@@ -66,8 +71,8 @@ describe('useFqn', () => {
     const { result } = renderHook(() => useFqn({ type: 'table' }));
 
     expect(result.current).toEqual({
-      fqn: 'service.database.schema.table.column',
-      ingestionFQN: 'service.database.schema.table.column',
+      fqn: SERVICE_DATABASE_SCHEMA_TABLE_COLUMN,
+      ingestionFQN: SERVICE_DATABASE_SCHEMA_TABLE_COLUMN,
       ruleName: '',
       entityFqn: 'service.database.schema.table',
       columnFqn: 'column',

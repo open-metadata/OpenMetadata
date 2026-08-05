@@ -91,6 +91,7 @@ describe('elasticsearchQueryBuilder', () => {
   describe('buildTermQuery', () => {
     it('should build simple term query for single filter', () => {
       const result = buildTermQuery(
+        // eslint-disable-next-line sonarjs/no-duplicate-string
         { field: 'classification.name.keyword', value: 'tier' },
         false
       );

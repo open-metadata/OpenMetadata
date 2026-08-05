@@ -28,6 +28,11 @@ import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FileDetails from './FileDetails';
 import { FileDetailsProps } from './FileDetails.interface';
 
+const TEST_SERVICE_TEST_FILE_TXT = 'test-service.test-file.txt';
+const CURRENT_USER = 'current-user';
+const DATA_ASSETS_HEADER = 'data-assets-header';
+const GENERIC_PROVIDER = 'generic-provider';
+
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
@@ -156,7 +161,7 @@ const mockFileDetails: File = {
   id: 'file-id-1',
   name: 'test-file.txt',
   displayName: 'Test File',
-  fullyQualifiedName: 'test-service.test-file.txt',
+  fullyQualifiedName: TEST_SERVICE_TEST_FILE_TXT,
   description: 'Test file description',
   owners: [
     {
@@ -237,7 +242,7 @@ describe('FileDetails', () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: {
         id: 'current-user-id',
-        name: 'current-user',
+        name: CURRENT_USER,
       },
     });
 
@@ -252,8 +257,8 @@ describe('FileDetails', () => {
     });
 
     mockUseFqn.mockReturnValue({
-      fqn: 'test-service.test-file.txt',
-      entityFqn: 'test-service.test-file.txt',
+      fqn: TEST_SERVICE_TEST_FILE_TXT,
+      entityFqn: TEST_SERVICE_TEST_FILE_TXT,
       columnPart: undefined,
     });
 
@@ -278,9 +283,9 @@ describe('FileDetails', () => {
     renderFileDetails();
 
     expect(screen.getByTestId('page-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+    expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
   });
 
   it('should show loader when customization is loading', () => {
@@ -298,7 +303,7 @@ describe('FileDetails', () => {
     renderFileDetails();
 
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle file restoration successfully', async () => {
@@ -315,7 +320,7 @@ describe('FileDetails', () => {
       fileDetails: deletedFileDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle file restoration error', async () => {
@@ -331,7 +336,7 @@ describe('FileDetails', () => {
       fileDetails: deletedFileDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should fetch feed counts on component mount', async () => {
@@ -340,12 +345,12 @@ describe('FileDetails', () => {
     await waitFor(
       () => {
         expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
-          'test-service.test-file.txt',
+          TEST_SERVICE_TEST_FILE_TXT,
           expect.any(Function)
         );
         expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
           EntityType.FILE,
-          'test-service.test-file.txt',
+          TEST_SERVICE_TEST_FILE_TXT,
           expect.any(Function)
         );
       },
@@ -360,7 +365,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -371,8 +376,8 @@ describe('FileDetails', () => {
         {
           id: 'current-user-id',
           type: 'user',
-          name: 'current-user',
-          fullyQualifiedName: 'current-user',
+          name: CURRENT_USER,
+          fullyQualifiedName: CURRENT_USER,
           displayName: 'Current User',
           deleted: false,
         },
@@ -386,7 +391,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -397,7 +402,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -408,7 +413,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -419,7 +424,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -433,7 +438,7 @@ describe('FileDetails', () => {
       fileDetails: deletedFileDetails,
     });
 
-    expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+    expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
   });
 
   it('should handle display name update', async () => {
@@ -443,7 +448,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -454,7 +459,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -467,7 +472,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -479,7 +484,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -490,7 +495,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -501,7 +506,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -512,7 +517,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -523,7 +528,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -534,7 +539,7 @@ describe('FileDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -542,7 +547,7 @@ describe('FileDetails', () => {
     renderFileDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -550,7 +555,7 @@ describe('FileDetails', () => {
     renderFileDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
 
     // Test rendering for hard delete scenario
@@ -584,7 +589,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithoutTags,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should render with undefined tags', () => {
@@ -597,7 +602,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithUndefinedTags,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should render with empty followers array', () => {
@@ -610,7 +615,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithoutFollowers,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should render with undefined followers', () => {
@@ -623,7 +628,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithUndefinedFollowers,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle feed count updates', async () => {
@@ -640,7 +645,7 @@ describe('FileDetails', () => {
     renderFileDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -649,7 +654,7 @@ describe('FileDetails', () => {
 
     // Test that tabs component is rendered and functional
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle empty description in file details', () => {
@@ -662,7 +667,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithEmptyDescription,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle file with different file extension', () => {
@@ -676,7 +681,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithDifferentExtension as File,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should properly handle isFollowing calculation', () => {
@@ -699,7 +704,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithoutCurrentUserAsFollower,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle permissions for deleted file', () => {
@@ -720,7 +725,7 @@ describe('FileDetails', () => {
       filePermissions: restrictedPermissions,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle tab change when activeKey is the same as current tab', async () => {
@@ -749,7 +754,7 @@ describe('FileDetails', () => {
       fileDetails: fileWithSize,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   describe('ViewCustomFields Permission Tests', () => {
@@ -764,8 +769,8 @@ describe('FileDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -780,8 +785,8 @@ describe('FileDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -797,8 +802,8 @@ describe('FileDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
   });

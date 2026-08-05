@@ -21,6 +21,10 @@ import {
 import { SelectableListProps } from '../SelectableList/SelectableList.interface';
 import { TagSelectableList } from './TagSelectableList.component';
 
+const SELECTABLE_LIST = 'selectable-list' as const;
+const UPDATE_BUTTON = 'update-button' as const;
+const TRIGGER_BUTTON = 'trigger-button' as const;
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
@@ -43,10 +47,10 @@ const mockSelectableList = jest
       onCancel?: () => void;
       selectedItems?: EntityReference[];
     }) => (
-      <div data-testid="selectable-list">
+      <div data-testid={SELECTABLE_LIST}>
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button
-          data-testid="update-button"
+          data-testid={UPDATE_BUTTON}
           onClick={() =>
             onUpdate?.([
               {
@@ -105,7 +109,7 @@ const defaultProps = {
   onUpdate: mockOnUpdate,
   onCancel: mockOnCancel,
   hasPermission: true,
-  children: <button data-testid="trigger-button">Open</button>,
+  children: <button data-testid={TRIGGER_BUTTON}>Open</button>,
   popoverProps: {},
 };
 
@@ -131,25 +135,25 @@ describe('TagSelectableList', () => {
   it('should render the trigger children', () => {
     render(<TagSelectableList {...defaultProps} />);
 
-    expect(screen.getByTestId('trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TRIGGER_BUTTON)).toBeInTheDocument();
     expect(screen.getByText('Open')).toBeInTheDocument();
   });
 
   it('should open popover when trigger is clicked', async () => {
     render(<TagSelectableList {...defaultProps} />);
 
-    const trigger = screen.getByTestId('trigger-button');
+    const trigger = screen.getByTestId(TRIGGER_BUTTON);
     fireEvent.click(trigger);
 
     await waitFor(() => {
-      expect(screen.getByTestId('selectable-list')).toBeInTheDocument();
+      expect(screen.getByTestId(SELECTABLE_LIST)).toBeInTheDocument();
     });
   });
 
   it('should pass selected tags count to SelectableList', async () => {
     render(<TagSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(screen.getByTestId('selected-count')).toHaveTextContent('1');
@@ -159,13 +163,13 @@ describe('TagSelectableList', () => {
   it('should call onUpdate with converted tags when update is clicked', async () => {
     render(<TagSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
-      expect(screen.getByTestId('update-button')).toBeInTheDocument();
+      expect(screen.getByTestId(UPDATE_BUTTON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('update-button'));
+    fireEvent.click(screen.getByTestId(UPDATE_BUTTON));
 
     await waitFor(() => {
       expect(mockOnUpdate).toHaveBeenCalledWith([
@@ -184,23 +188,23 @@ describe('TagSelectableList', () => {
   it('should close popover after successful update', async () => {
     render(<TagSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
-      expect(screen.getByTestId('update-button')).toBeInTheDocument();
+      expect(screen.getByTestId(UPDATE_BUTTON)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('update-button'));
+    fireEvent.click(screen.getByTestId(UPDATE_BUTTON));
 
     await waitFor(() => {
-      expect(screen.queryByTestId('selectable-list')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(SELECTABLE_LIST)).not.toBeInTheDocument();
     });
   });
 
   it('should call onCancel when cancel is clicked', async () => {
     render(<TagSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
@@ -224,7 +228,7 @@ describe('TagSelectableList', () => {
 
     render(<TagSelectableList {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('trigger-button'));
+    fireEvent.click(screen.getByTestId(TRIGGER_BUTTON));
 
     await waitFor(() => {
       expect(mockSelectableList).toHaveBeenCalled();
@@ -241,7 +245,7 @@ describe('TagSelectableList', () => {
   it('should handle empty tags list', () => {
     render(<TagSelectableList {...defaultProps} selectedTags={[]} />);
 
-    expect(screen.getByTestId('trigger-button')).toBeInTheDocument();
+    expect(screen.getByTestId(TRIGGER_BUTTON)).toBeInTheDocument();
   });
 
   it('should use popoverProps when provided', () => {
@@ -255,6 +259,6 @@ describe('TagSelectableList', () => {
       <TagSelectableList {...defaultProps} popoverProps={customPopoverProps} />
     );
 
-    expect(screen.getByTestId('selectable-list')).toBeInTheDocument();
+    expect(screen.getByTestId(SELECTABLE_LIST)).toBeInTheDocument();
   });
 });

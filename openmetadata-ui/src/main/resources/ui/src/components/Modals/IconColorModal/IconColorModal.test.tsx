@@ -17,6 +17,10 @@ import { Style } from '../../../generated/type/schema';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 import IconColorModal from './IconColorModal';
 
+const LABEL_SAVE = 'label.save' as const;
+const ICON_PICKER_BTN_INPUT = 'icon-picker-btn-input' as const;
+const ROOT_COLOR_INPUT = 'root/color-input' as const;
+
 type MockFieldProp = {
   id?: string;
   name: 'iconURL' | 'color';
@@ -159,14 +163,14 @@ describe('IconColorModal component', () => {
     render(<IconColorModal {...mockProps} />);
 
     expect(await screen.findByText('label.cancel')).toBeInTheDocument();
-    expect(await screen.findByText('label.save')).toBeInTheDocument();
+    expect(await screen.findByText(LABEL_SAVE)).toBeInTheDocument();
   });
 
   it('should populate form with initial style values', async () => {
     render(<IconColorModal {...mockProps} />);
 
-    const iconInput = await screen.findByTestId('icon-picker-btn-input');
-    const colorInput = await screen.findByTestId('root/color-input');
+    const iconInput = await screen.findByTestId(ICON_PICKER_BTN_INPUT);
+    const colorInput = await screen.findByTestId(ROOT_COLOR_INPUT);
 
     expect(iconInput).toHaveValue(mockStyle.iconURL);
     expect(colorInput).toHaveValue(mockStyle.color);
@@ -184,7 +188,7 @@ describe('IconColorModal component', () => {
   it('should call onSubmit with form values when save button is clicked', async () => {
     render(<IconColorModal {...mockProps} />);
 
-    const saveBtn = await screen.findByText('label.save');
+    const saveBtn = await screen.findByText(LABEL_SAVE);
 
     await act(async () => {
       fireEvent.click(saveBtn);
@@ -199,7 +203,7 @@ describe('IconColorModal component', () => {
   it('should update icon value when icon picker changes', async () => {
     render(<IconColorModal {...mockProps} />);
 
-    const iconInput = await screen.findByTestId('icon-picker-btn-input');
+    const iconInput = await screen.findByTestId(ICON_PICKER_BTN_INPUT);
     const newIconUrl = 'Tag01';
 
     await act(async () => {
@@ -212,7 +216,7 @@ describe('IconColorModal component', () => {
   it('should update color value when color picker changes', async () => {
     render(<IconColorModal {...mockProps} />);
 
-    const colorInput = await screen.findByTestId('root/color-input');
+    const colorInput = await screen.findByTestId(ROOT_COLOR_INPUT);
     const newColor = '#00FF00';
 
     await act(async () => {
@@ -228,7 +232,7 @@ describe('IconColorModal component', () => {
     );
     render(<IconColorModal {...mockProps} onSubmit={mockSlowSubmit} />);
 
-    const saveBtn = await screen.findByText('label.save');
+    const saveBtn = await screen.findByText(LABEL_SAVE);
 
     await act(async () => {
       fireEvent.click(saveBtn);
@@ -240,7 +244,7 @@ describe('IconColorModal component', () => {
   it('should handle submission with undefined style', async () => {
     render(<IconColorModal {...mockProps} style={undefined} />);
 
-    const saveBtn = await screen.findByText('label.save');
+    const saveBtn = await screen.findByText(LABEL_SAVE);
 
     await act(async () => {
       fireEvent.click(saveBtn);
@@ -267,7 +271,7 @@ describe('IconColorModal component', () => {
   it('should update icon picker backgroundColor when color changes', async () => {
     const { rerender } = render(<IconColorModal {...mockProps} />);
 
-    const colorInput = await screen.findByTestId('root/color-input');
+    const colorInput = await screen.findByTestId(ROOT_COLOR_INPUT);
     const newColor = '#00FF00';
 
     fireEvent.change(colorInput, { target: { value: newColor } });
@@ -280,7 +284,7 @@ describe('IconColorModal component', () => {
   it('should refresh form values when reopened with a new style while staying mounted', async () => {
     const { rerender } = render(<IconColorModal {...mockProps} />);
 
-    expect(await screen.findByTestId('icon-picker-btn-input')).toHaveValue(
+    expect(await screen.findByTestId(ICON_PICKER_BTN_INPUT)).toHaveValue(
       mockStyle.iconURL
     );
 
@@ -289,8 +293,8 @@ describe('IconColorModal component', () => {
     const newStyle: Style = { iconURL: 'Tag01', color: '#00FF00' };
     rerender(<IconColorModal {...mockProps} open style={newStyle} />);
 
-    const iconInput = await screen.findByTestId('icon-picker-btn-input');
-    const colorInput = await screen.findByTestId('root/color-input');
+    const iconInput = await screen.findByTestId(ICON_PICKER_BTN_INPUT);
+    const colorInput = await screen.findByTestId(ROOT_COLOR_INPUT);
 
     expect(iconInput).toHaveValue(newStyle.iconURL);
     expect(colorInput).toHaveValue(newStyle.color);

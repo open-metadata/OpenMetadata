@@ -20,6 +20,8 @@ import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 
+const DATAMODEL_COLUMN1 = 'datamodel.column1';
+
 type DashboardDataModelTestData = Partial<DashboardDataModel> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;
 
@@ -32,7 +34,7 @@ describe('DashboardDataModelUtils', () => {
           {
             name: 'column1',
             dataType: DataType.String,
-            fullyQualifiedName: 'datamodel.column1',
+            fullyQualifiedName: DATAMODEL_COLUMN1,
           },
           {
             name: 'column2',
@@ -76,7 +78,7 @@ describe('DashboardDataModelUtils', () => {
           {
             name: 'column1',
             dataType: DataType.String,
-            fullyQualifiedName: 'datamodel.column1',
+            fullyQualifiedName: DATAMODEL_COLUMN1,
           },
         ],
       };
@@ -93,7 +95,7 @@ describe('DashboardDataModelUtils', () => {
           {
             name: 'column1',
             dataType: DataType.String,
-            fullyQualifiedName: 'datamodel.column1',
+            fullyQualifiedName: DATAMODEL_COLUMN1,
             tags: [
               {
                 tagFQN: 'tag1',

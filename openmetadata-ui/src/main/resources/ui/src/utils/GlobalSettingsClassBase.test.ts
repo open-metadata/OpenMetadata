@@ -20,6 +20,7 @@ import globalSettingsClassBase, {
 } from './GlobalSettingsClassBase';
 import { userPermissions } from './PermissionsUtils';
 
+const PREFERENCES_SEARCH_SETTINGS = 'preferences.search-settings';
 jest.mock('./i18next/LocalUtil', () => ({
   t: jest.fn((key: string) => key),
 }));
@@ -253,7 +254,7 @@ describe('GlobalSettingsClassBase', () => {
       expect(preferencesCategory?.items).toBeDefined();
 
       const searchSettings = preferencesCategory?.items?.find(
-        (item) => item.key === 'preferences.search-settings'
+        (item) => item.key === PREFERENCES_SEARCH_SETTINGS
       );
 
       expect(searchSettings).toBeDefined();
@@ -275,7 +276,7 @@ describe('GlobalSettingsClassBase', () => {
         (item) => item.key === 'preferences'
       );
       const searchSettings = preferencesCategory?.items?.find(
-        (item) => item.key === 'preferences.search-settings'
+        (item) => item.key === PREFERENCES_SEARCH_SETTINGS
       );
       const items = searchSettings?.items || [];
 
@@ -513,7 +514,7 @@ describe('GlobalSettingsClassBase', () => {
         'preferences.loginConfiguration',
         'preferences.om-health',
         'preferences.profiler-configuration',
-        'preferences.search-settings',
+        PREFERENCES_SEARCH_SETTINGS,
         'preferences.lineageConfig',
         'preferences.om-url-config',
         'preferences.dataAssetRules',
@@ -528,7 +529,7 @@ describe('GlobalSettingsClassBase', () => {
       });
 
       const searchSettingsItem = preferencesCategory?.items?.find(
-        (item) => item.key === 'preferences.search-settings'
+        (item) => item.key === PREFERENCES_SEARCH_SETTINGS
       );
 
       expect(searchSettingsItem?.items).toBeDefined();

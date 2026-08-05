@@ -59,6 +59,7 @@ import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-list.less';
 
+const LABEL_POLICY = 'label.policy';
 const PoliciesListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -203,7 +204,7 @@ const PoliciesListPage = () => {
               title={
                 deletePolicyPermission
                   ? t('label.delete-entity', {
-                      entity: t('label.policy'),
+                      entity: t(LABEL_POLICY),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
@@ -303,7 +304,7 @@ const PoliciesListPage = () => {
                 subHeader: t(PAGE_HEADERS.POLICIES.subHeader),
               }}
               learningPageId={LEARNING_PAGE_IDS.POLICIES}
-              title={t('label.policy')}
+              title={t(LABEL_POLICY)}
             />
 
             {addPolicyPermission && (
@@ -311,7 +312,7 @@ const PoliciesListPage = () => {
                 data-testid="add-policy"
                 type="primary"
                 onClick={handleAddPolicy}>
-                {t('label.add-entity', { entity: t('label.policy') })}
+                {t('label.add-entity', { entity: t(LABEL_POLICY) })}
               </Button>
             )}
           </Space>
@@ -336,10 +337,10 @@ const PoliciesListPage = () => {
               emptyText: (
                 <ErrorPlaceHolder
                   className="border-none"
-                  heading={t('label.policy')}
+                  heading={t(LABEL_POLICY)}
                   permission={addPolicyPermission}
                   permissionValue={t('label.create-entity', {
-                    entity: t('label.policy'),
+                    entity: t(LABEL_POLICY),
                   })}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={handleAddPolicy}

@@ -74,6 +74,8 @@ import {
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
 
+const LABEL_TEST_CASE = 'label.test-case';
+
 const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   open,
   onClose,
@@ -238,7 +240,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         jsonPatch
       );
       showSuccessToast(
-        t('server.update-entity-success', { entity: t('label.test-case') })
+        t('server.update-entity-success', { entity: t(LABEL_TEST_CASE) })
       );
       onUpdate?.(updated);
     },
@@ -262,7 +264,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       await createTestCasePipeline(values, created);
 
       showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.test-case') })
+        t('server.create-entity-success', { entity: t(LABEL_TEST_CASE) })
       );
 
       onFormSubmit?.(created);
@@ -293,7 +295,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             isEditMode
               ? 'server.update-entity-error'
               : 'server.create-entity-error',
-            { entity: t('label.test-case') }
+            { entity: t(LABEL_TEST_CASE) }
           );
         setErrorMessage(errorMsg);
 
@@ -403,7 +405,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const defaultTitle = isEditMode
     ? t('label.edit-entity', { entity: getEntityName(testCase) })
-    : t('label.add-entity', { entity: t('label.test-case') });
+    : t('label.add-entity', { entity: t(LABEL_TEST_CASE) });
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<FormValues>({

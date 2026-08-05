@@ -17,6 +17,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainDisplay } from './DomainDisplay.component';
 
+const DOMAIN_ICON = 'domain-icon' as const;
+const DOMAIN_ONE = 'Domain One' as const;
+const DOMAIN_TWO = 'Domain Two' as const;
+const DOMAIN_DOMAIN_ONE = '/domain/domain.one' as const;
+const DOMAIN_COUNT_BUTTON = 'domain-count-button' as const;
+
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
@@ -36,14 +42,14 @@ jest.mock('../../../assets/svg/ic-domain.svg', () => ({
 const mockDomain1: EntityReference = {
   id: 'domain-1',
   fullyQualifiedName: 'domain.one',
-  name: 'Domain One',
+  name: DOMAIN_ONE,
   type: 'domain',
 };
 
 const mockDomain2: EntityReference = {
   id: 'domain-2',
   fullyQualifiedName: 'domain.two',
-  name: 'Domain Two',
+  name: DOMAIN_TWO,
   type: 'domain',
 };
 
@@ -87,24 +93,18 @@ describe('DomainDisplay Component', () => {
   it('should render single domain with icon by default', () => {
     const { container } = renderDomainDisplay({ domains: [mockDomain1] });
 
-    expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_ICON)).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
     expect(container.firstChild).toHaveClass('gap-1');
-    expect(screen.getByRole('link')).toHaveAttribute(
-      'href',
-      '/domain/domain.one'
-    );
+    expect(screen.getByRole('link')).toHaveAttribute('href', DOMAIN_DOMAIN_ONE);
   });
 
   it('should render single domain without icon when showIcon is false', () => {
     renderDomainDisplay({ domains: [mockDomain1], showIcon: false });
 
-    expect(screen.queryByTestId('domain-icon')).not.toBeInTheDocument();
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByRole('link')).toHaveAttribute(
-      'href',
-      '/domain/domain.one'
-    );
+    expect(screen.queryByTestId(DOMAIN_ICON)).not.toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
+    expect(screen.getByRole('link')).toHaveAttribute('href', DOMAIN_DOMAIN_ONE);
   });
 
   it('should render multiple domains with dropdown by default', () => {
@@ -112,15 +112,15 @@ describe('DomainDisplay Component', () => {
       domains: [mockDomain1, mockDomain2, mockDomain3],
     });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toHaveClass(
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_COUNT_BUTTON)).toHaveClass(
       'flex-shrink-0'
     );
     expect(screen.getByText('+2')).toHaveClass('domain-count-label');
     expect(screen.getByText('+2')).not.toHaveClass('ant-typography');
-    expect(screen.queryByText('Domain Two')).not.toBeInTheDocument();
+    expect(screen.queryByText(DOMAIN_TWO)).not.toBeInTheDocument();
     expect(screen.queryByText('Domain Three')).not.toBeInTheDocument();
-    expect(screen.getAllByTestId('domain-icon')).toHaveLength(1);
+    expect(screen.getAllByTestId(DOMAIN_ICON)).toHaveLength(1);
   });
 
   it('should render single domain normally', () => {
@@ -128,17 +128,17 @@ describe('DomainDisplay Component', () => {
       domains: [mockDomain1],
     });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.queryByTestId('domain-count-button')).not.toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
+    expect(screen.queryByTestId(DOMAIN_COUNT_BUTTON)).not.toBeInTheDocument();
     expect(screen.queryByText(', ')).not.toBeInTheDocument();
   });
 
   it('should render correct links for all domains', () => {
     renderDomainDisplay({ domains: [mockDomain1, mockDomain2] });
 
-    expect(screen.getByRole('link', { name: 'Domain One' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: DOMAIN_ONE })).toHaveAttribute(
       'href',
-      '/domain/domain.one'
+      DOMAIN_DOMAIN_ONE
     );
   });
 
@@ -173,13 +173,13 @@ describe('DomainDisplay Component', () => {
     const link = screen.getByRole('link');
 
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute('href', '/domain/domain.one');
+    expect(link).toHaveAttribute('href', DOMAIN_DOMAIN_ONE);
   });
 
   it('should have proper test IDs for testing', () => {
     renderDomainDisplay({ domains: [mockDomain1] });
 
-    expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_ICON)).toBeInTheDocument();
     expect(screen.getByTestId('domain-link')).toBeInTheDocument();
   });
 
@@ -194,7 +194,7 @@ describe('DomainDisplay Component', () => {
   it('should style domain text correctly', () => {
     renderDomainDisplay({ domains: [mockDomain1] });
 
-    const domainText = screen.getByText('Domain One');
+    const domainText = screen.getByText(DOMAIN_ONE);
 
     expect(domainText).toHaveClass('text-sm', 'text-primary');
   });
@@ -202,13 +202,13 @@ describe('DomainDisplay Component', () => {
   it('should not render icon when showIcon is false', () => {
     renderDomainDisplay({ domains: [mockDomain1], showIcon: false });
 
-    expect(screen.queryByTestId('domain-icon')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DOMAIN_ICON)).not.toBeInTheDocument();
   });
 
   it('should render only one icon for multiple domains', () => {
     renderDomainDisplay({ domains: [mockDomain1, mockDomain2, mockDomain3] });
 
-    const domainIcons = screen.getAllByTestId('domain-icon');
+    const domainIcons = screen.getAllByTestId(DOMAIN_ICON);
 
     expect(domainIcons).toHaveLength(1);
   });
@@ -244,7 +244,7 @@ describe('DomainDisplay Component', () => {
 
     renderDomainDisplay({ domains: domainsWithMixedData });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
   });
 
   it('should show correct count in dropdown button', () => {
@@ -266,9 +266,9 @@ describe('DomainDisplay Component', () => {
   it('should always use dropdown behavior for multiple domains', () => {
     renderDomainDisplay({ domains: [mockDomain1, mockDomain2, mockDomain3] });
 
-    expect(screen.getByText('Domain One')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
+    expect(screen.getByText(DOMAIN_ONE)).toBeInTheDocument();
+    expect(screen.getByTestId(DOMAIN_COUNT_BUTTON)).toBeInTheDocument();
     expect(screen.getByText('+2')).toBeInTheDocument();
-    expect(screen.queryByText('Domain Two')).not.toBeInTheDocument();
+    expect(screen.queryByText(DOMAIN_TWO)).not.toBeInTheDocument();
   });
 });

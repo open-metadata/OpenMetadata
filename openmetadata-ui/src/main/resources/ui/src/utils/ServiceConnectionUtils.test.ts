@@ -35,6 +35,8 @@ import {
 } from './ServiceConnectionUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
+const BASIC_AUTH = 'Basic Auth';
+
 // The function adds all filter pattern fields to each nested connection field
 const mockExpectedHiddenFields = reduce(
   SERVICE_FILTER_PATTERN_FIELDS,
@@ -106,7 +108,7 @@ describe('getUISchemaWithAuthFieldsAsSelect', () => {
           authType: {
             oneOf: [
               {
-                title: 'Basic Auth',
+                title: BASIC_AUTH,
                 type: 'object',
               },
             ],
@@ -405,7 +407,7 @@ describe('flat credential auth synthesis', () => {
         authType: {
           oneOf: [
             {
-              title: 'Basic Auth',
+              title: BASIC_AUTH,
               properties: {
                 username: { type: 'string' },
                 password: { type: 'string', format: 'password' },
@@ -529,7 +531,7 @@ describe('flat credential auth synthesis', () => {
         authType: {
           oneOf: [
             {
-              title: 'Basic Auth',
+              title: BASIC_AUTH,
               properties: {
                 username: { type: 'string' },
                 password: { type: 'string', format: 'password' },
@@ -870,7 +872,7 @@ describe('getFieldSchemaForId', () => {
         title: 'Authentication Type',
         oneOf: [
           {
-            title: 'Basic Auth',
+            title: BASIC_AUTH,
             properties: {
               password: {
                 type: 'string',

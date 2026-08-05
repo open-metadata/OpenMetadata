@@ -37,13 +37,17 @@ import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SpreadsheetDetailsPage from './SpreadsheetDetailsPage';
 
+const TEST_SERVICE_TEST_SPREADSHEET = 'test-service.test-spreadsheet';
+const TEST_SPREADSHEET_ID = 'test-spreadsheet-id';
+const SPREADSHEET_DETAILS = 'spreadsheet-details';
+const TEST_SPREADSHEET = 'Test Spreadsheet';
 // Mock data
 const mockSpreadsheetDetails: Spreadsheet = {
-  id: 'test-spreadsheet-id',
+  id: TEST_SPREADSHEET_ID,
   name: 'test-spreadsheet',
-  displayName: 'Test Spreadsheet',
+  displayName: TEST_SPREADSHEET,
   description: 'Test spreadsheet description',
-  fullyQualifiedName: 'test-service.test-spreadsheet',
+  fullyQualifiedName: TEST_SERVICE_TEST_SPREADSHEET,
   deleted: false,
   version: 1,
   followers: [],
@@ -74,6 +78,7 @@ jest.mock('../../rest/driveAPI', () => ({
   addDriveAssetFollower: jest.fn().mockImplementation(() =>
     Promise.resolve({
       changeDescription: {
+        // eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
         fieldsAdded: [{ newValue: [{ id: 'test-user-id' }] }],
       },
     })
@@ -292,7 +297,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('spreadsheet-name')).toHaveTextContent(
@@ -317,7 +322,7 @@ describe('SpreadsheetDetailsPage', () => {
 
       expect(getEntityMissingError).toHaveBeenCalledWith(
         'spreadsheet',
-        'test-service.test-spreadsheet'
+        TEST_SERVICE_TEST_SPREADSHEET
       );
     });
 
@@ -372,7 +377,7 @@ describe('SpreadsheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
-          'test-service.test-spreadsheet',
+          TEST_SERVICE_TEST_SPREADSHEET,
           EntityType.SPREADSHEET,
           'owners,worksheets,followers,tags,domains,dataProducts,votes,extension,mimeType,createdTime,modifiedTime'
         );
@@ -384,12 +389,12 @@ describe('SpreadsheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(addToRecentViewed).toHaveBeenCalledWith({
-          displayName: 'Test Spreadsheet',
+          displayName: TEST_SPREADSHEET,
           entityType: EntityType.SPREADSHEET,
-          fqn: 'test-service.test-spreadsheet',
+          fqn: TEST_SERVICE_TEST_SPREADSHEET,
           serviceType: DriveServiceType.GoogleDrive,
           timestamp: 0,
-          id: 'test-spreadsheet-id',
+          id: TEST_SPREADSHEET_ID,
         });
       });
     });
@@ -398,7 +403,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -406,7 +411,7 @@ describe('SpreadsheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(patchDriveAssetDetails).toHaveBeenCalledWith(
-          'test-spreadsheet-id',
+          TEST_SPREADSHEET_ID,
           expect.any(Array),
           EntityType.SPREADSHEET
         );
@@ -421,7 +426,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -446,7 +451,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -454,7 +459,7 @@ describe('SpreadsheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(addDriveAssetFollower).toHaveBeenCalledWith(
-          'test-spreadsheet-id',
+          TEST_SPREADSHEET_ID,
           'test-user-id',
           EntityType.SPREADSHEET
         );
@@ -465,7 +470,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -473,7 +478,7 @@ describe('SpreadsheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(removeDriveAssetFollower).toHaveBeenCalledWith(
-          'test-spreadsheet-id',
+          TEST_SPREADSHEET_ID,
           'test-user-id',
           EntityType.SPREADSHEET
         );
@@ -488,7 +493,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -507,7 +512,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -532,7 +537,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -540,7 +545,7 @@ describe('SpreadsheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(updateDriveAssetVotes).toHaveBeenCalledWith(
-          'test-spreadsheet-id',
+          TEST_SPREADSHEET_ID,
           mockQueryVote,
           EntityType.SPREADSHEET
         );
@@ -548,7 +553,7 @@ describe('SpreadsheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
-          'test-service.test-spreadsheet',
+          TEST_SERVICE_TEST_SPREADSHEET,
           EntityType.SPREADSHEET,
           [
             TabSpecificField.OWNERS,
@@ -568,7 +573,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -593,7 +598,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const deleteButton = screen.getByTestId('delete-button');
@@ -618,7 +623,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');
@@ -627,7 +632,7 @@ describe('SpreadsheetDetailsPage', () => {
       await waitFor(() => {
         expect(getVersionPath).toHaveBeenCalledWith(
           EntityType.SPREADSHEET,
-          'test-service.test-spreadsheet',
+          TEST_SERVICE_TEST_SPREADSHEET,
           '1'
         );
         expect(mockNavigate).toHaveBeenCalledWith('/spreadsheet/version/1');
@@ -658,7 +663,7 @@ describe('SpreadsheetDetailsPage', () => {
       await waitFor(() => {
         expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
           'spreadsheet',
-          'test-service.test-spreadsheet'
+          TEST_SERVICE_TEST_SPREADSHEET
         );
       });
     });
@@ -721,7 +726,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
     });
 
@@ -737,7 +742,7 @@ describe('SpreadsheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('spreadsheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(SPREADSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');

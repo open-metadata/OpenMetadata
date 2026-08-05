@@ -19,6 +19,10 @@ import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList
 import i18n from '../../utils/i18next/LocalUtil';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
+const SIDE_PANEL_ICONS = 'side-panel-icons';
+const LABEL_TEST_CASE_PLURAL = 'label.test-case-plural';
+const LABEL_TEST_SUITE_PLURAL = 'label.test-suite-plural';
+
 export type DataQualityLeftSideBarType = {
   key: DataQualityPageTabs;
   id: string;
@@ -37,34 +41,34 @@ class DataQualityClassBase {
         label: i18n.t('label.summary'),
         icon: DashboardIcon,
         description: i18n.t('label.data-health-overview'),
-        iconProps: { className: 'side-panel-icons' },
+        iconProps: { className: SIDE_PANEL_ICONS },
       },
       {
         key: DataQualityPageTabs.TEST_CASES,
         label: i18n.t('label.by-entity', {
-          entity: i18n.t('label.test-case-plural'),
+          entity: i18n.t(LABEL_TEST_CASE_PLURAL),
         }),
         id: 'by-test-cases',
         description: i18n.t('label.data-health-by-entity', {
-          entity: i18n.t('label.test-case-plural'),
+          entity: i18n.t(LABEL_TEST_CASE_PLURAL),
         }),
         icon: TestCaseIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS,
         },
       },
       {
         key: DataQualityPageTabs.TEST_SUITES,
         label: i18n.t('label.by-entity', {
-          entity: i18n.t('label.test-suite-plural'),
+          entity: i18n.t(LABEL_TEST_SUITE_PLURAL),
         }),
         description: i18n.t('label.data-health-by-entity', {
-          entity: i18n.t('label.test-suite-plural'),
+          entity: i18n.t(LABEL_TEST_SUITE_PLURAL),
         }),
         id: 'by-test-suites',
         icon: TestSuiteIcon,
         iconProps: {
-          className: 'side-panel-icons',
+          className: SIDE_PANEL_ICONS,
         },
       },
     ];
@@ -80,12 +84,12 @@ class DataQualityClassBase {
       {
         key: DataQualityPageTabs.TEST_CASES,
         component: TestCases,
-        label: i18n.t('label.test-case-plural'),
+        label: i18n.t(LABEL_TEST_CASE_PLURAL),
       },
       {
         key: DataQualityPageTabs.TEST_SUITES,
         component: TestSuites,
-        label: i18n.t('label.test-suite-plural'),
+        label: i18n.t(LABEL_TEST_SUITE_PLURAL),
       },
     ];
   }

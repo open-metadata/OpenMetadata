@@ -29,6 +29,8 @@ import {
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 
+const LABEL_CERTIFICATION = 'label.certification';
+
 const CertificationWidget = () => {
   const {
     data: entity,
@@ -62,13 +64,13 @@ const CertificationWidget = () => {
     entity.certification ? (
       <WidgetEditButton
         data-testid="edit-certification"
-        title={t('label.edit-entity', { entity: t('label.certification') })}
+        title={t('label.edit-entity', { entity: t(LABEL_CERTIFICATION) })}
         onClick={() => setIsEditing(true)}
       />
     ) : (
       <WidgetPlusButton
         data-testid="add-certification"
-        title={t('label.add-entity', { entity: t('label.certification') })}
+        title={t('label.add-entity', { entity: t(LABEL_CERTIFICATION) })}
         onClick={() => setIsEditing(true)}
       />
     )
@@ -102,7 +104,7 @@ const CertificationWidget = () => {
       forceExpand={isEditing}
       headerExtra={headerExtra}
       isExpandDisabled={!entity.certification && !isEditing}
-      title={t('label.certification')}>
+      title={t(LABEL_CERTIFICATION)}>
       {content}
     </WidgetCard>
   );

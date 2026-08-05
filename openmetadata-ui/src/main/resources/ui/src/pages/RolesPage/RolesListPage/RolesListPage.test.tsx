@@ -16,6 +16,8 @@ import { ROUTES } from '../../../constants/constants';
 import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import RolesListPage from './RolesListPage';
 
+const ROLES_LIST_TABLE = 'roles-list-table';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
@@ -142,7 +144,7 @@ describe('Test Roles List Page', () => {
     const container = await screen.findByTestId('roles-list-container');
     const addRoleButton = await screen.findByTestId('add-role');
 
-    const rolesList = await screen.findByTestId('roles-list-table');
+    const rolesList = await screen.findByTestId(ROLES_LIST_TABLE);
 
     expect(container).toBeInTheDocument();
     expect(addRoleButton).toBeInTheDocument();
@@ -168,7 +170,7 @@ describe('Test Roles List Page', () => {
   it('Should render all table columns', async () => {
     render(<RolesListPage />);
 
-    const container = await screen.findByTestId('roles-list-table');
+    const container = await screen.findByTestId(ROLES_LIST_TABLE);
 
     const nameCol = await screen.findByText('label.name');
     const descriptionCol = await screen.findByText('label.description');
@@ -185,7 +187,7 @@ describe('Test Roles List Page', () => {
   it('Should render all table rows', async () => {
     render(<RolesListPage />);
 
-    const container = await screen.findByTestId('roles-list-table');
+    const container = await screen.findByTestId(ROLES_LIST_TABLE);
 
     const nameRows = await screen.findAllByTestId('role-name');
     const descriptionRows = await screen.findAllByTestId('viewer-container');

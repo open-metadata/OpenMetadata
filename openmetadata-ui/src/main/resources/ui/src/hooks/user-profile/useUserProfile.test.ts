@@ -15,6 +15,8 @@ import { renderHook } from '@testing-library/react-hooks';
 import { getUserByName } from '../../rest/userAPI';
 import { useUserProfile } from './useUserProfile';
 
+const BLOCKED_USER = 'blocked-user';
+
 jest.mock('../useApplicationStore', () => {
   const mockUpdateUserProfilePics = jest.fn();
   (globalThis as Record<string, unknown>).__mockUpdateUserProfilePics =
@@ -124,18 +126,16 @@ describe('useUserProfile hook', () => {
       response: { status: 403 },
     });
 
-    renderHook(() =>
-      useUserProfile({ permission: true, name: 'blocked-user' })
-    );
+    renderHook(() => useUserProfile({ permission: true, name: BLOCKED_USER }));
 
     await waitFor(() =>
       expect(
         (globalThis as Record<string, unknown>).__mockUpdateUserProfilePics
       ).toHaveBeenCalledWith({
-        id: 'blocked-user',
+        id: BLOCKED_USER,
         user: {
-          name: 'blocked-user',
-          id: 'blocked-user',
+          name: BLOCKED_USER,
+          id: BLOCKED_USER,
           email: '',
         },
       })

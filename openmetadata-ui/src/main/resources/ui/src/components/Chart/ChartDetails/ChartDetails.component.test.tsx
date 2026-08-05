@@ -23,6 +23,7 @@ const mockChartDetails: Chart = {
   id: 'test-chart-id',
   name: 'test-chart',
   displayName: 'Test Chart',
+  // eslint-disable-next-line sonarjs/no-duplicate-string -- duplicated inside jest.mock factory
   fullyQualifiedName: 'test.chart',
   description: 'Test chart description',
   version: 0.1,

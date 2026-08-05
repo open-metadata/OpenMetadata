@@ -14,6 +14,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { useScrollIndicator } from './useScrollIndicator.hook';
 
+const IS_SCROLLING = 'is-scrolling';
+
 describe('useScrollIndicator', () => {
   let mockContainer: HTMLDivElement;
 
@@ -148,13 +150,13 @@ describe('useScrollIndicator', () => {
     const scrollEvent = new Event('scroll');
     mockContainer.dispatchEvent(scrollEvent);
 
-    expect(mockContainer.classList.contains('is-scrolling')).toBe(true);
+    expect(mockContainer.classList.contains(IS_SCROLLING)).toBe(true);
 
     act(() => {
       jest.advanceTimersByTime(200);
     });
 
-    expect(mockContainer.classList.contains('is-scrolling')).toBe(false);
+    expect(mockContainer.classList.contains(IS_SCROLLING)).toBe(false);
   });
 
   it('should remove is-scrolling class on unmount', () => {
@@ -164,11 +166,11 @@ describe('useScrollIndicator', () => {
     const scrollEvent = new Event('scroll');
     mockContainer.dispatchEvent(scrollEvent);
 
-    expect(mockContainer.classList.contains('is-scrolling')).toBe(true);
+    expect(mockContainer.classList.contains(IS_SCROLLING)).toBe(true);
 
     unmount();
 
-    expect(mockContainer.classList.contains('is-scrolling')).toBe(false);
+    expect(mockContainer.classList.contains(IS_SCROLLING)).toBe(false);
   });
 
   it('should update when dependencies change', () => {

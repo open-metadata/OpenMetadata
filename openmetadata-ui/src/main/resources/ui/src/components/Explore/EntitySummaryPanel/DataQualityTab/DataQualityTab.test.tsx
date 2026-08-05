@@ -25,6 +25,22 @@ import { DataQualityTest } from '../../../common/DataQualitySection/DataQualityS
 import DataQualityTab from './DataQualityTab';
 import { MockTabItem, TranslationOptions } from './DataQualityTab.interface';
 
+const TEST_ENTITY_FQN = 'test.entity.fqn';
+const TEST_CASE_1 = 'test-case-1';
+const TEST_CASE_1_2 = 'Test Case 1';
+const TEST_ENTITY_FQN_COLUMNS_COLUMN1 = 'test.entity.fqn::columns::column1';
+const TEST_DEFINITION_1 = 'test-definition-1';
+const TEST_SUITE_1 = 'test-suite-1';
+const TEST_CASE_2 = 'Test Case 2';
+const TEST_ENTITY_FQN_COLUMNS_COLUMN2 = 'test.entity.fqn::columns::column2';
+const INCIDENT_1 = 'incident-1';
+const TEST_CASE_3 = 'Test Case 3';
+const DATA_QUALITY_SECTION = 'data-quality-section';
+const TEST_FAILED = 'test-failed';
+const TEST_ABORTED = 'test-aborted';
+const TAB_INCIDENTS = 'tab-incidents';
+const STAT_COUNT = 'stat-count';
+
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -197,10 +213,12 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
 }));
 
 // Mock API functions
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
@@ -218,6 +236,7 @@ jest.mock('../../../../utils/i18next/LocalUtil', () => ({
 
 jest.mock('../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => {
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     if (fqn?.includes('::columns::')) {
       return fqn.split('::columns::')[0];
     }
@@ -231,6 +250,7 @@ jest.mock('../../../../utils/TableUtils', () => ({
   generateEntityLink: jest.fn().mockReturnValue('test-entity-link'),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -277,58 +297,58 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   }),
 }));
 
-const mockEntityFQN = 'test.entity.fqn';
+const mockEntityFQN = TEST_ENTITY_FQN;
 
 const mockTestCases: TestCase[] = [
   {
-    id: 'test-case-1',
-    name: 'Test Case 1',
-    fullyQualifiedName: 'test.entity.fqn::columns::column1',
-    entityLink: 'test.entity.fqn::columns::column1',
+    id: TEST_CASE_1,
+    name: TEST_CASE_1_2,
+    fullyQualifiedName: TEST_ENTITY_FQN_COLUMNS_COLUMN1,
+    entityLink: TEST_ENTITY_FQN_COLUMNS_COLUMN1,
     testCaseResult: {
       testCaseStatus: TestCaseStatus.Success,
       timestamp: 1234567890,
     },
-    testDefinition: { id: 'test-definition-1' } as EntityReference,
-    testSuite: { id: 'test-suite-1' } as EntityReference,
+    testDefinition: { id: TEST_DEFINITION_1 } as EntityReference,
+    testSuite: { id: TEST_SUITE_1 } as EntityReference,
   },
   {
     id: 'test-case-2',
-    name: 'Test Case 2',
-    fullyQualifiedName: 'test.entity.fqn::columns::column2',
-    entityLink: 'test.entity.fqn::columns::column2',
+    name: TEST_CASE_2,
+    fullyQualifiedName: TEST_ENTITY_FQN_COLUMNS_COLUMN2,
+    entityLink: TEST_ENTITY_FQN_COLUMNS_COLUMN2,
     testCaseResult: {
       testCaseStatus: TestCaseStatus.Failed,
       timestamp: 1234567890,
     },
-    incidentId: 'incident-1',
-    testDefinition: { id: 'test-definition-1' } as EntityReference,
-    testSuite: { id: 'test-suite-1' } as EntityReference,
+    incidentId: INCIDENT_1,
+    testDefinition: { id: TEST_DEFINITION_1 } as EntityReference,
+    testSuite: { id: TEST_SUITE_1 } as EntityReference,
   },
   {
     id: 'test-case-3',
-    name: 'Test Case 3',
+    name: TEST_CASE_3,
     fullyQualifiedName: 'test.entity.fqn::columns::column3',
     entityLink: 'test.entity.fqn::columns::column3',
     testCaseResult: {
       testCaseStatus: TestCaseStatus.Aborted,
       timestamp: 1234567890,
     },
-    testDefinition: { id: 'test-definition-1' } as EntityReference,
-    testSuite: { id: 'test-suite-1' } as EntityReference,
+    testDefinition: { id: TEST_DEFINITION_1 } as EntityReference,
+    testSuite: { id: TEST_SUITE_1 } as EntityReference,
   },
 ];
 
 const mockIncidents: TestCaseResolutionStatus[] = [
   {
-    id: 'incident-1',
+    id: INCIDENT_1,
     testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
     testCaseReference: {
-      id: 'test-case-1',
+      id: TEST_CASE_1,
       type: 'testCase',
-      displayName: 'Test Case 1',
+      displayName: TEST_CASE_1_2,
       name: 'test_case_1',
-      fullyQualifiedName: 'test.entity.fqn::columns::column1',
+      fullyQualifiedName: TEST_ENTITY_FQN_COLUMNS_COLUMN1,
     },
     severity: Severities.Severity1,
     timestamp: 1234567890,
@@ -339,9 +359,9 @@ const mockIncidents: TestCaseResolutionStatus[] = [
     testCaseReference: {
       id: 'test-case-2',
       type: 'testCase',
-      displayName: 'Test Case 2',
+      displayName: TEST_CASE_2,
       name: 'test_case_2',
-      fullyQualifiedName: 'test.entity.fqn::columns::column2',
+      fullyQualifiedName: TEST_ENTITY_FQN_COLUMNS_COLUMN2,
     },
     testCaseResolutionStatusDetails: {
       assignee: {
@@ -454,39 +474,39 @@ describe('DataQualityTab', () => {
 
     it('should render data quality section with correct test counts', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('total-tests')).toHaveTextContent('3');
       expect(screen.getByTestId('test-success')).toHaveTextContent('1');
-      expect(screen.getByTestId('test-failed')).toHaveTextContent('1');
-      expect(screen.getByTestId('test-aborted')).toHaveTextContent('1');
+      expect(screen.getByTestId(TEST_FAILED)).toHaveTextContent('1');
+      expect(screen.getByTestId(TEST_ABORTED)).toHaveTextContent('1');
     });
 
     it('should render test case cards', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       // By default, only success test cases are shown
-      expect(screen.getByText('Test Case 1')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_1_2)).toBeInTheDocument();
 
       // Click on failed filter to see failed test cases
-      const failedButton = screen.getByTestId('test-failed');
+      const failedButton = screen.getByTestId(TEST_FAILED);
       fireEvent.click(failedButton);
 
-      expect(screen.getByText('Test Case 2')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_2)).toBeInTheDocument();
 
       // Click on aborted filter to see aborted test cases
-      const abortedButton = screen.getByTestId('test-aborted');
+      const abortedButton = screen.getByTestId(TEST_ABORTED);
       fireEvent.click(abortedButton);
 
-      expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_3)).toBeInTheDocument();
     });
 
     it('should render test case status badges', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       // By default, only success test cases are shown (filter is 'success')
@@ -504,7 +524,7 @@ describe('DataQualityTab', () => {
       expect(testCaseStatusBadges).toHaveLength(1); // By default, only success test cases are shown
 
       // Click on failed filter to see failed test cases
-      const failedButton = screen.getByTestId('test-failed');
+      const failedButton = screen.getByTestId(TEST_FAILED);
       fireEvent.click(failedButton);
 
       // Wait for the filter to apply
@@ -522,20 +542,20 @@ describe('DataQualityTab', () => {
 
     it('should render column names for test cases', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       // By default, only success test cases are shown
       expect(screen.getByText('column1')).toBeInTheDocument();
 
       // Click on failed filter to see failed test cases
-      const failedButton = screen.getByTestId('test-failed');
+      const failedButton = screen.getByTestId(TEST_FAILED);
       fireEvent.click(failedButton);
 
       expect(screen.getByText('column2')).toBeInTheDocument();
 
       // Click on aborted filter to see aborted test cases
-      const abortedButton = screen.getByTestId('test-aborted');
+      const abortedButton = screen.getByTestId(TEST_ABORTED);
       fireEvent.click(abortedButton);
 
       expect(screen.getByText('column3')).toBeInTheDocument();
@@ -543,11 +563,11 @@ describe('DataQualityTab', () => {
 
     it('should render incident status for test cases with incidents', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       // Click on failed filter to see failed test cases (which have incidents)
-      const failedButton = screen.getByTestId('test-failed');
+      const failedButton = screen.getByTestId(TEST_FAILED);
       fireEvent.click(failedButton);
 
       expect(screen.getByText('Assigned')).toBeInTheDocument();
@@ -571,13 +591,13 @@ describe('DataQualityTab', () => {
 
     it('should filter test cases by success status', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       // Default filter is 'success', so only success test cases are visible initially
-      expect(screen.getByText('Test Case 1')).toBeInTheDocument();
-      expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
-      expect(screen.queryByText('Test Case 3')).not.toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_1_2)).toBeInTheDocument();
+      expect(screen.queryByText(TEST_CASE_2)).not.toBeInTheDocument();
+      expect(screen.queryByText(TEST_CASE_3)).not.toBeInTheDocument();
 
       // Click on success filter to see only success test cases
       const successButton = screen.getByTestId('test-success');
@@ -585,36 +605,36 @@ describe('DataQualityTab', () => {
 
       // Wait for the filter to apply and then check results
       await waitFor(() => {
-        expect(screen.getByText('Test Case 1')).toBeInTheDocument();
-        expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
-        expect(screen.queryByText('Test Case 3')).not.toBeInTheDocument();
+        expect(screen.getByText(TEST_CASE_1_2)).toBeInTheDocument();
+        expect(screen.queryByText(TEST_CASE_2)).not.toBeInTheDocument();
+        expect(screen.queryByText(TEST_CASE_3)).not.toBeInTheDocument();
       });
     });
 
     it('should filter test cases by failed status', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
-      const failedButton = screen.getByTestId('test-failed');
+      const failedButton = screen.getByTestId(TEST_FAILED);
       fireEvent.click(failedButton);
 
-      expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
-      expect(screen.getByText('Test Case 2')).toBeInTheDocument();
-      expect(screen.queryByText('Test Case 3')).not.toBeInTheDocument();
+      expect(screen.queryByText(TEST_CASE_1_2)).not.toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_2)).toBeInTheDocument();
+      expect(screen.queryByText(TEST_CASE_3)).not.toBeInTheDocument();
     });
 
     it('should filter test cases by aborted status', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
-      const abortedButton = screen.getByTestId('test-aborted');
+      const abortedButton = screen.getByTestId(TEST_ABORTED);
       fireEvent.click(abortedButton);
 
-      expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
-      expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
-      expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+      expect(screen.queryByText(TEST_CASE_1_2)).not.toBeInTheDocument();
+      expect(screen.queryByText(TEST_CASE_2)).not.toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_3)).toBeInTheDocument();
     });
 
     it('should show no test cases message when filter has no results', async () => {
@@ -624,16 +644,16 @@ describe('DataQualityTab', () => {
       // Create test cases with only success status
       const successOnlyTestCases = [
         {
-          id: 'test-case-1',
-          name: 'Test Case 1',
-          fullyQualifiedName: 'test.entity.fqn::columns::column1',
-          entityLink: 'test.entity.fqn::columns::column1',
+          id: TEST_CASE_1,
+          name: TEST_CASE_1_2,
+          fullyQualifiedName: TEST_ENTITY_FQN_COLUMNS_COLUMN1,
+          entityLink: TEST_ENTITY_FQN_COLUMNS_COLUMN1,
           testCaseResult: {
             testCaseStatus: TestCaseStatus.Success,
             timestamp: 1234567890,
           },
-          testDefinition: { id: 'test-definition-1' } as EntityReference,
-          testSuite: { id: 'test-suite-1' } as EntityReference,
+          testDefinition: { id: TEST_DEFINITION_1 } as EntityReference,
+          testSuite: { id: TEST_SUITE_1 } as EntityReference,
         },
       ];
 
@@ -652,12 +672,12 @@ describe('DataQualityTab', () => {
       // Wait for component to load first
       await waitFor(() => {
         expect(
-          screen.getAllByTestId('data-quality-section')[0]
+          screen.getAllByTestId(DATA_QUALITY_SECTION)[0]
         ).toBeInTheDocument();
       });
 
       // Click on failed filter - should show no results message
-      const failedButtons = screen.getAllByTestId('test-failed');
+      const failedButtons = screen.getAllByTestId(TEST_FAILED);
       const failedButtonWithZeroCount = failedButtons.find(
         (button) => button.textContent === '0'
       );
@@ -687,20 +707,20 @@ describe('DataQualityTab', () => {
 
     it('should render both data quality and incidents tabs', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('tab-data-quality')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-incidents')).toBeInTheDocument();
+      expect(screen.getByTestId(TAB_INCIDENTS)).toBeInTheDocument();
     });
 
     it('should switch to incidents tab', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       const incidentsTab = screen
-        .getByTestId('tab-incidents')
+        .getByTestId(TAB_INCIDENTS)
         .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
 
@@ -711,11 +731,11 @@ describe('DataQualityTab', () => {
 
     it('should switch back to data quality tab', async () => {
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       const incidentsTab = screen
-        .getByTestId('tab-incidents')
+        .getByTestId(TAB_INCIDENTS)
         .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
 
@@ -724,7 +744,7 @@ describe('DataQualityTab', () => {
         .querySelector('button') as HTMLElement;
       fireEvent.click(dataQualityTab);
 
-      expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
     });
   });
 
@@ -744,11 +764,11 @@ describe('DataQualityTab', () => {
 
       // Wait for component to load and then switch to incidents tab
       await waitFor(() => {
-        screen.getByTestId('data-quality-section');
+        screen.getByTestId(DATA_QUALITY_SECTION);
       });
 
       const incidentsTab = screen
-        .getByTestId('tab-incidents')
+        .getByTestId(TAB_INCIDENTS)
         .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
     });
@@ -766,7 +786,7 @@ describe('DataQualityTab', () => {
 
         return (
           content === '1' &&
-          className.includes('stat-count') &&
+          className.includes(STAT_COUNT) &&
           className.includes('new')
         );
       });
@@ -779,7 +799,7 @@ describe('DataQualityTab', () => {
 
         return (
           content === '1' &&
-          className.includes('stat-count') &&
+          className.includes(STAT_COUNT) &&
           className.includes('assigned')
         );
       });
@@ -792,7 +812,7 @@ describe('DataQualityTab', () => {
 
         return (
           content === '0' &&
-          className.includes('stat-count') &&
+          className.includes(STAT_COUNT) &&
           className.includes('ack')
         );
       });
@@ -826,7 +846,7 @@ describe('DataQualityTab', () => {
       const newButton = screen.getByRole('button', { name: /label.new/ });
       fireEvent.click(newButton);
 
-      expect(screen.getByText('Test Case 1')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_1_2)).toBeInTheDocument();
     });
 
     it('should filter incidents by assigned status', () => {
@@ -835,7 +855,7 @@ describe('DataQualityTab', () => {
       });
       fireEvent.click(assignedButton);
 
-      expect(screen.getByText('Test Case 2')).toBeInTheDocument();
+      expect(screen.getByText(TEST_CASE_2)).toBeInTheDocument();
     });
 
     it('should render assignee information for assigned incidents', () => {
@@ -923,16 +943,16 @@ describe('DataQualityTab', () => {
     it('should handle test cases with missing data', async () => {
       const incompleteTestCases = [
         {
-          id: 'test-case-1',
-          name: 'Test Case 1',
-          fullyQualifiedName: 'test.entity.fqn',
-          entityLink: 'test.entity.fqn',
+          id: TEST_CASE_1,
+          name: TEST_CASE_1_2,
+          fullyQualifiedName: TEST_ENTITY_FQN,
+          entityLink: TEST_ENTITY_FQN,
           testCaseResult: {
             testCaseStatus: TestCaseStatus.Success,
             timestamp: 1234567890,
           },
-          testDefinition: { id: 'test-definition-1' } as EntityReference,
-          testSuite: { id: 'test-suite-1' } as EntityReference,
+          testDefinition: { id: TEST_DEFINITION_1 } as EntityReference,
+          testSuite: { id: TEST_SUITE_1 } as EntityReference,
         },
       ];
 
@@ -949,21 +969,21 @@ describe('DataQualityTab', () => {
       render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Test Case 1')).toBeInTheDocument();
+        expect(screen.getByText(TEST_CASE_1_2)).toBeInTheDocument();
       });
     });
 
     it('should handle incidents with missing assignee', async () => {
       const incidentsWithoutAssignee = [
         {
-          id: 'incident-1',
+          id: INCIDENT_1,
           testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
           testCaseReference: {
-            id: 'test-case-1',
+            id: TEST_CASE_1,
             type: 'testCase',
-            displayName: 'Test Case 1',
+            displayName: TEST_CASE_1_2,
             name: 'test_case_1',
-            fullyQualifiedName: 'test.entity.fqn::columns::column1',
+            fullyQualifiedName: TEST_ENTITY_FQN_COLUMNS_COLUMN1,
           },
           severity: Severities.Severity1,
           timestamp: 1234567890,
@@ -987,7 +1007,7 @@ describe('DataQualityTab', () => {
 
       await waitFor(() => {
         const incidentsTab = screen
-          .getByTestId('tab-incidents')
+          .getByTestId(TAB_INCIDENTS)
           .querySelector('button') as HTMLElement;
         fireEvent.click(incidentsTab);
 
@@ -1019,11 +1039,11 @@ describe('DataQualityTab', () => {
 
       // Wait for component to load first
       await waitFor(() => {
-        expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_QUALITY_SECTION)).toBeInTheDocument();
       });
 
       const incidentsTab = screen
-        .getByTestId('tab-incidents')
+        .getByTestId(TAB_INCIDENTS)
         .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
 

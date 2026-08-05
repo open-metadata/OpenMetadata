@@ -20,6 +20,8 @@ import {
   TableProfilerProvider,
 } from './TableProfilerProvider';
 
+const TEST_CASES_COUNT = 'test-cases-count';
+
 // Mock dependencies
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest
@@ -224,14 +226,14 @@ describe('TableProfilerProvider', () => {
 
       // Wait for component to initialize
       await waitFor(() => {
-        expect(screen.getByTestId('test-cases-count')).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_CASES_COUNT)).toBeInTheDocument();
       });
 
       // Initial state should be empty
       expect(screen.getByTestId('table-test-suite')).toHaveTextContent(
         'no-test-suite'
       );
-      expect(screen.getByTestId('test-cases-count')).toHaveTextContent('0');
+      expect(screen.getByTestId(TEST_CASES_COUNT)).toHaveTextContent('0');
       expect(screen.getByTestId('paging-total')).toHaveTextContent('0');
     });
 
@@ -247,7 +249,7 @@ describe('TableProfilerProvider', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-cases-count')).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_CASES_COUNT)).toBeInTheDocument();
         expect(screen.getByTestId('paging-total')).toBeInTheDocument();
         expect(screen.getByTestId('table-test-suite')).toBeInTheDocument();
       });

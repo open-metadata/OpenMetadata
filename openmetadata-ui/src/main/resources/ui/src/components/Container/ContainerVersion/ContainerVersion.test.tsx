@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { containerVersionMockProps } from '../../../mocks/ContainerVersion.mock';
 import ContainerVersion from './ContainerVersion.component';
 
+const LABEL_CUSTOM_PROPERTY_PLURAL = 'label.custom-property-plural';
+
 const mockNavigate = jest.fn();
 
 jest.mock(
@@ -84,7 +86,7 @@ describe('ContainerVersion tests', () => {
     const description = screen.getByText('Description');
     const schemaTabLabel = screen.getByText('label.schema');
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const entityVersionTimeLine = screen.getByText('EntityVersionTimeLine');
     const versionTable = screen.getByText('VersionTable');
@@ -114,7 +116,7 @@ describe('ContainerVersion tests', () => {
     );
     const schemaTabLabel = screen.queryByText('label.schema');
     const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const versionTable = screen.queryByText('VersionTable');
 
@@ -134,7 +136,7 @@ describe('ContainerVersion tests', () => {
     });
 
     const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
+      LABEL_CUSTOM_PROPERTY_PLURAL
     );
     const versionTable = screen.getByText('VersionTable');
 

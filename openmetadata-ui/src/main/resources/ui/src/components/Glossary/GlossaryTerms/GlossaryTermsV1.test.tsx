@@ -25,6 +25,9 @@ import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
+const GLOSSARY_TERM = 'glossary-term' as const;
+const LABEL_OVERVIEW = 'label.overview' as const;
+
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -156,15 +159,15 @@ describe('Test Glossary-term component', () => {
   it('Should render overview tab when activeTab is undefined', async () => {
     render(<GlossaryTerms {...mockProps} />);
 
-    expect(screen.getByTestId('glossary-term')).toBeInTheDocument();
+    expect(screen.getByTestId(GLOSSARY_TERM)).toBeInTheDocument();
 
     const tabs = await screen.findAllByRole('tab');
 
     expect(tabs).toHaveLength(7);
-    expect(tabs[0].textContent).toBe('label.overview');
+    expect(tabs[0].textContent).toBe(LABEL_OVERVIEW);
 
     tabs
-      .filter((tab) => tab.textContent !== 'label.overview')
+      .filter((tab) => tab.textContent !== LABEL_OVERVIEW)
       .forEach((tab) => {
         expect(tab).not.toHaveAttribute('aria-selected', 'true');
       });
@@ -187,7 +190,7 @@ describe('Test Glossary-term component', () => {
 
     expect(tabs).toHaveLength(7);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
-      'label.overview',
+      LABEL_OVERVIEW,
       'label.glossary-term-plural2',
       'label.asset-plural0',
       'label.activity-feed-and-task-plural0',
@@ -210,7 +213,7 @@ describe('Test Glossary-term component', () => {
 
     render(<GlossaryTerms {...mockProps} />);
 
-    await screen.findByTestId('glossary-term');
+    await screen.findByTestId(GLOSSARY_TERM);
 
     expect(spy).toHaveBeenCalled();
     expect(spy.mock.calls[0][0]).not.toHaveProperty('onExtensionUpdate');
@@ -233,7 +236,7 @@ describe('Test Glossary-term component', () => {
 
     render(<GlossaryTerms {...mockProps} isVersionView={false} />);
 
-    await screen.findByTestId('glossary-term');
+    await screen.findByTestId(GLOSSARY_TERM);
 
     expect(fetchTaskCountsSpy).toHaveBeenCalled();
     expect(fetchActivityCountSpy).toHaveBeenCalled();
@@ -257,7 +260,7 @@ describe('Test Glossary-term component', () => {
 
     render(<GlossaryTerms {...mockProps} isVersionView />);
 
-    await screen.findByTestId('glossary-term');
+    await screen.findByTestId(GLOSSARY_TERM);
 
     expect(fetchTaskCountsSpy).not.toHaveBeenCalled();
     expect(fetchActivityCountSpy).not.toHaveBeenCalled();

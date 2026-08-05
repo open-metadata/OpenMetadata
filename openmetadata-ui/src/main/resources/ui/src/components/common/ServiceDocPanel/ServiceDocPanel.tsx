@@ -43,6 +43,12 @@ import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
+
+const LABEL_CONNECTION = 'label.connection' as const;
+const LABEL_SCOPE_AND_OPTION_PLURAL = 'label.scope-and-option-plural' as const;
+const LABEL_ADVANCED_CONFIG = 'label.advanced-config' as const;
+const MESSAGE_OPENMETADATA_DOCS_DESCRIPTION =
+  'message.openmetadata-docs-description' as const;
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -87,10 +93,10 @@ const NESTED_FOCUS_FIELDS = new Set([
 const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);
 
 const SECTION_EYEBROW_LABELS: Record<ConnectionFieldSection, string> = {
-  connection: 'label.connection',
+  connection: LABEL_CONNECTION,
   authentication: 'label.authentication',
-  scope: 'label.scope-and-option-plural',
-  advanced: 'label.advanced-config',
+  scope: LABEL_SCOPE_AND_OPTION_PLURAL,
+  advanced: LABEL_ADVANCED_CONFIG,
 };
 
 type FocusedSection = ConnectionFieldSection | 'identity';
@@ -105,7 +111,7 @@ const SECTION_DOC_COPY: Record<
     description: 'message.identity-doc-description',
   },
   connection: {
-    eyebrow: 'label.connection',
+    eyebrow: LABEL_CONNECTION,
     title: 'message.connection-doc-title',
     description: 'message.connection-doc-description',
   },
@@ -115,12 +121,12 @@ const SECTION_DOC_COPY: Record<
     description: 'message.authentication-doc-description',
   },
   scope: {
-    eyebrow: 'label.scope-and-option-plural',
+    eyebrow: LABEL_SCOPE_AND_OPTION_PLURAL,
     title: 'message.scope-doc-title',
     description: 'message.scope-doc-description',
   },
   advanced: {
-    eyebrow: 'label.advanced-config',
+    eyebrow: LABEL_ADVANCED_CONFIG,
     title: 'message.advanced-doc-title',
     description: 'message.advanced-doc-description',
   },
@@ -159,13 +165,13 @@ const getSectionEyebrow = (
   t: TFunction,
   resolvedSection?: ConnectionFieldSection
 ): string => {
-  let eyebrow = t('label.connection');
+  let eyebrow = t(LABEL_CONNECTION);
   if (resolvedSection) {
     eyebrow = t(SECTION_EYEBROW_LABELS[resolvedSection]);
   } else if (fieldName && LINEAGE_FIELDS.has(fieldName)) {
-    eyebrow = t('label.advanced-config');
+    eyebrow = t(LABEL_ADVANCED_CONFIG);
   } else if (fieldName && OPTIONAL_SCOPE_PROPERTIES.has(fieldName)) {
-    eyebrow = t('label.scope-and-option-plural');
+    eyebrow = t(LABEL_SCOPE_AND_OPTION_PLURAL);
   } else if (isWorkflow) {
     eyebrow = t('label.configuration');
   }
@@ -705,7 +711,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         title: activeFieldMeta?.title ?? startCase(activeFieldName),
         description:
           activeFieldMeta?.description ??
-          t('message.openmetadata-docs-description'),
+          t(MESSAGE_OPENMETADATA_DOCS_DESCRIPTION),
         markdown: '',
         showRequirements: false,
       };
@@ -724,7 +730,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       description:
         fieldBody || fieldTitle
           ? t('message.focused-docs-fallback-description')
-          : t('message.openmetadata-docs-description'),
+          : t(MESSAGE_OPENMETADATA_DOCS_DESCRIPTION),
       markdown: fieldBody,
       showRequirements: !activeFieldName,
     };
@@ -814,7 +820,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
               <ArrowUpRight size={15} />
             </a>
             <span className="tw:text-xs tw:text-tertiary">
-              {t('message.openmetadata-docs-description')}
+              {t(MESSAGE_OPENMETADATA_DOCS_DESCRIPTION)}
             </span>
           </div>
         </div>

@@ -64,6 +64,16 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { deriveCardinality } from '../../utils/Glossary/glossaryTermRelationUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
+const LABEL_GLOSSARY_TERM_RELATION_PLURAL =
+  'label.glossary-term-relation-plural';
+const LABEL_UNLIMITED = 'label.unlimited';
+const LABEL_FIELD_REQUIRED = 'label.field-required';
+const LABEL_NAME = 'label.name';
+const LABEL_RELATION_TYPE = 'label.relation-type';
+const LABEL_DISPLAY_NAME = 'label.display-name';
+const LABEL_CARDINALITY = 'label.cardinality';
+const LABEL_ENTER_ENTITY = 'label.enter-entity';
+
 const CATEGORY_BADGE_COLORS: Record<
   string,
   'success' | 'blue' | 'purple' | 'gray'
@@ -154,7 +164,7 @@ function GlossaryTermRelationSettingsPage() {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.GOVERNANCE,
-        t('label.glossary-term-relation-plural')
+        t(LABEL_GLOSSARY_TERM_RELATION_PLURAL)
       ),
     [t]
   );
@@ -240,8 +250,8 @@ function GlossaryTermRelationSettingsPage() {
         );
       }
 
-      const sourceLabel = relation.sourceMax ?? t('label.unlimited');
-      const targetLabel = relation.targetMax ?? t('label.unlimited');
+      const sourceLabel = relation.sourceMax ?? t(LABEL_UNLIMITED);
+      const targetLabel = relation.targetMax ?? t(LABEL_UNLIMITED);
 
       return (
         <div className="tw:flex tw:flex-col tw:gap-1">
@@ -290,7 +300,7 @@ function GlossaryTermRelationSettingsPage() {
     const errors: Record<string, string> = {};
 
     if (!formValues.name) {
-      errors.name = t('label.field-required', { field: t('label.name') });
+      errors.name = t(LABEL_FIELD_REQUIRED, { field: t(LABEL_NAME) });
     } else if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(formValues.name)) {
       errors.name = t('message.must-start-with-letter-alphanumeric');
     } else if (
@@ -301,19 +311,19 @@ function GlossaryTermRelationSettingsPage() {
       )
     ) {
       errors.name = t('message.entity-already-exists', {
-        entity: t('label.relation-type'),
+        entity: t(LABEL_RELATION_TYPE),
       });
     }
 
     if (!formValues.displayName) {
-      errors.displayName = t('label.field-required', {
-        field: t('label.display-name'),
+      errors.displayName = t(LABEL_FIELD_REQUIRED, {
+        field: t(LABEL_DISPLAY_NAME),
       });
     }
 
     if (!formValues.cardinality) {
-      errors.cardinality = t('label.field-required', {
-        field: t('label.cardinality'),
+      errors.cardinality = t(LABEL_FIELD_REQUIRED, {
+        field: t(LABEL_CARDINALITY),
       });
     }
 
@@ -335,7 +345,7 @@ function GlossaryTermRelationSettingsPage() {
       showErrorToast(
         error as AxiosError,
         t('server.entity-fetch-error', {
-          entity: t('label.glossary-term-relation-plural'),
+          entity: t(LABEL_GLOSSARY_TERM_RELATION_PLURAL),
         })
       );
     } finally {
@@ -371,7 +381,7 @@ function GlossaryTermRelationSettingsPage() {
         await deleteGlossaryTermRelationType(relationType.name);
         showSuccessToast(
           t('server.entity-deleted-success', {
-            entity: t('label.relation-type'),
+            entity: t(LABEL_RELATION_TYPE),
           })
         );
 
@@ -388,7 +398,7 @@ function GlossaryTermRelationSettingsPage() {
         showErrorToast(
           error as AxiosError,
           t('server.delete-entity-error', {
-            entity: t('label.relation-type'),
+            entity: t(LABEL_RELATION_TYPE),
           })
         );
       } finally {
@@ -420,7 +430,7 @@ function GlossaryTermRelationSettingsPage() {
       setIsModalOpen(false);
       showSuccessToast(
         t('server.update-entity-success', {
-          entity: t('label.relation-type'),
+          entity: t(LABEL_RELATION_TYPE),
         })
       );
 
@@ -441,14 +451,14 @@ function GlossaryTermRelationSettingsPage() {
         setFormErrors((previousErrors) => ({
           ...previousErrors,
           name: t('message.entity-already-exists', {
-            entity: t('label.relation-type'),
+            entity: t(LABEL_RELATION_TYPE),
           }),
         }));
       } else {
         showErrorToast(
           apiError,
           t('server.update-entity-error', {
-            entity: t('label.relation-type'),
+            entity: t(LABEL_RELATION_TYPE),
           })
         );
       }
@@ -497,14 +507,14 @@ function GlossaryTermRelationSettingsPage() {
   }, [fetchRelationTypes]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.glossary-term-relation-plural')}>
+    <PageLayoutV1 pageTitle={t(LABEL_GLOSSARY_TERM_RELATION_PLURAL)}>
       <div className="tw:flex tw:flex-col tw:gap-4 tw:w-full tw:min-w-0">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
 
         <Card className="tw:flex tw:items-center tw:justify-between tw:p-6">
           <div className="tw:flex tw:flex-col tw:gap-1">
             <Typography as="h4" className="tw:font-semibold">
-              {t('label.glossary-term-relation-plural')}
+              {t(LABEL_GLOSSARY_TERM_RELATION_PLURAL)}
             </Typography>
             <Typography
               as="p"
@@ -519,7 +529,7 @@ function GlossaryTermRelationSettingsPage() {
               size="sm"
               onClick={handleAddNew}>
               {t('label.add-entity', {
-                entity: t('label.relation-type'),
+                entity: t(LABEL_RELATION_TYPE),
               })}
             </Button>
           )}
@@ -533,7 +543,7 @@ function GlossaryTermRelationSettingsPage() {
           ) : (
             <TableCard.Root size="sm">
               <Table
-                aria-label={t('label.glossary-term-relation-plural')}
+                aria-label={t(LABEL_GLOSSARY_TERM_RELATION_PLURAL)}
                 data-testid="relation-types-table">
                 <Table.Header>
                   <Table.Head isRowHeader id="col-name">
@@ -542,7 +552,7 @@ function GlossaryTermRelationSettingsPage() {
                       className="tw:text-gray-500 tw:whitespace-nowrap"
                       size="text-sm"
                       weight="regular">
-                      {t('label.name')}
+                      {t(LABEL_NAME)}
                     </Typography>
                   </Table.Head>
                   <Table.Head id="col-display-name">
@@ -551,7 +561,7 @@ function GlossaryTermRelationSettingsPage() {
                       className="tw:text-gray-500 tw:whitespace-nowrap"
                       size="text-sm"
                       weight="regular">
-                      {t('label.display-name')}
+                      {t(LABEL_DISPLAY_NAME)}
                     </Typography>
                   </Table.Head>
                   <Table.Head id="col-category">
@@ -596,7 +606,7 @@ function GlossaryTermRelationSettingsPage() {
                       className="tw:text-gray-500 tw:whitespace-nowrap"
                       size="text-sm"
                       weight="regular">
-                      {t('label.cardinality')}
+                      {t(LABEL_CARDINALITY)}
                     </Typography>
                   </Table.Head>
                   <Table.Head id="col-color">
@@ -771,10 +781,10 @@ function GlossaryTermRelationSettingsPage() {
                 <Typography as="h4">
                   {editingRelation
                     ? t('label.edit-entity', {
-                        entity: t('label.relation-type'),
+                        entity: t(LABEL_RELATION_TYPE),
                       })
                     : t('label.add-entity', {
-                        entity: t('label.relation-type'),
+                        entity: t(LABEL_RELATION_TYPE),
                       })}
                 </Typography>
               </SlideoutMenu.Header>
@@ -789,9 +799,9 @@ function GlossaryTermRelationSettingsPage() {
                     hint={formErrors.name}
                     isDisabled={Boolean(editingRelation)}
                     isInvalid={Boolean(formErrors.name)}
-                    label={t('label.name')}
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.name'),
+                    label={t(LABEL_NAME)}
+                    placeholder={t(LABEL_ENTER_ENTITY, {
+                      entity: t(LABEL_NAME),
                     })}
                     value={formValues.name ?? ''}
                     onChange={(value) => updateFormField('name', value)}
@@ -801,9 +811,9 @@ function GlossaryTermRelationSettingsPage() {
                     data-testid="display-name-input"
                     hint={formErrors.displayName}
                     isInvalid={Boolean(formErrors.displayName)}
-                    label={t('label.display-name')}
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.display-name'),
+                    label={t(LABEL_DISPLAY_NAME)}
+                    placeholder={t(LABEL_ENTER_ENTITY, {
+                      entity: t(LABEL_DISPLAY_NAME),
                     })}
                     value={formValues.displayName ?? ''}
                     onChange={(value) => updateFormField('displayName', value)}
@@ -812,7 +822,7 @@ function GlossaryTermRelationSettingsPage() {
                   <TextArea
                     data-testid="description-input"
                     label={t('label.description')}
-                    placeholder={t('label.enter-entity', {
+                    placeholder={t(LABEL_ENTER_ENTITY, {
                       entity: t('label.description'),
                     })}
                     rows={3}
@@ -838,7 +848,7 @@ function GlossaryTermRelationSettingsPage() {
                   <Input
                     data-testid="inverse-relation-input"
                     label={t('label.inverse-relation')}
-                    placeholder={t('label.enter-entity', {
+                    placeholder={t(LABEL_ENTER_ENTITY, {
                       entity: t('label.inverse-relation'),
                     })}
                     tooltip={t('message.inverse-relation-tooltip')}
@@ -872,7 +882,7 @@ function GlossaryTermRelationSettingsPage() {
                     hint={formErrors.cardinality}
                     isInvalid={Boolean(formErrors.cardinality)}
                     items={cardinalityOptions}
-                    label={t('label.cardinality')}
+                    label={t(LABEL_CARDINALITY)}
                     value={formValues.cardinality ?? null}
                     onChange={(key: Key | null) =>
                       key &&
@@ -889,7 +899,7 @@ function GlossaryTermRelationSettingsPage() {
                       <Input
                         data-testid="source-max-input"
                         label={`${t('label.source')} ${t('label.max')}`}
-                        placeholder={t('label.unlimited')}
+                        placeholder={t(LABEL_UNLIMITED)}
                         type="number"
                         value={
                           formValues.sourceMax == null
@@ -906,7 +916,7 @@ function GlossaryTermRelationSettingsPage() {
                       <Input
                         data-testid="target-max-input"
                         label={`${t('label.target')} ${t('label.max')}`}
-                        placeholder={t('label.unlimited')}
+                        placeholder={t(LABEL_UNLIMITED)}
                         type="number"
                         value={
                           formValues.targetMax == null

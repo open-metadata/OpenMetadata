@@ -18,6 +18,8 @@ import { mockPipelineActionsProps } from '../../../../../../mocks/IngestionListT
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import PipelineActions from './PipelineActions';
 
+const LABEL_RESUME = 'label.resume';
+
 const mockOpenLogs = jest.fn();
 
 jest.mock('../../../../../../hooks/useLogsModal', () => ({
@@ -99,7 +101,7 @@ describe('PipelineAction', () => {
     });
 
     expect(screen.queryByText('label.pause')).toBeNull();
-    expect(screen.queryByText('label.resume')).toBeNull();
+    expect(screen.queryByText(LABEL_RESUME)).toBeNull();
   });
 
   it('should render pause or resume button if editStatus permission is present', async () => {
@@ -118,7 +120,7 @@ describe('PipelineAction', () => {
       );
     });
 
-    expect(screen.getByText('label.resume')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_RESUME)).toBeInTheDocument();
   });
 
   it('should render pause button if pipeline is enabled', async () => {
@@ -161,7 +163,7 @@ describe('PipelineAction', () => {
       });
     });
 
-    const resumeButton = screen.getByText('label.resume');
+    const resumeButton = screen.getByText(LABEL_RESUME);
 
     fireEvent.click(resumeButton);
 

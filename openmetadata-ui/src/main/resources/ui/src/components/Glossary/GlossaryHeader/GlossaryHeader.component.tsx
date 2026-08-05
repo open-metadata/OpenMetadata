@@ -78,6 +78,9 @@ import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.comp
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 import './glossery-header.less';
+
+const LABEL_GLOSSARY_TERM = 'label.glossary-term' as const;
+const LABEL_GLOSSARY = 'label.glossary' as const;
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
@@ -276,7 +279,7 @@ const GlossaryHeader = ({
 
   const addButtonContent = [
     {
-      label: t('label.glossary-term'),
+      label: t(LABEL_GLOSSARY_TERM),
       key: '1',
       onClick: handleAddGlossaryTermClick,
     },
@@ -361,8 +364,8 @@ const GlossaryHeader = ({
               <ManageButtonItemLabel
                 description={t('message.rename-entity', {
                   entity: isGlossary
-                    ? t('label.glossary')
-                    : t('label.glossary-term'),
+                    ? t(LABEL_GLOSSARY)
+                    : t(LABEL_GLOSSARY_TERM),
                 })}
                 icon={EditIcon}
                 id="rename-button"
@@ -384,7 +387,7 @@ const GlossaryHeader = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.edit-entity-style-description', {
-                  entity: t('label.glossary-term'),
+                  entity: t(LABEL_GLOSSARY_TERM),
                 })}
                 icon={StyleIcon}
                 id="edit-style-button"
@@ -430,8 +433,8 @@ const GlossaryHeader = ({
                   'message.delete-entity-type-action-description',
                   {
                     entityType: isGlossary
-                      ? t('label.glossary')
-                      : t('label.glossary-term'),
+                      ? t(LABEL_GLOSSARY)
+                      : t(LABEL_GLOSSARY_TERM),
                   }
                 )}
                 icon={IconDelete}
@@ -618,8 +621,8 @@ const GlossaryHeader = ({
                     placement="topRight"
                     title={t('label.manage-entity', {
                       entity: isGlossary
-                        ? t('label.glossary')
-                        : t('label.glossary-term'),
+                        ? t(LABEL_GLOSSARY)
+                        : t(LABEL_GLOSSARY_TERM),
                     })}>
                     <Button
                       className="glossary-manage-dropdown-button"

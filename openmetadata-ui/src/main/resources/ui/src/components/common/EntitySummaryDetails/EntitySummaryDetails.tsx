@@ -32,6 +32,8 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './entity-summary-details.style.less';
 
+const LABEL_NO_ENTITY = 'label.no-entity' as const;
+
 export interface GetInfoElementsProps {
   data: ExtraInfo;
   tier?: TagLabel;
@@ -116,7 +118,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
             <span
               className="d-flex gap-1 items-center"
               data-testid="owner-link">
-              {t('label.no-entity', { entity: t('label.owner-plural') })}
+              {t(LABEL_NO_ENTITY, { entity: t('label.owner-plural') })}
             </span>
           );
       }
@@ -127,7 +129,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
       {
         retVal =
           !displayVal || displayVal === '--' ? (
-            <>{t('label.no-entity', { entity: t('label.tier') })}</>
+            <>{t(LABEL_NO_ENTITY, { entity: t('label.tier') })}</>
           ) : (
             <></>
           );
@@ -154,7 +156,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
           />
         ) : (
           <span className="d-flex gap-1 items-center" data-testid="owner-link">
-            {t('label.no-entity', { entity: t('label.domain-plural') })}
+            {t(LABEL_NO_ENTITY, { entity: t('label.domain-plural') })}
           </span>
         );
       }
@@ -169,7 +171,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
                 ? data.showLabel
                   ? `${t(`label.${toLower(data.key)}`)} - `
                   : null
-                : `${t('label.no-entity', {
+                : `${t(LABEL_NO_ENTITY, {
                     entity: t(
                       `label.${toLower(
                         data.localizationKey ? data.localizationKey : data.key

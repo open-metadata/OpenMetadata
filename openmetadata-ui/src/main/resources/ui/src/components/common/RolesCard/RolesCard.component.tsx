@@ -23,6 +23,7 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
 
+const LABEL_ROLE_PLURAL = 'label.role-plural';
 const RolesCard = ({
   roles,
   userData,
@@ -92,14 +93,14 @@ const RolesCard = ({
               data-testid="edit-roles"
               size="small"
               title={t('label.edit-entity', {
-                entity: t('label.role-plural'),
+                entity: t(LABEL_ROLE_PLURAL),
               })}
               onClick={() => setIsRolesEdit(true)}
             />
           )
         }
         key="roles-card"
-        title={t('label.role-plural')}>
+        title={t(LABEL_ROLE_PLURAL)}>
         <div className="mb-4">
           {isRolesEdit ? (
             <Space className="w-full" direction="vertical">
@@ -113,7 +114,7 @@ const RolesCard = ({
                 loading={isRolesLoading}
                 mode="multiple"
                 options={userRolesOption}
-                placeholder={`${t('label.role-plural')}...`}
+                placeholder={`${t(LABEL_ROLE_PLURAL)}...`}
                 onChange={handleOnRolesChange}
                 onSearch={searchRolesOptions}
               />
@@ -147,7 +148,7 @@ const RolesCard = ({
       <Card
         className="new-header-border-card"
         key="roles-card"
-        title={t('label.role-plural')}>
+        title={t(LABEL_ROLE_PLURAL)}>
         <div className="flex items-center justify-between mb-4">
           <RolesElement userData={userData} />
         </div>

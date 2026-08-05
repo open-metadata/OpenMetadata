@@ -23,6 +23,9 @@ import { getTags } from '../../../rest/tagAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCases } from './TestCases.component';
 
+const STATUS_SELECT_FILTER = 'status-select-filter';
+const TEST_CASE_CONTAINER = 'test-case-container';
+const ADVANCED_FILTER = 'advanced-filter';
 const mockTestCasePermission = {
   Create: true,
   Delete: true,
@@ -286,16 +289,16 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('test-case-container')
+        await screen.findByTestId(TEST_CASE_CONTAINER)
       ).toBeInTheDocument();
     });
 
     it('should render filter components', async () => {
       render(<TestCases />);
 
-      expect(await screen.findByTestId('advanced-filter')).toBeInTheDocument();
+      expect(await screen.findByTestId(ADVANCED_FILTER)).toBeInTheDocument();
       expect(
-        await screen.findByTestId('status-select-filter')
+        await screen.findByTestId(STATUS_SELECT_FILTER)
       ).toBeInTheDocument();
       expect(
         await screen.findByTestId('test-case-type-select-filter')
@@ -352,7 +355,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('test-case-container')
+        await screen.findByTestId(TEST_CASE_CONTAINER)
       ).toBeInTheDocument();
     });
 
@@ -366,7 +369,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('test-case-container')
+        await screen.findByTestId(TEST_CASE_CONTAINER)
       ).toBeInTheDocument();
     });
   });
@@ -429,21 +432,21 @@ describe('TestCases component', () => {
     it('should toggle filter selection when clicking advanced filter menu item', async () => {
       render(<TestCases />);
 
-      const advancedFilter = await screen.findByTestId('advanced-filter');
+      const advancedFilter = await screen.findByTestId(ADVANCED_FILTER);
 
       await act(async () => {
         fireEvent.click(advancedFilter);
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('advanced-filter')).toBeInTheDocument();
+        expect(screen.getByTestId(ADVANCED_FILTER)).toBeInTheDocument();
       });
     });
 
     it('should call navigate when filter value changes', async () => {
       render(<TestCases />);
 
-      const statusSelect = await screen.findByTestId('status-select-filter');
+      const statusSelect = await screen.findByTestId(STATUS_SELECT_FILTER);
 
       expect(statusSelect).toBeInTheDocument();
     });
@@ -582,7 +585,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-case-container')).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_CASE_CONTAINER)).toBeInTheDocument();
       });
     });
 
@@ -594,7 +597,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-case-container')).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_CASE_CONTAINER)).toBeInTheDocument();
       });
     });
 
@@ -604,7 +607,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('test-case-container')).toBeInTheDocument();
+        expect(screen.getByTestId(TEST_CASE_CONTAINER)).toBeInTheDocument();
       });
     });
   });
@@ -624,7 +627,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('status-select-filter')
+        await screen.findByTestId(STATUS_SELECT_FILTER)
       ).toBeInTheDocument();
       expect(
         await screen.findByTestId('test-case-type-select-filter')

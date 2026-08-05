@@ -55,6 +55,14 @@ import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPa
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
 
+const SERVER_PAGE_LAYOUT_OPERATION_SUCCESS =
+  'server.page-layout-operation-success';
+const LABEL_UPDATED_LOWERCASE = 'label.updated-lowercase';
+const LABEL_CREATED_LOWERCASE = 'label.created-lowercase';
+const SERVER_PAGE_LAYOUT_OPERATION_ERROR = 'server.page-layout-operation-error';
+const LABEL_UPDATING_LOWERCASE = 'label.updating-lowercase';
+const LABEL_CREATING_LOWERCASE = 'label.creating-lowercase';
+
 const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
   lazy(
     () =>
@@ -128,18 +136,18 @@ export const CustomizablePage = () => {
       setDocument(response);
 
       showSuccessToast(
-        t('server.page-layout-operation-success', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_SUCCESS, {
           operation: document.id
-            ? t('label.updated-lowercase')
-            : t('label.created-lowercase'),
+            ? t(LABEL_UPDATED_LOWERCASE)
+            : t(LABEL_CREATED_LOWERCASE),
         })
       );
     } catch {
       showErrorToast(
-        t('server.page-layout-operation-error', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_ERROR, {
           operation: document.id
-            ? t('label.updating-lowercase')
-            : t('label.creating-lowercase'),
+            ? t(LABEL_UPDATING_LOWERCASE)
+            : t(LABEL_CREATING_LOWERCASE),
         })
       );
     }
@@ -172,19 +180,19 @@ export const CustomizablePage = () => {
       setDocument(response);
 
       showSuccessToast(
-        t('server.page-layout-operation-success', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_SUCCESS, {
           operation: document.id
-            ? t('label.updated-lowercase')
-            : t('label.created-lowercase'),
+            ? t(LABEL_UPDATED_LOWERCASE)
+            : t(LABEL_CREATED_LOWERCASE),
         })
       );
     } catch {
       // Error
       showErrorToast(
-        t('server.page-layout-operation-error', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_ERROR, {
           operation: document.id
-            ? t('label.updating-lowercase')
-            : t('label.creating-lowercase'),
+            ? t(LABEL_UPDATING_LOWERCASE)
+            : t(LABEL_CREATING_LOWERCASE),
         })
       );
     }
@@ -240,19 +248,19 @@ export const CustomizablePage = () => {
       setDocument(response);
 
       showSuccessToast(
-        t('server.page-layout-operation-success', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_SUCCESS, {
           operation: document.id
-            ? t('label.updated-lowercase')
-            : t('label.created-lowercase'),
+            ? t(LABEL_UPDATED_LOWERCASE)
+            : t(LABEL_CREATED_LOWERCASE),
         })
       );
     } catch {
       // Error
       showErrorToast(
-        t('server.page-layout-operation-error', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_ERROR, {
           operation: document.id
-            ? t('label.updating-lowercase')
-            : t('label.creating-lowercase'),
+            ? t(LABEL_UPDATING_LOWERCASE)
+            : t(LABEL_CREATING_LOWERCASE),
         })
       );
     }
@@ -300,18 +308,18 @@ export const CustomizablePage = () => {
       setDocument(response);
 
       showSuccessToast(
-        t('server.page-layout-operation-success', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_SUCCESS, {
           operation: document.id
-            ? t('label.updated-lowercase')
-            : t('label.created-lowercase'),
+            ? t(LABEL_UPDATED_LOWERCASE)
+            : t(LABEL_CREATED_LOWERCASE),
         })
       );
     } catch {
       showErrorToast(
-        t('server.page-layout-operation-error', {
+        t(SERVER_PAGE_LAYOUT_OPERATION_ERROR, {
           operation: document.id
-            ? t('label.updating-lowercase')
-            : t('label.creating-lowercase'),
+            ? t(LABEL_UPDATING_LOWERCASE)
+            : t(LABEL_CREATING_LOWERCASE),
         })
       );
     }

@@ -10,6 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+const BUSINESS_REVENUE = 'Business.Revenue';
+const BUSINESS_CUSTOMER = 'Business.Customer';
+
 export const MOCK_TAG_OPTIONS = [
   {
     label: 'Personal',
@@ -49,20 +53,20 @@ export const MOCK_TAG_OPTIONS = [
 // fetchGlossaryList maps each hit to { label: fqn, value: fqn, data: term }.
 export const MOCK_GLOSSARY_OPTIONS = [
   {
-    label: 'Business.Revenue',
-    value: 'Business.Revenue',
+    label: BUSINESS_REVENUE,
+    value: BUSINESS_REVENUE,
     data: {
-      fullyQualifiedName: 'Business.Revenue',
+      fullyQualifiedName: BUSINESS_REVENUE,
       name: 'Revenue',
       displayName: 'Revenue',
       description: 'Revenue glossary term',
     },
   },
   {
-    label: 'Business.Customer',
-    value: 'Business.Customer',
+    label: BUSINESS_CUSTOMER,
+    value: BUSINESS_CUSTOMER,
     data: {
-      fullyQualifiedName: 'Business.Customer',
+      fullyQualifiedName: BUSINESS_CUSTOMER,
       name: 'Customer',
       displayName: 'Customer',
       description: 'Customer glossary term',

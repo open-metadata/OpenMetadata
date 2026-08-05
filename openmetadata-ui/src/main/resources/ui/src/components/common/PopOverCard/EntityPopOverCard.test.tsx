@@ -45,6 +45,9 @@ import { getTestCaseByFqn, getTestSuiteByName } from '../../../rest/testAPI';
 import { getUserByName } from '../../../rest/userAPI';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
 
+const TEST_ALERT = 'test-alert';
+const TEST_POLICY = 'test-policy';
+
 const updateCachedEntityData = jest.fn();
 
 jest.mock('../../../utils/FqnUtils', () => ({
@@ -374,7 +377,7 @@ describe('Test EntityPopoverCard component', () => {
   });
 
   it('EntityPopoverCard should call alerts API if entity type is EVENT_SUBSCRIPTION', async () => {
-    const mockAlertFQN = 'test-alert';
+    const mockAlertFQN = TEST_ALERT;
 
     await act(async () => {
       render(
@@ -412,8 +415,8 @@ describe('Test EntityPopoverCard component', () => {
   });
 
   it('EntityPopoverCard should call alerts API and trigger updateCachedEntityData', async () => {
-    const mockAlertFQN = 'test-alert';
-    const mockAlertData = { id: 'alert-id', name: 'test-alert' };
+    const mockAlertFQN = TEST_ALERT;
+    const mockAlertData = { id: 'alert-id', name: TEST_ALERT };
 
     (getAlertsFromName as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve(mockAlertData)
@@ -469,7 +472,7 @@ describe('Test EntityPopoverCard component', () => {
   });
 
   it('EntityPopoverCard should call policy API if entity type is POLICY', async () => {
-    const mockPolicyFQN = 'test-policy';
+    const mockPolicyFQN = TEST_POLICY;
 
     await act(async () => {
       render(
@@ -484,8 +487,8 @@ describe('Test EntityPopoverCard component', () => {
   });
 
   it('EntityPopoverCard should call policy API and trigger updateCachedEntityData', async () => {
-    const mockPolicyFQN = 'test-policy';
-    const mockPolicyData = { id: 'policy-id', name: 'test-policy' };
+    const mockPolicyFQN = TEST_POLICY;
+    const mockPolicyData = { id: 'policy-id', name: TEST_POLICY };
 
     (getPolicyByName as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve(mockPolicyData)

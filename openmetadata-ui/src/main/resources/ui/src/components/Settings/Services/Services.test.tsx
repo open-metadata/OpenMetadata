@@ -24,6 +24,8 @@ import { getServices, searchService } from '../../../rest/serviceAPI';
 import { ListView } from '../../common/ListView/ListView.component';
 import Services from './Services';
 
+const ADD_SERVICE_BUTTON = 'add-service-button';
+
 let isDescription = true;
 
 const mockService = {
@@ -304,7 +306,7 @@ describe('Services', () => {
       render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
     });
 
-    expect(await screen.findByTestId('add-service-button')).toBeInTheDocument();
+    expect(await screen.findByTestId(ADD_SERVICE_BUTTON)).toBeInTheDocument();
 
     expect(LimitWrapper).toHaveBeenCalledWith(
       expect.objectContaining({ resource: 'dataAssets' }),
@@ -317,7 +319,7 @@ describe('Services', () => {
       render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
     });
     await act(async () => {
-      fireEvent.click(await screen.findByTestId('add-service-button'));
+      fireEvent.click(await screen.findByTestId(ADD_SERVICE_BUTTON));
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('/pipelineServices/add-service');
@@ -377,7 +379,7 @@ describe('Services', () => {
       render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
     });
 
-    const addServiceButton = screen.getByTestId('add-service-button');
+    const addServiceButton = screen.getByTestId(ADD_SERVICE_BUTTON);
 
     expect(addServiceButton).toBeInTheDocument();
   });

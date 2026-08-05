@@ -21,6 +21,11 @@ import {
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
+const ENTITY_CUSTOM_PROPERTIES_TABLE = 'entity-custom-properties-table';
+const LABEL_NAME = 'label.name';
+const LABEL_TYPE = 'label.type';
+const LABEL_ACTION_PLURAL = 'label.action-plural';
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreview</p>);
 });
@@ -72,14 +77,14 @@ describe('Test CustomField Table Component', () => {
       <CustomPropertyTable {...mockProp} />
     );
 
-    const table = await findByTestId('entity-custom-properties-table');
+    const table = await findByTestId(ENTITY_CUSTOM_PROPERTIES_TABLE);
 
     expect(table).toBeInTheDocument();
 
-    const tableCellName = await findByText('label.name');
-    const tableCellType = await findByText('label.type');
+    const tableCellName = await findByText(LABEL_NAME);
+    const tableCellType = await findByText(LABEL_TYPE);
 
-    const tableCellActions = await findByText('label.action-plural');
+    const tableCellActions = await findByText(LABEL_ACTION_PLURAL);
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
@@ -95,13 +100,13 @@ describe('Test CustomField Table Component', () => {
     await act(async () => {
       render(<CustomPropertyTable {...mockProp} />);
     });
-    const table = await screen.findByTestId('entity-custom-properties-table');
+    const table = await screen.findByTestId(ENTITY_CUSTOM_PROPERTIES_TABLE);
 
     expect(table).toBeInTheDocument();
 
-    const tableCellName = await screen.findByText('label.name');
-    const tableCellType = await screen.findByText('label.type');
-    const tableCellActions = await screen.findByText('label.action-plural');
+    const tableCellName = await screen.findByText(LABEL_NAME);
+    const tableCellType = await screen.findByText(LABEL_TYPE);
+    const tableCellActions = await screen.findByText(LABEL_ACTION_PLURAL);
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();
@@ -138,14 +143,14 @@ describe('Test CustomField Table Component', () => {
       <CustomPropertyTable {...mockProp} customProperties={[]} />
     );
 
-    const table = await findByTestId('entity-custom-properties-table');
+    const table = await findByTestId(ENTITY_CUSTOM_PROPERTIES_TABLE);
 
     expect(table).toBeInTheDocument();
 
-    const tableCellName = await screen.findByText('label.name');
-    const tableCellType = await screen.findByText('label.type');
+    const tableCellName = await screen.findByText(LABEL_NAME);
+    const tableCellType = await screen.findByText(LABEL_TYPE);
 
-    const tableCellActions = await screen.findByText('label.action-plural');
+    const tableCellActions = await screen.findByText(LABEL_ACTION_PLURAL);
 
     expect(tableCellName).toBeInTheDocument();
     expect(tableCellType).toBeInTheDocument();

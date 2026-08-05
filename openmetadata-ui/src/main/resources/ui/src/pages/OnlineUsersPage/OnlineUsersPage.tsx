@@ -40,6 +40,8 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
+const LABEL_USER = 'label.user';
+
 const OnlineUsersPage = () => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -101,7 +103,7 @@ const OnlineUsersPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
-            entity: t('label.user'),
+            entity: t(LABEL_USER),
           })
         );
         setUserList([]);
@@ -146,7 +148,7 @@ const OnlineUsersPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
-            entity: t('label.user'),
+            entity: t(LABEL_USER),
           })
         );
         setUserList([]);
@@ -301,7 +303,7 @@ const OnlineUsersPage = () => {
             rowKey="id"
             searchProps={{
               placeholder: `${t('label.search-for-type', {
-                type: t('label.user'),
+                type: t(LABEL_USER),
               })}...`,
               searchValue: searchValue,
               typingInterval: 400,

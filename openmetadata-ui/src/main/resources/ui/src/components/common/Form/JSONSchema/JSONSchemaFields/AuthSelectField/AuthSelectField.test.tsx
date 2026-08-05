@@ -16,6 +16,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import AuthSelectField from './AuthSelectField';
 
+const SCHEMA_FIELD = 'schema-field';
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Typography: ({
     children,
@@ -181,8 +183,8 @@ describe('AuthSelectField', () => {
   it('shows only the active branch fields and the single-credential affirmation', () => {
     render(<AuthSelectField {...getProps({})} />);
 
-    expect(screen.getByTestId('schema-field')).toHaveTextContent('password');
-    expect(screen.getByTestId('schema-field')).not.toHaveTextContent(
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveTextContent('password');
+    expect(screen.getByTestId(SCHEMA_FIELD)).not.toHaveTextContent(
       'privateKey'
     );
     expect(screen.getByTestId('auth-affirmation')).toBeInTheDocument();
@@ -210,7 +212,7 @@ describe('AuthSelectField', () => {
       'aria-checked',
       'true'
     );
-    expect(screen.getByTestId('schema-field')).toHaveTextContent('privateKey');
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveTextContent('privateKey');
   });
 
   it('marks the recommended branch only while it is selected', () => {
@@ -229,7 +231,7 @@ describe('AuthSelectField', () => {
   it('does not pass its authSelect ui field to the selected schema branch', () => {
     render(<AuthSelectField {...getProps({}, { 'ui:field': 'authSelect' })} />);
 
-    expect(screen.getByTestId('schema-field')).toHaveAttribute(
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveAttribute(
       'data-ui-field',
       ''
     );
@@ -250,7 +252,7 @@ describe('AuthSelectField', () => {
     );
 
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-    expect(screen.getByTestId('schema-field')).toHaveTextContent('password');
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveTextContent('password');
   });
 
   it('renders an empty selected schema when no auth branches are provided', () => {
@@ -268,6 +270,6 @@ describe('AuthSelectField', () => {
     );
 
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
-    expect(screen.getByTestId('schema-field')).toHaveTextContent('');
+    expect(screen.getByTestId(SCHEMA_FIELD)).toHaveTextContent('');
   });
 });

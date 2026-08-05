@@ -108,6 +108,8 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+
+const LABEL_DATABASE = 'label.database';
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
 
@@ -177,7 +179,7 @@ const DatabaseDetails: FunctionComponent = () => {
       showErrorToast(
         databaseError as AxiosError,
         t('server.entity-details-fetch-error', {
-          entityType: t('label.database'),
+          entityType: t(LABEL_DATABASE),
           entityName: decodedDatabaseFQN,
         })
       );
@@ -322,7 +324,7 @@ const DatabaseDetails: FunctionComponent = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-updating-error', {
-            entity: t('label.database'),
+            entity: t(LABEL_DATABASE),
           })
         );
       }
@@ -440,7 +442,7 @@ const DatabaseDetails: FunctionComponent = () => {
       const { version: newVersion } = await restoreDatabase(database.id ?? '');
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.database'),
+          entity: t(LABEL_DATABASE),
         })
       );
       handleToggleDelete(newVersion);
@@ -448,7 +450,7 @@ const DatabaseDetails: FunctionComponent = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.database'),
+          entity: t(LABEL_DATABASE),
         })
       );
     }
@@ -666,7 +668,7 @@ const DatabaseDetails: FunctionComponent = () => {
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.database'),
+          entity: t(LABEL_DATABASE),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

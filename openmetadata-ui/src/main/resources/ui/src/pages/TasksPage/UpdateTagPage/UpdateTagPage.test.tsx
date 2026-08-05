@@ -17,11 +17,19 @@ import { createTask } from '../../../rest/tasksAPI';
 import i18n from '../../../utils/i18next/LocalUtil';
 import UpdateTag from './UpdateTagPage';
 
+const PII_SENSITIVE = 'PII.Sensitive';
+const MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT =
+  'sample_data.ecommerce_db.shopify.dim_location';
+const MOCK_TASK_MESSAGE = 'Task message';
+const LABEL_UPDATE_ENTITY = 'label.update-entity';
+const SUBMIT_TAG_REQUEST = 'submit-tag-request';
+
 const mockNavigate = jest.fn();
 const mockSuggestedTag = {
-  tagFQN: 'PII.Sensitive',
+  tagFQN: PII_SENSITIVE,
   name: 'Sensitive',
   description:
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
   source: 'Classification',
   labelType: 'Manual',
@@ -52,7 +60,7 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 const mockTableData = {
   id: 'id1',
   name: 'dim_location',
-  fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
+  fullyQualifiedName: MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT,
   description:
     'This dimension table contains online shop information. This table contains one shop per row.',
   tableType: 'Regular',
@@ -73,7 +81,7 @@ const mockTableData = {
       fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop".shop_id',
       tags: [
         {
-          tagFQN: 'PII.Sensitive',
+          tagFQN: PII_SENSITIVE,
           name: 'Sensitive',
           description:
             'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
@@ -99,9 +107,10 @@ jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
 jest.mock('../../../utils/TaskAssigneeUtils', () => ({
   fetchOptions: jest.fn(),
 }));
+// eslint-disable-next-line sonarjs/no-duplicate-string
 jest.mock('../../../utils/TaskFieldUtils', () => ({
   ...jest.requireActual('../../../utils/TaskFieldUtils'),
-  getTaskMessage: jest.fn().mockReturnValue('Task message'),
+  getTaskMessage: jest.fn().mockReturnValue(MOCK_TASK_MESSAGE),
   getTaskFieldColumns: jest
     .fn()
     .mockImplementation(() => mockTableData.columns),
@@ -110,7 +119,7 @@ jest.mock('../../../utils/TaskFieldUtils', () => ({
   })),
   getTaskEntityFQN: jest
     .fn()
-    .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
+    .mockReturnValue(MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
 }));
 
@@ -161,7 +170,7 @@ jest.mock('../shared/TaskPayloadSchemaFields', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest
     .fn()
-    .mockReturnValue({ fqn: 'sample_data.ecommerce_db.shopify.dim_location' }),
+    .mockReturnValue({ fqn: MOCK_SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_DIM_LOCAT }),
 }));
 
 describe('UpdateTagPage', () => {
@@ -179,7 +188,7 @@ describe('UpdateTagPage', () => {
     await act(async () => {
       render(
         <UpdateTag
-          pageTitle={i18n.t('label.update-entity', {
+          pageTitle={i18n.t(LABEL_UPDATE_ENTITY, {
             entity: i18n.t('label.tag'),
           })}
         />,
@@ -196,13 +205,13 @@ describe('UpdateTagPage', () => {
     expect(await screen.findByTestId('form-container')).toBeInTheDocument();
     expect(await screen.findByTestId('title')).toBeInTheDocument();
     expect(await screen.findByTestId('cancel-btn')).toBeInTheDocument();
-    expect(await screen.findByTestId('submit-tag-request')).toBeInTheDocument();
+    expect(await screen.findByTestId(SUBMIT_TAG_REQUEST)).toBeInTheDocument();
   });
 
   it("should go back to previous page when 'Cancel' button is clicked", async () => {
     render(
       <UpdateTag
-        pageTitle={i18n.t('label.update-entity', {
+        pageTitle={i18n.t(LABEL_UPDATE_ENTITY, {
           entity: i18n.t('label.tag'),
         })}
       />,
@@ -220,14 +229,14 @@ describe('UpdateTagPage', () => {
     const mockCreateTask = createTask as jest.Mock;
     render(
       <UpdateTag
-        pageTitle={i18n.t('label.update-entity', {
+        pageTitle={i18n.t(LABEL_UPDATE_ENTITY, {
           entity: i18n.t('label.tag'),
         })}
       />,
       { wrapper: MemoryRouter }
     );
 
-    const submitBtn = await screen.findByTestId('submit-tag-request');
+    const submitBtn = await screen.findByTestId(SUBMIT_TAG_REQUEST);
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -235,7 +244,7 @@ describe('UpdateTagPage', () => {
 
     const expectedTags = [
       {
-        tagFQN: 'PII.Sensitive',
+        tagFQN: PII_SENSITIVE,
         name: 'Sensitive',
         description:
           'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
@@ -246,7 +255,7 @@ describe('UpdateTagPage', () => {
     ];
 
     expect(mockCreateTask).toHaveBeenCalledWith({
-      name: 'Task message',
+      name: MOCK_TASK_MESSAGE,
       category: 'MetadataUpdate',
       type: 'TagUpdate',
       priority: 'Medium',
@@ -271,7 +280,7 @@ describe('UpdateTagPage', () => {
 
     render(
       <UpdateTag
-        pageTitle={i18n.t('label.update-entity', {
+        pageTitle={i18n.t(LABEL_UPDATE_ENTITY, {
           entity: i18n.t('label.tag'),
         })}
       />,
@@ -281,11 +290,11 @@ describe('UpdateTagPage', () => {
     fireEvent.click(await screen.findByTestId('mock-tags-tabs'));
 
     await act(async () => {
-      fireEvent.click(await screen.findByTestId('submit-tag-request'));
+      fireEvent.click(await screen.findByTestId(SUBMIT_TAG_REQUEST));
     });
 
     expect(mockCreateTask).toHaveBeenCalledWith({
-      name: 'Task message',
+      name: MOCK_TASK_MESSAGE,
       category: 'MetadataUpdate',
       type: 'TagUpdate',
       priority: 'Medium',

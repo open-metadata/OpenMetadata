@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+const LABEL_DISPLAY_NAME = 'label.display-name';
+
 interface ProfileEditModalProps {
   userData: User;
   onCancel: () => void;
@@ -67,7 +69,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
       }}
       okText={t('label.save')}
       title={t('label.edit-entity', {
-        entity: t('label.display-name'),
+        entity: t(LABEL_DISPLAY_NAME),
       })}
       width={500}
       onCancel={onCancel}>
@@ -76,10 +78,10 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
         id="profile-edit-form"
         layout="vertical"
         onFinish={handleSaveData}>
-        <Form.Item label={t('label.display-name')} name="displayName">
+        <Form.Item label={t(LABEL_DISPLAY_NAME)} name="displayName">
           <Input
             data-testid="displayName-input"
-            placeholder={t('label.display-name')}
+            placeholder={t(LABEL_DISPLAY_NAME)}
           />
         </Form.Item>
       </Form>

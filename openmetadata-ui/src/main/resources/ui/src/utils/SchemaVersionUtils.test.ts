@@ -21,6 +21,10 @@ import {
 import { FieldChange } from '../generated/entity/services/databaseService';
 import { getVersionedSchema } from './SchemaVersionUtils';
 
+const VARCHAR_255 = 'VARCHAR(255)';
+const DIFF_REMOVED = 'diff-removed';
+const DIFF_ADDED = 'diff-added';
+
 // Mock data for testing
 const createMockField = (
   name: string,
@@ -64,7 +68,7 @@ describe('SchemaVersionUtils', () => {
   describe('getVersionedSchema', () => {
     describe('DATA_TYPE_DISPLAY changes', () => {
       it('should update dataTypeDisplay with diff highlighting when field is changed', () => {
-        const oldDataTypeDisplay = 'VARCHAR(255)';
+        const oldDataTypeDisplay = VARCHAR_255;
         const newDataTypeDisplay = 'TEXT';
         const fieldName = 'testField';
 
@@ -94,11 +98,9 @@ describe('SchemaVersionUtils', () => {
         expect(result.schemaFields).toHaveLength(2);
         expect(result.schemaFields?.[0].name).toBe(fieldName);
         expect(result.schemaFields?.[0].dataTypeDisplay).toContain(
-          'diff-removed'
+          DIFF_REMOVED
         );
-        expect(result.schemaFields?.[0].dataTypeDisplay).toContain(
-          'diff-added'
-        );
+        expect(result.schemaFields?.[0].dataTypeDisplay).toContain(DIFF_ADDED);
         expect(result.schemaFields?.[0].dataTypeDisplay).toContain(
           oldDataTypeDisplay
         );
@@ -145,15 +147,15 @@ describe('SchemaVersionUtils', () => {
         expect(result.schemaFields?.[0].children).toHaveLength(1);
         expect(
           result.schemaFields?.[0].children?.[0].dataTypeDisplay
-        ).toContain('diff-removed');
+        ).toContain(DIFF_REMOVED);
         expect(
           result.schemaFields?.[0].children?.[0].dataTypeDisplay
-        ).toContain('diff-added');
+        ).toContain(DIFF_ADDED);
       });
 
       it('should not modify fields when dataTypeDisplay change does not match', () => {
         const fieldName = 'testField';
-        const originalDataTypeDisplay = 'VARCHAR(255)';
+        const originalDataTypeDisplay = VARCHAR_255;
 
         // Create mock schema
         const originalSchema = createMockMessageSchema([
@@ -221,23 +223,19 @@ describe('SchemaVersionUtils', () => {
         // Verify both fields are updated
         expect(result.schemaFields).toHaveLength(2);
         expect(result.schemaFields?.[0].dataTypeDisplay).toContain(
-          'diff-removed'
+          DIFF_REMOVED
         );
-        expect(result.schemaFields?.[0].dataTypeDisplay).toContain(
-          'diff-added'
-        );
+        expect(result.schemaFields?.[0].dataTypeDisplay).toContain(DIFF_ADDED);
         expect(result.schemaFields?.[1].dataTypeDisplay).toContain(
-          'diff-removed'
+          DIFF_REMOVED
         );
-        expect(result.schemaFields?.[1].dataTypeDisplay).toContain(
-          'diff-added'
-        );
+        expect(result.schemaFields?.[1].dataTypeDisplay).toContain(DIFF_ADDED);
       });
 
       it('should preserve other schema properties when updating dataTypeDisplay', () => {
         const fieldName = 'testField';
         const originalSchema = createMockMessageSchema([
-          createMockField(fieldName, 'VARCHAR(255)'),
+          createMockField(fieldName, VARCHAR_255),
         ]);
 
         // Add additional schema properties
@@ -253,7 +251,7 @@ describe('SchemaVersionUtils', () => {
           [
             createMockFieldChange(
               `schemaFields.${fieldName}.dataTypeDisplay`,
-              'VARCHAR(255)',
+              VARCHAR_255,
               'TEXT'
             ),
           ]
@@ -269,11 +267,9 @@ describe('SchemaVersionUtils', () => {
         expect(result.schemaType).toBe(SchemaType.JSON);
         expect(result.schemaText).toBe('original schema text');
         expect(result.schemaFields?.[0].dataTypeDisplay).toContain(
-          'diff-removed'
+          DIFF_REMOVED
         );
-        expect(result.schemaFields?.[0].dataTypeDisplay).toContain(
-          'diff-added'
-        );
+        expect(result.schemaFields?.[0].dataTypeDisplay).toContain(DIFF_ADDED);
       });
     });
 
@@ -299,14 +295,14 @@ describe('SchemaVersionUtils', () => {
 
       it('should handle missing changeDescription fields', () => {
         const originalSchema = createMockMessageSchema([
-          createMockField('testField', 'VARCHAR(255)'),
+          createMockField('testField', VARCHAR_255),
         ]);
         const changeDescription = createMockChangeDescription();
 
         const result = getVersionedSchema(originalSchema, changeDescription);
 
         expect(result.schemaFields).toHaveLength(1);
-        expect(result.schemaFields?.[0].dataTypeDisplay).toBe('VARCHAR(255)');
+        expect(result.schemaFields?.[0].dataTypeDisplay).toBe(VARCHAR_255);
       });
     });
   });

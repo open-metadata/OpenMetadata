@@ -66,6 +66,9 @@ import Loader from '../Loader/Loader';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
+const LABEL_TEST_ENTITY = 'label.test-entity';
+const LABEL_CONNECTION = 'label.connection';
+
 const LoaderIcon: FC<{ className?: string }> = () => <Loader size="small" />;
 
 const getAreRequiredStepsPassing = (
@@ -536,7 +539,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   const buttonTooltipTitle = useMemo(() => {
-    let title = t('label.test-entity', { entity: t('label.connection') });
+    let title = t(LABEL_TEST_ENTITY, { entity: t(LABEL_CONNECTION) });
 
     if (!isAirflowAvailable) {
       title = t('label.platform-service-client-unavailable');
@@ -639,7 +642,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       return t('label.re-test-connection');
     }
 
-    return t('label.test-entity', { entity: t('label.connection') });
+    return t(LABEL_TEST_ENTITY, { entity: t(LABEL_CONNECTION) });
   }, [isTestingConnection, t, testStatus]);
 
   const alertVariant = useMemo((): AlertVariant => {
@@ -743,8 +746,8 @@ const TestConnection: FC<TestConnectionProps> = ({
             isLoading={isTestingConnection}
             size="sm"
             onClick={handleTestConnection}>
-            {t('label.test-entity', {
-              entity: t('label.connection'),
+            {t(LABEL_TEST_ENTITY, {
+              entity: t(LABEL_CONNECTION),
             })}
           </Button>
         </Tooltip>

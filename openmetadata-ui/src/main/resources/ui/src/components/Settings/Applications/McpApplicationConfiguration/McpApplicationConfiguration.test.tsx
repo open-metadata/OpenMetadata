@@ -21,6 +21,10 @@ import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json'
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import McpApplicationConfiguration from './McpApplicationConfiguration';
 
+const HTTPS_APP_EXAMPLE_COM = 'https://app.example.com';
+const API_V1_MCP = '/api/v1/mcp';
+const OPENMETADATA_MCP_SERVER = 'openmetadata-mcp-server';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -62,7 +66,7 @@ jest.mock('../../../common/FormBuilder/FormBuilder', () => {
         data-testid="submit"
         onClick={() =>
           onSubmit({
-            formData: { allowedOrigins: ['https://app.example.com'] },
+            formData: { allowedOrigins: [HTTPS_APP_EXAMPLE_COM] },
           })
         }>
         submit
@@ -102,15 +106,15 @@ describe('McpApplicationConfiguration', () => {
     mockGetMcpConfig.mockResolvedValue({
       allowedOrigins: ['http://localhost:8585'],
       connectTimeout: 30000,
-      path: '/api/v1/mcp',
+      path: API_V1_MCP,
       enabled: true,
-      mcpServerName: 'openmetadata-mcp-server',
+      mcpServerName: OPENMETADATA_MCP_SERVER,
     });
     mockUpdateMcpConfig.mockResolvedValue({
-      allowedOrigins: ['https://app.example.com'],
-      path: '/api/v1/mcp',
+      allowedOrigins: [HTTPS_APP_EXAMPLE_COM],
+      path: API_V1_MCP,
       enabled: true,
-      mcpServerName: 'openmetadata-mcp-server',
+      mcpServerName: OPENMETADATA_MCP_SERVER,
     });
   });
 
@@ -153,11 +157,11 @@ describe('McpApplicationConfiguration', () => {
     // A PUT replaces the whole setting, so connectTimeout/path/enabled/mcpServerName must be
     // sent back untouched alongside the edited allowedOrigins.
     expect(mockUpdateMcpConfig).toHaveBeenCalledWith({
-      allowedOrigins: ['https://app.example.com'],
+      allowedOrigins: [HTTPS_APP_EXAMPLE_COM],
       connectTimeout: 30000,
-      path: '/api/v1/mcp',
+      path: API_V1_MCP,
       enabled: true,
-      mcpServerName: 'openmetadata-mcp-server',
+      mcpServerName: OPENMETADATA_MCP_SERVER,
     });
     expect(showSuccessToast).toHaveBeenCalled();
     expect(screen.getByTestId('form-data')).toHaveTextContent(
@@ -185,12 +189,12 @@ describe('McpApplication form schema', () => {
   const editableFields = ['baseUrl', 'allowedOrigins'];
   // Shape of a real stored mcpConfiguration row, including the fields no code reads.
   const storedConfig = {
-    path: '/api/v1/mcp',
+    path: API_V1_MCP,
     baseUrl: 'http://localhost:8585',
     enabled: true,
     readTimeout: 30000,
-    mcpServerName: 'openmetadata-mcp-server',
-    allowedOrigins: ['http://localhost:3000', 'https://app.example.com'],
+    mcpServerName: OPENMETADATA_MCP_SERVER,
+    allowedOrigins: ['http://localhost:3000', HTTPS_APP_EXAMPLE_COM],
     connectTimeout: 30000,
     originHeaderUri: 'http://localhost',
     mcpServerVersion: '1.0.0',

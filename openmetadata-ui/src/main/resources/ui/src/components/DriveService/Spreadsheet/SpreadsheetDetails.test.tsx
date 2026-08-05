@@ -32,6 +32,10 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import SpreadsheetDetails from './SpreadsheetDetails';
 import { SpreadsheetDetailsProps } from './SpreadsheetDetails.interface';
+const DATA_ASSETS_HEADER = 'data-assets-header';
+const TEST_SERVICE_TEST_SPREADSHEET = 'test-service.test-spreadsheet';
+const CURRENT_USER = 'current-user';
+
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
@@ -90,7 +94,7 @@ jest.mock(
   '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
     DataAssetsHeader: jest.fn(() => (
-      <div data-testid="data-assets-header">Data Assets Header</div>
+      <div data-testid={DATA_ASSETS_HEADER}>Data Assets Header</div>
     )),
   })
 );
@@ -137,7 +141,7 @@ const mockSpreadsheetDetails: Spreadsheet = {
   id: 'spreadsheet-id-1',
   name: 'test-spreadsheet',
   displayName: 'Test Spreadsheet',
-  fullyQualifiedName: 'test-service.test-spreadsheet',
+  fullyQualifiedName: TEST_SERVICE_TEST_SPREADSHEET,
   description: 'Test spreadsheet description',
   owners: [
     {
@@ -220,7 +224,7 @@ describe('SpreadsheetDetails', () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: {
         id: 'current-user-id',
-        name: 'current-user',
+        name: CURRENT_USER,
       },
     });
 
@@ -235,7 +239,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     mockUseFqn.mockReturnValue({
-      fqn: 'test-service.test-spreadsheet',
+      fqn: TEST_SERVICE_TEST_SPREADSHEET,
     });
 
     mockUseRequiredParams.mockReturnValue({
@@ -259,7 +263,7 @@ describe('SpreadsheetDetails', () => {
     renderSpreadsheetDetails();
 
     expect(screen.getByTestId('page-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
     expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
   });
@@ -279,7 +283,7 @@ describe('SpreadsheetDetails', () => {
     renderSpreadsheetDetails();
 
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle spreadsheet restoration successfully', async () => {
@@ -296,7 +300,7 @@ describe('SpreadsheetDetails', () => {
       spreadsheetDetails: deletedSpreadsheetDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle spreadsheet restoration error', async () => {
@@ -312,7 +316,7 @@ describe('SpreadsheetDetails', () => {
       spreadsheetDetails: deletedSpreadsheetDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should fetch feed counts on component mount', async () => {
@@ -320,12 +324,12 @@ describe('SpreadsheetDetails', () => {
 
     await waitFor(() => {
       expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
-        'test-service.test-spreadsheet',
+        TEST_SERVICE_TEST_SPREADSHEET,
         expect.any(Function)
       );
       expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
         EntityType.SPREADSHEET,
-        'test-service.test-spreadsheet',
+        TEST_SERVICE_TEST_SPREADSHEET,
         expect.any(Function)
       );
     });
@@ -338,7 +342,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -349,8 +353,8 @@ describe('SpreadsheetDetails', () => {
         {
           id: 'current-user-id',
           type: 'user',
-          name: 'current-user',
-          fullyQualifiedName: 'current-user',
+          name: CURRENT_USER,
+          fullyQualifiedName: CURRENT_USER,
           displayName: 'Current User',
           deleted: false,
         },
@@ -364,7 +368,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -375,7 +379,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -386,7 +390,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -397,7 +401,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -421,7 +425,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -434,7 +438,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -445,7 +449,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -456,7 +460,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -467,7 +471,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -478,7 +482,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -489,7 +493,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -497,7 +501,7 @@ describe('SpreadsheetDetails', () => {
     renderSpreadsheetDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -505,7 +509,7 @@ describe('SpreadsheetDetails', () => {
     renderSpreadsheetDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -532,7 +536,7 @@ describe('SpreadsheetDetails', () => {
       spreadsheetDetails: spreadsheetWithoutFollowers,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle feed count updates', async () => {
@@ -549,7 +553,7 @@ describe('SpreadsheetDetails', () => {
     renderSpreadsheetDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -561,7 +565,7 @@ describe('SpreadsheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -572,7 +576,7 @@ describe('SpreadsheetDetails', () => {
 
     renderSpreadsheetDetails();
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle limited permissions', () => {
@@ -586,7 +590,7 @@ describe('SpreadsheetDetails', () => {
       spreadsheetPermissions: limitedPermissions,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   describe('ViewCustomFields Permission Tests', () => {
@@ -601,7 +605,7 @@ describe('SpreadsheetDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -616,7 +620,7 @@ describe('SpreadsheetDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -632,7 +636,7 @@ describe('SpreadsheetDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
   });

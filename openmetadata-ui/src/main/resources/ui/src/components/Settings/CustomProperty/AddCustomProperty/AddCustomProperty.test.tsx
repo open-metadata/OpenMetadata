@@ -14,6 +14,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import AddCustomProperty from './AddCustomProperty';
 
+const DATETIME_CP = 'dateTime-cp';
+
 const mockNavigate = jest.fn();
 
 const mockPropertyTypes = [
@@ -33,9 +35,9 @@ const mockPropertyTypes = [
   },
   {
     id: '6ce245d8-80c0-4641-9b60-32cf03ca79a2',
-    name: 'dateTime-cp',
-    fullyQualifiedName: 'dateTime-cp',
-    displayName: 'dateTime-cp',
+    name: DATETIME_CP,
+    fullyQualifiedName: DATETIME_CP,
+    displayName: DATETIME_CP,
     description:
       '"Date and time in ISO 8601 format. Example - \'2018-11-13T20:20:39+00:00\'."',
     category: 'field',

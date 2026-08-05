@@ -26,6 +26,8 @@ import { TagSelectableList } from '../TagSelectableList/TagSelectableList.compon
 import { TagsSectionProps } from './TagsSection.interface';
 import './TagsSection.less';
 
+const LABEL_TAG_PLURAL = 'label.tag-plural';
+
 const TagsSectionV1: React.FC<TagsSectionProps> = ({
   tags = [],
   showEditButton = true,
@@ -105,7 +107,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         fieldName: 'tags',
         currentValue: displayTags,
         newValue: updatedTags,
-        entityLabel: t('label.tag-plural'),
+        entityLabel: t(LABEL_TAG_PLURAL),
         onSuccess: (tags) => {
           setDisplayTags(tags);
         },
@@ -177,7 +179,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           ) : (
             <span className="no-data-placeholder">
               {t('label.no-entity-assigned', {
-                entity: t('label.tag-plural'),
+                entity: t(LABEL_TAG_PLURAL),
               })}
             </span>
           )}
@@ -204,7 +206,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     return (
       <span className="no-data-placeholder">
         {t('label.no-entity-assigned', {
-          entity: t('label.tag-plural'),
+          entity: t(LABEL_TAG_PLURAL),
         })}
       </span>
     );
@@ -262,7 +264,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
       <div className="tags-section">
         <div className="tags-header">
           <Typography.Text className="tags-title">
-            {t('label.tag-plural')}
+            {t(LABEL_TAG_PLURAL)}
           </Typography.Text>
           {canShowEditButton && (
             <EditIconButton
@@ -272,7 +274,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
-                entity: t('label.tag-plural'),
+                entity: t(LABEL_TAG_PLURAL),
               })}
               onClick={handleEditClick}
             />
@@ -287,7 +289,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     <div className="tags-section">
       <div className="tags-header">
         <Typography.Text className="tags-title">
-          {t('label.tag-plural')}
+          {t(LABEL_TAG_PLURAL)}
         </Typography.Text>
         {canShowEditButton && (
           <EditIconButton
@@ -297,7 +299,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
             size="small"
             title={t('label.edit-entity', {
-              entity: t('label.tag-plural'),
+              entity: t(LABEL_TAG_PLURAL),
             })}
             onClick={handleEditClick}
           />

@@ -30,6 +30,8 @@ import {
   PagingProps,
 } from './NextPreviousWithOffset.interface';
 
+const LABEL_PAGE = 'label.page';
+
 const NextPreviousWithOffset = ({
   paging,
   pagingHandler,
@@ -80,7 +82,7 @@ const NextPreviousWithOffset = ({
         <span>{t('label.previous')}</span>
       </Button>
       <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
-        'label.page'
+        LABEL_PAGE
       )}`}</span>
       <Button
         ghost
@@ -97,7 +99,7 @@ const NextPreviousWithOffset = ({
           disabled={isLoading}
           menu={{
             items: pageSizeOptions.map((size) => ({
-              label: `${size} / ${t('label.page')}`,
+              label: `${size} / ${t(LABEL_PAGE)}`,
               value: size,
               key: size,
               onClick: () => onShowSizeChange(size),
@@ -106,7 +108,7 @@ const NextPreviousWithOffset = ({
           <Button
             data-testid="page-size-change-button"
             onClick={(e) => e.preventDefault()}>
-            {`${pageSize} / ${t('label.page')}`}
+            {`${pageSize} / ${t(LABEL_PAGE)}`}
             <DownOutlined />
           </Button>
         </Dropdown>

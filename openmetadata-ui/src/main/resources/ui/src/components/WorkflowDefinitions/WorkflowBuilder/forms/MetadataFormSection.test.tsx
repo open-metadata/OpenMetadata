@@ -15,6 +15,8 @@ import { render, screen } from '@testing-library/react';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { MetadataFormSection } from './MetadataFormSection';
 
+const LABEL_WORKFLOW_NAME = 'label.workflow-name';
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const Input = (props: {
     value?: string;
@@ -139,7 +141,7 @@ describe('MetadataFormSection', () => {
   it('should render form fields with correct labels for start node', () => {
     renderWithProvider();
 
-    expect(screen.getByText('label.workflow-name')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_WORKFLOW_NAME)).toBeInTheDocument();
     expect(screen.getByText('label.workflow-description')).toBeInTheDocument();
   });
 
@@ -156,7 +158,7 @@ describe('MetadataFormSection', () => {
   it('should display required asterisk for name field', () => {
     renderWithProvider();
 
-    const nameLabel = screen.getByText('label.workflow-name').parentElement;
+    const nameLabel = screen.getByText(LABEL_WORKFLOW_NAME).parentElement;
 
     expect(nameLabel).toHaveTextContent('*');
   });
@@ -185,7 +187,7 @@ describe('MetadataFormSection', () => {
   it('should render in view mode', () => {
     renderWithProvider(mockProps);
 
-    expect(screen.getByText('label.workflow-name')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_WORKFLOW_NAME)).toBeInTheDocument();
     expect(screen.getByText('label.workflow-description')).toBeInTheDocument();
     expect(screen.getByTestId('workflow-name-input')).toBeInTheDocument();
     expect(

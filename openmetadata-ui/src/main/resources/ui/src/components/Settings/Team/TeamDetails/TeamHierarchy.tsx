@@ -38,6 +38,7 @@ import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
 import { TeamHierarchyNameCell } from './TeamsHeaderSection/TeamHierarchyNameCell';
 
+const LABEL_TEAM = 'label.team';
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
   currentTeam,
   data,
@@ -63,7 +64,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   const searchProps = useMemo(
     () => ({
       placeholder: t('label.search-entity', {
-        entity: t('label.team'),
+        entity: t(LABEL_TEAM),
       }),
       searchValue: searchTerm,
       typingInterval: 500,
@@ -270,7 +271,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
                 data-testid="add-team"
                 type="primary"
                 onClick={handleAddTeamButtonClick}>
-                {t('label.add-entity', { entity: t('label.team') })}
+                {t('label.add-entity', { entity: t(LABEL_TEAM) })}
               </Button>
             )}
           </Space>
@@ -296,7 +297,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         maskClosable={false}
         okText={t('label.confirm')}
         open={isModalOpen}
-        title={t('label.move-the-entity', { entity: t('label.team') })}
+        title={t('label.move-the-entity', { entity: t(LABEL_TEAM) })}
         onCancel={onDragConfirmationModalClose}
         onOk={handleChangeTeam}>
         <Transi18next

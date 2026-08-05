@@ -39,6 +39,11 @@ import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
 import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import TeamAndUserSelectItemV2 from '../../TeamAndUserSelectItemV2/TeamAndUserSelectItemV2';
 
+const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
+const LABEL_SECRET_KEY = 'label.secret-key';
+const LABEL_CLIENT_ID = 'label.client-id';
+const LABEL_CLIENT_SECRET = 'label.client-secret';
+
 interface DestinationConfigFieldProps {
   type: SubscriptionType | SubscriptionCategory;
   fieldName: number;
@@ -177,7 +182,7 @@ function DestinationConfigField({
               </div>
             )}
             rules={{
-              required: t('message.field-text-is-required', {
+              required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                 fieldText: t('label.endpoint-url'),
               }),
             }}
@@ -229,8 +234,8 @@ function DestinationConfigField({
                           <div>
                             <PasswordInput
                               data-testid={`secret-key-input-${fieldName}`}
-                              label={`${t('label.secret-key')}:`}
-                              placeholder={t('label.secret-key')}
+                              label={`${t(LABEL_SECRET_KEY)}:`}
+                              placeholder={t(LABEL_SECRET_KEY)}
                               ref={field.ref}
                               value={field.value ?? ''}
                               onBlur={() => field.onBlur()}
@@ -240,8 +245,8 @@ function DestinationConfigField({
                           </div>
                         )}
                         rules={{
-                          required: t('message.field-text-is-required', {
-                            fieldText: t('label.secret-key'),
+                          required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                            fieldText: t(LABEL_SECRET_KEY),
                           }),
                         }}
                       />
@@ -270,7 +275,7 @@ function DestinationConfigField({
                             </div>
                           )}
                           rules={{
-                            required: t('message.field-text-is-required', {
+                            required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                               fieldText: t('label.token-url'),
                             }),
                           }}
@@ -284,8 +289,8 @@ function DestinationConfigField({
                             <div>
                               <PasswordInput
                                 data-testid={`client-id-input-${fieldName}`}
-                                label={`${t('label.client-id')}:`}
-                                placeholder={t('label.client-id')}
+                                label={`${t(LABEL_CLIENT_ID)}:`}
+                                placeholder={t(LABEL_CLIENT_ID)}
                                 ref={field.ref}
                                 value={field.value ?? ''}
                                 onBlur={() => field.onBlur()}
@@ -295,8 +300,8 @@ function DestinationConfigField({
                             </div>
                           )}
                           rules={{
-                            required: t('message.field-text-is-required', {
-                              fieldText: t('label.client-id'),
+                            required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                              fieldText: t(LABEL_CLIENT_ID),
                             }),
                           }}
                         />
@@ -309,8 +314,8 @@ function DestinationConfigField({
                             <div>
                               <PasswordInput
                                 data-testid={`client-secret-input-${fieldName}`}
-                                label={`${t('label.client-secret')}:`}
-                                placeholder={t('label.client-secret')}
+                                label={`${t(LABEL_CLIENT_SECRET)}:`}
+                                placeholder={t(LABEL_CLIENT_SECRET)}
                                 ref={field.ref}
                                 value={field.value ?? ''}
                                 onBlur={() => field.onBlur()}
@@ -320,8 +325,8 @@ function DestinationConfigField({
                             </div>
                           )}
                           rules={{
-                            required: t('message.field-text-is-required', {
-                              fieldText: t('label.client-secret'),
+                            required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
+                              fieldText: t(LABEL_CLIENT_SECRET),
                             }),
                           }}
                         />

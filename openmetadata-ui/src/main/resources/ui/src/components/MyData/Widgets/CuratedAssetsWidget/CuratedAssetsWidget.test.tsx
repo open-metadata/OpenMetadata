@@ -19,6 +19,11 @@ import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePag
 import { searchQuery } from '../../../../rest/searchAPI';
 import CuratedAssetsWidget from './CuratedAssetsWidget';
 
+const MOCK_TEST_WIDGET = 'Test Widget';
+const TEST_WIDGET = 'test-widget';
+const LABEL_CREATE = 'label.create';
+const EDIT_WIDGET_BUTTON = 'edit-widget-button';
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
 }));
@@ -148,7 +153,7 @@ jest.mock('./CuratedAssetsModal/CuratedAssetsModal', () => ({
           </button>
           <button
             data-testid="saveButton"
-            onClick={() => onSave({ title: 'Test Widget' })}>
+            onClick={() => onSave({ title: MOCK_TEST_WIDGET })}>
             Save
           </button>
         </div>
@@ -205,12 +210,12 @@ const mockEntityData = [
 const defaultProps = {
   isEditView: false,
   handleRemoveWidget: mockHandleRemoveWidget,
-  widgetKey: 'test-widget',
+  widgetKey: TEST_WIDGET,
   handleLayoutUpdate: mockHandleLayoutUpdate,
   handleSaveLayout: mockHandleSaveLayout,
   currentLayout: [
     {
-      i: 'test-widget',
+      i: TEST_WIDGET,
       x: 0,
       y: 0,
       w: 2,
@@ -218,7 +223,7 @@ const defaultProps = {
       static: false,
       isDraggable: true,
       config: {
-        title: 'Test Widget',
+        title: MOCK_TEST_WIDGET,
         resources: ['table'],
         queryFilter: '{}',
       },
@@ -279,7 +284,7 @@ describe('CuratedAssetsWidget', () => {
     );
 
     expect(screen.getByText('message.no-curated-assets')).toBeInTheDocument();
-    expect(screen.getByText('label.create')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_CREATE)).toBeInTheDocument();
     expect(screen.getByTestId('curated-assets-empty-icon')).toBeInTheDocument();
     expect(screen.getByTestId('curated-assets-empty-icon')).toBeInTheDocument();
   });
@@ -312,7 +317,7 @@ describe('CuratedAssetsWidget', () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Test Widget')).toBeInTheDocument();
+      expect(screen.getByText(MOCK_TEST_WIDGET)).toBeInTheDocument();
     });
   });
 
@@ -342,30 +347,30 @@ describe('CuratedAssetsWidget', () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
-    fireEvent.click(screen.getByText('label.create'));
+    fireEvent.click(screen.getByText(LABEL_CREATE));
     fireEvent.click(screen.getByTestId('saveButton'));
 
     await waitFor(() => {
       expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
         {
-          i: 'test-widget',
+          i: TEST_WIDGET,
           x: 2,
           y: 0,
           w: 1,
           h: 3,
           static: false,
-          config: { title: 'Test Widget' },
+          config: { title: MOCK_TEST_WIDGET },
         },
       ]);
       expect(mockHandleSaveLayout).toHaveBeenCalledWith([
         {
-          i: 'test-widget',
+          i: TEST_WIDGET,
           x: 2,
           y: 0,
           w: 1,
           h: 3,
           static: false,
-          config: { title: 'Test Widget' },
+          config: { title: MOCK_TEST_WIDGET },
         },
       ]);
     });
@@ -373,20 +378,20 @@ describe('CuratedAssetsWidget', () => {
 
   it('calls handleLayoutUpdate and handleSaveLayout when editing existing widget', async () => {
     render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    fireEvent.click(screen.getByTestId('edit-widget-button'));
+    fireEvent.click(screen.getByTestId(EDIT_WIDGET_BUTTON));
     fireEvent.click(screen.getByTestId('saveButton'));
 
     await waitFor(() => {
       expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
         {
           ...defaultProps.currentLayout[0],
-          config: { title: 'Test Widget' },
+          config: { title: MOCK_TEST_WIDGET },
         },
       ]);
       expect(mockHandleSaveLayout).toHaveBeenCalledWith([
         {
           ...defaultProps.currentLayout[0],
-          config: { title: 'Test Widget' },
+          config: { title: MOCK_TEST_WIDGET },
         },
       ]);
     });
@@ -396,7 +401,7 @@ describe('CuratedAssetsWidget', () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
-    fireEvent.click(screen.getByText('label.create'));
+    fireEvent.click(screen.getByText(LABEL_CREATE));
     fireEvent.click(screen.getByTestId('cancelButton'));
 
     expect(
@@ -406,7 +411,7 @@ describe('CuratedAssetsWidget', () => {
 
   it('renders edit modal with correct title when editing', () => {
     render(<CuratedAssetsWidget {...defaultProps} isEditView />);
-    fireEvent.click(screen.getByTestId('edit-widget-button'));
+    fireEvent.click(screen.getByTestId(EDIT_WIDGET_BUTTON));
 
     expect(screen.getByTestId('modal-title')).toHaveTextContent('Edit Widget');
   });
@@ -415,7 +420,7 @@ describe('CuratedAssetsWidget', () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
-    fireEvent.click(screen.getByText('label.create'));
+    fireEvent.click(screen.getByText(LABEL_CREATE));
 
     expect(screen.getByTestId('modal-title')).toHaveTextContent(
       'Create Widget'
@@ -468,7 +473,7 @@ describe('CuratedAssetsWidget', () => {
     render(<CuratedAssetsWidget {...defaultProps} isEditView />);
 
     expect(screen.getByTestId('drag-widget-button')).toBeInTheDocument();
-    expect(screen.getByTestId('edit-widget-button')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_WIDGET_BUTTON)).toBeInTheDocument();
   });
 
   it('handles sort by click in non-edit view', async () => {

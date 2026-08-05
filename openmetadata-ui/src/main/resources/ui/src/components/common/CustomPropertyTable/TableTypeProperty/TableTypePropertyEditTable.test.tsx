@@ -15,6 +15,9 @@ import { getGridColumns } from './EditTableTypePropertyModal';
 import TableTypePropertyEditTable from './TableTypePropertyEditTable';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
+const PROPERTY_1 = 'Property 1';
+const PROPERTY_2 = 'Property 2';
+
 describe('TableTypePropertyEditTable', () => {
   let mockDataSource: { value: Record<string, string>[] };
   let handleEditDataSource: jest.Mock;
@@ -28,12 +31,12 @@ describe('TableTypePropertyEditTable', () => {
     mockDataSource = {
       value: [
         {
-          'pw-import-export-column1': 'Property 1',
+          'pw-import-export-column1': PROPERTY_1,
           'pw-import-export-column2': 'Value 1',
           id: '0',
         },
         {
-          'pw-import-export-column1': 'Property 2',
+          'pw-import-export-column1': PROPERTY_2,
           'pw-import-export-column2': 'Value 2',
           id: '1',
         },
@@ -63,8 +66,8 @@ describe('TableTypePropertyEditTable', () => {
       );
     });
 
-    expect(screen.getByText('Property 1')).toBeInTheDocument();
-    expect(screen.getByText('Property 2')).toBeInTheDocument();
+    expect(screen.getByText(PROPERTY_1)).toBeInTheDocument();
+    expect(screen.getByText(PROPERTY_2)).toBeInTheDocument();
 
     // react-data-grid virtual list is only rendering first column in test environment
     // expect(screen.getByText('Value 1')).toBeInTheDocument();
@@ -76,12 +79,12 @@ describe('TableTypePropertyEditTable', () => {
     // Simulate row edit by calling the prop directly
     const updatedRows = [
       {
-        'pw-import-export-column1': 'Property 1',
+        'pw-import-export-column1': PROPERTY_1,
         'pw-import-export-column2': 'Value 1',
         id: '0',
       },
       {
-        'pw-import-export-column1': 'Property 2',
+        'pw-import-export-column1': PROPERTY_2,
         'pw-import-export-column2': 'Changed',
         id: '1',
       },
@@ -110,7 +113,7 @@ describe('TableTypePropertyEditTable', () => {
       <TableTypePropertyEditTable {...getProps()} columns={customColumns} />
     );
 
-    expect(screen.getByText('Property 1')).toBeInTheDocument();
+    expect(screen.getByText(PROPERTY_1)).toBeInTheDocument();
     expect(screen.queryByText('Value 1')).not.toBeInTheDocument();
   });
 });

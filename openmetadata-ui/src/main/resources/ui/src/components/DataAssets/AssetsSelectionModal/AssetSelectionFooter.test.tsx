@@ -21,6 +21,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     'data-testid': testId,
   }: {
     children: React.ReactNode;
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     'data-testid'?: string;
   }) => <div data-testid={testId}>{children}</div>,
   Button: ({

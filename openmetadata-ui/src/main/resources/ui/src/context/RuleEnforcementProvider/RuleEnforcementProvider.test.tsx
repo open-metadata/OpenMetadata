@@ -26,6 +26,8 @@ import {
 } from './RuleEnforcementProvider';
 import { EntityRule, RuleType } from './RuleEnforcementProvider.interface';
 
+const DASHBOARD_RULE = 'Dashboard Rule';
+
 jest.mock('../../rest/ruleEnforcementAPI', () => ({
   getEntityRules: jest.fn(),
 }));
@@ -237,7 +239,7 @@ describe('RuleEnforcementProvider', () => {
     it('should fetch rules for multiple entity types independently', async () => {
       const dashboardRules: EntityRule[] = [
         {
-          name: 'Dashboard Rule',
+          name: DASHBOARD_RULE,
           description: 'Dashboard rule description',
           rule: JSON.stringify({ '<=': 1 }),
           enabled: true,
@@ -314,7 +316,7 @@ describe('RuleEnforcementProvider', () => {
     it('should return different rules for different entity types', async () => {
       const dashboardRules: EntityRule[] = [
         {
-          name: 'Dashboard Rule',
+          name: DASHBOARD_RULE,
           description: 'Dashboard rule description',
           rule: JSON.stringify({ '<=': 1 }),
           enabled: true,
@@ -353,7 +355,7 @@ describe('RuleEnforcementProvider', () => {
         expect(tableRules).toHaveLength(1);
         expect(dashboardRulesResult).toHaveLength(1);
         expect(tableRules[0].name).toBe('Test Rule');
-        expect(dashboardRulesResult[0].name).toBe('Dashboard Rule');
+        expect(dashboardRulesResult[0].name).toBe(DASHBOARD_RULE);
       });
     });
   });

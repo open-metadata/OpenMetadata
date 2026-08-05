@@ -31,11 +31,20 @@ import {
   LINEAGE_IMPACT_OPTIONS,
 } from './LineageUtils';
 
+const TEST_TABLE_DESCRIPTION = 'Test table description';
+const PII_NONSENSITIVE = 'PII.NonSensitive';
+const NON_SENSITIVE_COLUMN = 'Non-sensitive column';
+const ANOTHER_TEST_TABLE = 'Another test table';
+const PII_PUBLIC = 'PII.Public';
+const PUBLIC_COLUMN = 'Public column';
+const CUSTOMER_ID_CUSTOMER_ID1 = 'customer_id->customer_id1';
+
 describe('LineageUtils', () => {
   const mockNodes: Record<string, LineageNodeType> = {
     'test.table1': {
       entity: {
         id: 'entity1',
+        // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
         fullyQualifiedName: 'test.table1',
         name: 'table1',
         type: 'table',
@@ -73,7 +82,7 @@ describe('LineageUtils', () => {
             type: 'domain',
           },
         ],
-        description: 'Test table description',
+        description: TEST_TABLE_DESCRIPTION,
         columns: [
           {
             name: 'customer_id',
@@ -81,9 +90,9 @@ describe('LineageUtils', () => {
             dataType: 'BIGINT',
             tags: [
               {
-                tagFQN: 'PII.NonSensitive',
+                tagFQN: PII_NONSENSITIVE,
                 name: 'NonSensitive',
-                description: 'Non-sensitive column',
+                description: NON_SENSITIVE_COLUMN,
                 source: TagSource.Classification,
                 labelType: 'Manual',
                 state: 'Confirmed',
@@ -122,13 +131,14 @@ describe('LineageUtils', () => {
     'test.table2': {
       entity: {
         id: 'entity2',
+        // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated object key
         fullyQualifiedName: 'test.table2',
         name: 'table2',
         type: 'table',
         owners: [],
         tags: [],
         domains: [],
-        description: 'Another test table',
+        description: ANOTHER_TEST_TABLE,
         columns: [
           {
             name: 'customer_id1',
@@ -136,9 +146,9 @@ describe('LineageUtils', () => {
             dataType: 'BIGINT',
             tags: [
               {
-                tagFQN: 'PII.Public',
+                tagFQN: PII_PUBLIC,
                 name: 'Public',
-                description: 'Public column',
+                description: PUBLIC_COLUMN,
                 source: TagSource.Classification,
                 labelType: 'Manual',
                 state: 'Confirmed',
@@ -291,16 +301,16 @@ describe('LineageUtils', () => {
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
       expect(firstNode.toColumn).toBe('customer_id1');
       expect(firstNode.fromColumn).toBe('customer_id'); // Flattened to single item
-      expect(firstNode.docId).toBe('customer_id->customer_id1');
+      expect(firstNode.docId).toBe(CUSTOMER_ID_CUSTOMER_ID1);
       expect(firstNode.nodeDepth).toBe(2); // nodeDepth from toEntity (test.table2)
       expect(firstNode.owners).toEqual([]);
-      expect(firstNode.description).toBe('Another test table');
+      expect(firstNode.description).toBe(ANOTHER_TEST_TABLE);
       // Downstream direction uses toColumn tags
       expect(firstNode.tags).toEqual([
         {
-          tagFQN: 'PII.Public',
+          tagFQN: PII_PUBLIC,
           name: 'Public',
-          description: 'Public column',
+          description: PUBLIC_COLUMN,
           source: TagSource.Classification,
           labelType: 'Manual',
           state: 'Confirmed',
@@ -319,9 +329,9 @@ describe('LineageUtils', () => {
       // Same toColumn, same tags
       expect(secondNode.tags).toEqual([
         {
-          tagFQN: 'PII.Public',
+          tagFQN: PII_PUBLIC,
           name: 'Public',
-          description: 'Public column',
+          description: PUBLIC_COLUMN,
           source: TagSource.Classification,
           labelType: 'Manual',
           state: 'Confirmed',
@@ -346,7 +356,7 @@ describe('LineageUtils', () => {
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
       expect(firstNode.toColumn).toBe('customer_id1');
       expect(firstNode.fromColumn).toBe('customer_id'); // Flattened
-      expect(firstNode.docId).toBe('customer_id->customer_id1');
+      expect(firstNode.docId).toBe(CUSTOMER_ID_CUSTOMER_ID1);
       expect(firstNode.nodeDepth).toBe(1); // nodeDepth from fromEntity (test.table1)
       expect(firstNode.owners).toEqual(
         (mockNodes['test.table1'].entity as TableSearchSource).owners
@@ -357,9 +367,9 @@ describe('LineageUtils', () => {
       // Upstream direction uses fromColumn tags
       expect(firstNode.tags).toEqual([
         {
-          tagFQN: 'PII.NonSensitive',
+          tagFQN: PII_NONSENSITIVE,
           name: 'NonSensitive',
-          description: 'Non-sensitive column',
+          description: NON_SENSITIVE_COLUMN,
           source: TagSource.Classification,
           labelType: 'Manual',
           state: 'Confirmed',
@@ -368,7 +378,7 @@ describe('LineageUtils', () => {
       expect(firstNode.domains).toEqual(
         (mockNodes['test.table1'].entity as TableSearchSource).domains
       );
-      expect(firstNode.description).toBe('Test table description');
+      expect(firstNode.description).toBe(TEST_TABLE_DESCRIPTION);
 
       // Fourth node should be from second edge (fromEntity is test.table2, which exists)
       const fourthNode = result[3];
@@ -467,7 +477,7 @@ describe('LineageUtils', () => {
       const firstNode = result[0];
 
       // docId is now generated from fromColumn->toColumn, not from the original edge docId
-      expect(firstNode.docId).toBe('customer_id->customer_id1');
+      expect(firstNode.docId).toBe(CUSTOMER_ID_CUSTOMER_ID1);
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
     });
@@ -487,13 +497,13 @@ describe('LineageUtils', () => {
       const firstNode = result[0];
 
       expect(firstNode.nodeDepth).toBe(2); // nodeDepth from toEntity
-      expect(firstNode.description).toBe('Another test table'); // description from toEntity
+      expect(firstNode.description).toBe(ANOTHER_TEST_TABLE); // description from toEntity
       // Verify downstream uses toColumn tags
       expect(firstNode.tags).toEqual([
         {
-          tagFQN: 'PII.Public',
+          tagFQN: PII_PUBLIC,
           name: 'Public',
-          description: 'Public column',
+          description: PUBLIC_COLUMN,
           source: TagSource.Classification,
           labelType: 'Manual',
           state: 'Confirmed',
@@ -515,13 +525,13 @@ describe('LineageUtils', () => {
       const firstNode = result[0];
 
       expect(firstNode.nodeDepth).toBe(1); // nodeDepth from fromEntity
-      expect(firstNode.description).toBe('Test table description'); // description from fromEntity
+      expect(firstNode.description).toBe(TEST_TABLE_DESCRIPTION); // description from fromEntity
       // Verify upstream uses fromColumn tags
       expect(firstNode.tags).toEqual([
         {
-          tagFQN: 'PII.NonSensitive',
+          tagFQN: PII_NONSENSITIVE,
           name: 'NonSensitive',
-          description: 'Non-sensitive column',
+          description: NON_SENSITIVE_COLUMN,
           source: TagSource.Classification,
           labelType: 'Manual',
           state: 'Confirmed',
@@ -764,9 +774,9 @@ describe('LineageUtils', () => {
       // Tags should be from the column, not the table
       expect(firstNode.tags).toEqual([
         {
-          tagFQN: 'PII.NonSensitive',
+          tagFQN: PII_NONSENSITIVE,
           name: 'NonSensitive',
-          description: 'Non-sensitive column',
+          description: NON_SENSITIVE_COLUMN,
           source: TagSource.Classification,
           labelType: 'Manual',
           state: 'Confirmed',
@@ -790,16 +800,16 @@ describe('LineageUtils', () => {
 
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
-      expect(firstNode.docId).toBe('customer_id->customer_id1'); // Custom docId based on fromColumn and toColumn
+      expect(firstNode.docId).toBe(CUSTOMER_ID_CUSTOMER_ID1); // Custom docId based on fromColumn and toColumn
       expect(firstNode).not.toHaveProperty('columns');
       expect(firstNode.toColumn).toBe('customer_id1');
       expect(firstNode.fromColumn).toBe('customer_id'); // Flattened
       // Downstream uses toColumn tags
       expect(firstNode.tags).toEqual([
         {
-          tagFQN: 'PII.Public',
+          tagFQN: PII_PUBLIC,
           name: 'Public',
-          description: 'Public column',
+          description: PUBLIC_COLUMN,
           source: TagSource.Classification,
           labelType: 'Manual',
           state: 'Confirmed',

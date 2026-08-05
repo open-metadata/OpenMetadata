@@ -28,6 +28,11 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import GlossaryTermsSection from './GlossaryTermsSection';
 
+const LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_GLOSSARY_TER =
+  'label.no-entity-assigned - {"entity":"label.glossary-term-plural"}';
+const TAG_SELECT_FORM = 'tag-select-form';
+const TSF_SUBMIT_STRINGS = 'tsf-submit-strings';
+
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -107,12 +112,12 @@ jest.mock(
           const defaultValue = selectedTerms.map((t) => t.tagFQN).join(',');
 
           return (
-            <div data-default={defaultValue} data-testid="tag-select-form">
+            <div data-default={defaultValue} data-testid={TAG_SELECT_FORM}>
               <button data-testid="tsf-cancel" onClick={() => onCancel?.()}>
                 Cancel
               </button>
               <button
-                data-testid="tsf-submit-strings"
+                data-testid={TSF_SUBMIT_STRINGS}
                 onClick={() =>
                   onUpdate?.([
                     {
@@ -290,9 +295,7 @@ describe('GlossaryTermsSection', () => {
         screen.getByText('label.glossary-term-plural')
       ).toBeInTheDocument();
       expect(
-        screen.getByText(
-          'label.no-entity-assigned - {"entity":"label.glossary-term-plural"}'
-        )
+        screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_GLOSSARY_TER)
       ).toBeInTheDocument();
 
       const editClickable = document.querySelector(
@@ -313,14 +316,12 @@ describe('GlossaryTermsSection', () => {
 
       clickHeaderEdit();
 
-      expect(screen.getByTestId('tag-select-form')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_SELECT_FORM)).toBeInTheDocument();
 
       fireEvent.click(screen.getByTestId('tsf-cancel'));
 
       expect(
-        screen.getByText(
-          'label.no-entity-assigned - {"entity":"label.glossary-term-plural"}'
-        )
+        screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_GLOSSARY_TER)
       ).toBeInTheDocument();
     });
 
@@ -329,13 +330,11 @@ describe('GlossaryTermsSection', () => {
 
       clickHeaderEdit();
 
-      expect(screen.getByTestId('tag-select-form')).toBeInTheDocument();
+      expect(screen.getByTestId(TAG_SELECT_FORM)).toBeInTheDocument();
 
       await waitFor(() => {
         expect(
-          screen.getByText(
-            'label.no-entity-assigned - {"entity":"label.glossary-term-plural"}'
-          )
+          screen.getByText(LABEL_NO_ENTITY_ASSIGNED_ENTITY_LABEL_GLOSSARY_TER)
         ).toBeInTheDocument();
       });
     });
@@ -374,7 +373,7 @@ describe('GlossaryTermsSection', () => {
       clickHeaderEdit();
 
       // form visible with default values
-      expect(screen.getByTestId('tag-select-form')).toHaveAttribute(
+      expect(screen.getByTestId(TAG_SELECT_FORM)).toHaveAttribute(
         'data-default',
         'g.customer,g.order'
       );
@@ -400,7 +399,7 @@ describe('GlossaryTermsSection', () => {
 
       // Submit string selections from form
       await act(async () => {
-        fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+        fireEvent.click(screen.getByTestId(TSF_SUBMIT_STRINGS));
         await Promise.resolve(); // flush microtasks
       });
 
@@ -435,7 +434,7 @@ describe('GlossaryTermsSection', () => {
 
       clickHeaderEdit();
       await act(async () => {
-        fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+        fireEvent.click(screen.getByTestId(TSF_SUBMIT_STRINGS));
       });
 
       await waitFor(() => {
@@ -461,7 +460,7 @@ describe('GlossaryTermsSection', () => {
 
       clickHeaderEdit();
       await act(async () => {
-        fireEvent.click(screen.getByTestId('tsf-submit-strings'));
+        fireEvent.click(screen.getByTestId(TSF_SUBMIT_STRINGS));
       });
 
       await waitFor(() => {
@@ -479,7 +478,7 @@ describe('GlossaryTermsSection', () => {
 
       // form should be gone
       await waitFor(() => {
-        expect(screen.queryByTestId('tag-select-form')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(TAG_SELECT_FORM)).not.toBeInTheDocument();
       });
     });
 

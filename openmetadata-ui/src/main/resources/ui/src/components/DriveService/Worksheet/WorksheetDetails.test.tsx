@@ -28,6 +28,12 @@ import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import WorksheetDetails from './WorksheetDetails';
 import { WorksheetDetailsProps } from './WorksheetDetails.interface';
 
+const TEST_SERVICE_TEST_SPREADSHEET_TEST_WORKSHEET =
+  'test-service.test-spreadsheet.test-worksheet';
+const CURRENT_USER = 'current-user';
+const DATA_ASSETS_HEADER = 'data-assets-header';
+const GENERIC_PROVIDER = 'generic-provider';
+
 jest.mock('../../../hooks/useApplicationStore');
 jest.mock('../../../hooks/useCustomPages');
 jest.mock('../../../hooks/useFqn');
@@ -87,7 +93,7 @@ jest.mock('../../common/Loader/Loader', () =>
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest.fn(({ children }) => (
-    <div data-testid="generic-provider">{children}</div>
+    <div data-testid={GENERIC_PROVIDER}>{children}</div>
   )),
 }));
 
@@ -95,7 +101,7 @@ jest.mock(
   '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
     DataAssetsHeader: jest.fn(() => (
-      <div data-testid="data-assets-header">Data Assets Header</div>
+      <div data-testid={DATA_ASSETS_HEADER}>Data Assets Header</div>
     )),
   })
 );
@@ -138,7 +144,7 @@ const mockWorksheetDetails: Worksheet = {
   id: 'worksheet-id-1',
   name: 'test-worksheet',
   displayName: 'Test Worksheet',
-  fullyQualifiedName: 'test-service.test-spreadsheet.test-worksheet',
+  fullyQualifiedName: TEST_SERVICE_TEST_SPREADSHEET_TEST_WORKSHEET,
   description: 'Test worksheet description',
   owners: [
     {
@@ -243,7 +249,7 @@ describe('WorksheetDetails', () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: {
         id: 'current-user-id',
-        name: 'current-user',
+        name: CURRENT_USER,
       },
     });
 
@@ -258,8 +264,8 @@ describe('WorksheetDetails', () => {
     });
 
     mockUseFqn.mockReturnValue({
-      fqn: 'test-service.test-spreadsheet.test-worksheet',
-      entityFqn: 'test-service.test-spreadsheet.test-worksheet',
+      fqn: TEST_SERVICE_TEST_SPREADSHEET_TEST_WORKSHEET,
+      entityFqn: TEST_SERVICE_TEST_SPREADSHEET_TEST_WORKSHEET,
       columnPart: undefined,
     });
 
@@ -284,9 +290,9 @@ describe('WorksheetDetails', () => {
     renderWorksheetDetails();
 
     expect(screen.getByTestId('page-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+    expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
   });
 
   it('should show loader when customization is loading', () => {
@@ -304,7 +310,7 @@ describe('WorksheetDetails', () => {
     renderWorksheetDetails();
 
     expect(screen.getByTestId('tabs')).toBeInTheDocument();
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle worksheet restoration successfully', async () => {
@@ -321,7 +327,7 @@ describe('WorksheetDetails', () => {
       worksheetDetails: deletedWorksheetDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle worksheet restoration error', async () => {
@@ -337,7 +343,7 @@ describe('WorksheetDetails', () => {
       worksheetDetails: deletedWorksheetDetails,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should fetch feed counts on component mount', async () => {
@@ -346,12 +352,12 @@ describe('WorksheetDetails', () => {
     await waitFor(
       () => {
         expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
-          'test-service.test-spreadsheet.test-worksheet',
+          TEST_SERVICE_TEST_SPREADSHEET_TEST_WORKSHEET,
           expect.any(Function)
         );
         expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
           EntityType.WORKSHEET,
-          'test-service.test-spreadsheet.test-worksheet',
+          TEST_SERVICE_TEST_SPREADSHEET_TEST_WORKSHEET,
           expect.any(Function)
         );
       },
@@ -366,7 +372,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -377,8 +383,8 @@ describe('WorksheetDetails', () => {
         {
           id: 'current-user-id',
           type: 'user',
-          name: 'current-user',
-          fullyQualifiedName: 'current-user',
+          name: CURRENT_USER,
+          fullyQualifiedName: CURRENT_USER,
           displayName: 'Current User',
           deleted: false,
         },
@@ -392,7 +398,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -403,7 +409,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -414,7 +420,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -425,7 +431,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -439,7 +445,7 @@ describe('WorksheetDetails', () => {
       worksheetDetails: deletedWorksheetDetails,
     });
 
-    expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
+    expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
   });
 
   it('should handle display name update', async () => {
@@ -449,7 +455,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -462,7 +468,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -473,7 +479,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -484,7 +490,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -495,7 +501,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -506,7 +512,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -517,7 +523,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -525,7 +531,7 @@ describe('WorksheetDetails', () => {
     renderWorksheetDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -533,7 +539,7 @@ describe('WorksheetDetails', () => {
     renderWorksheetDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -560,7 +566,7 @@ describe('WorksheetDetails', () => {
       worksheetDetails: worksheetWithoutFollowers,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle feed count updates', async () => {
@@ -577,7 +583,7 @@ describe('WorksheetDetails', () => {
     renderWorksheetDetails();
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -589,7 +595,7 @@ describe('WorksheetDetails', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
     });
   });
 
@@ -600,7 +606,7 @@ describe('WorksheetDetails', () => {
 
     renderWorksheetDetails();
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle limited permissions', () => {
@@ -614,7 +620,7 @@ describe('WorksheetDetails', () => {
       worksheetPermissions: limitedPermissions,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle worksheets with columns', () => {
@@ -640,7 +646,7 @@ describe('WorksheetDetails', () => {
       worksheetDetails: worksheetWithColumns as Worksheet,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   it('should handle worksheets without columns', () => {
@@ -653,7 +659,7 @@ describe('WorksheetDetails', () => {
       worksheetDetails: worksheetWithoutColumns,
     });
 
-    expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+    expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
   });
 
   describe('ViewCustomFields Permission Tests', () => {
@@ -668,8 +674,8 @@ describe('WorksheetDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -684,8 +690,8 @@ describe('WorksheetDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
 
@@ -701,8 +707,8 @@ describe('WorksheetDetails', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('generic-provider')).toBeInTheDocument();
-        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+        expect(screen.getByTestId(GENERIC_PROVIDER)).toBeInTheDocument();
+        expect(screen.getByTestId(DATA_ASSETS_HEADER)).toBeInTheDocument();
       });
     });
   });

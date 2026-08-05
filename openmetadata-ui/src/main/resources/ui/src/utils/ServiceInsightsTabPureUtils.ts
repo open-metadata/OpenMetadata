@@ -25,6 +25,8 @@ import type { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 
+const LABEL_ENTITY_COVERAGE = 'label.entity-coverage';
+
 export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
   switch (serviceType) {
     case 'databaseServices':
@@ -70,22 +72,22 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
   switch (chartType) {
     case SystemChartType.DescriptionCoverage:
     case SystemChartType.AssetsWithDescriptionLive:
-      return t('label.entity-coverage', {
+      return t(LABEL_ENTITY_COVERAGE, {
         entity: t('label.description'),
       });
     case SystemChartType.OwnersCoverage:
     case SystemChartType.AssetsWithOwnerLive:
-      return t('label.entity-coverage', {
+      return t(LABEL_ENTITY_COVERAGE, {
         entity: t('label.ownership'),
       });
     case SystemChartType.PIICoverage:
     case SystemChartType.AssetsWithPIILive:
-      return t('label.entity-coverage', {
+      return t(LABEL_ENTITY_COVERAGE, {
         entity: t('label.pii-uppercase'),
       });
     case SystemChartType.TierCoverage:
     case SystemChartType.AssetsWithTierLive:
-      return t('label.entity-coverage', {
+      return t(LABEL_ENTITY_COVERAGE, {
         entity: t('label.tier'),
       });
     case SystemChartType.HealthyDataAssets:

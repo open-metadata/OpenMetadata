@@ -66,6 +66,8 @@ import {
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+const MESSAGE_ENTER_A_FIELD = 'message.enter-a-field';
+
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );
@@ -285,7 +287,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     let internalFormItemProps: FormItemProps = {};
     let Field = (
       <Input
-        placeholder={`${t('message.enter-a-field', {
+        placeholder={`${t(MESSAGE_ENTER_A_FIELD, {
           field: label,
         })}`}
       />
@@ -373,7 +375,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           } else {
             Field = (
               <Input
-                placeholder={`${t('message.enter-a-field', {
+                placeholder={`${t(MESSAGE_ENTER_A_FIELD, {
                   field: label,
                 })}`}
               />
@@ -389,7 +391,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           Field = (
             <InputNumber
               className="w-full"
-              placeholder={`${t('message.enter-a-field', {
+              placeholder={`${t(MESSAGE_ENTER_A_FIELD, {
                 field: label,
               })}`}
             />
@@ -452,7 +454,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                         ]}>
                         {DynamicField ?? (
                           <Input
-                            placeholder={`${t('message.enter-a-field', {
+                            placeholder={`${t(MESSAGE_ENTER_A_FIELD, {
                               field: label,
                             })}`}
                           />

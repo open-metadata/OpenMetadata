@@ -21,6 +21,7 @@ import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.const
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';
 
+const LABEL_CONFIGURATION = 'label.configuration';
 jest.mock('../../../../constants/constants', () => ({
   DE_ACTIVE_COLOR: '#fefefe',
   MCP_APPLICATION_NAME: 'McpApplication',
@@ -269,7 +270,7 @@ describe('AppDetails component', () => {
     const tabList = screen.getByTestId('tabs');
 
     expect(
-      within(tabList).getByRole('tab', { name: 'label.configuration' })
+      within(tabList).getByRole('tab', { name: LABEL_CONFIGURATION })
     ).toBeInTheDocument();
 
     expect(
@@ -319,7 +320,7 @@ describe('AppDetails component', () => {
 
     expect(
       within(screen.getByTestId('tabs')).getByRole('tab', {
-        name: 'label.configuration',
+        name: LABEL_CONFIGURATION,
       })
     ).toBeInTheDocument();
     expect(
@@ -341,7 +342,7 @@ describe('AppDetails component', () => {
 
     expect(
       within(screen.getByTestId('tabs')).queryByRole('tab', {
-        name: 'label.configuration',
+        name: LABEL_CONFIGURATION,
       })
     ).not.toBeInTheDocument();
     expect(

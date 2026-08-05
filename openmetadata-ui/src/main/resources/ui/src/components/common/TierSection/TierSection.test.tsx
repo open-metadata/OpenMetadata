@@ -17,6 +17,11 @@ import * as useEditableSectionHook from '../../../hooks/useEditableSection';
 import * as EntityUpdateUtils from '../../../utils/EntityUpdateUtils';
 import TierSection from './TierSection';
 
+const TIER_TIER1 = 'Tier.Tier1';
+const LABEL_TIER = 'label.tier';
+const EDIT_ICON_TIER = 'edit-icon-tier';
+const UPDATE_TIER = 'update-tier';
+
 const mockStartEditing = jest.fn();
 const mockCompleteEditing = jest.fn();
 const mockCancelEditing = jest.fn();
@@ -38,7 +43,7 @@ jest.mock('../TierCard/TierCard', () => ({
   default: jest.fn().mockImplementation(({ children, onClose, updateTier }) => (
     <div data-testid="tier-card">
       {children}
-      <button data-testid="update-tier" onClick={() => updateTier?.()}>
+      <button data-testid={UPDATE_TIER} onClick={() => updateTier?.()}>
         Update Tier
       </button>
       <button data-testid="close-tier" onClick={onClose}>
@@ -111,12 +116,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    expect(screen.getByText('label.tier')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_TIER)).toBeInTheDocument();
     expect(screen.getByTestId('tier-tag')).toBeInTheDocument();
   });
 
@@ -129,7 +134,7 @@ describe('TierSection', () => {
       />
     );
 
-    expect(screen.getByText('label.tier')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_TIER)).toBeInTheDocument();
     expect(
       screen.getByText('label.no-entity-assigned label.tier')
     ).toBeInTheDocument();
@@ -146,12 +151,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    expect(screen.getByTestId('edit-icon-tier')).toBeInTheDocument();
+    expect(screen.getByTestId(EDIT_ICON_TIER)).toBeInTheDocument();
   });
 
   it('should not show edit button when hasPermission is false', () => {
@@ -165,12 +170,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    expect(screen.queryByTestId('edit-icon-tier')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_ICON_TIER)).not.toBeInTheDocument();
   });
 
   it('should not show edit button when showEditButton is false', () => {
@@ -184,12 +189,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    expect(screen.queryByTestId('edit-icon-tier')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_ICON_TIER)).not.toBeInTheDocument();
   });
 
   it('should not show edit button when isLoading is true', () => {
@@ -216,12 +221,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    expect(screen.queryByTestId('edit-icon-tier')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(EDIT_ICON_TIER)).not.toBeInTheDocument();
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
@@ -236,12 +241,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    const editButton = screen.getByTestId('edit-icon-tier');
+    const editButton = screen.getByTestId(EDIT_ICON_TIER);
 
     fireEvent.click(editButton);
 
@@ -257,7 +262,7 @@ describe('TierSection', () => {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
-        tagFQN: 'Tier.Tier1',
+        tagFQN: TIER_TIER1,
       },
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
@@ -276,7 +281,7 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
@@ -308,7 +313,7 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
@@ -331,7 +336,7 @@ describe('TierSection', () => {
       />
     );
 
-    expect(screen.getByText('label.tier')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_TIER)).toBeInTheDocument();
     expect(screen.getByTestId('tier-tag')).toBeInTheDocument();
   });
 
@@ -345,12 +350,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    expect(screen.getByText('label.tier')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_TIER)).toBeInTheDocument();
   });
 
   it('should call onTierUpdate callback when tier is updated', async () => {
@@ -368,7 +373,7 @@ describe('TierSection', () => {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
-        tagFQN: 'Tier.Tier1',
+        tagFQN: TIER_TIER1,
       },
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
@@ -388,20 +393,20 @@ describe('TierSection', () => {
             labelType: LabelType.Manual,
             source: TagSource.Classification,
             state: State.Confirmed,
-            tagFQN: 'Tier.Tier1',
+            tagFQN: TIER_TIER1,
           },
         ]}
         tier={{
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
         onTierUpdate={mockOnTierUpdate}
       />
     );
 
-    const updateButton = screen.getByTestId('update-tier');
+    const updateButton = screen.getByTestId(UPDATE_TIER);
 
     fireEvent.click(updateButton);
 
@@ -419,7 +424,7 @@ describe('TierSection', () => {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
-        tagFQN: 'Tier.Tier1',
+        tagFQN: TIER_TIER1,
       },
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
@@ -438,7 +443,7 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
@@ -464,7 +469,7 @@ describe('TierSection', () => {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
-        tagFQN: 'Tier.Tier1',
+        tagFQN: TIER_TIER1,
       },
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
@@ -484,7 +489,7 @@ describe('TierSection', () => {
             labelType: LabelType.Manual,
             source: TagSource.Classification,
             state: State.Confirmed,
-            tagFQN: 'Tier.Tier1',
+            tagFQN: TIER_TIER1,
           },
           {
             labelType: LabelType.Manual,
@@ -497,12 +502,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    const updateButton = screen.getByTestId('update-tier');
+    const updateButton = screen.getByTestId(UPDATE_TIER);
 
     fireEvent.click(updateButton);
 
@@ -534,7 +539,7 @@ describe('TierSection', () => {
         labelType: LabelType.Manual,
         source: TagSource.Classification,
         state: State.Confirmed,
-        tagFQN: 'Tier.Tier1',
+        tagFQN: TIER_TIER1,
       },
       setDisplayData: mockSetDisplayTier,
       setIsLoading: mockSetIsLoading,
@@ -553,12 +558,12 @@ describe('TierSection', () => {
           labelType: LabelType.Manual,
           source: TagSource.Classification,
           state: State.Confirmed,
-          tagFQN: 'Tier.Tier1',
+          tagFQN: TIER_TIER1,
         }}
       />
     );
 
-    const updateButton = screen.getByTestId('update-tier');
+    const updateButton = screen.getByTestId(UPDATE_TIER);
 
     fireEvent.click(updateButton);
 

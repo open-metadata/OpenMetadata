@@ -19,6 +19,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { ModalWithFunctionEditorProps } from './ModalWithFunctionEditor.interface';
 
+const LABEL_SQL_FUNCTION = 'label.sql-function';
+
 export const ModalWithFunctionEditor = ({
   header,
   value,
@@ -86,13 +88,13 @@ export const ModalWithFunctionEditor = ({
         <Form form={form} layout="vertical" onFinish={onFinish}>
           <Form.Item
             data-testid="function-editor-container"
-            label={t('label.sql-function')}
+            label={t(LABEL_SQL_FUNCTION)}
             name="functionValue"
             rules={[
               {
                 required: true,
                 message: t('label.field-required', {
-                  field: t('label.sql-function'),
+                  field: t(LABEL_SQL_FUNCTION),
                 }),
               },
             ]}
@@ -100,7 +102,7 @@ export const ModalWithFunctionEditor = ({
             <Input
               data-testid="sql-function-input"
               placeholder={t('label.enter-entity', {
-                entity: t('label.sql-function'),
+                entity: t(LABEL_SQL_FUNCTION),
               })}
             />
           </Form.Item>

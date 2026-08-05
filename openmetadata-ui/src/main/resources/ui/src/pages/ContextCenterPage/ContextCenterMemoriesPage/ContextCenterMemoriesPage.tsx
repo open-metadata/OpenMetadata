@@ -84,6 +84,9 @@ import {
   SearchOptionSource,
 } from './ContextCenterMemoriesPage.interface';
 
+const LABEL_ALL_ENTITY = 'label.all-entity';
+const LABEL_AUTHOR = 'label.author';
+
 const FILTER_BUTTON_BASE_CLS =
   'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
   ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:outline-1 tw:-outline-offset-1' +
@@ -677,7 +680,7 @@ const ContextCenterMemoriesPage: FC = () => {
                           }
                           weight="medium">
                           {selectedAsset?.label ??
-                            t('label.all-entity', {
+                            t(LABEL_ALL_ENTITY, {
                               entity: t('label.asset-plural'),
                             })}
                         </Typography>
@@ -731,7 +734,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         }
                         weight="medium">
                         {selectedAuthor?.label ??
-                          t('label.all-entity', { entity: t('label.author') })}
+                          t(LABEL_ALL_ENTITY, { entity: t(LABEL_AUTHOR) })}
                       </Typography>
                     </div>
                     <ChevronDown
@@ -748,7 +751,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         className="tw:w-full"
                         icon={SearchLg}
                         placeholder={t('label.search-entity', {
-                          entity: t('label.author'),
+                          entity: t(LABEL_AUTHOR),
                         })}
                         value={authorSearch}
                         onChange={(value) => {
@@ -780,11 +783,11 @@ const ContextCenterMemoriesPage: FC = () => {
                       <Dropdown.Item
                         id="all-authors"
                         key="all-authors"
-                        textValue={t('label.all-entity', {
-                          entity: t('label.author'),
+                        textValue={t(LABEL_ALL_ENTITY, {
+                          entity: t(LABEL_AUTHOR),
                         })}>
                         <span>
-                          {t('label.all-entity', { entity: t('label.author') })}
+                          {t(LABEL_ALL_ENTITY, { entity: t(LABEL_AUTHOR) })}
                         </span>
                       </Dropdown.Item>
                       {isAuthorOptionsLoading && (

@@ -13,6 +13,17 @@
 
 import { EntityType } from '../enums/entity.enum';
 
+const SHOULD_CALL_API_WITH_CORRECT_ENDPOINT =
+  'should call API with correct endpoint and default parameters' as const;
+const TEST_SUITE_NAME = 'test.suite.name' as const;
+const TEXT_PLAIN = 'text/plain' as const;
+const SHOULD_CALL_API_WITH_DRY_RUN =
+  'should call API with dryRun=false when specified' as const;
+const SHOULD_HANDLE_API_ERRORS = 'should handle API errors' as const;
+const DATABASE_SCHEMA_TABLE = 'database.schema.table' as const;
+const MY_GLOSSARY = 'my-glossary' as const;
+const GLOSSARY_TERM = 'glossary.term' as const;
+
 // Mock response data
 const mockCSVImportResponse = {
   jobId: 'test-job-id-123',
@@ -28,7 +39,7 @@ describe('importExportAPI tests', () => {
   });
 
   describe('importTestCaseInCSVFormat', () => {
-    it('should call API with correct endpoint and default parameters', async () => {
+    it(SHOULD_CALL_API_WITH_CORRECT_ENDPOINT, async () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
@@ -43,19 +54,19 @@ describe('importExportAPI tests', () => {
 
       const result = await importTestCaseInCSVFormat({
         entityType: EntityType.TEST_CASE,
-        name: 'test.suite.name',
+        name: TEST_SUITE_NAME,
         data: mockCSVData,
       });
 
       expect(mockPut).toHaveBeenCalledWith(
         '/dataQuality/testCases/name/test.suite.name/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
 
-    it('should call API with dryRun=false when specified', async () => {
+    it(SHOULD_CALL_API_WITH_DRY_RUN, async () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
@@ -70,7 +81,7 @@ describe('importExportAPI tests', () => {
 
       await importTestCaseInCSVFormat({
         entityType: EntityType.TEST_CASE,
-        name: 'test.suite.name',
+        name: TEST_SUITE_NAME,
         data: mockCSVData,
         dryRun: false,
       });
@@ -78,7 +89,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/dataQuality/testCases/name/test.suite.name/importAsync?dryRun=false&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -97,7 +108,7 @@ describe('importExportAPI tests', () => {
 
       await importTestCaseInCSVFormat({
         entityType: EntityType.TEST_CASE,
-        name: 'test.suite.name',
+        name: TEST_SUITE_NAME,
         data: mockCSVData,
         recursive: true,
       });
@@ -105,7 +116,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/dataQuality/testCases/name/test.suite.name/importAsync?dryRun=true&recursive=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -132,11 +143,11 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         expect.stringContaining('/dataQuality/testCases/name/'),
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
-    it('should handle API errors', async () => {
+    it(SHOULD_HANDLE_API_ERRORS, async () => {
       const mockError = new Error('API Error');
       const mockPut = jest.fn().mockRejectedValue(mockError);
       jest.mock('./index', () => ({
@@ -151,7 +162,7 @@ describe('importExportAPI tests', () => {
       await expect(
         importTestCaseInCSVFormat({
           entityType: EntityType.TEST_CASE,
-          name: 'test.suite.name',
+          name: TEST_SUITE_NAME,
           data: mockCSVData,
         })
       ).rejects.toThrow('API Error');
@@ -172,12 +183,12 @@ describe('importExportAPI tests', () => {
 
       await importTestCaseInCSVFormat({
         entityType: EntityType.TEST_CASE,
-        name: 'test.suite.name',
+        name: TEST_SUITE_NAME,
         data: '',
       });
 
       expect(mockPut).toHaveBeenCalledWith(expect.any(String), '', {
-        headers: { 'Content-type': 'text/plain' },
+        headers: { 'Content-type': TEXT_PLAIN },
       });
     });
   });
@@ -198,14 +209,14 @@ describe('importExportAPI tests', () => {
 
       const result = await importEntityInCSVFormat({
         entityType: EntityType.TABLE,
-        name: 'database.schema.table',
+        name: DATABASE_SCHEMA_TABLE,
         data: mockCSVData,
       });
 
       expect(mockPut).toHaveBeenCalledWith(
         '/tables/name/database.schema.table/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
@@ -232,7 +243,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/databases/name/service.database/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -258,7 +269,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/databaseSchemas/name/service.database.schema/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -277,7 +288,7 @@ describe('importExportAPI tests', () => {
 
       await importEntityInCSVFormat({
         entityType: EntityType.TABLE,
-        name: 'database.schema.table',
+        name: DATABASE_SCHEMA_TABLE,
         data: mockCSVData,
         dryRun: false,
         recursive: true,
@@ -286,7 +297,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/tables/name/database.schema.table/importAsync?dryRun=false&recursive=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -305,14 +316,14 @@ describe('importExportAPI tests', () => {
 
       await importEntityInCSVFormat({
         entityType: EntityType.TABLE,
-        name: 'database.schema.table',
+        name: DATABASE_SCHEMA_TABLE,
         data: mockCSVData,
       });
 
       expect(mockPut).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -331,7 +342,7 @@ describe('importExportAPI tests', () => {
       await expect(
         importEntityInCSVFormat({
           entityType: EntityType.TABLE,
-          name: 'database.schema.table',
+          name: DATABASE_SCHEMA_TABLE,
           data: mockCSVData,
         })
       ).rejects.toThrow('Network Error');
@@ -361,7 +372,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         'services/databaseServices/name/my-database-service/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
@@ -388,7 +399,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         'services/messagingServices/name/my-messaging-service/importAsync?dryRun=true&recursive=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -416,11 +427,11 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         'services/databaseServices/name/my-service/importAsync?dryRun=false&recursive=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
-    it('should handle API errors', async () => {
+    it(SHOULD_HANDLE_API_ERRORS, async () => {
       const apiError = new Error('Service import failed');
       const mockPut = jest.fn().mockRejectedValue(apiError);
       jest.mock('./index', () => ({
@@ -443,7 +454,7 @@ describe('importExportAPI tests', () => {
   });
 
   describe('importGlossaryInCSVFormat', () => {
-    it('should call API with correct endpoint and default parameters', async () => {
+    it(SHOULD_CALL_API_WITH_CORRECT_ENDPOINT, async () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
@@ -458,19 +469,19 @@ describe('importExportAPI tests', () => {
 
       const result = await importGlossaryInCSVFormat({
         entityType: EntityType.GLOSSARY,
-        name: 'my-glossary',
+        name: MY_GLOSSARY,
         data: mockCSVData,
       });
 
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaries/name/my-glossary/importAsync?dryRun=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
 
-    it('should call API with dryRun=false when specified', async () => {
+    it(SHOULD_CALL_API_WITH_DRY_RUN, async () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
@@ -485,7 +496,7 @@ describe('importExportAPI tests', () => {
 
       await importGlossaryInCSVFormat({
         entityType: EntityType.GLOSSARY,
-        name: 'my-glossary',
+        name: MY_GLOSSARY,
         data: mockCSVData,
         dryRun: false,
       });
@@ -493,7 +504,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaries/name/my-glossary/importAsync?dryRun=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -512,7 +523,7 @@ describe('importExportAPI tests', () => {
 
       await importGlossaryInCSVFormat({
         entityType: EntityType.GLOSSARY,
-        name: 'my-glossary',
+        name: MY_GLOSSARY,
         data: mockCSVData,
         recursive: true, // Should be ignored
       });
@@ -547,11 +558,11 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         expect.stringContaining('/glossaries/name/'),
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
-    it('should handle API errors', async () => {
+    it(SHOULD_HANDLE_API_ERRORS, async () => {
       const error = new Error('Glossary import failed');
       const mockPut = jest.fn().mockRejectedValue(error);
       jest.mock('./index', () => ({
@@ -566,7 +577,7 @@ describe('importExportAPI tests', () => {
       await expect(
         importGlossaryInCSVFormat({
           entityType: EntityType.GLOSSARY,
-          name: 'my-glossary',
+          name: MY_GLOSSARY,
           data: mockCSVData,
         })
       ).rejects.toThrow('Glossary import failed');
@@ -574,7 +585,7 @@ describe('importExportAPI tests', () => {
   });
 
   describe('importGlossaryTermInCSVFormat', () => {
-    it('should call API with correct endpoint and default parameters', async () => {
+    it(SHOULD_CALL_API_WITH_CORRECT_ENDPOINT, async () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
@@ -589,19 +600,19 @@ describe('importExportAPI tests', () => {
 
       const result = await importGlossaryTermInCSVFormat({
         entityType: EntityType.GLOSSARY_TERM,
-        name: 'glossary.term',
+        name: GLOSSARY_TERM,
         data: mockCSVData,
       });
 
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaryTerms/name/glossary.term/importAsync?dryRun=true',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
       expect(result).toEqual(mockCSVImportResponse);
     });
 
-    it('should call API with dryRun=false when specified', async () => {
+    it(SHOULD_CALL_API_WITH_DRY_RUN, async () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
@@ -616,7 +627,7 @@ describe('importExportAPI tests', () => {
 
       await importGlossaryTermInCSVFormat({
         entityType: EntityType.GLOSSARY_TERM,
-        name: 'glossary.term',
+        name: GLOSSARY_TERM,
         data: mockCSVData,
         dryRun: false,
       });
@@ -624,7 +635,7 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         '/glossaryTerms/name/glossary.term/importAsync?dryRun=false',
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
@@ -643,7 +654,7 @@ describe('importExportAPI tests', () => {
 
       await importGlossaryTermInCSVFormat({
         entityType: EntityType.GLOSSARY_TERM,
-        name: 'glossary.term',
+        name: GLOSSARY_TERM,
         data: mockCSVData,
         recursive: true, // Should be ignored
       });
@@ -678,11 +689,11 @@ describe('importExportAPI tests', () => {
       expect(mockPut).toHaveBeenCalledWith(
         expect.stringContaining('/glossaryTerms/name/'),
         mockCSVData,
-        { headers: { 'Content-type': 'text/plain' } }
+        { headers: { 'Content-type': TEXT_PLAIN } }
       );
     });
 
-    it('should handle API errors', async () => {
+    it(SHOULD_HANDLE_API_ERRORS, async () => {
       const error = new Error('Glossary term import failed');
       const mockPut = jest.fn().mockRejectedValue(error);
       jest.mock('./index', () => ({
@@ -697,7 +708,7 @@ describe('importExportAPI tests', () => {
       await expect(
         importGlossaryTermInCSVFormat({
           entityType: EntityType.GLOSSARY_TERM,
-          name: 'glossary.term',
+          name: GLOSSARY_TERM,
           data: mockCSVData,
         })
       ).rejects.toThrow('Glossary term import failed');
@@ -719,12 +730,12 @@ describe('importExportAPI tests', () => {
 
       await importGlossaryTermInCSVFormat({
         entityType: EntityType.GLOSSARY_TERM,
-        name: 'glossary.term',
+        name: GLOSSARY_TERM,
         data: largeCsvData,
       });
 
       expect(mockPut).toHaveBeenCalledWith(expect.any(String), largeCsvData, {
-        headers: { 'Content-type': 'text/plain' },
+        headers: { 'Content-type': TEXT_PLAIN },
       });
     });
   });

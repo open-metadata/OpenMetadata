@@ -19,6 +19,9 @@ import {
 } from '../../../generated/entity/feed/thread';
 import ActivityFeedActions from './ActivityFeedActions';
 
+const DELETE_MESSAGE = 'delete-message';
+const EDIT_MESSAGE = 'edit-message';
+const THREAD_123 = 'thread-123';
 const mockDeleteFeed = jest.fn().mockResolvedValue(undefined);
 const mockShowDrawer = jest.fn();
 const mockHideDrawer = jest.fn();
@@ -59,7 +62,7 @@ const createMockFeed = (
   type: ThreadType,
   createdBy: string = 'testuser'
 ): Thread => ({
-  id: 'thread-123',
+  id: THREAD_123,
   // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://test',
   threadTs: 1234567890,
@@ -98,7 +101,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.getByTestId('edit-message')).toBeInTheDocument();
+      expect(screen.getByTestId(EDIT_MESSAGE)).toBeInTheDocument();
     });
 
     it('should NOT show edit button when user is not author', () => {
@@ -114,7 +117,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.queryByTestId('edit-message')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(EDIT_MESSAGE)).not.toBeInTheDocument();
     });
 
     it('should NOT show edit button for task thread (non-post)', () => {
@@ -130,7 +133,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.queryByTestId('edit-message')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(EDIT_MESSAGE)).not.toBeInTheDocument();
     });
 
     it('should call onEditPost when edit button is clicked', () => {
@@ -146,7 +149,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('edit-message'));
+      fireEvent.click(screen.getByTestId(EDIT_MESSAGE));
 
       expect(mockOnEditPost).toHaveBeenCalled();
     });
@@ -166,7 +169,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.getByTestId('delete-message')).toBeInTheDocument();
+      expect(screen.getByTestId(DELETE_MESSAGE)).toBeInTheDocument();
     });
 
     it('should show delete button when user is admin (not author)', () => {
@@ -186,7 +189,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.getByTestId('delete-message')).toBeInTheDocument();
+      expect(screen.getByTestId(DELETE_MESSAGE)).toBeInTheDocument();
     });
 
     it('should NOT show delete button when user is neither author nor admin', () => {
@@ -202,7 +205,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.queryByTestId('delete-message')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(DELETE_MESSAGE)).not.toBeInTheDocument();
     });
 
     it('should NOT show delete button for task thread (non-post)', () => {
@@ -218,7 +221,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.queryByTestId('delete-message')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(DELETE_MESSAGE)).not.toBeInTheDocument();
     });
 
     it('should show delete button for task post when user is author', () => {
@@ -234,7 +237,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      expect(screen.getByTestId('delete-message')).toBeInTheDocument();
+      expect(screen.getByTestId(DELETE_MESSAGE)).toBeInTheDocument();
     });
   });
 
@@ -252,7 +255,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('delete-message'));
+      fireEvent.click(screen.getByTestId(DELETE_MESSAGE));
 
       expect(
         screen.getByText('message.confirm-delete-message')
@@ -272,11 +275,11 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('delete-message'));
+      fireEvent.click(screen.getByTestId(DELETE_MESSAGE));
       fireEvent.click(screen.getByText('label.delete'));
 
       expect(mockDeleteFeed).toHaveBeenCalledWith(
-        'thread-123',
+        THREAD_123,
         'post-123',
         false
       );
@@ -295,14 +298,10 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('delete-message'));
+      fireEvent.click(screen.getByTestId(DELETE_MESSAGE));
       fireEvent.click(screen.getByText('label.delete'));
 
-      expect(mockDeleteFeed).toHaveBeenCalledWith(
-        'thread-123',
-        'post-123',
-        true
-      );
+      expect(mockDeleteFeed).toHaveBeenCalledWith(THREAD_123, 'post-123', true);
       // hideDrawer is called synchronously in handleDelete after deleteFeed is called
       expect(mockHideDrawer).toHaveBeenCalled();
     });
@@ -320,7 +319,7 @@ describe('ActivityFeedActions', () => {
         />
       );
 
-      fireEvent.click(screen.getByTestId('delete-message'));
+      fireEvent.click(screen.getByTestId(DELETE_MESSAGE));
 
       expect(
         screen.getByText('message.confirm-delete-message')

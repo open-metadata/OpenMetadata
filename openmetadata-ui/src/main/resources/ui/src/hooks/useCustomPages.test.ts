@@ -17,6 +17,9 @@ import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useApplicationStore } from './useApplicationStore';
 import { useCustomPages } from './useCustomPages';
 
+const TEST_PERSONA = 'test-persona';
+const PERSONA_TEST_PERSONA = 'persona.test-persona';
+
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
 >;
@@ -34,7 +37,7 @@ jest.mock('../rest/DocStoreAPI', () => ({
 
 describe('useCustomPages', () => {
   const mockSelectedPersona = {
-    fullyQualifiedName: 'test-persona',
+    fullyQualifiedName: TEST_PERSONA,
   };
 
   const mockPage = {
@@ -52,7 +55,7 @@ describe('useCustomPages', () => {
   const mockDocument: Document = {
     entityType: 'PERSONA',
     fullyQualifiedName: 'PERSONA.test-persona',
-    name: 'test-persona',
+    name: TEST_PERSONA,
     data: {
       pages: [mockPage],
       navigation: mockNavigation,
@@ -77,7 +80,7 @@ describe('useCustomPages', () => {
 
     await waitForNextUpdate();
 
-    expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.test-persona');
+    expect(mockGetDocumentByFQN).toHaveBeenCalledWith(PERSONA_TEST_PERSONA);
     expect(result.current.customizedPage).toEqual(mockPage);
     expect(result.current.navigation).toEqual(mockNavigation);
     expect(result.current.isLoading).toBe(false);
@@ -94,7 +97,7 @@ describe('useCustomPages', () => {
 
     await waitForNextUpdate();
 
-    expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.test-persona');
+    expect(mockGetDocumentByFQN).toHaveBeenCalledWith(PERSONA_TEST_PERSONA);
     expect(result.current.customizedPage).toBeNull();
     expect(result.current.navigation).toEqual([]);
     expect(result.current.isLoading).toBe(false);
@@ -147,14 +150,14 @@ describe('useCustomPages', () => {
       },
       {
         initialProps: {
-          selectedPersona: { fullyQualifiedName: 'test-persona' },
+          selectedPersona: { fullyQualifiedName: TEST_PERSONA },
         },
       }
     );
 
     await waitForNextUpdate();
 
-    expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.test-persona');
+    expect(mockGetDocumentByFQN).toHaveBeenCalledWith(PERSONA_TEST_PERSONA);
     expect(result.current.customizedPage).toEqual(mockDocument.data.pages[0]);
     expect(result.current.navigation).toEqual(mockDocument.data.navigation);
 

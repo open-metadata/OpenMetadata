@@ -38,6 +38,8 @@ import {
   BundleSuiteFormProps,
 } from './BundleSuiteForm.interface';
 
+const LABEL_NAME = 'label.name';
+
 export interface BundleSuiteFormBodyProps {
   form: UseFormReturn<BundleSuiteFormData>;
   initialValues?: BundleSuiteFormProps['initialValues'];
@@ -121,18 +123,18 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
 
   const nameField: FieldProp = {
     name: 'name',
-    label: t('label.name'),
+    label: t(LABEL_NAME),
     type: FieldTypes.TEXT,
     required: true,
-    placeholder: t('label.enter-entity', { entity: t('label.name') }),
+    placeholder: t('label.enter-entity', { entity: t(LABEL_NAME) }),
     props: { 'data-testid': 'test-suite-name' },
     id: 'root/name',
     rules: {
-      required: t('label.field-required', { field: t('label.name') }),
+      required: t('label.field-required', { field: t(LABEL_NAME) }),
       maxLength: {
         value: MAX_NAME_LENGTH,
         message: t('message.entity-maximum-size', {
-          entity: t('label.name'),
+          entity: t(LABEL_NAME),
           max: MAX_NAME_LENGTH,
         }),
       },
@@ -157,10 +159,10 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
 
   const pipelineNameField: FieldProp = {
     name: 'pipelineName',
-    label: t('label.name'),
+    label: t(LABEL_NAME),
     type: FieldTypes.TEXT,
     required: false,
-    placeholder: t('label.enter-entity', { entity: t('label.name') }),
+    placeholder: t('label.enter-entity', { entity: t(LABEL_NAME) }),
     props: { 'data-testid': 'pipeline-name' },
     id: 'root/pipelineName',
   };

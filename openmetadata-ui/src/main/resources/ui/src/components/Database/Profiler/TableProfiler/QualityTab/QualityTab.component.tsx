@@ -61,6 +61,8 @@ import DataQualityTab from '../../DataQualityTab/DataQualityTab';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
+const LABEL_TEST_PLURAL_TYPE = 'label.test-plural-type';
+
 export const QualityTab = () => {
   const {
     permissions,
@@ -143,25 +145,25 @@ export const QualityTab = () => {
 
     return [
       {
-        title: t('label.test-plural-type', { type: t('label.total') }),
+        title: t(LABEL_TEST_PLURAL_TYPE, { type: t('label.total') }),
         key: 'total-tests',
         value: tests.total,
         icon: TotalTestIcon,
       },
       {
-        title: t('label.test-plural-type', { type: t('label.successful') }),
+        title: t(LABEL_TEST_PLURAL_TYPE, { type: t('label.successful') }),
         key: 'successful-tests',
         value: tests.success,
         icon: SuccessTestIcon,
       },
       {
-        title: t('label.test-plural-type', { type: t('label.failed') }),
+        title: t(LABEL_TEST_PLURAL_TYPE, { type: t('label.failed') }),
         key: 'failed-tests',
         value: tests.failed,
         icon: FailedTestIcon,
       },
       {
-        title: t('label.test-plural-type', { type: t('label.aborted') }),
+        title: t(LABEL_TEST_PLURAL_TYPE, { type: t('label.aborted') }),
         key: 'aborted-tests',
         value: tests.aborted,
         icon: AbortedTestIcon,

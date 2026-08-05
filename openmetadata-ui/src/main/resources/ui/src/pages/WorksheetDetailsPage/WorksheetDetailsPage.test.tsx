@@ -37,13 +37,19 @@ import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import WorksheetDetailsPage from './WorksheetDetailsPage';
 
+const MOCK_TEST_WORKSHEET_ID = 'test-worksheet-id';
+const MOCK_TEST_WORKSHEET = 'Test Worksheet';
+const MOCK_TEST_SERVICE_TEST_WORKSHEET = 'test-service.test-worksheet';
+const MOCK_TEST_USER_ID = 'test-user-id';
+const MOCK_WORKSHEET_DETAILS = 'worksheet-details';
+
 // Mock data
 const mockWorksheetDetails: Worksheet = {
-  id: 'test-worksheet-id',
+  id: MOCK_TEST_WORKSHEET_ID,
   name: 'test-worksheet',
-  displayName: 'Test Worksheet',
+  displayName: MOCK_TEST_WORKSHEET,
   description: 'Test worksheet description',
-  fullyQualifiedName: 'test-service.test-worksheet',
+  fullyQualifiedName: MOCK_TEST_SERVICE_TEST_WORKSHEET,
   deleted: false,
   version: 1,
   followers: [],
@@ -80,14 +86,14 @@ jest.mock('../../rest/driveAPI', () => ({
   addDriveAssetFollower: jest.fn().mockImplementation(() =>
     Promise.resolve({
       changeDescription: {
-        fieldsAdded: [{ newValue: [{ id: 'test-user-id' }] }],
+        fieldsAdded: [{ newValue: [{ id: MOCK_TEST_USER_ID }] }],
       },
     })
   ),
   removeDriveAssetFollower: jest.fn().mockImplementation(() =>
     Promise.resolve({
       changeDescription: {
-        fieldsDeleted: [{ oldValue: [{ id: 'test-user-id' }] }],
+        fieldsDeleted: [{ oldValue: [{ id: MOCK_TEST_USER_ID }] }],
       },
     })
   ),
@@ -100,7 +106,7 @@ jest.mock('../../rest/driveAPI', () => ({
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     currentUser: {
-      id: 'test-user-id',
+      id: MOCK_TEST_USER_ID,
       name: 'Test User',
       teams: [],
     },
@@ -116,7 +122,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({
-    fqn: 'test-service.test-worksheet',
+    fqn: MOCK_TEST_SERVICE_TEST_WORKSHEET,
   })),
 }));
 
@@ -152,7 +158,7 @@ jest.mock('../../components/DriveService/Worksheet/WorksheetDetails', () =>
         handleToggleDelete: (version?: number) => void;
         versionHandler: () => void;
       }) => (
-        <div data-testid="worksheet-details">
+        <div data-testid={MOCK_WORKSHEET_DETAILS}>
           <div data-testid="worksheet-name">{worksheetDetails?.name}</div>
           <div data-testid="worksheet-permissions">
             {JSON.stringify(worksheetPermissions)}
@@ -177,7 +183,7 @@ jest.mock('../../components/DriveService/Worksheet/WorksheetDetails', () =>
           </button>
           <button
             data-testid="vote-button"
-            onClick={() => onUpdateVote(mockQueryVote, 'test-worksheet-id')}>
+            onClick={() => onUpdateVote(mockQueryVote, MOCK_TEST_WORKSHEET_ID)}>
             Vote
           </button>
           <button
@@ -239,7 +245,7 @@ jest.mock('../../utils/RecentActivityUtils', () => ({
 }));
 
 jest.mock('../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Test Worksheet'),
+  getEntityName: jest.fn().mockReturnValue(MOCK_TEST_WORKSHEET),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -299,7 +305,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       expect(screen.getByTestId('worksheet-name')).toHaveTextContent(
@@ -324,7 +330,7 @@ describe('WorksheetDetailsPage', () => {
 
       expect(getEntityMissingError).toHaveBeenCalledWith(
         'worksheet',
-        'test-service.test-worksheet'
+        MOCK_TEST_SERVICE_TEST_WORKSHEET
       );
     });
 
@@ -379,7 +385,7 @@ describe('WorksheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
-          'test-service.test-worksheet',
+          MOCK_TEST_SERVICE_TEST_WORKSHEET,
           EntityType.WORKSHEET,
           'owners,followers,tags,domains,dataProducts,votes,extension,rowCount,columns,rowCount'
         );
@@ -391,12 +397,12 @@ describe('WorksheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(addToRecentViewed).toHaveBeenCalledWith({
-          displayName: 'Test Worksheet',
+          displayName: MOCK_TEST_WORKSHEET,
           entityType: EntityType.WORKSHEET,
-          fqn: 'test-service.test-worksheet',
+          fqn: MOCK_TEST_SERVICE_TEST_WORKSHEET,
           serviceType: DriveServiceType.GoogleDrive,
           timestamp: 0,
-          id: 'test-worksheet-id',
+          id: MOCK_TEST_WORKSHEET_ID,
         });
       });
     });
@@ -405,7 +411,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -413,7 +419,7 @@ describe('WorksheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(patchDriveAssetDetails).toHaveBeenCalledWith(
-          'test-worksheet-id',
+          MOCK_TEST_WORKSHEET_ID,
           expect.any(Array),
           EntityType.WORKSHEET
         );
@@ -428,7 +434,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const updateButton = screen.getByTestId('update-button');
@@ -453,7 +459,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -461,8 +467,8 @@ describe('WorksheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(addDriveAssetFollower).toHaveBeenCalledWith(
-          'test-worksheet-id',
-          'test-user-id',
+          MOCK_TEST_WORKSHEET_ID,
+          MOCK_TEST_USER_ID,
           EntityType.WORKSHEET
         );
       });
@@ -472,7 +478,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -480,8 +486,8 @@ describe('WorksheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(removeDriveAssetFollower).toHaveBeenCalledWith(
-          'test-worksheet-id',
-          'test-user-id',
+          MOCK_TEST_WORKSHEET_ID,
+          MOCK_TEST_USER_ID,
           EntityType.WORKSHEET
         );
       });
@@ -495,7 +501,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const followButton = screen.getByTestId('follow-button');
@@ -514,7 +520,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const unfollowButton = screen.getByTestId('unfollow-button');
@@ -539,7 +545,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -547,7 +553,7 @@ describe('WorksheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(updateDriveAssetVotes).toHaveBeenCalledWith(
-          'test-worksheet-id',
+          MOCK_TEST_WORKSHEET_ID,
           mockQueryVote,
           EntityType.WORKSHEET
         );
@@ -555,7 +561,7 @@ describe('WorksheetDetailsPage', () => {
 
       await waitFor(() => {
         expect(getDriveAssetByFqn).toHaveBeenCalledWith(
-          'test-service.test-worksheet',
+          MOCK_TEST_SERVICE_TEST_WORKSHEET,
           EntityType.WORKSHEET,
           [
             TabSpecificField.OWNERS,
@@ -575,7 +581,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const voteButton = screen.getByTestId('vote-button');
@@ -600,7 +606,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const deleteButton = screen.getByTestId('delete-button');
@@ -625,7 +631,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');
@@ -634,7 +640,7 @@ describe('WorksheetDetailsPage', () => {
       await waitFor(() => {
         expect(getVersionPath).toHaveBeenCalledWith(
           EntityType.WORKSHEET,
-          'test-service.test-worksheet',
+          MOCK_TEST_SERVICE_TEST_WORKSHEET,
           '1'
         );
         expect(mockNavigate).toHaveBeenCalledWith('/worksheet/version/1');
@@ -665,7 +671,7 @@ describe('WorksheetDetailsPage', () => {
       await waitFor(() => {
         expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
           'worksheet',
-          'test-service.test-worksheet'
+          MOCK_TEST_SERVICE_TEST_WORKSHEET
         );
       });
     });
@@ -728,7 +734,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
     });
 
@@ -744,7 +750,7 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('worksheet-details')).toBeInTheDocument();
+        expect(screen.getByTestId(MOCK_WORKSHEET_DETAILS)).toBeInTheDocument();
       });
 
       const versionButton = screen.getByTestId('version-button');

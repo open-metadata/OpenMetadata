@@ -20,6 +20,9 @@ import {
   useQuickFiltersWithComponent,
 } from './useQuickFiltersWithComponent';
 
+const LABEL_ENTITY_TYPE = 'label.entity-type';
+const LABEL_TEST_PLATFORM_PLURAL = 'label.test-platform-plural';
+
 jest.mock('../../../Explore/ExploreQuickFilters', () => ({
   __esModule: true,
   default: jest
@@ -32,12 +35,12 @@ jest.mock('../../../Explore/ExploreQuickFilters', () => ({
 const mockDefaultFilters: ExploreQuickFilterField[] = [
   {
     key: 'entityType',
-    label: 'label.entity-type',
+    label: LABEL_ENTITY_TYPE,
     value: [],
   },
   {
     key: 'testPlatforms',
-    label: 'label.test-platform-plural',
+    label: LABEL_TEST_PLATFORM_PLURAL,
     value: [],
   },
 ];
@@ -45,12 +48,12 @@ const mockDefaultFilters: ExploreQuickFilterField[] = [
 const mockParsedFilters: ExploreQuickFilterField[] = [
   {
     key: 'entityType',
-    label: 'label.entity-type',
+    label: LABEL_ENTITY_TYPE,
     value: [{ key: 'TABLE', label: 'Table' }],
   },
   {
     key: 'testPlatforms',
-    label: 'label.test-platform-plural',
+    label: LABEL_TEST_PLATFORM_PLURAL,
     value: [{ key: 'OpenMetadata', label: 'OpenMetadata' }],
   },
 ];
@@ -139,13 +142,13 @@ describe('useQuickFiltersWithComponent', () => {
       expect(result.current.selectedFilters).toEqual([
         {
           key: 'entityType',
-          label: 'label.entity-type',
+          label: LABEL_ENTITY_TYPE,
           value: [{ key: 'TABLE', label: 'Table' }],
           singleSelect: false,
         },
         {
           key: 'testPlatforms',
-          label: 'label.test-platform-plural',
+          label: LABEL_TEST_PLATFORM_PLURAL,
           value: [{ key: 'OpenMetadata', label: 'OpenMetadata' }],
           singleSelect: false,
         },
@@ -156,7 +159,7 @@ describe('useQuickFiltersWithComponent', () => {
       const partialParsedFilters: ExploreQuickFilterField[] = [
         {
           key: 'entityType',
-          label: 'label.entity-type',
+          label: LABEL_ENTITY_TYPE,
           value: [{ key: 'COLUMN', label: 'Column' }],
         },
       ];
@@ -173,13 +176,13 @@ describe('useQuickFiltersWithComponent', () => {
       expect(result.current.selectedFilters).toEqual([
         {
           key: 'entityType',
-          label: 'label.entity-type',
+          label: LABEL_ENTITY_TYPE,
           value: [{ key: 'COLUMN', label: 'Column' }],
           singleSelect: false,
         },
         {
           key: 'testPlatforms',
-          label: 'label.test-platform-plural',
+          label: LABEL_TEST_PLATFORM_PLURAL,
           value: [],
           singleSelect: false,
         },

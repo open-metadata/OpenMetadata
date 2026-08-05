@@ -19,6 +19,8 @@ import {
   TestSuiteListPanelProps,
 } from './TestSuiteListPanel.component';
 
+const SEARCH_INPUT = 'search-input' as const;
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const react = require('react');
   const cloneWith = (children: ReactNode, props: Record<string, unknown>) =>
@@ -158,7 +160,7 @@ describe('TestSuiteListPanel', () => {
 
     expect(screen.getByTestId('table-suite-radio-btn')).toBeInTheDocument();
     expect(screen.getByTestId('bundle-suite-radio-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('search-input')).toBeInTheDocument();
+    expect(screen.getByTestId(SEARCH_INPUT)).toBeInTheDocument();
     expect(screen.getByTestId('test-suites-table')).toBeInTheDocument();
   });
 
@@ -209,7 +211,7 @@ describe('TestSuiteListPanel', () => {
     const onSearch = jest.fn();
     renderPanel({ onSearch });
 
-    fireEvent.change(screen.getByTestId('search-input'), {
+    fireEvent.change(screen.getByTestId(SEARCH_INPUT), {
       target: { value: 'sales' },
     });
 
@@ -229,7 +231,7 @@ describe('TestSuiteListPanel', () => {
       subTab: DataQualitySubTabs.TABLE_SUITES,
     });
 
-    expect(screen.getByTestId('search-input')).toHaveAttribute(
+    expect(screen.getByTestId(SEARCH_INPUT)).toHaveAttribute(
       'placeholder',
       'label.search-entity:label.table-suite-plural'
     );
@@ -241,7 +243,7 @@ describe('TestSuiteListPanel', () => {
       />
     );
 
-    expect(screen.getByTestId('search-input')).toHaveAttribute(
+    expect(screen.getByTestId(SEARCH_INPUT)).toHaveAttribute(
       'placeholder',
       'label.search-entity:label.bundle-suite-plural'
     );

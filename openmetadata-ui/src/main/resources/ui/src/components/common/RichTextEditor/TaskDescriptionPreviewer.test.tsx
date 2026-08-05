@@ -14,6 +14,12 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { PreviewerProp } from './RichTextEditor.interface';
 import TaskDescriptionPreviewer from './TaskDescriptionPreviewer';
 
+const VIEWER_CONTAINER = 'viewer-container';
+const MARKDOWN_PARSER = 'markdown-parser';
+const BLOCK_EDITOR = 'block-editor';
+const LABEL_NO_DESCRIPTION = 'label.no-description';
+const READ_MORE_BUTTON = 'read-more-button';
+
 jest.mock('../../BlockEditor/BlockEditor', () => {
   return jest
     .fn()
@@ -59,23 +65,23 @@ describe('TaskDescriptionPreviewer', () => {
   it('should render the component with markdown content', async () => {
     render(<TaskDescriptionPreviewer {...mockProp} />);
 
-    expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
-    expect(screen.getByTestId('markdown-parser')).toBeInTheDocument();
-    expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
+    expect(screen.getByTestId(VIEWER_CONTAINER)).toBeInTheDocument();
+    expect(screen.getByTestId(MARKDOWN_PARSER)).toBeInTheDocument();
+    expect(await screen.findByTestId(BLOCK_EDITOR)).toBeInTheDocument();
   });
 
   it('should render no-description placeholder when markdown is empty', () => {
     render(<TaskDescriptionPreviewer {...mockProp} markdown="" />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
-    expect(screen.queryByTestId('viewer-container')).not.toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
+    expect(screen.queryByTestId(VIEWER_CONTAINER)).not.toBeInTheDocument();
   });
 
   it('should apply custom className', () => {
     const customClass = 'custom-class';
     render(<TaskDescriptionPreviewer {...mockProp} className={customClass} />);
 
-    const container = screen.getByTestId('viewer-container');
+    const container = screen.getByTestId(VIEWER_CONTAINER);
 
     expect(container).toHaveClass('rich-text-editor-container', customClass);
   });
@@ -83,9 +89,9 @@ describe('TaskDescriptionPreviewer', () => {
   it('should apply text variant className', () => {
     render(<TaskDescriptionPreviewer {...mockProp} textVariant="white" />);
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
 
-    expect(parser).toHaveClass('markdown-parser', 'white');
+    expect(parser).toHaveClass(MARKDOWN_PARSER, 'white');
   });
 
   it('should apply RTL direction when i18n dir is rtl', () => {
@@ -96,7 +102,7 @@ describe('TaskDescriptionPreviewer', () => {
 
     render(<TaskDescriptionPreviewer {...mockProp} />);
 
-    const container = screen.getByTestId('viewer-container');
+    const container = screen.getByTestId(VIEWER_CONTAINER);
 
     expect(container).toHaveClass('text-right');
     expect(container).toHaveAttribute('dir', 'rtl');
@@ -107,7 +113,7 @@ describe('TaskDescriptionPreviewer', () => {
       <TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant={false} />
     );
 
-    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
     expect(screen.queryByTestId('read-less-button')).not.toBeInTheDocument();
   });
 
@@ -120,13 +126,13 @@ describe('TaskDescriptionPreviewer', () => {
       />
     );
 
-    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should detect overflow and show view-more button when enableSeeMoreVariant is true', () => {
     render(<TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -145,7 +151,7 @@ describe('TaskDescriptionPreviewer', () => {
   it('should apply line-clamp styles when enableSeeMoreVariant is true and readMore is false', () => {
     render(<TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />);
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
     const style = parser.style;
 
     expect(style.display).toBe('-webkit-box');
@@ -159,7 +165,7 @@ describe('TaskDescriptionPreviewer', () => {
       <TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant={false} />
     );
 
-    const parser = screen.getByTestId('markdown-parser');
+    const parser = screen.getByTestId(MARKDOWN_PARSER);
     const style = parser.style;
 
     expect(style.display).toBe('');
@@ -168,7 +174,7 @@ describe('TaskDescriptionPreviewer', () => {
   it('should toggle read more state when button is clicked', () => {
     render(<TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -190,7 +196,7 @@ describe('TaskDescriptionPreviewer', () => {
       <TaskDescriptionPreviewer {...mockProp} markdown="Initial content" />
     );
 
-    expect(await screen.findByTestId('block-editor')).toHaveTextContent(
+    expect(await screen.findByTestId(BLOCK_EDITOR)).toHaveTextContent(
       'Initial content'
     );
 
@@ -198,7 +204,7 @@ describe('TaskDescriptionPreviewer', () => {
       <TaskDescriptionPreviewer {...mockProp} markdown="Updated content" />
     );
 
-    expect(await screen.findByTestId('block-editor')).toHaveTextContent(
+    expect(await screen.findByTestId(BLOCK_EDITOR)).toHaveTextContent(
       'Updated content'
     );
   });
@@ -215,7 +221,7 @@ describe('TaskDescriptionPreviewer', () => {
   it('should render with default props', () => {
     render(<TaskDescriptionPreviewer />);
 
-    expect(screen.getByText('label.no-description')).toBeInTheDocument();
+    expect(screen.getByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should render view-more button with correct translation key', () => {
@@ -227,7 +233,7 @@ describe('TaskDescriptionPreviewer', () => {
 
     render(<TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -257,13 +263,13 @@ describe('TaskDescriptionPreviewer', () => {
   it('should handle empty content after formatting', async () => {
     render(<TaskDescriptionPreviewer {...mockProp} markdown="" />);
 
-    expect(await screen.findByText('label.no-description')).toBeInTheDocument();
+    expect(await screen.findByText(LABEL_NO_DESCRIPTION)).toBeInTheDocument();
   });
 
   it('should default enableSeeMoreVariant to false', () => {
     const { getByTestId } = render(<TaskDescriptionPreviewer {...mockProp} />);
 
-    const parser = getByTestId('markdown-parser');
+    const parser = getByTestId(MARKDOWN_PARSER);
     const style = parser.style;
 
     expect(style.display).toBe('');
@@ -274,7 +280,7 @@ describe('TaskDescriptionPreviewer', () => {
       <TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />
     );
 
-    const contentElement = getByTestId('markdown-parser');
+    const contentElement = getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -289,7 +295,7 @@ describe('TaskDescriptionPreviewer', () => {
   it('should initialize with readMore true when content overflows', () => {
     render(<TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -310,7 +316,7 @@ describe('TaskDescriptionPreviewer', () => {
       />
     );
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -321,7 +327,7 @@ describe('TaskDescriptionPreviewer', () => {
       value: 100,
     });
 
-    expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(READ_MORE_BUTTON)).not.toBeInTheDocument();
   });
 
   it('should update overflow detection when content changes', () => {
@@ -333,7 +339,7 @@ describe('TaskDescriptionPreviewer', () => {
       />
     );
 
-    let contentElement = screen.getByTestId('markdown-parser');
+    let contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -352,7 +358,7 @@ describe('TaskDescriptionPreviewer', () => {
       />
     );
 
-    contentElement = screen.getByTestId('markdown-parser');
+    contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -367,7 +373,7 @@ describe('TaskDescriptionPreviewer', () => {
   it('should set lineClamp to unset when readMore is true', () => {
     render(<TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,
@@ -397,7 +403,7 @@ describe('TaskDescriptionPreviewer', () => {
 
     render(<TaskDescriptionPreviewer {...mockProp} enableSeeMoreVariant />);
 
-    const contentElement = screen.getByTestId('markdown-parser');
+    const contentElement = screen.getByTestId(MARKDOWN_PARSER);
 
     Object.defineProperty(contentElement, 'scrollHeight', {
       configurable: true,

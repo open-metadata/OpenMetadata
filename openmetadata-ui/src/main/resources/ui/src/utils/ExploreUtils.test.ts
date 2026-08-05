@@ -29,6 +29,11 @@ import {
 } from './ExplorePureUtils';
 import { fetchEntityData, getAggregationOptions } from './ExploreUtils';
 
+const SERVICE_DISPLAYNAME_KEYWORD = 'service.displayName.keyword';
+const DATABASESCHEMA_NAME_KEYWORD = 'databaseSchema.name.keyword';
+const PERSONALDATA_PERSONAL = 'personaldata.personal';
+const DATABASE_NAME_KEYWORD = 'database.name.keyword';
+const ENTITYTYPE_KEYWORD = 'entityType.keyword';
 jest.mock('../rest/searchAPI');
 jest.mock('./ToastUtils');
 
@@ -87,8 +92,8 @@ describe('Explore Utils', () => {
         key: 'tags.tagFQN',
         value: [
           {
-            key: 'personaldata.personal',
-            label: 'personaldata.personal',
+            key: PERSONALDATA_PERSONAL,
+            label: PERSONALDATA_PERSONAL,
             count: 1,
           },
         ],
@@ -104,7 +109,7 @@ describe('Explore Utils', () => {
                 should: [
                   {
                     term: {
-                      'tags.tagFQN': 'personaldata.personal',
+                      'tags.tagFQN': PERSONALDATA_PERSONAL,
                     },
                   },
                 ],
@@ -349,8 +354,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'service.displayName.keyword',
-          key: 'service.displayName.keyword',
+          label: SERVICE_DISPLAYNAME_KEYWORD,
+          key: SERVICE_DISPLAYNAME_KEYWORD,
           value: [
             {
               key: 'athena_prod',
@@ -377,7 +382,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'service.displayName.keyword': 'athena_prod',
+                  [SERVICE_DISPLAYNAME_KEYWORD]: 'athena_prod',
                 },
               },
             ],
@@ -399,8 +404,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'service.displayName.keyword',
-          key: 'service.displayName.keyword',
+          label: SERVICE_DISPLAYNAME_KEYWORD,
+          key: SERVICE_DISPLAYNAME_KEYWORD,
           value: [
             {
               key: 'athena_prod',
@@ -409,8 +414,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'database.name.keyword',
-          key: 'database.name.keyword',
+          label: DATABASE_NAME_KEYWORD,
+          key: DATABASE_NAME_KEYWORD,
           value: [
             {
               key: 'default',
@@ -437,7 +442,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'service.displayName.keyword': 'athena_prod',
+                  [SERVICE_DISPLAYNAME_KEYWORD]: 'athena_prod',
                 },
               },
             ],
@@ -448,7 +453,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'database.name.keyword': 'default',
+                  [DATABASE_NAME_KEYWORD]: 'default',
                 },
               },
             ],
@@ -470,8 +475,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'service.displayName.keyword',
-          key: 'service.displayName.keyword',
+          label: SERVICE_DISPLAYNAME_KEYWORD,
+          key: SERVICE_DISPLAYNAME_KEYWORD,
           value: [
             {
               key: 'athena_prod',
@@ -480,8 +485,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'database.name.keyword',
-          key: 'database.name.keyword',
+          label: DATABASE_NAME_KEYWORD,
+          key: DATABASE_NAME_KEYWORD,
           value: [
             {
               key: 'default',
@@ -490,8 +495,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'databaseSchema.name.keyword',
-          key: 'databaseSchema.name.keyword',
+          label: DATABASESCHEMA_NAME_KEYWORD,
+          key: DATABASESCHEMA_NAME_KEYWORD,
           value: [
             {
               key: 'default',
@@ -518,7 +523,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'service.displayName.keyword': 'athena_prod',
+                  [SERVICE_DISPLAYNAME_KEYWORD]: 'athena_prod',
                 },
               },
             ],
@@ -529,7 +534,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'database.name.keyword': 'default',
+                  [DATABASE_NAME_KEYWORD]: 'default',
                 },
               },
             ],
@@ -540,7 +545,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'databaseSchema.name.keyword': 'default',
+                  [DATABASESCHEMA_NAME_KEYWORD]: 'default',
                 },
               },
             ],
@@ -562,8 +567,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'service.displayName.keyword',
-          key: 'service.displayName.keyword',
+          label: SERVICE_DISPLAYNAME_KEYWORD,
+          key: SERVICE_DISPLAYNAME_KEYWORD,
           value: [
             {
               key: 'athena_prod',
@@ -572,8 +577,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'database.name.keyword',
-          key: 'database.name.keyword',
+          label: DATABASE_NAME_KEYWORD,
+          key: DATABASE_NAME_KEYWORD,
           value: [
             {
               key: 'default',
@@ -582,8 +587,8 @@ describe('Explore Utils', () => {
           ],
         },
         {
-          label: 'databaseSchema.name.keyword',
-          key: 'databaseSchema.name.keyword',
+          label: DATABASESCHEMA_NAME_KEYWORD,
+          key: DATABASESCHEMA_NAME_KEYWORD,
           value: [
             {
               key: 'default',
@@ -620,7 +625,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'service.displayName.keyword': 'athena_prod',
+                  [SERVICE_DISPLAYNAME_KEYWORD]: 'athena_prod',
                 },
               },
             ],
@@ -631,7 +636,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'database.name.keyword': 'default',
+                  [DATABASE_NAME_KEYWORD]: 'default',
                 },
               },
             ],
@@ -642,7 +647,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'databaseSchema.name.keyword': 'default',
+                  [DATABASESCHEMA_NAME_KEYWORD]: 'default',
                 },
               },
             ],
@@ -653,7 +658,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  'entityType.keyword': 'table',
+                  [ENTITYTYPE_KEYWORD]: 'table',
                 },
               },
             ],
@@ -706,8 +711,8 @@ describe('Explore Utils', () => {
       );
 
       expect(updatedTreeData).toEqual({
-        key: 'entityType.keyword',
-        label: 'entityType.keyword',
+        key: ENTITYTYPE_KEYWORD,
+        label: ENTITYTYPE_KEYWORD,
         value: [{ key: 'pipeline', label: 'pipeline' }],
       });
     });
@@ -719,8 +724,8 @@ describe('Explore Utils', () => {
       );
 
       expect(updatedTreeData).toEqual({
-        key: 'entityType.keyword',
-        label: 'entityType.keyword',
+        key: ENTITYTYPE_KEYWORD,
+        label: ENTITYTYPE_KEYWORD,
         value: [
           { key: 'table', label: 'table' },
           { key: 'storedProcedure', label: 'storedProcedure' },
@@ -859,7 +864,7 @@ describe('fetchEntityData', () => {
       updatedQuickFilters: {
         query: {
           bool: {
-            must: [{ term: { 'service.displayName.keyword': 'redshift' } }],
+            must: [{ term: { [SERVICE_DISPLAYNAME_KEYWORD]: 'redshift' } }],
           },
         },
       },

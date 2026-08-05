@@ -15,6 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { FormField } from './FormField';
 import { InfoLabel } from './InfoLabel';
 
+const LABEL_TEXT = 'label-text';
+const TEST_FIELD = 'Test Field';
 jest.mock('./InfoLabel', () => ({
   InfoLabel: jest
     .fn()
@@ -34,7 +36,7 @@ jest.mock('./InfoLabel', () => ({
 }));
 
 const mockProps = {
-  label: 'Test Field',
+  label: TEST_FIELD,
   children: (
     <input
       aria-label="Test input"
@@ -53,21 +55,21 @@ describe('FormField', () => {
     render(<FormField {...mockProps} />);
 
     expect(screen.getByTestId('info-label')).toBeInTheDocument();
-    expect(screen.getByTestId('label-text')).toHaveTextContent('Test Field');
+    expect(screen.getByTestId(LABEL_TEXT)).toHaveTextContent(TEST_FIELD);
     expect(screen.getByTestId('test-input')).toBeInTheDocument();
   });
 
   it('should show required asterisk when required is true', () => {
     render(<FormField {...mockProps} required />);
 
-    expect(screen.getByTestId('label-text')).toHaveTextContent('Test Field *');
+    expect(screen.getByTestId(LABEL_TEXT)).toHaveTextContent('Test Field *');
   });
 
   it('should not show required asterisk when required is false', () => {
     render(<FormField {...mockProps} required={false} />);
 
-    expect(screen.getByTestId('label-text')).toHaveTextContent('Test Field');
-    expect(screen.getByTestId('label-text')).not.toHaveTextContent('*');
+    expect(screen.getByTestId(LABEL_TEXT)).toHaveTextContent(TEST_FIELD);
+    expect(screen.getByTestId(LABEL_TEXT)).not.toHaveTextContent('*');
   });
 
   it('should render with description', () => {
@@ -133,13 +135,13 @@ describe('FormField', () => {
 
     render(<FormField {...mockProps} label={longLabel} />);
 
-    expect(screen.getByTestId('label-text')).toHaveTextContent(longLabel);
+    expect(screen.getByTestId(LABEL_TEXT)).toHaveTextContent(longLabel);
   });
 
   it('should handle empty label', () => {
     render(<FormField {...mockProps} label="" />);
 
-    expect(screen.getByTestId('label-text')).toHaveTextContent('');
+    expect(screen.getByTestId(LABEL_TEXT)).toHaveTextContent('');
   });
 
   it('should handle special characters in label', () => {
@@ -147,7 +149,7 @@ describe('FormField', () => {
 
     render(<FormField {...mockProps} label={specialLabel} />);
 
-    expect(screen.getByTestId('label-text')).toHaveTextContent(specialLabel);
+    expect(screen.getByTestId(LABEL_TEXT)).toHaveTextContent(specialLabel);
   });
 
   it('should pass correct props to InfoLabel', () => {

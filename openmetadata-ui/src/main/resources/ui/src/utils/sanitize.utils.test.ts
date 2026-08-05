@@ -12,6 +12,8 @@
  */
 import { getSanitizeContent } from './sanitize.utils';
 
+const E_TEAM_ACCOUNTING_ACCOUNTING = '<#E::team::Accounting|@Accounting>';
+
 describe('getSanitizeContent', () => {
   it('should sanitize the input 1', () => {
     const mockHtml = `<details/open/ontoggle=confirm('XSS')>`;
@@ -43,7 +45,7 @@ describe('getSanitizeContent', () => {
 
   describe('HTML Encoding Prevention', () => {
     it('should NOT encode entity links with HTML entities', () => {
-      const input = '<#E::team::Accounting|@Accounting>';
+      const input = E_TEAM_ACCOUNTING_ACCOUNTING;
       const result = getSanitizeContent(input);
 
       // Should NOT contain HTML encoded entities
@@ -52,7 +54,7 @@ describe('getSanitizeContent', () => {
       expect(result).not.toContain('&amp;');
 
       // Should contain the original entity link format
-      expect(result).toBe('<#E::team::Accounting|@Accounting>');
+      expect(result).toBe(E_TEAM_ACCOUNTING_ACCOUNTING);
     });
 
     it('should NOT encode multiple entity links with HTML entities', () => {
@@ -83,7 +85,7 @@ describe('getSanitizeContent', () => {
       );
 
       // Should contain the original entity link format
-      expect(result).toContain('<#E::team::Accounting|@Accounting>');
+      expect(result).toContain(E_TEAM_ACCOUNTING_ACCOUNTING);
     });
   });
 

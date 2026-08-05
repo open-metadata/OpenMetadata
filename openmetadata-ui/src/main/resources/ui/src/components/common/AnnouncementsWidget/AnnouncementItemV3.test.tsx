@@ -17,9 +17,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import AnnouncementItemV3 from './AnnouncementItemV3.component';
 
+const ADMIN_USER = 'Admin User';
+const ANNOUNCEMENT_ITEM_A_1 = 'announcement-item-a-1';
+
 let mockUser: { name?: string; displayName?: string } | undefined = {
   name: 'admin',
-  displayName: 'Admin User',
+  displayName: ADMIN_USER,
 };
 
 jest.mock('react-i18next', () => ({
@@ -113,7 +116,7 @@ const renderItem = (ui: ReactElement) => render(ui, { wrapper: MemoryRouter });
 
 describe('AnnouncementItemV3', () => {
   beforeEach(() => {
-    mockUser = { name: 'admin', displayName: 'Admin User' };
+    mockUser = { name: 'admin', displayName: ADMIN_USER };
   });
 
   it('renders the title and description', () => {
@@ -156,12 +159,12 @@ describe('AnnouncementItemV3', () => {
     );
 
     expect(screen.getByTestId('profile-picture')).toHaveTextContent('admin');
-    expect(screen.getByTestId('announcement-item-a-1')).toHaveTextContent(
+    expect(screen.getByTestId(ANNOUNCEMENT_ITEM_A_1)).toHaveTextContent(
       'label.posted-by'
     );
     expect(screen.getByText('rel-1')).toBeInTheDocument();
 
-    const userLink = screen.getByRole('link', { name: 'Admin User' });
+    const userLink = screen.getByRole('link', { name: ADMIN_USER });
 
     expect(userLink).toHaveAttribute('href', '/users/admin');
   });
@@ -229,7 +232,7 @@ describe('AnnouncementItemV3', () => {
       <AnnouncementItemV3 announcement={announcement} onClick={onClick} />
     );
 
-    fireEvent.click(screen.getByTestId('announcement-item-a-1'));
+    fireEvent.click(screen.getByTestId(ANNOUNCEMENT_ITEM_A_1));
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });
@@ -240,7 +243,7 @@ describe('AnnouncementItemV3', () => {
       <AnnouncementItemV3 announcement={announcement} onClick={onClick} />
     );
 
-    fireEvent.click(screen.getByRole('link', { name: 'Admin User' }));
+    fireEvent.click(screen.getByRole('link', { name: ADMIN_USER }));
 
     expect(onClick).not.toHaveBeenCalled();
   });
@@ -251,7 +254,7 @@ describe('AnnouncementItemV3', () => {
       <AnnouncementItemV3 announcement={announcement} onClick={onClick} />
     );
 
-    fireEvent.keyDown(screen.getByRole('link', { name: 'Admin User' }), {
+    fireEvent.keyDown(screen.getByRole('link', { name: ADMIN_USER }), {
       key: 'Enter',
     });
 
@@ -264,7 +267,7 @@ describe('AnnouncementItemV3', () => {
       <AnnouncementItemV3 announcement={announcement} onClick={onClick} />
     );
 
-    fireEvent.keyDown(screen.getByTestId('announcement-item-a-1'), {
+    fireEvent.keyDown(screen.getByTestId(ANNOUNCEMENT_ITEM_A_1), {
       key: 'Enter',
     });
 
@@ -277,7 +280,7 @@ describe('AnnouncementItemV3', () => {
       <AnnouncementItemV3 announcement={announcement} onClick={onClick} />
     );
 
-    fireEvent.keyDown(screen.getByTestId('announcement-item-a-1'), {
+    fireEvent.keyDown(screen.getByTestId(ANNOUNCEMENT_ITEM_A_1), {
       key: ' ',
     });
 
@@ -290,7 +293,7 @@ describe('AnnouncementItemV3', () => {
       <AnnouncementItemV3 announcement={announcement} onClick={onClick} />
     );
 
-    fireEvent.keyDown(screen.getByTestId('announcement-item-a-1'), {
+    fireEvent.keyDown(screen.getByTestId(ANNOUNCEMENT_ITEM_A_1), {
       key: 'a',
     });
 

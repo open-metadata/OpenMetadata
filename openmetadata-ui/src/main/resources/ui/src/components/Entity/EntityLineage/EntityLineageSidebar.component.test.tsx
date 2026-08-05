@@ -15,6 +15,10 @@ import { render, screen } from '@testing-library/react';
 import { SearchIndex } from '../../../enums/search.enum';
 import EntityLineageSidebar from './EntityLineageSidebar.component';
 
+const TABLE_SEARCH_INDEX_DRAGGABLE_ICON = 'table_search_index-draggable-icon';
+const ENTITY_LINEAGE_SIDEBAR = '.entity-lineage.sidebar';
+const CURSOR_NOT_ALLOWED = 'cursor-not-allowed';
+const LABEL_TABLE_PLURAL = 'label.table-plural';
 const mockTheme = { primaryColor: '#1890ff' };
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -71,7 +75,7 @@ describe('EntityLineageSidebar component', () => {
       );
 
       expect(
-        container.querySelector('.entity-lineage.sidebar')
+        container.querySelector(ENTITY_LINEAGE_SIDEBAR)
       ).toBeInTheDocument();
     });
 
@@ -80,7 +84,7 @@ describe('EntityLineageSidebar component', () => {
         <EntityLineageSidebar show newAddedNode={undefined} />
       );
 
-      const sidebar = container.querySelector('.entity-lineage.sidebar');
+      const sidebar = container.querySelector(ENTITY_LINEAGE_SIDEBAR);
 
       expect(sidebar).toHaveClass('open');
     });
@@ -88,7 +92,7 @@ describe('EntityLineageSidebar component', () => {
     it('should render all entity nodes from entityData', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
-      expect(screen.getByText('label.table-plural')).toBeInTheDocument();
+      expect(screen.getByText(LABEL_TABLE_PLURAL)).toBeInTheDocument();
       expect(screen.getByText('label.dashboard-plural')).toBeInTheDocument();
       expect(screen.getByText('label.topic-plural')).toBeInTheDocument();
     });
@@ -107,7 +111,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
       expect(
-        screen.getByTestId('table_search_index-draggable-icon')
+        screen.getByTestId(TABLE_SEARCH_INDEX_DRAGGABLE_ICON)
       ).toBeInTheDocument();
       expect(
         screen.getByTestId('dashboard_search_index-draggable-icon')
@@ -123,7 +127,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
       expect(draggableIcon).toHaveAttribute('draggable', 'true');
@@ -134,7 +138,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={{} as never} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
       expect(draggableIcon).toHaveAttribute('draggable', 'true');
@@ -145,7 +149,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={mockNode} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
       expect(draggableIcon).toHaveAttribute('draggable', 'false');
@@ -156,20 +160,20 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={mockNode} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
-      expect(draggableIcon).toHaveClass('cursor-not-allowed', 'opacity-50');
+      expect(draggableIcon).toHaveClass(CURSOR_NOT_ALLOWED, 'opacity-50');
     });
 
     it('should not apply disabled styles when newAddedNode is undefined', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
-      expect(draggableIcon).not.toHaveClass('cursor-not-allowed');
+      expect(draggableIcon).not.toHaveClass(CURSOR_NOT_ALLOWED);
       expect(draggableIcon).not.toHaveClass('opacity-50');
     });
   });
@@ -179,7 +183,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
       expect(draggableIcon).toBeInTheDocument();
@@ -190,7 +194,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
       const dragStartHandler = draggableIcon.ondragstart;
@@ -202,7 +206,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
       const iconContainer = screen
-        .getByTestId('table_search_index-draggable-icon')
+        .getByTestId(TABLE_SEARCH_INDEX_DRAGGABLE_ICON)
         .querySelector('.d-flex');
 
       expect(iconContainer).toBeInTheDocument();
@@ -263,7 +267,7 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
       const iconContainer = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
       expect(iconContainer).toHaveClass('sidebar-icon-container');
@@ -272,7 +276,7 @@ describe('EntityLineageSidebar component', () => {
     it('should apply text styles to labels', () => {
       render(<EntityLineageSidebar show newAddedNode={undefined} />);
 
-      const label = screen.getByText('label.table-plural');
+      const label = screen.getByText(LABEL_TABLE_PLURAL);
 
       expect(label).toHaveClass('text-grey-body', 'text-xs', 'p-t-xs');
     });
@@ -285,7 +289,7 @@ describe('EntityLineageSidebar component', () => {
       );
 
       expect(
-        container.querySelector('.entity-lineage.sidebar')
+        container.querySelector(ENTITY_LINEAGE_SIDEBAR)
       ).toBeInTheDocument();
 
       rerender(<EntityLineageSidebar newAddedNode={undefined} show={false} />);
@@ -297,11 +301,11 @@ describe('EntityLineageSidebar component', () => {
       render(<EntityLineageSidebar show newAddedNode={{} as never} />);
 
       const draggableIcon = screen.getByTestId(
-        'table_search_index-draggable-icon'
+        TABLE_SEARCH_INDEX_DRAGGABLE_ICON
       );
 
       expect(draggableIcon).toHaveAttribute('draggable', 'true');
-      expect(draggableIcon).not.toHaveClass('cursor-not-allowed');
+      expect(draggableIcon).not.toHaveClass(CURSOR_NOT_ALLOWED);
     });
 
     it('should maintain consistent rendering across re-renders', () => {

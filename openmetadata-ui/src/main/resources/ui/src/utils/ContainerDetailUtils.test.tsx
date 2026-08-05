@@ -20,6 +20,8 @@ import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State } from '../generated/type/tagLabel';
 import { extractContainerColumns } from './ContainerDetailPureUtils';
 
+const CONTAINER_COLUMN1 = 'container.column1';
+
 type ContainerTestData = Partial<Container> &
   Pick<Omit<EntityReference, 'type'>, 'id'>;
 
@@ -33,7 +35,7 @@ describe('ContainerDetailUtils', () => {
             {
               name: 'column1',
               dataType: DataType.String,
-              fullyQualifiedName: 'container.column1',
+              fullyQualifiedName: CONTAINER_COLUMN1,
             },
             {
               name: 'column2',
@@ -92,7 +94,7 @@ describe('ContainerDetailUtils', () => {
             {
               name: 'column1',
               dataType: DataType.String,
-              fullyQualifiedName: 'container.column1',
+              fullyQualifiedName: CONTAINER_COLUMN1,
             },
           ],
         },
@@ -111,7 +113,7 @@ describe('ContainerDetailUtils', () => {
             {
               name: 'column1',
               dataType: DataType.String,
-              fullyQualifiedName: 'container.column1',
+              fullyQualifiedName: CONTAINER_COLUMN1,
               tags: [
                 {
                   tagFQN: 'tag1',

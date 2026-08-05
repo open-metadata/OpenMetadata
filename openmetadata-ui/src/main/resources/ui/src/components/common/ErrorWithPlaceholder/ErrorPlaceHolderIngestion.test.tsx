@@ -16,6 +16,8 @@ import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant'
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import ErrorPlaceHolderIngestion from './ErrorPlaceHolderIngestion';
 
+const ERROR_STEPS = 'error-steps';
+
 jest.mock('../AirflowMessageBanner/AirflowMessageBanner', () => {
   return jest
     .fn()
@@ -40,7 +42,7 @@ describe('ErrorPlaceholderIngestion', () => {
       render(<ErrorPlaceHolderIngestion />);
     });
 
-    expect(screen.getByTestId('error-steps')).toBeInTheDocument();
+    expect(screen.getByTestId(ERROR_STEPS)).toBeInTheDocument();
   });
 
   it('should show the loader when fetching status', async () => {
@@ -66,7 +68,7 @@ describe('ErrorPlaceholderIngestion', () => {
       render(<ErrorPlaceHolderIngestion />);
     });
 
-    const errorSteps = screen.getByTestId('error-steps');
+    const errorSteps = screen.getByTestId(ERROR_STEPS);
 
     expect(errorSteps).toBeInTheDocument();
 
@@ -89,7 +91,7 @@ describe('ErrorPlaceholderIngestion', () => {
       render(<ErrorPlaceHolderIngestion />);
     });
 
-    const errorSteps = screen.getByTestId('error-steps');
+    const errorSteps = screen.getByTestId(ERROR_STEPS);
 
     expect(errorSteps).toBeInTheDocument();
 

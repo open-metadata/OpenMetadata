@@ -23,20 +23,22 @@ import {
   TableType,
 } from '../generated/entity/data/table';
 
+const LABEL_ENTITY_KEY = 'label.entity-key' as const;
+
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 
 export const HIGHLIGHTED_ROW_SELECTOR = '.highlighted-row';
 
 export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
   {
-    label: 'label.entity-key',
+    label: LABEL_ENTITY_KEY,
     labelData: {
       entity: 'label.primary',
     },
     value: ConstraintType.PrimaryKey,
   },
   {
-    label: 'label.entity-key',
+    label: LABEL_ENTITY_KEY,
     labelData: {
       entity: 'label.foreign',
     },
@@ -47,21 +49,21 @@ export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
     value: ConstraintType.Unique,
   },
   {
-    label: 'label.entity-key',
+    label: LABEL_ENTITY_KEY,
     labelData: {
       entity: 'label.dist',
     },
     value: ConstraintType.DistKey,
   },
   {
-    label: 'label.entity-key',
+    label: LABEL_ENTITY_KEY,
     labelData: {
       entity: 'label.cluster',
     },
     value: ConstraintType.ClusterKey,
   },
   {
-    label: 'label.entity-key',
+    label: LABEL_ENTITY_KEY,
     labelData: {
       entity: 'label.sort',
     },

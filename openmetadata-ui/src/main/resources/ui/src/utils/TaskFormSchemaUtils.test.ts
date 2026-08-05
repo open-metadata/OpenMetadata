@@ -43,6 +43,11 @@ import {
   shouldRequireTaskResolutionValue,
 } from './TaskFormSchemaUtils';
 
+const CURRENT_DESCRIPTION = 'Current description' as const;
+const SUGGESTED_DESCRIPTION = 'Suggested description' as const;
+const PII_SENSITIVE = 'PII.Sensitive' as const;
+const PERSONAL_DATA_SPECIAL_CATEGORY = 'PersonalData.SpecialCategory' as const;
+
 describe('TaskFormSchemaUtils', () => {
   it('returns the default description update schema', () => {
     const schema = getDefaultTaskFormSchema(
@@ -127,15 +132,15 @@ describe('TaskFormSchemaUtils', () => {
       priority: TaskPriority.Medium,
       payload: {
         field: 'description',
-        currentValue: 'Current description',
-        suggestedValue: 'Suggested description',
+        currentValue: CURRENT_DESCRIPTION,
+        suggestedValue: SUGGESTED_DESCRIPTION,
       },
     } as Task;
 
     expect(getEditableTaskPayload(task)).toMatchObject({
       fieldPath: 'description',
-      currentDescription: 'Current description',
-      newDescription: 'Suggested description',
+      currentDescription: CURRENT_DESCRIPTION,
+      newDescription: SUGGESTED_DESCRIPTION,
     });
   });
 
@@ -150,8 +155,8 @@ describe('TaskFormSchemaUtils', () => {
       priority: TaskPriority.Medium,
       payload: {
         targetField: 'columns.address.description',
-        currentText: 'Current description',
-        proposedText: 'Suggested description',
+        currentText: CURRENT_DESCRIPTION,
+        proposedText: SUGGESTED_DESCRIPTION,
       },
     } as Task;
 
@@ -165,8 +170,8 @@ describe('TaskFormSchemaUtils', () => {
       })
     ).toMatchObject({
       targetField: 'columns.address.description',
-      currentText: 'Current description',
-      proposedText: 'Suggested description',
+      currentText: CURRENT_DESCRIPTION,
+      proposedText: SUGGESTED_DESCRIPTION,
     });
   });
 
@@ -214,7 +219,7 @@ describe('TaskFormSchemaUtils', () => {
         targetField: 'columns.address.tags',
         existingTags: [
           {
-            tagFQN: 'PII.Sensitive',
+            tagFQN: PII_SENSITIVE,
             source: 'Classification',
             labelType: 'Manual',
             state: 'Confirmed',
@@ -222,7 +227,7 @@ describe('TaskFormSchemaUtils', () => {
         ],
         proposedTags: [
           {
-            tagFQN: 'PersonalData.SpecialCategory',
+            tagFQN: PERSONAL_DATA_SPECIAL_CATEGORY,
             source: 'Classification',
             labelType: 'Manual',
             state: 'Confirmed',
@@ -245,7 +250,7 @@ describe('TaskFormSchemaUtils', () => {
       targetField: 'columns.address.tags',
       existingTags: [
         {
-          tagFQN: 'PII.Sensitive',
+          tagFQN: PII_SENSITIVE,
           source: 'Classification',
           labelType: 'Manual',
           state: 'Confirmed',
@@ -253,7 +258,7 @@ describe('TaskFormSchemaUtils', () => {
       ],
       proposedTags: [
         {
-          tagFQN: 'PersonalData.SpecialCategory',
+          tagFQN: PERSONAL_DATA_SPECIAL_CATEGORY,
           source: 'Classification',
           labelType: 'Manual',
           state: 'Confirmed',
@@ -279,7 +284,7 @@ describe('TaskFormSchemaUtils', () => {
       getTaskResolutionNewValue(task, {
         currentTags: [
           {
-            tagFQN: 'PII.Sensitive',
+            tagFQN: PII_SENSITIVE,
             source: 'Classification',
             labelType: 'Manual',
             state: 'Confirmed',
@@ -287,7 +292,7 @@ describe('TaskFormSchemaUtils', () => {
         ],
         tagsToAdd: [
           {
-            tagFQN: 'PersonalData.SpecialCategory',
+            tagFQN: PERSONAL_DATA_SPECIAL_CATEGORY,
             source: 'Classification',
             labelType: 'Manual',
             state: 'Confirmed',
@@ -295,7 +300,7 @@ describe('TaskFormSchemaUtils', () => {
         ],
         tagsToRemove: [
           {
-            tagFQN: 'PII.Sensitive',
+            tagFQN: PII_SENSITIVE,
             source: 'Classification',
             labelType: 'Manual',
             state: 'Confirmed',
@@ -305,7 +310,7 @@ describe('TaskFormSchemaUtils', () => {
     ).toBe(
       JSON.stringify([
         {
-          tagFQN: 'PersonalData.SpecialCategory',
+          tagFQN: PERSONAL_DATA_SPECIAL_CATEGORY,
           source: 'Classification',
           labelType: 'Manual',
           state: 'Confirmed',
@@ -360,7 +365,7 @@ describe('TaskFormSchemaUtils', () => {
         {
           existingTags: [
             {
-              tagFQN: 'PII.Sensitive',
+              tagFQN: PII_SENSITIVE,
               source: 'Classification',
               labelType: 'Manual',
               state: 'Confirmed',
@@ -368,7 +373,7 @@ describe('TaskFormSchemaUtils', () => {
           ],
           proposedTags: [
             {
-              tagFQN: 'PersonalData.SpecialCategory',
+              tagFQN: PERSONAL_DATA_SPECIAL_CATEGORY,
               source: 'Classification',
               labelType: 'Manual',
               state: 'Confirmed',
@@ -376,7 +381,7 @@ describe('TaskFormSchemaUtils', () => {
           ],
           removedTags: [
             {
-              tagFQN: 'PII.Sensitive',
+              tagFQN: PII_SENSITIVE,
               source: 'Classification',
               labelType: 'Manual',
               state: 'Confirmed',
@@ -395,7 +400,7 @@ describe('TaskFormSchemaUtils', () => {
     ).toBe(
       JSON.stringify([
         {
-          tagFQN: 'PersonalData.SpecialCategory',
+          tagFQN: PERSONAL_DATA_SPECIAL_CATEGORY,
           source: 'Classification',
           labelType: 'Manual',
           state: 'Confirmed',

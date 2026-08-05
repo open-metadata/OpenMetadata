@@ -48,6 +48,8 @@ import {
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 
+const LABEL_ASSIGNEE = 'label.assignee' as const;
+
 export interface IncidentManagerTableProps {
   isIncidentPage: boolean;
   /** Origin crumbs attached to the test case link's navigation state so
@@ -111,10 +113,10 @@ const IncidentManagerTable = ({
           }}
           owners={value?.assignee ? [value.assignee] : []}
           placeHolder={t('label.no-entity', {
-            entity: t('label.assignee'),
+            entity: t(LABEL_ASSIGNEE),
           })}
           tooltipText={t('label.edit-entity', {
-            entity: t('label.assignee'),
+            entity: t(LABEL_ASSIGNEE),
           })}
           onUpdate={(assignees) =>
             record && handleAssigneeUpdate(record, assignees)
@@ -133,7 +135,7 @@ const IncidentManagerTable = ({
       { id: 'timestamp', label: t('label.last-updated') },
       { id: 'testCaseResolutionStatusType', label: t('label.status') },
       { id: 'severity', label: t('label.severity') },
-      { id: 'testCaseResolutionStatusDetails', label: t('label.assignee') },
+      { id: 'testCaseResolutionStatusDetails', label: t(LABEL_ASSIGNEE) },
     ],
     [isIncidentPage, t]
   );

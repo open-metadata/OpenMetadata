@@ -33,6 +33,8 @@ import {
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
+const LABEL_SYNONYM_PLURAL = 'label.synonym-plural';
+
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
@@ -165,7 +167,7 @@ const GlossaryTermSynonyms = () => {
   const header = (
     <div className="d-flex items-center gap-2">
       <Typography.Text className="text-sm font-medium">
-        {t('label.synonym-plural')}
+        {t(LABEL_SYNONYM_PLURAL)}
       </Typography.Text>
       {permissions.EditAll &&
         isViewMode &&
@@ -174,7 +176,7 @@ const GlossaryTermSynonyms = () => {
             data-testid="synonym-add-button"
             size="small"
             title={t('label.add-entity', {
-              entity: t('label.synonym-plural'),
+              entity: t(LABEL_SYNONYM_PLURAL),
             })}
             onClick={() => {
               setIsViewMode(false);
@@ -186,7 +188,7 @@ const GlossaryTermSynonyms = () => {
             data-testid="edit-button"
             size="small"
             title={t('label.edit-entity', {
-              entity: t('label.synonym-plural'),
+              entity: t(LABEL_SYNONYM_PLURAL),
             })}
             onClick={() => setIsViewMode(false)}
           />
@@ -230,7 +232,7 @@ const GlossaryTermSynonyms = () => {
             mode="tags"
             open={false}
             placeholder={t('label.add-entity', {
-              entity: t('label.synonym-plural'),
+              entity: t(LABEL_SYNONYM_PLURAL),
             })}
             value={synonyms}
             onChange={(value) => setSynonyms(value)}

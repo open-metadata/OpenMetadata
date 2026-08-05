@@ -53,6 +53,8 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
 
+const LABEL_DATA_PRODUCT = 'label.data-product';
+
 const DataProductsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -146,7 +148,7 @@ const DataProductsPage = () => {
       await deleteDataProduct(dataProduct.id);
       showSuccessToast(
         t('server.entity-deleted-successfully', {
-          entity: t('label.data-product'),
+          entity: t(LABEL_DATA_PRODUCT),
         })
       );
       navigate(dataProductBasePath);
@@ -154,7 +156,7 @@ const DataProductsPage = () => {
       showErrorToast(
         err as AxiosError,
         t('server.delete-entity-error', {
-          entity: t('label.data-product'),
+          entity: t(LABEL_DATA_PRODUCT),
         })
       );
     }
@@ -331,7 +333,7 @@ const DataProductsPage = () => {
         <div className="text-center">
           <p>
             {t('message.no-entity-found-for-name', {
-              entity: t('label.data-product'),
+              entity: t(LABEL_DATA_PRODUCT),
               name: dataProductFqn,
             })}
           </p>

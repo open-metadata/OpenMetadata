@@ -50,6 +50,9 @@ import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import TableDiffFields from './TableDiffFields';
 import { FormValues } from './TestCaseFormV1.interface';
 
+const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
+const MESSAGE_ENTER_A_FIELD = 'message.enter-a-field';
+
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );
@@ -85,7 +88,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
   }, [fields.length, append]);
 
   const rowRequired = data.required
-    ? t('message.field-text-is-required', { fieldText: label })
+    ? t(MESSAGE_FIELD_TEXT_IS_REQUIRED, { fieldText: label })
     : undefined;
 
   return (
@@ -120,7 +123,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
               // Surface the selected test definition's doc in the Form Hint
               // popover on focus, matching the classic drawer's doc panel.
               doc: testDefinitionDoc ?? data.description,
-              placeholder: t('message.enter-a-field', { field: label }),
+              placeholder: t(MESSAGE_ENTER_A_FIELD, { field: label }),
               id: `testCaseFormV1_params_${data.name}_${index}_value`,
               props: {
                 'data-testid': `parameter-${data.name}-${index}`,
@@ -166,7 +169,7 @@ const SqlExpressionField: React.FC<SqlExpressionFieldProps> = ({
       rules={
         data.required
           ? {
-              required: t('message.field-text-is-required', {
+              required: t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
                 fieldText: label,
               }),
             }
@@ -244,7 +247,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     const rules: RegisterOptions = {};
 
     if (data.required) {
-      rules.required = t('message.field-text-is-required', {
+      rules.required = t(MESSAGE_FIELD_TEXT_IS_REQUIRED, {
         fieldText: label,
       });
     }
@@ -314,7 +317,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     return {
       ...baseField,
       type: FieldTypes.TEXT,
-      placeholder: t('message.enter-a-field', { field: label }),
+      placeholder: t(MESSAGE_ENTER_A_FIELD, { field: label }),
     };
   };
 
@@ -358,7 +361,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       return {
         ...baseField,
         type: FieldTypes.NUMBER,
-        placeholder: t('message.enter-a-field', { field: label }),
+        placeholder: t(MESSAGE_ENTER_A_FIELD, { field: label }),
       };
     }
 
@@ -375,7 +378,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     return {
       ...baseField,
       type: FieldTypes.TEXT,
-      placeholder: t('message.enter-a-field', { field: label }),
+      placeholder: t(MESSAGE_ENTER_A_FIELD, { field: label }),
     };
   };
 

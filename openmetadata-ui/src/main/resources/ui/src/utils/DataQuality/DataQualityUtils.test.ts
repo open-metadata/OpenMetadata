@@ -49,6 +49,13 @@ import {
   parseColumnAggregateBuckets,
   transformToTestCaseStatusObject,
 } from './DataQualityPureUtils';
+
+const PII_SENSITIVE = 'PII.Sensitive' as const;
+const TIER_TIER1 = 'Tier.Tier1' as const;
+const TIER_TIER2 = 'Tier.Tier2' as const;
+const TEST_TABLE = 'test-table' as const;
+const SERVICE_DB_SCHEMA_TABLE_A_COL1 =
+  'service.db.schema.tableA::col1' as const;
 jest.mock('../../constants/profiler.constant', () => ({
   TEST_CASE_FILTERS: {
     table: 'tableFqn',
@@ -103,8 +110,8 @@ describe('DataQualityUtils', () => {
       const path = getTestCaseTabPath(TestCaseStatus.Failed, {
         startTs: 100,
         endTs: 200,
-        tags: ['PII.Sensitive'],
-        tier: ['Tier.Tier1'],
+        tags: [PII_SENSITIVE],
+        tier: [TIER_TIER1],
         dataProductFqns: ['marketing'],
         entityFQN: 'service.db.schema.table',
         serviceName: 'service',
@@ -285,7 +292,7 @@ describe('DataQualityUtils', () => {
         title: 'Last 7 days',
       },
       tags: ['PII.None'],
-      tier: 'Tier.Tier1',
+      tier: TIER_TIER1,
       serviceName: 'sample_data',
       tableFqn: 'sample_data.ecommerce_db.shopify.fact_sale',
     } as unknown as TestCaseSearchParams;
@@ -311,7 +318,7 @@ describe('DataQualityUtils', () => {
         testCaseType: 'column',
         testCaseStatus: 'Success',
         tags: ['PII.None'],
-        tier: 'Tier.Tier1',
+        tier: TIER_TIER1,
         serviceName: 'sample_data',
       };
 
@@ -347,7 +354,7 @@ describe('DataQualityUtils', () => {
         searchValue: 'between',
         testPlatforms: [TestPlatform.Dbt, TestPlatform.Deequ],
         tags: ['PII.None'],
-        tier: 'Tier.Tier1',
+        tier: TIER_TIER1,
       } as unknown as TestCaseSearchParams;
       const selectedFilter = ['testPlatforms', 'tags', 'testCaseStatus'];
 
@@ -485,12 +492,12 @@ describe('DataQualityUtils', () => {
 
   describe('buildMustEsFilterForTier', () => {
     it('should return bool/should filter using tier.tagFQN when isTestCaseResult is false', () => {
-      const tiers = ['Tier.Tier1', 'Tier.Tier2'];
+      const tiers = [TIER_TIER1, TIER_TIER2];
       const expectedFilter = {
         bool: {
           should: [
-            { term: { 'tier.tagFQN': 'Tier.Tier1' } },
-            { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+            { term: { 'tier.tagFQN': TIER_TIER1 } },
+            { term: { 'tier.tagFQN': TIER_TIER2 } },
           ],
           minimum_should_match: 1,
         },
@@ -500,12 +507,12 @@ describe('DataQualityUtils', () => {
     });
 
     it('should return bool/should filter using testCase.tier.tagFQN when isTestCaseResult is true', () => {
-      const tiers = ['Tier.Tier1', 'Tier.Tier2'];
+      const tiers = [TIER_TIER1, TIER_TIER2];
       const expectedFilter = {
         bool: {
           should: [
-            { term: { 'testCase.tier.tagFQN': 'Tier.Tier1' } },
-            { term: { 'testCase.tier.tagFQN': 'Tier.Tier2' } },
+            { term: { 'testCase.tier.tagFQN': TIER_TIER1 } },
+            { term: { 'testCase.tier.tagFQN': TIER_TIER2 } },
           ],
           minimum_should_match: 1,
         },
@@ -527,16 +534,17 @@ describe('DataQualityUtils', () => {
     });
 
     it('should not use tags.tagFQN field path for tier (regression check)', () => {
-      const tiers = ['Tier.Tier1'];
+      const tiers = [TIER_TIER1];
       const result = buildMustEsFilterForTier(tiers);
       const resultStr = JSON.stringify(result);
 
       expect(resultStr).not.toContain('tags.tagFQN');
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       expect(resultStr).toContain('tier.tagFQN');
     });
 
     it('should not use tags.tagFQN field path for tier in testCaseResult context (regression check)', () => {
-      const tiers = ['Tier.Tier1'];
+      const tiers = [TIER_TIER1];
       const result = buildMustEsFilterForTier(tiers, true);
       const resultStr = JSON.stringify(result);
 
@@ -727,7 +735,7 @@ describe('DataQualityUtils', () => {
     it('should use buildMustEsFilterForTags for tags when not table API', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
-          tags: ['PII.None', 'PII.Sensitive'],
+          tags: ['PII.None', PII_SENSITIVE],
         },
       });
 
@@ -738,7 +746,7 @@ describe('DataQualityUtils', () => {
             bool: {
               should: [
                 { match: { 'tags.tagFQN': 'PII.None' } },
-                { match: { 'tags.tagFQN': 'PII.Sensitive' } },
+                { match: { 'tags.tagFQN': PII_SENSITIVE } },
               ],
             },
           },
@@ -749,15 +757,15 @@ describe('DataQualityUtils', () => {
     it('should use buildMustEsFilterForTier for tier when not table API', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
-          tier: ['Tier.Tier1', 'Tier.Tier2'],
+          tier: [TIER_TIER1, TIER_TIER2],
         },
       });
 
       expect(result).toContainEqual({
         bool: {
           should: [
-            { term: { 'tier.tagFQN': 'Tier.Tier1' } },
-            { term: { 'tier.tagFQN': 'Tier.Tier2' } },
+            { term: { 'tier.tagFQN': TIER_TIER1 } },
+            { term: { 'tier.tagFQN': TIER_TIER2 } },
           ],
           minimum_should_match: 1,
         },
@@ -767,7 +775,7 @@ describe('DataQualityUtils', () => {
     it('should use tier.tagFQN field (not tags.tagFQN) for tier filter (regression check)', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
-          tier: ['Tier.Tier1'],
+          tier: [TIER_TIER1],
         },
       });
       const resultStr = JSON.stringify(result);
@@ -780,7 +788,7 @@ describe('DataQualityUtils', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
           tags: ['PII.None'],
-          tier: ['Tier.Tier1'],
+          tier: [TIER_TIER1],
         },
       });
 
@@ -823,7 +831,7 @@ describe('DataQualityUtils', () => {
     it('should return serviceType when table has serviceType property', () => {
       const table = {
         id: 'test-id',
-        name: 'test-table',
+        name: TEST_TABLE,
         serviceType: 'BigQuery',
       } as Table;
 
@@ -844,7 +852,7 @@ describe('DataQualityUtils', () => {
       serviceTypes.forEach((serviceType) => {
         const table = {
           id: 'test-id',
-          name: 'test-table',
+          name: TEST_TABLE,
           serviceType,
         } as Table;
 
@@ -857,7 +865,7 @@ describe('DataQualityUtils', () => {
     it('should return undefined when table does not have serviceType', () => {
       const table = {
         id: 'test-id',
-        name: 'test-table',
+        name: TEST_TABLE,
       } as Table;
 
       const result = getServiceTypeForTestDefinition(table);
@@ -910,7 +918,7 @@ describe('DataQualityUtils', () => {
 
       expect(getColumnFilterOptions(items)).toEqual([
         {
-          key: 'service.db.schema.tableA::col1',
+          key: SERVICE_DB_SCHEMA_TABLE_A_COL1,
           label: 'col1',
         },
         {
@@ -1003,7 +1011,7 @@ describe('DataQualityUtils', () => {
     });
 
     it('filters by column when filterColumns is non-empty', () => {
-      const columnKey = 'service.db.schema.tableA::col1';
+      const columnKey = SERVICE_DB_SCHEMA_TABLE_A_COL1;
 
       expect(filterTestCasesByTableAndColumn(items, [], [columnKey])).toEqual([
         mockColumnCase1,
@@ -1011,7 +1019,7 @@ describe('DataQualityUtils', () => {
     });
 
     it('excludes table-only test cases when filtering by column', () => {
-      const columnKey = 'service.db.schema.tableA::col1';
+      const columnKey = SERVICE_DB_SCHEMA_TABLE_A_COL1;
 
       expect(
         filterTestCasesByTableAndColumn(items, [], [columnKey])
@@ -1020,7 +1028,7 @@ describe('DataQualityUtils', () => {
 
     it('applies both table and column filters when both provided', () => {
       const tableKey = 'service.db.schema.tableA';
-      const columnKey = 'service.db.schema.tableA::col1';
+      const columnKey = SERVICE_DB_SCHEMA_TABLE_A_COL1;
 
       expect(
         filterTestCasesByTableAndColumn(items, [tableKey], [columnKey])
@@ -1137,7 +1145,7 @@ describe('DataQualityUtils', () => {
 
   describe('createUpdatedTestCasePatch', () => {
     const classificationTag: TagLabel = {
-      tagFQN: 'PII.Sensitive',
+      tagFQN: PII_SENSITIVE,
       source: TagSource.Classification,
       labelType: LabelType.Manual,
       state: State.Confirmed,

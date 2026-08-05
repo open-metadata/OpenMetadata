@@ -18,6 +18,9 @@ import {
   UseIncidentFiltersProps,
 } from './useIncidentFilters';
 
+const LABEL_CREATED_AT = 'label.created-at';
+const LABEL_UPDATED_AT = 'label.updated-at';
+
 const mockNavigate = jest.fn();
 const mockFetchTestCaseFilterOptions = jest.fn();
 
@@ -53,12 +56,12 @@ describe('useIncidentFilters', () => {
     expect(result.current.isDateFilterOpen).toBe(false);
     expect(typeof result.current.setIsDateFilterOpen).toBe('function');
     expect(result.current.dateFilterOptions).toEqual([
-      { name: 'label.created-at', value: 'timestamp' },
-      { name: 'label.updated-at', value: 'updatedAt' },
+      { name: LABEL_CREATED_AT, value: 'timestamp' },
+      { name: LABEL_UPDATED_AT, value: 'updatedAt' },
     ]);
     expect(result.current.selectedDateFilterKey).toBe('timestamp');
     expect(result.current.selectedDateFilterOption).toEqual({
-      name: 'label.created-at',
+      name: LABEL_CREATED_AT,
       value: 'timestamp',
     });
     expect(result.current.dateRangeKey).toBeUndefined();
@@ -72,7 +75,7 @@ describe('useIncidentFilters', () => {
 
     expect(result.current.selectedDateFilterKey).toBe('updatedAt');
     expect(result.current.selectedDateFilterOption).toEqual({
-      name: 'label.updated-at',
+      name: LABEL_UPDATED_AT,
       value: 'updatedAt',
     });
   });
@@ -342,8 +345,8 @@ describe('useIncidentFilters', () => {
 
     expect(descriptor?.value).toBe('timestamp');
     expect(descriptor?.options).toEqual([
-      { label: 'label.created-at', value: 'timestamp' },
-      { label: 'label.updated-at', value: 'updatedAt' },
+      { label: LABEL_CREATED_AT, value: 'timestamp' },
+      { label: LABEL_UPDATED_AT, value: 'updatedAt' },
     ]);
 
     act(() => {

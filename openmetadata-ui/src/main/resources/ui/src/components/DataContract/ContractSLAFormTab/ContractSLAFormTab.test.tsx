@@ -21,6 +21,15 @@ import {
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { ContractSLAFormTab } from './ContractSLAFormTab';
 
+const CUSTOM_PREVIOUS = 'Custom Previous';
+const REFRESH_FREQUENCY_INTERVAL_INPUT = 'refresh-frequency-interval-input';
+const MAX_LATENCY_VALUE_INPUT = 'max-latency-value-input';
+const RETENTION_PERIOD_INPUT = 'retention-period-input';
+const ANT_INPUT_NUMBER = '.ant-input-number';
+const REFRESH_FREQUENCY_UNIT_SELECT = 'refresh-frequency-unit-select';
+const MAX_LATENCY_UNIT_SELECT = 'max-latency-unit-select';
+const RETENTION_UNIT_SELECT = 'retention-unit-select';
+
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTableData,
@@ -53,7 +62,7 @@ const commonProps = {
   onPrev: mockOnPrev,
   buttonProps: {
     nextLabel: 'Custom Next',
-    prevLabel: 'Custom Previous',
+    prevLabel: CUSTOM_PREVIOUS,
     isNextVisible: true,
   },
 };
@@ -76,7 +85,7 @@ describe('ContractSLAFormTab', () => {
     it('should render with custom prev label', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_PREVIOUS)).toBeInTheDocument();
     });
   });
 
@@ -126,13 +135,13 @@ describe('ContractSLAFormTab', () => {
     it('should render Previous button', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
+      expect(screen.getByText(CUSTOM_PREVIOUS)).toBeInTheDocument();
     });
 
     it('should call onPrev when Previous button is clicked', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
-      const prevButton = screen.getByText('Custom Previous');
+      const prevButton = screen.getByText(CUSTOM_PREVIOUS);
       prevButton.click();
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -145,10 +154,10 @@ describe('ContractSLAFormTab', () => {
 
       // Verify InputNumber components are rendered with proper constraints
       const refreshFrequencyInput = screen.getByTestId(
-        'refresh-frequency-interval-input'
+        REFRESH_FREQUENCY_INTERVAL_INPUT
       );
-      const maxLatencyInput = screen.getByTestId('max-latency-value-input');
-      const retentionPeriodInput = screen.getByTestId('retention-period-input');
+      const maxLatencyInput = screen.getByTestId(MAX_LATENCY_VALUE_INPUT);
+      const retentionPeriodInput = screen.getByTestId(RETENTION_PERIOD_INPUT);
 
       expect(refreshFrequencyInput).toBeInTheDocument();
       expect(maxLatencyInput).toBeInTheDocument();
@@ -156,11 +165,11 @@ describe('ContractSLAFormTab', () => {
 
       // Check that these are proper InputNumber components
       expect(
-        refreshFrequencyInput.closest('.ant-input-number')
+        refreshFrequencyInput.closest(ANT_INPUT_NUMBER)
       ).toBeInTheDocument();
-      expect(maxLatencyInput.closest('.ant-input-number')).toBeInTheDocument();
+      expect(maxLatencyInput.closest(ANT_INPUT_NUMBER)).toBeInTheDocument();
       expect(
-        retentionPeriodInput.closest('.ant-input-number')
+        retentionPeriodInput.closest(ANT_INPUT_NUMBER)
       ).toBeInTheDocument();
     });
 
@@ -169,10 +178,10 @@ describe('ContractSLAFormTab', () => {
 
       // Verify InputNumber components are rendered which have built-in numeric validation
       const refreshFrequencyInput = screen.getByTestId(
-        'refresh-frequency-interval-input'
+        REFRESH_FREQUENCY_INTERVAL_INPUT
       );
-      const maxLatencyInput = screen.getByTestId('max-latency-value-input');
-      const retentionPeriodInput = screen.getByTestId('retention-period-input');
+      const maxLatencyInput = screen.getByTestId(MAX_LATENCY_VALUE_INPUT);
+      const retentionPeriodInput = screen.getByTestId(RETENTION_PERIOD_INPUT);
 
       // InputNumber components should be present
       expect(refreshFrequencyInput).toBeInTheDocument();
@@ -181,11 +190,11 @@ describe('ContractSLAFormTab', () => {
 
       // They should be InputNumber components (not regular Input)
       expect(
-        refreshFrequencyInput.closest('.ant-input-number')
+        refreshFrequencyInput.closest(ANT_INPUT_NUMBER)
       ).toBeInTheDocument();
-      expect(maxLatencyInput.closest('.ant-input-number')).toBeInTheDocument();
+      expect(maxLatencyInput.closest(ANT_INPUT_NUMBER)).toBeInTheDocument();
       expect(
-        retentionPeriodInput.closest('.ant-input-number')
+        retentionPeriodInput.closest(ANT_INPUT_NUMBER)
       ).toBeInTheDocument();
     });
 
@@ -199,17 +208,17 @@ describe('ContractSLAFormTab', () => {
 
       // All required input fields should be present
       expect(
-        screen.getByTestId('refresh-frequency-interval-input')
+        screen.getByTestId(REFRESH_FREQUENCY_INTERVAL_INPUT)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_VALUE_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_PERIOD_INPUT)).toBeInTheDocument();
     });
 
     it('should configure InputNumber with appropriate constraints', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
       const refreshFrequencyInput = screen.getByTestId(
-        'refresh-frequency-interval-input'
+        REFRESH_FREQUENCY_INTERVAL_INPUT
       );
 
       // InputNumber should have numeric input type behavior
@@ -239,15 +248,15 @@ describe('ContractSLAFormTab', () => {
 
       // Verify that the component renders all required form fields for SLA construction
       expect(
-        screen.getByTestId('refresh-frequency-interval-input')
+        screen.getByTestId(REFRESH_FREQUENCY_INTERVAL_INPUT)
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('refresh-frequency-unit-select')
+        screen.getByTestId(REFRESH_FREQUENCY_UNIT_SELECT)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-unit-select')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-unit-select')).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_VALUE_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_UNIT_SELECT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_PERIOD_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_UNIT_SELECT)).toBeInTheDocument();
       expect(screen.getByTestId('availability')).toBeInTheDocument();
     });
 
@@ -256,10 +265,10 @@ describe('ContractSLAFormTab', () => {
 
       // Component should render form fields for refresh frequency
       expect(
-        screen.getByTestId('refresh-frequency-interval-input')
+        screen.getByTestId(REFRESH_FREQUENCY_INTERVAL_INPUT)
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('refresh-frequency-unit-select')
+        screen.getByTestId(REFRESH_FREQUENCY_UNIT_SELECT)
       ).toBeInTheDocument();
     });
 
@@ -267,16 +276,16 @@ describe('ContractSLAFormTab', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
       // Component should render form fields for max latency
-      expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-unit-select')).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_VALUE_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_UNIT_SELECT)).toBeInTheDocument();
     });
 
     it('should have conditional logic for including valid retention values', () => {
       render(<ContractSLAFormTab {...commonProps} />);
 
       // Component should render form fields for retention
-      expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-unit-select')).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_PERIOD_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_UNIT_SELECT)).toBeInTheDocument();
     });
 
     it('should render TimePicker for availability time', () => {
@@ -293,10 +302,10 @@ describe('ContractSLAFormTab', () => {
       // Component implements conditional logic that checks for >= 0 values
       // This is verified by the presence of InputNumber components which handle this validation
       expect(
-        screen.getByTestId('refresh-frequency-interval-input')
+        screen.getByTestId(REFRESH_FREQUENCY_INTERVAL_INPUT)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_VALUE_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_PERIOD_INPUT)).toBeInTheDocument();
     });
   });
 
@@ -309,10 +318,10 @@ describe('ContractSLAFormTab', () => {
       // Component should render successfully with initial values
       expect(screen.getByText('label.sla')).toBeInTheDocument();
       expect(
-        screen.getByTestId('refresh-frequency-interval-input')
+        screen.getByTestId(REFRESH_FREQUENCY_INTERVAL_INPUT)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_VALUE_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_PERIOD_INPUT)).toBeInTheDocument();
     });
 
     it('should handle availability time with moment formatting', () => {
@@ -371,19 +380,19 @@ describe('ContractSLAFormTab', () => {
 
       // InputNumber components provide built-in validation for numeric inputs
       const intervalInput = screen.getByTestId(
-        'refresh-frequency-interval-input'
+        REFRESH_FREQUENCY_INTERVAL_INPUT
       );
-      const maxLatencyInput = screen.getByTestId('max-latency-value-input');
-      const retentionInput = screen.getByTestId('retention-period-input');
+      const maxLatencyInput = screen.getByTestId(MAX_LATENCY_VALUE_INPUT);
+      const retentionInput = screen.getByTestId(RETENTION_PERIOD_INPUT);
 
       expect(intervalInput).toBeInTheDocument();
       expect(maxLatencyInput).toBeInTheDocument();
       expect(retentionInput).toBeInTheDocument();
 
       // These should be InputNumber components
-      expect(intervalInput.closest('.ant-input-number')).toBeInTheDocument();
-      expect(maxLatencyInput.closest('.ant-input-number')).toBeInTheDocument();
-      expect(retentionInput.closest('.ant-input-number')).toBeInTheDocument();
+      expect(intervalInput.closest(ANT_INPUT_NUMBER)).toBeInTheDocument();
+      expect(maxLatencyInput.closest(ANT_INPUT_NUMBER)).toBeInTheDocument();
+      expect(retentionInput.closest(ANT_INPUT_NUMBER)).toBeInTheDocument();
     });
 
     it('should handle form reset after initial values are set', () => {
@@ -406,10 +415,10 @@ describe('ContractSLAFormTab', () => {
 
       // All form fields should still be present
       expect(
-        screen.getByTestId('refresh-frequency-interval-input')
+        screen.getByTestId(REFRESH_FREQUENCY_INTERVAL_INPUT)
       ).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_VALUE_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_PERIOD_INPUT)).toBeInTheDocument();
     });
 
     it('should handle mixed validation scenarios with conditional logic', () => {
@@ -418,17 +427,17 @@ describe('ContractSLAFormTab', () => {
       // Component uses conditional logic to include only valid field combinations
       // This is evidenced by the presence of both value and unit fields for each metric
       expect(
-        screen.getByTestId('refresh-frequency-interval-input')
+        screen.getByTestId(REFRESH_FREQUENCY_INTERVAL_INPUT)
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('refresh-frequency-unit-select')
+        screen.getByTestId(REFRESH_FREQUENCY_UNIT_SELECT)
       ).toBeInTheDocument();
 
-      expect(screen.getByTestId('max-latency-value-input')).toBeInTheDocument();
-      expect(screen.getByTestId('max-latency-unit-select')).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_VALUE_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(MAX_LATENCY_UNIT_SELECT)).toBeInTheDocument();
 
-      expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
-      expect(screen.getByTestId('retention-unit-select')).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_PERIOD_INPUT)).toBeInTheDocument();
+      expect(screen.getByTestId(RETENTION_UNIT_SELECT)).toBeInTheDocument();
     });
   });
 });

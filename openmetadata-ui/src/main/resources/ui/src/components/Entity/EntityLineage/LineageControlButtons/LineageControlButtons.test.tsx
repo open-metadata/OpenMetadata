@@ -16,6 +16,9 @@ import { useLineageProvider } from '../../../../context/LineageProvider/LineageP
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import LineageControlButtons from './LineageControlButtons';
 
+const FIT_SCREEN = 'fit-screen';
+const TOGGLE_MIND_MAP = 'toggle-mind-map';
+
 const mockNavigate = jest.fn();
 const mockToggleColumnView = jest.fn();
 const mockZoomIn = jest.fn();
@@ -83,8 +86,8 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByTestId('fit-screen')).toBeInTheDocument();
-      expect(screen.getByTestId('toggle-mind-map')).toBeInTheDocument();
+      expect(screen.getByTestId(FIT_SCREEN)).toBeInTheDocument();
+      expect(screen.getByTestId(TOGGLE_MIND_MAP)).toBeInTheDocument();
       expect(screen.getByTestId('zoom-in')).toBeInTheDocument();
       expect(screen.getByTestId('zoom-out')).toBeInTheDocument();
       expect(screen.getByTestId('full-screen')).toBeInTheDocument();
@@ -97,7 +100,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      const miniMapButton = screen.getByTestId('toggle-mind-map');
+      const miniMapButton = screen.getByTestId(TOGGLE_MIND_MAP);
 
       expect(miniMapButton).toHaveAttribute('data-selected', 'true');
     });
@@ -111,7 +114,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('toggle-mind-map'));
+      fireEvent.click(screen.getByTestId(TOGGLE_MIND_MAP));
 
       expect(mockOnToggleMiniMap).toHaveBeenCalledTimes(1);
     });
@@ -202,7 +205,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByTestId(FIT_SCREEN));
 
       expect(screen.getByRole('menu')).toBeInTheDocument();
     });
@@ -214,7 +217,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByTestId(FIT_SCREEN));
       fireEvent.click(screen.getByText('label.fit-to-screen'));
 
       expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2, maxZoom: 1 });
@@ -245,7 +248,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByTestId(FIT_SCREEN));
       fireEvent.click(screen.getByText('label.refocused-to-selected'));
 
       expect(mockSetCenter).toHaveBeenCalledWith(10, 38, {
@@ -261,7 +264,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByTestId(FIT_SCREEN));
       fireEvent.click(screen.getByText('label.rearrange-nodes'));
 
       expect(mockRedraw).toHaveBeenCalledTimes(1);
@@ -286,7 +289,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByTestId(FIT_SCREEN));
       fireEvent.click(screen.getByText('label.refocused-to-home'));
 
       expect(mockSetCenter).toHaveBeenCalledWith(15, 38, {
@@ -307,7 +310,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('fit-screen'));
+      fireEvent.click(screen.getByTestId(FIT_SCREEN));
       fireEvent.click(screen.getByText('label.fit-to-screen'));
 
       expect(mockFitView).not.toHaveBeenCalled();

@@ -15,11 +15,13 @@ import { render, screen, within } from '@testing-library/react';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import UserProfilePersonas from './UserProfilePersona.component';
 
+const DATA_SEEKER_2 = 'Data Seeker';
+
 const DATA_SEEKER: EntityReference = {
   id: 'persona-1',
   type: 'persona',
-  name: 'Data Seeker',
-  displayName: 'Data Seeker',
+  name: DATA_SEEKER_2,
+  displayName: DATA_SEEKER_2,
 };
 
 jest.mock('../../../../hooks/authHooks', () => ({
@@ -75,7 +77,7 @@ describe('UserProfilePersonas', () => {
     expect(
       within(defaultChip).getByText('message.no-default-persona')
     ).toBeInTheDocument();
-    expect(within(defaultChip).queryByText('Data Seeker')).toBeNull();
+    expect(within(defaultChip).queryByText(DATA_SEEKER_2)).toBeNull();
     expect(container.querySelector('.inherit-icon')).toBeNull();
   });
 
@@ -88,7 +90,7 @@ describe('UserProfilePersonas', () => {
 
     expect(
       within(defaultChip.getByTestId('default-persona-chip')).getByText(
-        'Data Seeker'
+        DATA_SEEKER_2
       )
     ).toBeInTheDocument();
   });

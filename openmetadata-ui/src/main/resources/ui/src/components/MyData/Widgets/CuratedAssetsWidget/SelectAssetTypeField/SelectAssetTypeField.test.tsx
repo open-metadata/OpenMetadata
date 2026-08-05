@@ -22,6 +22,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SelectAssetTypeField } from './SelectAssetTypeField.component';
 
+const ASSET_TYPE_SELECT = 'asset-type-select' as const;
+
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn(),
 }));
@@ -244,7 +246,7 @@ describe('SelectAssetTypeField', () => {
       </TestWrapperWithEmptyResources>
     );
 
-    expect(screen.getByTestId('asset-type-select')).toBeInTheDocument();
+    expect(screen.getByTestId(ASSET_TYPE_SELECT)).toBeInTheDocument();
   });
 
   it('renders select with correct options', () => {
@@ -254,7 +256,7 @@ describe('SelectAssetTypeField', () => {
       </TestWrapper>
     );
 
-    const select = screen.getByTestId('asset-type-select');
+    const select = screen.getByTestId(ASSET_TYPE_SELECT);
 
     expect(select).toBeInTheDocument();
   });
@@ -286,7 +288,7 @@ describe('SelectAssetTypeField', () => {
       </TestWrapperWithMockForm>
     );
 
-    const select = screen.getByTestId('asset-type-select');
+    const select = screen.getByTestId(ASSET_TYPE_SELECT);
     await act(async () => {
       fireEvent.click(select);
     });

@@ -17,6 +17,9 @@ import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import TestCaseStatusPieChartWidget from './TestCaseStatusPieChartWidget.component';
 
+const DATA_QUALITY_TEST_CASES = '/data-quality/test-cases';
+
+// eslint-disable-next-line sonarjs/no-duplicate-string -- module specifier cannot be a constant
 jest.mock('react-router-dom', () => {
   const actual =
     jest.requireActual<typeof import('react-router-dom')>('react-router-dom');
@@ -39,9 +42,10 @@ jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
   getPieChartLabel: jest.fn().mockReturnValue(<div>Test Label</div>),
 }));
 
+// eslint-disable-next-line sonarjs/no-duplicate-string -- module specifier cannot be a constant
 jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
   getTestCaseTabPath: jest.fn((status: TestCaseStatus) => ({
-    pathname: '/data-quality/test-cases',
+    pathname: DATA_QUALITY_TEST_CASES,
     search: `testCaseStatus=${status}`,
   })),
 }));
@@ -173,7 +177,7 @@ describe('TestCaseStatusPieChartWidget', () => {
       undefined
     );
     expect(mockNavigate).toHaveBeenCalledWith({
-      pathname: '/data-quality/test-cases',
+      pathname: DATA_QUALITY_TEST_CASES,
       search: `testCaseStatus=${TestCaseStatus.Success}`,
     });
 
@@ -190,7 +194,7 @@ describe('TestCaseStatusPieChartWidget', () => {
       undefined
     );
     expect(mockNavigate).toHaveBeenCalledWith({
-      pathname: '/data-quality/test-cases',
+      pathname: DATA_QUALITY_TEST_CASES,
       search: `testCaseStatus=${TestCaseStatus.Failed}`,
     });
 
@@ -207,7 +211,7 @@ describe('TestCaseStatusPieChartWidget', () => {
       undefined
     );
     expect(mockNavigate).toHaveBeenCalledWith({
-      pathname: '/data-quality/test-cases',
+      pathname: DATA_QUALITY_TEST_CASES,
       search: `testCaseStatus=${TestCaseStatus.Aborted}`,
     });
   });

@@ -23,13 +23,20 @@ import { MOCK_EXPLORE_SEARCH_RESULTS } from '../Explore/Explore.mock';
 import Lineage from './Lineage.component';
 import { EntityLineageResponse } from './Lineage.interface';
 
+const SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SALE =
+  'sample_data.ecommerce_db.shopify.fact_sale';
+const _5A1947BB_84EB_40DE_A5C5_2B7B80C834C3 =
+  '5a1947bb-84eb-40de-a5c5-2b7b80c834c3';
+const REACT_FLOW_COMPONENT = 'react-flow-component';
+const LINEAGE_CONTAINER = 'lineage-container';
+const CUSTOM_CONTROLS = 'custom-controls';
 const mockEntity = MOCK_EXPLORE_SEARCH_RESULTS.hits.hits[0]._source;
 
 const entityLineage: EntityLineageResponse = {
   entity: {
     name: 'fact_sale',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
-    id: '5a1947bb-84eb-40de-a5c5-2b7b80c834c3',
+    fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SALE,
+    id: _5A1947BB_84EB_40DE_A5C5_2B7B80C834C3,
     type: 'table',
   },
   nodes: [
@@ -56,8 +63,8 @@ const entityLineage: EntityLineageResponse = {
         type: 'table',
       },
       fromEntity: {
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
-        id: '5a1947bb-84eb-40de-a5c5-2b7b80c834c3',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SALE,
+        id: _5A1947BB_84EB_40DE_A5C5_2B7B80C834C3,
         type: 'table',
       },
       sqlQuery: '',
@@ -70,15 +77,15 @@ const entityLineage: EntityLineageResponse = {
         type: 'mlmodel',
       },
       fromEntity: {
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
-        id: '5a1947bb-84eb-40de-a5c5-2b7b80c834c3',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SALE,
+        id: _5A1947BB_84EB_40DE_A5C5_2B7B80C834C3,
         type: 'table',
       },
     },
     {
       toEntity: {
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_sale',
-        id: '5a1947bb-84eb-40de-a5c5-2b7b80c834c3',
+        fullyQualifiedName: SAMPLE_DATA_ECOMMERCE_DB_SHOPIFY_FACT_SALE,
+        id: _5A1947BB_84EB_40DE_A5C5_2B7B80C834C3,
         type: 'table',
       },
       fromEntity: {
@@ -305,10 +312,10 @@ describe('Lineage Component', () => {
       render(<Lineage {...defaultProps} />);
 
       expect(screen.getByTestId('lineage-details')).toBeInTheDocument();
-      expect(screen.getByTestId('lineage-container')).toBeInTheDocument();
-      expect(screen.getByTestId('custom-controls')).toBeInTheDocument();
+      expect(screen.getByTestId(LINEAGE_CONTAINER)).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_CONTROLS)).toBeInTheDocument();
       expect(screen.getByTestId('lineage-control-buttons')).toBeInTheDocument();
-      expect(screen.getByTestId('react-flow-component')).toBeInTheDocument();
+      expect(screen.getByTestId(REACT_FLOW_COMPONENT)).toBeInTheDocument();
       expect(screen.getByTestId('lineage-layers')).toBeInTheDocument();
     });
 
@@ -329,33 +336,33 @@ describe('Lineage Component', () => {
 
       expect(screen.getByTestId('lineage-skeleton')).toBeInTheDocument();
       expect(
-        screen.queryByTestId('react-flow-component')
+        screen.queryByTestId(REACT_FLOW_COMPONENT)
       ).not.toBeInTheDocument();
     });
 
     it('should not render CustomControls when isPlatformLineage is true', () => {
       render(<Lineage {...defaultProps} isPlatformLineage />);
 
-      expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(CUSTOM_CONTROLS)).not.toBeInTheDocument();
     });
 
     it('should render CustomControls when isPlatformLineage is false', () => {
       render(<Lineage {...defaultProps} isPlatformLineage={false} />);
 
-      expect(screen.getByTestId('custom-controls')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_CONTROLS)).toBeInTheDocument();
     });
 
     it('should render CustomControls when isPlatformLineage is undefined', () => {
       render(<Lineage {...defaultProps} />);
 
-      expect(screen.getByTestId('custom-controls')).toBeInTheDocument();
+      expect(screen.getByTestId(CUSTOM_CONTROLS)).toBeInTheDocument();
     });
 
     it('should keep lineage graph mounted when controls are hidden', () => {
       render(<Lineage {...defaultProps} showControls={false} />);
 
-      expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
-      expect(screen.getByTestId('react-flow-component')).toBeInTheDocument();
+      expect(screen.queryByTestId(CUSTOM_CONTROLS)).not.toBeInTheDocument();
+      expect(screen.getByTestId(REACT_FLOW_COMPONENT)).toBeInTheDocument();
     });
 
     it('should apply edit mode class when isEditMode is true', () => {
@@ -367,7 +374,7 @@ describe('Lineage Component', () => {
       render(<Lineage {...defaultProps} />);
 
       const header = screen
-        .getByTestId('custom-controls')
+        .getByTestId(CUSTOM_CONTROLS)
         .closest('.lineage-header');
 
       expect(header).toHaveClass('lineage-header-edit-mode');
@@ -436,7 +443,7 @@ describe('Lineage Component', () => {
     it('should handle drag over event', () => {
       render(<Lineage {...defaultProps} />);
 
-      const reactFlow = screen.getByTestId('react-flow-component');
+      const reactFlow = screen.getByTestId(REACT_FLOW_COMPONENT);
 
       const dragOverEvent = new Event('dragover', { bubbles: true });
       Object.defineProperty(dragOverEvent, 'dataTransfer', {
@@ -458,7 +465,7 @@ describe('Lineage Component', () => {
     it('should handle node drop event', () => {
       render(<Lineage {...defaultProps} />);
 
-      const reactFlow = screen.getByTestId('react-flow-component');
+      const reactFlow = screen.getByTestId(REACT_FLOW_COMPONENT);
       const dropEvent = {
         preventDefault: jest.fn(),
         clientX: 100,
@@ -500,7 +507,7 @@ describe('Lineage Component', () => {
     it('should handle pane click', () => {
       render(<Lineage {...defaultProps} />);
 
-      const pane = screen.getByTestId('react-flow-component');
+      const pane = screen.getByTestId(REACT_FLOW_COMPONENT);
       const paneClickTarget = document.createElement('div');
       paneClickTarget.setAttribute('data-testid', 'react-flow-pane');
       pane.appendChild(paneClickTarget);
@@ -620,9 +627,9 @@ describe('Lineage Component', () => {
     it('should render container with id for export functionality', () => {
       render(<Lineage {...defaultProps} />);
 
-      const container = screen.getByTestId('lineage-container');
+      const container = screen.getByTestId(LINEAGE_CONTAINER);
 
-      expect(container).toHaveAttribute('id', 'lineage-container');
+      expect(container).toHaveAttribute('id', LINEAGE_CONTAINER);
     });
   });
 
@@ -648,7 +655,7 @@ describe('Lineage Component', () => {
 
       render(<Lineage {...defaultProps} />);
 
-      expect(screen.getByTestId('react-flow-component')).toBeInTheDocument();
+      expect(screen.getByTestId(REACT_FLOW_COMPONENT)).toBeInTheDocument();
     });
   });
 });
