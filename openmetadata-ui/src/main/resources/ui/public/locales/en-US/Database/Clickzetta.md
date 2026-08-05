@@ -56,16 +56,22 @@ $$
 $$section
 ### Query History Table $(id="queryHistoryTable")
 
-Optional table or view used by the usage and query-lineage workflows. The
-configured object must expose these canonical columns:
+Optional table or view used by the usage and query-lineage workflows. For the
+native ClickZetta history source, enter:
+
+`sys.information_schema.job_history`
+
+The connector maps ClickZetta's native job-history columns and automatically
+scopes the source to the configured workspace and schema. A custom table or
+view must expose these canonical columns:
 
 `query_text`, `query_type`, `user_name`, `database_name`, `schema_name`,
 `start_time`, `end_time`, `duration`, `aborted`, and `cost`.
 
 Leave this blank when running metadata-only ingestion. For a first validation,
-use a read-only view restricted to the `seller_center` schema and set a small
-query-log result limit. The connector applies a time window and result limit;
-it does not profile or sample table data.
+grant the ingestion identity read access to the native history object and set a
+small query-log result limit. The connector applies a time window and result
+limit; it does not profile or sample table data.
 $$
 
 $$section
