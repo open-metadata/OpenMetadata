@@ -79,16 +79,23 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 yield TableQueries(queries=queries)
 
         except Exception as err:
+            # Record the failure on the workflow status, not just in the logs, so a
+            # source error surfaces as a failed run rather than a silent success.
+            stack_trace = traceback.format_exc()
+            query_source = self.service_connection.queryStatementSource or "pg_stat_statements"
+            error_message = (
+                f"Source usage processing error for service [{self.config.serviceName}] "
+                f"while reading query logs from [{query_source}]: {err}"
+            )
             if query:
                 logger.debug(f"###### USAGE QUERY #######\n{query}\n##########################")
-            logger.debug(traceback.format_exc())
-            # Register every source failure (connection, missing pg_stat_statements,
-            # permissions, ...) so the run does not report Errors: 0 / Success 100%.
+            logger.debug(stack_trace)
+            logger.error(error_message)
             self.status.failed(
                 StackTraceError(
                     name="Usage",
-                    error=f"Source Usage failed due to - {err}",
-                    stackTrace=traceback.format_exc(),
+                    error=error_message,
+                    stackTrace=stack_trace,
                 )
             )
 
