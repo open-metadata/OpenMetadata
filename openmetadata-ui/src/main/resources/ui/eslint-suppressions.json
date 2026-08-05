@@ -30,11 +30,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/ActivityFeed.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    }
-  },
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 20
@@ -45,29 +40,9 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/BulkEditEntity.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/BulkEditOperationBadges.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 8
-    }
-  },
   "playwright/e2e/Features/BulkImport.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 42
-    }
-  },
-  "playwright/e2e/Features/ChangeSummaryBadge.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 8
-    }
-  },
-  "playwright/e2e/Features/ColumnBulkOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
     }
   },
   "playwright/e2e/Features/Container.spec.ts": {
@@ -76,9 +51,6 @@
     }
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    },
     "playwright/no-wait-for-selector": {
       "count": 1
     },
@@ -89,22 +61,11 @@
   "playwright/e2e/Features/ContextCenterDocument.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1
-    },
-    "om-playwright/no-positional-locator": {
-      "count": 13
-    }
-  },
-  "playwright/e2e/Features/ContextCenterMemories.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
     }
   },
   "playwright/e2e/Features/ContextCenterPermission.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1
-    },
-    "om-playwright/no-positional-locator": {
-      "count": 6
     }
   },
   "playwright/e2e/Features/CuratedAssets.spec.ts": {
@@ -113,11 +74,6 @@
     },
     "om-playwright/no-positional-locator": {
       "count": 16
-    }
-  },
-  "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 9
     }
   },
   "playwright/e2e/Features/Dashboards.spec.ts": {
@@ -130,24 +86,9 @@
       "count": 18
     }
   },
-  "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
   "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 10
     }
   },
   "playwright/e2e/Features/DescriptionSuggestion.spec.ts": {
@@ -158,9 +99,6 @@
   "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1
-    },
-    "om-playwright/no-positional-locator": {
-      "count": 8
     }
   },
   "playwright/e2e/Features/DomainIsolation/DomainLineageIsolation.spec.ts": {

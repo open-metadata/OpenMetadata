@@ -337,6 +337,7 @@ test.describe('FeedWidget on landing page', () => {
       return;
     }
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- no test-owned identifier for feed cards here; any card works to verify the shared structure renders
     const firstCard = messageContainers.first();
 
     await expect(firstCard).toBeVisible();
@@ -363,6 +364,7 @@ test.describe('FeedWidget on landing page', () => {
       return;
     }
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- must reference the same message reactOnFeed(page, 1) below acts on (index 0, per its documented index contract)
     const firstMessage = messages.first();
 
     await expect(firstMessage).toBeVisible();
@@ -398,6 +400,7 @@ test.describe('FeedWidget on landing page', () => {
       return;
     }
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- arbitrary message chosen to exercise the thread drawer/reply flow; no test-owned identifier, any message works
     const firstMessage = messages.first();
 
     await expect(firstMessage).toBeVisible();
@@ -536,8 +539,9 @@ test.describe('Mention notifications in Notification Box', () => {
 
         const seededThread = user1Page
           .locator('[data-testid="message-container"]')
-          .filter({ hasText: 'Initial conversation thread for mention test' })
-          .first();
+          .filter({
+            hasText: 'Initial conversation thread for mention test',
+          });
 
         await expect(seededThread).toBeVisible({ timeout: 30_000 });
         await seededThread.click();
@@ -572,7 +576,6 @@ test.describe('Mention notifications in Notification Box', () => {
 
         await user1Page
           .locator(`[data-value="@${adminUser.responseData.name}"]`)
-          .first()
           .click();
 
         await editorLocator.pressSequentially(', can you check this?');
@@ -627,6 +630,7 @@ test.describe('Mention notifications in Notification Box', () => {
 
         await expect(mentionsList).toBeVisible();
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- notification list renders newest-first; verifying the most recent mention notification requires selecting position 0
         const firstNotificationItem = mentionsList
           .locator('li.ant-list-item.notification-dropdown-list-btn')
           .first();
@@ -667,10 +671,10 @@ test.describe('Mention notifications in Notification Box', () => {
         await user1Page.getByTestId('activity_feed').click();
         await waitForAllLoadersToDisappear(user1Page);
 
-        // Find a message to react to.
+        // Find the seeded conversation thread to react to.
         const message = user1Page
           .locator('[data-testid="message-container"]')
-          .first();
+          .filter({ hasText: 'Initial conversation thread for mention test' });
         await expect(message).toBeVisible();
 
         // Add reaction
@@ -683,10 +687,9 @@ test.describe('Mention notifications in Notification Box', () => {
         await user1Page.locator('[title="rocket"]').click();
         await reactionResponse;
 
-        // Hover over the emoji button to see the popover
-        const emojiButton = message
-          .locator('[data-testid="emoji-button"]')
-          .last();
+        // Hover over the emoji button to see the popover. The reaction just
+        // added above is the only one on this seeded thread.
+        const emojiButton = message.locator('[data-testid="emoji-button"]');
         await emojiButton.hover();
 
         // Verify tooltip using the data-testid from Emoji.tsx popoverContent
@@ -789,8 +792,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
         )
         .filter({
           hasText: 'Initial conversation for Chinese character encoding test',
-        })
-        .first();
+        });
 
       await expect(seededThread).toBeVisible({ timeout: 30_000 });
       await seededThread.click();
@@ -803,9 +805,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     const editorLocator = page.locator(
       '[data-testid="editor-wrapper"] .ProseMirror, [data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     );
-    await expect(editorLocator.first()).toBeVisible({ timeout: 10000 });
+    await expect(editorLocator).toBeVisible({ timeout: 10000 });
 
-    return editorLocator.first();
+    return editorLocator;
   };
 
   const selectHashSuggestion = async (
@@ -822,8 +824,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
 
     const hashtagItem = page
       .locator('.hashtag-item')
-      .filter({ hasText: label })
-      .first();
+      .filter({ hasText: label });
 
     if (await hashtagItem.isVisible().catch(() => false)) {
       await hashtagItem.click();

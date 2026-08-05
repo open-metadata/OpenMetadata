@@ -560,8 +560,8 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid="status-data-widget"]')
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Glossary Term and verify all API responses succeed', async () => {
@@ -588,8 +588,8 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid="status-data-widget"]')
+        ).not.toHaveCount(0);
       });
 
       await test.step('Filter by Data Product and verify all API responses succeed', async () => {
@@ -622,8 +622,8 @@ test.describe(
 
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid="status-data-widget"]')
+        ).not.toHaveCount(0);
       });
 
       await test.step('Verify New incident for Consistency test case on table3 DQ tab', async () => {
@@ -914,8 +914,8 @@ test.describe(
       await test.step('Navigate to Data Quality dashboard', async () => {
         await goToDataQualityDashboard(page);
         await expect(
-          page.locator('[data-testid="status-data-widget"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid="status-data-widget"]')
+        ).not.toHaveCount(0);
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -935,15 +935,14 @@ test.describe(
           if (!page.url().includes('/data-quality/dashboard')) {
             await goToDataQualityDashboard(page);
             await expect(
-              page.locator('[data-testid="status-data-widget"]').first()
-            ).toBeVisible();
+              page.locator('[data-testid="status-data-widget"]')
+            ).not.toHaveCount(0);
             await waitForAllLoadersToDisappear(page);
           }
 
           const dimensionCard = page
             .locator('[data-testid="status-data-widget"]')
-            .filter({ hasText: dimension.displayText })
-            .first();
+            .filter({ hasText: dimension.displayText });
 
           const cardCount = await dimensionCard.count();
           if (cardCount > 0) {

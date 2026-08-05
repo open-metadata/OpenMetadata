@@ -281,8 +281,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
       const parentDomainNode = page
         .locator('.ant-tree-treenode')
-        .filter({ hasText: domain.responseData.displayName })
-        .first();
+        .filter({ hasText: domain.responseData.displayName });
 
       await parentDomainNode.locator('.ant-tree-switcher').click();
 
@@ -632,24 +631,27 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         page.getByTestId('data_products').getByTestId('count')
       ).toHaveText('2');
 
-      // Verify domainA's data product IS visible (use first link to avoid summary panel duplicate)
+      // Scope to the results list panel (data-testid="domain-resizable-panel-container")
+      // to avoid matching the entity summary side panel, which shows the same
+      // display name for whichever card was last selected.
+      const dataProductsList = page.getByTestId(
+        'domain-resizable-panel-container'
+      );
+
+      // Verify domainA's data product IS visible
       await expect(
-        page
-          .getByRole('link', {
-            name: dataProductInDomainA.data.displayName,
-            exact: true,
-          })
-          .first()
+        dataProductsList.getByRole('link', {
+          name: dataProductInDomainA.data.displayName,
+          exact: true,
+        })
       ).toBeVisible();
 
       // Verify subDomainA's data product IS visible (subdomain data products should be included)
       await expect(
-        page
-          .getByRole('link', {
-            name: dataProductInSubDomainA.data.displayName,
-            exact: true,
-          })
-          .first()
+        dataProductsList.getByRole('link', {
+          name: dataProductInSubDomainA.data.displayName,
+          exact: true,
+        })
       ).toBeVisible();
 
       // Verify domainB's data product is NOT visible
@@ -712,16 +714,16 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
     // Helper to verify asset visibility
     const expectVisible = async (fqn: string | undefined) => {
-      await expect(page.locator(`a[href*="${fqn}"]`).first()).toBeVisible();
+      await expect(page.locator(`a[href*="${fqn}"]`)).not.toHaveCount(0);
     };
 
     const expectNotVisible = async (fqn: string | undefined) => {
-      await expect(page.locator(`a[href*="${fqn}"]`).first()).not.toBeVisible();
+      await expect(page.locator(`a[href*="${fqn}"]`)).toHaveCount(0);
     };
 
     // Helper to apply Tier filter
     const applyTierFilter = async (tier: string) => {
-      await page.locator('.filters-row button').first().click();
+      await page.getByTestId('asset-filter-button').click();
       await page.getByRole('menuitem', { name: /Tier/i }).click();
       await page.click('[data-testid="search-dropdown-Tier"]');
       await page.getByTestId('drop-down-menu').waitFor({
@@ -740,7 +742,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
     // Helper to apply Tag filter
     const applyTagFilter = async (searchTerm: string, tagPattern: RegExp) => {
-      await page.locator('.filters-row button').first().click();
+      await page.getByTestId('asset-filter-button').click();
       await page.getByRole('menuitem', { name: /Tag/i }).click();
       await page.click('[data-testid="search-dropdown-Tag"]');
       await page.getByTestId('drop-down-menu').waitFor({
@@ -761,7 +763,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
 
     // Helper to apply Entity Type filter
     const applyEntityTypeFilter = async (entityType: string) => {
-      await page.locator('.filters-row button').first().click();
+      await page.getByTestId('asset-filter-button').click();
       await page.getByRole('menuitem', { name: /Entity Type/i }).click();
       await page.click('[data-testid="search-dropdown-entityType"]');
       await page.getByTestId('drop-down-menu').waitFor({

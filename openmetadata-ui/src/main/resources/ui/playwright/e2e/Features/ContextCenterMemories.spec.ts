@@ -677,11 +677,8 @@ test.describe(
           (res) =>
             res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
         );
-        // Click the first summary card (Total Memories)
-        await page
-          .getByText(/total memor/i)
-          .first()
-          .click();
+        // Click the "Total Memories" summary card
+        await page.getByTestId('memory-count-card-all').click();
         await listResPromise;
         await waitForAllLoadersToDisappear(page);
 
@@ -948,16 +945,16 @@ test.describe(
         ).toBeVisible();
 
         const rows = page.locator('[data-testid^="memory-row-"]');
-        await expect(
-          rows.first().getByText('Cited 999999 times')
-        ).toBeVisible();
+        // eslint-disable-next-line om-playwright/no-positional-locator -- verifying the "Most Used" sort actually reorders rows requires checking DOM position; this is genuine ordinal semantics (highest usageCount must render first), not a stand-in for a stricter locator.
+        const topRow = rows.first();
+        await expect(topRow.getByText('Cited 999999 times')).toBeVisible();
 
         // lastUsedAt is rendered next to the usage count as
         // "Cited N times · Last {relative-time}" — assert the "Last" label
         // is present rather than a specific relative-time string, since the
         // exact rendered value depends on wall-clock time between the patch
         // above and this assertion.
-        await expect(rows.first()).toContainText(/Last/);
+        await expect(topRow).toContainText(/Last/);
       });
     });
 
@@ -1985,9 +1982,12 @@ test.describe(
         await navigateToMemories(page);
 
         const firstPageRows = page.locator('[data-testid^="memory-row-"]');
-        await expect(firstPageRows.first()).toBeVisible();
+        await expect(firstPageRows).not.toHaveCount(0);
 
-        // Capture ID of first row on page 1
+        // Capture ID of a row on page 1 — the specific row doesn't matter,
+        // this only needs one stable handle to confirm it is gone once we
+        // paginate.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- picks a single deterministic row to compare across the page-1/page-2 boundary; any row would do, but Locator has no non-positional way to pick "one".
         const firstRowId = await firstPageRows
           .first()
           .getAttribute('data-testid');
@@ -2004,8 +2004,8 @@ test.describe(
 
         // Page 2 must show rows, and the first-page row must not be present
         await expect(
-          page.locator('[data-testid^="memory-row-"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid^="memory-row-"]')
+        ).not.toHaveCount(0);
 
         if (firstRowId) {
           await expect(page.getByTestId(firstRowId)).not.toBeVisible();
@@ -2040,8 +2040,8 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.locator('[data-testid^="memory-row-"]').first()
-        ).toBeVisible();
+          page.locator('[data-testid^="memory-row-"]')
+        ).not.toHaveCount(0);
       });
     });
   }

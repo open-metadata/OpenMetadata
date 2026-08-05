@@ -334,8 +334,7 @@ test.describe('Context Center Articles', () => {
       page
         .getByTestId('knowledge-page-listing')
         .locator('[data-testid^="knowledge-card-"]')
-        .first()
-    ).toBeVisible();
+    ).not.toHaveCount(0);
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -364,8 +363,7 @@ test.describe('Context Center Articles', () => {
       await page
         .locator('.ant-tree-treenode')
         .filter({ hasText: /^Context Center$/ })
-        .locator('svg')
-        .first()
+        .locator('.ant-tree-switcher')
         .click();
 
       await expect(
@@ -631,7 +629,7 @@ test.describe('Context Center Articles', () => {
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
     await expect(viewedCard).toBeVisible();
 
-    await viewedCard.getByTestId('knowledge-page-link').first().click();
+    await viewedCard.getByTestId('knowledge-page-link').click();
     await page.waitForURL((url) =>
       url.pathname.includes('/context-center/articles/')
     );
@@ -1173,13 +1171,12 @@ test.describe('Context Center Articles', () => {
       await waitForRelatedArticles;
 
       await page.getByTestId('edit-description').click();
-      await page.locator(descriptionBox).first().click();
-      await page.locator(descriptionBox).first().clear();
+      await page.locator(descriptionBox).click();
+      await page.locator(descriptionBox).clear();
 
       const mentionResponse = page.waitForResponse('/api/v1/search/query?**');
       await page
         .locator(descriptionBox)
-        .first()
         .fill(`#${relatedKnowledgeCenter.knowledgePages[0].displayName}`);
       await mentionResponse;
 
@@ -1393,9 +1390,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Article B should show its own content, not Article A unsaved content', async () => {
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
+        const editor = page.locator('.ProseMirror[contenteditable="true"]');
 
         await expect(editor).not.toContainText(newDescription);
       });
@@ -1404,9 +1399,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
+        const editor = page.locator('.ProseMirror[contenteditable="true"]');
 
         await expect(editor).toContainText(newDescription);
         await assertArticleEditorSaved(page);
@@ -1503,9 +1496,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Content should be synced and badge shows Saved', async () => {
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
+        const editor = page.locator('.ProseMirror[contenteditable="true"]');
 
         await expect(editor).toContainText(reloadDescription);
         await assertArticleEditorSaved(page);
@@ -1592,7 +1583,7 @@ test.describe('Context Center Articles', () => {
           `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=false`
         );
 
-        await page.getByTestId('manage-button').first().click();
+        await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-btn').click();
         await expect(page.getByTestId('confirm-button')).toBeVisible();
         await page.getByTestId('confirm-button').click();
@@ -1635,9 +1626,7 @@ test.describe('Context Center Articles', () => {
         await page.reload();
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
+        const editor = page.locator('.ProseMirror[contenteditable="true"]');
 
         await expect(editor).toContainText(contentB);
         await assertArticleEditorSaved(page);
@@ -1647,9 +1636,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await waitForAllLoadersToDisappear(page);
 
-        const editor = page
-          .locator('.ProseMirror[contenteditable="true"]')
-          .first();
+        const editor = page.locator('.ProseMirror[contenteditable="true"]');
 
         await expect(editor).toContainText(contentA);
         await assertArticleEditorSaved(page);

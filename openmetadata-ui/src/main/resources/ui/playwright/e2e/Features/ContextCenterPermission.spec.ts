@@ -2085,8 +2085,7 @@ test.describe('Context Center Permissions', () => {
 
       await viewOnlyPage
         .getByTestId('knowledge-pages-hierarchy')
-        .getByRole('link')
-        .first()
+        .getByRole('link', { name: articleEntity.responseData.displayName })
         .click();
 
       await articleResponse;
@@ -2140,8 +2139,7 @@ test.describe('Context Center Permissions', () => {
 
         await dataConsumerPage
           .getByTestId('knowledge-pages-hierarchy')
-          .getByRole('link')
-          .first()
+          .getByRole('link', { name: articleEntity.responseData.displayName })
           .click();
 
         await articleResponse;
@@ -2151,9 +2149,7 @@ test.describe('Context Center Permissions', () => {
           dataConsumerPage.getByTestId('entity-header-display-name')
         ).toBeVisible();
 
-        const editor = dataConsumerPage
-          .locator('[contenteditable="true"]')
-          .first();
+        const editor = dataConsumerPage.locator('[contenteditable="true"]');
 
         await expect(editor).toHaveAttribute('contenteditable', 'true');
         await expect(
@@ -2195,8 +2191,7 @@ test.describe('Context Center Permissions', () => {
 
         await dataStewardPage
           .getByTestId('knowledge-pages-hierarchy')
-          .getByRole('link')
-          .first()
+          .getByRole('link', { name: articleEntity.responseData.displayName })
           .click();
 
         await articleResponse;
@@ -2208,9 +2203,7 @@ test.describe('Context Center Permissions', () => {
 
         await expect(titleInput).not.toHaveAttribute('readOnly', '');
 
-        const editor = dataStewardPage
-          .locator('[contenteditable="true"]')
-          .first();
+        const editor = dataStewardPage.locator('[contenteditable="true"]');
 
         await expect(editor).toHaveAttribute('contenteditable', 'true');
         await expect(
@@ -2300,6 +2293,7 @@ test.describe('Context Center Permissions', () => {
       // fixture memories share similar titles, so the id-based check was
       // brittle — the updatedBy name is what the sort actually orders by.
       const rows = adminPage.locator('[data-testid^="memory-row-"]');
+      // eslint-disable-next-line om-playwright/no-positional-locator -- verifying the "Updated By" sort actually reorders rows requires checking DOM position; this is genuine ordinal semantics (the earliest-alphabet updater must render first), not a stand-in for a stricter locator.
       await expect(rows.first()).toContainText('aaa-sort-updatedby.');
 
       await afterAction();

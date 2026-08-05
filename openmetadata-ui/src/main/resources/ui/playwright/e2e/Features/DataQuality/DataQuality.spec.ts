@@ -264,7 +264,6 @@ test.describe(
           .locator(
             '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
           )
-          .first()
           .click();
 
         await page.click('[data-testid="tags-selector"] input');
@@ -287,7 +286,6 @@ test.describe(
           .locator(
             '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
           )
-          .first()
           .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const newGlossarySearchResponse = page.waitForResponse(
@@ -396,7 +394,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -471,7 +468,6 @@ test.describe(
           .locator(
             '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
           )
-          .first()
           .click();
         await page.click('[data-testid="tags-selector"] input');
         const columnNewTagsSearchResponse = page.waitForResponse(
@@ -493,7 +489,6 @@ test.describe(
           .locator(
             '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
           )
-          .first()
           .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const columnNewGlossarySearchResponse = page.waitForResponse(
@@ -1028,7 +1023,14 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=all*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('All').nth(1).click();
+        await page
+          .locator('.ant-select-dropdown')
+          .filter({
+            hasNot: page.locator('.ant-select-dropdown-hidden'),
+            has: page.locator(`[title="All"]`),
+            hasText: 'All',
+          })
+          .click();
         await testCaseTypeByAll;
 
         // Test case filter by status

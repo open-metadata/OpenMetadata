@@ -173,29 +173,17 @@ test.describe(
         // Ontology Explorer was not in the saved nav (shipped after persona
         // was created) — its toggle must be OFF, not ON.
         await expect(
-          adminPage
-            .getByTestId('page-layout-v1')
-            .getByText('Ontology Explorer')
-            .first()
-            .getByRole('switch')
+          adminPage.getByTestId('navigation-switch-/governance/ontology')
         ).not.toBeChecked();
 
         // Metrics was also not in the saved nav — toggle must be OFF.
         await expect(
-          adminPage
-            .getByTestId('page-layout-v1')
-            .getByText('Metrics')
-            .first()
-            .getByRole('switch')
+          adminPage.getByTestId('navigation-switch-/metrics')
         ).not.toBeChecked();
 
         // Glossary IS in the saved nav with isHidden: false — toggle must be ON.
         await expect(
-          adminPage
-            .getByTestId('page-layout-v1')
-            .getByText('Glossary')
-            .first()
-            .getByRole('switch')
+          adminPage.getByTestId('navigation-switch-/glossary')
         ).toBeChecked();
       });
 
@@ -239,41 +227,36 @@ test.describe(
         await userPage.click('[data-testid="governance"]');
 
         // Wait for the governance dropdown to fully expand before checking children
-        const anyGovernanceChild = userPage
+        const governanceChildren = userPage
           .locator('[data-testid="left-sidebar"]')
-          .locator('[data-testid^="app-bar-item-"]')
-          .first();
+          .locator('[data-testid^="app-bar-item-"]');
 
-        await expect(anyGovernanceChild).toBeVisible();
+        await expect(governanceChildren).not.toHaveCount(0);
 
         // Glossary is in saved nav with isHidden: false — must be visible
         await expect(
-          userPage
-            .locator(`[data-testid="app-bar-item-${SidebarItem.GLOSSARY}"]`)
-            .first()
+          userPage.locator(
+            `[data-testid="app-bar-item-${SidebarItem.GLOSSARY}"]`
+          )
         ).toBeVisible();
 
         // Tags is in saved nav with isHidden: true — must not be visible
         await expect(
-          userPage
-            .locator(`[data-testid="app-bar-item-${SidebarItem.TAGS}"]`)
-            .first()
+          userPage.locator(`[data-testid="app-bar-item-${SidebarItem.TAGS}"]`)
         ).not.toBeVisible();
 
         // Metrics is absent from saved nav's governance children — must not be visible
         await expect(
-          userPage
-            .locator(`[data-testid="app-bar-item-${SidebarItem.METRICS}"]`)
-            .first()
+          userPage.locator(
+            `[data-testid="app-bar-item-${SidebarItem.METRICS}"]`
+          )
         ).not.toBeVisible();
 
         // Ontology Explorer is absent from saved nav's governance children — must not be visible
         await expect(
-          userPage
-            .locator(
-              `[data-testid="app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}"]`
-            )
-            .first()
+          userPage.locator(
+            `[data-testid="app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}"]`
+          )
         ).not.toBeVisible();
 
         await userPage.click('[data-testid="governance"]');
@@ -300,12 +283,7 @@ test.describe(
       await adminPage.getByTestId('navigation').click();
 
       // Toggle Glossary to create an unsaved change (enables the blocker)
-      await adminPage
-        .getByTestId('page-layout-v1')
-        .getByText('Glossary')
-        .first()
-        .getByRole('switch')
-        .click();
+      await adminPage.getByTestId('navigation-switch-/glossary').click();
 
       await expect(adminPage.getByTestId('save-button')).toBeEnabled();
 

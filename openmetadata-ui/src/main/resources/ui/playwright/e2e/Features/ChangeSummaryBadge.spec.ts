@@ -110,9 +110,7 @@ test.describe(
 
         await expect(descriptionContainer).toBeVisible();
 
-        const badge = descriptionContainer
-          .getByTestId('ai-suggested-badge')
-          .first();
+        const badge = descriptionContainer.getByTestId('ai-suggested-badge');
 
         await expect(badge).toBeVisible();
       });
@@ -120,8 +118,7 @@ test.describe(
       await test.step('Verify badge tooltip shows metadata', async () => {
         const badge = page
           .getByTestId('asset-description-container')
-          .getByTestId('ai-suggested-badge')
-          .first();
+          .getByTestId('ai-suggested-badge');
 
         await badge.hover();
 
@@ -146,8 +143,7 @@ test.describe(
 
         const badge = page
           .locator('.entity-summary-panel-container')
-          .getByTestId('ai-suggested-badge')
-          .first();
+          .getByTestId('ai-suggested-badge');
 
         await expect(badge).toBeVisible();
       });
@@ -171,7 +167,7 @@ test.describe(
           .getByTestId('description')
           .getByTestId('ai-suggested-badge');
 
-        await expect(descriptionCells.first()).toBeVisible();
+        await expect(descriptionCells).toBeVisible();
       });
 
       await test.step('Verify AI badge on column description in Explore summary panel', async () => {
@@ -196,8 +192,7 @@ test.describe(
 
         const badge = page
           .locator('.entity-summary-panel-container')
-          .getByTestId('ai-suggested-badge')
-          .first();
+          .getByTestId('ai-suggested-badge');
 
         await expect(badge).toBeVisible();
       });
@@ -264,9 +259,7 @@ test.describe(
 
         await expect(descriptionContainer).toBeVisible();
 
-        const badge = descriptionContainer
-          .getByTestId('automated-badge')
-          .first();
+        const badge = descriptionContainer.getByTestId('automated-badge');
 
         await expect(badge).toBeVisible();
       });
@@ -276,7 +269,7 @@ test.describe(
           .getByTestId('description')
           .getByTestId('automated-badge');
 
-        await expect(columnBadge.first()).toBeVisible();
+        await expect(columnBadge).toBeVisible();
       });
     });
 
@@ -329,9 +322,7 @@ test.describe(
 
         await expect(descriptionContainer).toBeVisible();
 
-        const badge = descriptionContainer
-          .getByTestId('propagated-badge')
-          .first();
+        const badge = descriptionContainer.getByTestId('propagated-badge');
 
         await expect(badge).toBeVisible();
       });

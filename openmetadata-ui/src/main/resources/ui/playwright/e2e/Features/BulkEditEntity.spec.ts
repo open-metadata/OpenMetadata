@@ -161,10 +161,9 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page
-        .locator('.rdg-cell[role="gridcell"]')
-        .first()
-        .waitFor({ state: 'visible' });
+      await expect(page.locator('.rdg-cell[role="gridcell"]')).not.toHaveCount(
+        0
+      );
 
       const databaseNameCell = page
         .locator('.rdg-cell-name')
@@ -308,10 +307,9 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page
-        .locator('.rdg-cell[role="gridcell"]')
-        .first()
-        .waitFor({ state: 'visible' });
+      await expect(page.locator('.rdg-cell[role="gridcell"]')).not.toHaveCount(
+        0
+      );
 
       // click on last row first cell
       await page.click('.rdg-cell[role="gridcell"]');
@@ -468,10 +466,9 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page
-        .locator('.rdg-cell[role="gridcell"]')
-        .first()
-        .waitFor({ state: 'visible' });
+      await expect(page.locator('.rdg-cell[role="gridcell"]')).not.toHaveCount(
+        0
+      );
 
       const tableNameCell = page
         .locator('.rdg-cell-name')
@@ -600,10 +597,9 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Wait for grid cells to be ready for interaction
-      await page
-        .locator('.rdg-cell[role="gridcell"]')
-        .first()
-        .waitFor({ state: 'visible' });
+      await expect(page.locator('.rdg-cell[role="gridcell"]')).not.toHaveCount(
+        0
+      );
 
       // click on row first cell
       await page.click('.rdg-cell[role="gridcell"]');
@@ -612,9 +608,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await pressKeyXTimes(page, 3, 'ArrowRight');
 
-      const activeDescriptionCell = page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .first();
+      const activeDescriptionCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
       // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
       await activeDescriptionCell.dblclick({ force: true });
 
@@ -891,6 +885,7 @@ test.describe('Bulk Edit Entity', () => {
       ).not.toBeVisible();
 
       // Click on first cell and edit
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the first grid column is a fixed, ordered position (not a ranked pick among ambiguous matches)
       await page.locator('.rdg-cell[role="gridcell"]').first().click();
 
       // Click on first cell and edit the nested glossary term

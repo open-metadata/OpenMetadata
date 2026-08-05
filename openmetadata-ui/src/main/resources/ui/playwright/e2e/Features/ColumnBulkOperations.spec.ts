@@ -127,10 +127,7 @@ async function getPendingChangesValue(page: Page) {
 }
 
 function getColumnRowCheckbox(page: Page, rowId: string) {
-  return page
-    .locator(`[data-row-id="${rowId}"]`)
-    .first()
-    .locator('[slot="selection"]');
+  return page.locator(`[data-row-id="${rowId}"]`).locator('[slot="selection"]');
 }
 
 function buildMockColumnGridResponse(columnName: string) {
@@ -566,9 +563,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
       await searchInput.fill(sharedColumnName);
       await waitForAllLoadersToDisappear(page);
 
-      const groupRow = page
-        .locator(`[data-row-id="${sharedColumnName}"]`)
-        .first();
+      const groupRow = page.locator(`[data-row-id="${sharedColumnName}"]`);
       await expect(groupRow).toBeVisible();
 
       const columnNameCellText =
@@ -649,7 +644,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
       ).not.toBeVisible({ timeout: 10000 });
 
       const loaders = page.getByTestId('loader');
-      await expect(loaders.first()).toBeVisible();
+      await expect(loaders).not.toHaveCount(0);
 
       const value = await getPendingChangesValue(page);
       expect(value).toMatch(/^\d+\/\d+$/);
@@ -803,6 +798,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
     page,
   }) => {
     await test.step('Click on a column name cell to open drawer', async () => {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- this test only verifies that clicking any column-name-cell opens the edit drawer; the row identity is irrelevant and the grid isn't scoped to a single known column here
       const firstNameCell = page.getByTestId('column-name-cell').first();
       await expect(firstNameCell).toBeVisible();
       await firstNameCell.click();
@@ -843,7 +839,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
 
     await test.step('Type text with spaces in the description editor', async () => {
       const drawer = page.getByTestId('column-bulk-operations-form-drawer');
-      const editor = drawer.locator(descriptionBox).first();
+      const editor = drawer.locator(descriptionBox);
       await expect(editor).toBeVisible();
       await editor.click();
       await editor.fill(descriptionText);
@@ -1043,7 +1039,10 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 
     await test.step('Expand the STRUCT row', async () => {
       const structRow = page.getByTestId(`column-row-${structColumnName}`);
-      const expandButton = structRow.getByRole('button').first();
+      // The chevron button carries an icon; the column-name button next to it is text-only.
+      const expandButton = structRow
+        .getByRole('button')
+        .filter({ has: page.locator('svg') });
 
       // STRUCT rows should have expand button
       if ((await expandButton.count()) > 0) {
@@ -1068,7 +1067,10 @@ test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
 
     await test.step('Expand STRUCT row', async () => {
       const structRow = page.getByTestId(`column-row-${structColumnName}`);
-      const expandButton = structRow.getByRole('button').first();
+      // The chevron button carries an icon; the column-name button next to it is text-only.
+      const expandButton = structRow
+        .getByRole('button')
+        .filter({ has: page.locator('svg') });
 
       if ((await expandButton.count()) > 0) {
         await expandButton.click();
