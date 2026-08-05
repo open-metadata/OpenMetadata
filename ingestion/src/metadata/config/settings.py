@@ -48,7 +48,7 @@ def registered_settings() -> dict[str, Type["OMSettings"]]:  # noqa: UP006
 
 def import_all_settings_modules() -> dict[str, Type[OMSettings]]:  # noqa: UP006
     """Import every OMSettings-defining ``settings.py`` under metadata; return the registry."""
-    import metadata  # noqa: PLC0415
+    import metadata
 
     root = Path(metadata.__file__).parent
     for path in sorted(root.rglob("settings.py")):

@@ -904,8 +904,19 @@ public class OpenSearchVectorService implements VectorIndexService {
             .set("method", method);
     var properties = MAPPER.createObjectNode();
     properties.set("embedding", embedding);
+    // The three metric enums are mapped as real keywords, not source-only: they are cheap to index
+    // and are the natural facets to filter a metric search on (granularity DAY vs MONTH).
     for (String keyword :
-        List.of("parentId", "fingerprint", "entityType", "fullyQualifiedName", "serviceType")) {
+        List.of(
+            "parentId",
+            "fingerprint",
+            "entityType",
+            "fullyQualifiedName",
+            "serviceType",
+            "metricType",
+            "granularity",
+            "unitOfMeasurement",
+            "customUnitOfMeasurement")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -939,6 +950,11 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("columns", columnsMapping());
     properties.set(
         "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
+    // Display-only: semantic_search returns a metric's expression, nothing filters or scores on it,
+    // and the code is already searchable through textToEmbed. `enabled: false` keeps it in _source
+    // without paying to index it on a dynamic:false index.
+    properties.set(
+        "metricExpression", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
     return properties;
   }
 
@@ -1406,6 +1422,9 @@ public class OpenSearchVectorService implements VectorIndexService {
       hitMap.put("_score", score);
 
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      // Persist the fallback into the result map so consumers (e.g. SemanticSearchTool collapsing
+      // chunks by entity) see the same parentId this grouping used, matching the ES service.
+      hitMap.put("parentId", parentId);
       List<Map<String, Object>> group =
           byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>());
       // During chunk-index migration the same chunk can surface twice — once from the legacy
