@@ -13,8 +13,9 @@
 
 import { Button, Card, Typography } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import {
@@ -22,14 +23,36 @@ import {
   getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
-} from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
-import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
-import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
-import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
+} from '../../../../utils/FeedUtilsPure';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
+
+const RichTextEditorPreviewerNew = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
+);
+
+const DescriptionFeedNew = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew'
+      )
+  )
+);
+
+const OwnersFeed = withSuspenseFallback(
+  lazy(
+    () => import('../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed')
+  )
+);
+
+const TagsFeed = withSuspenseFallback(
+  lazy(() => import('../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed'))
+);
+
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
+);
 
 const FeedCardBodyNew = ({
   isPost = false,

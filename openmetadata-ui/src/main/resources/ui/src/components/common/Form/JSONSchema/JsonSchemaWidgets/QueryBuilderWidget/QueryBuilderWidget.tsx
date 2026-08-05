@@ -20,6 +20,7 @@ import {
   Query,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
+import '@react-awesome-query-builder/antd/css/styles.css';
 import { WidgetProps } from '@rjsf/utils';
 import {
   Alert,
@@ -42,7 +43,7 @@ import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
   getEmptyJsonTree,
   getEmptyJsonTreeForQueryBuilder,
-} from '../../../../../../utils/AdvancedSearchUtils';
+} from '../../../../../../utils/AdvancedSearchPureUtils';
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
@@ -51,14 +52,13 @@ import {
   getJsonTreeFromQueryFilter,
   migrateJsonLogic,
   READONLY_SETTINGS,
-} from '../../../../../../utils/QueryBuilderUtils';
+} from '../../../../../../utils/QueryBuilderPureUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget.less';
-
 const QueryBuilderWidget: FC<
   WidgetProps & {
     fields?: Config['fields'];

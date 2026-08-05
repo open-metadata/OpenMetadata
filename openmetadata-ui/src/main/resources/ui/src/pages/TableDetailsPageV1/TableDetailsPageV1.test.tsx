@@ -138,7 +138,13 @@ jest.mock('../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  ...jest.requireActual('../../utils/RecentActivityUtils'),
+  addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
   getTableFQNFromColumnFQN: jest.fn(),
@@ -291,9 +297,13 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => <>testLoader</>);
-});
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <>testLoader</>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.useFakeTimers();
 

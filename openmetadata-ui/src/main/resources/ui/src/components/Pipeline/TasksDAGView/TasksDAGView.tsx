@@ -20,6 +20,8 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import 'reactflow/dist/base.css';
+import 'reactflow/dist/style.css';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -29,7 +31,8 @@ import {
   EntityLineageNodeType,
 } from '../../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
-import { getLayoutedElements, onLoad } from '../../../utils/EntityLineageUtils';
+import { getLayoutedElements } from '../../../utils/EntityLineageLayoutUtils';
+import { onLoad } from '../../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTaskExecStatus } from '../../../utils/PipelineDetailsUtils';
 import { replaceSpaceWith_ } from '../../../utils/StringUtils';

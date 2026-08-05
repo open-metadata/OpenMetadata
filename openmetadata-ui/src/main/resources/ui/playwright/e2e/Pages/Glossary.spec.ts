@@ -1109,6 +1109,24 @@ test.describe('Glossary tests', () => {
         glossaryTerm2.responseData.fullyQualifiedName,
         true
       );
+      await expect
+        .poll(
+          async () => {
+            const res = await apiContext.get(
+              `/api/v1/glossaryTerms/${glossaryTerm1.responseData.id}?fields=parent`
+            );
+
+            if (!res.ok()) {
+              return '';
+            }
+
+            const term = await res.json();
+
+            return term.parent?.id;
+          },
+          { timeout: 30000 }
+        )
+        .toBe(glossaryTerm2.responseData.id);
 
       // Verify the term is no longer in the source glossary (glossary1)
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -1258,11 +1276,9 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
 
-      const viewerContainerText = await page.textContent(
-        '[data-testid="viewer-container"]'
-      );
-
-      expect(viewerContainerText).toContain('Updated description');
+      await expect(
+        page.getByTestId('asset-description-container')
+      ).toContainText('Updated description', { timeout: 30000 });
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);

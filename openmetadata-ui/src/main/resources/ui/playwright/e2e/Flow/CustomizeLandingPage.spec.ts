@@ -27,6 +27,7 @@ import {
   removeAndCheckWidget,
   saveCustomizeLayoutPage,
   setUserDefaultPersona,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
@@ -214,9 +215,7 @@ test.describe(
         ).not.toBeVisible();
 
         // Check if newly added widgets are present on the landing page
-        await expect(
-          adminPage.getByTestId('KnowledgePanel.Following')
-        ).toBeVisible();
+        await waitForLandingPageWidget(adminPage, 'KnowledgePanel.Following');
       });
 
       await test.step('Resetting the layout flow should work properly', async () => {
@@ -299,21 +298,8 @@ test.describe(
           await removeLandingBanner(adminPage);
           await waitForAllLoadersToDisappear(adminPage).catch(() => undefined);
 
-          await expect
-            .poll(
-              async () => ({
-                myData: await adminPage
-                  .getByTestId('KnowledgePanel.MyData')
-                  .isVisible()
-                  .catch(() => false),
-                following: await adminPage
-                  .getByTestId('KnowledgePanel.Following')
-                  .isVisible()
-                  .catch(() => false),
-              }),
-              { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
-            )
-            .toEqual({ myData: true, following: true });
+          await waitForLandingPageWidget(adminPage, 'KnowledgePanel.MyData');
+          await waitForLandingPageWidget(adminPage, 'KnowledgePanel.Following');
         }
       }
     });

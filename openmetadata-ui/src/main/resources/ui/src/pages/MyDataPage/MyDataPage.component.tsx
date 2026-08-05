@@ -14,20 +14,25 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
+import type { ReactNode } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactGridLayoutProps } from 'react-grid-layout';
+import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
 import Loader from '../../components/common/Loader/Loader';
 import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
-import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
+import LandingPageWidgetRenderer from '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
-import { Page, PageType } from '../../generated/system/ui/page';
-import { PersonaPreferences } from '../../generated/type/personaPreferences';
+import type { Page } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
+import type { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
@@ -35,18 +40,25 @@ import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import {
-  getConstrainedWidgetWidth,
-  getWidgetFromKey,
-} from '../../utils/CustomizableLandingPageUtils';
-import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
+import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
+import customizeMyDataPageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
+const WelcomeScreen = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/MyData/WelcomeScreen/WelcomeScreen.component')
+  )
+);
+
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
-  ReactGridLayoutProps & { children?: React.ReactNode }
+  ReactGridLayoutProps & { children?: ReactNode }
 >;
+
+const getDefaultLandingPageLayout = () =>
+  customizeMyDataPageClassBase.defaultLayout;
 
 const MyDataPage = () => {
   const { t } = useTranslation();
@@ -55,7 +67,9 @@ const MyDataPage = () => {
   const { isWelcomeVisible } = useWelcomeStore();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
+  const [layout, setLayout] = useState<Array<WidgetConfig>>(
+    getDefaultLandingPageLayout
+  );
 
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
@@ -93,8 +107,9 @@ const MyDataPage = () => {
   }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
 
   const fetchDocument = async () => {
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
       if (selectedPersona) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
         const docData = await getDocumentByFQN(pageFQN);
@@ -121,14 +136,14 @@ const MyDataPage = () => {
 
         setLayout(
           isEmpty(filteredLayout)
-            ? customizePageClassBase.defaultLayout
+            ? getDefaultLandingPageLayout()
             : filteredLayout
         );
       } else {
-        setLayout(customizePageClassBase.defaultLayout);
+        setLayout(getDefaultLandingPageLayout());
       }
     } catch {
-      setLayout(customizePageClassBase.defaultLayout);
+      setLayout(getDefaultLandingPageLayout());
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +162,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchDocument();
-  }, [selectedPersona, customizePageClassBase.defaultLayout]);
+  }, [selectedPersona]);
 
   useEffect(() => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
@@ -157,15 +172,24 @@ const MyDataPage = () => {
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            currentLayout: layout,
-          })}
-        </div>
-      )),
-    [layout, isAnnouncementLoading, announcements]
+      layout.map((widget) => {
+        const reservedHeight =
+          widget.h * customizeMyDataPageClassBase.landingPageRowHeight;
+
+        return (
+          <div data-grid={widget} key={widget.i}>
+            <DeferredWidget
+              data-testid={`deferred-widget-${widget.i}`}
+              minHeight={reservedHeight}>
+              <LandingPageWidgetRenderer
+                currentLayout={layout}
+                widgetConfig={widget}
+              />
+            </DeferredWidget>
+          </div>
+        );
+      }),
+    [layout]
   );
 
   const fetchAnnouncements = useCallback(async () => {
@@ -239,16 +263,12 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchAnnouncements();
-  }, []);
+  }, [fetchAnnouncements]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
-  if (isLoading) {
-    return <Loader fullScreen />;
-  }
-
-  if (showWelcomeScreen) {
+  if (!isLoading && showWelcomeScreen) {
     return (
       <PageLayoutV1 pageTitle={t('label.my-data')}>
         <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
@@ -264,32 +284,38 @@ const MyDataPage = () => {
         pageTitle={t('label.my-data')}>
         {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
         {/*
-            ReactGridLayout has known issues with RTL layouts, 
-            setting dir="ltr" on the container ensures correct behavior
-            without affecting the overall RTL layout of the page
-        */}
+          ReactGridLayout has known issues with RTL layouts,
+          setting dir="ltr" on the container ensures correct behavior
+          without affecting the overall RTL layout of the page
+      */}
         <div className="grid-wrapper" dir="ltr">
           <CustomiseLandingPageHeader
             overlappedContainer
+            announcements={announcements}
             backgroundColor={backgroundColor}
             dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
+            isAnnouncementLoading={isAnnouncementLoading}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
-          <ReactGridLayout
-            className="grid-container p-x-box"
-            cols={customizePageClassBase.landingPageMaxGridSize}
-            containerPadding={[0, 0]}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={customizePageClassBase.landingPageRowHeight}>
-            {widgets}
-          </ReactGridLayout>
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <ReactGridLayout
+              className="grid-container p-x-box"
+              cols={customizeMyDataPageClassBase.landingPageMaxGridSize}
+              containerPadding={[0, 0]}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizeMyDataPageClassBase.landingPageWidgetMargin,
+                customizeMyDataPageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}>
+              {widgets}
+            </ReactGridLayout>
+          )}
         </div>
         <LimitWrapper resource="dataAssets">
           <br />

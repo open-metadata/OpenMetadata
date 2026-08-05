@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
@@ -33,7 +34,7 @@ import {
   validateContractById,
 } from '../../../rest/contractAPI';
 import '../../../test/unit/mocks/mui.mock';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,
@@ -41,6 +42,43 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
+
+type MockAlertBarProps = {
+  message?: ReactNode;
+};
+
+type MockErrorPlaceHolderProps = {
+  type?: string;
+  children?: ReactNode;
+};
+
+type MockContractExecutionChartProps = {
+  contract?: Pick<DataContract, 'name'>;
+};
+
+type MockContractSecurityCardProps = {
+  security?: {
+    dataClassification?: string;
+  };
+};
+
+type MockContractViewSwitchTabProps = {
+  handleModeChange: (event: { target: { value: DataContractMode } }) => void;
+};
+
+type MockContractYamlProps = {
+  contract?: Pick<DataContract, 'name'>;
+};
+
+type MockTableRow = {
+  id: string;
+  name?: string;
+};
+
+type MockTableProps = {
+  dataSource?: MockTableRow[];
+  loading?: boolean;
+};
 
 jest.mock('../../../rest/contractAPI', () => ({
   exportContractToODCSYaml: jest.fn(),
@@ -55,8 +93,11 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../utils/BlockEditorUtils', () => ({
+  formatServerContent: jest.fn().mockReturnValue('formatted content'),
+}));
+
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
   isDescriptionContentEmpty: jest.fn(),
-  formatContent: jest.fn().mockReturnValue('formatted content'),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -75,13 +116,16 @@ jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 
 jest.mock('../../AlertBar/AlertBar', () => {
-  return function MockAlertBar({ message }: any) {
+  return function MockAlertBar({ message }: MockAlertBarProps) {
     return <div data-testid="alert-bar">{message}</div>;
   };
 });
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({ type, children }: any) {
+  return function MockErrorPlaceHolder({
+    type,
+    children,
+  }: MockErrorPlaceHolderProps) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
         {children}
@@ -91,7 +135,9 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 });
 
 jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
-  return function MockContractExecutionChart({ contract }: any) {
+  return function MockContractExecutionChart({
+    contract,
+  }: MockContractExecutionChartProps) {
     return (
       <div data-testid="contract-execution-chart">
         Chart for {contract?.name}
@@ -105,7 +151,9 @@ jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
 });
 
 jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
-  return function MockContractSecurityCard({ security }: any) {
+  return function MockContractSecurityCard({
+    security,
+  }: MockContractSecurityCardProps) {
     return (
       <div data-testid="contract-security-card">
         ContractSecurityCard - {security?.dataClassification}
@@ -115,7 +163,9 @@ jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
-  return function MockContractViewSwitchTab({ handleModeChange }: any) {
+  return function MockContractViewSwitchTab({
+    handleModeChange,
+  }: MockContractViewSwitchTabProps) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
@@ -164,7 +214,7 @@ jest.mock('../ODCSImportModal', () => {
 });
 
 jest.mock('../ContractYaml/ContractYaml.component', () => {
-  return function MockContractYaml({ contract }: any) {
+  return function MockContractYaml({ contract }: MockContractYamlProps) {
     return <div data-testid="contract-yaml">YAML for {contract?.name}</div>;
   };
 });
@@ -196,12 +246,12 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
 });
 
 jest.mock('../../common/Table/Table', () => {
-  return function MockTable({ dataSource, loading }: any) {
+  return function MockTable({ dataSource, loading }: MockTableProps) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Data Length: {dataSource?.length || 0}</div>
-        {dataSource?.map((item: any) => (
+        {dataSource?.map((item) => (
           <div data-testid={`table-row-${item.id}`} key={item.id}>
             {item.name}
           </div>
@@ -887,7 +937,7 @@ describe('ContractDetail', () => {
   });
 
   describe('Contract Security', () => {
-    it('should display security section when contract has security data', () => {
+    it('should display security section when contract has security data', async () => {
       const contractWithSecurity: DataContract = {
         ...mockContract,
         security: {
@@ -913,11 +963,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      // Check that the security card is rendered
+      // security-card is non-lazy; contract-security-card is inside lazy ContractSecurityCard
       expect(screen.getByTestId('security-card')).toBeInTheDocument();
-      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
-
-      // Check the content
+      expect(
+        await screen.findByTestId('contract-security-card')
+      ).toBeInTheDocument();
       expect(
         screen.getByText('ContractSecurityCard - PII,Sensitive')
       ).toBeInTheDocument();

@@ -11,28 +11,18 @@
  *  limitations under the License.
  */
 
-export {
-  ensurePlaceholderAtEnd,
-  getAddWidgetHandler,
-  getConstrainedWidgetWidth,
-  getLandingPageLayoutWithEmptyWidgetPlaceholder,
-  getLayoutUpdateHandler,
-  getLayoutWithEmptyWidgetPlaceholder,
-  getNewWidgetPlacement,
-  getRemoveWidgetHandler,
-  getUniqueFilteredLayout,
-  getWidgetWidthLabelFromKey,
-  separateWidgets,
-} from './CustomizableLandingPagePureUtils';
-
-import Icon from '@ant-design/icons';
 import { isUndefined } from 'lodash';
-import { Suspense, type DOMAttributes } from 'react';
-import { ReactComponent as ArrowRightIcon } from '../assets/svg/arrow-right.svg';
-import EmptyWidgetPlaceholderV1 from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1';
+import { lazy, Suspense } from 'react';
 import WidgetWrapper from '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
+
+const EmptyWidgetPlaceholderV1 = lazy(
+  () =>
+    import(
+      '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholderV1'
+    )
+);
 
 /**
  * Renders widget component based on configuration
@@ -64,19 +54,26 @@ export const getWidgetFromKey = ({
     !isUndefined(handlePlaceholderWidgetKey)
   ) {
     return (
-      <EmptyWidgetPlaceholderV1
-        handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-        handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-        personaName={personaName}
-        widgetKey={widgetConfig.i}
-      />
+      <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
+        <EmptyWidgetPlaceholderV1
+          handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+          handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+          personaName={personaName}
+          widgetKey={widgetConfig.i}
+        />
+      </Suspense>
     );
   }
 
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
+  // Normal My Data keeps lazy widget chunks silent; edit mode preserves grid slots
+  // because disappearing cells are more disruptive while arranging widgets.
+  const fallback = isEditView ? (
+    <WidgetWrapper loading>{null}</WidgetWrapper>
+  ) : null;
 
   return (
-    <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
+    <Suspense fallback={fallback}>
       <Widget
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
@@ -89,22 +86,3 @@ export const getWidgetFromKey = ({
     </Suspense>
   );
 };
-
-/**
- * Custom arrow components for carousel navigation
- */
-export const CustomNextArrow = (props: DOMAttributes<HTMLDivElement>) => (
-  <Icon
-    className="custom-arrow right-arrow"
-    component={ArrowRightIcon}
-    onClick={props.onClick}
-  />
-);
-
-export const CustomPrevArrow = (props: DOMAttributes<HTMLDivElement>) => (
-  <Icon
-    className="custom-arrow left-arrow"
-    component={ArrowRightIcon}
-    onClick={props.onClick}
-  />
-);

@@ -21,7 +21,7 @@ import {
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
   buildMustEsFilterForTier,
-} from '../utils/DataQuality/DataQualityUtils';
+} from '../utils/DataQuality/DataQualityPureUtils';
 import { DataQualityReportParamsType, getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (

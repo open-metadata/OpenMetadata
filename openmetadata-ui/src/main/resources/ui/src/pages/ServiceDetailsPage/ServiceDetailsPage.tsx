@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
@@ -129,7 +129,7 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
@@ -149,7 +149,6 @@ import {
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -157,12 +156,13 @@ import {
   getServiceDisplayNameQueryFilter,
   getServiceRouteFromServiceType,
   shouldTestConnection,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
@@ -1944,7 +1944,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   if (isLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {

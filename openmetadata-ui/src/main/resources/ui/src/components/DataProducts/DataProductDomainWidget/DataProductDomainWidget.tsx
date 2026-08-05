@@ -22,9 +22,8 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { patchDataProduct } from '../../../rest/dataProductAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getTermQuery } from '../../../utils/SearchUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 
 export const DataProductDomainWidget = () => {

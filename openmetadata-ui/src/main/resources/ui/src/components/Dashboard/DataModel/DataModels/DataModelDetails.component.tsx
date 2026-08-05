@@ -40,7 +40,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
-import { updateCertificationTag } from '../../../../utils/TagsUtils';
+import { updateCertificationTag } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
@@ -51,7 +51,6 @@ import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAsset
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
-
 const DataModelDetails = ({
   updateDataModelDetailsState,
   dataModelData,

@@ -23,15 +23,14 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import { updateTierTag } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import TierCard from '../TierCard/TierCard';
 import './TierWidget.less';
-
 const TierWidget = () => {
   const {
     data: entity,

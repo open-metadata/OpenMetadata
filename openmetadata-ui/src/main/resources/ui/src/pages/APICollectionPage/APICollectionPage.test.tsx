@@ -21,7 +21,6 @@ import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import APICollectionPage from './APICollectionPage';
-
 jest.mock('../../rest/apiCollectionsAPI', () => ({
   getApiCollectionByFQN: jest.fn().mockResolvedValue({}),
   restoreApiCollection: jest.fn().mockResolvedValue({ version: 1 }),
@@ -33,8 +32,8 @@ jest.mock('../../rest/apiEndpointsAPI', () => ({
   getApiEndPoints: jest.fn().mockResolvedValue({ paging: { total: 0 } }),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
-  ...jest.requireActual('../../utils/EntityDisplayUtils'),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayPureUtils'),
   getEntityMissingError: jest.fn(),
   getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
 }));
@@ -44,7 +43,7 @@ jest.mock('../../utils/EntityNameUtils', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
 }));
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   getEntityMissingError: jest.fn(),
@@ -92,9 +91,11 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div>Loader</div>),
+  PageLoader: jest.fn().mockImplementation(() => <div>Loader</div>),
+}));
 
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Component) => Component),

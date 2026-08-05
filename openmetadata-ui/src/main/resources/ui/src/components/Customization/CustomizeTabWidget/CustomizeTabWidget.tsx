@@ -14,7 +14,7 @@
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
@@ -35,7 +35,7 @@ import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStor
 import {
   getLayoutWithEmptyWidgetPlaceholder,
   getUniqueFilteredLayout,
-} from '../../../utils/CustomizableLandingPageUtils';
+} from '../../../utils/CustomizableLandingPagePureUtils';
 import {
   getCustomizableWidgetByPage,
   getDefaultTabs,
@@ -44,11 +44,42 @@ import {
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getAddWidgetHandler } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
-import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
-import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
-import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
-import { GenericWidget } from '../GenericWidget/GenericWidget';
+
+const EmptyWidgetPlaceholder = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder'
+      )
+  )
+);
+
+const LeftPanelContainer = withSuspenseFallback(
+  lazy(() =>
+    import('../GenericTab/LeftPanelContainer').then((module) => ({
+      default: module.LeftPanelContainer,
+    }))
+  )
+);
+
+const GenericWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../GenericWidget/GenericWidget').then((module) => ({
+      default: module.GenericWidget,
+    }))
+  )
+);
+
+const AddDetailsPageWidgetModal = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal'
+      )
+  )
+);
 
 // Create a properly typed ReactGridLayout component
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<

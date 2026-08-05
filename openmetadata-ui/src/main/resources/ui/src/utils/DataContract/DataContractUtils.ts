@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { RuleObject } from 'antd/lib/form';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
 import { ReactComponent as ContractAbortedIcon } from '../../assets/svg/ic-contract-aborted.svg';
 import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contract-failed.svg';
@@ -34,7 +34,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 
 export const semanticRuleValidator = (_: RuleObject, value: string) => {
   if (isEmpty(value) || value === '""' || value === '{}') {

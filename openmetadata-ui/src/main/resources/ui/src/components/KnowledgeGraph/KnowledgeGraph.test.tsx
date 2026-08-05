@@ -33,6 +33,8 @@ import {
   KnowledgeGraphProps,
 } from './KnowledgeGraph.interface';
 
+const mockNavigate = jest.fn();
+
 jest.mock('@antv/g6', () => ({
   Graph: jest.fn().mockImplementation(() => ({
     render: jest.fn().mockResolvedValue(undefined),
@@ -89,7 +91,7 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
 
 jest.mock('html-to-image', () => ({ toPng: jest.fn() }));
 
-jest.mock('../../utils/EntityBreadcrumbUtils', () => ({
+jest.mock('../../utils/EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn(() => [
     { name: 'MyTable', url: '/table/MyTable', activeTitle: false },
   ]),
@@ -415,7 +417,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 const MockGraph = Graph as jest.MockedClass<typeof Graph>;
-const mockNavigate = jest.fn();
 
 function makeEntity(overrides: Partial<EntityReference> = {}): EntityReference {
   return {
@@ -1165,7 +1166,9 @@ describe('KnowledgeGraph', () => {
         expect(screen.getByTestId('slideout-menu')).toBeInTheDocument()
       );
 
-      expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
+      expect(
+        await screen.findByTestId('entity-summary-panel')
+      ).toBeInTheDocument();
     });
 
     it('handleClosePanel hides the slideout when close button is clicked', async () => {

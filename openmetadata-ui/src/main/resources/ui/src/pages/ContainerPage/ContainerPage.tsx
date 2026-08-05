@@ -63,17 +63,14 @@ import {
   restoreContainer,
   updateContainerVotes,
 } from '../../rest/storageAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-  getFeedCounts,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import {
@@ -83,10 +80,12 @@ import {
 } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { flattenColumns } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

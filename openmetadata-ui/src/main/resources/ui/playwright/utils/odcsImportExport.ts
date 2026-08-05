@@ -25,18 +25,25 @@ export const openODCSImportDropdown = async (page: Page) => {
   const addButton = page.getByTestId('add-contract-button');
   const manageButton = page.getByTestId('manage-contract-actions');
 
-  const addButtonVisible = await addButton.isVisible().catch(() => false);
-  const manageButtonVisible = await manageButton.isVisible().catch(() => false);
+  await addButton.or(manageButton).first().waitFor({
+    state: 'visible',
+    timeout: 30000,
+  });
 
-  if (addButtonVisible) {
+  if (await addButton.isVisible()) {
     await addButton.click();
     await page.getByTestId('add-contract-menu').waitFor({
       state: 'visible',
       timeout: 10000,
     });
-  } else if (manageButtonVisible) {
+  } else {
     await manageButton.click();
   }
+
+  await page.getByTestId('import-odcs-contract-button').waitFor({
+    state: 'visible',
+    timeout: 10000,
+  });
 };
 
 export const clickImportODCSButton = async (page: Page) => {

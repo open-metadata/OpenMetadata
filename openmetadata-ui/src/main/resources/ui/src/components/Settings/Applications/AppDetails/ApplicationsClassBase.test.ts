@@ -12,8 +12,23 @@
  */
 
 import { AppType } from '../../../../generated/entity/applications/app';
-import rdfIndexAppSchema from '../../../../jsons/applicationSchemas/RdfIndexApp.json';
 import applicationsClassBase from './ApplicationsClassBase';
+
+const rdfIndexAppSchema = {
+  type: 'object',
+  properties: {
+    entities: {
+      type: 'array',
+      default: [],
+    },
+    partitionSize: {
+      type: 'integer',
+    },
+    useDistributedIndexing: {
+      type: 'boolean',
+    },
+  },
+};
 
 describe('ApplicationsClassBase', () => {
   describe('importSchema', () => {
@@ -49,6 +64,12 @@ describe('ApplicationsClassBase', () => {
     });
 
     it('should import the RDF app schema', async () => {
+      jest.doMock(
+        '../../../../jsons/applicationSchemas/RdfIndexApp.json',
+        () => rdfIndexAppSchema,
+        { virtual: true }
+      );
+
       const schema = await applicationsClassBase.importSchema('RdfIndexApp');
 
       expect(schema).toEqual(rdfIndexAppSchema);

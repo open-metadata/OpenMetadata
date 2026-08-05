@@ -15,7 +15,7 @@ import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../generated/entity/domains/domain';
-import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';

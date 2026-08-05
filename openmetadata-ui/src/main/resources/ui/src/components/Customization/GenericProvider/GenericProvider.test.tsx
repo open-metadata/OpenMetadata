@@ -22,7 +22,8 @@ import { postThread } from '../../../rest/feedsAPI';
 import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { GenericProvider, useGenericContext } from './GenericProvider';
+import { useGenericContext } from './GenericContext';
+import { GenericProvider } from './GenericProvider';
 
 // Mock dependencies
 jest.mock('../../../rest/feedsAPI');

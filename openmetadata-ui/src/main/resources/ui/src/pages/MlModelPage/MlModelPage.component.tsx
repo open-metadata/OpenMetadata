@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
@@ -39,7 +39,7 @@ import {
   removeFollower,
   updateMlModelVotes,
 } from '../../rest/mlModelAPI';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import {
@@ -296,7 +296,7 @@ const MlModelPage = () => {
   }, [mlModelFqn]);
 
   if (isDetailLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (isNil(mlModelDetail) || isEmpty(mlModelDetail)) {

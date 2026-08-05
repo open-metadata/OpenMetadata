@@ -45,7 +45,7 @@ import {
   createHorizontalGridLineRenderer,
   tooltipFormatter,
 } from '../../../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../../../utils/DataQuality/DataQualityUtils';
+import { CustomDQTooltip } from '../../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {

@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -41,18 +41,16 @@ import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
-import {
-  getEntityMissingError,
-  getServiceLogo,
-} from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -295,11 +293,13 @@ function EditConnectionFormPage() {
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
       secondPanel={{
         children: (
-          <ServiceDocPanel
-            activeField={activeField}
-            serviceName={serviceDetails?.serviceType ?? ''}
-            serviceType={getServiceType(serviceCategory as ServiceCategory)}
-          />
+          <Suspense fallback={null}>
+            <ServiceDocPanel
+              activeField={activeField}
+              serviceName={serviceDetails?.serviceType ?? ''}
+              serviceType={getServiceType(serviceCategory as ServiceCategory)}
+            />
+          </Suspense>
         ),
         className: 'service-doc-panel content-resizable-panel-container',
         minWidth: 400,

@@ -65,9 +65,9 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
-import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
+import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import {
   checkPermission,
   getPrioritizedViewPermission,

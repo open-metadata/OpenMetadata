@@ -38,9 +38,12 @@ const mockGetFeedCounts = jest.fn();
 
 jest.mock('../../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../../utils/CommonUtils'),
-  getEntityMissingError: jest.fn(),
   getFeedCounts: (...args: [EntityType, string, (data: FeedCounts) => void]) =>
     mockGetFeedCounts(...args),
+}));
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
 }));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
@@ -76,9 +79,15 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   )),
 }));
 
-jest.mock('../../common/Loader/Loader', () =>
-  jest.fn(() => <div data-testid="loader">Loading...</div>)
-);
+jest.mock('../../common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loading...</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest.fn(({ children }) => (

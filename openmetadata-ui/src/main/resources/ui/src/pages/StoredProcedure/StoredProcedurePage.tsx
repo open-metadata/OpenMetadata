@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -74,10 +74,12 @@ import {
   STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -560,7 +562,7 @@ const StoredProcedurePage = () => {
   }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
 
   if (isLoading || loading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!viewBasicPermission) {

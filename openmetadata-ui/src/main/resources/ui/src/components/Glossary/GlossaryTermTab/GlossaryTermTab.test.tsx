@@ -24,10 +24,9 @@ import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import { findExpandableKeysForArray } from '../../../utils/GlossaryUtils';
+import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from './GlossaryTermTab.interface';
-
 const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
@@ -35,12 +34,14 @@ const mockSetGlossaryChildTerms = jest.fn();
 const mockGetFirstLevelGlossaryTermsPaginated = jest.fn();
 const mockGetGlossaryTermChildrenLazy = jest.fn();
 const mockSearchGlossaryTermsPaginated = jest.fn();
+const mockGetGlossaryTerms = jest.fn();
 const mockGetAllFeeds = jest.fn();
+const mockUpdateTask = jest.fn();
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
+    .mockImplementation((...args) => mockGetGlossaryTerms(...args)),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   getFirstLevelGlossaryTermsPaginated: jest
     .fn()
@@ -59,6 +60,9 @@ jest.mock('../../../rest/feedsAPI', () => ({
   getAllFeeds: jest
     .fn()
     .mockImplementation((...args) => mockGetAllFeeds(...args)),
+  updateTask: jest
+    .fn()
+    .mockImplementation((...args) => mockUpdateTask(...args)),
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
@@ -79,8 +83,9 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 // Mock where the component actually imports this util
-jest.mock('../../../utils/GlossaryUtils', () => ({
-  ...jest.requireActual('../../../utils/GlossaryUtils'),
+jest.mock('../../../utils/GlossaryPureUtils', () => ({
+  ...jest.requireActual('../../../utils/GlossaryPureUtils'),
+  buildTree: jest.fn((data) => data),
   findExpandableKeysForArray: jest.fn().mockReturnValue([]),
   glossaryTermTableColumnsWidth: jest.fn().mockReturnValue({
     name: 250,
@@ -165,7 +170,7 @@ jest.mock('../useGlossary.store', () => ({
   useGlossaryStore: jest.fn().mockImplementation(() => mockUseGlossaryStore),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     permissions: MOCK_PERMISSIONS,
     type: 'glossary',
@@ -230,6 +235,7 @@ describe('Test GlossaryTermTab component', () => {
       data: mockedGlossaryTerms,
       paging: { after: null },
     });
+    mockGetGlossaryTerms.mockResolvedValue({ data: mockedGlossaryTerms });
     mockGetGlossaryTermChildrenLazy.mockResolvedValue({
       data: [
         {
@@ -245,6 +251,7 @@ describe('Test GlossaryTermTab component', () => {
       ],
     });
     mockGetAllFeeds.mockResolvedValue({ data: [] });
+    mockUpdateTask.mockResolvedValue({});
 
     // Reset store to default state
     Object.assign(mockUseGlossaryStore, {
@@ -548,7 +555,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       const { useGenericContext } = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       );
       useGenericContext.mockImplementation(mockGenericContext);
 
@@ -629,26 +636,8 @@ describe('Test GlossaryTermTab component', () => {
     });
   });
 
-  describe('Glossary vs Glossary Term Context', () => {
-    it('should behave differently when isGlossary is true', async () => {
-      render(<GlossaryTermTab isGlossary />, {
-        wrapper: MemoryRouter,
-      });
-
-      await waitFor(() => {
-        expect(mockGetAllFeeds).toHaveBeenCalledWith(
-          expect.stringContaining('glossary'),
-          undefined,
-          'Task',
-          undefined,
-          'Open',
-          undefined,
-          100000
-        );
-      });
-    });
-
-    it('should behave differently when isGlossary is false', async () => {
+  describe('Task Loading', () => {
+    it('should fetch open approval tasks', async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
@@ -709,8 +698,8 @@ describe('Test GlossaryTermTab component', () => {
       });
     });
 
-    it('should handle errors when fetching feeds', async () => {
-      mockGetAllFeeds.mockRejectedValue(new Error('Feeds error'));
+    it('should handle errors when fetching tasks', async () => {
+      mockGetAllFeeds.mockRejectedValue(new Error('Tasks error'));
 
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
@@ -957,6 +946,40 @@ describe('Test GlossaryTermTab component', () => {
       // we're just testing that the button exists and has proper text
       // The full integration test would require more complex setup
     });
+
+    it.each([
+      {
+        isGlossary: true,
+        requestKey: 'glossary',
+      },
+      {
+        isGlossary: false,
+        requestKey: 'parent',
+      },
+    ])(
+      'should fetch expanded terms by $requestKey when isGlossary is $isGlossary',
+      async ({ isGlossary, requestKey }) => {
+        render(<GlossaryTermTab isGlossary={isGlossary} />, {
+          wrapper: MemoryRouter,
+        });
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId('expand-collapse-all-button')
+          ).toBeInTheDocument();
+        });
+
+        fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+        await waitFor(() => {
+          expect(mockGetGlossaryTerms).toHaveBeenCalledWith(
+            expect.objectContaining({
+              [requestKey]: mockUseGlossaryStore.activeGlossary.id,
+            })
+          );
+        });
+      }
+    );
   });
 
   describe('Drag and Drop Modal', () => {

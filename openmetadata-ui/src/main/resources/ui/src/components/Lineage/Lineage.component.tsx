@@ -28,6 +28,8 @@ import ReactFlow, {
   Panel,
   ReactFlowProvider,
 } from 'reactflow';
+import 'reactflow/dist/base.css';
+import 'reactflow/dist/style.css';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -36,9 +38,9 @@ import { useLineageProvider } from '../../context/LineageProvider/LineageProvide
 import { useLineageStore } from '../../hooks/useLineageStore';
 import {
   dragHandle,
-  nodeTypes,
   onNodeContextMenu,
-} from '../../utils/EntityLineageUtils';
+} from '../../utils/EntityLineagePureUtils';
+import { nodeTypes } from '../../utils/EntityLineageUtils';
 import Loader from '../common/Loader/Loader';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
@@ -46,7 +48,6 @@ import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from './Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from './Lineage.interface';
-
 const Lineage = ({
   deleted,
   entity,

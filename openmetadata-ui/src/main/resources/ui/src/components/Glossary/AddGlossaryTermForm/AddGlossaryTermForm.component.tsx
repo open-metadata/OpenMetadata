@@ -22,7 +22,10 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { CustomProperty, EntityReference } from '../../../generated/entity/type';
+import {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
 import {
   FieldKind,
   IntakeForm,
@@ -41,7 +44,7 @@ import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { referenceURLValidator } from '../../../utils/GlossaryUtils';
+import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -542,101 +545,96 @@ const AddGlossaryTermForm = ({
       }}
       layout="vertical"
       onFinish={handleSave}>
-        {generateFormFields(intakeAwareFormFields)}
+      {generateFormFields(intakeAwareFormFields)}
 
-        <Form.List name="references">
-          {(fields, { add, remove }) => (
-            <>
-              <Form.Item
-                className="form-item-horizontal"
-                colon={false}
-                label={t('label.reference-plural')}>
-                <Button
-                  data-testid="add-reference"
-                  icon={
-                    <PlusOutlined
-                      style={{ color: 'white', fontSize: '12px' }}
+      <Form.List name="references">
+        {(fields, { add, remove }) => (
+          <>
+            <Form.Item
+              className="form-item-horizontal"
+              colon={false}
+              label={t('label.reference-plural')}>
+              <Button
+                data-testid="add-reference"
+                icon={
+                  <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+                }
+                size="small"
+                type="primary"
+                onClick={() => {
+                  add();
+                }}
+              />
+            </Form.Item>
+
+            {fields.map((field, index) => (
+              <Row gutter={[8, 0]} key={field.key}>
+                <Col span={11}>
+                  <Form.Item
+                    name={[field.name, 'name']}
+                    rules={[
+                      {
+                        required: true,
+                        message: `${t('message.field-text-is-required', {
+                          fieldText: t('label.name'),
+                        })}`,
+                      },
+                    ]}>
+                    <Input id={`name-${index}`} placeholder={t('label.name')} />
+                  </Form.Item>
+                </Col>
+                <Col span={11}>
+                  <Form.Item
+                    name={[field.name, 'endpoint']}
+                    rules={[
+                      {
+                        required: true,
+                        message: t('message.valid-url-endpoint'),
+                        type: 'url',
+                      },
+                      {
+                        validator: referenceURLValidator,
+                      },
+                    ]}>
+                    <Input
+                      id={`url-${index}`}
+                      placeholder={t('label.endpoint')}
                     />
-                  }
-                  size="small"
-                  type="primary"
-                  onClick={() => {
-                    add();
-                  }}
-                />
-              </Form.Item>
+                  </Form.Item>
+                </Col>
+                <Col span={2}>
+                  <Button
+                    icon={<DeleteIcon width={16} />}
+                    size="small"
+                    type="text"
+                    onClick={() => {
+                      remove(field.name);
+                    }}
+                  />
+                </Col>
+              </Row>
+            ))}
+          </>
+        )}
+      </Form.List>
 
-              {fields.map((field, index) => (
-                <Row gutter={[8, 0]} key={field.key}>
-                  <Col span={11}>
-                    <Form.Item
-                      name={[field.name, 'name']}
-                      rules={[
-                        {
-                          required: true,
-                          message: `${t('message.field-text-is-required', {
-                            fieldText: t('label.name'),
-                          })}`,
-                        },
-                      ]}>
-                      <Input
-                        id={`name-${index}`}
-                        placeholder={t('label.name')}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={11}>
-                    <Form.Item
-                      name={[field.name, 'endpoint']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('message.valid-url-endpoint'),
-                          type: 'url',
-                        },
-                        {
-                          validator: referenceURLValidator,
-                        },
-                      ]}>
-                      <Input
-                        id={`url-${index}`}
-                        placeholder={t('label.endpoint')}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={2}>
-                    <Button
-                      icon={<DeleteIcon width={16} />}
-                      size="small"
-                      type="text"
-                      onClick={() => {
-                        remove(field.name);
-                      }}
-                    />
-                  </Col>
-                </Row>
-              ))}
-            </>
-          )}
-        </Form.List>
+      <div className="m-t-xss">
+        {getField(ownerField)}
 
-        <div className="m-t-xss">
-          {getField(ownerField)}
-
-          {Boolean(ownersList.length) && (
-            <Space wrap data-testid="owner-container" size={[8, 8]}>
-              <OwnerLabel owners={ownersList} />
-            </Space>
-          )}
-        </div>
-        <div className="m-t-xss">
-          {getField(reviewersField)}
-          {Boolean(reviewersList.length) && (
-            <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-              <OwnerLabel owners={reviewersList} />
-            </Space>
-          )}
-        </div>
+        {Boolean(ownersList.length) && (
+          <Space wrap data-testid="owner-container" size={[8, 8]}>
+            <OwnerLabel owners={ownersList} />
+          </Space>
+        )}
+      </div>
+      <div className="m-t-xss">
+        {getField(reviewersField)}
+        {Boolean(reviewersList.length) && (
+          <Space wrap data-testid="reviewers-container" size={[8, 8]}>
+            <OwnerLabel owners={reviewersList} />
+          </Space>
+        )}
+      </div>
 
       {extensionFormFields.length > 0 && (
         <AddDomainFormExtensionFields

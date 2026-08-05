@@ -20,11 +20,11 @@ import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import {
   getEntityTypeFromServiceCategory,
   getServiceRouteFromServiceType,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
@@ -174,11 +174,14 @@ jest.mock('../../utils/RouterUtils', () => ({
     .mockImplementation(() => '/service/details/path'),
 }));
 
-jest.mock('../../utils/ServiceUtils', () => ({
-  getServiceRouteFromServiceType: jest.fn(),
-  getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
+jest.mock('../../utils/ServicePureUtils', () => ({
   getEntityTypeFromServiceCategory: jest.fn(),
+  getServiceRouteFromServiceType: jest.fn(),
   getServiceType: jest.fn(),
+}));
+
+jest.mock('../../utils/ServiceUtils', () => ({
+  getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({

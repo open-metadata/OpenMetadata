@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { styled } from '@mui/material/styles';
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import {
@@ -50,32 +49,6 @@ export const pageContainerStyles: CSSProperties = {
   marginRight: 0,
   overflow: 'hidden',
 };
-
-const FullHeightWrapper = styled('div')<{ $wrapperClassName?: string }>(
-  ({ $wrapperClassName }) => ({
-    [`& .page-layout-v1-vertical-scroll.${$wrapperClassName}`]: {
-      overflow: 'hidden',
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} > .ant-row`]: {
-      flex: 1,
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col`]: {
-      flex: 'none',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col:last-child`]: {
-      minHeight: 0,
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-  })
-);
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
@@ -160,6 +133,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
             {
               'flex justify-center': center,
               'full-screen-view': isFullScreen,
+              'page-layout-v1-full-height-main':
+                fullHeight && Boolean(mainContainerClassName),
             },
             mainContainerClassName
           )}
@@ -188,9 +163,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   );
 
   return fullHeight ? (
-    <FullHeightWrapper $wrapperClassName={mainContainerClassName}>
-      {content}
-    </FullHeightWrapper>
+    <div className="full-height-wrapper">{content}</div>
   ) : (
     content
   );

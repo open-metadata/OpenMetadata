@@ -18,7 +18,10 @@ import { IngestionPipeline } from '../generated/entity/services/ingestionPipelin
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
 import { ServicesType } from '../interface/service.interface';
-import { getIngestionTypes, getSupportedPipelineTypes } from './IngestionUtils';
+import {
+  getIngestionTypes,
+  getSupportedPipelineTypes,
+} from './IngestionConfigUtils';
 
 describe('getSupportedPipelineTypes', () => {
   it('should return only return metadata pipeline types if config is undefined', () => {

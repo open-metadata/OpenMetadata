@@ -33,6 +33,7 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
+  removeLandingBanner,
   toastNotification,
   uuid,
 } from './common';
@@ -73,13 +74,14 @@ export const visitEntityPage = async (data: {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
 
-  await page.getByTestId('searchBox').fill(searchTerm);
-  await page.waitForResponse(
+  const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
       response.url().includes('exclude_source_fields')
   );
+  await page.getByTestId('searchBox').fill(searchTerm);
+  await searchResponse;
 
   // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
   // A tooltip over the option can cause Playwright click failures
@@ -168,7 +170,7 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes(encodeURIComponent(owner))
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
@@ -496,7 +498,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
     ).toBeVisible();
   }
 };
@@ -507,10 +509,25 @@ export const assignTier = async (
   endpoint: string,
   initiatorId = 'edit-tier'
 ) => {
-  // Wait for the edit button to be visible and clickable
-  const editButton = page.getByTestId(initiatorId);
-  await editButton.waitFor({ state: 'visible' });
-  await editButton.click();
+  if (initiatorId === 'edit-tier') {
+    const addButton = page.getByTestId('add-tier');
+    const editButton = page.getByTestId('edit-tier');
+
+    await addButton.or(editButton).first().waitFor({
+      state: 'visible',
+      timeout: 30000,
+    });
+
+    if (await addButton.isVisible()) {
+      await addButton.click();
+    } else {
+      await editButton.click();
+    }
+  } else {
+    const editButton = page.getByTestId(initiatorId);
+    await editButton.waitFor({ state: 'visible' });
+    await editButton.click();
+  }
 
   // Wait for all loaders to disappear
   await waitForAllLoadersToDisappear(page);
@@ -1342,15 +1359,21 @@ export const followEntity = async (
   endpoint: EntityTypeEndpoint,
   verificationText = 'Unfollow'
 ) => {
+  const followButton = page.getByTestId('entity-follow-button');
+
+  await followButton.waitFor({ state: 'visible' });
+
+  if ((await followButton.textContent())?.includes(verificationText)) {
+    return;
+  }
+
   const followResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers`
   );
-  await page.getByTestId('entity-follow-button').click();
+  await followButton.click();
   await followResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText(
-    verificationText
-  );
+  await expect(followButton).toContainText(verificationText);
 };
 
 export const unFollowEntity = async (
@@ -1374,22 +1397,82 @@ export const unFollowEntity = async (
   );
 };
 
+const LANDING_PAGE_SCROLL_CONTAINER =
+  '.page-layout-v1-center.page-layout-v1-vertical-scroll';
+const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.Following';
+
+const revealFollowingWidget = async (page: Page): Promise<Locator> => {
+  const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
+
+  await expect
+    .poll(
+      async () => {
+        if (await followingWidgetPanel.isVisible().catch(() => false)) {
+          return true;
+        }
+
+        if ((await followingWidgetPanel.count()) > 0) {
+          await followingWidgetPanel
+            .scrollIntoViewIfNeeded({ timeout: 1000 })
+            .catch(() => undefined);
+        }
+
+        await page.evaluate((scrollContainerSelector) => {
+          document
+            .querySelector(scrollContainerSelector)
+            ?.scrollBy({ top: 700, behavior: 'instant' });
+        }, LANDING_PAGE_SCROLL_CONTAINER);
+
+        return followingWidgetPanel.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60_000,
+        intervals: [500, 1_000, 2_000],
+      }
+    )
+    .toBe(true);
+
+  return followingWidgetPanel;
+};
+
+const loadFollowingWidget = async (page: Page): Promise<Locator> => {
+  await redirectToHomePage(page, false);
+  await removeLandingBanner(page);
+  await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+  const followingWidgetPanel = await revealFollowingWidget(page);
+
+  const followingWidget = followingWidgetPanel.getByTestId('following-widget');
+  await expect(followingWidget).toBeVisible({ timeout: 60_000 });
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
+    () => undefined
+  );
+
+  return followingWidget;
+};
+
 export const validateFollowedEntityToWidget = async (
   page: Page,
-  entity: string,
+  entity: string | undefined,
   isFollowing: boolean
-) => {
-  await redirectToHomePage(page);
-  await waitForAllLoadersToDisappear(page);
-  if (isFollowing) {
-    await page.getByTestId('following-widget').isVisible();
+): Promise<Locator> => {
+  const followingWidget = await loadFollowingWidget(page);
 
-    await page.getByTestId(`following-${entity}`).isVisible();
-  } else {
-    await page.getByTestId('following-widget').isVisible();
-
-    await expect(page.getByTestId(`following-${entity}`)).not.toBeVisible();
+  if (!entity) {
+    return followingWidget;
   }
+
+  if (isFollowing) {
+    await followingWidget.isVisible();
+    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+  } else {
+    await followingWidget.isVisible();
+    await expect(
+      followingWidget.getByTestId(`following-${entity}`)
+    ).not.toBeVisible();
+  }
+
+  return followingWidget;
 };
 
 const announcementForm = async (
@@ -1429,7 +1512,8 @@ const announcementForm = async (
 export const createAnnouncement = async (
   page: Page,
   data: { title: string; description: string },
-  hideAlert?: boolean
+  hideAlert?: boolean,
+  announcementContainerTestId = 'entity-header-announcements'
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1453,16 +1537,22 @@ export const createAnnouncement = async (
   await page.reload();
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('announcement-card')).toBeVisible();
-  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
+  await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
+    data.title
+  );
 
-  await expect(page.getByTestId('announcement-card')).toContainText(
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
     data.description
   );
 };
 
 export const replyAnnouncement = async (page: Page) => {
-  await page.click('[data-testid="announcement-card"]');
+  await page
+    .locator('[data-testid="entity-header-announcements"]')
+    .locator('[data-testid^="announcement-item-"]')
+    .first()
+    .click();
 
   await page.hover(
     '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
@@ -1510,28 +1600,22 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
-  await page
-    .locator(
-      '[data-testid="announcement-thread-body"] [data-testid="announcement-card"]'
-    )
-    .isVisible();
-
-  await page.hover(
-    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
+  const drawerAnnouncementCard = page.locator(
+    '[data-testid="announcement-drawer"] [data-testid="announcement-card"]'
   );
 
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  await page.click('[data-testid="delete-message"]');
+  await expect(drawerAnnouncementCard).toBeVisible();
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-delete-action').click();
   const modalText = await page.textContent('.ant-modal-body');
 
   expect(modalText).toContain(
     'Are you sure you want to permanently delete this message?'
   );
 
-  const getFeed = page.waitForResponse('/api/v1/feed/*');
+  const deleteAnnouncementResponse = page.waitForResponse('/api/v1/feed/*');
   await page.click('[data-testid="save-button"]');
-  await getFeed;
+  await deleteAnnouncementResponse;
 
   await page.reload();
   await page.getByTestId('manage-button').click();
@@ -1560,14 +1644,9 @@ export const editAnnouncement = async (
 
   await expect(drawerAnnouncementCard).toBeVisible();
 
-  // Hover over the announcement card inside the drawer to show the edit options popover
-  await drawerAnnouncementCard.hover();
-
-  // Wait for the popover to become visible
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  // Click the edit message button in the popover
-  await page.click('[data-testid="edit-message"]');
+  // Open the announcement actions menu and choose edit
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-edit-action').click();
 
   // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(
@@ -2070,7 +2149,7 @@ export const softDeleteEntity = async (
   await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
-    await page.click('[data-testid="breadcrumb-link"]:last-child');
+    await page.getByTestId('breadcrumb').getByRole('link').last().click();
     const deletedTableResponse = page.waitForResponse(
       '/api/v1/tables?*databaseSchema=*'
     );
@@ -2259,19 +2338,13 @@ export const checkExploreSearchFilter = async (
     await page.fill('[data-testid="search-input"]', entityTypeId);
     await page.getByTestId(entityTypeId).click();
     await entitySearchResponse;
-    await page.getByTestId('update-btn').click();
+    // Immediate-apply commits on selection; legacy mode needs the Update click
+    const typeUpdateButton = page.getByTestId('update-btn');
+    if (await typeUpdateButton.isVisible().catch(() => false)) {
+      await typeUpdateButton.click();
+    }
+    await page.keyboard.press('Escape');
   }
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  await searchAndClickOnOption(
-    page,
-    {
-      label: filterLabel,
-      key: filterKey,
-      value: filterValue,
-    },
-    true
-  );
-
   const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
   const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
   const filterValueForSearchURL = /["%]/.test(filterValue ?? '')
@@ -2317,7 +2390,23 @@ export const checkExploreSearchFilter = async (
     { timeout: 30_000 }
   );
 
-  await page.click('[data-testid="update-btn"]');
+  // Arm the wait before selecting: immediate-apply fires the query on the
+  // option click; legacy mode fires it on the Update click below.
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await searchAndClickOnOption(
+    page,
+    {
+      label: filterLabel,
+      key: filterKey,
+      value: filterValue,
+    },
+    true
+  );
+
+  const filterUpdateButton = page.getByTestId('update-btn');
+  if (await filterUpdateButton.isVisible().catch(() => false)) {
+    await filterUpdateButton.click();
+  }
   await queryRes;
   await waitForAllLoadersToDisappear(page);
 

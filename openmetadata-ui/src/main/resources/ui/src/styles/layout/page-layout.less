@@ -20,6 +20,33 @@
   overflow-x: hidden;
 }
 
+.full-height-wrapper {
+  .page-layout-v1-vertical-scroll.page-layout-v1-full-height-main {
+    overflow: hidden;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-layout-v1-full-height-main > .ant-row {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-layout-v1-full-height-main .ant-row .ant-col {
+    flex: none;
+  }
+
+  .page-layout-v1-full-height-main .ant-row .ant-col:last-child {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 #page-alert {
   position: sticky;
   top: 0px;

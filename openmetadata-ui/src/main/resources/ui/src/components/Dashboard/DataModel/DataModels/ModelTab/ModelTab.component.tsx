@@ -14,7 +14,7 @@ import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
@@ -47,12 +47,13 @@ import {
 } from '../../../../../utils/TablePureUtils';
 import { getAllTags } from '../../../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../../../common/Table/Table';
-import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
@@ -60,7 +61,14 @@ import {
   EntityName,
   EntityNameWithAdditionFields,
 } from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
-import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 const ModelTab = () => {
   const { t } = useTranslation();

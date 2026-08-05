@@ -28,7 +28,7 @@ import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
-import Loader from '../../../components/common/Loader/Loader';
+import { PageLoader } from '../../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -58,9 +58,9 @@ import {
   getTestCaseVersionList,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
+import { getFeedCounts } from '../../../utils/FeedUtilsPure';
 import {
   getTestCaseDetailPagePath,
   getTestCaseDimensionsDetailPagePath,
@@ -72,7 +72,6 @@ import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
-
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
 }: {
@@ -413,7 +412,7 @@ const IncidentManagerDetailPage = ({
   }, [t, hasEditPermission, isVersionPage, testCase?.entityLink]);
 
   if (isLoading || isPermissionLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!hasViewPermission) {

@@ -25,9 +25,9 @@ import '@fontsource/inter/700.css'; // Font 700
 import '@fontsource/inter/800.css'; // Font 800
 import '@fontsource/inter/900.css'; // Font 900
 
-import '@react-awesome-query-builder/antd/css/styles.css';
-import 'reactflow/dist/base.css';
-import 'reactflow/dist/style.css';
+// ReactFlow CSS is co-located with the components that render ReactFlow so it
+// only loads with the lineage/DAG runtime. Keeping it global makes ReactFlow a
+// runtime dependency of the app entry chunk.
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';

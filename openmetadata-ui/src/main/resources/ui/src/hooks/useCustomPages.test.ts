@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook } from '@testing-library/react-hooks';
+import { waitFor } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react-hooks';
 import { Document } from '../generated/entity/docStore/document';
 import { PageType } from '../generated/system/ui/page';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
@@ -116,7 +117,7 @@ describe('useCustomPages', () => {
   it('should refetch document when pageType changes', async () => {
     mockGetDocumentByFQN.mockResolvedValue(mockDocument);
 
-    const { rerender, waitForNextUpdate } = renderHook(
+    const { result, rerender, waitForNextUpdate } = renderHook(
       ({ pageType }) => useCustomPages(pageType),
       {
         initialProps: { pageType: PageType.Table },
@@ -127,9 +128,23 @@ describe('useCustomPages', () => {
 
     expect(mockGetDocumentByFQN).toHaveBeenCalledTimes(1);
 
+    let resolveSecondFetch: ((document: Document) => void) | undefined;
+    mockGetDocumentByFQN.mockImplementationOnce(
+      () =>
+        new Promise<Document>((resolve) => {
+          resolveSecondFetch = resolve;
+        })
+    );
+
     rerender({ pageType: PageType.Dashboard });
 
-    await waitForNextUpdate();
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      resolveSecondFetch?.(mockDocument);
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(mockGetDocumentByFQN).toHaveBeenCalledTimes(2);
   });
@@ -160,7 +175,7 @@ describe('useCustomPages', () => {
 
     // Change the selected persona
     const newPersona = { fullyQualifiedName: 'new-persona' };
-    mockGetDocumentByFQN.mockResolvedValueOnce({
+    const newPersonaDocument: Document = {
       entityType: 'PERSONA',
       fullyQualifiedName: 'PERSONA.new-persona',
       name: 'new-persona',
@@ -168,17 +183,87 @@ describe('useCustomPages', () => {
         pages: [{ pageType: PageType.Table, content: 'New Content' }],
         navigation: [{ name: 'New Navigation' }],
       },
-    });
+    };
+    let resolveNewPersonaFetch: ((document: Document) => void) | undefined;
+
+    mockGetDocumentByFQN.mockImplementationOnce(
+      () =>
+        new Promise<Document>((resolve) => {
+          resolveNewPersonaFetch = resolve;
+        })
+    );
 
     rerender({ selectedPersona: newPersona });
 
-    await waitForNextUpdate();
+    expect(result.current.isLoading).toBe(true);
+
+    await act(async () => {
+      resolveNewPersonaFetch?.(newPersonaDocument);
+    });
+
+    await waitFor(() =>
+      expect(result.current.customizedPage).toEqual({
+        pageType: PageType.Table,
+        content: 'New Content',
+      })
+    );
 
     expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.new-persona');
-    expect(result.current.customizedPage).toEqual({
-      pageType: PageType.Table,
-      content: 'New Content',
-    });
     expect(result.current.navigation).toEqual([{ name: 'New Navigation' }]);
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('should ignore stale response when selected persona changes before fetch completes', async () => {
+    let resolveFirstFetch: ((document: Document) => void) | undefined;
+
+    mockGetDocumentByFQN.mockImplementationOnce(
+      () =>
+        new Promise<Document>((resolve) => {
+          resolveFirstFetch = resolve;
+        })
+    );
+
+    const newPersonaDocument: Document = {
+      entityType: 'PERSONA',
+      fullyQualifiedName: 'PERSONA.new-persona',
+      name: 'new-persona',
+      data: {
+        pages: [{ pageType: PageType.Table, content: 'New Content' }],
+        navigation: [{ name: 'New Navigation' }],
+      },
+    };
+
+    mockGetDocumentByFQN.mockResolvedValueOnce(newPersonaDocument);
+
+    const { result, rerender } = renderHook(
+      ({ selectedPersona }) => {
+        mockUseApplicationStore.mockReturnValue({
+          selectedPersona,
+        });
+
+        return useCustomPages(PageType.Table);
+      },
+      {
+        initialProps: {
+          selectedPersona: { fullyQualifiedName: 'test-persona' },
+        },
+      }
+    );
+
+    rerender({ selectedPersona: { fullyQualifiedName: 'new-persona' } });
+
+    await waitFor(() =>
+      expect(result.current.customizedPage).toEqual(
+        newPersonaDocument.data.pages[0]
+      )
+    );
+
+    await act(async () => {
+      resolveFirstFetch?.(mockDocument);
+    });
+
+    expect(result.current.customizedPage).toEqual(
+      newPersonaDocument.data.pages[0]
+    );
   });
 });

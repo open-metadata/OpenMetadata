@@ -21,6 +21,7 @@ import QueryString from 'qs';
 import {
   createContext,
   DragEvent,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -41,6 +42,7 @@ import {
   ReactFlowInstance,
   useKeyPress,
 } from 'reactflow';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -52,7 +54,6 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
-import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
@@ -98,36 +99,42 @@ import { drawEdgesForExport } from '../../utils/CanvasUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
-  addLineageHandler,
-  centerNodePosition,
   createColumnEdges,
   createEdgesAndEdgeMaps,
   createEntityEdgesAndMaps,
   createNewEdge,
-  createNodes,
   getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
-  getConnectedNodesEdges,
   getEdgeDataFromEdge,
-  getEntityTypeFromPlatformView,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
-  getNodeLineageData,
   getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamNodesEdges,
+} from '../../utils/EntityLineageEdgeUtils';
+import {
+  centerNodePosition,
   getViewportForLineageExport,
-  parseLineageData,
   positionNodesUsingElk,
-  removeLineageHandler,
+} from '../../utils/EntityLineageLayoutUtils';
+import {
+  createNodes,
+  getConnectedNodesEdges,
+  getEntityTypeFromPlatformView,
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
-} from '../../utils/EntityLineageUtils';
+} from '../../utils/EntityLineageNodeUtils';
+import {
+  addLineageHandler,
+  parseLineageData,
+  removeLineageHandler,
+} from '../../utils/EntityLineagePureUtils';
+import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -137,6 +144,14 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
 
 export const LineageContext = createContext({} as LineageContextType);
 

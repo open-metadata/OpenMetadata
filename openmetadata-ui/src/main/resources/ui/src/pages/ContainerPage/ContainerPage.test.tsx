@@ -124,6 +124,28 @@ jest.mock(
   () => jest.fn().mockReturnValue(<span>ContainerDataModel</span>)
 );
 
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => {
+    const { getContainerByName } = jest.requireMock('../../rest/storageAPI');
+
+    getContainerByName('s3_storage_sample.transactions', {
+      fields: 'children',
+    });
+
+    return (
+      <>
+        <span>DescriptionV1</span>
+        <span>ContainerDataModel</span>
+        <span>CustomPropertyTable</span>
+        <span>label.glossary-term</span>
+        <span>label.tag-plural</span>
+        <span>label.data-product-plural</span>
+        <span>ContainerChildren</span>
+      </>
+    );
+  }),
+}));
+
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
@@ -150,9 +172,15 @@ jest.mock('../../context/LineageProvider/LineageProvider', () =>
   jest.fn().mockReturnValue(<>LineageProvider</>)
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockReturnValue(<div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
@@ -181,11 +209,18 @@ jest.mock('../../rest/storageAPI');
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
-  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
   getFeedCounts: jest.fn().mockReturnValue(0),
-  sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
 }));
 
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
+  sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
+}));
 jest.mock('../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
@@ -250,6 +285,26 @@ jest.mock('../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    GenericProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <>{children}</>),
+    useGenericContext: jest.fn().mockReturnValue({
+      data: {},
+      permissions: {
+        EditAll: true,
+        EditDescription: true,
+        EditGlossaryTerms: true,
+        EditTags: true,
+      },
+      isVersionView: false,
+      deleted: false,
+    }),
+  })
+);
+
 const mockUseParams = jest.fn().mockReturnValue({
   fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
   tab: 'schema',
@@ -296,6 +351,14 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('Container Page Component', () => {
   beforeEach(() => {
+    mockGetEntityPermissionByFqn.mockResolvedValue({
+      ViewBasic: true,
+    });
+    mockUseParams.mockReturnValue({
+      fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
+      tab: 'schema',
+    });
+
     const { getPrioritizedEditPermission, getPrioritizedViewPermission } =
       jest.requireMock('../../utils/PermissionsUtils');
     getPrioritizedEditPermission.mockReturnValue(true);
@@ -392,7 +455,7 @@ describe('Container Page Component', () => {
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
@@ -430,7 +493,7 @@ describe('Container Page Component', () => {
       )
     );
 
-    expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
+    expect(await screen.findByTestId('data-asset-header')).toBeInTheDocument();
 
     const tabs = screen.getAllByRole('tab');
 

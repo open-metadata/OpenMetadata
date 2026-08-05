@@ -51,15 +51,16 @@ import {
 } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-  convertGlossaryTermsToTreeOptions,
   filterTreeNodeOptions,
   findItemByFqn,
-} from '../../../utils/GlossaryUtils';
+} from '../../../utils/GlossaryPureUtils';
+import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringUtils';
-import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -70,7 +71,6 @@ import {
   AsyncSelectListProps,
   SelectOption,
 } from './AsyncSelectList.interface';
-
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;

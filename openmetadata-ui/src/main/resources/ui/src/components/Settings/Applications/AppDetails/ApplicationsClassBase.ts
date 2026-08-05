@@ -14,7 +14,7 @@
 import { ComponentType, FC, lazy } from 'react';
 import { ReactComponent as DefaultAppLogo } from '../../../../assets/svg/application-colored.svg';
 import { AppType } from '../../../../generated/entity/applications/app';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';

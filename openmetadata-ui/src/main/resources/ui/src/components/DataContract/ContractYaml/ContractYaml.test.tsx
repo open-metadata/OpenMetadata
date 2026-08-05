@@ -12,7 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
   DataContract,
@@ -22,6 +22,13 @@ import { Column } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import ContractYaml from './ContractYaml.component';
+
+type MockSchemaEditorProps = {
+  className?: string;
+  editorClass?: string;
+  mode?: { name?: string };
+  value?: string;
+};
 
 jest.mock('js-yaml', () => ({
   dump: jest.fn(),
@@ -37,7 +44,7 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
     editorClass,
     mode,
     value,
-  }: any) {
+  }: MockSchemaEditorProps) {
     return (
       <div className={className} data-testid="schema-editor">
         <div data-testid="editor-class">{editorClass}</div>
@@ -88,10 +95,10 @@ describe('ContractYaml', () => {
   });
 
   describe('Basic Rendering', () => {
-    it('should render the component with schema editor', () => {
+    it('should render the component with schema editor', async () => {
       render(<ContractYaml contract={mockContract} />);
 
-      expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
+      expect(await screen.findByTestId('schema-editor')).toBeInTheDocument();
     });
 
     it('should render with correct container class', () => {

@@ -34,9 +34,9 @@ import {
   getMultiChartsPreviewByName,
 } from '../../rest/DataInsightAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
+import { getQueryFilterForDataInsightChart } from '../../utils/DataInsightPureUtils';
 import {
   getEntitiesChartSummary,
-  getQueryFilterForDataInsightChart,
   getWebChartSummary,
 } from '../../utils/DataInsightUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -45,7 +45,6 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import { SummaryCard } from '../common/SummaryCard/SummaryCard.component';
 import './data-insight-detail.less';
-
 interface Props {
   chartFilter: ChartFilter;
   onScrollToChart: (chartType: SystemChartType | DataInsightChartType) => void;

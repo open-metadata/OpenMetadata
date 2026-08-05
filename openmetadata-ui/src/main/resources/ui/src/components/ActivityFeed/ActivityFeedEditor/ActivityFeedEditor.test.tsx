@@ -22,7 +22,7 @@ const onSaveHandler = jest.fn().mockImplementation(() => {
   onSave();
 });
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getBackendFormat: jest.fn(),
   HTMLToMarkdown: jest.fn().mockReturnValue({ turndown: jest.fn() }),
 }));

@@ -32,7 +32,7 @@ import {
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
-import { getCountBadge } from './EntityDisplayUtils';
+import { getCountBadge } from './EntityDisplayPureUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
   findActiveSearchIndex,
@@ -40,24 +40,6 @@ import {
 } from './ExplorePureUtils';
 import { escapeESReservedCharacters } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
-
-export {
-  extractTermKeys,
-  findActiveSearchIndex,
-  getAggregations,
-  getExploreQueryFilterMust,
-  getParseValueFromLocation,
-  getQuickFilterObject,
-  getQuickFilterObjectForEntities,
-  getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-  getSubLevelHierarchyKey,
-  isElasticsearchError,
-  parseSearchParams,
-  updateCountsInTreeData,
-  updateTreeData,
-  updateTreeDataWithCounts,
-} from './ExplorePureUtils';
 
 export const getAggregationOptions = async (
   index: SearchIndex | SearchIndex[],
