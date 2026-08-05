@@ -30,7 +30,9 @@ export const clickAndWaitFor = async (
 
   if (response.status() !== expectedStatus) {
     throw new Error(
-      `Expected ${String(urlPattern)} to return ${expectedStatus}, got ${response.status()}`
+      `Expected ${String(
+        urlPattern
+      )} to return ${expectedStatus}, got ${response.status()}`
     );
   }
 
