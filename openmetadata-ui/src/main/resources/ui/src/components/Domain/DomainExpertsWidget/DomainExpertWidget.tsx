@@ -13,21 +13,44 @@
 import { Typography } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import { useMemo } from 'react';
+import type { ComponentType } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { Domain } from '../../../generated/entity/domains/domain';
+import type { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { EntityReference } from '../../../generated/tests/testCase';
+import type { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
-import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
+import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
+import type { UserSelectableListProps } from '../../common/UserSelectableList/UserSelectableList.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
+const EditIconButton = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/IconButtons/EditIconButton').then((module) => ({
+      default: module.EditIconButton,
+    }))
+  )
+) as ComponentType<IconButtonProps>;
+
+const PlusIconButton = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/IconButtons/EditIconButton').then((module) => ({
+      default: module.PlusIconButton,
+    }))
+  )
+) as ComponentType<IconButtonProps>;
+
+const UserSelectableList = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/UserSelectableList/UserSelectableList.component').then(
+      (module) => ({ default: module.UserSelectableList })
+    )
+  )
+) as ComponentType<UserSelectableListProps>;
 
 export const DomainExpertWidget = () => {
   const {
