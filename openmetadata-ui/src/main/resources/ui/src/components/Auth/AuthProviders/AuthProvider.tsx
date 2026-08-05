@@ -55,6 +55,7 @@ import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { hydrateBackendSyncedPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { clearAppMode, resolveInitialAppMode } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
@@ -333,6 +334,11 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        // Reconcile backend-synced preferences (e.g. appMode) with the
+        // local persisted store now that we know who's logged in — runs on
+        // every bootstrap where a valid session already exists (e.g. page
+        // refresh), not just on a fresh interactive login.
+        hydrateBackendSyncedPreferences(res);
       } else {
         resetUserDetails();
       }
@@ -473,6 +479,11 @@ export const AuthProvider = ({
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
+          // Reconcile backend-synced preferences (e.g. appMode) before
+          // handledVerifiedUser() below — it consults the local persisted
+          // store via resolveInitialAppMode() to decide the post-login
+          // redirect, so hydration must land first on a fresh login too.
+          hydrateBackendSyncedPreferences(userDetails);
 
           handledVerifiedUser();
           // Start expiry timer on successful login

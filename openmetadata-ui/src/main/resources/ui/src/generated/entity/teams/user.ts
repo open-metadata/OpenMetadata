@@ -126,6 +126,11 @@ export interface User {
      */
     personas?: EntityReference[];
     /**
+     * Opaque per-user UI preferences. Returned only when 'preferences' is included in the
+     * fields query parameter.
+     */
+    preferences?: any;
+    /**
      * Profile of the user.
      */
     profile?: Profile;

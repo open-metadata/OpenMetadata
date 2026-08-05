@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
+import { updateUserDetail } from '../../rest/userAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useApplicationStore } from '../useApplicationStore';
 import {
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
   useCurrentUserPreferences,
   usePersistentStorage,
 } from './useCurrentUserStore';
@@ -26,9 +30,53 @@ jest.mock('../../constants/constants', () => ({
   PAGE_SIZE_BASE: 15,
 }));
 
+jest.mock('../../rest/userAPI', () => ({
+  updateUserDetail: jest.fn(),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
 >;
+
+const updateUserDetailMock = updateUserDetail as jest.Mock;
+const showErrorToastMock = showErrorToast as jest.Mock;
+
+// Test helper: seeds useApplicationStore's currentUser (id + name) and,
+// optionally, the local persisted slice for that user — mirroring what a
+// prior hydration/local write would have produced.
+const seedCurrentUser = ({
+  id,
+  name,
+  preferences,
+}: {
+  id: string;
+  name: string;
+  preferences?: Record<string, unknown>;
+}) => {
+  mockUseApplicationStore.mockImplementation((selector) => {
+    const mockState = {
+      currentUser: { id, name },
+    } as any;
+
+    return selector(mockState);
+  });
+
+  if (preferences) {
+    usePersistentStorage.getState().setUserPreference(name, preferences);
+  }
+};
+
+// Test helper: renders useCurrentUserPreferences and returns its current
+// setPreference callback.
+const renderUseCurrentUserPreferences = () => {
+  const { result } = renderHook(() => useCurrentUserPreferences());
+
+  return result.current;
+};
 
 describe('useCurrentUserStore', () => {
   beforeEach(() => {
@@ -36,6 +84,7 @@ describe('useCurrentUserStore', () => {
     localStorage.clear();
     // Proper store reset
     usePersistentStorage.setState({ preferences: {} });
+    resetBackendSyncState();
 
     // Set up the default mock implementation
     mockUseApplicationStore.mockImplementation((selector) => {
@@ -207,6 +256,175 @@ describe('useCurrentUserStore', () => {
       rerender();
 
       expect(result.current.setPreference).toBe(firstSetPreference);
+    });
+  });
+
+  describe('backend-synced appMode', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('hydrates appMode from currentUser.preferences on bootstrap (server wins)', () => {
+      const userName = 'alice';
+      usePersistentStorage
+        .getState()
+        .setUserPreference(userName, { appMode: 'classic' });
+
+      hydrateBackendSyncedPreferences({
+        id: 'u1',
+        name: userName,
+        preferences: { appMode: 'ai' },
+      });
+
+      const slice = usePersistentStorage.getState().preferences[userName];
+
+      expect(slice.appMode).toBe('ai');
+      expect(slice.isSidebarCollapsed).toBe(false); // local-only field untouched
+    });
+
+    it('does not touch appMode when neither server nor local has a value', () => {
+      const userName = 'bob';
+      // local slice default appMode is null
+
+      hydrateBackendSyncedPreferences({
+        id: 'u1',
+        name: userName,
+        preferences: {},
+      });
+
+      const slice = usePersistentStorage.getState().preferences[userName];
+
+      expect(slice?.appMode ?? null).toBeNull();
+    });
+
+    it('debounces a PATCH when appMode is written', async () => {
+      jest.useFakeTimers();
+      seedCurrentUser({ id: 'u1', name: 'alice' });
+
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ appMode: 'ai' });
+
+      expect(updateUserDetailMock).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(updateUserDetailMock).toHaveBeenCalledTimes(1);
+      expect(updateUserDetailMock).toHaveBeenCalledWith('u1', [
+        { op: 'add', path: '/preferences/appMode', value: 'ai' },
+      ]);
+    });
+
+    it('coalesces rapid writes into a single PATCH with the last value', async () => {
+      jest.useFakeTimers();
+      seedCurrentUser({ id: 'u1', name: 'alice' });
+
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ appMode: 'ai' });
+      setPreference({ appMode: 'classic' });
+      setPreference({ appMode: 'ai' });
+
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(updateUserDetailMock).toHaveBeenCalledTimes(1);
+      expect(updateUserDetailMock).toHaveBeenCalledWith('u1', [
+        { op: 'add', path: '/preferences/appMode', value: 'ai' },
+      ]);
+    });
+
+    it('does not PATCH when a non-whitelisted key is written', async () => {
+      jest.useFakeTimers();
+      seedCurrentUser({ id: 'u1', name: 'alice' });
+
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ isSidebarCollapsed: true });
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(updateUserDetailMock).not.toHaveBeenCalled();
+      expect(
+        usePersistentStorage.getState().preferences.alice.isSidebarCollapsed
+      ).toBe(true);
+    });
+
+    it('emits a remove op when appMode is set to null', async () => {
+      jest.useFakeTimers();
+      seedCurrentUser({
+        id: 'u1',
+        name: 'alice',
+        preferences: { appMode: 'ai' },
+      });
+
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ appMode: null });
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(updateUserDetailMock).toHaveBeenCalledWith('u1', [
+        { op: 'remove', path: '/preferences/appMode' },
+      ]);
+    });
+
+    it('rolls back local state and toasts when the PATCH fails', async () => {
+      jest.useFakeTimers();
+      seedCurrentUser({
+        id: 'u1',
+        name: 'alice',
+        preferences: { appMode: 'classic' },
+      });
+      updateUserDetailMock.mockRejectedValue(new Error('boom'));
+
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ appMode: 'ai' });
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+      await Promise.resolve(); // let the catch handler run
+
+      expect(usePersistentStorage.getState().preferences.alice.appMode).toBe(
+        'classic'
+      );
+      expect(showErrorToastMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('migrates local appMode to backend when server has none', async () => {
+      jest.useFakeTimers();
+      usePersistentStorage
+        .getState()
+        .setUserPreference('alice', { appMode: 'ai' });
+      updateUserDetailMock.mockResolvedValue({ preferences: { appMode: 'ai' } });
+
+      hydrateBackendSyncedPreferences({
+        id: 'u1',
+        name: 'alice',
+        preferences: {},
+      });
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(updateUserDetailMock).toHaveBeenCalledWith('u1', [
+        { op: 'add', path: '/preferences/appMode', value: 'ai' },
+      ]);
+    });
+
+    it('does not migrate when the server already has appMode', async () => {
+      jest.useFakeTimers();
+      usePersistentStorage
+        .getState()
+        .setUserPreference('alice', { appMode: 'ai' });
+
+      hydrateBackendSyncedPreferences({
+        id: 'u1',
+        name: 'alice',
+        preferences: { appMode: 'classic' },
+      });
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(updateUserDetailMock).not.toHaveBeenCalled();
+      expect(usePersistentStorage.getState().preferences.alice.appMode).toBe(
+        'classic'
+      );
     });
   });
 });
