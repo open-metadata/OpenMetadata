@@ -2,7 +2,7 @@
 
 from typing import Optional, cast
 
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 
 from metadata.data_quality.validations.models import TableParameter
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
@@ -26,7 +26,7 @@ class SnowflakeTableParameter(BaseTableParameter):
         key_columns,
         extra_columns,
         case_sensitive_columns,
-        service_url: Optional[str],
+        service_url: Optional[str],  # noqa: UP045
     ) -> TableParameter:
         table_param: TableParameter = super().get(
             service,
@@ -36,7 +36,9 @@ class SnowflakeTableParameter(BaseTableParameter):
             case_sensitive_columns,
             service_url,
         )
-        connection_config = cast(SnowflakeConnection, service.connection.config)
+        connection_config = cast(
+            SnowflakeConnection, service.connection.config
+        )  # noqa: TC006
         table_param.privateKey = connection_config.privateKey
         table_param.passPhrase = connection_config.snowflakePrivatekeyPassphrase
         if table_param.privateKey and isinstance(table_param.serviceUrl, str):
@@ -49,7 +51,13 @@ class SnowflakeTableParameter(BaseTableParameter):
                     "Using the private key.",
                     service.name.root,
                 )
-                table_param.serviceUrl = url.set(password="").render_as_string(
-                    hide_password=False
-                )
+                # URL.set(password=None) leaves the password untouched, so rebuild the url without it
+                table_param.serviceUrl = URL.create(
+                    drivername=url.drivername,
+                    username=url.username,
+                    host=url.host,
+                    port=url.port,
+                    database=url.database,
+                    query=url.query,
+                ).render_as_string(hide_password=False)
         return table_param

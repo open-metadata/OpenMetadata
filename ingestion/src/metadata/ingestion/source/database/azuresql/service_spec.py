@@ -13,6 +13,6 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=AzuresqlLineageSource,
     usage_source_class=AzuresqlUsageSource,
     sampler_class=AzureSQLSampler,
-    data_diff=AzureSQLTableParameter,
-    connection_class=AzureSQLConnection,
+    data_diff=AzureSQLTableParameter,  # pyright: ignore[reportArgumentType]
+    connection_class=AzureSQLConnection,  # pyright: ignore[reportArgumentType]
 )
