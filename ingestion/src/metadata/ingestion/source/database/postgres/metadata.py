@@ -235,7 +235,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     text(POSTGRES_GET_ALL_TABLE_PG_POLICY),
                     {
                         "schema_name": schema_name,
-                        "database_name": self.context.get().database,
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
                     },
                 ).all()
             for res in result:
