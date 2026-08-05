@@ -630,7 +630,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await glossaryResponse;
   await waitForAllLoadersToDisappear(page);
   await page
-    .getByRole('menuitem', { name: glossaryName })
+    .getByTestId('glossary-left-panel')
+    .getByRole('menuitem', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
