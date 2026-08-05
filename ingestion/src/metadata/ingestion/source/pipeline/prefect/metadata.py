@@ -566,8 +566,9 @@ class PrefectSource(PipelineServiceSource):
         (the same deployment tags ``yield_pipeline`` used to build
         ``Pipeline.tags``) instead of reading them off the persisted entity —
         that entity has no tags at all when ``includeTags=False``, which
-        silently dropped lineage. ``get_deployments`` is lru_cached, so this
-        costs no extra call within one ingestion run.
+        silently dropped lineage. ``get_deployments`` caches on ``PrefectClient``'s
+        instance-level ``_deployments_cache``, so this costs no extra call
+        within one ingestion run.
         Lineage is detected from tags: 'om-source:<database>.<schema>.<table>'
         and 'om-destination:<database>.<schema>.<table>'. Every detected
         source is linked to every detected destination, since tags carry no
