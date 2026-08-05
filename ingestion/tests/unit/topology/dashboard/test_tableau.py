@@ -1184,6 +1184,33 @@ class TableauUnitTest(TestCase):
         assert columns[0].dataTypeDisplay == "Tableau Field"
         assert len(columns[0].children) == 2
 
+    def test_calculated_field_with_single_same_named_upstream_keeps_child(self):
+        """
+        A CalculatedField referencing one same-named column is not a mirror: its value is a
+        transformation, so the physical column must stay visible and its remoteType must not be
+        reported as the field's own type.
+        """
+        data_source = DataSource(
+            id="ds-calc-004",
+            name="Sales",
+            fields=[
+                DatasourceField(
+                    id="fld-revenue-calc",
+                    name="revenue",
+                    formula="ZN([revenue])",
+                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="NUMERIC")],
+                ),
+            ],
+        )
+
+        columns = self.tableau.get_column_info(data_source)
+
+        assert len(columns) == 1
+        assert columns[0].dataTypeDisplay == "Tableau Field"
+        assert columns[0].dataType == DataType.RECORD
+        assert len(columns[0].children) == 1
+        assert columns[0].children[0].displayName == "revenue"
+
     def test_field_without_upstream_columns_stays_tableau_field(self):
         """Nothing to absorb, so the synthetic Tableau Field type is retained."""
         data_source = DataSource(
@@ -1293,6 +1320,43 @@ class TableauUnitTest(TestCase):
         )
 
         assert columns == ["svc.model.Margins.fld-margin.col-revenue"]
+
+    def test_data_model_column_fqn_matches_truncated_child_name(self):
+        """
+        Child names are stored truncated to 256 chars. Matching the raw id would miss the child and
+        fall back to the parent, pointing lineage at the wrong column.
+        """
+        long_column_id = "col-" + ("x" * 300)
+        data_model_entity = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="Margins",
+            service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+            dataModelType="TableauDataModel",
+            columns=[
+                Column(
+                    name="fld-margin",
+                    displayName="margin",
+                    dataType=DataType.RECORD,
+                    fullyQualifiedName="svc.model.Margins.fld-margin",
+                    children=[
+                        Column(
+                            name=long_column_id[:256],
+                            displayName="revenue",
+                            dataType=DataType.NUMERIC,
+                            fullyQualifiedName="svc.model.Margins.fld-margin.truncated",
+                        ),
+                    ],
+                )
+            ],
+        )
+
+        columns = self.tableau._get_data_model_column_fqn(
+            data_model_entity=data_model_entity,
+            column_id=long_column_id,
+            field_names={"fld-margin"},
+        )
+
+        assert columns == ["svc.model.Margins.fld-margin.truncated"]
 
     def test_data_model_column_fqn_ignores_unrelated_fields(self):
         """Only the fields actually consuming the physical column are linked."""

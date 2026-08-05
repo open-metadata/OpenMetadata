@@ -399,16 +399,21 @@ class TableauSource(DashboardServiceSource):
         name. A field fanning out to several columns keeps children named after the upstream column
         ids. Resolving per consuming field yields exactly one target for each of them, so a column
         is never linked to both a field and that same field's child.
+
+        Child names are stored truncated (``get_child_columns``), so the incoming id is truncated
+        the same way before matching. Comparing the raw id would miss every child built from an id
+        over the limit and silently fall back to the parent column.
         """
         columns = []
         if data_model_entity:
+            child_column_name = truncate_column_name(column_id)
             for data_model_column in data_model_entity.columns or []:
                 if model_str(data_model_column.name) not in field_names:
                     continue
                 child_column_fqns = [
                     model_str(child_column.fullyQualifiedName)
                     for child_column in data_model_column.children or []
-                    if column_id.casefold() == model_str(child_column.name).casefold()
+                    if child_column_name.casefold() == model_str(child_column.name).casefold()
                 ]
                 columns.extend(child_column_fqns or [model_str(data_model_column.fullyQualifiedName)])
         return columns
@@ -1048,10 +1053,15 @@ class TableauSource(DashboardServiceSource):
         A plain Tableau ColumnField wraps exactly one physical column and keeps its name, so
         nesting that column renders an identical-looking duplicate row in the data model. Return
         the mirrored column so the field can absorb its type instead of nesting it.
+
+        A CalculatedField is never a mirror even when it happens to reference a single same-named
+        column: its value is a transformation, so the physical column stays visible as a child and
+        its ``remoteType`` must not be reported as the field's own type. ``formula`` is only
+        populated by the ``... on CalculatedField`` fragment, which makes it the field-type marker.
         """
         mirrored_column = None
         upstream_columns = [column for column in field.upstreamColumns or [] if column]
-        if len(upstream_columns) == 1:
+        if not field.formula and len(upstream_columns) == 1:
             upstream_column = upstream_columns[0]
             field_name = field.name or field.id
             upstream_column_name = upstream_column.name or upstream_column.id
