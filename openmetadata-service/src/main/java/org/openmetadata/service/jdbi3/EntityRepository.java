@@ -7606,6 +7606,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Validates each data product and hydrates the supplied reference in place.
+   *
+   * <p>Lifecycle handlers receive these references before relationships are reloaded, so search
+   * indexing requires a fully populated reference at this stage.
+   */
   public final void validateDataProducts(List<EntityReference> dataProducts) {
     if (!supportsDataProducts) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(FIELD_DATA_PRODUCTS));
@@ -7613,7 +7619,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nullOrEmpty(dataProducts)) {
       for (EntityReference dataProduct : dataProducts) {
-        getEntityReferenceById(DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+        EntityReference validatedDataProduct =
+            getEntityReferenceById(DATA_PRODUCT, dataProduct.getId(), NON_DELETED);
+        EntityUtil.copy(validatedDataProduct, dataProduct);
       }
     }
   }
