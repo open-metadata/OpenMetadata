@@ -228,20 +228,25 @@ def _show_column(row, name: str):
     return result
 
 
-SEMANTIC_VIEW_COLUMN_QUERIES = (
-    ("Dimension", SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS),
-    ("Fact", SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS),
-)
-
-# The three INFORMATION_SCHEMA catalog views backing a semantic view, and the
-# per-view query used as a fallback when the schema-wide batch is unavailable.
+# The three INFORMATION_SCHEMA catalog views backing a semantic view.
 SEMANTIC_DIMENSIONS = "semantic_dimensions"
 SEMANTIC_FACTS = "semantic_facts"
 SEMANTIC_METRICS = "semantic_metrics"
-SEMANTIC_CATALOG_VIEWS = (
-    (SEMANTIC_DIMENSIONS, SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS),
-    (SEMANTIC_FACTS, SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS),
-    (SEMANTIC_METRICS, SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS),
+SEMANTIC_CATALOG_VIEWS = (SEMANTIC_DIMENSIONS, SEMANTIC_FACTS, SEMANTIC_METRICS)
+
+# Per-view queries, used only when the schema-wide batch is unavailable (errno 90030).
+SEMANTIC_PER_VIEW_QUERIES = {
+    SEMANTIC_DIMENSIONS: SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS,
+    SEMANTIC_FACTS: SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS,
+    SEMANTIC_METRICS: SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS,
+}
+
+# Which catalog views become columns on the semantic view Table, and the kind label
+# used to deduplicate a name that appears as both a dimension and a fact. Metrics are
+# excluded: they are Metric entities, not columns.
+SEMANTIC_VIEW_COLUMN_KINDS = (
+    ("Dimension", SEMANTIC_DIMENSIONS),
+    ("Fact", SEMANTIC_FACTS),
 )
 
 # Snowflake errno for "Information schema query returned too much data", the same
@@ -1207,7 +1212,7 @@ class SnowflakeSource(
         schema = fqn.unquote_name(schema_name)
         semantic_view = fqn.unquote_name(table_name)
         merged: dict[str, dict] = {}
-        for kind, catalog_view in (("Dimension", SEMANTIC_DIMENSIONS), ("Fact", SEMANTIC_FACTS)):
+        for kind, catalog_view in SEMANTIC_VIEW_COLUMN_KINDS:
             for row in self._semantic_rows(catalog_view, schema, semantic_view):
                 _merge_semantic_view_column(merged, kind, row)
         return [_build_semantic_view_column(entry) for entry in merged.values()]
@@ -1239,7 +1244,7 @@ class SnowflakeSource(
 
         catalog: Optional[SemanticCatalog] = {}  # noqa: UP045
         try:
-            for catalog_view, _ in SEMANTIC_CATALOG_VIEWS:
+            for catalog_view in SEMANTIC_CATALOG_VIEWS:
                 by_view: Dict[str, List[tuple]] = {}  # noqa: UP006
                 query = SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA.format(catalog_view=catalog_view, schema=schema)
                 for row in self._execute_semantic_query(query):
@@ -1280,7 +1285,7 @@ class SnowflakeSource(
         catalog = self._semantic_catalog(schema)
         if catalog is not None:
             return catalog.get(catalog_view, {}).get(view, [])
-        query = dict(SEMANTIC_CATALOG_VIEWS)[catalog_view]
+        query = SEMANTIC_PER_VIEW_QUERIES[catalog_view]
         return self._execute_semantic_query(query.format(schema=schema, semantic_view=view))
 
     def _semantic_view_reference(self, database: str, schema: str, view: str) -> Optional[EntityReference]:  # noqa: UP045

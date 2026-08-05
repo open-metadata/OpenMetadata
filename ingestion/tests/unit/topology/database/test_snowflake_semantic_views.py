@@ -111,13 +111,29 @@ def test_semantic_column_description_is_none_without_a_comment():
     assert column["comment"] is None
 
 
-def test_semantic_view_column_queries_exclude_metrics():
+def test_semantic_view_columns_exclude_metrics():
+    """Metrics are Metric entities, not columns, so only dimensions and facts feed
+    the semantic view Table's column list -- even though the batch fetches all three."""
     from metadata.ingestion.source.database.snowflake.metadata import (
-        SEMANTIC_VIEW_COLUMN_QUERIES,
+        SEMANTIC_CATALOG_VIEWS,
+        SEMANTIC_METRICS,
+        SEMANTIC_VIEW_COLUMN_KINDS,
     )
 
-    kinds = {kind for kind, _ in SEMANTIC_VIEW_COLUMN_QUERIES}
-    assert kinds == {"Dimension", "Fact"}
+    assert {kind for kind, _ in SEMANTIC_VIEW_COLUMN_KINDS} == {"Dimension", "Fact"}
+    assert SEMANTIC_METRICS not in {view for _, view in SEMANTIC_VIEW_COLUMN_KINDS}
+    assert SEMANTIC_METRICS in SEMANTIC_CATALOG_VIEWS
+
+
+def test_every_catalog_view_has_a_per_view_fallback_query():
+    """The 90030 fallback indexes SEMANTIC_PER_VIEW_QUERIES by catalog view name; a
+    missing entry would KeyError only on a schema large enough to trigger 90030."""
+    from metadata.ingestion.source.database.snowflake.metadata import (
+        SEMANTIC_CATALOG_VIEWS,
+        SEMANTIC_PER_VIEW_QUERIES,
+    )
+
+    assert set(SEMANTIC_PER_VIEW_QUERIES) == set(SEMANTIC_CATALOG_VIEWS)
 
 
 def test_semantic_view_table_type_exists():
