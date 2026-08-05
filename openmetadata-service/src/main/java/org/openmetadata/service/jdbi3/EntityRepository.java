@@ -4942,10 +4942,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
               removeExtension(entityInterface);
 
               // Cancel any governance workflow instances tied to this entity before the row
-              // goes away, so downstream nodes do not throw EntityNotFoundException.
+              // goes away, so downstream nodes do not throw EntityNotFoundException. The
+              // Flowable query and cancel calls must never abort the delete transaction —
+              // a stray engine failure here shouldn't wedge entity deletes on a data plane
+              // the workflow engine has no authority over.
               if (WorkflowHandler.isInitialized()) {
-                WorkflowHandler.getInstance()
-                    .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
+                try {
+                  WorkflowHandler.getInstance()
+                      .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
+                } catch (Exception cancelEx) {
+                  LOG.warn(
+                      "Failed to cancel workflow instances for entity {}: {}",
+                      entityInterface.getId(),
+                      cancelEx.getMessage());
+                }
               }
 
               // Delete all the threads that are about this entity
@@ -6959,8 +6969,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       daoCollection.usageDAO().deleteByIds(entityIds);
     }
     try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      // Workflow-engine failures must never wedge a bulk hard-delete; the workflow
+      // instances are best-effort cleanup, the entity rows are the source of truth.
       if (WorkflowHandler.isInitialized()) {
-        WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+        try {
+          WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+        } catch (Exception cancelEx) {
+          LOG.warn(
+              "Failed to cancel workflow instances for {} entities: {}",
+              entityIds.size(),
+              cancelEx.getMessage());
+        }
       }
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
