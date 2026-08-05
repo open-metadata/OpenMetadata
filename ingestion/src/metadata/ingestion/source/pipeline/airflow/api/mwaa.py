@@ -94,6 +94,17 @@ class MWAAClient:
         # Return a simple response to indicate connectivity
         return {"version": "MWAA", "status": "connected"}
 
+    def test_get_version(self) -> Dict:  # noqa: UP006
+        """Prove the environment is reachable and the credentials work.
+
+        ``get_version`` is a hardcoded stub - MWAA exposes no version endpoint - so
+        it proves nothing and cannot gate a connection. Listing one DAG is the
+        smallest call that really exercises the IAM credentials, the environment
+        name and the route; ``_invoke_rest_api`` re-raises whatever AWS returns.
+        """
+        self._invoke_rest_api("/dags", query={"limit": "1"})
+        return {"version": "MWAA", "status": "connected"}
+
     def list_dags(self, limit: int = 100, offset: int = 0) -> Dict:  # noqa: UP006
         """List DAGs with pagination"""
         query = {"limit": str(limit), "offset": str(offset)}

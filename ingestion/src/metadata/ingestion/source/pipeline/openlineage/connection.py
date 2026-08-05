@@ -102,10 +102,14 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
         broker = self.service_connection.brokerConfig
 
         if isinstance(broker, KafkaBrokerConfig):
-            return _get_kafka_connection(broker)
+            consumer = _get_kafka_connection(broker)
+            self._on_close(consumer.close)
+            return consumer
 
         if isinstance(broker, KinesisBrokerConfig):
-            return _get_kinesis_connection(broker)
+            client = _get_kinesis_connection(broker)
+            self._on_close(client.close)
+            return client
 
         raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 

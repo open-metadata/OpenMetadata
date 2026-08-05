@@ -31,12 +31,12 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
-from metadata.core.connections.test_connection.checks.dashboard import (
-    DashboardStep,
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
     call_endpoint,
+    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection as TableauConnectionConfig,
@@ -61,7 +61,6 @@ from metadata.utils.ssl_manager import SSLManager
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
-    from metadata.core.connections.test_connection.classifier import Matcher
 
 logger = ingestion_logger()
 
@@ -91,29 +90,19 @@ def _status_of(error: BaseException) -> int | None:
     return status if isinstance(status, int) else None
 
 
-def _http_status(*codes: int) -> Matcher:
-    """Match a Tableau REST error by HTTP status, across the cause chain.
-
-    The status is the stable signal - the summary and detail of a Tableau error
-    vary by endpoint and server version.
-    """
-    wanted = frozenset(codes)
-    return lambda error: any(_status_of(current) in wanted for current in exception_chain(error))
-
-
 TABLEAU_ERRORS = ErrorPack(
-    when(_http_status(401)).diagnose(
+    when(http_status(401, extract=_status_of)).diagnose(
         "Authentication failed",
         fix="Tableau rejected the credentials (401). Check the Personal Access Token name and "
         "secret (or the username and password) and that it has not expired, and that the Site "
         "Name matches the site those credentials belong to.",
     ),
-    when(_http_status(403)).diagnose(
+    when(http_status(403, extract=_status_of)).diagnose(
         "Insufficient permissions",
         fix="The credentials are valid but not authorized for this resource (403). Grant the user "
         "at least the Viewer site role and read access to the projects to ingest.",
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404, extract=_status_of)).diagnose(
         "Resource not found",
         fix="Tableau could not find the requested resource (404). Check that Host Port points at "
         "the Tableau server or Tableau Cloud pod, and that the Site Name exists - for "

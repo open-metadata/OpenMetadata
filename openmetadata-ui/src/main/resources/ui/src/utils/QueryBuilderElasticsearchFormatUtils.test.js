@@ -12,7 +12,10 @@
  */
 
 import { AntdConfig } from '@react-awesome-query-builder/antd';
-import { elasticSearchFormat } from './QueryBuilderElasticsearchFormatUtils';
+import {
+  elasticSearchFormat,
+  hasUnfinishedRule,
+} from './QueryBuilderElasticsearchFormatUtils';
 
 // Minimal Immutable-compatible tree stub.
 // elasticSearchFormat only calls .get() on the tree and its properties map.
@@ -148,5 +151,140 @@ describe('elasticSearchFormat – extension dateTime field range operators (Issu
 
     expect(result).toContain('"gte":"2024-01-01"');
     expect(result).toContain('"lte":"2024-12-31"');
+  });
+});
+
+describe('elasticSearchFormat – rules that are not fully entered', () => {
+  // A row with a field and an operator but no value used to serialize to `{"term":{}}`, which
+  // both Elasticsearch and OpenSearch reject outright ("Unexpected JSON event 'END_OBJECT'
+  // instead of 'KEY_NAME'"), failing every search that carried the filter.
+  it('should drop a rule whose value has not been entered yet', () => {
+    const result = elasticSearchFormat(
+      makeTree('equal', [undefined]),
+      configWithNumberType
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should not emit a bodiless clause for a half-entered rule inside a group', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(makeTree('select_equals', [undefined]), {
+        ...configWithNumberType,
+      }) ?? null
+    );
+
+    expect(result).not.toMatch(/:\{\}/);
+  });
+
+  it('should drop unentered options from a multiselect rule instead of emitting nulls', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('multiselect_equals', [[undefined]]),
+        configWithNumberType
+      ) ?? null
+    );
+
+    expect(result).not.toContain('null');
+  });
+
+  it('should still build a rule once the value is entered', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(makeTree('equal', [7]), configWithNumberType)
+    );
+
+    expect(result).toContain('7');
+    expect(result).not.toMatch(/:\{\}/);
+  });
+});
+
+// Immutable-compatible group stub. hasUnfinishedRule reads .get('type') and .get('children1'),
+// and walks children with .valueSeq().toArray() the same way buildEsGroup does.
+const makeGroup = (rules) => ({
+  get(key) {
+    if (key === 'type') {
+      return 'group';
+    }
+    if (key === 'children1') {
+      return { valueSeq: () => ({ toArray: () => rules }) };
+    }
+
+    return undefined;
+  },
+});
+
+const makeBlankRule = () => ({
+  get(key) {
+    if (key === 'type') {
+      return 'rule';
+    }
+    if (key === 'properties') {
+      return { get: () => undefined };
+    }
+
+    return undefined;
+  },
+});
+
+describe('hasUnfinishedRule', () => {
+  it('should report a rule whose value has not been entered', () => {
+    expect(
+      hasUnfinishedRule(makeTree('equal', [undefined]), configWithNumberType)
+    ).toBe(true);
+  });
+
+  // The query builder creates and keeps blank rows on its own (shouldCreateEmptyGroup, and
+  // removeEmptyRulesOnLoad is off), and "Add condition" leaves one behind. They add no constraint
+  // and always have been dropped, so flagging them would block saves that have always worked.
+  it('should accept a row with no field picked at all', () => {
+    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(
+      false
+    );
+  });
+
+  it('should accept a group holding an entered rule beside a blank row', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeBlankRule()]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
+  });
+
+  it('should report a multiselect rule with no option picked', () => {
+    expect(
+      hasUnfinishedRule(
+        makeTree('multiselect_equals', [[undefined]]),
+        configWithNumberType
+      )
+    ).toBe(true);
+  });
+
+  it('should accept a fully entered rule', () => {
+    expect(
+      hasUnfinishedRule(makeTree('equal', [7]), configWithNumberType)
+    ).toBe(false);
+  });
+
+  // "Empty selects every entity of the configured type" is documented behaviour, so a filter with
+  // no conditions has to stay saveable.
+  it('should accept a group with no conditions at all', () => {
+    expect(hasUnfinishedRule(makeGroup([]), configWithNumberType)).toBe(false);
+  });
+
+  it('should accept an undefined tree', () => {
+    expect(hasUnfinishedRule(undefined, configWithNumberType)).toBe(false);
+  });
+
+  it('should find an unfinished rule nested inside a group', () => {
+    const group = makeGroup([
+      makeTree('equal', [7]),
+      makeTree('equal', [undefined]),
+    ]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(true);
+  });
+
+  it('should accept a group whose conditions are all entered', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeTree('equal', [9])]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
   });
 });

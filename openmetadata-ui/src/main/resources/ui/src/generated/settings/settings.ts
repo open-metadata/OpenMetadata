@@ -48,7 +48,6 @@ export enum SettingType {
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     ScimConfiguration = "scimConfiguration",
-    SearchIndexMappings = "searchIndexMappings",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SecurityConfiguration = "securityConfiguration",
@@ -109,11 +108,6 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
- *
- * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
- * by language and entity type. The stored mapping is the effective mapping used when an
- * index is (re)created; it already carries the field-safety guards (ignore_above,
- * ignore_malformed, mapping limits) baked in at seed time.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -184,6 +178,13 @@ export interface PipelineServiceClientConfiguration {
      * ignore, validate.
      */
     verifySSL?: VerifySSL;
+    /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
     /**
      * Authentication Authority
      */
@@ -648,11 +649,6 @@ export interface PipelineServiceClientConfiguration {
      * List of configured glossary term relation types.
      */
     relationTypes?: GlossaryTermRelationType[];
-    /**
-     * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
-     * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
-     */
-    languages?: { [key: string]: any };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -1212,6 +1208,13 @@ export enum AuthProvider {
  */
 export interface AuthenticationConfiguration {
     /**
+     * Additional redirect URIs allowed for the login flow, beyond the callback URL and the
+     * server's own callbacks. Each entry must exactly match the requested redirect URI (scheme,
+     * host, port, path, query). Use this to allow browser-extension login redirects such as
+     * 'https://<extension-id>.chromiumapp.org/<path>'.
+     */
+    additionalTrustedRedirectUris?: string[];
+    /**
      * Authentication Authority
      */
     authority?: string;
@@ -1369,6 +1372,11 @@ export interface LDAPConfiguration {
      * Port of the server
      */
     port: number;
+    /**
+     * Enable transitive group membership resolution for Active Directory nested groups using
+     * LDAP_MATCHING_RULE_IN_CHAIN.
+     */
+    recursiveGroupMembership?: boolean;
     /**
      * Admin role name
      */
@@ -2359,6 +2367,12 @@ export interface NaturalLanguageSearch {
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
+    /**
+     * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
+     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
+     * cost of latency. Defaults to 2.
+     */
+    knnNumCandidatesMultiplier?: number;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */

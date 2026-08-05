@@ -66,6 +66,11 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTierCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getTestDefinitionCondition());
+    conditions.add(getTestCaseOwnerCondition());
+    conditions.add(getIncidentAssigneeCondition());
+    conditions.add(getIncidentDomainCondition());
+    conditions.add(getIncidentDateRangeCondition());
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
@@ -201,7 +206,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(assigneeFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("assigneeFqnHash", hashCsv);
     return String.format(
@@ -219,6 +224,19 @@ public class ListFilter extends Filter<ListFilter> {
         Relationship.ASSIGNED_TO.ordinal(),
         inCondition,
         Relationship.ASSIGNED_TO.ordinal());
+  }
+
+  /**
+   * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
+   * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
+   * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
+   * buildHash} on the raw name would split it on the dot into two FQN parts and produce a compound
+   * hash that never matches, so any name containing a dot would resolve to zero tasks. Quoting first
+   * treats the whole name as a single FQN component; {@code quoteName} is a no-op for names that need
+   * no quoting, so non-dotted names are unaffected.
+   */
+  private static String hashUserName(String name) {
+    return FullyQualifiedName.buildHash(FullyQualifiedName.quoteName(name));
   }
 
   /**
@@ -273,7 +291,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(createdBy.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("createdByFqnHash", hashCsv);
     return String.format(
@@ -426,9 +444,106 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getTestCaseResolutionStatusType() {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
-    return testFailureStatus == null
-        ? ""
-        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
+    String result = "";
+    if (!nullOrEmpty(testFailureStatus)) {
+      String inCondition =
+          buildIndexedBindParams("testCaseResolutionStatusType", testFailureStatus);
+      result = String.format("testCaseResolutionStatusType IN (%s)", inCondition);
+    }
+    return result;
+  }
+
+  // Scopes the test_case_resolution_status_time_series listing to the test cases contained in
+  // a test definition; testDefinitionId is only set by TestCaseResolutionStatusResource#list.
+  private String getTestDefinitionCondition() {
+    String testDefinitionId = queryParams.get("testDefinitionId");
+    String result = "";
+    if (!nullOrEmpty(testDefinitionId)) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT tdtc.fqnHash FROM test_case tdtc "
+                  + "INNER JOIN entity_relationship tder ON tder.toId = tdtc.id "
+                  + "WHERE tder.fromId = :testDefinitionId AND tder.fromEntity = '%s' "
+                  + "AND tder.toEntity = '%s' AND tder.relation = %d)",
+              Entity.TEST_DEFINITION, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
+    }
+    return result;
+  }
+
+  // Scopes the test_case_resolution_status_time_series listing to the test cases directly owned
+  // by a user or team (owners inherited from the table are resolved at read time and are not
+  // visible to SQL); testCaseOwnerId is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseOwnerCondition() {
+    String testCaseOwnerId = queryParams.get("testCaseOwnerId");
+    String result = "";
+    if (!nullOrEmpty(testCaseOwnerId)) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT tcotc.fqnHash FROM test_case tcotc "
+                  + "INNER JOIN entity_relationship tcoer ON tcoer.toId = tcotc.id "
+                  + "WHERE tcoer.fromId = :testCaseOwnerId AND tcoer.fromEntity IN ('%s', '%s') "
+                  + "AND tcoer.toEntity = '%s' AND tcoer.relation = %d)",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) reduces
+  // test_case_resolution_status_time_series records to one latest row per stateId in a CTE
+  // aliased {@code i} (createdAt/updatedAt are the chain's first/last record timestamps) and
+  // joins test_case as {@code tc}. The incident* query params below are only set by
+  // TestCaseResolutionStatusResource (incidentAssignee also by the flat list, where it compares
+  // the record's assignee column — the generic "assignee" param belongs to the task listing).
+  private String getIncidentAssigneeCondition() {
+    String assignee = queryParams.get("incidentAssignee");
+    return nullOrEmpty(assignee) ? "" : "assignee = :incidentAssignee";
+  }
+
+  private String getIncidentDomainCondition() {
+    String domainId = queryParams.get("incidentDomainId");
+    String result = "";
+    if (!nullOrEmpty(domainId)) {
+      result =
+          String.format(
+              "EXISTS (SELECT 1 FROM entity_relationship dr WHERE dr.fromId = :incidentDomainId "
+                  + "AND dr.fromEntity = 'domain' AND dr.relation = %d "
+                  + "AND dr.toId = tc.id AND dr.toEntity = 'testCase')",
+              Relationship.HAS.ordinal());
+    }
+    return result;
+  }
+
+  private String getIncidentDateRangeCondition() {
+    String start = queryParams.get("incidentStartTs");
+    String end = queryParams.get("incidentEndTs");
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start) || !nullOrEmpty(end)) {
+      String column = getIncidentDateColumn(queryParams.get("incidentDateField"));
+      if (!nullOrEmpty(start)) {
+        clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+      }
+      if (!nullOrEmpty(end)) {
+        clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+      }
+    }
+    return String.join(" AND ", clauses);
+  }
+
+  private String getIncidentDateColumn(String dateField) {
+    String defaulted =
+        dateField == null
+            ? TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT
+            : dateField;
+    return switch (defaulted) {
+      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT -> "i.createdAt";
+      case TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT -> "i.updatedAt";
+      default -> throw new IllegalArgumentException(
+          String.format(
+              "Invalid dateField '%s'. Must be one of [%s, %s]",
+              dateField,
+              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
+              TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT));
+    };
   }
 
   public String getIncludeCondition(String tableName) {
@@ -1194,7 +1309,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(approverFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("approverFqnHash", hashCsv);
     return String.format(

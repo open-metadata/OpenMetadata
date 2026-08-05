@@ -18,11 +18,13 @@ import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -292,6 +294,28 @@ class EntityLifecycleEventDispatcherTest {
     assertEquals(2, allEntitiesHandler.updatedCallCount);
     assertTrue(allEntitiesHandler.receivedChangeDescriptions.contains(mockChangeDescription));
     assertTrue(allEntitiesHandler.receivedChangeDescriptions.contains(dashboardChangeDescription));
+  }
+
+  @Test
+  void testOnEntitiesUpdatedForwardsUpdateContextToSynchronousHandler() {
+    AtomicReference<EntityUpdateContext> receivedContext = new AtomicReference<>();
+    TestHandler contextHandler =
+        new TestHandler("ContextHandler", 100, false, Set.of()) {
+          @Override
+          public void onEntitiesUpdated(
+              List<? extends EntityInterface> entities,
+              ChangeDescription changeDescription,
+              SubjectContext subjectContext,
+              EntityUpdateContext updateContext) {
+            receivedContext.set(updateContext);
+          }
+        };
+    dispatcher.registerHandler(contextHandler);
+    EntityUpdateContext updateContext = new EntityUpdateContext(Map.of(mockEntity.getId(), 17L));
+
+    dispatcher.onEntitiesUpdated(List.of(mockEntity), null, mockSubjectContext, updateContext);
+
+    assertEquals(updateContext, receivedContext.get());
   }
 
   @Test

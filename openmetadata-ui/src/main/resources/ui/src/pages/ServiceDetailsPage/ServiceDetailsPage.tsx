@@ -77,7 +77,7 @@ import {
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
-import { AgentType, App } from '../../generated/entity/applications/app';
+
 import { Tag } from '../../generated/entity/classification/tag';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
@@ -107,7 +107,10 @@ import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
-import { getApplicationList } from '../../rest/applicationAPI';
+import {
+  CollateAgentAutomation,
+  getAiAutomationsByService,
+} from '../../rest/applicationAPI';
 import {
   getDashboards,
   getDataModels,
@@ -321,7 +324,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     Array<{ key: string; label: string }>
   >([]);
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
-  const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
+  const [collateAgentsList, setCollateAgentsList] = useState<
+    CollateAgentAutomation[]
+  >([]);
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
@@ -550,27 +555,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, serviceCategory]);
 
   const fetchCollateAgentsList = useCallback(
-    async (paging?: Omit<Paging, 'total'>) => {
+    async (_paging?: Omit<Paging, 'total'>) => {
       try {
         setIsCollateAgentLoading(true);
-        const { data, paging: pagingRes } = await getApplicationList({
-          agentType: [
-            AgentType.CollateAI,
-            AgentType.CollateAIQualityAgent,
-            AgentType.CollateAITierAgent,
-          ],
-          ...paging,
-        });
+        // AutoPilot creates at most one automation per template, so the list is
+        // bounded and served in a single unpaginated fetch.
+        const { data } = await getAiAutomationsByService(decodedServiceFQN);
 
         setCollateAgentsList(data);
-        handleCollateAgentPagingChange(pagingRes);
+        handleCollateAgentPagingChange({ total: data.length });
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsCollateAgentLoading(false);
       }
     },
-    [handleCollateAgentPagingChange]
+    [decodedServiceFQN, handleCollateAgentPagingChange]
   );
 
   const getAllIngestionWorkflows = useCallback(
@@ -752,11 +752,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include, permissions.dashboard]
   );
 
-  // Fetch Data Model count to show it in tab label
+  // Fetch Data Model count to show it in tab label. This owns `dataModelPaging`
+  // only — `isServiceLoading` and the entity paging belong to `getOtherDetails`,
+  // and driving them from here left the entity tab's table spinning forever
+  // because this effect re-runs on every tab change.
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
-        setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
@@ -766,7 +768,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        handlePagingChange(pagingObject);
+        setDataModelPaging(pagingObject);
       }
     },
     [decodedServiceFQN, include]

@@ -86,12 +86,12 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
     'Swap server to SAML with short JWT TTL and establish user session',
     async ({ browser }) => {
       helper = getProviderHelper(providerType);
-      const { apiContext, afterAction, page } = await performAdminLogin(
+      const { apiContext, afterAction, token } = await performAdminLogin(
         browser
       );
 
       try {
-        adminJwt = await getToken(page);
+        adminJwt = token;
 
         if (!adminJwt) {
           throw new Error(

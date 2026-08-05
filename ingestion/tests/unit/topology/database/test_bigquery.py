@@ -59,6 +59,8 @@ from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+    BIGQUERY_LIFE_CYCLE_QUERY,
+    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 
 mock_bq_config = {
@@ -429,6 +431,21 @@ class BigqueryUnitTest(TestCase):
             ),
             EXPECTED_URL,
         )
+
+    def test_region_life_cycle_query_selects_last_modified(self):
+        query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
+            database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME, region="EU"
+        )
+
+        self.assertIn("creation_time as created_at", query)
+        self.assertIn("storage_last_modified_time as updated_at", query)
+        self.assertIn("`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE", query)
+
+    def test_dataset_life_cycle_query_is_created_only(self):
+        query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME)
+
+        self.assertIn("creation_time as created_at", query)
+        self.assertNotIn("TABLE_STORAGE", query)
 
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels")
     def test_yield_database(self, get_database_tag_labels):
@@ -937,3 +954,34 @@ class TestBigqueryRegionAwareQueries:
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
         assert self.bq_source._table_ddl_cache == {}
+
+    # --- get_life_cycle_query ---
+
+    def test_life_cycle_query_uses_region_aware_query(self):
+        """Region-scoped query (with TABLE_STORAGE) is used when the dataset has a location."""
+        self._set_dataset_location("EU")
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE" in query
+        assert "storage_last_modified_time as updated_at" in query
+
+    def test_life_cycle_query_falls_back_without_location(self):
+        """Dataset-scoped created-only query is used when dataset location is None."""
+        self._set_dataset_location(None)
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "region-" not in query
+        assert "TABLE_STORAGE" not in query
+        assert "creation_time as created_at" in query
+
+    def test_life_cycle_query_falls_back_when_location_unavailable(self):
+        """When client.get_dataset raises, falls back to the dataset-scoped created-only query."""
+        self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
+        self.bq_source._current_dataset_obj = None
+
+        query = self.bq_source.get_life_cycle_query()
+
+        assert "TABLE_STORAGE" not in query
+        assert "creation_time as created_at" in query

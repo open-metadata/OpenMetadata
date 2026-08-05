@@ -40,15 +40,12 @@ from metadata.core.connections.test_connection import (
 )
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import run_sql
-from metadata.core.connections.test_connection.checks.pipeline import (
-    PipelineStep,
-    verify_access,
-)
+from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.core.connections.test_connection.checks.rest import http_status, verify_access
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MysqlConnectionConfig,
@@ -188,14 +185,14 @@ def _get_engine_from_env_vars() -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: MysqlConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.mysql.connection import MySQLConnection  # noqa: PLC0415
+    from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 
     return MySQLConnection(airflow_connection)._get_client()
 
 
 @_get_connection.register
 def _(airflow_connection: PostgresConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.postgres.connection import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.postgres.connection import (
         PostgresConnection,
     )
 
@@ -204,7 +201,7 @@ def _(airflow_connection: PostgresConnectionConfig) -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.sqlite.connection import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.sqlite.connection import (
         SQLiteConnection,
     )
 
@@ -249,39 +246,47 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
         raise AirflowTaskDetailsAccessError(f"Task details access error : {e}") from e
 
 
+def _test_task_detail_access_rest(client) -> None:  # pyright: ignore[reportMissingParameterType]
+    """
+    REST/MWAA sibling of _test_task_detail_access: read one DAG's tasks to
+    confirm the /tasks endpoint is reachable and permitted. A denied or broken
+    endpoint raises from the underlying client and fails the step. Any body it
+    returns is accepted — ingestion itself tolerates the response via
+    get("tasks", []), so a shape mismatch is a format quirk, not an access
+    failure, and must not fail this mandatory gate.
+
+    Signals success by returning normally and failure by raising; verify_access
+    reads only the exception, so there is no value to return.
+    """
+    dags = (client.list_dags(limit=1) or {}).get("dags") or []
+    dag_id = dags[0].get("dag_id") if dags and isinstance(dags[0], dict) else None
+    if dag_id:
+        client.get_dag_tasks(dag_id)
+
+
 def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # pyright: ignore[reportMissingParameterType]
     """
-    Call client.get_version(); on failure, attempt a managed-flavor-specific
+    Call client.test_get_version(); on failure, attempt a managed-flavor-specific
     diagnostic and raise SourceConnectionException with a combined message
     ("<original error>\\n\\n<hint>"). When no hint applies, the original
     exception is re-raised unchanged.
+
+    Uses the strict accessor, not get_version: the latter tolerates a reply it
+    cannot parse, which would pass the gate against any web server.
     """
-    from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (  # noqa: PLC0415
+    from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (
         diagnose,
     )
 
     result = None
     try:
-        result = client.get_version()
+        result = client.test_get_version()
     except Exception as exc:
         hint = diagnose(host, auth_config, verify, exc)
         if hint:
             raise SourceConnectionException(f"{exc}\n\n{hint}") from exc
         raise
     return result
-
-
-def _http_status(*codes: int) -> Matcher:
-    """Match an Airflow REST error by HTTP status, across the cause chain."""
-    wanted = frozenset(codes)
-
-    def match(error: BaseException) -> bool:
-        return any(
-            getattr(getattr(current, "response", None), "status_code", None) in wanted
-            for current in exception_chain(error)
-        )
-
-    return match
 
 
 def _db_message(*tokens: str) -> Matcher:
@@ -306,18 +311,23 @@ def _db_message(*tokens: str) -> Matcher:
 # Only signals we exercised live or that follow directly from HTTP / driver
 # documentation are diagnosed here; everything else keeps its raw error log.
 AIRFLOW_ERRORS = ErrorPack(
-    when(_http_status(401)).diagnose(
+    when(http_status(401)).diagnose(
         "Authentication failed",
         fix="Airflow rejected the credentials. Check the username and password (or token) are correct and not expired.",
     ),
-    when(_http_status(403)).diagnose(
+    when(http_status(403)).diagnose(
         "Access denied",
         fix="The credentials are valid but lack access. Grant this user permission to read the Airflow REST API.",
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404)).diagnose(
         "Endpoint not found",
         fix="Airflow returned 404 for this URL. Check the Host and Port point to the Airflow web "
         "server, not a UI or console page.",
+    ),
+    when(http_status(429)).diagnose(
+        "Rate limited",
+        fix="Airflow (or a gateway in front of it) is throttling the request. Retry in a few "
+        "minutes, or raise the rate limit for the account ingestion uses.",
     ),
     # A URL that is not the Airflow REST API (an SSO login page, the marketing
     # site) answers with HTML that fails to decode as JSON.
@@ -393,10 +403,7 @@ class AirflowChecks:
         parsed = urlparse(host)
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         if parsed.hostname:
-            try:
-                tcp_probe(parsed.hostname, port)
-            except NetworkUnreachableError as error:
-                raise CheckError(error, Evidence(command=f"TCP connect {parsed.hostname}:{port}")) from error
+            probe_or_fail(parsed.hostname, port)
 
     @staticmethod
     def _rest_context(client: AirflowApiClient) -> tuple[str | None, Any, bool]:
@@ -430,7 +437,10 @@ class AirflowChecks:
     def task_detail_access(self) -> Evidence:
         client = self.client
         if isinstance(client, AirflowApiClient):
-            return Evidence(summary="task details are read per-DAG during ingestion")
+            return verify_access(
+                lambda: _test_task_detail_access_rest(client),
+                command="read one DAG's tasks via the Airflow REST API",
+            )
         return self._backend_step(
             _test_task_detail_access,
             command="SELECT data FROM serialized_dag LIMIT 1",
@@ -454,7 +464,7 @@ class AirflowChecks:
 
 class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
     def _get_client(self) -> Any:
-        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel
             AirflowRestApiConnection,
         )
 
@@ -467,7 +477,10 @@ class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
         except Exception as exc:
             msg = f"Unknown error connecting with {connection}: {exc}."
             raise SourceConnectionException(msg) from exc
-        if isinstance(client, Engine):
+        # The Airflow 2.x backend engine is airflow's process-global
+        # settings.engine (borrowed, not OM-built); disposing it would tear down
+        # the host Airflow pool. Only dispose engines this connection built.
+        if isinstance(client, Engine) and client is not getattr(settings, "engine", None):
             self._on_close(client.dispose)
         return client
 

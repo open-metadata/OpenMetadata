@@ -60,6 +60,14 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
+.PHONY: generate_settings_docs
+generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
+	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
+
+.PHONY: check_import_layers
+check_import_layers:  ## Fail if a module imports a higher layer (import-cost guard, see ingestion/.importlinter)
+	cd $(INGESTION_DIR) && lint-imports
+
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
 	pytest -c $(INGESTION_DIR)/pyproject.toml --cov=metadata --cov-branch --cov-config=$(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml -n auto $(INGESTION_DIR)/tests/unit

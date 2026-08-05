@@ -169,7 +169,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
       <Modal
         className={classNames('tw:w-full', {
           'tw:max-w-[max(56rem,60vw)]': !isFullScreen,
-          'tw:max-w-full': isFullScreen,
+          'tw:max-w-[95vw]': isFullScreen,
         })}>
         <AriaDialog
           aria-label={title}
@@ -183,10 +183,10 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
           )}>
           <div
             className={classNames(
-              'lvm-surface tw:flex tw:flex-col tw:overflow-hidden tw:shadow-xl',
+              'lvm-surface tw:flex tw:flex-col tw:overflow-hidden tw:shadow-xl tw:rounded-2xl',
               {
-                'tw:h-[80vh] tw:rounded-2xl': !isFullScreen,
-                'tw:h-[95vh] tw:rounded-none': isFullScreen,
+                'tw:h-[80vh]': !isFullScreen,
+                'tw:h-[95vh]': isFullScreen,
               }
             )}>
             <div className="lvm-header tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-3">

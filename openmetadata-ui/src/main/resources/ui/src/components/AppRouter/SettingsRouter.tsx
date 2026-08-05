@@ -248,15 +248,6 @@ const RolesListPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
 
-const SearchIndexMappingsPage = withPageSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../pages/SearchIndexMappingsPage/SearchIndexMappingsPage.component'
-      )
-  )
-);
-
 const SearchSettingsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/SearchSettingsPage/SearchSettingsPage'))
 );
@@ -694,18 +685,6 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.SEARCH_SETTINGS,
           true
-        )}
-      />
-
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <SearchIndexMappingsPage />
-          </AdminProtectedRoute>
-        }
-        path={getSettingPathRelative(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.SEARCH_MAPPINGS
         )}
       />
 

@@ -154,3 +154,29 @@ def test_run_test_connection_reuses_without_rebuild_or_close():
     assert owner.build_count == 1
     assert owner.client is client
     assert client.closed is False
+
+
+def test_close_on_failure_releases_the_owner_when_the_test_raises():
+    owner = FakeConnection(_service_connection())
+    client = owner.client
+
+    with pytest.raises(RuntimeError, match="cannot connect"), connections_module.close_on_failure(owner):
+        raise RuntimeError("cannot connect")
+
+    assert client.closed is True
+
+
+def test_close_on_failure_keeps_the_owner_when_the_test_passes():
+    owner = FakeConnection(_service_connection())
+    client = owner.client
+
+    with connections_module.close_on_failure(owner):
+        pass
+
+    assert client.closed is False
+    assert owner.build_count == 1
+
+
+def test_close_on_failure_tolerates_an_unowned_connection():
+    with pytest.raises(RuntimeError), connections_module.close_on_failure(None):
+        raise RuntimeError("cannot connect")

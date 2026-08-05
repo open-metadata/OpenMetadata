@@ -91,6 +91,9 @@ public class DefaultToolContext {
         case "get_persona_context":
           result = new GetPersonaContextTool().execute(authorizer, securityContext, params);
           break;
+        case "get_user_context":
+          result = new GetUserContextTool().execute(authorizer, securityContext, params);
+          break;
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;

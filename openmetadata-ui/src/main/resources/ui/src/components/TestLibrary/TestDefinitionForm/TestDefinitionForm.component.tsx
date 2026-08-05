@@ -12,8 +12,8 @@
  */
 import {
   Box,
+  EmptyPlaceholder,
   HookForm,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
@@ -31,6 +31,7 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import { monospaceParameterNames } from '../../../utils/DataQuality/FormHintDocUtils';
 import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -260,8 +261,11 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
 
   const hintLabel = (label: string) => (
     <Box align="center" className="tw:gap-2" direction="row">
-      <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-      <Typography className="tw:text-secondary" size="text-sm" weight="medium">
+      <Lightbulb05 className="tw:size-4 tw:shrink-0 tw:text-secondary" />
+      <Typography
+        className="tw:whitespace-nowrap tw:text-secondary"
+        size="text-sm"
+        weight="medium">
         {label}
       </Typography>
     </Box>
@@ -270,34 +274,40 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   if (isModalVariant) {
     return (
       <AiFormModal
-        headerActions={
-          <Box align="center" className="tw:gap-2" direction="row">
-            {hintLabel(t('label.show-hint'))}
-            <Toggle
-              aria-label={t('label.show-hint')}
-              isSelected={showHint}
-              size="sm"
-              onChange={setShowHint}
-            />
-          </Box>
-        }
+        hintOpen={showHint}
         isSubmitting={form.formState.isSubmitting}
         open={open}
-        reserveHintSpace={showHint}
         submitLabel={t('label.save')}
         subtitle={t('message.page-sub-header-for-test-definitions')}
         title={resolvedTitle}
         onClose={handleDismiss}
+        onHintToggle={setShowHint}
         onSubmit={submitAndClose}>
         <HookForm
-          fieldDocHeader={hintLabel(t('label.form-hint'))}
-          fieldDocOffset={56}
-          form={form}
-          renderFieldDoc={(markdown) => (
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant={false}
-              markdown={markdown}
+          emptyFieldDoc={
+            // width="100%" is required: EmptyPlaceholder's 300px default is
+            // wider than the hint column's 260px minimum and would overflow
+            // once the column shrinks on a narrow viewport.
+            <EmptyPlaceholder
+              description={t('message.form-hint-empty-state')}
+              icon={Lightbulb05}
+              title={t('label.no-entity-selected', {
+                entity: t('label.field'),
+              })}
+              width="100%"
             />
+          }
+          fieldDocDisplay="panel"
+          fieldDocHeader={hintLabel(t('label.form-hint'))}
+          form={form}
+          formClassName="tw:px-7 tw:pt-6 tw:pb-7"
+          renderFieldDoc={(markdown) => (
+            <div className="form-hint-doc">
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant={false}
+                markdown={monospaceParameterNames(markdown)}
+              />
+            </div>
           )}
           showFieldDocs={showHint}
           onSubmit={submitAndClose}>

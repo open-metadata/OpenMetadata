@@ -100,10 +100,13 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     List<User> botUsers = userRepository.getEntitiesFromSeedData(".*json/data/botUser/.*\\.json$");
     for (User botUser : botUsers) {
+      // Seeded grant applies on first creation only: UserUpdater preserves the stored value on
+      // every subsequent PUT, so restarts never upgrade an already-created bot's token holders.
       User user =
           UserUtil.user(botUser.getName(), domain, botUser.getName())
               .withIsBot(true)
-              .withIsAdmin(false);
+              .withIsAdmin(false)
+              .withAllowImpersonation(botUser.getAllowImpersonation());
       user.setRoles(
           listOrEmpty(botUser.getRoles()).stream()
               .map(
