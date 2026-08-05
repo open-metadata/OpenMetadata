@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../utils/common';
-import { runDataInsightApplication } from '../utils/dataInsight';
 
 // use the admin user to login
 setup.use({
@@ -57,7 +56,65 @@ setup(
       }
     );
 
-    await runDataInsightApplication(page, apiContext);
+    await expect(
+      await apiContext.patch(
+        `/api/v1/apps/marketplace/name/DataInsightsApplication`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/appConfiguration/batchSize',
+              value: 1000,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/recreateDataAssetsIndex',
+              value: false,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/backfillConfiguration/enabled',
+              value: false,
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    ).toBeOK();
+
+    await apiContext.post('/api/v1/apps/trigger/DataInsightsApplication');
+
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to start before polling status
+    await page.waitForTimeout(2000);
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext
+            .get(
+              '/api/v1/apps/name/DataInsightsApplication/status?offset=0&limit=1'
+            )
+            .then((res) => res.json());
+
+          return response.data[0].status;
+        },
+        {
+          // Custom expect message for reporting, optional.
+          message: 'Wait for the Data Insight Application run to be successful',
+          ...(process.env.PLAYWRIGHT_IS_OSS
+            ? {
+                timeout: 120_000,
+                intervals: [5_000, 10_000],
+              }
+            : {
+                timeout: 5400_000,
+                intervals: [300_000, 300_000, 120_000],
+              }),
+        }
+      )
+      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
 
     await table.delete(apiContext);
 
