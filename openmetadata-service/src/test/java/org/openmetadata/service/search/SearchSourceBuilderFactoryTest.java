@@ -347,6 +347,28 @@ public class SearchSourceBuilderFactoryTest {
     assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
   }
 
+  @Test
+  public void testColumnIndexSearchAppliesMinimumShouldMatchFloor() {
+    // Regression: column search must not degrade into matching every column that shares a single
+    // token (e.g. a common parent-name token in fullyQualifiedName/table.name). Without a
+    // minimum_should_match floor an FQN-style query returned the whole column index while the
+    // dataAsset aggregation counted only the true matches, so the tab count and results diverged.
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String query = "pw-database-service pw-table first_name";
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.getSearchSourceBuilderV2(Entity.TABLE_COLUMN, query, 0, 15));
+    String esQuery =
+        esFactory.getSearchSourceBuilderV2(Entity.TABLE_COLUMN, query, 0, 15).query().toString();
+
+    assertTrue(osQuery.contains("\"minimum_should_match\":\"2<70%\""), osQuery);
+    assertTrue(esQuery.contains("\"minimum_should_match\":\"2<70%\""), esQuery);
+  }
+
   private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {
     JacksonJsonpMapper mapper = new JacksonJsonpMapper();
     StringWriter writer = new StringWriter();

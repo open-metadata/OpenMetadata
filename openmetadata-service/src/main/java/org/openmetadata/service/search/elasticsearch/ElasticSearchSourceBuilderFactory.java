@@ -381,6 +381,8 @@ public class ElasticSearchSourceBuilderFactory
       queryBuilder = Query.of(q -> q.matchAll(m -> m));
     } else {
       Map<String, Float> fields = ColumnSearchIndex.getFields();
+      // Require a minimum token overlap so a single shared parent token (e.g. in
+      // fullyQualifiedName or table.name) does not match every column in the index.
       queryBuilder =
           ElasticQueryBuilder.multiMatchQuery(
               query,
@@ -388,7 +390,10 @@ public class ElasticSearchSourceBuilderFactory
               TextQueryType.BestFields,
               Operator.Or,
               String.valueOf(DEFAULT_TIE_BREAKER),
-              "0");
+              "0",
+              MINIMUM_SHOULD_MATCH,
+              null,
+              null);
     }
     Highlight hb = buildHighlightsV2(List.of("name", "displayName", "description"));
     return searchBuilderV2(queryBuilder, hb, from, size);
