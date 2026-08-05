@@ -212,6 +212,9 @@ jobs:
           source env/bin/activate
           make install_all install_apis
 
+      - name: Restore openmetadata-ui dist cache
+        uses: ./.github/actions/cache-ui-dist
+
       - name: Maven build
         id: maven-build
         continue-on-error: true
