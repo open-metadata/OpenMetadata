@@ -39,7 +39,9 @@ const CollapseHeader = ({
       </Typography.Text>
       {menuItems ? (
         <Dropdown
-          getPopupContainer={(triggerNode) => triggerNode.parentElement!}
+          getPopupContainer={(triggerNode) =>
+            triggerNode.parentElement as HTMLElement
+          }
           menu={{
             items: menuItems,
             className: 'menu-items',

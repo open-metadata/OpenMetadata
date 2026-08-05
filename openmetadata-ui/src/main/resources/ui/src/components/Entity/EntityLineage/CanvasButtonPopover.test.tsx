@@ -196,7 +196,7 @@ describe('CanvasButtonPopover', () => {
 
     const popover = screen.getByTestId('entity-popover-card').parentElement;
 
-    fireEvent.mouseEnter(popover!);
+    fireEvent.mouseEnter(popover as HTMLElement);
 
     expect(mockIsOverPopoverRef.current).toBe(true);
     expect(mockHoverTimeoutRef.current).toBeNull();
@@ -216,7 +216,7 @@ describe('CanvasButtonPopover', () => {
 
     const popover = screen.getByTestId('entity-popover-card').parentElement;
 
-    fireEvent.mouseLeave(popover!);
+    fireEvent.mouseLeave(popover as HTMLElement);
 
     expect(mockOnMouseLeave).toHaveBeenCalledTimes(1);
   });

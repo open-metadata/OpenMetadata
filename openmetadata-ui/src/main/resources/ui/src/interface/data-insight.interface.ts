@@ -12,6 +12,10 @@
  */
 
 import type { TooltipProps } from 'recharts';
+import type {
+  NameType,
+  ValueType,
+} from 'recharts/types/component/DefaultTooltipContent';
 import { DataInsightIndex, SystemChartType } from '../enums/DataInsight.enum';
 import { ReportData } from '../generated/analytics/reportData';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
@@ -38,7 +42,8 @@ export interface ChartFilter {
   endTs: number;
 }
 
-export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
+export interface DataInsightChartTooltipProps
+  extends TooltipProps<ValueType, NameType> {
   cardStyles?: React.CSSProperties;
   customValueKey?: string;
   displayDateInHeader?: boolean;

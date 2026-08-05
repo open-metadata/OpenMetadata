@@ -18,6 +18,7 @@ import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
+import { SearchIndex } from '../../../../enums/search.enum';
 import {
   Domain,
   DomainType,
@@ -80,7 +81,7 @@ const mockSearchResponse = {
     total: { value: mockDomains.length },
   },
   aggregations: {},
-} as any;
+} as unknown as Awaited<ReturnType<typeof searchQuery>>;
 
 // Mock API functions
 jest.mock('../../../../rest/searchAPI', () => ({
@@ -334,7 +335,7 @@ describe('DomainsWidget', () => {
       hits: {
         hits: manyDomains.map((domain) => ({
           _source: domain,
-          _index: 'domain',
+          _index: SearchIndex.DOMAIN,
           _id: domain.id,
         })),
         total: { value: manyDomains.length },
@@ -389,7 +390,7 @@ describe('DomainsWidget', () => {
         hits: [
           {
             _source: domainWithNoAssets,
-            _index: 'domain',
+            _index: SearchIndex.DOMAIN,
             _id: domainWithNoAssets.id,
           },
         ],

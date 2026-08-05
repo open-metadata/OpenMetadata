@@ -135,7 +135,7 @@ describe('JSONLogicSearchClassBase', () => {
           },
         },
       };
-      const result = (dateWidget as ExtendedWidget).jsonLogic!.call(
+      const result = (dateWidget as ExtendedWidget).jsonLogic?.call(
         mockContext,
         mockDate
       );
@@ -156,7 +156,7 @@ describe('JSONLogicSearchClassBase', () => {
           },
         },
       };
-      const result2 = (dateWidget as ExtendedWidget).jsonLogicImport!.call(
+      const result2 = (dateWidget as ExtendedWidget).jsonLogicImport?.call(
         mockContext2,
         timestamp
       );

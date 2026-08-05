@@ -41,7 +41,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
   processContractExecutionData: jest.fn((data) =>
-    data.map((item: any, index: number) => ({
+    data.map((item: DataContractResult, index: number) => ({
       name: `${item.timestamp}_${index}`,
       displayTimestamp: item.timestamp,
       value: 1,
@@ -53,6 +53,7 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
     }))
   ),
   createContractExecutionCustomScale: jest.fn(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- d3 scale mock with dynamically attached methods
     const scale: any = (value: any) => value;
     scale.domain = jest.fn(() => scale);
     scale.range = jest.fn(() => scale);
@@ -117,7 +118,11 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {
-  return function MockDatePickerMenu({ handleDateRangeChange }: any) {
+  return function MockDatePickerMenu({
+    handleDateRangeChange,
+  }: {
+    handleDateRangeChange: (range: { startTs: number; endTs: number }) => void;
+  }) {
     return (
       <div data-testid="date-picker-menu">
         <button
@@ -136,6 +141,7 @@ jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {
 });
 
 jest.mock('../../common/ExpandableCard/ExpandableCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component props
   return function MockExpandableCard({ cardProps, children }: any) {
     return (
       <div className={cardProps?.className} data-testid="expandable-card">
@@ -153,20 +159,30 @@ jest.mock('../../common/Loader/Loader', () => {
 });
 
 jest.mock('recharts', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component props
   ResponsiveContainer: ({ children }: any) => (
     <div data-testid="responsive-container">{children}</div>
   ),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock component props
   BarChart: ({ data, children }: any) => (
     <div data-chart-data={JSON.stringify(data)} data-testid="bar-chart">
       {children}
     </div>
   ),
-  Bar: ({ dataKey, fill, name }: any) => (
+  Bar: ({
+    dataKey,
+    fill,
+    name,
+  }: {
+    dataKey?: string;
+    fill?: string;
+    name?: string;
+  }) => (
     <div data-fill={fill} data-testid={`bar-${dataKey}`}>
       {name}
     </div>
   ),
-  XAxis: ({ dataKey }: any) => (
+  XAxis: ({ dataKey }: { dataKey?: string }) => (
     <div data-key={dataKey} data-testid="x-axis">
       XAxis
     </div>
@@ -196,7 +212,7 @@ const mockContract: DataContract = {
   id: 'contract-1',
   name: 'Test Contract',
   description: 'Test Description',
-} as any;
+} as unknown as DataContract;
 
 const mockContractResults: DataContractResult[] = [
   {
@@ -214,7 +230,7 @@ const mockContractResults: DataContractResult[] = [
     timestamp: 1640995320000,
     contractExecutionStatus: ContractExecutionStatus.Aborted,
   },
-] as any;
+] as unknown as DataContractResult[];
 
 describe('ContractExecutionChart', () => {
   beforeEach(() => {
@@ -517,7 +533,11 @@ describe('ContractExecutionChart', () => {
       const contractWithoutId = { ...mockContract, id: undefined };
 
       expect(() => {
-        render(<ContractExecutionChart contract={contractWithoutId as any} />);
+        render(
+          <ContractExecutionChart
+            contract={contractWithoutId as unknown as DataContract}
+          />
+        );
       }).not.toThrow();
     });
   });

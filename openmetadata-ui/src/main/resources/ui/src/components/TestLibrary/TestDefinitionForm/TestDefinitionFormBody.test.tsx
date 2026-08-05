@@ -170,12 +170,12 @@ describe('TestDefinitionFormBody', () => {
 
     expect(input).toBeInTheDocument();
 
-    fireEvent.mouseDown(input!);
-    fireEvent.focus(input!);
-    fireEvent.change(input!, { target: { value: 'NUMBER' } });
+    fireEvent.mouseDown(input as HTMLElement);
+    fireEvent.focus(input as HTMLElement);
+    fireEvent.change(input as HTMLElement, { target: { value: 'NUMBER' } });
     fireEvent.click(await screen.findByRole('option', { name: 'NUMBER' }));
 
-    fireEvent.change(input!, { target: { value: 'VARCHAR' } });
+    fireEvent.change(input as HTMLElement, { target: { value: 'VARCHAR' } });
     fireEvent.click(await screen.findByRole('option', { name: 'VARCHAR' }));
 
     await waitFor(() => {
@@ -199,7 +199,7 @@ describe('TestDefinitionFormBody', () => {
 
       let isValid = true;
       await act(async () => {
-        isValid = await formRef!.trigger('supportedDataTypes');
+        isValid = (await formRef?.trigger('supportedDataTypes')) ?? false;
       });
 
       expect(isValid).toBe(false);
@@ -223,7 +223,7 @@ describe('TestDefinitionFormBody', () => {
 
       let isValid = false;
       await act(async () => {
-        isValid = await formRef!.trigger('supportedDataTypes');
+        isValid = (await formRef?.trigger('supportedDataTypes')) ?? false;
       });
 
       expect(isValid).toBe(true);

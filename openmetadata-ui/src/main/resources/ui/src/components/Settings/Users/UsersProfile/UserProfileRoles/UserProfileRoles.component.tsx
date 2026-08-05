@@ -288,6 +288,7 @@ const UserProfileRoles = ({
                     open={isDropdownOpen}
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- antd Select ref type mismatch
                     ref={dropdownRef as any}
                     tagRender={TagRenderer}
                     value={selectedRoles}

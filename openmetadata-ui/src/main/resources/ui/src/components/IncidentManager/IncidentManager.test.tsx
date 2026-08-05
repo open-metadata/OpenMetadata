@@ -598,7 +598,7 @@ describe('IncidentManagerPage', () => {
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.mouseDown(selectBox as Element);
     });
 
     const resolvedOption = await screen.findByText('label.resolved');

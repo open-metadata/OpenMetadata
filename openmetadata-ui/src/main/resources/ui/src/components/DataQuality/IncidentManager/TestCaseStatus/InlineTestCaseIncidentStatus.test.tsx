@@ -737,7 +737,7 @@ describe('InlineTestCaseIncidentStatus', () => {
         .closest('button');
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton as HTMLElement);
       });
 
       await waitFor(() => {
@@ -967,7 +967,7 @@ describe('InlineTestCaseIncidentStatus', () => {
         .closest('button');
 
       await act(async () => {
-        fireEvent.click(backButton!);
+        fireEvent.click(backButton as HTMLElement);
       });
 
       await waitFor(() => {

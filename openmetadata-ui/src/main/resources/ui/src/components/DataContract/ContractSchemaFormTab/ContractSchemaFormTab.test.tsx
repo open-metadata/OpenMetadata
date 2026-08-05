@@ -18,7 +18,12 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Column } from '../../../generated/entity/data/table';
+import {
+  Column,
+  Constraint,
+  DataType,
+} from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
@@ -70,7 +75,14 @@ jest.mock('../../common/Table/Table', () => {
     rowSelection,
     rowKey,
     pagination,
-  }: any) {
+  }: {
+    columns?: unknown[];
+    dataSource?: Array<Record<string, string>>;
+    loading?: boolean;
+    rowSelection?: { onChange?: (keys: string[]) => void };
+    rowKey: string;
+    pagination?: unknown;
+  }) {
     return (
       <div data-testid="mock-table">
         <div>Loading: {loading ? 'true' : 'false'}</div>
@@ -78,7 +90,7 @@ jest.mock('../../common/Table/Table', () => {
         <div>Data Source Length: {dataSource?.length || 0}</div>
         <div>Columns: {columns?.length || 0}</div>
         <div>Pagination: {pagination ? 'enabled' : 'disabled'}</div>
-        {dataSource?.map((item: any) => (
+        {dataSource?.map((item) => (
           <div data-testid={`table-row-${item.name}`} key={item[rowKey]}>
             <span>{item.name}</span>
             <button
@@ -96,10 +108,14 @@ jest.mock('../../common/Table/Table', () => {
 });
 
 jest.mock('../../Database/TableTags/TableTags.component', () => {
-  return function MockTableTags({ tags }: any) {
+  return function MockTableTags({
+    tags,
+  }: {
+    tags?: Array<{ tagFQN: string }>;
+  }) {
     return (
       <div data-testid="table-tags">
-        {tags?.map((tag: any) => (
+        {tags?.map((tag) => (
           <span data-testid={`tag-${tag.tagFQN}`} key={tag.tagFQN}>
             {tag.tagFQN}
           </span>
@@ -133,27 +149,27 @@ jest.mock('react-i18next', () => ({
 const mockColumns: Column[] = [
   {
     name: 'id',
-    dataType: 'BIGINT' as any,
+    dataType: DataType.Bigint,
     description: 'Primary key',
-    tags: [{ tagFQN: 'PII.Sensitive' }] as any,
-    constraint: 'PRIMARY_KEY' as any,
+    tags: [{ tagFQN: 'PII.Sensitive' }] as TagLabel[],
+    constraint: Constraint.PrimaryKey,
     fullyQualifiedName: 'service.database.schema.table.id',
   },
   {
     name: 'name',
-    dataType: 'VARCHAR' as any,
+    dataType: DataType.Varchar,
     description: 'User name',
-    tags: [{ tagFQN: 'PersonalData.Personal' }] as any,
+    tags: [{ tagFQN: 'PersonalData.Personal' }] as TagLabel[],
     fullyQualifiedName: 'service.database.schema.table.name',
   },
   {
     name: 'email',
-    dataType: 'VARCHAR' as any,
+    dataType: DataType.Varchar,
     description: 'User email',
-    tags: [] as any,
+    tags: [] as TagLabel[],
     fullyQualifiedName: 'service.database.schema.table.email',
   },
-] as any;
+];
 
 const mockOnChange = jest.fn();
 const mockOnNext = jest.fn();

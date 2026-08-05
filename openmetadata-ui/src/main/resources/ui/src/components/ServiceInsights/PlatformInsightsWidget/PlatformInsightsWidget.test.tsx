@@ -48,7 +48,9 @@ jest.mock('../../../assets/svg/ic-trend-up.svg', () => {
   };
 });
 
-const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<any>;
+const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<
+  typeof useRequiredParams
+>;
 
 const mockGetTitleByChartType = getTitleByChartType as jest.MockedFunction<
   typeof getTitleByChartType
@@ -61,9 +63,9 @@ describe('PlatformInsightsWidget', () => {
   const mockServiceDetails = {
     id: 'test-service-id',
     name: 'test-service',
-    serviceType: 'Mysql' as any,
+    serviceType: 'Mysql',
     fullyQualifiedName: 'test-service-fqn',
-  } as any;
+  } as unknown as PlatformInsightsWidgetProps['serviceDetails'];
 
   const mockChartsData = [
     {

@@ -415,8 +415,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         (a) => a.reference?.id && a.reference?.type
       );
       const toRef = (a: DataAssetOption): EntityReference => ({
-        id: a.reference!.id,
-        type: a.reference!.type,
+        id: a.reference?.id ?? '',
+        type: a.reference?.type ?? '',
         name: a.reference?.name,
         displayName: a.reference?.displayName,
         fullyQualifiedName: a.reference?.fullyQualifiedName,

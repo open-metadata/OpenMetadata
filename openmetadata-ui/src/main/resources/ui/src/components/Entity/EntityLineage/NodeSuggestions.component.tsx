@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Select } from 'antd';
+import { Button, Col, RefSelectProps, Row, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
@@ -51,7 +51,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
-  const selectRef = useRef<any>(null);
+  const selectRef = useRef<RefSelectProps>(null);
 
   const [data, setData] = useState<Array<SourceType>>([]);
   const [searchValue, setSearchValue] = useState<string>('');

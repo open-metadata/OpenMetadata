@@ -319,7 +319,7 @@ describe('KnowledgePagesHierarchy', () => {
     expect(expandBtn).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(expandBtn!);
+      fireEvent.click(expandBtn as HTMLElement);
     });
 
     expect(
@@ -350,7 +350,7 @@ describe('KnowledgePagesHierarchy', () => {
     expect(chevron).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron as HTMLElement);
     });
 
     expect(
@@ -358,7 +358,7 @@ describe('KnowledgePagesHierarchy', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron as HTMLElement);
     });
 
     expect(
@@ -464,7 +464,7 @@ describe('KnowledgePagesHierarchy', () => {
       const expandBtn = row?.querySelector('button[slot="chevron"]');
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn as HTMLElement);
       });
 
       await waitFor(() => {
@@ -549,7 +549,7 @@ describe('KnowledgePagesHierarchy', () => {
       const expandBtn = row?.querySelector('button[slot="chevron"]');
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn as HTMLElement);
       });
 
       await waitFor(() => {
@@ -630,7 +630,7 @@ describe('KnowledgePagesHierarchy', () => {
       const expandBtn = row?.querySelector('button[slot="chevron"]');
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn as HTMLElement);
       });
 
       await waitFor(() => {
@@ -654,7 +654,7 @@ describe('KnowledgePagesHierarchy', () => {
       );
 
       await act(async () => {
-        fireEvent.click(expandBtnAfterRefresh!);
+        fireEvent.click(expandBtnAfterRefresh as HTMLElement);
       });
 
       await waitFor(() => {

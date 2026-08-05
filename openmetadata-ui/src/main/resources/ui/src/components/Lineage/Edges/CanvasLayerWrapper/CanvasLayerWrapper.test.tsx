@@ -27,7 +27,7 @@ jest.mock('../../../Entity/EntityLineage/CanvasEdgeRenderer.component', () => ({
     onEdgeHover?: (edge: Edge | null) => void;
   }) => {
     const handleEdgeClick = () =>
-      onEdgeClick?.(hoverEdge!, new MouseEvent('click'));
+      onEdgeClick?.(hoverEdge as Edge, new MouseEvent('click'));
 
     return (
       <div
