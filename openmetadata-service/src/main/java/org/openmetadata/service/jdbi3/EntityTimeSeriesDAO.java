@@ -494,11 +494,22 @@ public interface EntityTimeSeriesDAO {
     }
   }
 
-  @SqlQuery(
-      "SELECT entityFQNHash, json FROM (SELECT entityFQNHash, json, "
-          + "ROW_NUMBER() OVER (PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS rn "
-          + "FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) "
-          + "AND extension = :extension) ranked WHERE rn = 1")
+  /** The single newest row per entity. See {@link #getLatestExtensionsBatch} for the dialect split. */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT entityFQNHash, json FROM (SELECT entityFQNHash, json, "
+              + "ROW_NUMBER() OVER (PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS rn "
+              + "FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) "
+              + "AND extension = :extension) ranked WHERE rn = 1",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT h.hash AS \"entityFQNHash\", x.json AS json "
+              + "FROM unnest(ARRAY[<entityFQNHashes>]::varchar[]) AS h(hash) "
+              + "JOIN LATERAL (SELECT json FROM <table> "
+              + "WHERE entityFQNHash = h.hash AND extension = :extension "
+              + "ORDER BY timestamp DESC LIMIT 1) x ON TRUE",
+      connectionType = POSTGRES)
   @RegisterRowMapper(FQNHashJsonRowMapper.class)
   List<FQNHashJsonRow> getLatestExtensionBatch(
       @Define("table") String table,
@@ -510,9 +521,10 @@ public interface EntityTimeSeriesDAO {
     if (entityFQNHashes == null || entityFQNHashes.isEmpty()) {
       return Map.of();
     }
+    // Distinct because `IN (...)` collapses a repeated hash but `unnest(ARRAY[...])` does not.
     List<FQNHashJsonRow> rows =
         EntityDAO.queryInChunks(
-            entityFQNHashes,
+            entityFQNHashes.stream().distinct().toList(),
             chunk -> getLatestExtensionBatch(getTimeSeriesTableName(), chunk, extension));
     Map<String, String> result = new HashMap<>();
     for (FQNHashJsonRow row : rows) {
@@ -521,12 +533,34 @@ public interface EntityTimeSeriesDAO {
     return result;
   }
 
-  @SqlQuery(
-      "SELECT entityFQNHash, json FROM (SELECT entityFQNHash, json, "
-          + "ROW_NUMBER() OVER (PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS rn "
-          + "FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) "
-          + "AND extension = :extension) ranked WHERE rn <= :limit "
-          + "ORDER BY entityFQNHash, rn")
+  /**
+   * Top-N rows per entity, each entity's rows newest-first.
+   *
+   * <p>Newest-first is part of the contract: callers index into the result to get an entity's most
+   * recent row. The outer ORDER BY therefore needs a per-entity key — ordering by hash alone leaves
+   * rows unordered within an entity and silently returns an arbitrary historical row as the newest.
+   *
+   * <p>The MySQL form ranks all of an entity's history before discarding everything but the newest
+   * N; the Postgres form asks only for N so the planner can stop there. MySQL keeps the window form
+   * because LATERAL needs 8.0.14+ and this project declares no minimum 8.0.x patch level.
+   */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT entityFQNHash, json FROM (SELECT entityFQNHash, json, "
+              + "ROW_NUMBER() OVER (PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS rn "
+              + "FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) "
+              + "AND extension = :extension) ranked WHERE rn <= :limit "
+              + "ORDER BY entityFQNHash, rn",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT h.hash AS \"entityFQNHash\", x.json AS json "
+              + "FROM unnest(ARRAY[<entityFQNHashes>]::varchar[]) AS h(hash) "
+              + "JOIN LATERAL (SELECT json, timestamp FROM <table> "
+              + "WHERE entityFQNHash = h.hash AND extension = :extension "
+              + "ORDER BY timestamp DESC LIMIT :limit) x ON TRUE "
+              + "ORDER BY h.hash, x.timestamp DESC",
+      connectionType = POSTGRES)
   @RegisterRowMapper(FQNHashJsonRowMapper.class)
   List<FQNHashJsonRow> getLatestExtensionsBatch(
       @Define("table") String table,
@@ -536,14 +570,24 @@ public interface EntityTimeSeriesDAO {
 
   default Map<String, List<String>> getLatestExtensionsBatch(
       List<String> entityFQNHashes, String extension, int limit) {
-    Map<String, List<String>> result = new LinkedHashMap<>();
-    if (entityFQNHashes == null || entityFQNHashes.isEmpty()) {
-      return result;
+    // Fail loudly: an empty map here is indistinguishable from "no entity has any rows".
+    if (limit <= 0) {
+      throw new IllegalArgumentException(
+          "limit must be positive to fetch top-N rows, got " + limit);
     }
-    List<FQNHashJsonRow> rows =
-        getLatestExtensionsBatch(getTimeSeriesTableName(), entityFQNHashes, extension, limit);
-    for (FQNHashJsonRow row : rows) {
-      result.computeIfAbsent(row.entityFQNHash(), key -> new ArrayList<>()).add(row.json());
+    Map<String, List<String>> result = new LinkedHashMap<>();
+    // Distinct because `IN (...)` collapses a repeated hash but `unnest(ARRAY[...])` does not,
+    // which would return one N-row block per occurrence.
+    List<String> distinctHashes =
+        entityFQNHashes == null ? List.of() : entityFQNHashes.stream().distinct().toList();
+    if (!distinctHashes.isEmpty()) {
+      List<FQNHashJsonRow> rows =
+          EntityDAO.queryInChunks(
+              distinctHashes,
+              chunk -> getLatestExtensionsBatch(getTimeSeriesTableName(), chunk, extension, limit));
+      for (FQNHashJsonRow row : rows) {
+        result.computeIfAbsent(row.entityFQNHash(), key -> new ArrayList<>()).add(row.json());
+      }
     }
     return result;
   }
