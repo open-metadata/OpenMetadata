@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,10 +31,13 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -213,6 +217,95 @@ public class DomainIsolationIT {
     }
   }
 
+  /**
+   * Issue #30023 — a bot identity must be domain-scoped in search like any other non-admin subject.
+   * A bot created with domains is given {@code DomainOnlyAccessRole} by the bot-creation flow, but
+   * search RBAC used to skip every bot, so a bot-authenticated caller (how MCP clients normally
+   * connect) read every domain.
+   */
+  @Test
+  void test_botSearch_domainScopedBotSeesOnlyOwnDomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_d1", cleanup);
+      Domain d2 = createDomain(admin, p + "_d2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table own = createTable(admin, p + "_own", schema, d1, cleanup);
+      Table foreign = createTable(admin, p + "_foreign", schema, d2, cleanup);
+
+      OpenMetadataClient bot = createDomainScopedBotClient(admin, p, d1, cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      String ownFqn = own.getFullyQualifiedName();
+      String foreignFqn = foreign.getFullyQualifiedName();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> adminFqns = tableSearchFqns(admin, p);
+                assertTrue(
+                    adminFqns.containsAll(List.of(ownFqn, foreignFqn)),
+                    "Admin should see both tables once indexed. Saw: " + adminFqns);
+              });
+
+      Set<String> botFqns = tableSearchFqns(bot, p);
+      assertTrue(botFqns.contains(ownFqn), "Bot sees own-domain table. Saw: " + botFqns);
+      assertFalse(
+          botFqns.contains(foreignFqn), "Bot must NOT see foreign-domain table. Saw: " + botFqns);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * Issue #30023 — the lineage prune is gated on {@code DomainOnlyAccessRole} and used to skip bots,
+   * so a domain-scoped bot could traverse into a domain that {@code authorize()} already refuses to
+   * let it read directly. Unlike the search assertions above, this needs no search-RBAC setting: the
+   * prune is unconditional for a subject holding the role.
+   */
+  @Test
+  void test_botLineage_domainScopedBotSeesOnlyOwnDomainNodes(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_d1", cleanup);
+      Domain d2 = createDomain(admin, p + "_d2", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table own = createTable(admin, p + "_own", schema, d1, cleanup);
+      Table foreign = createTable(admin, p + "_foreign", schema, d2, cleanup);
+      addLineage(admin, own, foreign);
+
+      OpenMetadataClient bot = createDomainScopedBotClient(admin, p, d1, cleanup);
+
+      String ownFqn = own.getFullyQualifiedName();
+      String foreignFqn = foreign.getFullyQualifiedName();
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                Set<String> adminNodes = nodeFqns(searchLineage(admin, ownFqn));
+                assertTrue(
+                    adminNodes.containsAll(List.of(ownFqn, foreignFqn)),
+                    "Admin should see both lineage nodes once indexed. Saw: " + adminNodes);
+              });
+
+      Set<String> botNodes = nodeFqns(searchLineage(bot, ownFqn));
+      assertTrue(botNodes.contains(ownFqn), "Bot sees own-domain root. Saw: " + botNodes);
+      assertFalse(
+          botNodes.contains(foreignFqn),
+          "Bot must NOT see foreign-domain lineage node. Saw: " + botNodes);
+    } finally {
+      drain(cleanup);
+    }
+  }
+
   // Task /v1/tasks domain isolation is covered comprehensively by
   // TaskResourceIT.testDomainOnlyUserCanOnlyListTasksFromAllowedDomains (a domain-only user there
   // also carries a baseline role, which the bare DomainOnlyAccessRole strips). The UI task list is
@@ -275,6 +368,50 @@ public class DomainIsolationIT {
               admin.lineage().addLineage(addLineage);
               return true;
             });
+  }
+
+  /**
+   * Creates a bot user carrying {@code allowedDomain} and returns a client authenticated as it. Goes
+   * through {@code PUT /v1/users} — the bot-creation flow that attaches {@code DomainOnlyAccessRole}
+   * to a bot with domains — so the role wiring is exercised rather than assumed.
+   */
+  private OpenMetadataClient createDomainScopedBotClient(
+      OpenMetadataClient admin, String prefix, Domain allowedDomain, Deque<Runnable> cleanup)
+      throws Exception {
+    String name = prefix + "_bot";
+    String email = name + "@test.openmetadata.org";
+    CreateUser request =
+        new CreateUser()
+            .withName(name)
+            .withEmail(email)
+            .withIsBot(true)
+            .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(
+                        new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited)));
+    String created =
+        admin
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/users",
+                MAPPER.writeValueAsString(request),
+                RequestOptions.builder().build());
+    JsonNode botUser = MAPPER.readTree(created);
+    UUID botId = UUID.fromString(botUser.path("id").asText());
+    cleanup.push(() -> admin.users().delete(botId));
+
+    Set<String> roleNames = new HashSet<>();
+    for (JsonNode role : botUser.path("roles")) {
+      roleNames.add(role.path("name").asText());
+    }
+    assertTrue(
+        roleNames.contains("DomainOnlyAccessRole"),
+        "A bot with domains must be given DomainOnlyAccessRole. Roles: " + roleNames);
+
+    return SdkClients.createClient(name, email, new String[] {"bot"});
   }
 
   private OpenMetadataClient createRestrictedUserClient(
@@ -381,6 +518,22 @@ public class DomainIsolationIT {
     for (JsonNode hit : hits) {
       JsonNode source = hit.path("_source");
       if (source.hasNonNull("fullyQualifiedName")) {
+        fqns.add(source.get("fullyQualifiedName").asText());
+      }
+    }
+    return fqns;
+  }
+
+  /** FQNs of tables in this test's namespace, as the given client is allowed to see them. */
+  private Set<String> tableSearchFqns(OpenMetadataClient client, String prefix) throws Exception {
+    String response =
+        client.search().query(prefix + "*").index("table_search_index").size(1000).execute();
+    JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+    Set<String> fqns = new HashSet<>();
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.path("_source");
+      if (source.hasNonNull("fullyQualifiedName")
+          && source.get("fullyQualifiedName").asText().contains(prefix)) {
         fqns.add(source.get("fullyQualifiedName").asText());
       }
     }

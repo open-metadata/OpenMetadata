@@ -59,7 +59,7 @@ class LineageDomainFilterTest {
   }
 
   @Test
-  @DisplayName("shouldApply: only for non-admin non-bot users holding DomainOnlyAccessRole")
+  @DisplayName("shouldApply: any non-admin subject holding DomainOnlyAccessRole, bots included")
   void testShouldApply() {
     assertFalse(LineageDomainFilter.shouldApply(null));
     assertTrue(LineageDomainFilter.shouldApply(restricted));
@@ -68,9 +68,18 @@ class LineageDomainFilterTest {
     when(admin.isAdmin()).thenReturn(true);
     assertFalse(LineageDomainFilter.shouldApply(admin));
 
-    SubjectContext bot = mock(SubjectContext.class);
-    when(bot.isBot()).thenReturn(true);
-    assertFalse(LineageDomainFilter.shouldApply(bot));
+    // A bot carrying the role is pruned like any other subject (#30023) — a bot only holds it when
+    // it was created with domains, which is the deployment declaring the bot domain-scoped.
+    SubjectContext scopedBot = mock(SubjectContext.class);
+    when(scopedBot.isBot()).thenReturn(true);
+    when(scopedBot.hasDomainOnlyAccessRole()).thenReturn(true);
+    assertTrue(LineageDomainFilter.shouldApply(scopedBot));
+
+    // A bot without the role — every system bot — keeps full lineage visibility.
+    SubjectContext unscopedBot = mock(SubjectContext.class);
+    when(unscopedBot.isBot()).thenReturn(true);
+    when(unscopedBot.hasDomainOnlyAccessRole()).thenReturn(false);
+    assertFalse(LineageDomainFilter.shouldApply(unscopedBot));
 
     SubjectContext noRole = mock(SubjectContext.class);
     when(noRole.hasDomainOnlyAccessRole()).thenReturn(false);

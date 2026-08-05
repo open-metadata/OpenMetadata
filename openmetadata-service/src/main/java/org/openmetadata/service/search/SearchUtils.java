@@ -353,6 +353,17 @@ public final class SearchUtils {
     return aggregationJson.getString("key");
   }
 
+  /**
+   * Whether search results must be filtered by the caller's policies.
+   *
+   * <p>Bots are deliberately <em>not</em> excluded (issue #30023). A bot carrying domains is given
+   * {@code DomainOnlyAccessRole} by {@code UserResource#getDefaultBotRoles}, so the platform already
+   * intends such a bot to be domain-scoped; excluding bots here let any bot-authenticated caller —
+   * the usual way an MCP client connects — read every domain. System bots are unaffected: each of
+   * their policies grants an unconditioned {@code ViewAll} on {@code All}, which
+   * {@link RBACConditionEvaluator} compiles to {@code match_all}, and a bot with no search-relevant
+   * rule at all also falls through to {@code match_all}.
+   */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     return Boolean.TRUE.equals(
@@ -361,7 +372,6 @@ public final class SearchUtils {
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
         && rbacConditionEvaluator != null;
   }
 

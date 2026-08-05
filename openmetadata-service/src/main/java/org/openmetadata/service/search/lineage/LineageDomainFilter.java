@@ -46,10 +46,15 @@ public final class LineageDomainFilter {
 
   private LineageDomainFilter() {}
 
+  /**
+   * Bots are deliberately not excluded (issue #30023): only a subject holding
+   * {@code DomainOnlyAccessRole} is pruned at all, and a bot holds that role exactly when it was
+   * created with domains — so excluding bots here let a bot-authenticated caller traverse into
+   * domains that {@code authorize()} already refuses to let it read directly.
+   */
   public static boolean shouldApply(SubjectContext subjectContext) {
     return subjectContext != null
         && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
         && subjectContext.hasDomainOnlyAccessRole();
   }
 

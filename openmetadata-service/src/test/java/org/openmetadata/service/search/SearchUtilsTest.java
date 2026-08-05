@@ -283,8 +283,10 @@ class SearchUtilsTest {
       when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
       when(subjectContext.isAdmin()).thenReturn(false);
+      // A bot is filtered like any other non-admin subject (#30023): excluding bots let a
+      // bot-authenticated caller, the usual MCP setup, read outside its permitted domains.
       when(subjectContext.isBot()).thenReturn(true);
-      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      assertTrue(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
       when(subjectContext.isBot()).thenReturn(false);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
       assertFalse(SearchUtils.shouldApplyRbacConditions(null, evaluator));
