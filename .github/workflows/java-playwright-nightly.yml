@@ -129,7 +129,7 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # On a PR, test the PR head (the changed code). workflow_dispatch honours the
           # dispatched ref so feature branches can validate the nightly matrix before merge.
@@ -161,6 +161,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Restore openmetadata-ui dist cache
+        # Only the next step (openmetadata-dist -am) transitively builds UI.
+        uses: ./.github/actions/cache-ui-dist
 
       - name: Build openmetadata-dist tarball
         # ContainerizedServer.buildLocalImageContainer needs
@@ -220,7 +224,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
@@ -296,7 +300,8 @@ jobs:
           # Sizes are workflow_dispatch inputs (defaults below) so they're tunable per run.
           # Embedded nightly recreates a fresh stack each run, so data never persists — these
           # small-footprint suites always create on the fly (jpw.data.mode=ingest). Static/ensure
-          # reuse is only for the persistent external cluster (see java-playwright-external.yml).
+          # reuse only pays off against a cluster you keep around between runs, which no workflow
+          # here does; set OM_URL + OM_ADMIN_TOKEN to point the suites at one by hand.
           STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
             -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
             -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
@@ -389,7 +394,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 

@@ -356,6 +356,11 @@ class GluePipelineUnitTest(TestCase):
         mock_metadata.get_entity_reference.return_value = mock_table_ref
         self.gluepipeline.metadata = mock_metadata
 
+        # Without this the resolver calls the real AWS Glue API, which a try/except
+        # swallows only after the request blocks — indefinitely if egress is dropped.
+        self.gluepipeline.glue = MagicMock()
+        self.gluepipeline.glue.get_connection.return_value = {"Connection": {"ConnectionProperties": {}}}
+
         lineage_details = {"sources": [], "targets": []}
         jdbc_ref = JDBCRef(
             connection_name="Redshift - Jdbc connection",

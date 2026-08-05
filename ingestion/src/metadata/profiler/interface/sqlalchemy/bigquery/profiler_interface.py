@@ -66,7 +66,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def _get_struct_columns(self, columns: dict, parent: str):
         """"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         columns_list = []
         for key, value in columns:
@@ -84,7 +84,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def get_columns(self) -> Column:
         """Get columns from table"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         columns = []
         for column in inspect(self.table).c:

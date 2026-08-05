@@ -105,7 +105,7 @@ describe('HeaderShell', () => {
     const { className } = screen.getByTestId('header-shell');
 
     expect(className).toContain('linear-gradient');
-    expect(className).toContain('border-[#EFF8FF]');
+    expect(className).toContain('border-brand-50');
   });
 
   it('does not apply the gradient on the default flat variant', () => {

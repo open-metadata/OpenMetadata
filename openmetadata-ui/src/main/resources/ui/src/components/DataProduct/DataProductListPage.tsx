@@ -197,7 +197,7 @@ const DataProductListPage = ({
 
           return (
             <Box
-              align="start"
+              align="center"
               className={NAME_CELL_WRAP_CLASS}
               direction="row"
               gap={3}>
@@ -233,7 +233,7 @@ const DataProductListPage = ({
 
           return (
             <Box
-              align="start"
+              align="center"
               className={COMPACT_CELL_WRAP_CLASS}
               direction="row"
               gap={1}>

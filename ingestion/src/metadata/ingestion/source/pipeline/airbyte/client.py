@@ -220,6 +220,9 @@ class AirbyteCloudClient(AirbyteClient):
         api_version = self.config.apiVersion or "api/v1"
         if api_version == "api/v1":
             api_version = "api/public/v1"
+        # Store the resolved public-API version so the OAuth token request uses
+        # the same path as every other call (see _fetch_oauth_token).
+        self.api_version = api_version
 
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.hostPort),
@@ -235,7 +238,11 @@ class AirbyteCloudClient(AirbyteClient):
         """
         Fetch OAuth 2.0 access token using client credentials
         """
-        token_url = f"{clean_uri(self.config.hostPort)}/v1/applications/token"
+        # The Applications token endpoint lives under the same (public) API path
+        # as every other call, e.g. `/api/public/v1/applications/token`. Building
+        # it from the resolved api_version keeps self-hosted and Cloud consistent
+        # and avoids hardcoding a path that 404s to the web UI on self-hosted.
+        token_url = f"{clean_uri(self.config.hostPort)}/{self.api_version}/applications/token"
         payload = {
             "client_id": self.config.auth.clientId,
             "client_secret": self.config.auth.clientSecret.get_secret_value(),
