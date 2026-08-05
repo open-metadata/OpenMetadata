@@ -185,6 +185,8 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
             query_history_table=self.query_history_table,
             start_time=start_time,
             end_time=end_time,
+            database_name=getattr(self.service_connection, "databaseName", None),
+            database_schema=getattr(self.service_connection, "databaseSchema", None),
             filters=self.get_filters(),
             result_limit=getattr(self.source_config, "resultLimit", None),
         )
