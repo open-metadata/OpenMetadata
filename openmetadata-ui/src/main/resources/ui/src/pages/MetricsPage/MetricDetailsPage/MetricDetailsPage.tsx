@@ -40,6 +40,7 @@ import {
   addMetricFollower,
   patchMetric,
   removeMetricFollower,
+  restoreMetric,
 } from '../../../rest/metricsAPI';
 import {
   metricQueryFn,
@@ -294,6 +295,30 @@ const MetricDetailsPage = () => {
     await followMutation.mutateAsync();
   }, [followMutation]);
 
+  const restoreMetricHandler = useCallback(async () => {
+    if (!metricId) {
+      return;
+    }
+
+    const restoredMetric = await restoreMetric(metricId);
+    setMetricDetails(restoredMetric);
+  }, [metricId, setMetricDetails]);
+
+  const deleteMetricHandler = useCallback(
+    (isSoftDelete: boolean) => {
+      if (isSoftDelete) {
+        setMetricDetails((previous) =>
+          previous ? { ...previous, deleted: true } : previous
+        );
+
+        return;
+      }
+
+      navigate(ROUTES.METRICS);
+    },
+    [navigate, setMetricDetails]
+  );
+
   const versionHandler = () => {
     currentVersion &&
       navigate(
@@ -383,8 +408,10 @@ const MetricDetailsPage = () => {
       fetchMetricDetails={refetchMetricDetails}
       metricDetails={metricDetails}
       metricPermissions={metricPermissions}
+      onDeleteMetric={deleteMetricHandler}
       onFollowMetric={followMetric}
       onMetricUpdate={handleMetricUpdate}
+      onRestoreMetric={restoreMetricHandler}
       onUnFollowMetric={unFollowMetric}
       onVersionChange={versionHandler}
     />

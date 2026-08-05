@@ -22,6 +22,7 @@ import {
   getMetricByFqn,
   patchMetric,
   removeMetricFollower,
+  restoreMetric,
 } from '../../../rest/metricsAPI';
 import { METRIC_DEFAULT_FIELDS } from '../../../rest/queries/metricQuery';
 import { addToRecentViewed } from '../../../utils/RecentActivityUtils';
@@ -73,6 +74,7 @@ jest.mock('../../../rest/metricsAPI', () => ({
   getMetricByFqn: jest.fn(),
   patchMetric: jest.fn(),
   removeMetricFollower: jest.fn(),
+  restoreMetric: jest.fn(),
 }));
 
 jest.mock('../../../utils/RecentActivityUtils', () => ({
@@ -118,6 +120,12 @@ jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
           }>
           update
         </button>
+        <button
+          onClick={() => void props.onRestoreMetric().catch(() => undefined)}>
+          restore
+        </button>
+        <button onClick={() => props.onDeleteMetric(true)}>soft delete</button>
+        <button onClick={() => props.onDeleteMetric(false)}>hard delete</button>
         <button onClick={props.onVersionChange}>version</button>
       </div>
     );
@@ -153,6 +161,7 @@ describe('MetricDetailsPage', () => {
     (addMetricFollower as jest.Mock).mockResolvedValue(undefined);
     (removeMetricFollower as jest.Mock).mockResolvedValue(undefined);
     (patchMetric as jest.Mock).mockResolvedValue(metric);
+    (restoreMetric as jest.Mock).mockResolvedValue(metric);
   });
 
   it('announces loading until permissions and the Metric are available', () => {
@@ -327,5 +336,46 @@ describe('MetricDetailsPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       getVersionPath(EntityType.METRIC, 'finance.gross_margin', '1.2')
     );
+  });
+
+  it('restores a deleted Metric and synchronizes the detail cache', async () => {
+    const restoredMetric = { ...metric, deleted: false, version: 1.3 };
+    (getMetricByFqn as jest.Mock).mockResolvedValue({
+      ...metric,
+      deleted: true,
+    });
+    (restoreMetric as jest.Mock).mockResolvedValue(restoredMetric);
+
+    renderPage();
+    await screen.findByTestId('metric-details');
+    fireEvent.click(screen.getByRole('button', { name: 'restore' }));
+
+    await waitFor(() =>
+      expect(restoreMetric).toHaveBeenCalledWith('metric-id')
+    );
+    await waitFor(() =>
+      expect(mockMetricDetails).toHaveBeenLastCalledWith(
+        expect.objectContaining({ metricDetails: restoredMetric })
+      )
+    );
+  });
+
+  it('optimistically marks accepted soft deletes and leaves after hard deletes', async () => {
+    renderPage();
+    await screen.findByTestId('metric-details');
+
+    fireEvent.click(screen.getByRole('button', { name: 'soft delete' }));
+
+    await waitFor(() =>
+      expect(mockMetricDetails).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          metricDetails: expect.objectContaining({ deleted: true }),
+        })
+      )
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'hard delete' }));
+
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.METRICS);
   });
 });

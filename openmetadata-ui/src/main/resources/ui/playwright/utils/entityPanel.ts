@@ -26,29 +26,56 @@ export const getEntityFqn = (
 };
 
 const findOptionByScrolling = async (page: Page, endpoint: string) => {
-  let tries = 0;
-  const maxTries = 5; // Limit the number of scroll attempts to prevent infinite loops
   const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
   const dropdown = page
     .getByTestId('global-search-select-dropdown')
     .locator('.rc-virtual-list-holder');
   const option = page.getByTestId(`global-search-select-option-${filterName}`);
-  while (tries < maxTries) {
+  let canAdvance = true;
+
+  while (canAdvance) {
     if (await option.isVisible()) {
       await option.click();
+
       return;
     }
-    // Scroll the dropdown to load more options
-    await dropdown.evaluate((element) => {
-      element.scrollBy(0, 100); // Adjust scroll amount as needed
+
+    const scrollState = await dropdown.evaluate(async (element) => {
+      const previousScrollTop = element.scrollTop;
+      const maxScrollTop = Math.max(
+        0,
+        element.scrollHeight - element.clientHeight
+      );
+      const nextScrollTop = Math.min(
+        maxScrollTop,
+        previousScrollTop + element.clientHeight
+      );
+      element.scrollTop = nextScrollTop;
+
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+
+      return {
+        advanced: element.scrollTop > previousScrollTop,
+        atEnd: element.scrollTop >= maxScrollTop,
+      };
     });
-    tries++;
+
+    canAdvance = scrollState.advanced && !scrollState.atEnd;
   }
+
+  if (await option.isVisible()) {
+    await option.click();
+
+    return;
+  }
+
   await dropdown.evaluate((element) => {
     element.scrollTop = 0;
   });
   throw new Error(
-    `Unable to find global search filter option "${filterName}" for endpoint "${endpoint}" after ${maxTries} scroll attempts.`
+    `Unable to find global search filter option "${filterName}" for endpoint "${endpoint}" after scanning the complete dropdown.`
   );
 };
 

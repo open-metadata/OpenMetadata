@@ -13,6 +13,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ComponentProps } from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -94,6 +95,77 @@ describe('MetricReferencePicker', () => {
     );
   });
 
+  it('adds a result to an existing multi-selection and forwards a query filter', async () => {
+    const onChange = jest.fn();
+    const queryFilter = {
+      query: {
+        bool: {
+          should: [
+            {
+              term: {
+                'domains.fullyQualifiedName': { value: 'Marketing' },
+              },
+            },
+          ],
+        },
+      },
+    };
+    const selected = [
+      { id: 'existing-id', name: 'existing', type: EntityType.USER },
+    ];
+    renderPicker(selected, onChange, { queryFilter });
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Metric Reviewer' })
+    );
+
+    expect(onChange).toHaveBeenCalledWith([
+      selected[0],
+      expect.objectContaining({ id: 'reviewer-id' }),
+    ]);
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ queryFilter })
+    );
+  });
+
+  it('delegates mixed-reference selection to a rule-aware resolver', async () => {
+    const onChange = jest.fn();
+    const selected = [
+      { id: 'existing-id', name: 'existing', type: EntityType.USER },
+    ];
+    const resolved = [
+      { id: 'resolved-id', name: 'resolved', type: EntityType.TEAM },
+    ];
+    const selectionResolver = jest.fn().mockReturnValue(resolved);
+    renderPicker(selected, onChange, { selectionResolver });
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Metric Reviewer' })
+    );
+
+    expect(selectionResolver).toHaveBeenCalledWith(
+      selected,
+      expect.objectContaining({ id: 'reviewer-id' }),
+      true
+    );
+    expect(onChange).toHaveBeenCalledWith(resolved);
+  });
+
+  it('honors a finite rule-provided selection limit greater than one', async () => {
+    const onChange = jest.fn();
+    const selected = [
+      { id: 'first-id', name: 'first', type: EntityType.USER },
+      { id: 'second-id', name: 'second', type: EntityType.USER },
+    ];
+    renderPicker(selected, onChange, { maxSelections: 2 });
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Metric Reviewer' })
+    );
+
+    expect(onChange).toHaveBeenCalledWith(selected);
+  });
+
   it('renders selected values and supports keyboard-compatible removal', async () => {
     const onChange = jest.fn();
     const selected = [{ id: 'reviewer-id', name: 'reviewer', type: 'user' }];
@@ -155,6 +227,58 @@ describe('MetricReferencePicker', () => {
     );
 
     expect(screen.getByText(/label.page 2 \/ 3/)).toBeInTheDocument();
+  });
+
+  it('returns to the first page when the query filter changes', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [],
+        total: { value: 41 },
+      },
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const initialFilter = { term: { domain: 'Marketing' } };
+    const nextFilter = { term: { domain: 'Finance' } };
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <MetricReferencePicker
+          label="label.data-product-plural"
+          queryFilter={initialFilter}
+          searchIndexes={[SearchIndex.DATA_PRODUCT]}
+          selected={[]}
+          onChange={jest.fn()}
+        />
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await screen.findByTestId('metric-reference-next'));
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pageNumber: 2, queryFilter: initialFilter })
+      )
+    );
+
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <MetricReferencePicker
+          label="label.data-product-plural"
+          queryFilter={nextFilter}
+          searchIndexes={[SearchIndex.DATA_PRODUCT]}
+          selected={[]}
+          onChange={jest.fn()}
+        />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pageNumber: 1, queryFilter: nextFilter })
+      )
+    );
+
+    expect(await screen.findByText(/label.page 1 \/ 3/)).toBeInTheDocument();
   });
 
   it('supports filtered, FQN-keyed single selection', async () => {

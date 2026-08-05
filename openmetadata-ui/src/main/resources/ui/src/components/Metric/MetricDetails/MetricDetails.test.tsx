@@ -12,6 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -38,6 +39,9 @@ const mockNavigate = jest.fn();
 const mockActivityTab = jest.fn();
 const mockApprovalTab = jest.fn();
 const mockLineageTab = jest.fn();
+const mockHandleOnAsyncEntityDeleteConfirm = jest
+  .fn()
+  .mockResolvedValue(undefined);
 let activeTab = EntityTabs.OVERVIEW;
 
 const metric = {
@@ -112,8 +116,10 @@ const props: MetricDetailsProps = {
   metricDetails: metric,
   metricPermissions: { ...DEFAULT_ENTITY_PERMISSION, EditAll: true },
   fetchMetricDetails: jest.fn(),
+  onDeleteMetric: jest.fn(),
   onFollowMetric: jest.fn().mockResolvedValue(undefined),
   onMetricUpdate: jest.fn().mockResolvedValue(undefined),
+  onRestoreMetric: jest.fn().mockResolvedValue(undefined),
   onUnFollowMetric: jest.fn().mockResolvedValue(undefined),
   onVersionChange: jest.fn(),
 };
@@ -125,6 +131,29 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: () => ({ tab: activeTab }),
+}));
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: () => ({
+    entityRules: {
+      canAddMultipleDataProducts: true,
+      canAddMultipleDomains: true,
+      canAddMultipleGlossaryTerm: true,
+      canAddMultipleTeamOwner: true,
+      canAddMultipleUserOwners: true,
+      maxDataProducts: Infinity,
+      maxDomains: Infinity,
+      requireDomainForDataProduct: false,
+    },
+    isLoading: false,
+    rules: [],
+  }),
+}));
+
+jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
+  useAsyncDeleteProvider: () => ({
+    handleOnAsyncEntityDeleteConfirm: mockHandleOnAsyncEntityDeleteConfirm,
+  }),
 }));
 
 jest.mock('../MetricActivity/MetricFeedCountUtils', () => ({
@@ -639,6 +668,139 @@ describe('MetricDetails', () => {
     expect(screen.getByRole('button', { name: 'label.following' })).toHaveClass(
       'tw:text-brand-secondary'
     );
+  });
+
+  it('opens the Untitled delete workflow only with delete permission', async () => {
+    const onDeleteMetric = jest.fn();
+    const view = renderDetails();
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+
+    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
+
+    view.unmount();
+    mockHandleOnAsyncEntityDeleteConfirm.mockImplementationOnce(
+      async (options: {
+        afterDeleteAction?: (isSoftDelete?: boolean) => void;
+      }) => options.afterDeleteAction?.(true)
+    );
+    renderDetails({
+      metricPermissions: {
+        ...DEFAULT_ENTITY_PERMISSION,
+        Delete: true,
+        EditAll: true,
+      },
+      onDeleteMetric,
+    });
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('delete-button'));
+
+    expect(await screen.findByTestId('delete-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('soft-delete')).toBeInTheDocument();
+    expect(screen.getByTestId('hard-delete')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('hard-delete'));
+    fireEvent.click(screen.getByTestId('confirm-button'));
+
+    await waitFor(() =>
+      expect(mockHandleOnAsyncEntityDeleteConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deleteType: 'hard-delete',
+          entityId: metric.id,
+          entityType: EntityType.METRIC,
+          isRecursiveDelete: true,
+          onDeleteFailure: props.fetchMetricDetails,
+        })
+      )
+    );
+
+    expect(onDeleteMetric).toHaveBeenCalledWith(true);
+    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+  });
+
+  it('keeps the delete dialog open when the request is not accepted', async () => {
+    renderDetails({
+      metricPermissions: {
+        ...DEFAULT_ENTITY_PERMISSION,
+        Delete: true,
+      },
+    });
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('delete-button'));
+    fireEvent.click(await screen.findByTestId('confirm-button'));
+
+    await waitFor(() =>
+      expect(mockHandleOnAsyncEntityDeleteConfirm).toHaveBeenCalledTimes(1)
+    );
+
+    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+  });
+
+  it('marks deleted Metrics read-only and restores them from the overflow', async () => {
+    let resolveRestore: () => void = () => undefined;
+    const onRestoreMetric = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRestore = resolve;
+        })
+    );
+    renderDetails({
+      metricDetails: { ...metric, deleted: true },
+      metricPermissions: {
+        ...DEFAULT_ENTITY_PERMISSION,
+        Delete: true,
+        EditAll: true,
+      },
+      onRestoreMetric,
+    });
+
+    expect(screen.getByTestId('deleted-badge')).toHaveTextContent(
+      'label.deleted'
+    );
+    expect(
+      screen.queryByRole('button', { name: 'label.follow' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('edit-metric-metadata')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('manage-button'));
+
+    expect(await screen.findByTestId('delete-button')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('restore-button'));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.restore' })
+    );
+
+    await waitFor(() => expect(onRestoreMetric).toHaveBeenCalledTimes(1));
+
+    expect(
+      screen.queryByRole('button', { name: 'Close' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'label.cancel' })).toBeDisabled();
+
+    await act(async () => resolveRestore());
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('restore-asset-modal')
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('does not expose an empty management menu for a deleted Metric', () => {
+    renderDetails({
+      metricDetails: { ...metric, deleted: true },
+      metricPermissions: {
+        ...DEFAULT_ENTITY_PERMISSION,
+        Delete: false,
+      },
+    });
+
+    expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
   });
 
   it('removes edit controls when the user cannot edit the metric', () => {

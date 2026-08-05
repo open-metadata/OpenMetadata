@@ -18,8 +18,11 @@ import {
   Breadcrumbs,
   Button,
   Card,
+  Dialog,
   Dropdown,
   FeaturedIcon,
+  Modal,
+  ModalOverlay,
   Skeleton,
   Tabs,
   Typography,
@@ -33,11 +36,13 @@ import {
   Flag01,
   GitBranch01,
   LayersTwo01,
+  RefreshCcw01,
   Share07,
   Shield01,
   Speedometer04,
   Star01,
   Tag01,
+  Trash01,
   User01,
 } from '@untitledui/icons';
 import type { AxiosError } from 'axios';
@@ -55,6 +60,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
@@ -71,10 +77,14 @@ import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { DeleteType } from '../../common/DeleteWidget/DeleteWidget.interface';
 import { getMetricFeedCounts } from '../MetricActivity/MetricFeedCountUtils';
 import { useMetricAssetsCount } from '../MetricAssetsTab/useMetricAssetsTab';
 import MetricCustomPropertyValue from '../MetricCustomPropertyValue/MetricCustomPropertyValue.component';
 import MetricDefinitionCard from '../MetricDefinitionCard/MetricDefinitionCard';
+import MetricDeleteDialog, {
+  type MetricDeleteMode,
+} from '../MetricDeleteDialog/MetricDeleteDialog';
 import MetricHeaderInfo from '../MetricHeaderInfo/MetricHeaderInfo';
 import MetricHierarchyCard from '../MetricHierarchyCard/MetricHierarchyCard';
 import { useMetricHierarchyCard } from '../MetricHierarchyCard/useMetricHierarchyCard';
@@ -468,18 +478,89 @@ const TabFallback = () => {
   );
 };
 
+interface MetricManagementMenuProps {
+  canDelete: boolean;
+  isDeleted: boolean;
+  onDelete: () => void;
+  onRestore: () => void;
+  onVersion: () => void;
+}
+
+const MetricManagementMenu = ({
+  canDelete,
+  isDeleted,
+  onDelete,
+  onRestore,
+  onVersion,
+}: MetricManagementMenuProps) => {
+  const { t } = useTranslation();
+
+  if (isDeleted && !canDelete) {
+    return null;
+  }
+
+  const handleAction = (key: Key) => {
+    if (key === 'version') {
+      onVersion();
+    } else if (key === 'restore') {
+      onRestore();
+    } else if (key === 'delete') {
+      onDelete();
+    }
+  };
+
+  return (
+    <Dropdown.Root>
+      <Dropdown.DotsButton
+        aria-label={t('label.more')}
+        data-testid="manage-button"
+      />
+      <Dropdown.Popover data-testid="manage-dropdown-list-container">
+        <Dropdown.Menu onAction={handleAction}>
+          {!isDeleted && (
+            <Dropdown.Item
+              data-testid="version-button"
+              id="version"
+              label={t('label.version')}
+            />
+          )}
+          {isDeleted && canDelete && (
+            <Dropdown.Item
+              data-testid="restore-button"
+              icon={RefreshCcw01}
+              id="restore"
+              label={t('label.restore')}
+            />
+          )}
+          {canDelete && (
+            <Dropdown.Item
+              data-testid="delete-button"
+              icon={Trash01}
+              id="delete"
+              label={t('label.delete')}
+            />
+          )}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
 const MetricDetails: FC<MetricDetailsProps> = ({
   currentUser,
   metricDetails,
   metricPermissions,
   fetchMetricDetails,
+  onDeleteMetric,
   onFollowMetric,
   onMetricUpdate,
+  onRestoreMetric,
   onUnFollowMetric,
   onVersionChange,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const decodedMetricFqn = metricDetails.fullyQualifiedName ?? '';
   const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
     tab: EntityTabs;
@@ -487,6 +568,10 @@ const MetricDetails: FC<MetricDetailsProps> = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const { count: assetCount } = useMetricAssetsCount(metricDetails.id);
   const breadcrumbHierarchy = useMetricHierarchyCard(metricDetails);
 
@@ -550,6 +635,53 @@ const MetricDetails: FC<MetricDetailsProps> = ({
       showSuccessToast(t('message.link-copy-to-clipboard'));
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleRestore = async () => {
+    setIsRestoring(true);
+    try {
+      await onRestoreMetric();
+      setIsRestoreOpen(false);
+      showSuccessToast(
+        t('message.entity-restored-success', {
+          entity: getEntityName(metricDetails),
+        })
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.entity-restored-error', {
+          entity: getEntityName(metricDetails),
+        })
+      );
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleDelete = async (mode: MetricDeleteMode) => {
+    let deletionAccepted = false;
+    setIsDeleting(true);
+    try {
+      await handleOnAsyncEntityDeleteConfirm({
+        afterDeleteAction: (isSoftDelete) => {
+          deletionAccepted = true;
+          onDeleteMetric(Boolean(isSoftDelete));
+        },
+        deleteType: mode as DeleteType,
+        entityId: metricDetails.id,
+        entityName: getEntityName(metricDetails),
+        entityType: EntityType.METRIC,
+        isRecursiveDelete: true,
+        onDeleteFailure: fetchMetricDetails,
+        prepareType: true,
+      });
+      if (deletionAccepted) {
+        setIsDeleteOpen(false);
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -789,6 +921,15 @@ const MetricDetails: FC<MetricDetailsProps> = ({
                     <MetricStatusPill status={metricDetails.entityStatus} />
                   }
                 />
+                {metricDetails.deleted && (
+                  <Badge
+                    color="error"
+                    data-testid="deleted-badge"
+                    size="sm"
+                    type="pill-color">
+                    {t('label.deleted')}
+                  </Badge>
+                )}
               </Box>
               <Typography
                 as="p"
@@ -804,18 +945,20 @@ const MetricDetails: FC<MetricDetailsProps> = ({
             className="tw:w-full tw:flex-nowrap tw:sm:w-auto tw:sm:flex-wrap"
             data-testid="metric-header-actions"
             gap={2}>
-            <Button
-              aria-label={
-                isFollowing ? t('label.following') : t('label.follow')
-              }
-              color={isFollowing ? 'secondary-brand' : 'secondary'}
-              iconLeading={Star01}
-              size="sm"
-              onPress={handleFollow}>
-              <span className="tw:hidden tw:sm:inline">
-                {isFollowing ? t('label.following') : t('label.follow')}
-              </span>
-            </Button>
+            {!metricDetails.deleted && (
+              <Button
+                aria-label={
+                  isFollowing ? t('label.following') : t('label.follow')
+                }
+                color={isFollowing ? 'secondary-brand' : 'secondary'}
+                iconLeading={Star01}
+                size="sm"
+                onPress={handleFollow}>
+                <span className="tw:hidden tw:sm:inline">
+                  {isFollowing ? t('label.following') : t('label.follow')}
+                </span>
+              </Button>
+            )}
             <Button
               aria-label={t('label.share')}
               color="secondary"
@@ -823,19 +966,13 @@ const MetricDetails: FC<MetricDetailsProps> = ({
               size="sm"
               onPress={handleShare}
             />
-            <Dropdown.Root>
-              <Dropdown.DotsButton aria-label={t('label.more')} />
-              <Dropdown.Popover>
-                <Dropdown.Menu
-                  onAction={(key) => {
-                    if (key === 'version') {
-                      onVersionChange();
-                    }
-                  }}>
-                  <Dropdown.Item id="version" label={t('label.version')} />
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
+            <MetricManagementMenu
+              canDelete={Boolean(metricPermissions.Delete)}
+              isDeleted={Boolean(metricDetails.deleted)}
+              onDelete={() => setIsDeleteOpen(true)}
+              onRestore={() => setIsRestoreOpen(true)}
+              onVersion={onVersionChange}
+            />
           </Box>
         </Box>
         <Box
@@ -945,6 +1082,55 @@ const MetricDetails: FC<MetricDetailsProps> = ({
         direction="col">
         {activeContent}
       </Box>
+      <MetricDeleteDialog
+        isDeleting={isDeleting}
+        isOpen={isDeleteOpen}
+        metricName={getEntityName(metricDetails)}
+        onCancel={() => setIsDeleteOpen(false)}
+        onConfirm={handleDelete}
+      />
+      {isRestoreOpen && (
+        <ModalOverlay
+          isOpen
+          isDismissable={!isRestoring}
+          onOpenChange={(open) =>
+            !open && !isRestoring && setIsRestoreOpen(false)
+          }>
+          <Modal>
+            <Dialog
+              data-testid="restore-asset-modal"
+              showCloseButton={!isRestoring}
+              title={t('label.restore-entity', { entity: t('label.metric') })}
+              width={480}
+              onClose={() => !isRestoring && setIsRestoreOpen(false)}>
+              <Dialog.Content>
+                <Typography
+                  className="tw:text-secondary"
+                  data-testid="restore-modal-body"
+                  size="text-sm">
+                  {t('message.are-you-want-to-restore', {
+                    entity: getEntityName(metricDetails),
+                  })}
+                </Typography>
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button
+                  color="secondary"
+                  isDisabled={isRestoring}
+                  onPress={() => setIsRestoreOpen(false)}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  isLoading={isRestoring}
+                  onPress={handleRestore}>
+                  {t('label.restore')}
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      )}
     </main>
   );
 };

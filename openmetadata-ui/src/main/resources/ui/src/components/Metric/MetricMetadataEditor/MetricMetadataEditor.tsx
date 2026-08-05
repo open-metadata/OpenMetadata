@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit03 } from '@untitledui/icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -31,6 +31,8 @@ import { Operation } from '../../../generated/entity/policies/accessControl/reso
 import type { EntityReference } from '../../../generated/entity/type';
 import type { TagLabel } from '../../../generated/type/tagLabel';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
+import { useEntityRules } from '../../../hooks/useEntityRules';
+import { buildDomainFilter } from '../../../utils/elasticsearchQueryBuilder';
 import MetricReferencePicker from '../MetricReferencePicker/MetricReferencePicker';
 
 interface MetricMetadataEditorProps {
@@ -79,17 +81,24 @@ const referencesToTags = (
 const isTierReference = (reference: EntityReference) =>
   referenceFqn(reference).startsWith('Tier.');
 
+const finiteSelectionLimit = (limit: number) =>
+  Number.isFinite(limit) ? limit : undefined;
+
 const MetricMetadataEditor = ({
   metric,
   onUpdate,
   permissions,
 }: MetricMetadataEditorProps) => {
   const { t } = useTranslation();
+  const { entityRules, isLoading: areEntityRulesLoading } = useEntityRules(
+    EntityType.METRIC
+  );
   const existingTags = useMemo(() => metric.tags ?? [], [metric.tags]);
   const canEditOwners = Boolean(
     permissions.EditAll || permissions[Operation.EditOwners]
   );
   const canEditDomains = Boolean(permissions.EditAll);
+  const canEditDataProducts = Boolean(permissions.EditAll);
   const canEditTier = Boolean(
     permissions.EditAll || permissions[Operation.EditTier]
   );
@@ -106,6 +115,7 @@ const MetricMetadataEditor = ({
     !metric.deleted &&
     (canEditOwners ||
       canEditDomains ||
+      canEditDataProducts ||
       canEditTier ||
       canEditGlossaryTerms ||
       canEditTags ||
@@ -142,6 +152,7 @@ const MetricMetadataEditor = ({
   const [experts, setExperts] = useState(metric.experts ?? []);
   const [reviewers, setReviewers] = useState(metric.reviewers ?? []);
   const [domains, setDomains] = useState(metric.domains ?? []);
+  const [dataProducts, setDataProducts] = useState(metric.dataProducts ?? []);
   const [tier, setTier] = useState(initialTier);
   const [glossaryTerms, setGlossaryTerms] = useState(initialGlossaryTerms);
   const [classificationTags, setClassificationTags] = useState(
@@ -158,7 +169,13 @@ const MetricMetadataEditor = ({
     setOwners(metric.owners ?? []);
     setExperts(metric.experts ?? []);
     setReviewers(metric.reviewers ?? []);
-    setDomains(metric.domains ?? []);
+    const metricDomains = metric.domains ?? [];
+    setDomains(metricDomains);
+    setDataProducts(
+      entityRules.requireDomainForDataProduct && metricDomains.length === 0
+        ? []
+        : metric.dataProducts ?? []
+    );
     setTier(initialTier);
     setGlossaryTerms(initialGlossaryTerms);
     setClassificationTags(initialClassificationTags);
@@ -166,12 +183,85 @@ const MetricMetadataEditor = ({
     setExtensionError(undefined);
     setSaveError(false);
   }, [
+    entityRules.requireDomainForDataProduct,
     initialClassificationTags,
     initialGlossaryTerms,
     initialTier,
     isOpen,
     metric,
   ]);
+
+  useEffect(() => {
+    if (entityRules.requireDomainForDataProduct && domains.length === 0) {
+      setDataProducts([]);
+    }
+  }, [domains.length, entityRules.requireDomainForDataProduct]);
+
+  const ownerSelectionResolver = useCallback(
+    (
+      currentOwners: EntityReference[],
+      reference: EntityReference,
+      isSelected: boolean
+    ) => {
+      if (!isSelected) {
+        return currentOwners.filter(({ id }) => id !== reference.id);
+      }
+      if (currentOwners.some(({ id }) => id === reference.id)) {
+        return currentOwners;
+      }
+      if (
+        entityRules.canAddMultipleUserOwners &&
+        entityRules.canAddMultipleTeamOwner
+      ) {
+        return [...currentOwners, reference];
+      }
+
+      const canAddMultipleReferenceType =
+        reference.type === EntityType.USER
+          ? entityRules.canAddMultipleUserOwners
+          : entityRules.canAddMultipleTeamOwner;
+
+      return canAddMultipleReferenceType
+        ? [
+            ...currentOwners.filter(({ type }) => type === reference.type),
+            reference,
+          ]
+        : [reference];
+    },
+    [entityRules.canAddMultipleTeamOwner, entityRules.canAddMultipleUserOwners]
+  );
+  const handleDomainsChange = useCallback(
+    (nextDomains: EntityReference[]) => {
+      if (entityRules.requireDomainForDataProduct) {
+        const nextDomainIds = new Set(nextDomains.map(({ id }) => id));
+        const removedDomain = domains.some(({ id }) => !nextDomainIds.has(id));
+        if (removedDomain) {
+          setDataProducts([]);
+        }
+      }
+      setDomains(nextDomains);
+    },
+    [domains, entityRules.requireDomainForDataProduct]
+  );
+  const dataProductDomainFqns = useMemo(
+    () =>
+      domains.flatMap(({ fullyQualifiedName }) =>
+        fullyQualifiedName ? [fullyQualifiedName] : []
+      ),
+    [domains]
+  );
+  const dataProductQueryFilter = useMemo(
+    () =>
+      entityRules.requireDomainForDataProduct
+        ? buildDomainFilter(dataProductDomainFqns)
+        : undefined,
+    [dataProductDomainFqns, entityRules.requireDomainForDataProduct]
+  );
+  const isDataProductPickerDisabled =
+    isSaving ||
+    areEntityRulesLoading ||
+    (entityRules.requireDomainForDataProduct &&
+      dataProductDomainFqns.length === 0);
 
   const handleSave = async () => {
     let extension = metric.extension;
@@ -201,6 +291,7 @@ const MetricMetadataEditor = ({
     try {
       await onUpdate({
         ...metric,
+        dataProducts: canEditDataProducts ? dataProducts : metric.dataProducts,
         domains: canEditDomains ? domains : metric.domains,
         experts: canEditOwners ? experts : metric.experts,
         extension,
@@ -271,10 +362,11 @@ const MetricMetadataEditor = ({
                   {canEditOwners && (
                     <>
                       <MetricReferencePicker
-                        isDisabled={isSaving}
+                        isDisabled={isSaving || areEntityRulesLoading}
                         label={t('label.owner-plural')}
                         searchIndexes={[SearchIndex.USER, SearchIndex.TEAM]}
                         selected={owners}
+                        selectionResolver={ownerSelectionResolver}
                         onChange={setOwners}
                       />
                       <MetricReferencePicker
@@ -295,12 +387,39 @@ const MetricMetadataEditor = ({
                   )}
                   {canEditDomains && (
                     <MetricReferencePicker
-                      isDisabled={isSaving}
+                      isDisabled={isSaving || areEntityRulesLoading}
                       label={t('label.domain-plural')}
+                      maxSelections={finiteSelectionLimit(
+                        entityRules.maxDomains
+                      )}
                       searchIndexes={[SearchIndex.DOMAIN]}
                       selected={domains}
-                      onChange={setDomains}
+                      onChange={handleDomainsChange}
                     />
+                  )}
+                  {canEditDataProducts && (
+                    <>
+                      {entityRules.requireDomainForDataProduct &&
+                        dataProductDomainFqns.length === 0 && (
+                          <Alert
+                            title={t(
+                              'message.select-domain-to-add-data-product'
+                            )}
+                            variant="warning"
+                          />
+                        )}
+                      <MetricReferencePicker
+                        isDisabled={isDataProductPickerDisabled}
+                        label={t('label.data-product-plural')}
+                        maxSelections={finiteSelectionLimit(
+                          entityRules.maxDataProducts
+                        )}
+                        queryFilter={dataProductQueryFilter}
+                        searchIndexes={[SearchIndex.DATA_PRODUCT]}
+                        selected={dataProducts}
+                        onChange={setDataProducts}
+                      />
+                    </>
                   )}
                   {canEditTier && (
                     <MetricReferencePicker
@@ -318,8 +437,11 @@ const MetricMetadataEditor = ({
                   {canEditGlossaryTerms && (
                     <MetricReferencePicker
                       identityField="fullyQualifiedName"
-                      isDisabled={isSaving}
+                      isDisabled={isSaving || areEntityRulesLoading}
                       label={t('label.glossary-term-plural')}
+                      maxSelections={
+                        entityRules.canAddMultipleGlossaryTerm ? undefined : 1
+                      }
                       searchIndexes={[SearchIndex.GLOSSARY_TERM]}
                       selected={glossaryTerms}
                       onChange={setGlossaryTerms}

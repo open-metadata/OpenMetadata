@@ -19,8 +19,10 @@ export interface MetricDetailsProps {
   metricPermissions: OperationPermission;
   currentUser?: User;
   fetchMetricDetails: () => void;
+  onDeleteMetric: (isSoftDelete: boolean) => void;
   onFollowMetric: () => Promise<void>;
   onMetricUpdate: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
+  onRestoreMetric: () => Promise<void>;
   onUnFollowMetric: () => Promise<void>;
   onVersionChange: () => void;
 }

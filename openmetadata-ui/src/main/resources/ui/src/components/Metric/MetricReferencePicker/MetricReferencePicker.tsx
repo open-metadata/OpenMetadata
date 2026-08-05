@@ -35,13 +35,41 @@ interface MetricReferencePickerProps {
   isDisabled?: boolean;
   label: string;
   maxSelections?: number;
+  queryFilter?: Record<string, unknown>;
   searchIndexes: SearchIndex[];
   selected: EntityReference[];
   optionFilter?: (reference: EntityReference) => boolean;
+  selectionResolver?: (
+    selected: EntityReference[],
+    reference: EntityReference,
+    isSelected: boolean
+  ) => EntityReference[];
   onChange: (selected: EntityReference[]) => void;
 }
 
 const PAGE_SIZE = 20;
+
+const resolveSelection = (
+  selected: EntityReference[],
+  reference: EntityReference,
+  isSelected: boolean,
+  maxSelections?: number
+) => {
+  if (!isSelected) {
+    return selected.filter(({ id }) => id !== reference.id);
+  }
+  if (selected.some(({ id }) => id === reference.id)) {
+    return selected;
+  }
+  if (maxSelections === 1) {
+    return [reference];
+  }
+  if (maxSelections !== undefined && selected.length >= maxSelections) {
+    return selected;
+  }
+
+  return [...selected, reference];
+};
 
 const getReferenceType = (
   source: Record<string, unknown>,
@@ -69,7 +97,9 @@ const MetricReferencePicker = ({
   maxSelections,
   onChange,
   optionFilter,
+  queryFilter,
   searchIndexes,
+  selectionResolver,
   selected,
 }: MetricReferencePickerProps) => {
   const { t } = useTranslation();
@@ -87,7 +117,7 @@ const MetricReferencePicker = ({
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  useEffect(() => setPage(1), [debouncedSearch, searchIndexKey]);
+  useEffect(() => setPage(1), [debouncedSearch, queryFilter, searchIndexKey]);
 
   const query = useQuery({
     queryKey: [
@@ -95,12 +125,14 @@ const MetricReferencePicker = ({
       searchIndexKey,
       debouncedSearch,
       page,
+      queryFilter,
     ],
     queryFn: () =>
       searchQuery({
         query: debouncedSearch,
         pageNumber: page,
         pageSize: PAGE_SIZE,
+        queryFilter,
         searchIndex:
           searchIndexes.length === 1 ? searchIndexes[0] : searchIndexes,
         trackTotalHits: false,
@@ -151,15 +183,13 @@ const MetricReferencePicker = ({
   );
 
   const toggle = (reference: EntityReference, isSelected: boolean) => {
-    onChange(
-      isSelected
-        ? maxSelections === 1
-          ? [reference]
-          : selectedIds.has(reference.id)
-          ? selected
-          : [...selected, reference]
-        : selected.filter(({ id }) => id !== reference.id)
-    );
+    if (selectionResolver) {
+      onChange(selectionResolver(selected, reference, isSelected));
+
+      return;
+    }
+
+    onChange(resolveSelection(selected, reference, isSelected, maxSelections));
   };
 
   return (
