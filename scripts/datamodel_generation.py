@@ -17,7 +17,9 @@ import glob
 import os
 
 from datamodel_code_generator.imports import Import
-from datamodel_code_generator.model import pydantic as pydantic_model
+# `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
+# We generate with `--output-model-type pydantic_v2.BaseModel`, so patch the v2 type map.
+from datamodel_code_generator.model import pydantic_v2 as pydantic_model
 from datamodel_code_generator.__main__ import main
 
 pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
