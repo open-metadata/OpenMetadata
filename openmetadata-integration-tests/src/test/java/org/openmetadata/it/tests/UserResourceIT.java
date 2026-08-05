@@ -2199,6 +2199,25 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         .execute(HttpMethod.GET, "/v1/users/online", null, UserResultList.class, options);
   }
 
+  @Test
+  void patch_preferences_add_appMode_returnsIt(TestNamespace ns) {
+    String name = ns.prefix("prefsUser");
+    CreateUser createRequest = new CreateUser().withName(name).withEmail(toValidEmail(name));
+    User user = createEntity(createRequest);
+
+    String patchJson = "[{\"op\":\"add\",\"path\":\"/preferences/appMode\",\"value\":\"ai\"}]";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + user.getId(),
+            patchJson,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    User result = Users.get(user.getId().toString(), "preferences");
+    assertEquals("ai", result.getPreferences().get("appMode"));
+  }
+
   private static class UserResultList extends ResultList<User> {}
 
   // ===================================================================
