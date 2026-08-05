@@ -26,7 +26,7 @@ volumes:
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: docker.getcollate.io/openmetadata/db:1.8.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/db:1.12.0-SNAPSHOT
     command: "--sort_buffer_size=10M"
     restart: always
     environment:
@@ -111,7 +111,7 @@ services:
 
   execute-migrate-all:
     container_name: execute_migrate_all
-    image: docker.getcollate.io/openmetadata/server:1.8.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.12.0-SNAPSHOT
     command: "./bootstrap/openmetadata-ops.sh migrate"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
@@ -285,7 +285,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.8.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/server:1.12.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -463,7 +463,7 @@ services:
     build:
       context: ../
       dockerfile: docker/development/Dockerfile
-    image: docker.getcollate.io/openmetadata/ingestion:1.8.0-SNAPSHOT
+    image: docker.getcollate.io/openmetadata/ingestion:1.12.0-SNAPSHOT
     depends_on:
       elasticsearch:
         condition: service_healthy
