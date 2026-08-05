@@ -18,6 +18,7 @@ from typing import Any, Iterable
 FULL_PROJECTS = {
     "chromium",
     "Basic",
+    "Data Insight",
     "Ingestion",
     "ImportExport",
     "DataAssetRulesEnabled",
@@ -33,6 +34,7 @@ FULL_PROJECTS = {
 PROJECT_LANES = {
     "chromium": "chromium",
     "Basic": "chromium",
+    "Data Insight": "data-insight",
     "Ingestion": "ingestion",
     "ImportExport": "import-export",
     "DataAssetRulesEnabled": "data-asset-rules",
@@ -531,6 +533,8 @@ def include_project_dependencies(
 def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane == "chromium":
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
+    if lane == "data-insight":
+        return (1, 1)
     if lane in {
         "domain-isolation",
         "global-state",
