@@ -21,9 +21,9 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Runtime heap backpressure for the reindex reader.
  *
- * <p>AutoTune sizes batch/queue once at job start from a fixed per-entity estimate (100 KB). Real
+ * <p>AutoTune sizes batch/queue once at job start from a fixed per-entity estimate. Real
  * entities (wide tables, vector embeddings, large status history) and anything else sharing the pod
- * push actual heap far past that estimate, so a static count-based buffer silently overflows a small
+ * push actual heap far past any single estimate, so a static count-based buffer silently overflows a
  * heap — a 748 MB pod OOM'd on 2026-08-03 seconds after AutoTune upsized its queue to 1840 entities.
  * No formula can predict runtime pressure; the only thing that works in all situations is to react
  * to it.

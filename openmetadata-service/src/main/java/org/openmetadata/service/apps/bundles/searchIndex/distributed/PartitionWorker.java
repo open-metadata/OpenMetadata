@@ -184,11 +184,11 @@ public class PartitionWorker {
       while (currentOffset < rangeEnd
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
-        // Yield before pulling the next batch if the pod's heap is tight. AutoTune sizes
-        // batch/queue
-        // once at start from a fixed 100 KB/entity estimate; real entities (embeddings, wide
-        // tables)
-        // or co-tenant work can exceed it and OOM a small heap. Pausing the reader — not the
+        // Yield before pulling the next batch when the pod's heap is tight. AutoTune sizes batch
+        // and
+        // queue once at start from a fixed per-entity estimate; real entities (embeddings, wide
+        // tables) or co-tenant work can exceed it and OOM a small heap. Pausing the reader — not
+        // the
         // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
         HeapBackpressure.awaitHeadroom();
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
