@@ -159,6 +159,7 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=Basic \
+              --project="Data Insight" \
               --project=SearchRBAC \
 
           else
