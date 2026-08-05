@@ -512,9 +512,9 @@ public interface EntityTimeSeriesDAO {
       value =
           "SELECT h.hash AS \"entityFQNHash\", x.json AS json "
               + "FROM unnest(ARRAY[<entityFQNHashes>]::varchar[]) AS h(hash) "
-              + "CROSS JOIN LATERAL (SELECT json FROM <table> "
+              + "JOIN LATERAL (SELECT json FROM <table> "
               + "WHERE entityFQNHash = h.hash AND extension = :extension "
-              + "ORDER BY timestamp DESC LIMIT 1) x",
+              + "ORDER BY timestamp DESC LIMIT 1) x ON TRUE",
       connectionType = POSTGRES)
   @RegisterRowMapper(FQNHashJsonRowMapper.class)
   List<FQNHashJsonRow> getLatestExtensionBatch(
@@ -574,9 +574,9 @@ public interface EntityTimeSeriesDAO {
       value =
           "SELECT h.hash AS \"entityFQNHash\", x.json AS json "
               + "FROM unnest(ARRAY[<entityFQNHashes>]::varchar[]) AS h(hash) "
-              + "CROSS JOIN LATERAL (SELECT json, timestamp FROM <table> "
+              + "JOIN LATERAL (SELECT json, timestamp FROM <table> "
               + "WHERE entityFQNHash = h.hash AND extension = :extension "
-              + "ORDER BY timestamp DESC LIMIT :limit) x "
+              + "ORDER BY timestamp DESC LIMIT :limit) x ON TRUE "
               + "ORDER BY h.hash, x.timestamp DESC",
       connectionType = POSTGRES)
   @RegisterRowMapper(FQNHashJsonRowMapper.class)
