@@ -51,7 +51,7 @@ test.describe('Glossary Term — Related Terms', () => {
       await selectActiveGlossaryTerm(page, termA.data.displayName);
       await page.getByTestId('related-term-add-button').click();
 
-      const firstRow = page.locator('[data-testid^="relation-row-"]').first();
+      const firstRow = page.locator('[data-testid^="relation-row-"]');
       const firstInput = firstRow
         .locator('[data-testid^="term-autocomplete-"]')
         .locator('input');
@@ -65,6 +65,7 @@ test.describe('Glossary Term — Related Terms', () => {
       await searchResB;
       await page.getByRole('option', { exact: true, name: termBName }).click();
       await page.getByTestId('add-row-button').click();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the newly added row is still empty (unfilled autocomplete) at this point, so DOM order (most recently appended) is the only way to address it
       const secondRow = page.locator('[data-testid^="relation-row-"]').last();
       const secondInput = secondRow
         .locator('[data-testid^="term-autocomplete-"]')
@@ -128,8 +129,8 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      const row = page.locator('[data-testid^="relation-row-"]').first();
-      await row.getByRole('button').first().click();
+      const row = page.locator('[data-testid^="relation-row-"]');
+      await row.getByRole('button', { name: 'Related To' }).click();
       const seeAlsoOption = page.getByRole('option', {
         exact: true,
         name: 'See Also',
@@ -198,7 +199,11 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      await page
+        .locator('[data-testid^="relation-row-"]')
+        .filter({ hasText: termBName })
+        .locator('[data-testid^="remove-row-"]')
+        .click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();

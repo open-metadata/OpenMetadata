@@ -156,7 +156,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
 
       // Rename the parent term
       await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button').first().click();
+      await page.getByTestId('rename-button').click();
 
       // Wait for rename modal to appear
       const renameModal = page.getByTestId('entity-name-modal');

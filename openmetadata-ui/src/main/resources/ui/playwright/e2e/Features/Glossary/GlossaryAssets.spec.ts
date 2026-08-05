@@ -153,8 +153,7 @@ test.describe('Glossary Asset Operations', () => {
         // Click on the asset card link if available
         const assetLink = page
           .getByTestId('table-data-card')
-          .getByTestId('entity-link')
-          .first();
+          .getByTestId('entity-link');
 
         if (await assetLink.isVisible({ timeout: 3000 }).catch(() => false)) {
           await assetLink.click();
@@ -272,9 +271,9 @@ test.describe('Glossary Asset Operations', () => {
       ).toBeVisible();
 
       // Now try to remove the asset - look for remove/delete option
-      const assetCard = page
-        .locator(`[data-testid*="${topicEntity.entityResponseData?.name}"]`)
-        .first();
+      const assetCard = page.getByTestId(
+        `table-data-card_${topicEntity.entityResponseData?.fullyQualifiedName}`
+      );
 
       if (await assetCard.isVisible({ timeout: 3000 }).catch(() => false)) {
         // Try checkbox selection
@@ -393,8 +392,11 @@ test.describe('Glossary Asset Operations', () => {
       const count = await checkboxes.count();
 
       if (count >= 2) {
-        // Select first two checkboxes
+        // Select first two checkboxes - any two rows exercise bulk-select,
+        // the test only asserts that a multi-select delete flow works.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- bulk-select test only needs any two rows, not specific ones
         await checkboxes.nth(0).check();
+        // eslint-disable-next-line om-playwright/no-positional-locator -- bulk-select test only needs any two rows, not specific ones
         await checkboxes.nth(1).check();
 
         // Click bulk delete button
@@ -510,7 +512,7 @@ test.describe('Glossary Asset Operations', () => {
         await page.locator('.ant-dropdown').waitFor({ timeout: 3000 });
 
         // Click on the option to add assets
-        const addOption = page.locator('.ant-dropdown-menu-item').first();
+        const addOption = page.locator('.ant-dropdown-menu-item:visible');
 
         if (await addOption.isVisible()) {
           await addOption.click();
@@ -533,8 +535,7 @@ test.describe('Glossary Asset Operations', () => {
           // Select the asset
           const assetCheckbox = page
             .getByTestId('asset-selection-modal')
-            .locator(`text=${topicEntity.entity.name}`)
-            .first();
+            .locator(`text=${topicEntity.entity.name}`);
 
           if (await assetCheckbox.isVisible({ timeout: 3000 })) {
             await assetCheckbox.click();

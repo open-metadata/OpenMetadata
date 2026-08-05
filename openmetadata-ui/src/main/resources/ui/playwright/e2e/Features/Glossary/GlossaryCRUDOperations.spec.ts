@@ -157,7 +157,7 @@ test.describe('Glossary CRUD Operations', () => {
         await synonymsSelect.isVisible({ timeout: 2000 }).catch(() => false)
       ) {
         await synonymsSelect.click();
-        const synonymsInput = synonymsSelect.locator('input').first();
+        const synonymsInput = synonymsSelect.locator('input');
         await synonymsInput.fill('synonym1');
         await synonymsInput.press('Enter');
       }
@@ -267,12 +267,12 @@ test.describe('Glossary CRUD Operations', () => {
       );
 
       if (await ownerSection.isVisible({ timeout: 3000 }).catch(() => false)) {
-        const editBtn = page.getByTestId('edit-owner').first();
+        const editBtn = page.getByTestId('edit-owner');
 
         if (await editBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editBtn.click();
 
-          const removeBtn = page.getByTestId('remove-owner').first();
+          const removeBtn = page.getByTestId('remove-owner');
 
           if (await removeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
             await removeBtn.click();
@@ -337,7 +337,7 @@ test.describe('Glossary CRUD Operations', () => {
         if (await editBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editBtn.click();
 
-          const removeBtn = page.getByTestId('remove-owner').first();
+          const removeBtn = page.getByTestId('remove-owner');
 
           if (await removeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
             await removeBtn.click();
@@ -386,9 +386,9 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      const parentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
+      const parentRow = page.locator(
+        `[data-row-key="${parentTerm.responseData.fullyQualifiedName}"]`
+      );
 
       await expect(parentRow).toBeVisible();
 
@@ -451,15 +451,15 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      const parentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
+      const parentRow = page.locator(
+        `[data-row-key="${parentTerm.responseData.fullyQualifiedName}"]`
+      );
 
       await expect(parentRow).toBeVisible();
 
-      const targetRow = page
-        .locator(`[data-row-key*="${targetTerm.responseData.name}"]`)
-        .first();
+      const targetRow = page.locator(
+        `[data-row-key="${targetTerm.responseData.fullyQualifiedName}"]`
+      );
 
       await expect(targetRow).toBeVisible();
     } finally {
@@ -481,9 +481,9 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      const termRow = page
-        .locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
-        .first();
+      const termRow = page.locator(
+        `[data-row-key="${glossaryTerm.responseData.fullyQualifiedName}"]`
+      );
 
       await termRow.click();
 
@@ -525,9 +525,9 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      const parentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
+      const parentRow = page.locator(
+        `[data-row-key="${parentTerm.responseData.fullyQualifiedName}"]`
+      );
 
       await expect(parentRow).toBeVisible();
 
@@ -650,9 +650,9 @@ test.describe('Glossary CRUD Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      const termRow = page
-        .locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
-        .first();
+      const termRow = page.locator(
+        `[data-row-key="${glossaryTerm.responseData.fullyQualifiedName}"]`
+      );
 
       await termRow.click();
 
@@ -661,9 +661,11 @@ test.describe('Glossary CRUD Operations', () => {
       if (await synonymAddBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await synonymAddBtn.click();
 
+        // Two synonyms were seeded via API; scope to the known tag text so
+        // the removal targets a specific chip instead of "whichever is first".
         const removeIcon = page
-          .locator('.ant-select-selection-item-remove')
-          .first();
+          .locator('.ant-select-selection-item', { hasText: 'TestSynonym1' })
+          .locator('.ant-select-selection-item-remove');
 
         if (await removeIcon.isVisible({ timeout: 2000 }).catch(() => false)) {
           await removeIcon.click();
@@ -721,9 +723,9 @@ test.describe('Glossary CRUD Operations', () => {
         if (await editTagBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editTagBtn.click();
 
-          const removeIcon = page
-            .locator('.ant-select-selection-item-remove')
-            .first();
+          const removeIcon = tagsSection.locator(
+            '.ant-select-selection-item-remove'
+          );
 
           if (
             await removeIcon.isVisible({ timeout: 2000 }).catch(() => false)

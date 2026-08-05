@@ -305,74 +305,13 @@
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
-    },
     "playwright/no-skipped-test": {
       "count": 1
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    },
     "playwright/no-wait-for-selector": {
       "count": 11
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 9
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 3
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryTermRelatedTerms.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
-  "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 5
     }
   },
   "playwright/e2e/Features/ImpactAnalysis.spec.ts": {

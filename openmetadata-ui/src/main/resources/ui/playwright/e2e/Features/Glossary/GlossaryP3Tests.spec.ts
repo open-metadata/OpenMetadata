@@ -248,14 +248,9 @@ test.describe('Glossary P3 Tests', () => {
         '[data-testid="up-vote-btn"], [data-testid="vote-container"]'
       );
 
-      if (
-        await voteSection
-          .first()
-          .isVisible({ timeout: 3000 })
-          .catch(() => false)
-      ) {
+      if (await voteSection.isVisible({ timeout: 3000 }).catch(() => false)) {
         // Vote count should be visible (even if 0)
-        await expect(voteSection.first()).toBeVisible();
+        await expect(voteSection).toBeVisible();
       }
     } finally {
       await glossary.delete(apiContext);
@@ -590,11 +585,9 @@ test.describe('Glossary P3 Tests', () => {
 
       // Verify page is functional
       await expect(
-        page
-          .locator(
-            '[data-testid="add-glossary"], [data-testid="glossary-left-panel"]'
-          )
-          .first()
+        page.locator(
+          '[data-testid="add-glossary"], [data-testid="glossary-left-panel"]'
+        )
       ).toBeVisible({ timeout: 10000 });
     } finally {
       await glossary.delete(apiContext);
@@ -681,6 +674,9 @@ test.describe('Glossary P3 Tests', () => {
       // If there are terms, try to expand some levels
       if (await table.isVisible({ timeout: 2000 }).catch(() => false)) {
         for (let i = 0; i < Math.min(termIds.length, 2); i++) {
+          // Drilling into deep nesting: each iteration expands whichever
+          // node is currently expandable, not a specific named term.
+          // eslint-disable-next-line om-playwright/no-positional-locator -- iterating to progressively expand deeper levels of a 10-level nested tree; which node expands first is not the thing under test
           const expandIcon = page
             .locator('[data-testid="expand-icon"]')
             .first();
@@ -689,10 +685,7 @@ test.describe('Glossary P3 Tests', () => {
             await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             await expandIcon.click();
-            await page
-              .locator('tr[data-row-key]')
-              .first()
-              .waitFor({ state: 'visible' });
+            await expect(page.locator('tr[data-row-key]')).not.toHaveCount(0);
           } else {
             break;
           }
@@ -805,16 +798,13 @@ test.describe('Glossary P3 Tests', () => {
       const addGlossaryButton = page.getByTestId('add-glossary');
       const glossarySidebar = page.locator('.left-panel-card');
 
-      // Any of these states is acceptable for error handling
+      // Any of these states is acceptable for error handling. Both text
+      // locators are broad regexes that may match more than one element, so
+      // this checks for existence of a match rather than a single element's
+      // visibility.
       const hasValidResponse =
-        (await badMessage
-          .first()
-          .isVisible({ timeout: 10000 })
-          .catch(() => false)) ||
-        (await errorState
-          .first()
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
+        (await badMessage.count().catch(() => 0)) > 0 ||
+        (await errorState.count().catch(() => 0)) > 0 ||
         (await noDataPlaceholder
           .isVisible({ timeout: 2000 })
           .catch(() => false)) ||
@@ -860,15 +850,12 @@ test.describe('Glossary P3 Tests', () => {
       const glossaryHeader = page.getByTestId('entity-header-name');
       const noDataPlaceholder = page.getByTestId('no-data-placeholder');
 
+      // Both text locators are broad regexes that may match more than one
+      // element, so this checks for existence of a match rather than a
+      // single element's visibility.
       const hasValidResponse =
-        (await badMessage
-          .first()
-          .isVisible({ timeout: 3000 })
-          .catch(() => false)) ||
-        (await errorState
-          .first()
-          .isVisible({ timeout: 2000 })
-          .catch(() => false)) ||
+        (await badMessage.count().catch(() => 0)) > 0 ||
+        (await errorState.count().catch(() => 0)) > 0 ||
         (await glossaryHeader
           .isVisible({ timeout: 2000 })
           .catch(() => false)) ||

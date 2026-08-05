@@ -30,7 +30,7 @@ test('suppressions baseline only ever shrinks', () => {
 
   // Update this ceiling downward as violations are fixed. It must never rise:
   // a rise means new violations were suppressed instead of fixed.
-  const CEILING = Number(process.env.PW_SUPPRESSION_CEILING ?? 1446);
+  const CEILING = Number(process.env.PW_SUPPRESSION_CEILING ?? 1377);
 
   assert.ok(
     total <= CEILING,
