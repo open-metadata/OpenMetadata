@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { initCoreI18n } from '@openmetadata/ui-core-components';
 import i18next, { t as i18nextT } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { ReactNode } from 'react';
@@ -24,11 +23,18 @@ i18next
   .use(initReactI18next)
   .init(getInitOptions())
   .then(async () => {
-    initCoreI18n(i18next);
     if (i18next.language !== i18next.resolvedLanguage) {
       await i18next.changeLanguage(i18next.language);
     }
   });
+
+// The library's `core` namespace is registered from `src/index.tsx`, not here.
+// A top-level `import` (or even a dynamic `await import(...)`) from
+// `@openmetadata/ui-core-components` inside LocalUtil.tsx drags the library's
+// `dist/index.*.js` into Playwright's `--list` module graph — the CI
+// `plan-playwright` job runs `yarn --ignore-scripts`, so `dist/` isn't built
+// and the resolution fails. Keeping the initializer out of this file's
+// import surface prevents that.
 
 i18next.on('languageChanged', async (lng) => {
   await localUtilClassBase.loadLocales(lng);
