@@ -1687,15 +1687,43 @@ export const navigateToPortsTab = async (page: Page) => {
 
 /**
  * Expands the lineage section in the InputOutputPortsTab.
- * Only expands if currently collapsed.
+ * No-op when the section is already expanded.
  */
 export const expandLineageSection = async (page: Page) => {
-  const portsViewRes = page.waitForResponse((response) =>
-    response.url().includes('/portsView')
-  );
-  await page.getByTestId('toggle-lineage-collapse').click();
-  await portsViewRes;
+  const header = page.getByTestId('toggle-lineage-collapse');
+  await header.waitFor({ state: 'visible' });
+
+  // The header is a toggle, so clicking it while the section is already
+  // expanded collapses it — and no /portsView request follows, which left the
+  // response wait below hanging until the test timeout.
+  const alreadyExpanded =
+    (await header.getAttribute('aria-expanded')) === 'true';
+
+  if (!alreadyExpanded) {
+    // Match only the lineage fetch. The port-count probe hits the same
+    // /portsView endpoint but always carries pagination params, so matching on
+    // '/portsView' alone can resolve against the counts response while the
+    // lineage request is still in flight.
+    const lineageResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/portsView') &&
+        !response.url().includes('inputLimit=')
+    );
+
+    await header.click();
+    await lineageResponse;
+  }
+
   await waitForAllLoadersToDisappear(page);
+
+  // Settle on the rendered end state. A loader count alone can pass vacuously
+  // when React has not yet mounted the loader, letting callers act on a panel
+  // that is still loading.
+  await page
+    .getByTestId('ports-lineage-view')
+    .or(page.locator('.ports-lineage-view-empty'))
+    .first()
+    .waitFor({ state: 'visible' });
 };
 
 /**

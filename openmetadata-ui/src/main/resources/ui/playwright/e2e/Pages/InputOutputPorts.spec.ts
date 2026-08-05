@@ -1441,6 +1441,41 @@ test.describe('Input Output Ports', () => {
   });
 
   test.describe('Section 7: Fullscreen Mode', () => {
+    test('Lineage stays expanded when expandLineageSection runs twice', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+
+      await test.step('Create data product with ports', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+
+        await dataProduct.addInputPorts(apiContext, [
+          createAssetRef(tables[0], 'table'),
+        ]);
+      });
+
+      await test.step('Navigate and expand lineage twice', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await navigateToPortsTab(page);
+
+        await expandLineageSection(page);
+        // The helper is documented as "only expands if currently collapsed",
+        // so a second call must be a no-op rather than a collapse.
+        await expandLineageSection(page);
+      });
+
+      await test.step('Lineage section is still expanded', async () => {
+        await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
+        await expect(page.getByTestId('toggle-fullscreen-btn')).toBeVisible();
+      });
+    });
+
     test('Toggle fullscreen mode', async ({ page }) => {
       const dataProduct = new DataProduct([domain]);
 
