@@ -136,28 +136,16 @@ jest.mock('recharts', () => ({
     )),
   Tooltip: jest
     .fn()
-    .mockImplementation(
-      ({
-        active,
-        allowEscapeViewBox,
-        content,
-        coordinate,
-        isAnimationActive,
-        offset,
-      }) => (
-        <div
-          data-active={String(Boolean(active))}
-          data-animation-active={String(isAnimationActive)}
-          data-horizontal-overflow-allowed={String(allowEscapeViewBox?.x)}
-          data-offset={offset}
-          data-testid="recharts-tooltip"
-          data-vertical-overflow-allowed={String(allowEscapeViewBox?.y)}
-          data-x={coordinate?.x}
-          data-y={coordinate?.y}>
-          {active ? content : null}
-        </div>
-      )
-    ),
+    .mockImplementation(({ active, content, isAnimationActive, position }) => (
+      <div
+        data-active={String(Boolean(active))}
+        data-animation-active={String(isAnimationActive)}
+        data-testid="recharts-tooltip"
+        data-x={position?.x ?? 640}
+        data-y={position?.y ?? 240}>
+        {active ? content : null}
+      </div>
+    )),
   XAxis: jest.fn().mockImplementation(() => <div data-testid="x-axis" />),
   YAxis: jest.fn().mockImplementation(() => <div data-testid="y-axis" />),
 }));
@@ -424,8 +412,8 @@ describe('TestSummaryGraph', () => {
     fireEvent.mouseEnter(point);
 
     expect(tooltip).toHaveAttribute(ACTIVE_ATTRIBUTE, ACTIVE_VALUE);
-    expect(tooltip).toHaveAttribute('data-x', '320');
-    expect(tooltip).toHaveAttribute('data-y', '120');
+    expect(tooltip).toHaveAttribute('data-x', '324');
+    expect(tooltip).toHaveAttribute('data-y', '124');
 
     fireEvent.keyDown(point, {
       key: 'Escape',
@@ -460,17 +448,11 @@ describe('TestSummaryGraph', () => {
     const point = screen.getByTestId('test-summary-point-min');
     const tooltip = screen.getByTestId('recharts-tooltip');
 
-    expect(tooltip).toHaveAttribute(
-      'data-horizontal-overflow-allowed',
-      ACTIVE_VALUE
-    );
-    expect(tooltip).toHaveAttribute(
-      'data-vertical-overflow-allowed',
-      ACTIVE_VALUE
-    );
-    expect(tooltip).toHaveAttribute('data-offset', '4');
-
     fireEvent.mouseEnter(point);
+
+    expect(tooltip).toHaveAttribute('data-x', '324');
+    expect(tooltip).toHaveAttribute('data-y', '124');
+
     fireEvent.mouseLeave(point);
     act(() => {
       jest.advanceTimersByTime(200);

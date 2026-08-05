@@ -78,8 +78,8 @@ import {
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 interface ActiveTooltip {
-  coordinate: Coordinate;
   payload: Record<string, unknown>;
+  position: Coordinate;
 }
 
 interface TestSummaryTooltipContentProps {
@@ -127,7 +127,10 @@ function TestSummaryGraph({
   const handleTooltipOpen = useCallback(
     (x: number, y: number, payload: Record<string, unknown>) => {
       cancelTooltipClose();
-      setActiveTooltip({ coordinate: { x, y }, payload });
+      setActiveTooltip({
+        payload,
+        position: { x: x + TOOLTIP_GAP, y: y + TOOLTIP_GAP },
+      });
     },
     [cancelTooltipClose]
   );
@@ -332,9 +335,6 @@ function TestSummaryGraph({
         />
         <Tooltip
           active={Boolean(activeTooltip)}
-          // Recharts otherwise flips the tooltip after measuring its content,
-          // moving the incident link away from a pointer already over it.
-          allowEscapeViewBox={{ x: true, y: true }}
           content={
             <TestSummaryTooltipContent
               activeTooltip={activeTooltip}
@@ -342,10 +342,11 @@ function TestSummaryGraph({
               onMouseLeave={handleTooltipClose}
             />
           }
-          coordinate={activeTooltip?.coordinate}
           cursor={false}
           isAnimationActive={false}
-          offset={TOOLTIP_GAP}
+          // ComposedChart replaces Tooltip.coordinate with the live pointer;
+          // position keeps interactive content anchored to its triggering dot.
+          position={activeTooltip?.position}
           wrapperStyle={{ pointerEvents: 'auto' }}
         />
         {referenceArea}
