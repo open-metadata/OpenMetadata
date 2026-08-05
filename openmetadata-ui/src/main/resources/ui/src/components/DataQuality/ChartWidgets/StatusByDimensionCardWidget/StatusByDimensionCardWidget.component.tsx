@@ -51,6 +51,8 @@ const StatusByDimensionCardWidget = ({
   );
 
   useEffect(() => {
+    let ignore = false;
+
     const getStatusByDimension = async () => {
       setIsDqByDimensionLoading(true);
       try {
@@ -58,15 +60,25 @@ const StatusByDimensionCardWidget = ({
         const { data: noDimensionData } =
           await fetchTestCaseSummaryByNoDimension(chartFilter);
 
-        setDqByDimensionData([...data, ...noDimensionData]);
+        if (!ignore) {
+          setDqByDimensionData([...data, ...noDimensionData]);
+        }
       } catch {
-        setDqByDimensionData(undefined);
+        if (!ignore) {
+          setDqByDimensionData(undefined);
+        }
       } finally {
-        setIsDqByDimensionLoading(false);
+        if (!ignore) {
+          setIsDqByDimensionLoading(false);
+        }
       }
     };
 
     getStatusByDimension();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter]);
 
   return (
