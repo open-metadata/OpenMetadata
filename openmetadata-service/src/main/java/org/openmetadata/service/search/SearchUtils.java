@@ -356,13 +356,9 @@ public final class SearchUtils {
   /**
    * Whether search results must be filtered by the caller's policies.
    *
-   * <p>Bots are deliberately <em>not</em> excluded (issue #30023). A bot carrying domains is given
-   * {@code DomainOnlyAccessRole} by {@code UserResource#getDefaultBotRoles}, so the platform already
-   * intends such a bot to be domain-scoped; excluding bots here let any bot-authenticated caller —
-   * the usual way an MCP client connects — read every domain. System bots are unaffected: each of
-   * their policies grants an unconditioned {@code ViewAll} on {@code All}, which
-   * {@link RBACConditionEvaluator} compiles to {@code match_all}, and a bot with no search-relevant
-   * rule at all also falls through to {@code match_all}.
+   * <p>A domain-scoped bot is filtered like any other non-admin subject (issue #30023): excluding
+   * every bot let a bot-authenticated caller — the usual way an MCP client connects — read outside
+   * its permitted domains.
    */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
@@ -372,7 +368,26 @@ public final class SearchUtils {
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
+        && !isUnscopedBot(subjectContext)
         && rbacConditionEvaluator != null;
+  }
+
+  /**
+   * A bot that was never declared domain-scoped, identified by the absence of
+   * {@code DomainOnlyAccessRole} — the role {@code UserResource#getDefaultBotRoles} attaches to a bot
+   * created with domains, and the only role whose policy carries a {@code hasDomain()} rule, so
+   * without it a bot's domains cannot narrow a search anyway.
+   *
+   * <p>Such a bot must stay unfiltered because a system bot's policy may grant only a
+   * <em>resource-scoped</em> {@code ViewAll}: {@code GovernanceBotRole} maps to {@code
+   * DefaultBotPolicy} alone, whose sole search-relevant rule allows {@code ViewAll} on {@code
+   * ingestionPipeline}. {@link RBACConditionEvaluator} compiles that to an {@code _index} filter, so
+   * filtering the governance bot would silently return zero hits for every non-pipeline search.
+   * Seeded bots do not carry {@code DefaultBotRole} to fall back on — {@code
+   * UserUtil#addOrUpdateBotUser} stores exactly the roles named in their seed file.
+   */
+  private static boolean isUnscopedBot(SubjectContext subjectContext) {
+    return subjectContext.isBot() && !subjectContext.hasDomainOnlyAccessRole();
   }
 
   public static SSLContext createElasticSearchSSLContext(

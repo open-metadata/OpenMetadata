@@ -257,6 +257,15 @@ public class DomainIsolationIT {
       assertTrue(botFqns.contains(ownFqn), "Bot sees own-domain table. Saw: " + botFqns);
       assertFalse(
           botFqns.contains(foreignFqn), "Bot must NOT see foreign-domain table. Saw: " + botFqns);
+
+      // A bot that was never declared domain-scoped keeps full visibility. Guards the regression
+      // this fix has to avoid: a system bot's policy may grant only a resource-scoped ViewAll,
+      // which
+      // compiles to an _index filter that would zero out every unrelated search.
+      Set<String> systemBotFqns = tableSearchFqns(SdkClients.ingestionBotClient(), p);
+      assertTrue(
+          systemBotFqns.containsAll(List.of(ownFqn, foreignFqn)),
+          "A bot without DomainOnlyAccessRole must stay unfiltered. Saw: " + systemBotFqns);
     } finally {
       drain(cleanup);
     }

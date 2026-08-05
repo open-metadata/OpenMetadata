@@ -283,10 +283,18 @@ class SearchUtilsTest {
       when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
       when(subjectContext.isAdmin()).thenReturn(false);
-      // A bot is filtered like any other non-admin subject (#30023): excluding bots let a
-      // bot-authenticated caller, the usual MCP setup, read outside its permitted domains.
+      // A bot declared domain-scoped is filtered like any other non-admin subject (#30023):
+      // excluding every bot let a bot-authenticated caller, the usual MCP setup, read outside its
+      // permitted domains.
       when(subjectContext.isBot()).thenReturn(true);
+      when(subjectContext.hasDomainOnlyAccessRole()).thenReturn(true);
       assertTrue(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      // A bot without that role — every seeded system bot — stays unfiltered. GovernanceBotRole's
+      // only search-relevant grant is ViewAll scoped to ingestionPipeline, which would compile to
+      // an
+      // _index filter and zero out every other search.
+      when(subjectContext.hasDomainOnlyAccessRole()).thenReturn(false);
+      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
       when(subjectContext.isBot()).thenReturn(false);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
       assertFalse(SearchUtils.shouldApplyRbacConditions(null, evaluator));
