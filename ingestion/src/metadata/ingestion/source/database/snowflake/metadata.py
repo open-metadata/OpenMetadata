@@ -13,7 +13,9 @@ Snowflake source module
 """
 
 import json  # noqa: I001
+import threading
 import traceback
+from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
@@ -107,6 +109,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_SCHEMATA,
+    SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA,
     SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS,
     SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS,
     SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS,
@@ -118,6 +121,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_request,
 )
+from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.ingestion.source.database.snowflake.utils import (
     _current_database_schema,
     _get_schema_unique_constraints,
@@ -229,6 +233,26 @@ SEMANTIC_VIEW_COLUMN_QUERIES = (
     ("Fact", SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS),
 )
 
+# The three INFORMATION_SCHEMA catalog views backing a semantic view, and the
+# per-view query used as a fallback when the schema-wide batch is unavailable.
+SEMANTIC_DIMENSIONS = "semantic_dimensions"
+SEMANTIC_FACTS = "semantic_facts"
+SEMANTIC_METRICS = "semantic_metrics"
+SEMANTIC_CATALOG_VIEWS = (
+    (SEMANTIC_DIMENSIONS, SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS),
+    (SEMANTIC_FACTS, SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS),
+    (SEMANTIC_METRICS, SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS),
+)
+
+# Snowflake errno for "Information schema query returned too much data", the same
+# signal get_schema_columns uses to fall back to per-object reflection.
+_INFO_SCHEMA_TOO_MUCH_DATA = 90030
+
+SEMANTIC_CATALOG_CACHE_SIZE = snowflake_settings.semantic_catalog_cache_size
+
+# A schema's semantic catalog: {catalog_view: {view_name: [row, ...]}}
+SemanticCatalog = Dict[str, Dict[str, List[tuple]]]  # noqa: UP006
+
 
 def _resolve_semantic_column_type(data_type: Optional[str]):  # noqa: UP045
     """Map a Snowflake INFORMATION_SCHEMA data_type string to a SQLAlchemy type.
@@ -323,6 +347,7 @@ class SnowflakeSource(
         self.external_location_map = {}
         self.schema_tags_map = {}
         self.database_tags_map = {}
+        self._semantic_catalog_local = threading.local()
 
         self._account: Optional[str] = None  # noqa: UP045
         self._org_name: Optional[str] = None  # noqa: UP045
@@ -1177,20 +1202,86 @@ class SnowflakeSource(
         return columns
 
     def _fetch_semantic_view_columns(self, schema_name: str, table_name: str) -> List[dict]:  # noqa: UP006
-        """Query the semantic dimension/fact/metric catalog views and merge the
-        rows (deduplicated by column name) into OpenMetadata column dicts."""
+        """Merge the schema's dimension/fact rows for one view (deduplicated by
+        column name) into OpenMetadata column dicts."""
         schema = fqn.unquote_name(schema_name)
         semantic_view = fqn.unquote_name(table_name)
         merged: dict[str, dict] = {}
-        for kind, query in SEMANTIC_VIEW_COLUMN_QUERIES:
-            cursor = self.connection.execute(text(query.format(schema=schema, semantic_view=semantic_view)))
-            for row in cursor:
+        for kind, catalog_view in (("Dimension", SEMANTIC_DIMENSIONS), ("Fact", SEMANTIC_FACTS)):
+            for row in self._semantic_rows(catalog_view, schema, semantic_view):
                 _merge_semantic_view_column(merged, kind, row)
         return [_build_semantic_view_column(entry) for entry in merged.values()]
 
-    def _semantic_rows(self, query: str, schema: str, view: str) -> List[tuple]:  # noqa: UP006
-        cursor = self.connection.execute(text(query.format(schema=schema, semantic_view=view)))
-        return list(cursor)  # pyright: ignore[reportArgumentType]
+    def _semantic_catalog_lru(self) -> "OrderedDict[str, SemanticCatalog | None]":
+        """Bounded, per-thread LRU of schema-wide semantic catalogs.
+
+        Per-thread because the ``databaseSchema`` topology node runs with
+        ``threads=True`` and each worker walks a different schema: a shared cache
+        would need a lock and would thrash between schemas. Bounded because a
+        schema with very many semantic objects would otherwise be retained for the
+        whole database run (``info_cache`` only clears between databases).
+        """
+        if not hasattr(self._semantic_catalog_local, "lru"):
+            self._semantic_catalog_local.lru = OrderedDict()
+        return self._semantic_catalog_local.lru
+
+    def _semantic_catalog(self, schema: str) -> Optional[SemanticCatalog]:  # noqa: UP045
+        """Every semantic object in ``schema``, in three queries total.
+
+        Replaces the previous three-queries-per-view pattern, which cost 3N
+        round-trips for N semantic views. Returns ``None`` when Snowflake refuses
+        the bulk query with errno 90030, signalling the per-view fallback.
+        """
+        lru = self._semantic_catalog_lru()
+        if schema in lru:
+            lru.move_to_end(schema)
+            return lru[schema]
+
+        catalog: Optional[SemanticCatalog] = {}  # noqa: UP045
+        try:
+            for catalog_view, _ in SEMANTIC_CATALOG_VIEWS:
+                by_view: Dict[str, List[tuple]] = {}  # noqa: UP006
+                query = SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA.format(catalog_view=catalog_view, schema=schema)
+                for row in self._execute_semantic_query(query):
+                    # SEMANTIC_VIEW_NAME leads the projection; strip it so the rest of
+                    # the row keeps the layout the per-view queries return.
+                    by_view.setdefault(row[0], []).append(row[1:])
+                catalog[catalog_view] = by_view
+        except sa_exc.ProgrammingError as p_err:
+            if getattr(p_err.orig, "errno", None) != _INFO_SCHEMA_TOO_MUCH_DATA:
+                raise
+            logger.warning(
+                f"Schema-wide semantic catalog query for [{schema}] returned too much data; "
+                "falling back to per-view queries"
+            )
+            catalog = None
+
+        self._store_semantic_catalog(schema, catalog)
+        return catalog
+
+    def _store_semantic_catalog(self, schema: str, catalog: Optional[SemanticCatalog]) -> None:  # noqa: UP045
+        """Cache ``catalog`` (or the ``None`` 90030 sentinel, so we do not re-run the
+        bulk query for every view in the schema just to fail again), evicting the
+        least recently used schema past the configured bound."""
+        lru = self._semantic_catalog_lru()
+        lru[schema] = catalog
+        lru.move_to_end(schema)
+        while len(lru) > SEMANTIC_CATALOG_CACHE_SIZE:
+            lru.popitem(last=False)
+
+    def _execute_semantic_query(self, query: str) -> List[tuple]:  # noqa: UP006
+        """Run a semantic catalog query and materialize the rows as plain tuples."""
+        cursor = self.connection.execute(text(query))
+        return [tuple(row) for row in cursor]  # pyright: ignore[reportOptionalIterable]
+
+    def _semantic_rows(self, catalog_view: str, schema: str, view: str) -> List[tuple]:  # noqa: UP006
+        """Rows of one catalog view for one semantic view, from the schema-wide
+        batch when available, else from a single per-view query."""
+        catalog = self._semantic_catalog(schema)
+        if catalog is not None:
+            return catalog.get(catalog_view, {}).get(view, [])
+        query = dict(SEMANTIC_CATALOG_VIEWS)[catalog_view]
+        return self._execute_semantic_query(query.format(schema=schema, semantic_view=view))
 
     def _semantic_view_reference(self, database: str, schema: str, view: str) -> Optional[EntityReference]:  # noqa: UP045
         view_fqn = fqn._build(self.context.get().database_service, database, schema, view)  # pyright: ignore[reportAttributeAccessIssue]
@@ -1213,9 +1304,9 @@ class SnowflakeSource(
             try:
                 query_schema = fqn.unquote_name(schema)
                 query_view = fqn.unquote_name(view)
-                dimension_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS, query_schema, query_view)
-                fact_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS, query_schema, query_view)
-                metric_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS, query_schema, query_view)
+                dimension_rows = self._semantic_rows(SEMANTIC_DIMENSIONS, query_schema, query_view)
+                fact_rows = self._semantic_rows(SEMANTIC_FACTS, query_schema, query_view)
+                metric_rows = self._semantic_rows(SEMANTIC_METRICS, query_schema, query_view)
                 view_ref = self._semantic_view_reference(database, schema, view)
                 logger.info(
                     f"Semantic view [{schema}.{view}]: emitting {len(metric_rows)} metric(s) "

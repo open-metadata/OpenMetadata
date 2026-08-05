@@ -11,6 +11,7 @@
 """Unit tests for the Snowflake semantic-view metric builders."""
 
 import inspect
+import threading
 from unittest.mock import MagicMock
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
@@ -140,6 +141,8 @@ def _make_source():
     context.get_current_thread_id.return_value = "test-thread"
     source.context = context
     source._connection_map = {"test-thread": MagicMock()}
+    # __new__ skips __init__, which is where the per-thread catalog cache is created
+    source._semantic_catalog_local = threading.local()
     source.metadata = MagicMock()
     view_entity = MagicMock()
     view_entity.id.root = "12345678-1234-1234-1234-123456789012"
@@ -147,17 +150,24 @@ def _make_source():
     return source
 
 
+VIEW = "sales_analysis"
+
+
 def _rows_for(query):
-    # `_semantic_rows` interpolates `{schema}`/`{semantic_view}` via `.format()`
-    # before wrapping the query in `text(...)`, so the executed SQL text never
-    # matches the raw, unformatted query constants byte-for-byte. Match on the
-    # source catalog view name instead, which `.format()` leaves untouched.
+    """Schema-wide catalog rows, keyed off the catalog view name in the SQL.
+
+    The schema-wide query leads its projection with SEMANTIC_VIEW_NAME, so every
+    row is prefixed with the owning view before the usual 6-column layout.
+    """
     lowered = query.lower()
     if "semantic_dimensions" in lowered:
-        return [DIM_REGION]
-    if "semantic_facts" in lowered:
-        return [FACT_LINE_AMOUNT]
-    return [TOTAL_REVENUE, ORDER_COUNT]
+        rows = [DIM_REGION]
+    elif "semantic_facts" in lowered:
+        rows = [FACT_LINE_AMOUNT]
+    else:
+        rows = [TOTAL_REVENUE, ORDER_COUNT]
+
+    return [(VIEW, *row) for row in rows]
 
 
 def test_yield_semantic_view_metrics_yields_one_per_metric():

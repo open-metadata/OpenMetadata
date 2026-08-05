@@ -11,8 +11,12 @@
 
 """Unit tests for Snowflake semantic view ingestion (issue #23680)."""
 
-from unittest.mock import Mock
+import threading
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock
 
+import pytest
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.sql.sqltypes import NullType
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -28,6 +32,54 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_semantic_view_definition,
     get_semantic_view_names,
 )
+
+# Schema-wide catalog rows: SEMANTIC_VIEW_NAME leads, then
+# (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS).
+_DIMENSION_ROWS = [
+    ("SALES_SEMANTIC", "CUSTOMERS", "CUSTOMER_NAME", "VARCHAR(100)", "customers.c_name", "the name", "alias"),
+    # same name as the fact -> must collapse onto one column
+    ("SALES_SEMANTIC", "ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.line_amount", None, None),
+]
+_FACT_ROWS = [
+    ("SALES_SEMANTIC", "ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.o_totalprice", None, None),
+]
+_METRIC_ROWS = [
+    ("SALES_SEMANTIC", "ORDERS", "TOTAL_REVENUE", "NUMBER", "SUM(orders.line_amount)", None, None),
+]
+
+
+def _semantic_source():
+    """A SnowflakeSource wired only far enough to exercise the semantic catalog."""
+    source = SnowflakeSource.__new__(SnowflakeSource)
+    context = MagicMock()
+    context.get_current_thread_id.return_value = "test-thread"
+    source.context = context
+    source._connection_map = {"test-thread": MagicMock()}
+    # __new__ skips __init__, which is where the per-thread catalog cache is created
+    source._semantic_catalog_local = threading.local()
+
+    def execute(clause):
+        lowered = str(clause.text).lower()
+        if "semantic_dimensions" in lowered:
+            return iter(_DIMENSION_ROWS)
+        if "semantic_facts" in lowered:
+            return iter(_FACT_ROWS)
+
+        return iter(_METRIC_ROWS)
+
+    source.connection.execute.side_effect = execute
+
+    return source
+
+
+def _executed_catalog_views(source):
+    """Which INFORMATION_SCHEMA catalog views were actually queried, in order."""
+    views = []
+    for call in source.connection.execute.call_args_list:
+        lowered = str(call.args[0].text).lower()
+        views += [name for name in ("semantic_dimensions", "semantic_facts", "semantic_metrics") if name in lowered]
+
+    return views
 
 
 def test_semantic_column_description_is_the_raw_comment_only():
@@ -138,22 +190,9 @@ def test_semantic_view_columns_come_from_dimensions_facts_metrics():
 
 
 def test_fetch_semantic_view_columns_dedupes_names_and_maps_types():
-    self_mock = Mock()
-    # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
-    dimension_rows = [
-        ("CUSTOMERS", "CUSTOMER_NAME", "VARCHAR(100)", "customers.c_name", "the name", "alias"),
-        # same name as the fact -> must collapse onto one column
-        ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.line_amount", None, None),
-    ]
-    fact_rows = [
-        ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.o_totalprice", None, None),
-    ]
-    self_mock.connection.execute.side_effect = [
-        iter(dimension_rows),
-        iter(fact_rows),
-    ]
+    source = _semantic_source()
 
-    columns = SnowflakeSource._fetch_semantic_view_columns(self_mock, "PUBLIC", "SALES_SEMANTIC")
+    columns = source._fetch_semantic_view_columns("PUBLIC", "SALES_SEMANTIC")
 
     by_name = {c["name"]: c for c in columns}
     assert set(by_name) == {"CUSTOMER_NAME", "LINE_AMOUNT"}
@@ -163,6 +202,70 @@ def test_fetch_semantic_view_columns_dedupes_names_and_maps_types():
     # no kind tag, no logical table, no synonyms, no expression -- Metric carries those
     assert dimension["comment"] == "the name"
     assert by_name["LINE_AMOUNT"]["comment"] is None
+
+
+def test_semantic_catalog_is_three_queries_per_schema_not_per_view():
+    """The whole point of the schema-wide batch: query count must scale with the
+    number of schemas, not the number of semantic views."""
+    source = _semantic_source()
+
+    for view in ("SALES_SEMANTIC", "ORDERS_SEMANTIC", "CUSTOMER_SEMANTIC"):
+        source._fetch_semantic_view_columns("PUBLIC", view)
+        source._semantic_rows("semantic_metrics", "PUBLIC", view)
+
+    # 3 catalog views x 1 schema, regardless of how many views were asked for
+    assert source.connection.execute.call_count == 3
+    assert _executed_catalog_views(source) == ["semantic_dimensions", "semantic_facts", "semantic_metrics"]
+
+
+def test_semantic_catalog_refetches_for_a_different_schema():
+    source = _semantic_source()
+
+    source._fetch_semantic_view_columns("PUBLIC", "SALES_SEMANTIC")
+    source._fetch_semantic_view_columns("OTHER", "SALES_SEMANTIC")
+
+    assert source.connection.execute.call_count == 6
+
+
+def test_semantic_catalog_cache_is_bounded():
+    """A schema with very many semantic objects must not be retained for the whole
+    database run -- the LRU evicts past SEMANTIC_CATALOG_CACHE_SIZE."""
+    from metadata.ingestion.source.database.snowflake.metadata import (
+        SEMANTIC_CATALOG_CACHE_SIZE,
+    )
+
+    source = _semantic_source()
+    for index in range(SEMANTIC_CATALOG_CACHE_SIZE + 3):
+        source._fetch_semantic_view_columns(f"SCHEMA_{index}", "SALES_SEMANTIC")
+
+    assert len(source._semantic_catalog_lru()) == SEMANTIC_CATALOG_CACHE_SIZE
+
+
+def test_semantic_catalog_falls_back_to_per_view_on_too_much_data():
+    """Snowflake errno 90030 means the bulk information_schema query returned too
+    much data; fall back to per-view queries rather than losing the metadata."""
+    source = _semantic_source()
+    too_much_data = sa_exc.ProgrammingError("stmt", {}, Exception())
+    too_much_data.orig = SimpleNamespace(errno=90030)
+
+    per_view_rows = [("CUSTOMERS", "CUSTOMER_NAME", "VARCHAR(100)", "customers.c_name", "the name", None)]
+    source.connection.execute.side_effect = [too_much_data, iter(per_view_rows), iter([])]
+
+    columns = source._fetch_semantic_view_columns("PUBLIC", "SALES_SEMANTIC")
+
+    assert [c["name"] for c in columns] == ["CUSTOMER_NAME"]
+    # the None sentinel is cached, so the bulk query is not retried per view
+    assert source._semantic_catalog_lru()["PUBLIC"] is None
+
+
+def test_semantic_catalog_reraises_other_programming_errors():
+    source = _semantic_source()
+    other = sa_exc.ProgrammingError("stmt", {}, Exception())
+    other.orig = SimpleNamespace(errno=12345)
+    source.connection.execute.side_effect = other
+
+    with pytest.raises(sa_exc.ProgrammingError):
+        source._semantic_rows("semantic_metrics", "PUBLIC", "SALES_SEMANTIC")
 
 
 def test_get_semantic_view_columns_swallows_errors():
