@@ -95,6 +95,8 @@ jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick, isDisabled, ...rest }) => (
@@ -102,6 +104,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </button>
     )),
+
   Breadcrumbs: jest.fn(({ items = [] }) => (
     <nav data-testid="breadcrumbs">
       {items.map(
@@ -127,7 +130,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )}
     </nav>
   )),
+
   Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+
   Typography: jest
     .fn()
     .mockImplementation(({ as: Component = 'span', children, ...props }) => (

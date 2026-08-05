@@ -77,16 +77,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
     EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
       <div data-testid="empty-placeholder">
         <span>{title}</span>
         <span>{description}</span>
       </div>
     )),
+
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
+
     Table: TableMock,
   };
 });

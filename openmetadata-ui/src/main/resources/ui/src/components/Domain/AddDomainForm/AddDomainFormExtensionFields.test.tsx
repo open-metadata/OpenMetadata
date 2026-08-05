@@ -47,7 +47,9 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Avatar: () => <div data-testid="avatar" />,
+
   Badge: ({
     children,
     'data-testid': dataTestId,
@@ -55,6 +57,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     'data-testid'?: string;
   }) => <span data-testid={dataTestId}>{children}</span>,
+
   Box: ({
     children,
     direction: _direction,
@@ -64,12 +67,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     direction?: string;
     [key: string]: unknown;
   }) => <div {...props}>{children}</div>,
+
   Divider: ({ label }: { label?: ReactNode }) => (
     <div role="separator">{label}</div>
   ),
+
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
+
   Button: ({
     children,
     onPress,
@@ -77,15 +83,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: ReactNode;
     onPress?: () => void;
   }) => <button onClick={onPress}>{children}</button>,
+
   DatePicker: ({ 'aria-label': label }: { 'aria-label'?: string }) => (
     <div data-testid={`${label}-date-picker`} />
   ),
+
   FieldTypes: {
     MULTI_SELECT: 'multi_select',
     SELECT: 'select',
     TEXT: 'text',
     USER_TEAM_SELECT_INPUT: 'user_team_select_input',
   },
+
   FormField: <TFieldValues extends FieldValues = FieldValues>({
     children,
     control,
@@ -110,7 +119,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       rules={rules}
     />
   ),
+
   FormItemLabel: ({ label }: { label: ReactNode }) => <div>{label}</div>,
+
   getField: (field: {
     label?: ReactNode;
     name: string;
@@ -127,7 +138,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {field.label}
     </div>
   ),
+
   HintText: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+
   Input: ({
     hint,
     inputDataTestId,
@@ -157,6 +170,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {hint}
     </label>
   ),
+
   TimePicker: ({ 'aria-label': label }: { 'aria-label'?: string }) => (
     <div data-testid={`${label}-time-picker`} />
   ),

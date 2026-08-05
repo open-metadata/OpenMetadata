@@ -195,9 +195,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Box: ({ children }: { children?: React.ReactNode }) => (
       <div>{children}</div>
     ),
+
     EmptyPlaceholder: ({
       title,
       description,
@@ -210,6 +213,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         <span>{description}</span>
       </div>
     ),
+
     Dropdown: {
       Root: DropdownRoot,
       Popover: jest
@@ -224,9 +228,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
           <div data-testid={`date-field-item-${id}`}>{label}</div>
         )),
     },
+
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
+
     Button: jest
       .fn()
       .mockImplementation(
@@ -238,6 +244,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           </button>
         )
       ),
+
     Table: TableMock,
   };
 });

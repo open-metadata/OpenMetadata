@@ -22,6 +22,8 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Typography: ({
     as: Component = 'span',
     children,

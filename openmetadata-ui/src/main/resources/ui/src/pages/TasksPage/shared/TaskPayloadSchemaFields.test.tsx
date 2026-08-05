@@ -31,10 +31,13 @@ import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Box: ({ children }: any) => <div>{children}</div>,
+
   Button: ({ children, onPress }: any) => (
     <button onClick={onPress}>{children}</button>
   ),
+
   Typography: ({ children }: any) => <span>{children}</span>,
 }));
 

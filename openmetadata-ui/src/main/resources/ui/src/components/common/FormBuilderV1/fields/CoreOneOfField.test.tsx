@@ -17,9 +17,12 @@ import React from 'react';
 import CoreOneOfField from './CoreOneOfField';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Select: Object.assign(
     jest.fn(
       ({
@@ -75,6 +78,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Typography: jest.fn(
     ({
       children,

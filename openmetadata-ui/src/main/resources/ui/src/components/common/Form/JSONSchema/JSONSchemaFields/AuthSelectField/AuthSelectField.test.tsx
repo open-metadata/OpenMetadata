@@ -17,6 +17,8 @@ import React from 'react';
 import AuthSelectField from './AuthSelectField';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Typography: ({
     children,
     as: Tag = 'span',

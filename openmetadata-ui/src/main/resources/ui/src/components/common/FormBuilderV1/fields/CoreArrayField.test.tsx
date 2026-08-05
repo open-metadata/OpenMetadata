@@ -21,6 +21,8 @@ jest.mock('@untitledui/icons', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   HintText: jest.fn(
     ({
       children,
@@ -30,6 +32,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       isInvalid?: boolean;
     }) => <div data-invalid={String(Boolean(isInvalid))}>{children}</div>
   ),
+
   Label: jest.fn(
     ({
       children,
@@ -44,6 +47,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
+
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),

@@ -31,6 +31,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const React = require('react');
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Autocomplete: Object.assign(
       ({
         children,
@@ -56,6 +58,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           React.createElement('div', { 'data-testid': `option-${id}` }, label),
       }
     ),
+
     Button: ({
       children,
       iconLeading: _iconLeading,
@@ -63,6 +66,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', { ...props, onClick }, children),
+
     Select: Object.assign(
       ({
         children,

@@ -152,7 +152,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     supportingText?: string;
   }) => ({ id, label, supportingText });
 
-  return { Autocomplete };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Autocomplete,
+  };
 });
 
 describe('TagSuggestion', () => {

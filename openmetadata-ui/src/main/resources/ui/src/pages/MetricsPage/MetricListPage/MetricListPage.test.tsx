@@ -44,13 +44,18 @@ const renderPage = () =>
   );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Avatar: jest
     .fn()
     .mockImplementation(({ initials }) => <span>{initials}</span>),
+
   Badge: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
   Button: jest
     .fn()
     .mockImplementation(
@@ -63,6 +68,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -72,20 +78,25 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   EmptyPlaceholder: jest
     .fn()
     .mockImplementation(({ title }: { title?: string }) => (
       <div data-testid="metric-empty-placeholder">{title}</div>
     )),
+
   FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+
   Input: jest
     .fn()
     .mockImplementation(({ placeholder, value, onChange }) => (
       <input placeholder={placeholder} value={value} onChange={onChange} />
     )),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+
   Dropdown: {
     DotsButton: jest
       .fn()
@@ -116,6 +127,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Separator: jest.fn().mockImplementation(() => <hr />),
   },
+
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
 

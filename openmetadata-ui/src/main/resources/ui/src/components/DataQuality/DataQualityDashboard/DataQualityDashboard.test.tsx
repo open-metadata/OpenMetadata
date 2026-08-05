@@ -42,6 +42,8 @@ const mockSearchQuery = jest.fn().mockResolvedValue({
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: ({
     children,
     className,
@@ -51,12 +53,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Card: ({
     children,
     className,
   }: React.PropsWithChildren<{ className?: string }>) => (
     <div className={className}>{children}</div>
   ),
+
   Grid: Object.assign(
     ({
       children,
@@ -79,9 +83,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Tooltip: ({ children }: React.PropsWithChildren<Record<string, unknown>>) => (
     <>{children}</>
   ),
+
   TooltipTrigger: ({
     children,
   }: React.PropsWithChildren<Record<string, unknown>>) => <>{children}</>,

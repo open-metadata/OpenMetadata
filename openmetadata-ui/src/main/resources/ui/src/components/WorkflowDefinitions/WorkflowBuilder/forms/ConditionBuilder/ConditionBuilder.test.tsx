@@ -135,7 +135,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }
   );
 
-  return { Autocomplete, Button, Card, Input, Select, Toggle };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Autocomplete,
+    Button,
+    Card,
+    Input,
+    Select,
+    Toggle,
+  };
 });
 
 jest.mock('react-i18next', () => ({

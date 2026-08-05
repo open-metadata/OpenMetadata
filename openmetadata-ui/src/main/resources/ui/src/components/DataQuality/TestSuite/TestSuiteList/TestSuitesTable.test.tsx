@@ -166,6 +166,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => <Component {...props}>{children}</Component>;
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Table: MockTable,

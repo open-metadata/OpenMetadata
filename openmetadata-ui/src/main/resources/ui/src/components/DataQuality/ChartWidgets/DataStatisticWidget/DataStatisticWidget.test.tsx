@@ -18,6 +18,8 @@ import { DataStatisticWidgetProps } from '../../DataQuality.interface';
 import DataStatisticWidget from './DataStatisticWidget.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Skeleton: ({
     width,
     height,
@@ -29,6 +31,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Loading...
     </div>
   ),
+
   Typography: ({
     children,
     className,
@@ -40,6 +43,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </span>
   ),
+
   Button: ({
     children,
     ...props
@@ -51,6 +55,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Divider: ({ className }: { className?: string }) => (
     <hr className={className} />
   ),

@@ -38,7 +38,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     ...actual,
+
     getField: (config: {
       name?: string;
       props?: { options?: Array<{ id: string; isDisabled?: boolean }> };

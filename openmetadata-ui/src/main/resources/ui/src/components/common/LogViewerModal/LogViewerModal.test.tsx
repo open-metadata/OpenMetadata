@@ -73,6 +73,8 @@ jest.mock('@melloware/react-logviewer', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   ModalOverlay: ({
     children,
     isOpen,
@@ -80,7 +82,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: ReactNode;
     isOpen: boolean;
   }) => (isOpen ? <div data-testid="modal-overlay">{children}</div> : null),
+
   Modal: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+
   CloseButton: ({
     onPress,
     theme,
@@ -94,7 +98,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       close
     </button>
   ),
+
   Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
+
   TooltipTrigger: ({
     children,
     onPress,

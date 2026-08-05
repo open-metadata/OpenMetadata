@@ -16,6 +16,8 @@ import AssetSelectionContentBody, {
 } from './AssetSelectionContentBody';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: ({
     children,
     onScroll,
@@ -29,7 +31,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+
   Divider: () => <div data-testid="divider" />,
+
   Typography: ({
     children,
     onClick,

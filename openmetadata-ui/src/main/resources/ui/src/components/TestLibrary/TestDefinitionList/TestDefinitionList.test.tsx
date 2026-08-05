@@ -82,19 +82,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
     EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
       <div data-testid="empty-placeholder">
         <span>{title}</span>
         <span>{description}</span>
       </div>
     )),
+
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
+
     PopoverTrigger: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
+
     Button: jest
       .fn()
       .mockImplementation(({ children, onClick, isDisabled, ...rest }) => (
@@ -102,6 +107,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           {children}
         </button>
       )),
+
     ButtonUtility: jest
       .fn()
       .mockImplementation(
@@ -111,15 +117,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
           </button>
         )
       ),
+
     FeaturedIcon: jest
       .fn()
       .mockImplementation(({ icon }) => <span>{icon}</span>),
+
     Typography: jest
       .fn()
       .mockImplementation(({ children }) => <span>{children}</span>),
+
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
+
     Table: TableMock,
     defaultColors: { gray: { 50: '#fafafa' } },
   };

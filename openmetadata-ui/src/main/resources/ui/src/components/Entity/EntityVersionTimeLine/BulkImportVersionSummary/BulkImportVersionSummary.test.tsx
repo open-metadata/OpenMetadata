@@ -18,6 +18,8 @@ import {
 import { BulkImportVersionSummary } from './BulkImportVersionSummary.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
@@ -25,6 +27,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </button>
     )),
+
   Dialog: Object.assign(
     jest
       .fn()
@@ -51,6 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
+
   Typography: jest
     .fn()
     .mockImplementation(
@@ -58,7 +62,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <Tag data-testid={testId}>{children}</Tag>
       )
     ),
+
   Modal: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
   ModalOverlay: jest
     .fn()
     .mockImplementation(({ children, isOpen }) =>

@@ -92,6 +92,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Dropdown: {
       Root: ({
         children,
@@ -123,6 +125,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Item: DropdownItem,
       Separator: () => <hr data-testid="dropdown-separator" />,
     },
+
     Typography: ({
       as: Component = 'span',
       children,

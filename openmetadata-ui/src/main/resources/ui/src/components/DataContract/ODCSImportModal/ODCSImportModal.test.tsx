@@ -36,12 +36,16 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContractImportModal from './ODCSImportModal.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   BadgeWithIcon: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   Box: jest.fn(
     ({
       children,
@@ -57,6 +61,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
+
   Button: jest.fn(
     ({
       children,
@@ -74,6 +79,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -83,6 +89,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       [key: string]: unknown;
     }) => <button onClick={onClick} {...rest} />
   ),
+
   Card: Object.assign(
     jest.fn(
       ({
@@ -105,6 +112,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )),
     }
   ),
+
   FileUploadDropZone: jest.fn(
     ({
       accept,
@@ -152,6 +160,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       );
     }
   ),
+
   Dialog: Object.assign(
     jest.fn(
       ({
@@ -181,13 +190,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )),
     }
   ),
+
   Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   ModalOverlay: jest.fn(
     ({ children, isOpen }: { children: React.ReactNode; isOpen?: boolean }) =>
       isOpen ? <div data-testid="modal-overlay">{children}</div> : null
   ),
+
   RadioButton: jest.fn(
     ({
       value,
@@ -209,6 +221,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+
   RadioGroup: jest.fn(
     ({
       children,
@@ -260,6 +273,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       );
     }
   ),
+
   Select: jest.fn(
     ({
       items,
@@ -285,6 +299,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </select>
     )
   ),
+
   Typography: jest.fn(
     ({
       as: Tag = 'span',

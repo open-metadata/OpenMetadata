@@ -33,6 +33,8 @@ let mockOnDropFiles: ((files: FileList) => void) | undefined;
 let mockOnSizeLimitExceed: ((files: FileList) => void) | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest.fn(
     ({
       children,
@@ -48,6 +50,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   ButtonUtility: jest.fn(
     ({ onClick, tooltip }: { onClick?: () => void; tooltip?: string }) => (
       <button aria-label={tooltip} onClick={onClick}>
@@ -55,6 +58,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   Dialog: Object.assign(
     jest.fn(
       ({
@@ -82,6 +86,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Header: jest.fn(({ title }: { title: string }) => <div>{title}</div>),
     }
   ),
+
   FileUpload: Object.assign(
     jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -122,6 +127,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   FileUploadDropZone: jest.fn(
     ({
       onDropFiles,
@@ -136,10 +142,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       return <div data-testid="drop-zone" />;
     }
   ),
+
   getReadableFileSize: jest.fn((size: number) => `${size} bytes`),
+
   Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   ModalOverlay: jest.fn(
     ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
       isOpen ? <div data-testid="modal-overlay">{children}</div> : null

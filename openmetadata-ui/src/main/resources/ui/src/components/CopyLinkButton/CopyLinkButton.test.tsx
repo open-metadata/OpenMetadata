@@ -24,6 +24,8 @@ jest.mock('../../hooks/useClipBoard', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -33,7 +35,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),

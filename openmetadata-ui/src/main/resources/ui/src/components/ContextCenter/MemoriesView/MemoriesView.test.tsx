@@ -27,9 +27,12 @@ jest.mock('../../../assets/svg/edit-new.svg', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   Box: jest.fn(
     ({
       children,
@@ -38,6 +41,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       children: React.ReactNode;
     } & React.HTMLAttributes<HTMLDivElement>) => <div {...rest}>{children}</div>
   ),
+
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -51,10 +55,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
     )
   ),
+
   Dot: jest.fn(() => <span />),
+
   EmptyPlaceholder: jest.fn(({ title }: { title?: React.ReactNode }) => (
     <div data-testid="empty-placeholder">{title}</div>
   )),
+
   Dropdown: {
     Root: jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -72,13 +79,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )
     ),
   },
+
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
+
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

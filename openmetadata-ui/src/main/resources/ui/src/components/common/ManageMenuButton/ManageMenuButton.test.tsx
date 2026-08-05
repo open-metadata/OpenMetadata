@@ -15,9 +15,12 @@ import React from 'react';
 import ManageMenuButton, { ManageMenuItem } from './ManageMenuButton.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Typography: ({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   ),
+
   Dropdown: {
     Root: ({ children }: { children?: React.ReactNode }) => (
       <div data-testid="dropdown-root">{children}</div>

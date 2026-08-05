@@ -114,6 +114,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     ...actual,
     Badge: ({ children }: PropsWithChildren) => <div>{children}</div>,
   };

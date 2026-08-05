@@ -16,6 +16,8 @@ import { ContextFile } from '../../../generated/entity/data/contextFile';
 import DocumentPreviewPanel from './DocumentPreviewPanel.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: jest.fn(
     ({
       children,
@@ -31,6 +33,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
+
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -44,6 +47,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   Card: jest.fn(
     ({
       children,
@@ -53,9 +57,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       'data-testid'?: string;
     }) => <div data-testid={testId}>{children}</div>
   ),
+
   FileIcon: jest.fn(({ type }: { type: string }) => (
     <span data-testid={`file-icon-${type}`} />
   )),
+
   Typography: jest.fn(
     ({
       children,

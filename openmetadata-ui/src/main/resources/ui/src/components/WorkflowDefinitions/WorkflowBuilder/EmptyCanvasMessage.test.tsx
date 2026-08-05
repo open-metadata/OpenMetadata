@@ -27,9 +27,12 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Card: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="empty-canvas-card">{children}</div>
   ),
+
   Typography: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   ),

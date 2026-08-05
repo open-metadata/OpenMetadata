@@ -15,14 +15,18 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CopyToClipboardButton } from './CopyToClipboardButton';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Tooltip: jest.fn().mockImplementation(({ children, title }) => (
     <div data-testid="tooltip" data-title={title}>
       {children}
     </div>
   )),
+
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(({ icon, onClick, 'data-testid': testId }) => (

@@ -78,6 +78,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Button: ({
       children,
       onClick,
@@ -94,8 +96,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+
     Card: CardMock,
     Grid: GridMock,
+
     Input: ({
       'data-testid': testId,
       value,
@@ -115,7 +119,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(e) => onChange?.(e.target.value)}
       />
     ),
+
     Select: SelectMock,
+
     Typography: ({
       children,
       className,

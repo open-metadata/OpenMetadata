@@ -16,11 +16,14 @@ import { MemoryRouter } from 'react-router-dom';
 import SortingDropDown from './SortingDropDown';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
       <button {...props}>{children}</button>
     )),
+
   Dropdown: {
     Root: jest.fn().mockImplementation(({ children, ...props }) => (
       <div data-testid="dropdown" {...props}>

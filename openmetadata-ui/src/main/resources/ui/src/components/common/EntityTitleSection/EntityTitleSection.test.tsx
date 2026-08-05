@@ -17,14 +17,18 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityTitleSection } from './EntityTitleSection';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
     <button onClick={onClick} {...props}>
       {children}
     </button>
   )),
+
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),

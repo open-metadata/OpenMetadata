@@ -29,6 +29,8 @@ import { CsvJobsTray } from './CsvJobsTray.component';
 import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(

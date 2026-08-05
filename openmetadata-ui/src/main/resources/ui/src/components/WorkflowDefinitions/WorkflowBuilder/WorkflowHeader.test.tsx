@@ -25,6 +25,8 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: ({
     children,
     ...rest
@@ -32,6 +34,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     [key: string]: unknown;
   }) => <span {...rest}>{children}</span>,
+
   Button: ({
     children,
     onPress,
@@ -45,9 +48,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Card: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-header">{children}</div>
   ),
+
   Dialog: ({
     children,
     title,
@@ -55,8 +60,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     title?: string;
   }) => <div data-title={title}>{children}</div>,
+
   Input: ({ label }: { label?: string }) => <input aria-label={label} />,
   Modal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+
   ModalOverlay: ({
     children,
     isOpen,
@@ -64,6 +71,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     isOpen: boolean;
   }) => (isOpen ? <>{children}</> : null),
+
   Tooltip: ({
     children,
     title,
@@ -75,9 +83,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+
   Typography: ({
     children,
     ...rest

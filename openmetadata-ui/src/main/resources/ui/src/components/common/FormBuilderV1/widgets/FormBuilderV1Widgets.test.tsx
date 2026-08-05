@@ -106,9 +106,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Box: jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     )),
+
     Button: jest.fn(
       ({
         children,
@@ -124,6 +127,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </button>
       )
     ),
+
     FileTrigger: jest.fn(
       ({
         children,
@@ -142,6 +146,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
+
     HintText: jest.fn(
       ({
         children,
@@ -151,6 +156,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         isInvalid?: boolean;
       }) => <div data-invalid={String(Boolean(isInvalid))}>{children}</div>
     ),
+
     Label: jest.fn(
       ({
         children,
@@ -165,6 +171,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
+
     RadioButton: jest.fn(
       ({
         hint,
@@ -182,6 +189,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </label>
       )
     ),
+
     RadioGroup: jest.fn(
       ({
         children,
@@ -202,9 +210,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
+
     Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
     )),
+
     Checkbox: jest.fn(
       ({
         hint,
@@ -229,6 +239,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </button>
       )
     ),
+
     Input: jest.fn(
       ({
         autoFocus,
@@ -270,6 +281,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
+
     Select: Object.assign(
       jest.fn(
         ({
@@ -326,6 +338,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ),
       }
     ),
+
     TextArea: jest.fn(
       ({
         autoFocus,
@@ -363,6 +376,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
+
     PasswordInput: jest.fn(MockPasswordInput),
   };
 });

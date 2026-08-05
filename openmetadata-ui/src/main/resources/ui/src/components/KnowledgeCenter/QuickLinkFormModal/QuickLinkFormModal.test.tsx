@@ -44,7 +44,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => <div data-testid={testId}>{label}</div>;
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Autocomplete,
+
     Button: ({
       children,
       onClick,
@@ -52,6 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children: ReactNode;
       onClick?: () => void;
     }) => <button onClick={onClick}>{children}</button>,
+
     Dialog: Object.assign(
       ({ children }: { children: ReactNode }) => (
         <div data-testid="dialog">{children}</div>
@@ -68,6 +71,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ),
       }
     ),
+
     FieldTypes: {
       ASYNC_SELECT: 'ASYNC_SELECT',
       DESCRIPTION: 'DESCRIPTION',
@@ -76,6 +80,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       TEXT: 'TEXT',
       TEXTAREA: 'TEXTAREA',
     },
+
     FormField: <TFieldValues extends FieldValues = FieldValues>({
       control,
       name,
@@ -105,8 +110,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
         rules={rules}
       />
     ),
+
     FormItemLabel: ({ label }: { label: ReactNode }) => <div>{label}</div>,
     HintText: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+
     HookForm: ({
       children,
       form,
@@ -129,6 +136,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </form>
       </FormProvider>
     ),
+
     getField: ({
       name,
       type,
@@ -163,9 +171,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
       return <div data-testid={testId ?? name} />;
     },
+
     Modal: ({ children }: { children: ReactNode }) => (
       <div data-testid="modal">{children}</div>
     ),
+
     ModalOverlay: ({
       children,
       isOpen,

@@ -24,11 +24,14 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import AuditLogsPage from './AuditLogsPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: jest
     .fn()
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <span data-testid={testId}>{children}</span>
     )),
+
   Breadcrumbs: jest.fn().mockImplementation(({ items }) => (
     <nav data-testid="breadcrumbs">
       {items?.map((item: { id: string; label?: string }) => (
@@ -36,6 +39,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ))}
     </nav>
   )),
+
   Button: jest
     .fn()
     .mockImplementation(
@@ -45,6 +49,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -55,11 +60,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Card: jest
     .fn()
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <div data-testid={testId}>{children}</div>
     )),
+
   Input: jest
     .fn()
     .mockImplementation(({ value, onChange, inputDataTestId, placeholder }) => (
@@ -70,6 +77,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onChange={(e) => onChange?.(e.target.value)}
       />
     )),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),

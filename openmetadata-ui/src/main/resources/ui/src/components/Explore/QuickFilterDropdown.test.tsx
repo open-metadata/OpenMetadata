@@ -39,6 +39,8 @@ jest.mock('../common/Loader/Loader', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: ({
     children,
     onPress,
@@ -52,6 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Checkbox: ({
     isSelected,
     onChange,
@@ -72,6 +75,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {label}
     </label>
   ),
+
   Input: ({
     value,
     onChange,
@@ -88,9 +92,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange={(event) => onChange(event.target.value)}
     />
   ),
+
   Popover: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+
   PopoverTrigger: ({
     isOpen,
     onOpenChange,

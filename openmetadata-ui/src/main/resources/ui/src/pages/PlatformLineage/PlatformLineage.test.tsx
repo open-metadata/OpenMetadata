@@ -54,17 +54,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   GridMock.Item = jest.fn(({ children }: GridProps) => <div>{children}</div>);
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Grid: GridMock,
+
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
         <div>{children}</div>
       )),
+
     TooltipTrigger: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
         <span>{children}</span>
       )),
+
     ButtonUtility: jest
       .fn()
       .mockImplementation(({ children, onClick, 'data-testid': testId }) => (

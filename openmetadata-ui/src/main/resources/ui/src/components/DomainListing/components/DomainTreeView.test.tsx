@@ -41,17 +41,23 @@ let capturedCallbacks: {
 // ---------------------------------------------------------------------------
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Avatar: jest.fn(() => null),
+
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span data-testid="badge">{children}</span>
   )),
+
   Box: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
-  Tree: jest.fn(), // implementation configured per-test in beforeEach
+
+  // implementation configured per-test in beforeEach
+  Tree: jest.fn(),
 }));
 
 jest.mock('../../common/ResizablePanels/ResizableLeftPanels', () =>

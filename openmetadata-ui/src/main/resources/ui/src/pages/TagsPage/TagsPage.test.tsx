@@ -242,6 +242,8 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: ({
     children,
     'data-testid': testId,
@@ -255,6 +257,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </span>
   ),
+
   Typography: ({
     children,
     className,
@@ -268,6 +271,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </Tag>
   ),
+
   Button: ({
     children,
     onClick,
@@ -289,6 +293,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Tooltip: ({
     children,
     title,
@@ -300,6 +305,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+
   TooltipTrigger: ({
     children,
     className,
@@ -307,6 +313,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     className?: string;
   }) => <button className={className}>{children}</button>,
+
   Toggle: ({
     isSelected,
     onChange,
@@ -327,6 +334,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       toggle
     </button>
   ),
+
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),

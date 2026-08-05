@@ -55,6 +55,8 @@ jest.mock('../../../../assets/svg/ic-warning-2.svg', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Skeleton: ({
     width,
     height,
@@ -66,6 +68,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Loading...
     </div>
   ),
+
   Tooltip: ({
     children,
     title,
@@ -73,6 +76,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     title?: string;
   }) => <div title={title ?? ''}>{children}</div>,
+
   Typography: ({
     children,
     className,

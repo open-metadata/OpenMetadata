@@ -30,6 +30,8 @@ let capturedOnAction: ((id: string) => void) | undefined;
 let capturedAutoCollapse: boolean | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Breadcrumbs: jest.fn(
     ({
       items,

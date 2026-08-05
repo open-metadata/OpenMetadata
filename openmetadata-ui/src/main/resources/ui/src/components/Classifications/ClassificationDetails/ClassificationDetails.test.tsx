@@ -24,6 +24,8 @@ import ClassificationDetails from './ClassificationDetails';
 const mockNavigate = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: ({
     children,
     onClick,
@@ -39,6 +41,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Tooltip: ({
     children,
     title,
@@ -50,6 +53,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+
   TooltipTrigger: ({
     children,
     className,
@@ -57,6 +61,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     className?: string;
   }) => <button className={className}>{children}</button>,
+
   Badge: ({
     children,
     'data-testid': testId,
@@ -64,6 +69,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     'data-testid'?: string;
   }) => <span data-testid={testId}>{children}</span>,
+
   Toggle: ({
     isSelected,
     onChange,
@@ -84,13 +90,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       toggle
     </button>
   ),
+
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+
   Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+
   EmptyPlaceholder: ({ title }: { title?: string }) => (
     <div data-testid="empty-tags-placeholder">{title}</div>
   ),
+
   Typography: jest
     .fn()
     .mockImplementation(

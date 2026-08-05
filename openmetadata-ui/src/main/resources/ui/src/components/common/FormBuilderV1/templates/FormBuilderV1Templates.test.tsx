@@ -44,6 +44,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const AccordionItemContext = ActualReact.createContext(undefined);
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Accordion: jest.fn(({ children }: { children: React.ReactNode }) => {
       const [expandedItem, setExpandedItem] = ActualReact.useState(
         undefined as string | undefined
@@ -55,6 +57,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </AccordionContext.Provider>
       );
     }),
+
     AccordionHeader: jest.fn(({ children }: { children: React.ReactNode }) => {
       const { expandedItem, setExpandedItem } =
         ActualReact.useContext(AccordionContext);
@@ -70,6 +73,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </button>
       );
     }),
+
     AccordionItem: jest.fn(
       ({ children, id }: { children: React.ReactNode; id: string }) => (
         <AccordionItemContext.Provider value={id}>
@@ -77,6 +81,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </AccordionItemContext.Provider>
       )
     ),
+
     AccordionPanel: jest.fn(
       ({ children, ...props }: { children: React.ReactNode }) => {
         const { expandedItem } = ActualReact.useContext(AccordionContext);
@@ -87,6 +92,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ) : null;
       }
     ),
+
     Button: jest.fn(
       ({
         children,
@@ -111,6 +117,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </button>
       )
     ),
+
     Input: jest.fn(
       ({
         id,
@@ -139,6 +146,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
+
     Typography: jest.fn(
       ({
         children,

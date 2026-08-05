@@ -27,6 +27,8 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: ({
     children,
     className,
@@ -54,6 +56,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+
   Typography: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   ),
