@@ -1426,9 +1426,16 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     validateTaskCanBeResolved(task);
 
+    // Match /resolve's guard: validateTransition only fires when defaultTransitionId resolves
+    // to a concrete id the workflow actually exposes. A task that has not yet stamped
+    // availableTransitions (still at PENDING_WORKFLOW_START_STAGE_ID, or a workflow whose
+    // approve/reject transition is named differently) returns null / an unmatchable literal
+    // here — findTransition would then throw 400 and break approvals that used to succeed.
     String suggestionApproveTransitionId =
         TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
-    validateTransition(task, suggestionApproveTransitionId, TaskResolutionType.Approved);
+    if (suggestionApproveTransitionId != null) {
+      validateTransition(task, suggestionApproveTransitionId, TaskResolutionType.Approved);
+    }
     validateTransitionComment(task, suggestionApproveTransitionId, comment);
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -1538,7 +1545,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         validateTaskCanBeResolved(task);
         String approveTransitionId =
             TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
-        validateTransition(task, approveTransitionId, TaskResolutionType.Approved);
+        // Same guard as /resolve — only validate when defaultTransitionId resolved. See the
+        // comment on applySuggestion for the exact scenarios this covers.
+        if (approveTransitionId != null) {
+          validateTransition(task, approveTransitionId, TaskResolutionType.Approved);
+        }
         validateTransitionComment(task, approveTransitionId, comment);
         repository.resolveTaskWithWorkflow(
             task, approveTransitionId, TaskResolutionType.Approved, null, null, comment, userName);
@@ -1548,7 +1559,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         validateTaskCanBeResolved(task);
         String rejectTransitionId =
             TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Rejected);
-        validateTransition(task, rejectTransitionId, TaskResolutionType.Rejected);
+        if (rejectTransitionId != null) {
+          validateTransition(task, rejectTransitionId, TaskResolutionType.Rejected);
+        }
         validateTransitionComment(task, rejectTransitionId, comment);
         repository.resolveTaskWithWorkflow(
             task, rejectTransitionId, TaskResolutionType.Rejected, null, null, comment, userName);
