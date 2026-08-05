@@ -105,7 +105,15 @@ public class WorkflowInstanceListener implements JavaDelegate {
           processKey);
       return;
     }
-    updateBusinessKey(execution.getProcessInstanceId());
+    // Only assign a fresh WorkflowInstance UUID when the caller did not already pass one at
+    // startProcessInstance time. The overwrite used to be unconditional, which meant a
+    // caller-supplied businessKey (task id, deterministic UUID) was silently discarded, and
+    // any listener failure before this line left the trigger with a null businessKey that
+    // then propagated into the MainWorkflow via CallActivity inheritBusinessKey=true.
+    String existingBusinessKey = execution.getProcessInstanceBusinessKey();
+    if (existingBusinessKey == null || existingBusinessKey.isBlank()) {
+      updateBusinessKey(execution.getProcessInstanceId());
+    }
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
 
     workflowInstanceRepository.addNewWorkflowInstance(
