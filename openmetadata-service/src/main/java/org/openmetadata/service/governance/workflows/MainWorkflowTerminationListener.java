@@ -13,12 +13,25 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 public class MainWorkflowTerminationListener implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
+    // Skip non-OM-managed instances up-front. Flowable can fire termination on process
+    // instances that were never started with a business key (test-time force-cancel,
+    // Flowable-internal transitions, legacy rows). UUID.fromString(null) here used to
+    // NPE every ~10s in Loki; those aren't errors, so log at DEBUG and return.
+    String businessKey = execution.getProcessInstanceBusinessKey();
+    if (businessKey == null || businessKey.isBlank()) {
+      LOG.debug(
+          "[{}] MainWorkflow termination on non-OM-managed instance {} (no business key) - skip",
+          getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()),
+          execution.getProcessInstanceId());
+      return;
+    }
+
     try {
       WorkflowInstanceRepository workflowInstanceRepository =
           (WorkflowInstanceRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
 
-      UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
+      UUID workflowInstanceId = UUID.fromString(businessKey);
       workflowInstanceRepository.updateWorkflowInstance(
           workflowInstanceId, System.currentTimeMillis(), execution.getVariables());
     } catch (Exception exc) {

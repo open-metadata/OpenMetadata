@@ -137,7 +137,11 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     String processInstanceId = execution.getProcessInstanceId();
     String businessKey = execution.getProcessInstanceBusinessKey();
     if (businessKey == null || businessKey.isEmpty()) {
-      LOG.warn(
+      // Flowable-internal process instances (no business key) are not OM-managed.
+      // This is expected — not an operational warning; leave at DEBUG so it does
+      // not pollute production logs alongside the downstream STAGE_UPDATE_NO_ID
+      // caused by the same skipped path.
+      LOG.debug(
           "[STAGE_SKIP] ProcessInstance: {} (workflow: {}) - no business key, not an OM-managed process instance",
           processInstanceId,
           workflowDefinitionName);
@@ -197,7 +201,11 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
         (UUID) varHandler.getNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
 
     if (workflowInstanceStateId == null) {
-      LOG.error(
+      // Non-OM-managed process instances (no business key) never had a stage record
+      // created in addNewStage, so this update-stage callback is expected to be a
+      // no-op for them. Downgrade to DEBUG so the [STAGE_UPDATE_NO_ID] noise stops
+      // showing up at ERROR level once per Flowable transition.
+      LOG.debug(
           "[STAGE_UPDATE_NO_ID] Workflow: {}, ProcessInstance: {}, Stage: {} - Cannot update stage, state ID is null",
           workflowDefinitionName,
           processInstanceId,
