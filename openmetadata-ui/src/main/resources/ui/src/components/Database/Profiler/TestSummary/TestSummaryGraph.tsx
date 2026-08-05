@@ -349,7 +349,14 @@ function TestSummaryGraph({
           // ComposedChart replaces Tooltip.coordinate with the live pointer;
           // position keeps interactive content anchored to its triggering dot.
           position={activeTooltip?.position}
-          wrapperStyle={{ pointerEvents: 'auto' }}
+          wrapperStyle={{
+            pointerEvents: 'auto',
+            // Recharts exposes the active wrapper before measuring its content.
+            // Seed its transform so the first frame does not render at the origin.
+            transform: activeTooltip
+              ? `translate(${activeTooltip.position.x}px, ${activeTooltip.position.y}px)`
+              : undefined,
+          }}
         />
         {referenceArea}
         <Legend

@@ -136,16 +136,19 @@ jest.mock('recharts', () => ({
     )),
   Tooltip: jest
     .fn()
-    .mockImplementation(({ active, content, isAnimationActive, position }) => (
-      <div
-        data-active={String(Boolean(active))}
-        data-animation-active={String(isAnimationActive)}
-        data-testid="recharts-tooltip"
-        data-x={position?.x ?? 640}
-        data-y={position?.y ?? 240}>
-        {active ? content : null}
-      </div>
-    )),
+    .mockImplementation(
+      ({ active, content, isAnimationActive, position, wrapperStyle }) => (
+        <div
+          data-active={String(Boolean(active))}
+          data-animation-active={String(isAnimationActive)}
+          data-testid="recharts-tooltip"
+          data-transform={wrapperStyle?.transform}
+          data-x={position?.x ?? 640}
+          data-y={position?.y ?? 240}>
+          {active ? content : null}
+        </div>
+      )
+    ),
   XAxis: jest.fn().mockImplementation(() => <div data-testid="x-axis" />),
   YAxis: jest.fn().mockImplementation(() => <div data-testid="y-axis" />),
 }));
@@ -412,6 +415,10 @@ describe('TestSummaryGraph', () => {
     fireEvent.mouseEnter(point);
 
     expect(tooltip).toHaveAttribute(ACTIVE_ATTRIBUTE, ACTIVE_VALUE);
+    expect(tooltip).toHaveAttribute(
+      'data-transform',
+      'translate(324px, 124px)'
+    );
     expect(tooltip).toHaveAttribute('data-x', '324');
     expect(tooltip).toHaveAttribute('data-y', '124');
 
