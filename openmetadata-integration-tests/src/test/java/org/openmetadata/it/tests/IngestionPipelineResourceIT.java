@@ -897,12 +897,9 @@ public class IngestionPipelineResourceIT
   }
 
   /**
-   * Lists several pipelines at once with {@code fields=pipelineStatuses}, which is the only way to
-   * exercise the batched top-N-per-entity query with more than one entity. The single-entity read
-   * above binds a one-element hash list, where a per-entity ordering key is indistinguishable from
-   * none — an earlier revision that ordered solely by entity hash passed that test while returning
-   * an arbitrary historical run as each pipeline's latest. Timestamps are interleaved across the two
-   * pipelines so a query that sorts globally rather than per entity cannot pass either.
+   * Needs more than one pipeline: the single-entity read above binds a one-element hash list, where
+   * a query ordered only by entity hash still looks correct. Timestamps are interleaved across the
+   * two pipelines so a globally-sorted query fails too.
    */
   @Test
   void test_listWithPipelineStatusesOrdersEachPipelineNewestFirst(TestNamespace ns)
@@ -931,8 +928,6 @@ public class IngestionPipelineResourceIT
       for (int i = 0; i < 3; i++) {
         String runId = UUID.randomUUID().toString();
         runIds.add(runId);
-        // Interleave the two pipelines' timestamps: p0 gets base+0/2000/4000, p1
-        // base+1000/3000/5000
         PipelineStatus status =
             new PipelineStatus()
                 .withPipelineState(PipelineStatusType.SUCCESS)
