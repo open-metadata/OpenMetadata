@@ -445,7 +445,9 @@ export const verifyNotificationAndClick = async (
 
   // Click on Mentions tab
   const mentionsTabResponse = page.waitForResponse(
-    '/api/v1/conversations?userId=*&filterType=MENTIONS'
+    (response) =>
+      response.url().includes('/api/v1/conversations') &&
+      response.url().includes('filterType=MENTIONS')
   );
 
   await page.getByRole('tab', { name: 'Mentions' }).click();

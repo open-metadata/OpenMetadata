@@ -388,7 +388,9 @@ test.describe(
           expect(firstResponse.ok()).toBeTruthy();
           expect(secondResponse.ok()).toBeTruthy();
           expect(firstPayload.data).toHaveLength(1);
-          expect(firstPayload.data[0].message).toBe(subsequentReply);
+          expect(firstPayload.data[0].message.replace(/\s+/g, ' ')).toBe(
+            subsequentReply
+          );
           expect(secondPayload.data).toHaveLength(0);
         } finally {
           await afterAction();

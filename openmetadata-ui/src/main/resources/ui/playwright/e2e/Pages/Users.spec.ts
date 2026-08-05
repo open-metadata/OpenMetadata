@@ -543,6 +543,11 @@ test.describe('User Profile Feed Interactions', () => {
     const testMessage = 'Initial conversation thread for mention test';
     const entityLink = `<#E::table::${tableEntity.entityResponseData.fullyQualifiedName}>`;
 
+    // user3 follows the table so the admin-authored conversation surfaces in
+    // user3's OwnerOrFollows profile feed, while the feed-card avatar stays a
+    // different user for the navigation assertion below.
+    await tableEntity.followTable(apiContext, user3.responseData.id);
+
     await apiContext.post('/api/v1/conversations', {
       data: {
         message: testMessage,

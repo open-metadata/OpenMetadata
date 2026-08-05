@@ -24,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { REACTION_EMOJIS, reactOnActivity } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  getApiContext,
   redirectToHomePage,
   removeLandingBanner,
   uuid,
@@ -587,31 +588,34 @@ test.describe('Mention notifications in Notification Box', () => {
       await user1Page.locator('[data-testid="send-button"]').click();
       await postMentionResponse;
 
-      await expect
-        .poll(
-          async () => {
-            const response = await adminPage.request.get(
-              '/api/v1/conversations',
-              {
+      const { apiContext, afterAction } = await getApiContext(adminPage);
+
+      try {
+        await expect
+          .poll(
+            async () => {
+              const response = await apiContext.get('/api/v1/conversations', {
                 params: {
                   filterType: 'MENTIONS',
                   limit: 25,
                   userId: adminUser.responseData.id,
                 },
-              }
-            );
-            const payload = await response.json();
+              });
+              const payload = await response.json();
 
-            return (payload.data ?? []).some(
-              (conversation: { replies?: Array<{ message?: string }> }) =>
-                (conversation.replies ?? []).some((reply) =>
-                  reply.message?.includes(mentionReplyMarker)
-                )
-            );
-          },
-          { timeout: 30_000, intervals: [1_000, 2_000] }
-        )
-        .toBe(true);
+              return (payload.data ?? []).some(
+                (conversation: { replies?: Array<{ message?: string }> }) =>
+                  (conversation.replies ?? []).some((reply) =>
+                    reply.message?.includes(mentionReplyMarker)
+                  )
+              );
+            },
+            { timeout: 30_000, intervals: [1_000, 2_000] }
+          )
+          .toBe(true);
+      } finally {
+        await afterAction();
+      }
     });
 
     await test.step('Admin user checks notification for correct user and timestamp', async () => {
