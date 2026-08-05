@@ -65,9 +65,12 @@ class UniqueCount(QueryMetric):
         # Run all queries on top of the sampled data
         col = column(self.col.name, self.col.type)
 
-        # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for peformance
+        # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for performance
         if session.get_bind().dialect.name == Dialects.BigQuery:
-            return func.countif(col == 1).label(self.name())
+            # We are querying against the subquery output (which is a COUNT), so the type is numeric.
+            # Use an untyped column to avoid passing the original metric type (like STRING or BYTES) into the COUNTIF comparison.
+            count_col = column(col.name)
+            return func.countif(count_col == 1).label(self.name())
 
         unique_count_query = _unique_count_query_mapper[session.get_bind().dialect.name](col, session, sample)
         only_once_sub = unique_count_query.subquery("only_once")

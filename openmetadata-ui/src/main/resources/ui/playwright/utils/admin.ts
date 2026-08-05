@@ -13,30 +13,47 @@
 import { APIRequestContext, Browser, Page, request } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { AdminClass } from '../support/user/AdminClass';
-import { getAuthContext, getToken, redirectToHomePage } from './common';
+import {
+  getAuthContext,
+  getSavedAdminToken,
+  getToken,
+  getWorkerAdminAPIContext,
+} from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const authenticateAdminPage = async (page: Page) => {
-  await page.goto('/');
-  await page.waitForURL((url) => {
-    return (
-      url.pathname.includes('/my-data') || url.pathname.includes('/signin')
-    );
-  });
+  await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+  const requiresLogin = await Promise.race([
+    page
+      .locator('#email')
+      .waitFor({ state: 'visible' })
+      .then(() => true),
+    page
+      .getByTestId('left-sidebar')
+      .waitFor({ state: 'attached' })
+      .then(() => false),
+  ]);
 
-  if (page.url().includes('/signin')) {
+  if (requiresLogin) {
     const admin = new AdminClass();
     await admin.login(page);
   }
 
-  await redirectToHomePage(page);
+  await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const createAdminApiContext = async (): Promise<{
   apiContext: APIRequestContext;
   afterAction: () => Promise<void>;
+  token: string;
 }> => {
+  const isH2Mode = process.env.PW_PROTOCOL === 'h2';
   const loginContext = await request.newContext({
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://localhost:8585',
+    baseURL:
+      process.env.PLAYWRIGHT_TEST_BASE_URL ??
+      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
+    ignoreHTTPSErrors: isH2Mode,
     timeout: 90000,
   });
 
@@ -57,10 +74,12 @@ export const createAdminApiContext = async (): Promise<{
     const loginPayload = (await loginResponse.json()) as {
       accessToken: string;
     };
-    const apiContext = await getAuthContext(loginPayload.accessToken);
+    const token = loginPayload.accessToken;
+    const apiContext = await getAuthContext(token);
 
     return {
       apiContext,
+      token,
       afterAction: async () => {
         await apiContext.dispose();
         await loginContext.dispose();
@@ -73,18 +92,64 @@ export const createAdminApiContext = async (): Promise<{
   }
 };
 
-export const performAdminLogin = async (browser: Browser) => {
-  const admin = new AdminClass();
-  const page = await browser.newPage();
-  await admin.login(page);
-  await redirectToHomePage(page);
-
-  const token = await getToken(page);
-  const apiContext = await getAuthContext(token);
-  const afterAction = async () => {
-    await apiContext.dispose();
-    await page.close();
-  };
-
-  return { page, apiContext, afterAction };
+type AdminLoginResult = {
+  apiContext: APIRequestContext;
+  afterAction: () => Promise<void>;
+  token: string;
 };
+
+type AdminPageLoginResult = AdminLoginResult & { page: Page };
+type AdminAPIOnlyLoginResult = AdminLoginResult & { page?: never };
+
+export function performAdminLogin(
+  browser: Browser,
+  options: { navigate: true }
+): Promise<AdminPageLoginResult>;
+export function performAdminLogin(
+  browser: Browser,
+  options?: { navigate?: false }
+): Promise<AdminAPIOnlyLoginResult>;
+export async function performAdminLogin(
+  browser: Browser,
+  { navigate = false }: { navigate?: boolean } = {}
+): Promise<AdminPageLoginResult | AdminAPIOnlyLoginResult> {
+  if (!navigate) {
+    try {
+      const [apiContext, token] = await Promise.all([
+        getWorkerAdminAPIContext(),
+        getSavedAdminToken(),
+      ]);
+      const afterAction = async () => undefined;
+
+      return { apiContext, afterAction, token };
+    } catch {
+      return createAdminApiContext();
+    }
+  }
+
+  const page = await browser.newPage({
+    storageState:
+      process.env.PW_PRESEEDED_STATE === 'true'
+        ? 'playwright/.auth/admin.json'
+        : undefined,
+  });
+
+  try {
+    await authenticateAdminPage(page);
+
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+    const afterAction = async () => {
+      try {
+        await apiContext.dispose();
+      } finally {
+        await page.close();
+      }
+    };
+
+    return { page, apiContext, afterAction, token };
+  } catch (error) {
+    await page.close().catch(() => undefined);
+    throw error;
+  }
+}

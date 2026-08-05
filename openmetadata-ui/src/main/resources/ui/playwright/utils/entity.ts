@@ -1569,11 +1569,24 @@ const announcementForm = async (
       response.request().method() === 'POST'
   );
   await page.click('#announcement-submit');
-  await announcementSubmit;
+  const announcementResponse = await announcementSubmit;
+  const announcement: unknown = await announcementResponse.json();
+
+  if (
+    typeof announcement !== 'object' ||
+    announcement === null ||
+    !('id' in announcement) ||
+    typeof announcement.id !== 'string'
+  ) {
+    throw new Error('Announcement creation response did not include an id');
+  }
+
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
     await toastNotification(page, /Announcement created successfully/i);
   }
+
+  return announcement.id;
 };
 
 export const createAnnouncement = async (
@@ -1788,9 +1801,27 @@ export const createInactiveAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.getByTestId('inActive-announcements').isVisible();
-  await page.reload();
+  const announcementId = await announcementForm(
+    page,
+    { ...data, startDate, endDate },
+    hideAlert
+  );
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
+
+  const announcementDrawer = page.getByTestId('announcement-drawer');
+  const inactiveAnnouncement = announcementDrawer
+    .getByTestId('announcement-card')
+    .filter({ hasText: data.title });
+
+  await expect(
+    announcementDrawer.getByTestId('inActive-announcements')
+  ).toBeVisible();
+  await expect(inactiveAnnouncement).toBeVisible();
+  await page.getByTestId('announcement-close').click();
+
+  return announcementId;
 };
 
 export const updateDisplayNameForEntity = async (
@@ -2589,6 +2620,46 @@ export const copyAndGetClipboardText = async (
   }, textareaId);
 
   return clipboardText;
+};
+
+/**
+ * Replaces navigator.clipboard with an in-memory implementation before any page
+ * script runs. Required for grid components (e.g. BulkImport) that call
+ * navigator.clipboard.writeText/readText directly, since the real OS clipboard
+ * API is unreliable in AUT/headless CI even with clipboard permissions granted.
+ *
+ * @param page - Playwright Page object
+ */
+export const mockClipboardApi = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    // The grid only calls navigator.clipboard when window.isSecureContext is true. On a
+    // plain-HTTP AUT origin it is false, so the copy half falls through to execCommand and
+    // writes to the real OS clipboard while the paste half reads this mock - the two never
+    // agree and every paste yields an empty cell.
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    let clipboardData = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          clipboardData = text;
+        },
+        readText: async () => clipboardData,
+      },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  // addInitScript only applies to documents loaded after it is registered. Callers install
+  // this mid-test, by which point the fixture has already navigated, so without a reload the
+  // mock never runs and the grid silently uses the real clipboard.
+  if (!page.url().startsWith('about:')) {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
 };
 
 /**

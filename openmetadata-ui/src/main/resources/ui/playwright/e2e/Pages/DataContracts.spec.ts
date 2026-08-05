@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -138,10 +139,12 @@ test.describe('Data Contracts', () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
+    const testDetails = entitySupportsQuality(entityType)
+      ? PLAYWRIGHT_INGESTION_TAG_OBJ
+      : {};
+    const testTitle = `Create Data Contract and validate for ${entityType}`;
 
-    test(`Create Data Contract and validate for ${entityType}`, async ({
-      page,
-    }) => {
+    test(testTitle, testDetails, async ({ page }) => {
       // 12-min timeout so waitForDataContractExecution completes first.
       test.setTimeout(900_000);
 
@@ -338,8 +341,14 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Save contract and validate for semantics', async () => {
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+        // save and trigger contract validation; the utility now polls the API
+        // until the result is terminal before reloading, so the status check
+        // below is reliable even when the backend is slow.
+        const contractData = await saveAndTriggerDataContractValidation(
+          page,
+          true
+        );
+        const contractId = (contractData as { id?: string })?.id;
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -367,7 +376,9 @@ test.describe('Data Contracts', () => {
           .getByText('Contract validation trigger successfully.')
           .waitFor({ state: 'visible' });
 
-        await triggerContractValidation(page);
+        // Pass contractId so the utility polls for the terminal state before
+        // returning, making the 'Passed' assertion below reliable.
+        await triggerContractValidation(page, contractId);
         await toastPromise;
 
         await page.reload();
@@ -1097,8 +1108,14 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
 
-    // save and trigger contract validation
-    await saveAndTriggerDataContractValidation(page, true);
+    // save and trigger contract validation; the utility now polls the API
+    // until the result is terminal before reloading, so the status check
+    // below is reliable even when the backend is slow.
+    const contractData1104 = await saveAndTriggerDataContractValidation(
+      page,
+      true
+    );
+    const contractId1104 = (contractData1104 as { id?: string })?.id;
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1136,7 +1153,9 @@ test.describe('Data Contracts', () => {
       .getByText('Contract validation trigger successfully.')
       .waitFor({ state: 'visible' });
 
-    await triggerContractValidation(page);
+    // Pass contractId so the utility polls for the terminal state before
+    // returning, making the 'Passed' assertion below reliable.
+    await triggerContractValidation(page, contractId1104);
     await toastPromise;
 
     await page.reload();
@@ -1282,8 +1301,14 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
 
-    // save and trigger contract validation
-    await saveAndTriggerDataContractValidation(page, true);
+    // save and trigger contract validation; the utility now polls the API
+    // until the result is terminal before reloading, so the status check
+    // below is reliable even when the backend is slow.
+    const contractData1289 = await saveAndTriggerDataContractValidation(
+      page,
+      true
+    );
+    const contractId1289 = (contractData1289 as { id?: string })?.id;
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1318,7 +1343,9 @@ test.describe('Data Contracts', () => {
       .getByText('Contract validation trigger successfully.')
       .waitFor({ state: 'visible' });
 
-    await triggerContractValidation(page);
+    // Pass contractId so the utility polls for the terminal state before
+    // returning, making the 'Failed' assertion below reliable.
+    await triggerContractValidation(page, contractId1289);
     await toastPromise;
 
     await page.reload();

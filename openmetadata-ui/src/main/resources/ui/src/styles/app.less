@@ -35,7 +35,7 @@ ul {
 }
 
 p {
-  margin-bottom: 0px;
+  margin-bottom: 0;
 }
 
 // Global css
@@ -71,16 +71,16 @@ p {
 }
 
 .deleted-badge-button {
-  margin-left: 4px;
-  padding: 2px 8px;
-  font-weight: 500;
+  margin-left: var(--om-space-4);
+  padding: var(--om-space-2) var(--om-space-8);
+  font-weight: var(--om-font-weight-medium);
   border-radius: @border-rad-base;
   color: @error-color;
   background-color: @error-light-color;
 }
 
 .page-container {
-  padding: 0 24px 16px 24px;
+  padding: 0 var(--om-space-24) var(--om-space-16) var(--om-space-24);
 }
 
 a,
@@ -133,8 +133,8 @@ a[href].link-text-grey,
 
 // used in glossary + query right panel, to keep both consistent
 .right-panel-label {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
   color: @text-grey-muted;
 }
 
@@ -244,15 +244,15 @@ a[href].link-text-grey,
 }
 
 .rounded-full {
-  border-radius: 9999px;
+  border-radius: var(--om-radius-full);
 }
 
 .rounded-6 {
-  border-radius: 6px;
+  border-radius: var(--om-radius-md);
 }
 
 .rounded-12 {
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
 }
 
 // Word break
@@ -348,8 +348,8 @@ a[href].link-text-grey,
 .activeCategory {
   border-left: 3px solid @primary-color;
   background: @primary-1;
-  padding-left: 10px;
-  font-weight: 600;
+  padding-left: var(--om-space-10);
+  font-weight: var(--om-font-weight-semibold);
 
   .ant-typography {
     color: @primary-color;
@@ -357,15 +357,15 @@ a[href].link-text-grey,
 }
 
 .shadow-custom {
-  box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 1px 1px 8px var(--om-legacy-color-0-0-0-0-06);
 }
 
 .card-box-shadow {
-  box-shadow: rgba(0, 0, 0, 0.06) 1px 1px 8px;
+  box-shadow: var(--om-legacy-color-0-0-0-0-06) 1px 1px 8px;
 }
 
 .shadow-base {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px 0 var(--om-legacy-color-0-0-0-0-1), 0 1px 2px 0 var(--om-legacy-color-0-0-0-0-06);
 }
 
 .link-hover {
@@ -408,15 +408,15 @@ a[href].link-text-grey,
 }
 
 .z-5 {
-  z-index: 5;
+  z-index: var(--om-z-5);
 }
 
 .z-10 {
-  z-index: 10;
+  z-index: var(--om-z-10);
 }
 
 .z-400 {
-  z-index: 400;
+  z-index: var(--om-z-400);
 }
 
 .entity-details-container {
@@ -424,7 +424,7 @@ a[href].link-text-grey,
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: var(--om-space-16);
   padding-bottom: 0;
 }
 
@@ -436,8 +436,8 @@ a[href].link-text-grey,
 }
 
 .entity-header-display-name {
-  font-weight: 700;
-  font-size: 18px;
+  font-weight: var(--om-font-weight-bold);
+  font-size: var(--om-font-size-lg);
   line-height: 22px;
   color: @text-color;
   text-decoration: none !important;
@@ -480,7 +480,7 @@ a[href].link-text-grey,
 .hover-icon-group {
   .hover-cell-icon {
     opacity: 0;
-    transition: 0.3s ease-in;
+    transition: var(--om-duration-300) ease-in;
   }
 
   &:hover {
@@ -493,7 +493,7 @@ a[href].link-text-grey,
 /* Group CSS End*/
 
 .quick-filter-dropdown-trigger-btn {
-  padding: 4px;
+  padding: var(--om-space-4);
   border: none;
   background: transparent;
   box-shadow: none;
@@ -515,7 +515,7 @@ a[href].link-text-grey,
 }
 
 .highlighted-row {
-  animation: highlight-fade 3s ease-out forwards;
+  animation: highlight-fade var(--om-duration-3000) ease-out forwards;
 
   > td {
     background-color: @grey-100 !important;
@@ -585,7 +585,7 @@ a[href].link-text-grey,
 
 .common-left-panel-card-heading {
   color: @group-title-color;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
 }
 
 .no-scrollbar {
@@ -598,13 +598,13 @@ a[href].link-text-grey,
 
 // beta tag for service page
 .service-beta-tag {
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   sup {
     height: auto;
-    padding: 0 4px;
-    margin-left: 2px;
-    font-size: 10px;
-    font-weight: 500;
+    padding: 0 var(--om-space-4);
+    margin-left: var(--om-space-2);
+    font-size: var(--om-font-size-10);
+    font-weight: var(--om-font-weight-medium);
     background: @primary-50;
     border: 1px solid @primary-1;
     color: @primary-8;
@@ -615,10 +615,10 @@ a[href].link-text-grey,
 .service-beta-page-header {
   sup {
     height: auto;
-    padding: 2px 6px;
-    border-radius: 30px;
-    margin-left: 2px;
-    font-size: 10px;
+    padding: var(--om-space-2) var(--om-space-6);
+    border-radius: var(--om-radius-30);
+    margin-left: var(--om-space-2);
+    font-size: var(--om-font-size-10);
     background: @primary-50;
     border: 1px solid @primary-1;
     color: @primary-8;
@@ -667,11 +667,11 @@ a[href].link-text-grey,
 
 .entity-tag-right-panel-container {
   border-left: @global-border;
-  padding: 12px 8px 0 8px;
+  padding: var(--om-space-12) var(--om-space-8) 0 var(--om-space-8);
 }
 
 .global-border-radius {
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
 }
 
 .full-height {
@@ -694,41 +694,41 @@ a[href].link-text-grey,
 .diff-added {
   font-family: Inter, sans-serif;
   text-decoration: none;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   width: fit-content;
-  color: #027a48;
+  color: var(--om-legacy-color-027a48);
 }
 
 .diff-removed-new,
 .diff-removed {
   font-family: Inter, sans-serif;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   width: fit-content;
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: #f97066;
+  text-decoration-color: var(--om-color-error-400);
   text-decoration-skip-ink: auto;
-  color: #f97066;
+  color: var(--om-color-error-400);
 }
 
 .diff-normal-new {
   font-family: Inter, sans-serif;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   color: @text-color;
 }
 
 .diff-normal-new strong {
-  font-weight: 600;
-  color: #000;
+  font-weight: var(--om-font-weight-semibold);
+  color: var(--om-color-black);
   /* Adjust color if needed */
 }
 
@@ -751,9 +751,9 @@ a[href].link-text-grey,
 .text-expand {
   font-family: Inter, sans-serif;
   color: @primary-color;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   cursor: pointer;
 }
@@ -766,12 +766,12 @@ a[href].link-text-grey,
 .page-search-bar label {
   font-size: 1.25em;
   color: @text-grey-muted;
-  font-weight: 600;
+  font-weight: var(--om-font-weight-semibold);
 }
 
 /* Page title */
 .page-title {
-  font-weight: 600;
+  font-weight: var(--om-font-weight-semibold);
 }
 
 /* Style for Antd Form Item Extra */
@@ -781,7 +781,7 @@ a[href].link-text-grey,
 
 /* Feed text pre tag CSS */
 .activity-feed-card-text {
-  padding-top: 6px;
+  padding-top: var(--om-space-6);
 }
 
 .activity-feed-card-text pre {
@@ -790,7 +790,7 @@ a[href].link-text-grey,
 }
 
 .table-query-editor pre.CodeMirror-line {
-  padding-right: 60px !important;
+  padding-right: var(--om-space-60) !important;
 }
 
 .ProseMirror .placeholder {
@@ -799,15 +799,15 @@ a[href].link-text-grey,
 
 /* Description tabs CSS */
 .ant-tabs-description {
-  margin-top: 8px;
+  margin-top: var(--om-space-8);
 }
 
 .ant-tabs-description > .ant-tabs-nav {
-  margin-bottom: 0px;
+  margin-bottom: 0;
 }
 
 .ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
-  padding: 0px 16px;
+  padding: 0 var(--om-space-16);
 }
 
 /* React flow */
@@ -841,7 +841,7 @@ a[href].link-text-grey,
 // ****  Feed message  ******
 
 .feed-message > div > p:last-child {
-  margin-bottom: 0px;
+  margin-bottom: 0;
 }
 
 // **********  Sample Data  ***********
@@ -904,7 +904,7 @@ a[href].link-text-grey,
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 1001;
+  z-index: var(--om-z-1001);
 }
 
 // Task Feed Message Container
@@ -934,23 +934,23 @@ a[href].link-text-grey,
 
 .alert-icon {
   .anticon {
-    font-size: 18px;
+    font-size: var(--om-font-size-lg);
   }
 }
 
 .reserve-right-sidebar {
   .feed-editor {
     // Right side padding 20 + 64 width of sidebar
-    margin-right: 84px;
+    margin-right: var(--om-space-84);
   }
 
   .test-case-table-container,
   .test-suite-pipeline-tab {
-    margin-right: 64px;
+    margin-right: var(--om-space-64);
   }
 
   .appearance-cta-buttons {
-    padding-right: 64px;
+    padding-right: var(--om-space-64);
   }
 
   .activity-feed-editor-drawer,
@@ -960,16 +960,16 @@ a[href].link-text-grey,
   .kpi-table,
   .custom-properties-card,
   .entity-custom-properties-table {
-    margin-right: 64px;
+    margin-right: var(--om-space-64);
   }
 }
 
 .placeholder-title {
   color: @text-color;
   text-align: center;
-  font-size: 18px;
+  font-size: var(--om-font-size-lg);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: normal;
   letter-spacing: 0.25px;
   margin-top: @size-md;
@@ -984,7 +984,7 @@ a[href].link-text-grey,
   text-align: center;
   font-size: @font-size-base;
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: normal;
   letter-spacing: 0.25px;
   width: 350px;
@@ -993,19 +993,19 @@ a[href].link-text-grey,
 // Pagination styles
 
 .pagination-next-icon {
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
 }
 
 .pagination-prev-icon {
-  font-size: 12px;
-  margin-top: -3px;
+  font-size: var(--om-font-size-xs);
+  margin-top: calc(-1 * var(--om-space-3));
   transform: rotate(180deg);
 }
 
 // transition
 
 .transition-all-200ms {
-  transition: all 200ms ease;
+  transition: all var(--om-duration-200) ease;
 }
 
 // Test Case Status Icon

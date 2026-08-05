@@ -22,7 +22,6 @@ import {
   restoreSecurityConfig,
   SecurityConfigSnapshot,
 } from '../../utils/ssoAuth';
-import { getToken } from '../../utils/tokenStorage';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -66,12 +65,12 @@ for (const scenario of CLAIM_SCENARIOS) {
         'Apply the Okta public config for this claim scenario',
         async ({ browser }) => {
           helper = getProviderHelper(providerType);
-          const { apiContext, afterAction, page } = await performAdminLogin(
+          const { apiContext, afterAction, token } = await performAdminLogin(
             browser
           );
 
           try {
-            adminJwt = await getToken(page);
+            adminJwt = token;
 
             if (!adminJwt) {
               throw new Error(

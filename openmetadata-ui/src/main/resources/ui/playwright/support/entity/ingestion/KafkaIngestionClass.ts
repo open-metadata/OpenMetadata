@@ -66,6 +66,8 @@ class KafkaIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-topicFilterPattern').click();
     await page.getByTestId('topicFilterPattern-only-specific-button').click();
     await page
       .getByTestId('filter-section-topicFilterPattern')

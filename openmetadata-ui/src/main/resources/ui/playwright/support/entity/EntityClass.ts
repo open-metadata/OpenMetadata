@@ -16,12 +16,14 @@ import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
+  getApiContext,
   removeDataProduct,
   removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
+  CustomPropertyTypeByName,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
@@ -101,12 +103,16 @@ export class EntityClass {
     // Override for entity visit
   }
 
-  async prepareCustomProperty(apiContext: APIRequestContext) {
+  async prepareCustomProperty(
+    apiContext: APIRequestContext,
+    propertyTypes?: readonly CustomPropertyTypeByName[]
+  ) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       const data = await createCustomPropertyForEntity(
         apiContext,
-        this.endpoint
+        this.endpoint,
+        propertyTypes
       );
 
       this.customPropertyValue = data.customProperties;
@@ -489,11 +495,25 @@ export class EntityClass {
   }
 
   async inactiveAnnouncement(page: Page) {
-    await createInactiveAnnouncement(page, {
+    const announcementId = await createInactiveAnnouncement(page, {
       title: 'Inactive Playwright announcement',
       description: 'Inactive Playwright announcement description',
     });
-    await deleteAnnouncement(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      const deleteResponse = await apiContext.delete(
+        `/api/v1/announcements/${announcementId}`
+      );
+
+      if (!deleteResponse.ok()) {
+        throw new Error(
+          `Failed to clean up inactive announcement ${announcementId}: ${deleteResponse.status()}`
+        );
+      }
+    } finally {
+      await afterAction();
+    }
   }
 
   async renameEntity(page: Page, entityName: string) {

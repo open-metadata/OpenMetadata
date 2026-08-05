@@ -13,6 +13,7 @@
 import logging
 import os
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 import mlflow
@@ -129,8 +130,8 @@ def create_data(mlflow_environment):
 
     np.random.seed(40)
 
-    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
-    data = pd.read_csv(csv_url, sep=";")
+    csv_path = Path(__file__).parent / "data" / "winequality-red.csv"
+    data = pd.read_csv(csv_path, sep=";")
 
     train, test = train_test_split(data)
 

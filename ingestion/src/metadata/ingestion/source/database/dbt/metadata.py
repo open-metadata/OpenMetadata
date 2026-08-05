@@ -84,6 +84,7 @@ from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
@@ -103,6 +104,8 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtServiceSource,
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
+    build_upstream_name_map,
+    build_upstream_node,
     check_ephemeral_node,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
@@ -119,6 +122,8 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
     get_dbt_test_definition_name,
+    get_dbt_test_description,
+    get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
     map_dbt_metric_type,
@@ -159,6 +164,11 @@ class DbtSource(DbtServiceSource):
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        # Upstream nodes already reported as unresolved, so a dbt project whose source
+        # database was never ingested reports each missing upstream once instead of once
+        # per referencing model. Bounded by the number of distinct upstream nodes in the
+        # project and reset per project in yield_data_models.
+        self.reported_unresolved_upstreams: set[str] = set()
         self._load_omd_custom_properties()
 
     @classmethod
@@ -657,9 +667,11 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases for later processing
         """
+        upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
         self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-            manifest_entities, manifest_node
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = [node.fqn for node in upstream_nodes]
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM_BY_NAME.value] = build_upstream_name_map(
+            upstream_nodes
         )
         self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = self._get_latest_result(dbt_objects, key)
 
@@ -691,9 +703,13 @@ class DbtSource(DbtServiceSource):
         )
 
         if freshness_test_result:
+            upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
             self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
-            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-                manifest_entities, manifest_node
+            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = [
+                node.fqn for node in upstream_nodes
+            ]
+            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM_BY_NAME.value] = (
+                build_upstream_name_map(upstream_nodes)
             )
             self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
 
@@ -755,6 +771,7 @@ class DbtSource(DbtServiceSource):
         """
         Yield the data models
         """
+        self.reported_unresolved_upstreams.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
@@ -939,6 +956,15 @@ class DbtSource(DbtServiceSource):
         """
         Method to fetch the upstream nodes
         """
+        return [node.fqn for node in self.parse_upstream_nodes_with_names(manifest_entities, dbt_node)]
+
+    def parse_upstream_nodes_with_names(self, manifest_entities, dbt_node):
+        """
+        Method to fetch the upstream nodes as UpstreamNode entries.
+
+        The dbt names are kept alongside the FQN because the FQN is built from the model
+        alias, while dbt ``ref()`` expressions carry the model name.
+        """
         upstream_nodes = []
         if (
             hasattr(dbt_node, "depends_on")
@@ -975,7 +1001,7 @@ class DbtSource(DbtServiceSource):
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
                     if check_ephemeral_node(parent_node):
-                        upstream_nodes.extend(self.parse_upstream_nodes(manifest_entities, parent_node))
+                        upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
                     else:
                         parent_fqn = fqn.build(
                             self.metadata,
@@ -987,8 +1013,8 @@ class DbtSource(DbtServiceSource):
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        if self._get_table_entity(table_fqn=parent_fqn):
-                            upstream_nodes.append(parent_fqn)
+                        if parent_fqn and self._get_table_entity(table_fqn=parent_fqn):
+                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
@@ -1164,24 +1190,23 @@ class DbtSource(DbtServiceSource):
                             ),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Lineage upstream nodes",
-                                error=(
-                                    "Error to create DBT lineage from upstream nodes ",
-                                    f"{str(data_model_link.datamodel.upstream)}",  # noqa: RUF010
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt lineage edge dropped: upstream table '{upstream_node}' was not "
+                        f"returned by OpenMetadata, so no edge was created to "
+                        f"'{model_str(to_entity.fullyQualifiedName)}'. Either the table has not been "
+                        "ingested or the lookup itself failed - check the logs above for a "
+                        "search or API error. Further models referencing this upstream are not "
+                        "reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1268,24 +1293,22 @@ class DbtSource(DbtServiceSource):
                             lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Exposure lineage",
-                                error=(
-                                    "Error to create DBT Exposure lineage",
-                                    f"{str(exposure_spec)[:20]}...",
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                elif upstream_node not in self.reported_unresolved_upstreams:
+                    self.reported_unresolved_upstreams.add(upstream_node)
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt exposure lineage edge dropped: upstream table '{upstream_node}' was "
+                        f"not returned by OpenMetadata, so no edge was created to exposure "
+                        f"'{manifest_node.name}'. Either the table has not been ingested or the "
+                        "lookup itself failed - check the logs above for a search or API error. "
+                        "Further nodes referencing this upstream are not reported again.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1846,6 +1869,9 @@ class DbtSource(DbtServiceSource):
                     fqn=test_definition_name,
                     entity=TestDefinition,
                 )
+                # A TestDefinition is shared by every dbt test of the same type
+                # (e.g. all "not_null" tests), so its description is only set on
+                # creation and never patched from an individual node.
                 if not check_test_definition_exists:
                     entity_type = EntityType.TABLE
                     if get_manifest_column_name(manifest_node):
@@ -1853,7 +1879,7 @@ class DbtSource(DbtServiceSource):
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
-                            description=manifest_node.description,
+                            description=get_dbt_test_description(manifest_node),
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
@@ -1895,12 +1921,13 @@ class DbtSource(DbtServiceSource):
                     )
 
                     test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
+                    description = get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=manifest_node.description,
+                                description=description,
                                 testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
@@ -1908,7 +1935,9 @@ class DbtSource(DbtServiceSource):
                                 owners=None,
                             )
                         )
-                    logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                    else:
+                        logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                        self.patch_dbt_test_case_description(test_case, description)
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -1918,15 +1947,34 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
+        """
+        Keep the description of an already ingested test case in sync with dbt.
+
+        Mirrors how table and column descriptions are handled: an empty
+        description is always filled in, while an existing one is only
+        overridden when dbtUpdateDescriptions is enabled.
+        """
+        if description:
+            logger.debug(f"Patching DBT description for test case: {model_str(test_case.fullyQualifiedName)}")
+            self.metadata.patch_description(
+                entity=TestCase,
+                source=test_case,
+                description=description,
+                force=bool(self.source_config.dbtUpdateDescriptions),
+            )
+
     def add_dbt_test_result(self, dbt_test: dict):  # noqa: C901
         """
         After test cases has been processed, add the tests results info
         """
+        node_name = "unknown"
         try:
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(f"Adding DBT Test Case Results for node: {manifest_node.name}")
+                node_name = manifest_node.name
+                logger.debug(f"Adding DBT Test Case Results for node: {node_name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
                     logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
@@ -2000,8 +2048,10 @@ class DbtSource(DbtServiceSource):
                     result=(dbt_test_result.message if test_case_status != TestCaseStatus.Success else None),
                 )
 
-                # Create the test case fqns and add the results
-                for table_fqn in dbt_test.get(DbtCommonEnum.UPSTREAM.value):
+                # Results belong to the single table the test case was created against,
+                # which for multi-upstream tests is not every entry in the upstream list
+                table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
+                if table_fqn:
                     source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -2026,7 +2076,13 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to capture tests results for node: {manifest_node.name} {err}")
+            self.status.failed(
+                StackTraceError(
+                    name=f"DBT Test Result {node_name}",
+                    error=f"Failed to capture test results for node '{node_name}': {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         self.metadata.close()

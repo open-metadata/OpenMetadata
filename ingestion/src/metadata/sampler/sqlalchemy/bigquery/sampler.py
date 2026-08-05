@@ -81,7 +81,7 @@ class BigQuerySampler(SQASampler):
         Returns:
         """
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         if column is not None:
             column_parts = column.name.split(".")

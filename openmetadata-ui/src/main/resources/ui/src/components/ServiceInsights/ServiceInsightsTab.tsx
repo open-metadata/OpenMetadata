@@ -50,6 +50,7 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityIcon } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import {
@@ -64,7 +65,6 @@ import {
   getServiceNameQueryFilter,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';

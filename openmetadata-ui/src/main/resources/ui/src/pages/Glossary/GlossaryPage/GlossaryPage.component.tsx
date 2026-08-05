@@ -502,7 +502,7 @@ const GlossaryPage = () => {
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="tw:relative full-height tw:overflow-hidden tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-primary">
+      <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         <EmptyPlaceholder
           description={t('message.glossary-empty-description')}
           features={[

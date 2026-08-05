@@ -100,7 +100,7 @@ class DatabricksClient:
         """
         Method to get auth header
         """
-        from metadata.ingestion.source.database.databricks import auth  # noqa: PLC0415
+        from metadata.ingestion.source.database.databricks import auth
 
         auth_method = {
             PersonalAccessToken: auth.get_personal_access_token_auth,
