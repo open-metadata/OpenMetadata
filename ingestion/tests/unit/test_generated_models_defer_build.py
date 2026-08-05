@@ -178,25 +178,32 @@ def test_concurrent_first_instantiation_is_safe():
     original_interval = sys.getswitchinterval()
     sys.setswitchinterval(1e-6)
     failures = []
+    thread_timeout_seconds = 5
     try:
         for _ in range(200):
             parent_model, nested_model = _make_deferred_family()
             assert parent_model.__pydantic_complete__ is False
             assert nested_model.__pydantic_complete__ is False
-            barrier = threading.Barrier(8)
+            barrier = threading.Barrier(9, timeout=thread_timeout_seconds)
 
             def work(parent: type = parent_model, gate: threading.Barrier = barrier):
                 try:
                     gate.wait()
                     parent.model_validate({"nested": {"account": "acct"}}).model_dump()
                 except Exception as exc:
-                    failures.append(repr(exc))
+                    failures.append(f"{threading.current_thread().name}: {exc!r}")
 
             threads = [threading.Thread(target=work) for _ in range(8)]
             for thread in threads:
                 thread.start()
+            try:
+                barrier.wait()
+            except threading.BrokenBarrierError as exc:
+                failures.append(f"main thread: {exc!r}")
             for thread in threads:
-                thread.join()
+                thread.join(timeout=thread_timeout_seconds)
+            stuck_threads = [thread.name for thread in threads if thread.is_alive()]
+            assert not stuck_threads, f"concurrent workers did not finish: {stuck_threads}"
     finally:
         sys.setswitchinterval(original_interval)
 
