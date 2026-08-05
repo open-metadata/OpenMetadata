@@ -73,7 +73,7 @@ The DBT source is already implemented at `ingestion/src/metadata/ingestion/sourc
 - Consumes: `ServiceSpec` from `metadata.ingestion.source.database.clickzetta.service_spec`, the generated ClickZetta connection model, and the existing DBT source configuration names.
 - Produces: regression coverage proving unsupported capability registrations stay disabled and an operator matrix that names the next gate rather than implying support.
 
-- [ ] **Step 1: Write the capability contract test**
+- [x] **Step 1: Write the capability contract test**
 
 ```python
 def test_clickzetta_keeps_unvalidated_data_capabilities_disabled():
@@ -96,7 +96,7 @@ def test_clickzetta_dbt_flag_defaults_to_disabled():
     assert config.supportsDBTExtraction is False
 ```
 
-- [ ] **Step 2: Run the contract test to verify the baseline**
+- [x] **Step 2: Run the contract test to verify the baseline**
 
 Run:
 
@@ -108,7 +108,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=ingestion/src \
 
 Expected: PASS, because the current branch intentionally exposes no unvalidated data-reading capability. If the test fails, repair the test fixture or generated-model import before continuing; do not enable a capability to make it pass.
 
-- [ ] **Step 3: Write the matrix and update the UI documentation**
+- [x] **Step 3: Write the matrix and update the UI documentation**
 
 Document the following exact statuses:
 
@@ -122,7 +122,7 @@ Document the following exact statuses:
 | Native test execution | Disabled | SQLAlchemy test-suite runner compatibility and permission/error semantics |
 | DBT extraction | Separate source | S3 DBT pipeline with manifest/catalog/run-results; attached flag only after UI workflow validation |
 
-- [ ] **Step 4: Run the focused contract and documentation checks**
+- [x] **Step 4: Run the focused contract and documentation checks**
 
 Run the pytest command from Step 2 and parse the ClickZetta JSON schema:
 
@@ -137,7 +137,7 @@ print("clickzetta schema: valid JSON")
 PY
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ingestion/tests/unit/topology/database/test_clickzetta_capabilities.py \
@@ -158,15 +158,15 @@ git commit -m "docs(clickzetta): define capability support gates"
 - Consumes: `queryHistoryTable=sys.information_schema.job_history`, configured workspace/schema, and ClickZetta native columns.
 - Produces: canonical OpenMetadata `TableQuery` rows from bounded native history SQL.
 
-- [ ] **Step 1: Keep the offline native-column mapping test red until the mapper handles all required fields**
+- [x] **Step 1: Add and pass the offline native-column mapping test**
 
 The test must assert `job_text`, `job_type`, `job_creator`, `workspace_name`, `input_tables`, `execution_time`, and status map to the canonical fields and that workspace/schema predicates are present.
 
-- [ ] **Step 2: Implement only the projection/filter mapping**
+- [x] **Step 2: Implement only the projection/filter mapping**
 
 Use the existing wrapper query and never change the configured result limit or time-window behavior. Do not add a generic `SELECT *` fallback.
 
-- [ ] **Step 3: Run the focused local and container tests**
+- [x] **Step 3: Run the focused local and container tests**
 
 ```bash
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=ingestion/src \
@@ -181,7 +181,7 @@ Then run the same files inside `docker.getcollate.io/openmetadata/ingestion:1.13
 
 Required external grant: a least-privilege ClickZetta role that can read `sys.information_schema.job_history` and the configured `seller_center` metadata. The smoke test must use `LIMIT 0`, a one-table schema filter, and record the permission/result without printing credentials.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add ingestion/src/metadata/ingestion/source/database/clickzetta \

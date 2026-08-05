@@ -8,8 +8,11 @@ from ClickZetta into OpenMetadata.
 Create a ClickZetta user with read access to the workspace, virtual cluster,
 schemas, and tables that OpenMetadata should catalog. Metadata extraction is
 supported directly. Usage and query-lineage extraction additionally require a
-read-only query-history table or view configured below; profiling, sampling, and
-native dbt extraction are still not provided by this connector.
+read-only query-history table or view configured below. Profiling, sampling,
+data diff, and native test execution are not enabled until their ClickZetta SQL
+and bounded-read contracts are validated. DBT artifacts are ingested by the
+separate DBT source (for example, from S3); this database connector does not
+run DBT models or read DBT artifacts itself.
 
 ## Connection Details
 
@@ -71,7 +74,7 @@ view must expose these canonical columns:
 Leave this blank when running metadata-only ingestion. For a first validation,
 grant the ingestion identity read access to the native history object and set a
 small query-log result limit. The connector applies a time window and result
-limit; it does not profile or sample table data.
+limit; it does not profile, sample, diff, or execute tests against table data.
 $$
 
 $$section
