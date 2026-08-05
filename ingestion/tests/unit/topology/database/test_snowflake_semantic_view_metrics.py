@@ -14,7 +14,7 @@ import inspect
 from unittest.mock import MagicMock
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
-from metadata.generated.schema.entity.data.metric import Language, MetricType
+from metadata.generated.schema.entity.data.metric import Language, MetricType, Type
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
@@ -219,3 +219,64 @@ def test_snowflake_topology_does_not_leak_into_base_topology():
 
     base_stage_types = [stage.type_ for stage in DatabaseServiceTopology().table.stages]
     assert CreateMetricRequest not in base_stage_types
+
+
+def test_dimensions_carry_the_detail_stripped_from_columns():
+    """The view's columns no longer describe kind/logical table/synonyms, so the
+    Metric's dimensions must carry that detail or it is lost entirely."""
+    row = ("customers", "REGION", "VARCHAR", "customers.c_region", "Customer region", "geo, area")
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
+
+    dimension = request.dimensions[0]
+
+    assert dimension.name == "REGION"
+    assert "Customer region" in dimension.description
+    assert "Logical table: customers." in dimension.description
+    assert "Synonyms: geo, area." in dimension.description
+    assert dimension.expression == "customers.c_region"
+
+
+def test_dimension_type_is_classified_from_the_data_type():
+    rows = [
+        ("orders", "ORDER_DATE", "DATE", "orders.o_orderdate", None, None),
+        ("orders", "SHIPPED_AT", "TIMESTAMP_NTZ", "orders.o_shipdate", None, None),
+        ("customers", "REGION", "VARCHAR", "customers.c_region", None, None),
+        ("orders", "UNTYPED", None, "orders.x", None, None),
+    ]
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=rows, fact_rows=[], view_ref=None
+    )
+
+    by_name = {d.name: d.type for d in request.dimensions}
+
+    assert by_name == {
+        "ORDER_DATE": Type.TIME,
+        "SHIPPED_AT": Type.TIME,
+        "REGION": Type.CATEGORICAL,
+        "UNTYPED": None,
+    }
+
+
+def test_measure_aggregation_is_inferred_only_when_aggregated():
+    rows = [
+        ("orders", "REVENUE", "NUMBER", "SUM(orders.o_totalprice)", None, None),
+        ("orders", "LINE_AMOUNT", "NUMBER", "orders.o_totalprice", None, None),
+    ]
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[], fact_rows=rows, view_ref=None
+    )
+
+    by_name = {m.name: m.aggregation for m in request.measures}
+
+    assert by_name == {"REVENUE": "SUM", "LINE_AMOUNT": None}
+
+
+def test_semantic_description_is_none_when_the_row_is_bare():
+    row = ("", "PLAIN", "VARCHAR", "t.c", None, None)
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
+
+    assert request.dimensions[0].description is None

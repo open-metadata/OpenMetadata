@@ -30,21 +30,33 @@ from metadata.ingestion.source.database.snowflake.utils import (
 )
 
 
-def test_semantic_column_description_has_no_expression():
+def test_semantic_column_description_is_the_raw_comment_only():
+    """The kind, logical table, synonyms and expression all live on the Metric
+    entity's dimensions/measures, so the column carries only Snowflake's COMMENT."""
     from metadata.ingestion.source.database.snowflake.metadata import (
-        _build_semantic_column_description,
+        _build_semantic_view_column,
     )
 
-    description = _build_semantic_column_description(
-        kinds=["Dimension"],
-        logical_table="customers",
-        synonyms="geo",
-        comment="Customer region",
+    column = _build_semantic_view_column(
+        {
+            "name": "REGION",
+            "data_type": "VARCHAR",
+            "expression": "customers.c_region",
+            "comment": "Customer region",
+        }
     )
-    assert "Expression" not in description
-    assert "[Dimension]" in description
-    assert "Synonyms: geo." in description
-    assert "Customer region" in description
+
+    assert column["comment"] == "Customer region"
+
+
+def test_semantic_column_description_is_none_without_a_comment():
+    from metadata.ingestion.source.database.snowflake.metadata import (
+        _build_semantic_view_column,
+    )
+
+    column = _build_semantic_view_column({"name": "REGION", "data_type": "VARCHAR", "expression": "x", "comment": None})
+
+    assert column["comment"] is None
 
 
 def test_semantic_view_column_queries_exclude_metrics():
@@ -125,12 +137,12 @@ def test_semantic_view_columns_come_from_dimensions_facts_metrics():
     assert inspector.get_columns.call_count == 0
 
 
-def test_fetch_semantic_view_columns_merges_kinds_and_maps_types():
+def test_fetch_semantic_view_columns_dedupes_names_and_maps_types():
     self_mock = Mock()
     # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
     dimension_rows = [
-        ("CUSTOMERS", "CUSTOMER_NAME", "VARCHAR(100)", "customers.c_name", "the name", None),
-        # same name as the fact -> kinds must merge onto one column
+        ("CUSTOMERS", "CUSTOMER_NAME", "VARCHAR(100)", "customers.c_name", "the name", "alias"),
+        # same name as the fact -> must collapse onto one column
         ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.line_amount", None, None),
     ]
     fact_rows = [
@@ -147,13 +159,10 @@ def test_fetch_semantic_view_columns_merges_kinds_and_maps_types():
     assert set(by_name) == {"CUSTOMER_NAME", "LINE_AMOUNT"}
 
     dimension = by_name["CUSTOMER_NAME"]
-    assert dimension["comment"].startswith("[Dimension]")
-    assert "Logical table: CUSTOMERS." in dimension["comment"]
-    assert "Expression" not in dimension["comment"]
     assert dimension["system_data_type"] == "VARCHAR(100)"
-
-    # LINE_AMOUNT appears as both a dimension and a fact -> both kinds on one column
-    assert by_name["LINE_AMOUNT"]["comment"].startswith("[Dimension, Fact]")
+    # no kind tag, no logical table, no synonyms, no expression -- Metric carries those
+    assert dimension["comment"] == "the name"
+    assert by_name["LINE_AMOUNT"]["comment"] is None
 
 
 def test_get_semantic_view_columns_swallows_errors():

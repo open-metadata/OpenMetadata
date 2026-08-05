@@ -248,54 +248,31 @@ def _resolve_semantic_column_type(data_type: Optional[str]):  # noqa: UP045
     return resolved
 
 
-def _build_semantic_column_description(
-    kinds: List[str],  # noqa: UP006
-    logical_table: Optional[str],  # noqa: UP045
-    synonyms: Optional[str],  # noqa: UP045
-    comment: Optional[str],  # noqa: UP045
-) -> str:
-    """Compose a lightweight column description: the semantic object's kind(s),
-    owning logical table, synonyms and original comment. The defining expression
-    is intentionally omitted — it lives on the Metric entity."""
-    parts = [f"[{', '.join(kinds)}]"]
-    if logical_table:
-        parts.append(f"Logical table: {logical_table}.")
-    if synonyms:
-        parts.append(f"Synonyms: {synonyms}.")
-    if comment:
-        parts.append(comment)
-    return " ".join(parts)
-
-
 def _merge_semantic_view_column(merged: Dict[str, dict], kind: str, row) -> None:  # noqa: UP006
-    """Accumulate a dimension/fact row under its column name, combining
-    kinds when the same name appears across dimensions or facts."""
-    logical_table, name, data_type, expression, comment, synonyms = (
-        row[0],
-        row[1],
-        row[2],
-        row[3],
-        row[4],
-        row[5],
-    )
-    entry = merged.get(name)
-    if entry is None:
-        entry = {
+    """Accumulate a dimension/fact row under its column name.
+
+    ``kind`` is unused: the semantic classification, owning logical table and
+    synonyms are carried by the Metric entity's ``dimensions``/``measures``, not
+    by the column. The merge still deduplicates names that appear in both the
+    dimension and the fact catalog.
+    """
+    name, data_type, expression, comment = row[1], row[2], row[3], row[4]
+    if name not in merged:
+        merged[name] = {
             "name": name,
-            "kinds": [],
-            "logical_table": logical_table,
             "data_type": data_type,
             "expression": expression,
             "comment": comment,
-            "synonyms": synonyms,
         }
-        merged[name] = entry
-    if kind not in entry["kinds"]:
-        entry["kinds"].append(kind)
 
 
 def _build_semantic_view_column(entry: dict) -> dict:
-    """Convert an accumulated semantic object into an OpenMetadata column dict."""
+    """Convert an accumulated semantic object into an OpenMetadata column dict.
+
+    The description is the raw Snowflake ``COMMENT`` only. The semantic detail
+    (kind, logical table, synonyms, defining expression) lives on the Metric
+    entity so the column stays a plain, readable column.
+    """
     return {
         "name": entry["name"],
         "type": _resolve_semantic_column_type(entry["data_type"]),
@@ -303,12 +280,7 @@ def _build_semantic_view_column(entry: dict) -> dict:
         "nullable": True,
         "default": None,
         "autoincrement": False,
-        "comment": _build_semantic_column_description(
-            entry["kinds"],
-            entry["logical_table"],
-            entry["synonyms"],
-            entry["comment"],
-        ),
+        "comment": entry["comment"] or None,
         "primary_key": False,
     }
 

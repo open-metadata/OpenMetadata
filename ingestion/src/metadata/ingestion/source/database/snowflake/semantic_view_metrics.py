@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.metric import (
     MetricExpression,
     MetricMeasure,
     MetricType,
+    Type,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -36,9 +37,15 @@ from metadata.utils import fqn
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
+SEMANTIC_LOGICAL_TABLE_IDX = 0
 SEMANTIC_NAME_IDX = 1
+SEMANTIC_DATA_TYPE_IDX = 2
 SEMANTIC_EXPRESSION_IDX = 3
 SEMANTIC_COMMENT_IDX = 4
+SEMANTIC_SYNONYMS_IDX = 5
+
+# Snowflake data types that make a dimension a TIME dimension rather than CATEGORICAL.
+_TIME_TYPE_MARKERS = ("DATE", "TIME", "TIMESTAMP")
 
 # Metric names are qualified with the full service/database/schema/view path but must
 # stay a *single* FQN segment, so the path is joined with "-" rather than ".".
@@ -102,19 +109,48 @@ def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
     return result
 
 
+def _semantic_description(row) -> Optional[str]:  # noqa: UP045
+    """Description for a dimension/measure: the Snowflake ``COMMENT`` plus the
+    semantic detail that is deliberately kept off the view's columns — the owning
+    logical table and any synonyms."""
+    parts = []
+    if row[SEMANTIC_COMMENT_IDX]:
+        parts.append(str(row[SEMANTIC_COMMENT_IDX]))
+    if row[SEMANTIC_LOGICAL_TABLE_IDX]:
+        parts.append(f"Logical table: {row[SEMANTIC_LOGICAL_TABLE_IDX]}.")
+    if row[SEMANTIC_SYNONYMS_IDX]:
+        parts.append(f"Synonyms: {row[SEMANTIC_SYNONYMS_IDX]}.")
+    return " ".join(parts) or None
+
+
+def _dimension_type(data_type: Optional[str]) -> Optional[Type]:  # noqa: UP045
+    """Classify a dimension as TIME or CATEGORICAL from its Snowflake data type."""
+    result = None
+    if data_type:
+        upper = data_type.upper()
+        result = Type.TIME if any(marker in upper for marker in _TIME_TYPE_MARKERS) else Type.CATEGORICAL
+    return result
+
+
 def _dimension(row) -> MetricDimension:
     return MetricDimension(  # pyright: ignore[reportCallIssue]
         name=row[SEMANTIC_NAME_IDX],
-        description=row[SEMANTIC_COMMENT_IDX] or None,
+        type=_dimension_type(row[SEMANTIC_DATA_TYPE_IDX]),
+        description=_semantic_description(row),
         expression=row[SEMANTIC_EXPRESSION_IDX] or None,
     )
 
 
 def _measure(row) -> MetricMeasure:
+    expression = row[SEMANTIC_EXPRESSION_IDX]
+    aggregation = None
+    if infer_metric_type(expression) != MetricType.OTHER:
+        aggregation = expression.strip().split("(")[0].strip().upper()
     return MetricMeasure(  # pyright: ignore[reportCallIssue]
         name=row[SEMANTIC_NAME_IDX],
-        description=row[SEMANTIC_COMMENT_IDX] or None,
-        expression=row[SEMANTIC_EXPRESSION_IDX] or None,
+        aggregation=aggregation,
+        description=_semantic_description(row),
+        expression=expression or None,
     )
 
 
